@@ -169,7 +169,7 @@
     };
     const counters = (state.counters || []).filter((c) => keep('counter', c)).map((c) => opt('counter', c)).join('');
     const lineTypes = (state.lineTypes || []).filter((lt) => keep('lineType', lt)).map((lt) => opt('lineType', lt)).join('');
-    return `<option value=""${selected ? '' : ' selected'}>— none —</option>`
+    return `<option value=""${selected ? '' : ' selected'}>none</option>`
       + (counters ? `<optgroup label="Counters">${counters}</optgroup>` : '')
       + (lineTypes ? `<optgroup label="Line Types">${lineTypes}</optgroup>` : '');
   }

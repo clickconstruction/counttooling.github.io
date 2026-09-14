@@ -364,7 +364,7 @@
       }
       const mine = data.filter((p) => p.user_id === userId)
         .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
-      document.getElementById('userProjectsSubtitle').textContent = (email || userId || '') + ' — ' + mine.length + ' project' + (mine.length === 1 ? '' : 's');
+      document.getElementById('userProjectsSubtitle').textContent = (email || userId || '') + ': ' + mine.length + ' project' + (mine.length === 1 ? '' : 's');
       if (!mine.length) { listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>'; return; }
       listEl.innerHTML = mine.map((p) =>
         '<div class="settings-user-row settings-project-row">' +

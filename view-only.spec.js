@@ -188,7 +188,7 @@ test.describe('View-only mode (view-link boot)', () => {
 
     // B6 (J12 J14): page labels carry the plan name, not "document.pdf".
     const labels = await page.evaluate(() => window.App.state.pages.map((p) => p.label));
-    expect(labels).toEqual(['View Spec Project — p1', 'View Spec Project — p2']);
+    expect(labels).toEqual(['View Spec Project, p1', 'View Spec Project, p2']);
 
     // B6 viewer surface trim: editor-only surfaces are gone for the viewer…
     const trimmed = await page.evaluate(() => ({
@@ -277,7 +277,7 @@ test.describe('View-only mode (view-link boot)', () => {
     await page.waitForSelector('#viewLinkDeadScreen.visible', { timeout: 5000 });
     await expect(page.locator('#viewLinkDeadTitle')).toHaveText('This plan is shared privately');
     await expect(page.locator('#viewLinkDeadMessage')).toHaveText(
-      'Enter your work email to open it. No account needed — it’s how the sender controls who can view.');
+      'Enter your work email to open it. No account needed; it’s how the sender controls who can view.');
     await expect(page.locator('#viewLinkDeadRetry')).toBeVisible();
     await expect(page.locator('#viewLinkDeadRetry')).toHaveText('Enter your email');
     // The card is branded — an outsider's first sight of the product.

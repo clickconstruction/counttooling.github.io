@@ -72,7 +72,7 @@
   // no raw DOMException text. The error itself still goes to the console.
   function showCopyFailed(err) {
     console.error('[copy]', err);
-    App.showToast('Nothing was copied — the browser blocked clipboard access. Click the copy button again, and allow clipboard access if the browser asks.', 6000);
+    App.showToast('Nothing was copied. The browser blocked clipboard access. Click the copy button again, and allow clipboard access if the browser asks.', 6000);
   }
 
   async function doCopyPipeTooling(getAnnFn, pageIndices, mode, layers) {

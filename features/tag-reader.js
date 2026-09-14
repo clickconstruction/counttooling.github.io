@@ -188,7 +188,7 @@
     state.activeCounterType = counter.id;
     App.markProjectDirty();
     App.logUserEvent && App.logUserEvent('tag_suggestion_accepted', state.currentProjectId || null, { tag: h.tag, route: 'enter-create' });
-    App.showToast('Created ' + counter.name + ' — click to place it');
+    App.showToast('Created ' + counter.name + '. Click to place it');
     App.updateUI();
     return true;
   }
@@ -232,7 +232,7 @@
     const items = pageTextItems(state.currentPage);
     const finish = (list) => {
       const rows = tm.parseScheduleRows(tm.rowsInBox(list, box));
-      if (!rows.length) { App.showToast(list.length ? 'No "tag + description" rows inside that box — draw it over the schedule table' : 'This sheet has no text layer to read (a scan) — build the counters by hand'); return; }
+      if (!rows.length) { App.showToast(list.length ? 'No "tag + description" rows inside that box. Draw it over the schedule table' : 'This sheet has no text layer to read (a scan) — build the counters by hand'); return; }
       openProposal(rows);
     };
     const entry = textCache.get(state.currentPage);
@@ -259,7 +259,7 @@
     App.pushUndoSnapshot();
     picked.forEach((r) => {
       const desc = r.description.length > 40 ? r.description.slice(0, 40).replace(/\s+\S*$/, '') + '…' : r.description;
-      state.counters.push({ id: App.uid(), name: r.tag + ' — ' + desc, icon: iconForTag(r.tag), color: App.COLORS[(state.counters || []).length % App.COLORS.length], tag: r.tag });
+      state.counters.push({ id: App.uid(), name: r.tag + ' · ' + desc, icon: iconForTag(r.tag), color: App.COLORS[(state.counters || []).length % App.COLORS.length], tag: r.tag });
     });
     App.markProjectDirty();
     App.logUserEvent && App.logUserEvent('tag_suggestion_accepted', state.currentProjectId || null, { route: 'schedule', count: picked.length });

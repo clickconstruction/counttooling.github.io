@@ -102,7 +102,7 @@ test.describe('Duct design-build suggestions (D6)', () => {
     expect(sug).not.toBeNull();
     expect(Math.round(sug.cfm)).toBe(350);
     expect(sug.chipText).toContain('350 CFM downstream');
-    expect(sug.chipText).toContain('— S accepts');
+    expect(sug.chipText).toContain('. S accepts');
     expect(sug.chipText).toContain('@ 0.08″/100′');
 
     // The trace passes the 150-CFM device (it sits on the drawn polyline

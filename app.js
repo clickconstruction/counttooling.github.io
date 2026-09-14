@@ -1794,7 +1794,7 @@
         const prevSafety = renderAreaSafety;
         renderAreaSafety = Math.max(RENDER_AREA_SAFETY_MIN, renderAreaSafety * RENDER_AREA_SAFETY_STEP);
         try {
-          pushSaveEvent('canvas_render_blank', 'PDF canvas read back blank — reduced render area', JSON.stringify({
+          pushSaveEvent('canvas_render_blank', 'PDF canvas read back blank, reduced render area', JSON.stringify({
             devicePixelRatio: window.devicePixelRatio || 1,
             requestedW: viewport.width, requestedH: viewport.height,
             actualW: pdfCanvas.width, actualH: pdfCanvas.height,
@@ -2424,7 +2424,7 @@
         btn.classList.add('scale-set');
         if (isHeader) btn.classList.remove('scale-unset');
         const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
-        btn.title = scale.temp ? 'Temporary scale — only on this device' : '';
+        btn.title = scale.temp ? 'Temporary scale, only on this device' : '';
         if (isHeader) {
           // D20 (X3): the header twin reads the value too, so the set scale is
           // legible without opening anything and the button stays a target.
@@ -2432,8 +2432,8 @@
           // else the px readout, which is all an unlabelled scale has.
           btn.innerHTML = scaleIconSvgHeader.replace('width="28" height="28"', 'width="18" height="18"')
             + '<span class="set-scale-header-value">' + esc(scale.label || pxLine) + '</span>';
-          btn.title = (scale.temp ? 'Temporary scale — only on this device. ' : '')
-            + 'Scale: ' + (scale.label ? scale.label + ' · ' + pxLine : pxLine) + ' — click to edit';
+          btn.title = (scale.temp ? 'Temporary scale, only on this device. ' : '')
+            + 'Scale: ' + (scale.label ? scale.label + ' · ' + pxLine : pxLine) + '. Click to edit';
         } else if (scale.label) {
           btn.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
         } else {
@@ -2462,7 +2462,7 @@
         scaleDisplay.style.flexDirection = 'row';
         scaleDisplay.style.gap = '8px';
         scaleDisplay.classList.add('has-scale');
-        scaleDisplay.title = scale.temp ? 'Temporary scale — only on this device' : 'Click to set scale';
+        scaleDisplay.title = scale.temp ? 'Temporary scale, only on this device' : 'Click to set scale';
         scaleDisplay.onclick = () => document.getElementById('setScale').click();
       } else {
         scaleDisplay.textContent = '—';
@@ -2731,7 +2731,7 @@
           btn.type = 'button';
           btn.className = 'header-edit-status-btn header-edit-status-btn-expired';
           btn.dataset.action = 'checkout_expired_recover';
-          btn.textContent = '[Edit session expired — Re-check out]';
+          btn.textContent = '[Edit session expired. Re-check out]';
           editBanner.appendChild(btn);
           editBanner.classList.add('edit-status-expired');
         } else if (!state.isViewer && state.currentProjectId) {
@@ -2842,7 +2842,7 @@
       // acts on, the T2-01 has-pdf pattern.
       const rotatable = !!state.pages[state.currentPage]?.pdfPage;
       rotatePageBtn.disabled = !rotatable;
-      rotatePageBtn.title = rotatable ? 'Rotate 90° right' : 'Rotate 90° right — load a PDF first';
+      rotatePageBtn.title = rotatable ? 'Rotate 90° right' : 'Rotate 90° right, load a PDF first';
     }
     App.renderPagesList && App.renderPagesList();
     App.renderCanvasSwitcher && App.renderCanvasSwitcher();
@@ -2947,7 +2947,7 @@
       exportImportCanvasOpt.style.display = (!shieldImportMode && !state.isViewer) ? '' : 'none';
       exportImportCanvasOpt.disabled = hasCanvasMarkupForExport;
       const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
-      if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks — clear or undo first)' : '';
+      if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks: clear or undo first)' : '';
     }
     // Close project rides the same menu for every session that opened a
     // project itself — a view-link recipient has no project of their own to
@@ -3651,7 +3651,7 @@
     const msg = String((error && error.message) || '');
     if ((error && error.name === 'AuthRetryableFetchError') ||
         /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg)) {
-      return 'Can’t reach the server — check your connection and try again.';
+      return 'Can’t reach the server. Check your connection and try again.';
     }
     return msg || 'Sign in failed';
   }
@@ -4311,7 +4311,7 @@
   const FILTER_TOAST_LINES = {
     page: 'used on this sheet',
     project: 'used anywhere in this project',
-    off: 'off — showing all',
+    off: 'off, showing all',
   };
   // The shared two-line filter toast core: "Filter: <kind>" / the landed state.
   function showFilterToast(kind, stateLine) {
@@ -4352,7 +4352,7 @@
       // Narrate the two-state Lines toggle like the scope cycles do — this
       // button's meaning was otherwise only in its title attr.
       if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines', 'on this sheet only');
-      else showFilterToast('lines', 'off — showing every sheet');
+      else showFilterToast('lines', 'off, showing every sheet');
       App.renderLinesList();
       updateUI();
     };
@@ -5048,7 +5048,7 @@
     document.getElementById('advancedGlobalForceReload').onclick = async () => {
       if (!state.isAdmin) return;
       if (!(await confirmDialog({ title: 'Force a reload for every signed-in user?', body: 'Active tabs see a Reload banner; everyone else reloads on their next visit.', confirmLabel: 'Force reload', danger: true }))) return;
-      const reason = (await confirmDialog({ title: 'Note for users', body: 'Optional — shown with the Reload banner.', input: { placeholder: 'e.g. v1.42 update' }, confirmLabel: 'Send' })) || null;
+      const reason = (await confirmDialog({ title: 'Note for users', body: 'Optional, shown with the Reload banner.', input: { placeholder: 'e.g. v1.42 update' }, confirmLabel: 'Send' })) || null;
       try {
         const { error } = await supabase.rpc('admin_trigger_global_reload', { p_reason: reason });
         if (error) { showToast(error.message || 'Failed to trigger global reload', 4000); return; }

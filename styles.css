@@ -1595,6 +1595,15 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-card { position: fixed; width: min(360px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 18px 44px rgba(0,0,0,0.45); padding: 14px 16px 12px; pointer-events: auto; font-size: 0.9rem; line-height: 1.45; }
 .tour-card h3 { margin: 6px 0 6px; font-size: 1.05rem; }
 .tour-card p { margin: 0 0 12px; color: var(--text2); }
+.tour-body { margin: 0 0 12px; }
+.tour-body p { margin: 0 0 8px; }
+.tour-body p:last-child, .tour-steps:last-child { margin-bottom: 0; }
+/* one action per line */
+.tour-steps { margin: 0 0 8px; padding-left: 22px; color: var(--text); }
+.tour-steps li { margin: 0 0 5px; padding-left: 2px; }
+.tour-steps li::marker { color: var(--accent); font-weight: 600; }
+/* a control named in a step body, drawn the way it looks on screen (the sidebar's + Add) */
+.tour-ui { display: inline-block; padding: 0 8px; margin: 0 1px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.86em; font-weight: 500; line-height: 1.55; white-space: nowrap; vertical-align: baseline; }
 .tour-card-head { display: flex; align-items: center; gap: 10px; }
 .tour-step-no { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); }
 .tour-dots { display: flex; gap: 3px; flex: 1; }

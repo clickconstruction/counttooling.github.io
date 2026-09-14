@@ -63,7 +63,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await btn.click();
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText('Water Closet');
-    await expect(hint).toHaveText('2 not used on this sheet — show all');
+    await expect(hint).toHaveText('2 not used on this sheet. Show all');
     await expect(btn).toHaveAttribute('aria-pressed', 'true');
     await expect(btn).toHaveAttribute('data-scope', 'page');
 
@@ -76,7 +76,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     // Click 2 -> project scope: c1 + c2 used anywhere; glyph swaps.
     await btn.click();
     await expect(rows).toHaveCount(2);
-    await expect(hint).toHaveText('1 not used in this project — show all');
+    await expect(hint).toHaveText('1 not used in this project. Show all');
     await expect(btn).toHaveAttribute('data-scope', 'project');
     expect(await btn.innerHTML()).toContain('viewBox="0 0 16 16"');
 
@@ -183,7 +183,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     await btn.click();
-    await expect(toast).toHaveText('Filter: counters off — showing all');
+    await expect(toast).toHaveText('Filter: counters off, showing all');
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
 
     // The line-type button narrates its own kind.
@@ -196,7 +196,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     await expect(toast).toHaveText('Filter: lines on this sheet only');
     await expect(toast.locator('.toast-hint-line')).toHaveCount(0);
     await page.locator('#linesShowOnlyOnPageBtn').click();
-    await expect(toast).toHaveText('Filter: lines off — showing every sheet');
+    await expect(toast).toHaveText('Filter: lines off, showing every sheet');
 
     expect(errors).toEqual([]);
   });
@@ -285,7 +285,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     // Page scope hides lt2; project scope keeps hiding it; off restores.
     await btn.click();
     await expect(rows).toHaveCount(1);
-    await expect(hint).toHaveText('1 not used on this sheet — show all');
+    await expect(hint).toHaveText('1 not used on this sheet. Show all');
     await btn.click();
     await expect(btn).toHaveAttribute('data-scope', 'project');
     await expect(rows).toHaveCount(1);

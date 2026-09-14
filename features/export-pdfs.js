@@ -82,17 +82,17 @@
     const incReport = document.getElementById('specificPagesIncludeReport');
     const incReportBtn = document.getElementById('specificPagesIncludeReportBtn');
     const incReportNone = document.getElementById('specificPagesIncludeReportNone');
-    if (hasCountsOrLines) { incReportNone.textContent = ''; incReportBtn.disabled = false; } else { incReportNone.textContent = ' — none to show'; incReportBtn.disabled = true; incReport.checked = false; }
+    if (hasCountsOrLines) { incReportNone.textContent = ''; incReportBtn.disabled = false; } else { incReportNone.textContent = ', none to show'; incReportBtn.disabled = true; incReport.checked = false; }
     incReportBtn.setAttribute('aria-pressed', incReport.checked);
     const bundleHigh = document.getElementById('specificPagesBundleHighlights');
     const bundleHighBtn = document.getElementById('specificPagesBundleHighlightsBtn');
     const bundleHighNone = document.getElementById('specificPagesBundleHighlightsNone');
-    if (App.hasAnyHighlights()) { bundleHighNone.textContent = ''; bundleHighBtn.disabled = false; } else { bundleHighNone.textContent = ' — none to show'; bundleHighBtn.disabled = true; bundleHigh.checked = false; }
+    if (App.hasAnyHighlights()) { bundleHighNone.textContent = ''; bundleHighBtn.disabled = false; } else { bundleHighNone.textContent = ', none to show'; bundleHighBtn.disabled = true; bundleHigh.checked = false; }
     bundleHighBtn.setAttribute('aria-pressed', bundleHigh.checked);
     const bundleNotes = document.getElementById('specificPagesBundleNotes');
     const bundleNotesBtn = document.getElementById('specificPagesBundleNotesBtn');
     const bundleNotesNone = document.getElementById('specificPagesBundleNotesNone');
-    if (App.hasAnyNotes()) { bundleNotesNone.textContent = ''; bundleNotesBtn.disabled = false; } else { bundleNotesNone.textContent = ' — none to show'; bundleNotesBtn.disabled = true; bundleNotes.checked = false; }
+    if (App.hasAnyNotes()) { bundleNotesNone.textContent = ''; bundleNotesBtn.disabled = false; } else { bundleNotesNone.textContent = ', none to show'; bundleNotesBtn.disabled = true; bundleNotes.checked = false; }
     bundleNotesBtn.setAttribute('aria-pressed', bundleNotes.checked);
     // D14 (B4 dialect): the "Every layer with marks" bulk button only means
     // something when a page carries more than one layer (canvas) — same
@@ -401,7 +401,7 @@
         save = await App.beginBidBasisSave(filename);
         if (save && save.cancelled) {
           btn.innerHTML = origHtml;
-          App.showToast && App.showToast('Download cancelled — nothing was saved. Click Download to try again.', 3500);
+          App.showToast && App.showToast('Download cancelled, nothing was saved. Click Download to try again.', 3500);
           openSpecificPagesModal(preset);
           return;
         }

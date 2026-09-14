@@ -96,7 +96,7 @@
         // and still leave the tool alone.
         state.tool = App.TOOL.MULTIPLY_ZONE;
         App.markProjectDirty();
-        App.showToast('Zone added — Multiply Zone stays armed: drag the next zone, or press Esc to finish.', 4000);
+        App.showToast('Zone added. Multiply Zone stays armed: drag the next zone, or press Esc to finish.', 4000);
       }
       App.updateUI();
       App.renderAnnotations();

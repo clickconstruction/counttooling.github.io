@@ -316,8 +316,8 @@ test.describe('Quick Keys', () => {
       };
     });
     expect(board.one.cls).toContain('is-mapped');
-    expect(board.one.caption).toBe('1 — Floor Drain');
-    expect(board.two.caption).toBe('2 — 2in Waste');
+    expect(board.one.caption).toBe('1: Floor Drain');
+    expect(board.two.caption).toBe('2: 2in Waste');
     // An unbound digit stays a plain silhouette.
     expect(board.seven).toBe('kb-key');
   });

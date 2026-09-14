@@ -97,7 +97,7 @@ test.describe('Length tallies are always decimal feet and agree across surfaces'
     expect(all.pipe).not.toContain('377');
     // Email summary: both bullets, px flagged as no-scale.
     expect(all.email).toContain('10.00 ft of Cold Water: 1 run (page 1)');
-    expect(all.email).toContain('367 px of Cold Water: 1 run (page 2 — no scale set)');
+    expect(all.email).toContain('367 px of Cold Water: 1 run (page 2, no scale set)');
     // Sidebar Line Types badge + footer totals hold the split too.
     expect(all.badge).toContain('10.00 ft + 367 px');
     expect(all.footer).toContain('10.00 ft + 367 px');

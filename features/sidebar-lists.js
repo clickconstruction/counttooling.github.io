@@ -24,7 +24,7 @@
   // shows no badges.
   function quickKeyBadgeHtml(kind, id) {
     const slot = App.getQuickKeySlotFor && App.getQuickKeySlotFor(kind, id);
-    return slot ? '<span class="quick-key-slot-badge" title="Quick Key ' + slot + ' — press to select">' + slot + '</span>' : '';
+    return slot ? '<span class="quick-key-slot-badge" title="Quick Key ' + slot + ', press to select">' + slot + '</span>' : '';
   }
 
   // Append the usage-filter footer row to a sidebar list. The copy states the
@@ -38,7 +38,7 @@
     const hint = document.createElement('div');
     hint.className = 'sidebar-filter-hint';
     const where = scope === 'page' ? 'on this sheet' : 'in this project';
-    hint.innerHTML = hiddenCount + ' not used ' + where + ' — <span class="sidebar-filter-hint-clear">show all</span>';
+    hint.innerHTML = hiddenCount + ' not used ' + where + '. <span class="sidebar-filter-hint-clear">Show all</span>';
     hint.querySelector('.sidebar-filter-hint-clear').onclick = () => {
       setScope('off');
       App.syncFilterScopeSegment(segmentId, 'off');

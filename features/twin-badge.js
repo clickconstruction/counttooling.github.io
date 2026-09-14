@@ -72,7 +72,7 @@
     const user = state.supabaseSession && state.supabaseSession.user;
     const who = (user && user.user_metadata && user.user_metadata.name) || (user && user.email) || '';
     const label = document.getElementById('twinBannerText');
-    if (label) label.textContent = who ? ('DIGITAL TWIN — ' + who) : 'DIGITAL TWIN';
+    if (label) label.textContent = who ? ('DIGITAL TWIN: ' + who) : 'DIGITAL TWIN';
   }
 
   App.isTwinEmail = isTwinEmail;

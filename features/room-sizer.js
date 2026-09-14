@@ -246,7 +246,7 @@
     let html = '<option value="">None</option>';
     Object.entries(ROOM_TYPE_CFM_PER_SQFT).forEach(([key, t]) => {
       html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>'
-        + escapeHtmlText(t.label) + (t.cfmPerSqFt > 0 ? ' — ' + t.cfmPerSqFt + ' CFM/ft²' : '') + '</option>';
+        + escapeHtmlText(t.label) + (t.cfmPerSqFt > 0 ? ', ' + t.cfmPerSqFt + ' CFM/ft²' : '') + '</option>';
     });
     sel.innerHTML = html;
     sel.value = ROOM_TYPE_CFM_PER_SQFT[selected] ? selected : '';
@@ -276,7 +276,7 @@
     if (!(derived > 0)) { note.hidden = true; return; }
     const override = room && room.targetCfmOverride > 0 ? room.targetCfmOverride : 0;
     note.textContent = override > 0
-      ? 'Target ' + override + ' CFM (override — ' + derived + ' from ' + Math.round(area) + ' ft²)'
+      ? 'Target ' + override + ' CFM (override; ' + derived + ' from ' + Math.round(area) + ' ft²)'
       : 'Target ' + derived + ' CFM (from ' + Math.round(area) + ' ft²)';
     note.hidden = false;
   }
@@ -328,7 +328,7 @@
     syncRoomBoxTypeField();
     input.value = name;
     pendingRoomNameFromPlan = name;
-    if (note) { note.textContent = 'from the plan — "' + name + '"'; note.hidden = false; }
+    if (note) { note.textContent = 'from the plan: "' + name + '"'; note.hidden = false; }
   }
   // A text layer still loading when the dialog opened lands here (the D10
   // pattern): prefill only if the box is still pending and the name box is
@@ -573,7 +573,7 @@
     if (balanceReady()) {
       Object.entries(ROOM_TYPE_CFM_PER_SQFT).forEach(([key, t]) => {
         html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>'
-          + escapeHtmlText(t.label) + (t.cfmPerSqFt > 0 ? ' — ' + t.cfmPerSqFt + ' CFM/ft²' : '') + '</option>';
+          + escapeHtmlText(t.label) + (t.cfmPerSqFt > 0 ? ', ' + t.cfmPerSqFt + ' CFM/ft²' : '') + '</option>';
       });
     }
     sel.innerHTML = html;

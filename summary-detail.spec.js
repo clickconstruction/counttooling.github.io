@@ -49,7 +49,7 @@ test.describe('Summary count detail (features/summary-detail.js)', () => {
     // Counter path: 1 marker inside the x2 zone + 1 outside = 3 effective.
     await page.evaluate(() => window.App.openSummaryCountDetailModal('counter', 'c1'));
     await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/);
-    await expect(page.locator('#summaryCountDetailTitle')).toContainText('WC — by page');
+    await expect(page.locator('#summaryCountDetailTitle')).toContainText('WC by page');
     await expect(page.locator('#summaryCountDetailList .summary-count-detail-count')).toHaveText('3');
     // Thumbnail renders (async pdf.js render into a data-URL img).
     await expect(page.locator('#summaryCountDetailList img')).toHaveCount(1, { timeout: 15000 });
@@ -57,7 +57,7 @@ test.describe('Summary count detail (features/summary-detail.js)', () => {
 
     // Line-type path: 1 run, 120pt @ 10pt/ft = 12.00 ft.
     await page.evaluate(() => window.App.openSummaryCountDetailModal('lineType', 'lt1'));
-    await expect(page.locator('#summaryCountDetailTitle')).toContainText('Waste — by page');
+    await expect(page.locator('#summaryCountDetailTitle')).toContainText('Waste by page');
     await expect(page.locator('#summaryCountDetailList .summary-count-detail-count')).toHaveText('1');
     await expect(page.locator('#summaryCountDetailList .summary-count-detail-length')).toHaveText('12.00 ft');
     await page.evaluate(() => window.App.hideModal('summaryCountDetailModal'));

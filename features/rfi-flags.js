@@ -54,7 +54,7 @@
     const text = buildRfiFlagsText(rows);
     try {
       await navigator.clipboard.writeText(text);
-      App.showToast(rows.length + ' RFI flag' + (rows.length === 1 ? '' : 's') + ' copied — paste into PipeTooling’s RFI queue.');
+      App.showToast(rows.length + ' RFI flag' + (rows.length === 1 ? '' : 's') + ' copied. Paste into PipeTooling’s RFI queue.');
       try { App.logUserEvent?.('copy_summary', App.state.currentProjectId || null, { surface: 'rfi-flags', count: rows.length }); } catch (_) { /* best-effort */ }
     } catch (err) {
       App.showToast('Could not copy to clipboard: ' + (err.message || err), 5000);

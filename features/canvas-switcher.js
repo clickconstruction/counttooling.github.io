@@ -99,9 +99,9 @@
         showAllBtn.classList.toggle('partial', !!(App.state.showAllCanvases && peekIds));
         showAllBtn.title = App.state.showAllCanvases
           ? (peekIds
-            ? 'Showing ' + new Set([activeId, ...peekIds]).size + ' of ' + canvases.length + ' canvases — click to show only the active canvas, right-click to choose'
-            : 'Showing all canvases — click to show only the active canvas, right-click to choose which')
-          : 'Temporarily show all canvases at once — right-click to choose which';
+            ? 'Showing ' + new Set([activeId, ...peekIds]).size + ' of ' + canvases.length + ' canvases. Click to show only the active canvas, right-click to choose'
+            : 'Showing all canvases. Click to show only the active canvas, right-click to choose which')
+          : 'Temporarily show all canvases at once. Right-click to choose which';
       }
       // D22 (X2): the phone's peek row. The desktop #showAllCanvasesBtn has
       // existed since the peek shipped; mobile's footer layers menu simply

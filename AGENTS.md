@@ -291,6 +291,12 @@
   so the calling function becomes `async`. In specs, drive it by clicking `#confirmOk` /
   `#confirmCancel` (or filling `#confirmInput`) — a `page.on('dialog')` hook is a
   failure signal, never a driver.
+- Copy style (2026-09-14 pass): no em dashes in user-facing text — a comma, colon,
+  period or the house ` · ` separator instead (a lone `—` as an empty-value cell is
+  fine). In a tour step body, name a control the way it looks on screen with
+  `[[+ Add]]`; features/tutorial.js renders it as a `.tour-ui` chip. Write the body as
+  lines, one action per `1. …` line (where the control is, what to click, what to
+  type); the renderer numbers them.
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
 - A palette item's `childCounts[]` rows are `{ name, qty, per: 'count'|'run'|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` names the rulebook rule a row was taken from (the § chip). Palettes serialize wholesale, so both ride save/load, export/import and the Artboard for free.

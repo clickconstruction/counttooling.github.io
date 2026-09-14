@@ -174,7 +174,7 @@ test.describe('Bid basis export (PipeTooling handoff)', () => {
     await expect(popup.locator('#bidBasisDoneFilename')).toHaveText(promised);
     await expect(popup.locator('#bidBasisDoneRef')).toHaveText('b409');
     await expect(popup.locator('#bidBasisDoneSheets span')).toHaveCount(1);
-    await expect(popup.locator('#bidBasisDoneSheets span').first()).toHaveText('Livingston Steel Office TI — p1');
+    await expect(popup.locator('#bidBasisDoneSheets span').first()).toHaveText('Livingston Steel Office TI, p1');
     await expect(popup.locator('#bidBasisDoneStatus')).toContainText('PipeTooling has been told');
     await expect(popup.locator('#bidBasisDoneStatus')).not.toHaveClass(/bid-basis-done-status-warn/);
     await expect(popup.locator('#bidBasisDoneBack')).toHaveText('Back to PipeTooling');
@@ -195,7 +195,7 @@ test.describe('Bid basis export (PipeTooling handoff)', () => {
     expect(m.version).toBe(1);
     expect(m.ref).toBe('b409');
     expect(m.filename).toBe(promised);
-    expect(m.sheets).toEqual(['Livingston Steel Office TI — p1']);
+    expect(m.sheets).toEqual(['Livingston Steel Office TI, p1']);
     expect(m.sheetCount).toBe(1);
     expect(m.pageIndices).toEqual([0]);
     expect(m.markTotals).toEqual({ counters: 2, runs: 1 });

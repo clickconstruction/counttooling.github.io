@@ -78,7 +78,7 @@ function hangerSuggestionsFor(name) {
   const sizeIn = supportSizeInFromName(name);
   const row = t.horizontal.find((r) => sizeIn == null || sizeIn <= r.maxIn) || t.horizontal[t.horizontal.length - 1];
   const intervalIn = row.in != null ? row.in : row.ft * 12;
-  const sizeText = sizeIn == null ? 'size not in the name — the smallest-size spacing' : formatSizeIn(sizeIn);
+  const sizeText = sizeIn == null ? 'size not in the name, the smallest-size spacing' : formatSizeIn(sizeIn);
   return [{
     name: 'Hanger', qty: 1, per: 'ft', intervalIn, ruleId: t.rule,
     match: t.label + ' · horizontal · ' + sizeText,
@@ -107,7 +107,7 @@ function hangerCoverage(lineTypes) {
     id: 'hangers', kind: 'auto', rule, label: 'Hangers on every supported run',
     verdict: missing.length ? 'warn' : 'ok',
     detail: missing.length
-      ? names(missing) + (missing.length === 1 ? ' has' : ' have') + ' no hanger count — the type\'s details offer it from the rulebook.'
+      ? names(missing) + (missing.length === 1 ? ' has' : ' have') + ' no hanger count. The type\'s details offer it from the rulebook.'
       : names(supported) + (supported.length === 1 ? ' counts its hangers' : ' count their hangers') + ' from the rulebook spacing.',
     supported: supported.length, missing: missing.length,
   };

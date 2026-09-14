@@ -153,7 +153,7 @@
       const condHint = document.getElementById('conductorsSpecHint');
       const tickBtn = document.getElementById('lineTypeTickMarksBtn');
       const esc = App.escapeHtml;
-      kindSel.innerHTML = '<option value="">— none —</option>' + cm.RACEWAY_KINDS.map((k) => '<option value="' + esc(k.kind) + '">' + esc(k.label) + '</option>').join('');
+      kindSel.innerHTML = '<option value="">none</option>' + cm.RACEWAY_KINDS.map((k) => '<option value="' + esc(k.kind) + '">' + esc(k.label) + '</option>').join('');
       sizeSel.innerHTML = '<option value="">size</option>' + cm.RACEWAY_SIZES.map((s) => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
       kindSel.value = item.raceway?.kind || '';
       sizeSel.value = item.raceway?.size || '';
@@ -181,7 +181,7 @@
       sizeSel.onchange = writeRaceway;
       condEl.onblur = () => {
         const parsed = cm.parseConductorSpec(condEl.value);
-        if (parsed.bad.length) { condEl.classList.add('field-invalid'); condHint.textContent = 'Could not read: ' + parsed.bad.join(', ') + ' — write it like 3 #12 THHN + 1 #12 G'; return; }
+        if (parsed.bad.length) { condEl.classList.add('field-invalid'); condHint.textContent = 'Could not read: ' + parsed.bad.join(', ') + '. Write it like 3 #12 THHN + 1 #12 G'; return; }
         condEl.classList.remove('field-invalid');
         const next = parsed.conductors;
         const same = JSON.stringify(next) === JSON.stringify(item.conductors || []);
@@ -231,7 +231,7 @@
     const syncHint = () => {
       hint.textContent = line.conductors && line.conductors.length
         ? 'This run overrides its line type (' + (inherited || 'none') + '). Clear to inherit again.'
-        : (inherited ? 'Inherits the line type\'s conductors. Type a list to override this one run — a shared homerun carrying three circuits.' : 'The line type has no conductors; a list here applies to this run only.');
+        : (inherited ? 'Inherits the line type\'s conductors. Type a list to override this one run, say a shared homerun carrying three circuits.' : 'The line type has no conductors; a list here applies to this run only.');
     };
     el.onblur = () => {
       const parsed = cm.parseConductorSpec(el.value);

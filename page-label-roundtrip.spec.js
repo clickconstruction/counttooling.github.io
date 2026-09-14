@@ -52,7 +52,7 @@ test.describe('Page label save/load round trip', () => {
         })
       };
     });
-    expect(snapshot.pages.map(p => p.label)).toEqual(['P-101 Underground', 'test-2pages.pdf — p2']);
+    expect(snapshot.pages.map(p => p.label)).toEqual(['P-101 Underground', 'test-2pages.pdf, p2']);
 
     // Reload the app (fresh state), then load through the shared cloud-load
     // path with the saved payload — the rename must come back.
@@ -68,7 +68,7 @@ test.describe('Page label save/load round trip', () => {
         sidebarNames: Array.from(document.querySelectorAll('#pagesList .sidebar-item .name')).map(el => el.textContent)
       };
     }, snapshot);
-    expect(restored.labels).toEqual(['P-101 Underground', 'test-2pages.pdf — p2']);
+    expect(restored.labels).toEqual(['P-101 Underground', 'test-2pages.pdf, p2']);
     // The pages sidebar renders the restored name, not a rebuilt default.
     expect(restored.sidebarNames[0]).toBe('P-101 Underground');
 
@@ -81,7 +81,7 @@ test.describe('Page label save/load round trip', () => {
       await App.buildPagesFromPdfArrayBufferAndProjectData(buf, { counters: dd.counters, lineTypes: [], pages: stripped }, false, null, 'Riverside Plans');
       return s.pages.map(p => p.label);
     }, snapshot);
-    expect(fallback).toEqual(['Riverside Plans — p1', 'Riverside Plans — p2']);
+    expect(fallback).toEqual(['Riverside Plans, p1', 'Riverside Plans, p2']);
     expect(fallback.join(' ')).not.toContain('document.pdf');
 
     expect(errors).toEqual([]);

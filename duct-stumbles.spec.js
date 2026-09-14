@@ -118,13 +118,13 @@ test.describe('Duct stumbles (D17)', () => {
     await page.locator('#ductBtn').click();
     const line = page.locator('#ductCreateEquipFirst');
     await expect(line).toBeVisible();
-    await expect(line).toContainText(/Rooms total ~2,500 CFM — about \d systems? at [\d,]+ CFM \(/);
+    await expect(line).toContainText(/Rooms total ~2,500 CFM, about \d systems? at [\d,]+ CFM \(/);
     await expect(line.locator('#ductCreateTurnOnGroups')).toHaveText('Turn on groups');
     await line.locator('#ductCreateTurnOnGroups').click();
     expect(await page.evaluate(() => window.state.groupsEnabled)).toBe(true);
     await expect(line).toContainText('(edit in Groups)');
     await expect(line.locator('#ductCreateTurnOnGroups')).toHaveCount(0);
-    expect(await page.evaluate(() => window.__toasts)).toEqual(['Groups are on — the Groups section is in the sidebar.']);
+    expect(await page.evaluate(() => window.__toasts)).toEqual(['Groups are on. The Groups section is in the sidebar.']);
     await page.locator('#ductCreateCancel').click();
     await expect(page.locator('#groupsSection')).toBeVisible();
     expect(await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))).toBe(false);
@@ -142,8 +142,8 @@ test.describe('Duct stumbles (D17)', () => {
     expect((await ductRuns(page)).length).toBe(1);
     expect(await page.evaluate(() => window.state.groupsEnabled)).toBe(true);
     await expect(page.locator('#groupsSection')).toBeVisible();
-    expect(await page.evaluate(() => window.__toasts)).toEqual(['Groups are on — assign this run to a system in Groups.']);
-    await expect(page.locator('#airboardToastText')).toHaveText('Groups are on — assign this run to a system in Groups.');
+    expect(await page.evaluate(() => window.__toasts)).toEqual(['Groups are on. Assign this run to a system in Groups.']);
+    await expect(page.locator('#airboardToastText')).toHaveText('Groups are on. Assign this run to a system in Groups.');
 
     // Second run: silent.
     await armDuct(page);
@@ -235,7 +235,7 @@ test.describe('Duct stumbles (D17)', () => {
     await page.locator('#ductDeckHeight').dispatchEvent('change');
     expect(await page.evaluate(() => window.state.ductSettings.deckHeightFt)).toBe(12);
     expect(await vf()).toEqual([[{ vertexIdx: 0, ft: 12, auto: true }], [{ vertexIdx: 0, ft: 4 }], null, null]);
-    expect(await page.evaluate(() => window.__toasts.pop())).toBe("Deck height 12' — auto riser set on 1 run.");
+    expect(await page.evaluate(() => window.__toasts.pop())).toBe("Deck height 12'. Auto riser set on 1 run.");
     // The riser prices like straight duct at the run's size (24×12 24 ga = 6.94 lb/ft).
     const lbAfter = await page.evaluate(() => window.App.computeDuctSchedule().straightTotalLb);
     expect(Math.round(lbAfter - lbBefore)).toBe(Math.round(12 * 6.94));
@@ -250,7 +250,7 @@ test.describe('Duct stumbles (D17)', () => {
     await page.locator('#ductDeckHeight').dispatchEvent('change');
     expect(await page.evaluate(() => window.state.ductSettings.deckHeightFt)).toBeNull();
     expect(await vf()).toEqual([null, [{ vertexIdx: 0, ft: 4 }], null, null]);
-    expect(await page.evaluate(() => window.__toasts.pop())).toBe('Deck height cleared — auto riser removed from 1 run.');
+    expect(await page.evaluate(() => window.__toasts.pop())).toBe('Deck height cleared. Auto riser removed from 1 run.');
 
     // A room ceiling under the marker → riser = deck − ceiling, still retroactive.
     await page.evaluate(() => {

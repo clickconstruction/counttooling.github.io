@@ -375,7 +375,7 @@
         }
       });
       if (anyPxSummaryRow) {
-        html += '<p class="report-group-totals">* px rows are runs on pages without a scale — set the scale to include them in feet.</p>';
+        html += '<p class="report-group-totals">* px rows are runs on pages without a scale. Set the scale to include them in feet.</p>';
       }
     }
     // S4 Circuit schedule: per panel, each circuit with its devices, conduit /
@@ -448,12 +448,12 @@
         });
         html += '<tr><td><strong>Fittings total</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.fittingsCountedLb) + '</strong></td></tr>';
       } else {
-        html += '<tr><td>Fittings — factor ' + ds.fittingFactorPct + '% of straight</td><td></td><td></td><td></td><td>' + fmtLbR(ds.fittingFactorLb) + '</td></tr>';
+        html += '<tr><td>Fittings, factor ' + ds.fittingFactorPct + '% of straight</td><td></td><td></td><td></td><td>' + fmtLbR(ds.fittingFactorLb) + '</td></tr>';
       }
       // D8: per-system flex-drop rows — LF only, priced by the drop, never in
       // the bid-weight pounds.
       (ds.flexRows || []).forEach(r => {
-        html += '<tr><td>Flex — ' + escapeHtml(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFtR(r.totalFt) + '</td></tr>';
+        html += '<tr><td>Flex, ' + escapeHtml(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFtR(r.totalFt) + '</td></tr>';
       });
       if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + Math.round(ds.linerSqFt).toLocaleString() + ' sq ft</td></tr>';
       if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
@@ -478,7 +478,7 @@
     const sc = opts && opts.scope;
     if (!sc) return null;
     const name = (window.state && state.currentProjectName) || 'Untitled';
-    const parts = ['Counts — ' + name, sc.mode === 'this-canvas' ? 'this sheet' : 'every sheet'];
+    const parts = ['Counts, ' + name, sc.mode === 'this-canvas' ? 'this sheet' : 'every sheet'];
     if (Array.isArray(sc.layers) && sc.layers.length) parts.push('layers: ' + sc.layers.join(', '));
     return parts.join(' · ');
   }
@@ -752,7 +752,7 @@
         const groupChildren = childTotals.byGroup?.[gid] || {};
         const childBullets = (kind, id) => {
           (groupChildren[kind]?.[id] || []).forEach(cr => {
-            lines.push('   ↳ ' + cr.name + ': ' + cr.total + ' (' + childRuleLabel(cr) + (cr.excludedPxRuns ? ' — some runs have no scale' : '') + ')');
+            lines.push('   ↳ ' + cr.name + ': ' + cr.total + ' (' + childRuleLabel(cr) + (cr.excludedPxRuns ? ', some runs have no scale' : '') + ')');
           });
         };
         (state.counters || []).forEach(c => {
@@ -773,7 +773,7 @@
               return '• ' + num + ' ' + unit + ' of ' + (r.name || 'Line') + ': ' + runs + ' run' + (runs > 1 ? 's' : '') + ' (' + pagesStr + suffix + ')';
             };
             if (r.lengthFt > 0) lines.push(bullet(r.lengthFt.toFixed(2), 'ft', r.runsFt, r.pagesFt, ''));
-            if (r.lengthPx > 0) lines.push(bullet(String(Math.round(r.lengthPx)), 'px', r.runsPx, r.pagesPx, ' — no scale set'));
+            if (r.lengthPx > 0) lines.push(bullet(String(Math.round(r.lengthPx)), 'px', r.runsPx, r.pagesPx, ', no scale set'));
             if (r.lengthFt === 0 && r.lengthPx === 0) {
               // Zero-length edge: keep today's single pickScaleForLineType bullet.
               const scale = pickScaleForLineType(r.pages);
@@ -785,8 +785,8 @@
         // S3 derived bullets: cable and wire, feet, from the group's runs
         const derived = conductorTotals.byGroup?.[gid];
         if (derived) {
-          derived.cable.forEach(r => lines.push('• ' + r.feet.toFixed(2) + ' ft of ' + r.name + ' (cable' + (r.source === 'counter' ? ', ' + r.parentName : '') + (r.excludedPxRuns ? ' — some runs have no scale' : '') + ')'));
-          derived.wire.forEach(r => lines.push('• ' + r.feet.toFixed(2) + ' ft of ' + r.name + ' (wire' + (r.excludedPxRuns ? ' — some runs have no scale' : '') + ')'));
+          derived.cable.forEach(r => lines.push('• ' + r.feet.toFixed(2) + ' ft of ' + r.name + ' (cable' + (r.source === 'counter' ? ', ' + r.parentName : '') + (r.excludedPxRuns ? ', some runs have no scale' : '') + ')'));
+          derived.wire.forEach(r => lines.push('• ' + r.feet.toFixed(2) + ' ft of ' + r.name + ' (wire' + (r.excludedPxRuns ? ', some runs have no scale' : '') + ')'));
         }
         lines.push('');
       });
@@ -841,7 +841,7 @@
       roomTotals.forEach(t => {
         const pages = [...new Set(t.boxes.map(b => b.pageIdx + 1))].sort((a, b) => a - b);
         const pagesStr = pages.length === 1 ? 'page ' + pages[0] : 'pages ' + pages.join(', ');
-        lines.push('• ' + (t.name || 'Room') + ': ' + t.volumeCuFt.toFixed(1) + ' ft³ (' + t.areaSqFt.toFixed(1) + ' ft², ' + pagesStr + ')' + (t.missingScale ? ' — some boxes missing scale' : ''));
+        lines.push('• ' + (t.name || 'Room') + ': ' + t.volumeCuFt.toFixed(1) + ' ft³ (' + t.areaSqFt.toFixed(1) + ' ft², ' + pagesStr + ')' + (t.missingScale ? ', some boxes missing scale' : ''));
       });
       lines.push('');
     }
@@ -873,7 +873,7 @@
     const html = buildReportHtml(options);
     const w = window.open('', '_blank');
     if (!w) {
-      if (window.App && window.App.showToast) window.App.showToast('Popup blocked — allow popups for this site and try again.', 5000);
+      if (window.App && window.App.showToast) window.App.showToast('Popup blocked. Allow popups for this site and try again.', 5000);
       return;
     }
     w.document.write(html);

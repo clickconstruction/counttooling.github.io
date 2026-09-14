@@ -190,7 +190,7 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
       App.fetchUserAirboard = async () => ({ counters: [], lineTypes: [] });
       return App.openPaletteInsightsModal();
     });
-    await expect(page.locator('#paletteInsightsSubtitle')).toHaveText('No cloud projects yet — save a project and check back.');
+    await expect(page.locator('#paletteInsightsSubtitle')).toHaveText('No cloud projects yet. Save a project and check back.');
     // J16 finding #7: the brand-new account used to see "No counters at this
     // threshold." under "No cloud projects yet" — one message, not three.
     await expect(page.locator('#paletteInsightsModal .pi-empty')).toHaveCount(0);

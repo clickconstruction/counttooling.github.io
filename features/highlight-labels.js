@@ -106,7 +106,7 @@
     const esc = App.escapeHtml;
     const rows = collectRows();
     if (!rows.length) {
-      list.innerHTML = '<div class="chain-list-empty">No highlights yet — drag a box over a section of the plan, then right-click it to name it.</div>';
+      list.innerHTML = '<div class="chain-list-empty">No highlights yet. Drag a box over a section of the plan, then right-click it to name it.</div>';
       return;
     }
     list.innerHTML = rows.map((r, i) =>
@@ -124,7 +124,7 @@
     const rows = collectRows();
     const named = rows.filter(r => r.h.label).length;
     foot.textContent = rows.length
-      ? (named + ' named · ' + (rows.length - named) + ' unnamed — click a row to go to its page')
+      ? (named + ' named · ' + (rows.length - named) + ' unnamed. Click a row to go to its page')
       : 'Named highlights become jump-to bookmarks for whoever reviews this bid.';
   }
 

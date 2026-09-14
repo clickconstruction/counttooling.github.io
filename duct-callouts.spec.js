@@ -143,7 +143,7 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     await clickPdf(page, NEAR_24);
     await hoverPdf(page, NEAR_24);
     let o = await offer(page);
-    expect(o.chipText).toBe('Plan says 24×12 here — S accepts');
+    expect(o.chipText).toBe('Plan says 24×12 here. S accepts');
     await page.evaluate(() => window.App.applyDuctSizeStep({ kind: 'rect', w: 24, h: 12 }));
     // Same size as the current segment → nothing to step to.
     expect(await offer(page)).toBeNull();
@@ -156,10 +156,10 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     expect(o).not.toBeNull();
     expect(o.size).toEqual({ kind: 'rect', w: 20, h: 12 });
     expect(o.str).toBe('20x12');
-    expect(o.chipText).toBe('Plan says 20×12 here — S accepts');
+    expect(o.chipText).toBe('Plan says 20×12 here. S accepts');
     const line = await cursorLine(page);
     expect(line.kind).toBe('callout');
-    expect(line.text).toBe('Plan says 20×12 here — S accepts');
+    expect(line.text).toBe('Plan says 20×12 here. S accepts');
 
     // Under the date: the decoy never reads, the real callouts are out of reach.
     await hoverPdf(page, NEAR_DATE);
@@ -242,7 +242,7 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     await hoverPdf(page, NEAR_20);
     line = await cursorLine(page);
     expect(line.kind).toBe('callout');
-    expect(line.text).toBe('Plan says 20×12 here — S accepts');
+    expect(line.text).toBe('Plan says 20×12 here. S accepts');
     expect(await page.evaluate(() => !!window.App.getDuctDraftSuggestion())).toBe(true);
     await page.keyboard.press('s');
     await expect(page.locator('#ductSizePopover')).toBeVisible();

@@ -286,7 +286,7 @@
 
   let gateTimer = null;
   let pendingProceed = null;   // { proceed, surface, rowId, projectId } while the toast is up
-  const shortLabel = (row) => row.short || row.label.replace(/ —.*$/, '').replace(/ within.*| on plan.*| and reached.*/i, '');
+  const shortLabel = (row) => row.short || row.label.replace(/[:—].*$/, '').replace(/ within.*| on plan.*| and reached.*/i, '');
 
   function hideGateToast() {
     if (gateTimer) { clearTimeout(gateTimer); gateTimer = null; }
@@ -362,7 +362,7 @@
       }
       const text = badgeText(status);
       if (badge.textContent !== text) badge.textContent = text;
-      btn.title = 'Bid Check: ' + text + ' — review in the sidebar, or export anyway';
+      btn.title = 'Bid Check: ' + text + '. Review in the sidebar, or export anyway';
     });
   }
 
@@ -392,7 +392,7 @@
         const div = document.createElement('div');
         div.className = 'duct-depth-line' + (line.ok ? '' : ' warn');
         div.textContent = line.text;
-        div.title = line.ok ? 'Deepest duct + insulation clears the plenum (deck height − room ceiling)' : 'Too deep for the plenum here (deck height − room ceiling) — the Bid Check row will say so';
+        div.title = line.ok ? 'Deepest duct + insulation clears the plenum (deck height − room ceiling)' : 'Too deep for the plenum here (deck height − room ceiling). The Bid Check row will say so';
         container.appendChild(div);
       },
     });
@@ -422,7 +422,7 @@
           b.dataset.value = value;
           b.textContent = text;
           b.setAttribute('aria-pressed', String(value === current));
-          b.title = value === 'edge' ? 'The larger side hangs down (between joists) — the depth line reads it' : 'The width sits in plan — depth is the second number';
+          b.title = value === 'edge' ? 'The larger side hangs down (between joists). The depth line reads it' : 'The width sits in plan. Depth is the second number';
           b.onclick = () => { App.setDuctDraftOrientation(value); ctx.requestRender(); };
           seg.appendChild(b);
         });

@@ -1952,7 +1952,7 @@ function ductStaticPathLine(s) {
   const head = s.name + ': ' + fmtInWg(p.staticInWg) + ' of ' + fmtInWg(s.espInWg) + ' ESP';
   if (p.staticInWg > s.espInWg + 1e-9) {
     const size = isDuctSize(p.longestLegSize) ? 'its ' + formatDuctSize(p.longestLegSize) : 'it';
-    return { over: true, text: head + ' — ' + p.longestLegName + ' is the long leg; upsize ' + size + ' or lower the friction rate ⚠' };
+    return { over: true, text: head + ', ' + p.longestLegName + ' is the long leg; upsize ' + size + ' or lower the friction rate ⚠' };
   }
   const fittings = ductStaticPathFittingsLabel(p.fittingCounts);
   const work = Math.round(p.straightFt) + "' duct" + (fittings ? ' + ' + fittings : '')
@@ -2016,7 +2016,7 @@ const DUCT_BID_CHECK_ROWS = [
   // The worked row: MANUAL until deck height + a room ceiling under the run +
   // the run's size/liner are all known, then AUTO with its work.
   {
-    id: 'duct-fits-roof', kind: 'manual', label: 'Fits the roof — deepest duct + insulation clears the plenum', short: 'Fits the roof',
+    id: 'duct-fits-roof', kind: 'manual', label: 'Fits the roof: deepest duct + insulation clears the plenum', short: 'Fits the roof',
     evaluate(i) {
       const fit = ductPlenumFit(i && i.plenum);
       if (!fit) return null;   // inputs missing → stays a checkbox

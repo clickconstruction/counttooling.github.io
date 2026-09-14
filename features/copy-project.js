@@ -124,7 +124,7 @@
     const defaultName = planName || 'Untitled';
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? (defaultName + ' — p' + (i + 1)) : defaultName;
+      const label = numPages > 1 ? (defaultName + ', p' + (i + 1)) : defaultName;
       const canvasId = App.uid();
       App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
       App.state.activeCanvasIdByPage[i] = canvasId;

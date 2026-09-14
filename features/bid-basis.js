@@ -159,7 +159,7 @@
       status.classList.toggle('bid-basis-done-status-warn', !delivered);
       status.textContent = delivered
         ? 'PipeTooling has been told. Bid ' + (manifest.ref || '') + ' is stamped with this file and a snapshot of these marks. Attach the file to the proposal you send.'
-        : 'Could not reach the PipeTooling tab that opened this one. Go back to PipeTooling and use "Mark as attached by hand" — the file name above is what it asks for.';
+        : 'Could not reach the PipeTooling tab that opened this one. Go back to PipeTooling and use "Mark as attached by hand". The file name above is what it asks for.';
     }
     const copyBtn = el('bidBasisDoneCopy');
     if (copyBtn) {
@@ -170,7 +170,7 @@
           copyBtn.textContent = 'Copied';
           setTimeout(() => { copyBtn.textContent = 'Copy'; }, 1500);
         } catch (_) {
-          App.showToast && App.showToast('Couldn’t copy — your browser blocked clipboard access.', 3000);
+          App.showToast && App.showToast('Couldn’t copy. Your browser blocked clipboard access.', 3000);
         }
       };
     }

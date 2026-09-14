@@ -52,7 +52,7 @@ test.describe('D20 — scale re-edit (X3) + draft parking (J5-A)', () => {
     await expect(page.locator('#setScale')).toBeVisible();
     expect(await page.evaluate(() => document.getElementById('setScale').className)).toContain('scale-set');
     await expect(page.locator('#setScale .set-scale-header-value')).toHaveText('1/4" = 1\'');
-    await expect(page.locator('#setScale')).toHaveAttribute('title', /Scale: 1\/4" = 1' · 1 ft = 18\.0 px — click to edit/);
+    await expect(page.locator('#setScale')).toHaveAttribute('title', /Scale: 1\/4" = 1' · 1 ft = 18\.0 px\. Click to edit/);
     // An unlabelled scale shows the px readout, which is all it has.
     await setScale(page, { pixelsPerUnit: 12.5, unit: 'ft' });
     await expect(page.locator('#setScale .set-scale-header-value')).toHaveText('1 ft = 12.5 px');

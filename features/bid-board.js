@@ -77,7 +77,7 @@
     // canvas is backed up and the plan itself lives on the estimator's device.
     const cloudBadge = proj.pdf_path
       ? '<span class="bid-card-badge bid-card-badge-cloud" title="Canvas and PDF are both in the cloud">✓ Fully cloud</span>'
-      : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud — the PDF was never uploaded">Canvas only</span>';
+      : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud. The PDF was never uploaded">Canvas only</span>';
     const canMarkReviewed = proj.review_status === 'ready' && (App.state.isOverseer || App.state.isAdmin);
     return '<div class="bid-card" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
       '<div class="bid-card-name">' + esc(proj.name || 'Untitled') +

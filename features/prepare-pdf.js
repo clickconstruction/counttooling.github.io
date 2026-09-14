@@ -256,12 +256,12 @@
       const totalBytes = preparePdfBuffer.byteLength;
       const pageBytes = preparePdfPageBytes[origIdx];
       if (pageBytes != null) {
-        sizeStr = ' — This page: ' + fmt(pageBytes) + ' — Total: ' + fmt(totalBytes);
+        sizeStr = ' · This page: ' + fmt(pageBytes) + ' · Total: ' + fmt(totalBytes);
       } else {
-        sizeStr = ' — Total: ' + fmt(totalBytes);
+        sizeStr = ' · Total: ' + fmt(totalBytes);
       }
     }
-    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length + ' — ' + wIn + ' × ' + hIn + ' in' + sizeStr;
+    labelEl.textContent = 'Page ' + (preparePdfCurrentIdx + 1) + ' of ' + kept.length + ', ' + wIn + ' × ' + hIn + ' in' + sizeStr;
     page.pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport });
     const nameEl = document.getElementById('preparePdfName');
     if (nameEl && preparePdfEditMode === 'page') nameEl.value = page.label || ('Page ' + (preparePdfCurrentIdx + 1));
@@ -313,12 +313,12 @@
     // step, and without the Save & Open cloud action.
     const cloudSession = App.SUPABASE_ENABLED && !!App.state.supabaseSession?.user;
     if (preparePdfMode === 'append') {
-      if (titleEl) titleEl.textContent = 'Add pages — ' + (App.state.currentProjectName || 'Untitled');
+      if (titleEl) titleEl.textContent = 'Add pages to ' + (App.state.currentProjectName || 'Untitled');
       if (descEl) descEl.textContent = 'Tap the sheets you don’t need, then add the rest to the project.';
       if (nameRowEl) nameRowEl.style.display = 'none';
     } else {
       if (titleEl) titleEl.textContent = cloudSession ? 'Prepare PDF for Cloud' : 'Trim your set';
-      if (descEl) descEl.textContent = 'Name your project, then tap the sheets you don’t need — or Keep none and tap the ones you do.';
+      if (descEl) descEl.textContent = 'Name your project, then tap the sheets you don’t need, or Keep none and tap the ones you do.';
       if (nameRowEl) nameRowEl.style.display = '';
     }
     const saveAndOpenEl = document.getElementById('preparePdfSaveAndOpen');

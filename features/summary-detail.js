@@ -42,7 +42,7 @@
     if (type === 'counter') {
       const c = App.state.counters.find(x => x.id === id);
       if (!c) return;
-      titleEl.textContent = (c.name || 'Counter') + ' — by page';
+      titleEl.textContent = (c.name || 'Counter') + ' by page';
       App.state.pages.forEach((p, pageIdx) => {
         const ann = App.getActiveAnnotations(p);
         const markers = ann?.counterMarkers?.[id] || [];
@@ -54,7 +54,7 @@
     } else {
       const lt = App.state.lineTypes.find(x => x.id === id);
       if (!lt) return;
-      titleEl.textContent = (lt.name || 'Line type') + ' — by page';
+      titleEl.textContent = (lt.name || 'Line type') + ' by page';
       App.state.pages.forEach((p, pageIdx) => {
         const ann = App.getActiveAnnotations(p);
         let runs = 0, len = 0;
@@ -75,10 +75,10 @@
       const fullLabel = it.pageLabel || 'Page ' + (it.pageIdx + 1);
       let docName = 'document.pdf';
       let pagePart = 'p' + (it.pageIdx + 1);
-      if (fullLabel.indexOf(' — ') >= 0) {
-        const parts = fullLabel.split(' — ');
-        docName = (parts[0] || 'document.pdf').trim();
-        pagePart = (parts[1] || pagePart).trim();
+      const sepAt = Math.max(fullLabel.lastIndexOf(', p'), fullLabel.indexOf(' — '));
+      if (sepAt >= 0) {
+        docName = (fullLabel.slice(0, sepAt) || 'document.pdf').trim();
+        pagePart = (fullLabel.slice(sepAt).replace(/^(, | — )/, '') || pagePart).trim();
       } else if (fullLabel.toLowerCase().endsWith('.pdf')) {
         docName = fullLabel;
         pagePart = 'p' + (it.pageIdx + 1);

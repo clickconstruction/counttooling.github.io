@@ -77,7 +77,7 @@
   const DIM_20FT = [{ x: 517.5, y: 461.25 }, { x: 697.5, y: 461.25 }];
   const SCALE_STEP = {
     id: 'scale', title: 'Set the scale', kind: 'do',
-    body: 'Every length starts here. Pick Set Scale (S). In the dialog, the Architectural & Engineering tab lists the presets — choose 1/8" = 1\'. The title block says the sample plan is drawn at 1/8", which is where you would look on a real sheet.',
+    body: 'Every length starts here.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].\nThe title block says the sample plan is drawn at 1/8". On a real sheet, that is where you look.',
     target: ['#setScale', '#setScaleSidebar', '[title="Set Scale"]'],
     check: () => !!(App.getPageScale && App.getPageScale(state().currentPage)),
     action: { label: 'Use 1/8" = 1\'-0"', run: applyEighthScale },
@@ -92,10 +92,10 @@
   };
   const PROVE_STEP = {
     id: 'measure', title: 'Prove the scale', kind: 'do',
-    body: 'Pick Measure (D) and click both ends of the 20\'-0" dimension under Women 106. The footer reads 20\'-0" — the scale is telling the truth. If it reads anything else, go Back and set the scale again before you count. Do this on every real sheet: a PDF that was printed to a smaller sheet looks right and measures short.',
+    body: '1. In the header, click [[Measure]] (or press D).\n2. Click one end of the 20\'-0" dimension under Women 106.\n3. Click the other end.\nThe footer should read 20\'-0". If it reads anything else, click [[Back]] and set the scale again. Do this on every real sheet: a PDF printed to a smaller sheet looks right and measures short.',
     target: ['#measureBtn', '#measureBtnSidebar'],
     check: () => { const ft = measuredFeet(); return ft != null && Math.abs(ft - PROVE_FT) <= PROVE_TOL_FT; },
-    hint: () => { const ft = measuredFeet(); const lm = state().lastMeasure; return ft == null ? '' : 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + ' — go Back and set the scale again'; },
+    hint: () => { const ft = measuredFeet(); const lm = state().lastMeasure; return ft == null ? '' : 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Go Back and set the scale again'; },
     action: { label: 'Measure the 20\'-0" wall', run: measureTwentyFeet },
   };
 
@@ -106,7 +106,7 @@
   const ELECTRICAL_STEPS = [
     {
       id: 'welcome', title: 'A five-minute electrical takeoff', kind: 'do',
-      body: 'This tour walks you through a small takeoff on the sample plan — set the scale and prove it, count devices, chain a run, read the wire and the checks. Nothing here touches your projects. Open the sample plan to begin.',
+      body: 'A small takeoff on the sample plan: set the scale and prove it, count devices, chain a run, read the wire and the checks. Nothing here touches your projects.\n1. Click [[Open the sample plan]] below.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       check: () => !!(state().pages && state().pages.length),
       action: { label: 'Open the sample plan', run: openSamplePlan },
@@ -115,75 +115,75 @@
     PROVE_STEP,
     {
       id: 'trade', title: 'Tell the app this is electrical', kind: 'do',
-      body: 'Counters → + Add opens the counter dialog. On its Quick tab switch Trade to Electrical. The pickers become Category / Variant / Rating, the symbols become the ones on an E-sheet, and every device gets its mount height. A plumbing bid never sees any of this.',
+      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Quick]] tab.\n3. Set Trade to [[Electrical]].\nThe pickers become Category / Variant / Rating, the symbols become the ones on an E-sheet, and every device gets a mount height. A plumbing bid never sees any of this.',
       target: ['#counterQuickCountTradeSegment [data-trade="electrical"]', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => state().trade === 'electrical',
       action: { label: 'Switch to Electrical', run: () => App.setProjectTrade('electrical', { remember: false, route: 'tour' }) },
     },
     {
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
-      body: 'On the Quick tab pick Receptacle · Duplex and press Add Counter. It arrives with the receptacle symbol and a mount height of 18" — the number the Chain tool will turn into vertical conduit in a moment.',
+      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", the number the Chain tool turns into vertical conduit in a moment.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number'); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Add it for me', run: addReceptacle },
     },
     {
       id: 'place', title: 'Count three receptacles', kind: 'do',
-      body: 'With the counter armed, click three spots along the walls of Open Office 104. Each click is one tally; the sidebar count moves as you go.',
+      body: 'The counter tool is armed.\n1. Click a spot on a wall of Open Office 104.\n2. Click a second spot.\n3. Click a third spot.\nEach click is one tally; the sidebar count moves as you go.',
       target: ['#annCanvas'],
       check: () => { const c = eCounter(); return !!c && markCount(c.id) >= 3; },
       action: { label: 'Place three for me', run: placeThreeReceptacles },
     },
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
-      body: 'Line Types → + Add. Name it 3/4" EMT, then in its details give it the raceway (EMT, 3/4") and the conductors the way you already write them: 3 #12 THHN + 1 #12 G. From now on every run of this type tallies conduit AND wire by gauge.',
+      body: '1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type 3/4" EMT, and add it.\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 3 #12 THHN + 1 #12 G.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
       target: ['#childCountsGroup', '#createLineTypeName', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'],
       check: () => { const lt = eLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 3/4" EMT · 3 #12 + G', run: addEmtLineType },
     },
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
-      body: 'Project Settings (the gear) → Ceiling height 10\'-0". With a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws — 9.5 ft per receptacle nobody has to type.',
+      body: '1. In the header, click the gear ([[Project Settings]]).\n2. In Ceiling height, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws: 9.5 ft per receptacle nobody has to type.',
       target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => state().ceilingHeightFt > 0,
       action: { label: 'Set 10\'-0"', run: () => { state().ceilingHeightFt = 10; state().makeUpFt = 1; App.markProjectDirty(); App.updateUI(); } },
     },
     {
       id: 'chain', title: 'Chain a run', kind: 'do',
-      body: 'Pick Chain (T), choose the receptacle and 3/4" EMT, then click three devices in a row. Every tap places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
+      body: '1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose the receptacle and 3/4" EMT.\n3. Click a device spot.\n4. Click a second spot, then a third.\nEvery click places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
       target: ['#chainPanel', '#chainBtn'],
       check: () => { const a = ann(); return !!a && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
       action: { label: 'Chain three for me', run: chainThreeReceptacles },
     },
     {
       id: 'circuit', title: 'Make it a circuit', kind: 'do',
-      body: 'Groups → + Add. Name it, and give it a panel and circuit number — LP-1 · 7. A group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
+      body: '1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type a name.\n3. In Panel, type LP-1. In Circuit, type 7.\n4. Click [[Done]].\nA group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
       target: ['#groupModal .modal-card', '#addGroup', '#groupsSectionTitle'],
       check: () => (state().groups || []).some((g) => g.panel),
       action: { label: 'Create LP-1 / 7 and assign the run', run: makeCircuit },
     },
     {
       id: 'summary', title: 'Read what the drawing knows', kind: 'read',
-      body: 'The Summary now lists the receptacles, the 3/4" EMT feet with the verticals inside them, and the derived rows — #12 THHN by the foot, the green its own row. Wire is never a mark; it can never drift from the runs.',
+      body: '1. In the left sidebar, open SUMMARY.\nIt lists the receptacles, the 3/4" EMT feet with the verticals inside them, and the derived rows: #12 THHN by the foot, the green its own row. Wire is never a mark; it can never drift from the runs.',
       target: ['#summarySectionTitle'],
       check: () => true,
     },
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
-      body: 'Expand Bid Check. The app computes conduit fill and voltage drop to the farthest device, compares circuits with the panel schedule, and lists the judgment calls only you can tick. It never blocks an export; it tells you what is open.',
+      body: '1. In the left sidebar, click BID CHECK to expand it.\nThe app computes conduit fill and voltage drop to the farthest device, compares circuits with the panel schedule, and lists the judgment calls only you can tick. It never blocks an export; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'Export Options: Show Report for the full breakdown, Copy Summary for an email, Open in TakeoffTooling to price it — devices explode into boxes, rings and plates and every row picks up labor from your book. CountTooling stops at what the drawing knows.',
+      body: 'Under EXPORT OPTIONS in the left sidebar:\n1. [[Show Report]] for the full breakdown.\n2. [[Copy Summary]] for an email.\n3. [[Open in TakeoffTooling]] to price it. There, devices explode into boxes, rings and plates, and every row picks up labor from your book.\nCountTooling stops at what the drawing knows.',
       target: ['#exportOptionsSectionTitle'],
       check: () => true,
     },
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
-      body: 'Scale, prove it, count, chain, check, hand off. Your work here is saved on this device like any takeoff; Upload PDF when you are ready for a real plan. Guides for every tool live under Help → Guides.',
+      body: 'Scale, prove it, count, chain, check, hand off.\nYour work here is saved on this device like any takeoff. When you are ready for a real plan, click [[Upload PDF]] in the header. Guides for every tool live under Help → Guides.',
       target: [],
       check: () => true,
     },
@@ -210,7 +210,7 @@
   const PLUMBING_STEPS = [
     {
       id: 'welcome', title: 'A five-minute plumbing takeoff', kind: 'do',
-      body: 'This tour walks you through a small takeoff on the sample plan — set the scale and prove it, count a restroom, chain a water branch with its riser, let the hangers count themselves, and hand it to the bid. Nothing here touches your projects. Open the sample plan to begin.',
+      body: 'A small takeoff on the sample plan: set the scale and prove it, count a restroom, chain a water branch with its riser, let the hangers count themselves, and hand it to the bid. Nothing here touches your projects.\n1. Click [[Open the sample plan]] below.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // A device whose last bid was electrical remembers that as its default
       // trade; the plumbing tour must speak plumbing, so the project is stamped
@@ -222,76 +222,76 @@
     PROVE_STEP,
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
-      body: 'Counters → + Add. On the Create tab name it Water Closet and pick the Toilet symbol from the plumbing set — the app ships the trade\'s icons, so the mark reads like the drawing. Choose a colour and press Create Counter; the counter tool arms itself.',
+      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet.\n4. Pick the Toilet symbol from the plumbing set.\n5. Pick a colour.\n6. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
       target: ['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
     },
     {
       id: 'place', title: 'Count the Men\'s room', kind: 'do',
-      body: 'With the counter armed, click the three water closets on the north wall of Men 105. One click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
+      body: 'The counter tool is armed.\n1. Click the first water closet on the north wall of Men 105.\n2. Click the second.\n3. Click the third.\nOne click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
       target: ['#annCanvas'],
       check: () => { const c = pCounter(); return !!c && markCount(c.id) >= 3; },
       action: { label: 'Count three for me', run: placeThreeWcs },
     },
     {
       id: 'linetype', title: 'A line type in two clicks', kind: 'do',
-      body: 'The cold-water branch that feeds the lav battery needs a line type. Line Types → + Add, then the Quick tab: pick 1in and PEX and press Add Line Type. The name assembles itself — "1in PEX" — so every bid spells it the same way and the tallies never split across spellings. The line tool arms itself.',
+      body: 'The cold-water branch that feeds the lav battery needs a line type.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Quick]] tab.\n3. Pick 1in, then PEX.\n4. Click [[Add Line Type]].\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
       target: ['#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#addLineType'],
       check: () => { const lt = pLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 1in PEX', run: addPexLineType },
     },
     {
       id: 'chain', title: 'Chain the lav battery', kind: 'do',
-      body: 'You counted the water closets one at a time. The three lavatories on the south wall of Men 105 sit on one 1in PEX branch that runs lav to lav, so count them the other way: pick Chain (T), in the panel choose a Lavatory counter (+ New counter makes one right there) and 1in PEX, then click the three lavatories in order. Every click places the fixture AND draws the branch back to the last one — the lavs and the pipe that feeds them, three clicks instead of nine.',
+      body: 'The three lavatories on the south wall of Men 105 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose a Lavatory counter ([[+ New counter]] makes one right there) and 1in PEX.\n3. Click the first lavatory.\n4. Click the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
       target: ['#counterCreate', '#counterQuickCountAdd', '#chainPanel', '#chainBtn'],
       check: () => { const a = ann(); return !!a && (a.quickLines || []).length >= 2; },
       action: { label: 'Chain the three lavs for me', run: chainThreeLavs },
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: 'The branch comes up from below the slab. Pick Drop (B), choose 3 ft in the palette, and click the end of the run at the first lavatory. The riser\'s 3 ft joins the footage — plan view never shows it, the bid needs it. Click the same end again to clear it.',
+      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the run at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
       target: ['#dropPanel', '#dropBtn'],
       check: anyDrop,
       action: { label: 'Add a 3 ft riser for me', run: addRiserDrop },
     },
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
-      body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers — the app can do it from the pipe. Open 1in PEX\'s details (the pencil). Under Child counts the rulebook offers Hanger · 1 per 32 in — the IPC spacing for PEX at 1 in, read off the type\'s name. Add it. From now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
+      body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
       target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
       check: () => (state().lineTypes || []).some((lt) => (lt.childCounts || []).length),
       action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
     {
       id: 'zone', title: 'A typical floor', kind: 'do',
-      body: 'This restroom core repeats on three floors. Pick Multiply Zone (X, under the ⋯ menu on desktop), drag a box around Men 105 and enter 3. Every count and every foot inside triples in the totals while the marks stay clean — count one floor, bid three.',
+      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Men 105.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
       check: () => { const a = ann(); return !!a && (a.multiplyZones || []).some((z) => (z.multiplier || 1) > 1); },
       action: { label: 'Wrap Men 105 in a ×3 zone', run: addTypicalFloorZone },
     },
     {
       id: 'rfi', title: 'Flag a question', kind: 'do',
-      body: 'Something the drawing does not say — is there a floor drain in Men 105? Pick Note (N, under the ⋯ menu on desktop), click the spot, and start the note with "RFI:". Copy RFI Flags under Export Options collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
+      body: 'Something the drawing does not say: is there a floor drain in Men 105?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click the spot.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
       target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
       check: anyNoteRfi,
       action: { label: 'Drop the RFI note for me', run: addRfiNote },
     },
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
-      body: 'In Summary click the Water Closet total. The breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
+      body: '1. In the left sidebar, open SUMMARY.\n2. Click the Water Closet total.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
       target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'Export Options: Copy to PipeTooling puts the whole takeoff on the clipboard — counts, feet with the riser inside, hangers under their pipe — ready to paste into the bid, and Copy RFI Flags puts the questions beside it. Copy Summary for an email, Export PDFs for a marked-up plan the GC can read.',
+      body: 'Under EXPORT OPTIONS in the left sidebar:\n1. [[Copy to PipeTooling]] puts the whole takeoff on the clipboard (counts, feet with the riser inside, hangers under their pipe), ready to paste into the bid.\n2. [[Copy RFI Flags]] puts the questions beside it.\n3. [[Copy Summary]] for an email.\n4. [[Export PDFs]] for a marked-up plan the GC can read.',
       target: ['#forPipeTooling', '#exportOptionsSectionTitle'],
       check: () => true,
     },
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
-      body: 'Scale, prove it, count, chain, riser, hangers, ×3, proof, hand off. Groups subtotal a restroom at a time when a set gets busy. Your work here is saved on this device like any takeoff; Upload PDF when you are ready for a real plan. Guides for every tool live under Help → Guides.',
+      body: 'Scale, prove it, count, chain, riser, hangers, ×3, proof, hand off.\nGroups subtotal a restroom at a time when a set gets busy. Your work here is saved on this device like any takeoff. When you are ready for a real plan, click [[Upload PDF]] in the header. Guides for every tool live under Help → Guides.',
       target: [],
       check: () => true,
     },
@@ -319,7 +319,7 @@
   const HVAC_STEPS = [
     {
       id: 'welcome', title: 'A five-minute HVAC takeoff', kind: 'do',
-      body: 'This tour walks a design-build duct takeoff on the sample plan — set the scale and prove it, box a room the plan already names, give diffusers a CFM, let the app size the main, count the fittings and the pounds, sign off, hand it to the bid. Nothing here touches your projects. Open the sample plan.',
+      body: 'A design-build duct takeoff on the sample plan: set the scale and prove it, box a room the plan already names, give diffusers a CFM, let the app size the main, count the fittings and the pounds, sign off, hand it to the bid. Nothing here touches your projects.\n1. Click [[Open the sample plan]] below.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
       check: () => { const ok = !!(state().pages && state().pages.length); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
@@ -329,42 +329,42 @@
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: 'Pick Room Sizer (V) and drag a box around OPEN OFFICE 104. The dialog opens with the name already filled in — read off the plan\u2019s own text — so pick Office as the room type, enter a 9\u2019 ceiling and the 12\u2019 deck height, and Apply. The sheet gets one small totals tag placed off the printed name; the Rooms row shows what the room needs in CFM.',
+      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 104.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
       target: ['#roomBoxApply', '#roomBoxType', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'],
       check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType && a && (a.roomBoxes || []).some((b) => b.roomId === r.id) && ds && ds.deckHeightFt > 0); },
       action: { label: 'Box the open office for me', run: boxOpenOffice },
     },
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
-      body: 'Counters \u2192 + Add. On an HVAC project the Create tab\u2019s air & mounting fields are already unfolded: name it Supply Diffuser and type 150 in CFM \u2014 the chip beside the field names the symbol it will take. Press Create Counter; the counter tool arms itself.',
+      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip beside the field shows the symbol it will take.\n5. Click [[Create Counter]].\nThe counter tool arms itself.',
       target: ['#counterCreate', '#counterCfm', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
       check: () => { const c = hCounter(); if (c) tourCounterId = c.id; return !!(c && c.cfm > 0); },
       action: { label: 'Create it for me', run: addDiffuser },
     },
     {
       id: 'place', title: 'Place four diffusers', kind: 'do',
-      body: 'With the counter armed, click four spots across OPEN OFFICE 104 \u2014 two near where the main will run, two deeper in the room. Each mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
+      body: 'The counter tool is armed.\n1. Click two spots in OPEN OFFICE 104, near where the main will run.\n2. Click two more, deeper in the room.\nEach mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
       target: ['#annCanvas'],
       check: () => cfmDevices().length >= 4,
       action: { label: 'Place four for me', run: placeFourDiffusers },
     },
     {
       id: 'system', title: 'Name the system', kind: 'do',
-      body: 'Groups \u2192 + Add. A group with an equipment tag is a system: name it RTU-1, tag it RTU-1, give it 2,000 CFM of capacity, Done. Select it in the sidebar so the main you trace next belongs to it \u2014 the header will read the system\u2019s designed air against its capacity.',
+      body: 'A group with an equipment tag is a system.\n1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type RTU-1.\n3. In Equipment tag, type RTU-1.\n4. In Capacity, type 2000.\n5. Click [[Done]].\n6. Click RTU-1 in the sidebar to select it, so the main you trace next belongs to it.\nThe header will read the system\'s designed air against its capacity.',
       target: ['#groupModalDone', '#groupModalCapacityCfm', '#addGroup', '#groupsSectionTitle'],
       check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
       action: { label: 'Make RTU-1 for me', run: makeSystem },
     },
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
-      body: 'Pick Duct (U). Start it 24\u00d712 and click along the office from the corridor side. The chip under the cursor reads the air still to serve \u2014 600 CFM downstream \u2014 and suggests a size for it at 0.08\u2033 per 100\u2019. Press S and tap the suggestion (spiral first, then the rectangular twin), click one more point, then Enter. The elbows and the transition count themselves.',
+      body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click along the office from the corridor side. The chip under the cursor reads the air still to serve (600 CFM downstream) and suggests a size for it at 0.08″ per 100′.\n4. Press S and tap the suggestion (spiral first, then the rectangular twin).\n5. Click one more point.\n6. Press Enter.\nThe elbows and the transition count themselves.',
       target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'],
       check: () => ductRuns().some((r) => (r.segments || []).length >= 2),
       action: { label: 'Trace and size it for me', run: traceMain },
     },
     {
       id: 'attach', title: 'Hang the strays', kind: 'do',
-      body: 'Two diffusers sit within 8\u2033 of the main and draw a dashed leader to it \u2014 they are attached, their air is served. Two draw nothing: strays, hanging off nothing. Right-click each bare one \u2192 Attach to nearest run. It moves onto the main and its leader appears.',
+      body: 'Two diffusers sit within 8″ of the main and draw a dashed leader to it: attached, their air served. Two draw nothing: strays.\n1. Right-click a bare diffuser.\n2. Click [[Attach to nearest run]].\n3. Do the same for the other one.\nEach moves onto the main and its leader appears.',
       target: ['#ctxAttachToRun', '#annCanvas'],
       check: () => cfmDevices().length >= 4 && unattachedDevices().length === 0,
       hint: () => { const n = unattachedDevices().length; return n ? n + ' diffuser' + (n === 1 ? '' : 's') + ' still hanging off nothing' : ''; },
@@ -372,32 +372,32 @@
     },
     {
       id: 'schedule', title: 'Pounds, not feet', kind: 'read',
-      body: 'Duct \u2192 Schedule. Straight duct by size with its gauge and lb/ft from the SMACNA table, the fittings you did not have to count, seam & waste on its own line, and the number a sheet-metal bid is built on: Bid weight. Copy Schedule puts it on the clipboard.',
+      body: '1. In the left sidebar, under DUCT, click [[Schedule]].\nStraight duct by size with its gauge and lb/ft from the SMACNA table, the fittings you did not have to count, seam & waste on its own line, and the number a sheet-metal bid is built on: Bid weight.\n2. Click [[Copy Schedule]] to put it on the clipboard.',
       target: ['#ductScheduleBtn', '#ductSectionTitle'],
       check: () => true,
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
-      body: 'Bid Check judged the rooms, the flex and the scale for you \u2014 four 150-CFM diffusers serve the office\u2019s 442 CFM, so that row reads \u2713. The manual rows are yours: tick Fits the roof by clicking its label.',
+      body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Fits the roof to tick it.',
       target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
       check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-fits-roof']),
       action: { label: 'Tick it for me', run: tickFitsTheRoof },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'Export Options: Copy to /Tooling \u2192 Everything. The first line names exactly what was copied \u2014 the project, the scope, the layers \u2014 and the --- Duct --- block at the end carries the pounds. With an open Bid Check row the gate asks first; Export anyway remembers your answer until something changes.',
+      body: '1. Under EXPORT OPTIONS, click [[Copy to /Tooling]].\n2. Click [[Everything]].\nThe first line names exactly what was copied (the project, the scope, the layers) and the Duct block at the end carries the pounds. With an open Bid Check row the gate asks first; [[Export anyway]] remembers your answer until something changes.',
       target: ['#forPipeTooling', '#exportOptionsSectionTitle'],
       check: () => true,
     },
     {
       id: 'legend', title: 'What the sheet says now', kind: 'read',
-      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\u2019s air line. Legend Settings gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
+      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\'s air line.\n1. Click the SUMMARY heading to open [[Legend Settings]].\nIt gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
       target: ['#legendSettingsBtn', '#legendBtn', '#summarySectionTitle'],
       check: () => true,
     },
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
-      body: 'Scale, prove it, room, diffusers, system, main sized at S, strays hung, pounds, sign-off, hand-off. Your work here is saved on this device like any takeoff; Upload PDF when you are ready for a real M-sheet. The two guides \u2014 HVAC takeoff and Duct takeoff by the pound \u2014 live under Help \u2192 Guides.',
+      body: 'Scale, prove it, room, diffusers, system, main sized at S, strays hung, pounds, sign-off, hand-off.\nYour work here is saved on this device like any takeoff. When you are ready for a real M-sheet, click [[Upload PDF]] in the header. The two guides, HVAC takeoff and Duct takeoff by the pound, live under Help → Guides.',
       target: [],
       check: () => true,
     },
@@ -421,7 +421,7 @@
       const inp = document.getElementById('pdfInput');
       inp.files = dt.files;
       inp.dispatchEvent(new Event('change', { bubbles: true }));
-    } catch (e) { App.showToast('Could not load the sample plan — Upload PDF works the same way'); }
+    } catch (e) { App.showToast('Could not load the sample plan. Upload PDF works the same way.'); }
   }
   // Through the real dialog when it is there — the estimator sees the presets tab
   // and the 1/8" row get picked, the way they will do it on a real sheet — with a
@@ -716,6 +716,21 @@
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
                              // panel may not have laid out on the first tick); after that the
                              // reader may scroll away freely
+  // Step bodies name controls the way they look on screen: [[+ Add]] renders as a
+  // button-shaped chip (.tour-ui). Everything else is escaped text.
+  const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>');
+  // A body is lines: "1. …" lines are one action each and render as a numbered list;
+  // any other line is a short paragraph around them.
+  const bodyHtml = (body) => {
+    const out = []; let items = [];
+    const flush = () => { if (items.length) { out.push('<ol class="tour-steps">' + items.map((t) => '<li>' + chips(t) + '</li>').join('') + '</ol>'); items = []; } };
+    String(body).split('\n').forEach((line) => {
+      const m = line.match(/^\s*\d+\.\s+(.*)$/);
+      if (m) items.push(m[1]); else { flush(); if (line.trim()) out.push('<p>' + chips(line) + '</p>'); }
+    });
+    flush(); return out.join('');
+  };
   function render() {
     const overlay = el('tourOverlay');
     if (!overlay) return;
@@ -725,7 +740,7 @@
     const done = safeCheck(step);
     el('tourStepNo').textContent = (stepIdx + 1) + ' / ' + STEPS.length;
     el('tourTitle').textContent = step.title;
-    el('tourBody').textContent = step.body;
+    el('tourBody').innerHTML = bodyHtml(step.body);
     const actionBtn = el('tourAction');
     if (step.action && !done) { actionBtn.style.display = ''; actionBtn.textContent = step.action.label; }
     else actionBtn.style.display = 'none';

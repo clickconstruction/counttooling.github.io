@@ -120,7 +120,7 @@
     const n = typeof suggestNeckSize === 'function' ? suggestNeckSize(counter.cfm) : null;
     if (!n) return null;
     return Math.round(counter.cfm) + ' CFM → ' + n.neckDIn + '"Ø neck'
-      + (n.overCapacity ? ' (over the table — split the drop)' : '');
+      + (n.overCapacity ? ' (over the table, split the drop)' : '');
   }
 
   // --- D7 balance glue ------------------------------------------------------
@@ -228,7 +228,7 @@
       binding: s.binding,
       velocityFpm: s.round.velocityFpm,
       frictionRate: frictionRate,
-      chipText: cfmLabel + ' CFM downstream · suggests ' + sizeLabel + ' @ ' + frictionRate + '″/100′' + limitNote + ' — S accepts',
+      chipText: cfmLabel + ' CFM downstream · suggests ' + sizeLabel + ' @ ' + frictionRate + '″/100′' + limitNote + '. S accepts',
       popoverLabel: 'Suggested: ' + sizeLabel + ' · from ' + cfmLabel + ' CFM' + limitNote,
     };
   }
@@ -351,7 +351,7 @@
     App.renderAnnotations();
     App.updateUI();
     const moved = Math.hypot(target.point.x - before.x, target.point.y - before.y);
-    App.showToast('Attached to the run' + (moved > 0 ? ' — moved ' + moved.toFixed(0) + ' pt' : '') + '.', 2400);
+    App.showToast('Attached to the run' + (moved > 0 ? ', moved ' + moved.toFixed(0) + ' pt' : '') + '.', 2400);
   };
 
   document.getElementById('markerCfmSave')?.addEventListener('click', commitMarkerCfm);

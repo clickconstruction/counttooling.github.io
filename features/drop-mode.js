@@ -181,7 +181,7 @@
     if (selected && !recents.some(d => sameSize(d, selected))) selected = null;
     if (!selected && recents.length) selected = { value: recents[0].value, unit: recents[0].unit };
     if (!recents.length) {
-      list.innerHTML = '<div class="chain-list-empty">No sizes yet — add one below.</div>';
+      list.innerHTML = '<div class="chain-list-empty">No sizes yet. Add one below.</div>';
       return;
     }
     list.innerHTML = recents.map(d =>
@@ -193,7 +193,7 @@
     const foot = document.getElementById('dropPanelFoot');
     if (!foot) return;
     foot.textContent = selected
-      ? 'Click a line end to drop ' + App.formatDropLabel(selected.value, selected.unit) + ' — same size again clears it'
+      ? 'Click a line end to drop ' + App.formatDropLabel(selected.value, selected.unit) + '. Same size again clears it'
       : 'Pick or add a drop size to start.';
   }
 

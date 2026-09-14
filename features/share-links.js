@@ -142,7 +142,7 @@
                 // Viewer grants (2026-09-06): a sub vouched for by PipeTooling logs a name + source.
                 const who = r.viewer_name ? (r.viewer_name + (r.email && r.email.indexOf('(via ') < 0 ? ' <' + r.email + '>' : '')) : (r.email || '');
                 const via = r.source === 'pipetooling-sub-portal' ? ' · via PipeTooling portal' : '';
-                return who + via + ' — ' + (r.accessed_at ? new Date(r.accessed_at).toLocaleString() : '');
+                return who + via + ', ' + (r.accessed_at ? new Date(r.accessed_at).toLocaleString() : '');
               });
               App.confirmDialog({ title: 'Access log', body: lines.length ? lines.join('\n') : 'No access yet', confirmLabel: 'Close', infoOnly: true });
             };

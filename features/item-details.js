@@ -328,7 +328,7 @@
     if (lineTypeLineEl) {
       lineTypeLineEl.textContent = lt
         ? ('Line type: ' + (lt.name || 'Line'))
-        : 'Line type: —';
+        : 'Line type: none';
     }
     const nameEl = document.getElementById('linePropertiesName');
     const swatchEl = document.getElementById('linePropertiesSwatch');

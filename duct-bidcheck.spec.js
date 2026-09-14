@@ -92,7 +92,7 @@ test.describe('Duct Bid Check (D9)', () => {
     const roofRow = page.locator('#bidCheckList .bid-check-row[data-row-id="duct-fits-roof"]');
     await expect(roofRow).toHaveClass(/manual/);
     await expect(roofRow.locator('.bid-check-box')).toHaveCount(1);
-    await expect(roofRow).toContainText('Fits the roof — deepest duct + insulation clears the plenum');
+    await expect(roofRow).toContainText('Fits the roof: deepest duct + insulation clears the plenum');
     // Tick it by its label TEXT (the live-walk papercut, 2026-09-12: only
     // the box square used to toggle): state.bidCheck.manual carries it, the
     // badge counts down.
@@ -222,7 +222,7 @@ test.describe('Duct Bid Check (D9)', () => {
     await page.click('#specificPages');
     await expect(page.locator('#bidGateToastModal')).toHaveClass(/visible/);
     await expect(page.locator('#bidGateToastText')).toHaveText('Bid Check: Fits the roof?');
-    await expect(page.locator('#bidGateToastModal p')).toHaveText('Bid Check: Fits the roof? — Review · Export anyway');
+    await expect(page.locator('#bidGateToastModal p')).toHaveText('Bid Check: Fits the roof? Review · Export anyway');
     await expect(page.locator('#specificPagesModal')).not.toHaveClass(/visible/);
     // Review: toast gone, section expanded, the row scrolled + flashed.
     await page.click('#bidGateReview');

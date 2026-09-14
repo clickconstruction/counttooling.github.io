@@ -73,13 +73,13 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
     await page.evaluate(() => { window.state.showAllCanvases = true; window.App.renderAnnotations(); window.App.updateUI(); });
     const text = await copyVia(page, '.pipe-tooling-option[data-mode="all"]');
     expect(wcCount(text)).toBe(11);
-    expect(text.split('\n')[0]).toBe('--- Counts — Maple St TI · every sheet · layers: Main, Gas ---');
+    expect(text.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet · layers: Main, Gas ---');
   });
 
   test('peek off: Everything copies the active layers and says so; This sheet scopes the picker to this page', async ({ page }) => {
     const all = await copyVia(page, '.pipe-tooling-option[data-mode="all"]');
     expect(wcCount(all)).toBe(6);                                  // 4 + 2, Gas not on screen
-    expect(all.split('\n')[0]).toBe('--- Counts — Maple St TI · every sheet · layers: Main ---');
+    expect(all.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet · layers: Main ---');
     // This sheet, from page 2 (one layer): no picker, no layers clause.
     await page.evaluate(() => { window.state.currentPage = 1; window.App.updateUI(); });
     await page.locator('#forPipeTooling').click();
@@ -87,7 +87,7 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
     await expect(page.locator('#pipeToolingLayerPicker')).toBeHidden();
     const one = await copyVia(page, '.pipe-tooling-option[data-mode="this-canvas"]');
     expect(wcCount(one)).toBe(2);
-    expect(one.split('\n')[0]).toBe('--- Counts — Maple St TI · this sheet ---');
+    expect(one.split('\n')[0]).toBe('--- Counts, Maple St TI · this sheet ---');
   });
 
   test('ticking a layer in the picker includes it; the choice is explicit in the header', async ({ page }) => {
@@ -108,13 +108,13 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
     const text = await page.evaluate(() => navigator.clipboard.readText());
     const lines = text.split('\n');
     expect(lines[0]).toBe('Takeoff Summary');
-    expect(lines[2]).toBe('Counts — Maple St TI · every sheet · layers: Main');
+    expect(lines[2]).toBe('Counts, Maple St TI · every sheet · layers: Main');
   });
 
   test('a copy with no scope (the bid-basis manifest path) carries no header — legacy pins hold', async ({ page }) => {
     const text = await page.evaluate(() => window.getPipeToolingSummary());
     expect(text.startsWith('---')).toBe(false);
-    expect(text).not.toContain('Counts —');
+    expect(text).not.toContain('Counts,');
   });
 
   test('single-layer projects: the picker never shows and the copy is unchanged apart from the scope line', async ({ page }) => {
@@ -123,6 +123,6 @@ test.describe('D25 — layer-aware copy (X6 option D)', () => {
     await expect(page.locator('#pipeToolingLayerPicker')).toBeHidden();
     const text = await copyVia(page, '.pipe-tooling-option[data-mode="all"]');
     expect(wcCount(text)).toBe(6);
-    expect(text.split('\n')[0]).toBe('--- Counts — Maple St TI · every sheet ---');
+    expect(text.split('\n')[0]).toBe('--- Counts, Maple St TI · every sheet ---');
   });
 });

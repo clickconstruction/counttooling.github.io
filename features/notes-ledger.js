@@ -335,7 +335,7 @@
     if (modeSel) modeSel.value = getDisplayMode();
     if (!rows.length) {
       list.innerHTML = '<div class="notes-ledger-empty">' +
-        (collectNotesLedger().length ? 'Nothing matches this filter.' : 'No notes yet. Drop one with the Note tool — start it with "RFI:" to flag a question.') +
+        (collectNotesLedger().length ? 'Nothing matches this filter.' : 'No notes yet. Drop one with the Note tool. Start it with "RFI:" to flag a question.') +
         '</div>';
       return;
     }
@@ -398,7 +398,7 @@
     }
     btn.style.display = rows.length ? '' : 'none';
     btn.title = openRfis
-      ? 'Notes ledger — ' + openRfis + ' open RFI' + (openRfis === 1 ? '' : 's')
+      ? 'Notes ledger: ' + openRfis + ' open RFI' + (openRfis === 1 ? '' : 's')
       : 'Notes ledger';
   }
 

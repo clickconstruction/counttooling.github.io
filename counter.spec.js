@@ -200,7 +200,7 @@ test.describe('T2-05 counter-modal create ergonomics', () => {
     // Manual switch to Choose with zero counters shows the new copy verbatim.
     await page.locator('#counterModal .counter-tab[data-tab="choose"]').click();
     await expect(page.locator('#counterChooseEmpty')).toBeVisible();
-    await expect(page.locator('#counterChooseEmpty')).toHaveText('No counters yet — use the Create tab above.');
+    await expect(page.locator('#counterChooseEmpty')).toHaveText('No counters yet. Use the Create tab above.');
 
     expect(errors).toEqual([]);
   });

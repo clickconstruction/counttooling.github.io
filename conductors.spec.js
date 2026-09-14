@@ -81,7 +81,7 @@ test.describe('Electrical, First-Class S3 — conductors on the run', () => {
 
     // email text
     const email = await page.evaluate(() => window.getEmailTextSummary());
-    expect(email).toContain('• 120.00 ft of #12 THHN (wire — some runs have no scale)');
+    expect(email).toContain('• 120.00 ft of #12 THHN (wire, some runs have no scale)');
     expect(email).toContain('• 300.00 ft of Cat6 (cable, Data drop)');
 
     // the HTML report carries the derived rows under the group

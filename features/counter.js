@@ -66,7 +66,7 @@
     const filtered = q ? state.counters.filter(c => (c.name || '').toLowerCase().includes(q)) : state.counters;
     if (!filtered.length) {
       empty.style.display = 'block';
-      empty.textContent = q ? 'No counters match. Try Create Counter or Quick Count.' : 'No counters yet — use the Create tab above.';
+      empty.textContent = q ? 'No counters match. Try Create Counter or Quick Count.' : 'No counters yet. Use the Create tab above.';
       return;
     }
     empty.style.display = 'none';
@@ -154,7 +154,7 @@
       + '<span class="cfm-icon-chip-glyph"><svg viewBox="' + App.iconVbFor(opts.iconPath) + '" width="18" height="18"><path fill="currentColor" d="' + opts.iconPath + '"/></svg></span>'
       + '<span class="cfm-icon-chip-name">' + App.escapeHtml(name) + '</span>'
       + '<span class="cfm-icon-chip-sep" aria-hidden="true">·</span>'
-      + '<button type="button" class="cfm-icon-chip-change" title="Pick a different icon — opens the Custom Icons grid at the HVAC group">change</button>';
+      + '<button type="button" class="cfm-icon-chip-change" title="Pick a different icon. Opens the Custom Icons grid at the HVAC group">change</button>';
     chip.dataset.path = opts.iconPath;
     chip.querySelector('.cfm-icon-chip-change').onclick = opts.onChange;
   }

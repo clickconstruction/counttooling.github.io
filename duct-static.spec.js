@@ -165,7 +165,7 @@ test.describe('Duct static path (D11)', () => {
     row = bc.auto.find((r) => r.id === 'duct-static-path');
     expect(row).toEqual(expect.objectContaining({
       verdict: 'warn',
-      detail: 'RTU-1: 0.15" of 0.10" ESP — Branch 3 is the long leg; upsize its 8×6 or lower the friction rate ⚠',
+      detail: 'RTU-1: 0.15" of 0.10" ESP, Branch 3 is the long leg; upsize its 8×6 or lower the friction rate ⚠',
     }));
     expect(bc.open.auto).toBe(1);
     await expect(staticRow).toHaveClass(/warn/);
@@ -177,7 +177,7 @@ test.describe('Duct static path (D11)', () => {
     // allowance moves the number and rides ductSettings.
     await page.evaluate(() => { window.App.getDuctSettings().frictionInPer100ft = 0.04; window.App.updateUI(); });
     row = rowById(await bidCheck(page), 'duct-static-path');
-    expect(row.detail).toBe('RTU-1: 0.12" of 0.10" ESP — Branch 3 is the long leg; upsize its 8×6 or lower the friction rate ⚠');
+    expect(row.detail).toBe('RTU-1: 0.12" of 0.10" ESP, Branch 3 is the long leg; upsize its 8×6 or lower the friction rate ⚠');
     await page.evaluate(() => { window.App.getDuctSettings().terminalAllowanceInWg = 0; window.App.updateUI(); });
     row = rowById(await bidCheck(page), 'duct-static-path');
     expect(row.detail).toBe('RTU-1: 0.02" of 0.10" ESP · critical path 62 eq ft (40\' duct + 1 elbow + 1 tap + 1 VD @ 0.04"/100\') ✓');
@@ -202,7 +202,7 @@ test.describe('Duct static path (D11)', () => {
     row = rowById(await bidCheck(page), 'duct-static-path');
     expect(row.verdict).toBe('warn');
     expect(row.detail).toBe('RTU-1: 0.15" of 0.80" ESP · critical path 62 eq ft (40\' duct + 1 elbow + 1 tap + 1 VD @ 0.08"/100\' + 0.10" terminal) ✓; '
-      + 'RTU-2: 0.11" of 0.05" ESP — Trunk 2 is the long leg; upsize its 12×8 or lower the friction rate ⚠');
+      + 'RTU-2: 0.11" of 0.05" ESP, Trunk 2 is the long leg; upsize its 12×8 or lower the friction rate ⚠');
     await expect(page.locator('#groupsList .group-capacity-line').nth(1)).toHaveText('0.11" of 0.05" ESP ⚠');
 
     // Clearing the ESP drops the row back to a checkbox, the old tick honored.

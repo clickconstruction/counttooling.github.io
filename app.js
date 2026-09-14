@@ -324,7 +324,7 @@
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
     recentDrops: [],
-    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, longPressTimer: null, longPressFired: false,
+    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
@@ -1389,17 +1389,27 @@
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
       if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'highlight', index: i };
     }
-    for (let i = 0; i < (ann.multiplyZones || []).length; i++) {
-      const z = ann.multiplyZones[i];
+    // D23 (X1): a zone hit carries `corner` ('nw'|'ne'|'sw'|'se') when the
+    // pointer is within the hit radius of a corner — the Move-tool resize
+    // handle — and no corner for the body (the Move-tool drag). Same type
+    // either way, so the context menu's Edit / Delete and the Delete Area
+    // preview see exactly what they always did. Sits after T2-03's hideMarks
+    // return above like every rung here: invisible zones catch nothing.
+    const zoneHit = (z, i, type) => {
       const minX = Math.min(z.x1, z.x2), maxX = Math.max(z.x1, z.x2);
       const minY = Math.min(z.y1, z.y2), maxY = Math.max(z.y1, z.y2);
-      if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'multiplyZone', index: i };
+      const corners = { nw: { x: minX, y: minY }, ne: { x: maxX, y: minY }, sw: { x: minX, y: maxY }, se: { x: maxX, y: maxY } };
+      for (const c of Object.keys(corners)) if (ptDist(pos, corners[c]) <= r) return { type, index: i, corner: c };
+      if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type, index: i };
+      return null;
+    };
+    for (let i = 0; i < (ann.multiplyZones || []).length; i++) {
+      const hit = zoneHit(ann.multiplyZones[i], i, 'multiplyZone');
+      if (hit) return hit;
     }
     for (let i = 0; i < (ann.scaleZones || []).length; i++) {
-      const z = ann.scaleZones[i];
-      const minX = Math.min(z.x1, z.x2), maxX = Math.max(z.x1, z.x2);
-      const minY = Math.min(z.y1, z.y2), maxY = Math.max(z.y1, z.y2);
-      if (pos.x >= minX && pos.x <= maxX && pos.y >= minY && pos.y <= maxY) return { type: 'scaleZone', index: i };
+      const hit = zoneHit(ann.scaleZones[i], i, 'scaleZone');
+      if (hit) return hit;
     }
     for (let i = 0; i < (ann.roomBoxes || []).length; i++) {
       const b = ann.roomBoxes[i];
@@ -6271,6 +6281,22 @@
         state.draggingNoteOffset = { x: state.mousePos.x - note.x, y: state.mousePos.y - note.y };
         state.dragNoteStartPos = { x: state.mousePos.x, y: state.mousePos.y };
       }
+    } else if (state.tool === TOOL.NONE && !state.editingPolyline && t && (t.type === 'multiplyZone' || t.type === 'scaleZone') && !state.isViewer) {
+      // D23 (X1): in Move a zone drags to move (body) and resizes (corner).
+      // Move ONLY — the zone TOOLS keep T2-10's drag-to-complete, and
+      // isAimingTool excludes NONE so the 280 ms loupe never contends. One
+      // undo snapshot per drag, pushed at the press like the note/legend
+      // drags; a press that never moves 3 pt is treated as a click below.
+      const zAnn = getActiveAnnotations(state.pages[state.currentPage]);
+      const zone = t.type === 'multiplyZone' ? zAnn?.multiplyZones?.[t.index] : zAnn?.scaleZones?.[t.index];
+      if (zone) {
+        pushUndoSnapshot();
+        state.draggingZone = {
+          kind: t.type, index: t.index, corner: t.corner || null, pageIdx: state.currentPage,
+          start: { x: state.mousePos.x, y: state.mousePos.y },
+          orig: { x1: zone.x1, y1: zone.y1, x2: zone.x2, y2: zone.y2 },
+        };
+      }
     } else if (state.tool === TOOL.NONE && !state.editingPolyline) {
       state.isPanning = true;
       state.panStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
@@ -6332,6 +6358,30 @@
         leg.w = Math.max(60, state.legendResizeStart.w + (pdf.x - state.legendResizeStart.pdfX));
         leg.h = Math.max(40, state.legendResizeStart.h + (pdf.y - state.legendResizeStart.pdfY));
         renderAnnotations();
+      }
+    } else if (state.draggingZone) {
+      // D23 (X1): a corner moves only its own two edges, so the opposite
+      // corner stays put; the body moves all four by the pointer delta. The
+      // stored rect is rewritten from the ORIGINAL each move (delta-from-press,
+      // never accumulated), so a jittery pointer cannot drift it.
+      const d = state.draggingZone;
+      const zAnn = getActiveAnnotations(state.pages[d.pageIdx]);
+      const zone = d.kind === 'multiplyZone' ? zAnn?.multiplyZones?.[d.index] : zAnn?.scaleZones?.[d.index];
+      if (zone) {
+        const dx = pdf.x - d.start.x, dy = pdf.y - d.start.y;
+        const o = d.orig;
+        if (!d.corner) {
+          zone.x1 = o.x1 + dx; zone.y1 = o.y1 + dy; zone.x2 = o.x2 + dx; zone.y2 = o.y2 + dy;
+        } else {
+          // Normalize the stored corners so 'nw' etc. mean what they say
+          // regardless of the drag direction the zone was drawn in.
+          const minX = Math.min(o.x1, o.x2), maxX = Math.max(o.x1, o.x2);
+          const minY = Math.min(o.y1, o.y2), maxY = Math.max(o.y1, o.y2);
+          const west = d.corner === 'nw' || d.corner === 'sw', north = d.corner === 'nw' || d.corner === 'ne';
+          zone.x1 = west ? minX + dx : minX; zone.x2 = west ? maxX : maxX + dx;
+          zone.y1 = north ? minY + dy : minY; zone.y2 = north ? maxY : maxY + dy;
+        }
+        renderAnnotations();   // the on-plan label / factor re-tallies from geometry every frame
       }
     } else if (state.draggingLegend && state.legendDragOffset) {
       const page = state.pages[state.currentPage];
@@ -6402,7 +6452,9 @@
         annCanvas.style.cursor = 'url(' + moveCursorSvg + ') 12 12, move';
       } else {
         const overUi = t && (t.type === 'legendResize' || t.type === 'legendDrag' || t.type === 'legend' || t.type === 'noteResize' || t.type === 'noteFontSize' || t.type === 'note');
-        annCanvas.style.cursor = (t && t.type === 'legendResize') ? 'se-resize' : (t && (t.type === 'legendDrag' || t.type === 'legend')) ? 'move' : (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : (!overUi && isAimingTool()) ? 'crosshair' : '';
+        const zoneCursor = (t && (t.type === 'multiplyZone' || t.type === 'scaleZone') && state.tool === TOOL.NONE && !state.isViewer)
+          ? (t.corner ? ((t.corner === 'nw' || t.corner === 'se') ? 'nwse-resize' : 'nesw-resize') : 'move') : null;   // D23 (X1): cursor swap is the handles' only chrome
+        annCanvas.style.cursor = zoneCursor ? zoneCursor : (t && t.type === 'legendResize') ? 'se-resize' : (t && (t.type === 'legendDrag' || t.type === 'legend')) ? 'move' : (t && t.type === 'noteResize') ? 'ew-resize' : (t && t.type === 'noteFontSize') ? 'ns-resize' : (t && t.type === 'note') ? 'move' : (!overUi && isAimingTool()) ? 'crosshair' : '';
       }
     }
     // Drop-size peek hover (features/drop-peek.js) — after the cursor block so
@@ -6457,6 +6509,20 @@
     if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
     if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
     if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
+    if (state.draggingZone) {
+      // D23 (X1): a real drag (past the note-drag threshold) is an edit — dirty,
+      // the click that follows the release is swallowed, and the tallies that
+      // depend on zone MEMBERSHIP (footer / sidebar / legend) recompute once
+      // here rather than per frame. A press that never moved is a click.
+      const d = state.draggingZone;
+      if (ptDist(state.mousePos, d.start) > 3) {
+        state.justFinishedZoneDrag = true;
+        markProjectDirty();
+        invalidateFooterTotals();
+        if (d.kind === 'scaleZone') logUserEvent('scale_set', state.currentProjectId || null, { method: 'zone_edit', target: 'zone', route: d.corner ? 'resize' : 'move', pageIndex: d.pageIdx });
+        updateUI();
+      }
+    }
     if (state.draggingGhostIdx !== null) {
       if (state.ghostDragMoved) markProjectDirty();
       state.draggingGhostIdx = null;
@@ -6488,6 +6554,7 @@
     state.draggingLegend = false;
     state.legendResizeStart = null;
     state.legendDragOffset = null;
+    state.draggingZone = null;
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
@@ -6520,6 +6587,7 @@
       state.draggingLegend = false;
       state.legendResizeStart = null;
       state.legendDragOffset = null;
+    state.draggingZone = null;
       state.hoverLegendResize = false;
       if (annCanvas) annCanvas.style.cursor = '';
     }
@@ -6538,13 +6606,14 @@
       state.draggingLegend = false;
       state.legendResizeStart = null;
       state.legendDragOffset = null;
+    state.draggingZone = null;
       state.hoverLegendResize = false;
       if (annCanvas) annCanvas.style.cursor = '';
     }
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
-    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe || state.justFinishedDragGhost || state.justFinishedRectDrag) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; state.justFinishedDragGhost = false; state.justFinishedRectDrag = false; return; }
+    if (state.isPanning || state.justFinishedResize || state.justFinishedDragNote || state.justFinishedLegendResize || state.justFinishedLoupe || state.justFinishedDragGhost || state.justFinishedRectDrag || state.justFinishedZoneDrag) { state.justFinishedResize = false; state.justFinishedDragNote = false; state.justFinishedLegendResize = false; state.justFinishedLoupe = false; state.justFinishedDragGhost = false; state.justFinishedRectDrag = false; state.justFinishedZoneDrag = false; return; }
     state.justFinishedResize = false;
     state.justFinishedDragNote = false;
     state.justFinishedLegendResize = false;

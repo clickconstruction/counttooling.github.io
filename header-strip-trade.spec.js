@@ -130,7 +130,9 @@ test.describe('D21 — trade-aware strip + Pin to strip (J5-D)', () => {
       .toEqual({ ductBtn: true });
     // A plain reload keeps the arrangement on this device.
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    // Wait on the BOOT signal, not networkidle: after a reload the shell's
+    // background requests keep the network busy under a loaded suite.
+    await page.waitForFunction(() => !!(window.App && window.state));
     expect(await page.evaluate(() => window.state.stripPins)).toEqual({ ductBtn: true });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });

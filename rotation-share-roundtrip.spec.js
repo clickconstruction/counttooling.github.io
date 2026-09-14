@@ -47,6 +47,10 @@ test.describe('Rotation share round-trip + bake-frame guard', () => {
       s.counters.push({ id: cid, name: 'RT', icon: 'M0 0 H10 V10 H0 Z', color: '#e8c547' });
       pg.canvases[0].annotations.counterMarkers[cid] = [{ x: 120, y: 300, n: 1 }];
       App.renderPdf();
+      // X13 (D19): ↻ is gated on there being a page to rotate, and that gate is
+      // reconciled in updateUI — which the real PDF intake always runs and this
+      // private-seam load does not.
+      App.updateUI();
       return { intrinsic, rotationBefore: pg.rotation };
     }, pdfBytes);
 

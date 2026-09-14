@@ -159,9 +159,12 @@ test.describe('Quick Count no-twin create', () => {
 
     await openQuickCountWithSeed(page);
 
-    // Add a custom type via the "+" prompt flow, panel otherwise untouched.
-    page.once('dialog', (dialog) => dialog.accept('Cleanout Tee'));
+    // Add a custom type via the "+" flow (B20/X8: the app's input dialog, not
+    // prompt()), panel otherwise untouched.
     await page.locator('#counterQuickCountAddType').click();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmInput').fill('Cleanout Tee');
+    await page.locator('#confirmOk').click();
     await page.waitForFunction(() => document.getElementById('counterQuickCountType')?.value === 'Cleanout Tee', { timeout: 5000 });
 
     const result = await clickAddAndReadResult(page);

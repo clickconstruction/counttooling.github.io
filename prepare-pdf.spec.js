@@ -372,27 +372,30 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
   });
 
   test('B15: Cancel/Esc confirm the discard ONLY after changes; dismissing keeps the modal', async ({ page }) => {
-    const dialogs = [];
+    // B20 (X8): the guard asks through the app's confirm modal, never confirm().
+    const confirmModal = page.locator('#confirmModal');
     await openThreePageGrid(page, 'DiscardGuard');
-    // Untouched: Cancel closes with no dialog (asserted by the empty list —
-    // an unexpected dialog would also auto-dismiss and leave the modal open).
+    // Untouched: Cancel closes with no confirm.
     await page.locator('#preparePdfCancel').click();
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
-    expect(dialogs).toEqual([]);
-    // Reopen, drop a sheet — now Cancel must ask first. Dismiss keeps it open.
+    await expect(confirmModal).not.toHaveClass(/visible/);
+    // Reopen, drop a sheet — now Cancel must ask first. Cancelling keeps it open.
     await openThreePageGrid(page, 'DiscardGuard');
     await page.locator('.prepare-pdf-tile[data-orig-idx="1"]').click();
     await expect(page.locator('#preparePdfGridStatus')).toHaveText('Keeping 2 of 3 sheets');
-    page.once('dialog', (d) => { dialogs.push(d.message()); d.dismiss(); });
     await page.locator('#preparePdfCancel').click();
+    await expect(confirmModal).toHaveClass(/visible/);
+    await expect(page.locator('#confirmTitle')).toHaveText('Discard this upload?');
+    await expect(page.locator('#confirmBody')).toHaveText('Your trimming and names will be lost.');
+    await page.locator('#confirmCancel').click();
+    await expect(confirmModal).not.toHaveClass(/visible/);
     await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/);
-    expect(dialogs).toEqual(['Discard this upload? Your trimming and names will be lost.']);
     // Esc goes through the same guard (window.closePreparePdfModal — the app.js
-    // Esc ladder route); accepting discards.
-    page.once('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+    // Esc ladder route); confirming discards.
     await page.keyboard.press('Escape');
+    await expect(confirmModal).toHaveClass(/visible/);
+    await page.locator('#confirmOk').click();
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
-    expect(dialogs).toHaveLength(2);
   });
 
   test('B15: sheet-view Undo jumps the preview to the restored sheet', async ({ page }) => {

@@ -128,7 +128,7 @@
       }
       App.updateUI();
     }).catch((err) => {
-      alert(err && err.message ? err.message : 'Invalid SVG. SVG must contain at least one path, rect, circle, ellipse, or line.');
+      App.showToast(err && err.message ? err.message : 'Invalid SVG. SVG must contain at least one path, rect, circle, ellipse, or line.', 6000);
     });
   };
 })();

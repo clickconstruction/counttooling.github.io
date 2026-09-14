@@ -69,7 +69,7 @@
   async function handleAppendPages(e, filesToProcess) {
     for (const f of filesToProcess) {
       if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-        alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
+        App.showToast('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.', 5000);
         e.target.value = '';
         return;
       }
@@ -116,7 +116,7 @@
   async function matchPendingCanvasLoad(filesToProcess, uploadHash) {
     const d = App.state.pendingCanvasLoad.data;
     const hashMatches = !App.state.pendingCanvasLoad.pdf_hash || App.state.pendingCanvasLoad.pdf_hash === uploadHash;
-    if (!hashMatches && !confirm('This PDF doesn\'t match the project. Annotations may not align. Load anyway?')) {
+    if (!hashMatches && !(await App.confirmDialog({ title: 'This PDF doesn\'t match the project', body: 'Its marks were made on a different file, so they may not line up. Load it anyway?', confirmLabel: 'Load anyway' }))) {
       App.state.pendingCanvasLoad = null;
       App.state.currentProjectId = null;
       App.state.currentProjectName = titleFromPdfFilename(filesToProcess[0].name);
@@ -199,11 +199,11 @@
     const cloudPages = Array.isArray(d.pages) ? d.pages : [];
     const cloudPageCount = cloudPages.reduce((m, p) => Math.max(m, (p?.index ?? -1) + 1), 0) || cloudPages.length;
     if (cloudPages.length > 0 && cloudPageCount !== App.state.pages.length) {
-      const ok = confirm(
-        'These annotations were saved for a ' + cloudPageCount + '-page PDF; ' +
-        'the PDF you uploaded has ' + App.state.pages.length + ' pages. ' +
-        'Some annotations may be missing or misplaced. Continue?'
-      );
+      const ok = await App.confirmDialog({
+        title: 'Page count doesn\'t match',
+        body: 'These marks were saved for a ' + cloudPageCount + '-page PDF; the PDF you uploaded has ' + App.state.pages.length + ' pages. Some marks may be missing or misplaced.',
+        confirmLabel: 'Continue',
+      });
       if (!ok) return;
     }
     App.state.counters = Array.isArray(d.counters) ? d.counters : [];
@@ -375,7 +375,7 @@
     try {
       for (const f of filesToProcess) {
         if (App.SUPABASE_ENABLED && f.size > PDF_MAX_SIZE_BYTES) {
-          alert('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.');
+          App.showToast('File too large. Maximum size is 50 MB. Your file is ' + (f.size / 1024 / 1024).toFixed(1) + ' MB.', 5000);
           e.target.value = '';
           return;
         }
@@ -406,11 +406,7 @@
           Object.keys(App.state.activeCanvasIdByPage).forEach((k) => {
             if (Number(k) >= startPageIdx) delete App.state.activeCanvasIdByPage[k];
           });
-          alert(
-            'Total PDF size after merge would be ' +
-            (projectedBytes / 1024 / 1024).toFixed(1) +
-            ' MB. Maximum is 50 MB. No pages were added.'
-          );
+          App.showToast('Total PDF size after merge would be ' + (projectedBytes / 1024 / 1024).toFixed(1) + ' MB. Maximum is 50 MB. No pages were added.', 6000);
           e.target.value = '';
           return;
         }

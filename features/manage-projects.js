@@ -125,7 +125,7 @@
   }
 
   async function deleteProject(projectId, name, btnEl) {
-    if (!confirm('Delete project "' + (name || projectId) + '"? This cannot be undone.')) return;
+    if (!(await App.confirmDialog({ title: 'Delete project?', body: '"' + (name || projectId) + '" will be deleted for everyone who can see it. This cannot be undone.', confirmLabel: 'Delete project', danger: true }))) return;
     const session = App.state.supabaseSession;
     if (!session?.access_token) return;
     btnEl.disabled = true;
@@ -144,12 +144,12 @@
           document.getElementById('manageProjectsList').innerHTML = '<p style="color:var(--text3);">No projects</p>';
         }
       } else {
-        alert(data.error || 'Delete failed');
+        App.showToast(data.error || 'Delete failed', 5000);
         btnEl.disabled = false;
         btnEl.textContent = 'Delete';
       }
     } catch (e) {
-      alert(e.message || 'Delete failed');
+      App.showToast(e.message || 'Delete failed', 5000);
       btnEl.disabled = false;
       btnEl.textContent = 'Delete';
     }

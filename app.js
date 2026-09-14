@@ -3105,7 +3105,7 @@
       delBtn.style.cssText = 'flex-shrink:0;width:24px;height:24px;padding:0;border:none;background:transparent;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;';
       delBtn.onclick = (e) => {
         e.stopPropagation();
-        if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
+        if (state.pages.length <= 1) { showToast('Cannot delete the only page.', 3000); return; }
         inp.dataset.cancelled = '1';
         state.pendingDeletePage = { onDelete: opts.onDelete };
         document.getElementById('deletePageName').textContent = opts.pageName || 'this page';
@@ -3195,6 +3195,45 @@
     el.style.top = p.top + 'px';
   }
   function showModal(id) { document.getElementById(id).classList.add('visible'); }
+  // B20 (X8): the app's one confirm. Resolves true on OK, false on Cancel /
+  // Esc / a second dialog arriving over it. String opts = the body alone.
+  // `input: { placeholder?, value? }` makes it the app's one prompt too
+  // (resolves the trimmed string, or null on cancel); `infoOnly` hides
+  // Cancel for a read-only notice (the view-link access log).
+  let confirmResolve = null, confirmMode = 'confirm';
+  function confirmDialog(opts) {
+    const o = typeof opts === 'string' ? { body: opts } : (opts || {});
+    return new Promise((resolve) => {
+      if (confirmResolve) { const prev = confirmResolve; confirmResolve = null; prev(confirmMode === 'input' ? null : false); }
+      confirmResolve = resolve;
+      confirmMode = o.input ? 'input' : 'confirm';
+      document.getElementById('confirmTitle').textContent = o.title || (o.input ? '' : 'Are you sure?');
+      document.getElementById('confirmBody').textContent = o.body || '';
+      const ok = document.getElementById('confirmOk');
+      ok.textContent = o.confirmLabel || 'OK';
+      ok.classList.toggle('danger', !!o.danger);
+      const cancel = document.getElementById('confirmCancel');
+      cancel.textContent = o.cancelLabel || 'Cancel';
+      cancel.style.display = o.infoOnly ? 'none' : '';
+      const grp = document.getElementById('confirmInputGroup'), inp = document.getElementById('confirmInput');
+      grp.hidden = !o.input;
+      if (o.input) { inp.value = o.input.value || ''; inp.placeholder = o.input.placeholder || ''; }
+      showModal('confirmModal');
+      try { (o.input ? inp : ok).focus(); if (o.input) inp.select(); } catch (_) {}
+    });
+  }
+  function resolveConfirm(v) {
+    const r = confirmResolve; confirmResolve = null;
+    const mode = confirmMode;
+    const text = document.getElementById('confirmInput').value;
+    hideModal('confirmModal');
+    if (!r) return;
+    if (mode === 'input') r(v ? text.trim() : null);
+    else r(!!v);
+  }
+  document.getElementById('confirmInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); resolveConfirm(true); } });
+  document.getElementById('confirmOk').onclick = () => resolveConfirm(true);
+  document.getElementById('confirmCancel').onclick = () => resolveConfirm(false);
   function hideModal(id) {
     if (id === 'groupModal') App.onGroupModalHidden && App.onGroupModalHidden();
     if (id === 'authModal') App.onAuthMagicLinkReset && App.onAuthMagicLinkReset();
@@ -4510,7 +4549,7 @@
   document.getElementById('bundleHighlights').onclick = async () => {
     if (!App.hasAnyHighlights()) return;
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Highlight Pages (PDF) requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { showToast('Highlight Pages (PDF) requires jsPDF. Please refresh the page.', 4000); return; }
     const btn = document.getElementById('bundleHighlights');
     const origText = btn.textContent;
     btn.textContent = 'Opening…';
@@ -4523,7 +4562,7 @@
       window.open(blobUrl, '_blank');
     } catch (err) {
       console.error(err);
-      alert('Export failed: ' + (err.message || err));
+      showToast('Export failed: ' + (err.message || err), 5000);
     }
     btn.textContent = origText;
   };
@@ -4531,7 +4570,7 @@
   document.getElementById('bundleNotes').onclick = async () => {
     if (!App.hasAnyNotes()) return;
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Note Pages (PDF) requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { showToast('Note Pages (PDF) requires jsPDF. Please refresh the page.', 4000); return; }
     const btn = document.getElementById('bundleNotes');
     const origText = btn.textContent;
     btn.textContent = 'Opening…';
@@ -4544,7 +4583,7 @@
       window.open(blobUrl, '_blank');
     } catch (err) {
       console.error(err);
-      alert('Export failed: ' + (err.message || err));
+      showToast('Export failed: ' + (err.message || err), 5000);
     }
     btn.textContent = origText;
   };
@@ -4992,7 +5031,7 @@
     document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
     document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openCanvasRepairModal(); };
     document.getElementById('advancedEmptyCacheReload').onclick = async () => {
-      if (!confirm('Clear all cached data (IndexedDB, localStorage) and reload? Unsaved work will be lost.')) return;
+      if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
       hideModal('settingsAdvancedModal');
       hideModal('settingsModal');
       try {
@@ -5008,8 +5047,8 @@
     };
     document.getElementById('advancedGlobalForceReload').onclick = async () => {
       if (!state.isAdmin) return;
-      if (!confirm('Force a hard reload on EVERY signed-in user (active tabs see a Reload banner; everyone else reloads on next visit). Continue?')) return;
-      const reason = (prompt('Optional note shown to users (e.g. "v1.42 update"):') || '').trim() || null;
+      if (!(await confirmDialog({ title: 'Force a reload for every signed-in user?', body: 'Active tabs see a Reload banner; everyone else reloads on their next visit.', confirmLabel: 'Force reload', danger: true }))) return;
+      const reason = (await confirmDialog({ title: 'Note for users', body: 'Optional — shown with the Reload banner.', input: { placeholder: 'e.g. v1.42 update' }, confirmLabel: 'Send' })) || null;
       try {
         const { error } = await supabase.rpc('admin_trigger_global_reload', { p_reason: reason });
         if (error) { showToast(error.message || 'Failed to trigger global reload', 4000); return; }
@@ -5097,7 +5136,7 @@
       opts = opts || {};
       const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
       const localOnly = !state.currentProjectId;
-      if (state.pages.length > 0 && (unsaved || localOnly) && !confirm('Close project? Any unsaved changes will be lost.')) return false;
+      if (state.pages.length > 0 && (unsaved || localOnly) && !(await confirmDialog({ title: 'Close project?', body: 'Any unsaved changes will be lost.', confirmLabel: 'Close project', danger: true }))) return false;
       logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
       await checkInCurrentProjectIfHeld();
       resetGridOrigin();
@@ -5202,7 +5241,7 @@
           showToast('Sync in progress, try again in a moment', 3000);
           return;
         }
-        if (!confirm('Discard local edits and reload? Your unsaved local edits for this project will be lost.')) return;
+        if (!(await confirmDialog({ title: 'Discard local edits and reload?', body: 'Your unsaved local edits for this project will be lost.', confirmLabel: 'Discard and reload', danger: true }))) return;
         try {
           saveEngine.setAutoSaveDirty(false);
           if (state.currentProjectId) {
@@ -7135,6 +7174,12 @@
         e.preventDefault();
         return;
       }
+      // J6 #9 (B20): Ctrl/Cmd+Y is the redo everyone's other tools taught them.
+      if (k === 'y') {
+        if (!e.repeat) redo();
+        e.preventDefault();
+        return;
+      }
     }
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
       // Tool hotkeys are DATA-DRIVEN off the HOTKEYS table (constants.js) —
@@ -7169,6 +7214,8 @@
       // and never consume Escape, so the ladder below goes straight to real
       // modals and tools. (The old Ghost mid-gesture pre-clear hack and the
       // toast rungs died with the modal toasts.)
+      // B20: the confirm dialog sits above everything — Esc is its Cancel.
+      if (document.getElementById('confirmModal').classList.contains('visible')) { resolveConfirm(false); return; }
       if (state.gridOriginPickMode) {
         state.gridOriginPickMode = false;
         showModal('gridSettingsModal');
@@ -7674,6 +7721,8 @@
   App.getQuickTrade = getQuickTrade;
   App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
+  App.confirmDialog = confirmDialog;   // B20 (X8): the one confirm — features await it instead of confirm()
+  App.resolveConfirm = resolveConfirm; // spec seam
   App.planRoomLabels = (ann, pageIdx) => canvasDraw.planRoomLabels(ann, pageIdx);   // D24 spec seam
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;

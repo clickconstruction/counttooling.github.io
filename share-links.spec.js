@@ -203,13 +203,17 @@ test.describe('Share project & view links (features/share-links.js)', () => {
     });
     await openModal(page);
 
-    page.once('dialog', (d) => d.dismiss());
+    // B20 (X8): the gate is the app's confirm modal, never confirm().
     await page.locator('.share-view-link-revoke').first().click();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmTitle')).toHaveText('Revoke this view link?');
+    await page.locator('#confirmCancel').click();
     await page.waitForTimeout(300);
     expect(await rpcCalls(page, 'revoke_view_link')).toHaveLength(0);
 
-    page.once('dialog', (d) => d.accept());
     await page.locator('.share-view-link-revoke').first().click();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmOk').click();
     await page.waitForFunction(
       () => /** @type {any} */ (window).__rpcCalls.some((c) => c.name === 'revoke_view_link'),
       { timeout: 5000 },
@@ -225,20 +229,23 @@ test.describe('Share project & view links (features/share-links.js)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('access log alert lists who opened the link', async ({ page }) => {
+  test('access log lists who opened the link (B20/X8: the app\'s info dialog, not alert())', async ({ page }) => {
     const errors = [];
     await bootApp(page, errors);
     await installRpcStub(page);
     await openModal(page);
 
-    let alertText = '';
-    page.once('dialog', (d) => { alertText = d.message(); return d.accept(); });
     await page.locator('.share-view-link-log').first().click();
     await page.waitForFunction(
       () => /** @type {any} */ (window).__rpcCalls.some((c) => c.name === 'get_view_link_access_log'),
       { timeout: 5000 },
     );
-    await expect.poll(() => alertText).toContain('crew@clickplumbing.com');
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmTitle')).toHaveText('Access log');
+    await expect(page.locator('#confirmBody')).toContainText('crew@clickplumbing.com');
+    await expect(page.locator('#confirmCancel')).toBeHidden();
+    await page.locator('#confirmOk').click();
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
     expect(errors).toEqual([]);
   });
 

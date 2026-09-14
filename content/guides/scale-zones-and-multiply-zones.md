@@ -1,6 +1,6 @@
 ---
 title: Scale zones and multiply zones
-description: Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
+description: Handle multi-scale sheets and repeated areas: give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
 updated: 2026-09-14
 order: 5
 icon: scale-zone
@@ -11,7 +11,7 @@ Real plan sets aren't always one clean scale per sheet. Two tools handle the awk
 
 ![A plan with two regions marked: a multiply zone around a set of typical rooms, and a scale zone around a detail that's drawn at a different scale.](/guides/img/zones.png)
 
-## Scale zones — for multi-scale sheets
+## Scale zones: for multi-scale sheets
 
 A sheet often has the main plan at one scale and a blown-up detail or isometric at another. A **scale zone** [[scale-zone]] lets a region carry its own scale:
 
@@ -20,27 +20,27 @@ A sheet often has the main plan at one scale and a blown-up detail or isometric 
 
 Any line fully inside the zone is measured with the zone's scale; everything else uses the page scale. The **Measure** [[measure]] tool respects it too, so a quick check inside the detail comes out right.
 
-## Multiply zones — for repeated areas
+## Multiply zones: for repeated areas
 
-When the same layout repeats — typical floors, identical units, a row of matching rooms — you don't want to count it ten times by hand. A **multiply zone** [[multiply-zone]] does it for you:
+When the same layout repeats (typical floors, identical units, a row of matching rooms) you don't want to count it ten times by hand. A **multiply zone** [[multiply-zone]] does it for you:
 
 1. Draw a multiply-zone rectangle around the area.
 2. Set how many times it repeats.
 
-![After drawing the zone rectangle, the multiplier dialog asks how many times the area repeats — everything inside counts that many times in the totals.](/guides/img/multiply-zone-value.png)
+![After drawing the zone rectangle, the multiplier dialog asks how many times the area repeats, everything inside counts that many times in the totals.](/guides/img/multiply-zone-value.png)
 
-Every counter and line whose anchor falls inside is multiplied by that factor in the totals — [duct runs](/guides/duct-takeoff-by-the-pound/) too, pounds and fittings included, and the dialog says how many duct runs it found. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten. Every total in the sidebar shows the with-repeats number; hover a counter's badge (or a duct run's) to see how many are physically placed.
+Every counter and line whose anchor falls inside is multiplied by that factor in the totals, [duct runs](/guides/duct-takeoff-by-the-pound/) too, pounds and fittings included, and the dialog says how many duct runs it found. Count one typical floor, wrap it in a ×10 zone, and the project totals reflect all ten. Every total in the sidebar shows the with-repeats number; hover a counter's badge (or a duct run's) to see how many are physically placed.
 
-Here's both zones live on a sheet — note the legend: the four lavatories inside the ×3 zone count as twelve, so the Lavatory total reads 15, not 7:
+Here's both zones live on a sheet; note the legend: the four lavatories inside the ×3 zone count as twelve, so the Lavatory total reads 15, not 7:
 
-![A scale zone (yellow, carrying its own 1/4" = 1' scale) and a ×3 multiply zone (green) on the plan — the legend's Lavatory count already reflects the multiplication.](/guides/img/zones-on-plan.png)
+![A scale zone (yellow, carrying its own 1/4" = 1' scale) and a ×3 multiply zone (green) on the plan, the legend's Lavatory count already reflects the multiplication.](/guides/img/zones-on-plan.png)
 
 ## Good to know
 
-- Scale zones can't overlap — each region gets one scale.
-- If the page's scale was corrected for a compressed or rescaled sheet, zone presets are corrected the same way automatically — the zone's label shows the same "· ANSI D"-style suffix, and the dialog says so. Calibrating a zone by clicking two points is never corrected (it's already ground truth).
+- Scale zones can't overlap; each region gets one scale.
+- If the page's scale was corrected for a compressed or rescaled sheet, zone presets are corrected the same way automatically, the zone's label shows the same "· ANSI D"-style suffix, and the dialog says so. Calibrating a zone by clicking two points is never corrected (it's already ground truth).
 - A multiply zone changes the **totals**, not the marks on the sheet, so the plan stays readable.
-- Both are visual boundaries you can edit or delete later from their right-click menu — and in **Move**, you can drag one: grab the body to move it, a corner to resize it (the cursor changes to say which), and the label and every total re-tally as you go. One drag is one undo step.
-- After **Apply**, the zone tool stays armed — draw the next typical floor or detail right away, and press **Esc** (or pick **Move**) when you're done.
+- Both are visual boundaries you can edit or delete later from their right-click menu, and in **Move**, you can drag one: grab the body to move it, a corner to resize it (the cursor changes to say which), and the label and every total re-tally as you go. One drag is one undo step.
+- After **Apply**, the zone tool stays armed: draw the next typical floor or detail right away, and press **Esc** (or pick **Move**) when you're done.
 
-These two tools are what make CountTooling practical on messy, real-world plan sets — see them in context in [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/).
+These two tools are what make CountTooling practical on messy, real-world plan sets; see them in context in [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/).

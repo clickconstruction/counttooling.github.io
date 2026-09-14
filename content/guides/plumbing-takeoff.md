@@ -1,21 +1,21 @@
 ---
 title: Doing a plumbing takeoff
-description: Count fixtures, measure pipe runs, and price plumbing work straight off the plan PDF — custom counters, scale zones, and exports built for plumbing estimating.
+description: Count fixtures, measure pipe runs, and price plumbing work straight off the plan PDF: custom counters, scale zones, and exports built for plumbing estimating.
 updated: 2026-09-09
 order: 9
 icon: polyline
 category: By trade
 ---
 
-Plumbing takeoffs are equal parts counting and measuring — fixtures, and the pipe that connects them. CountTooling handles both on the same plan.
+Plumbing takeoffs are equal parts counting and measuring: fixtures, and the pipe that connects them. CountTooling handles both on the same plan.
 
-**New here?** Open the app with nothing loaded and click **plumbing** under *take the five-minute tour*. It walks you through this whole article on the sample plan — set and prove the scale, count a restroom, chain a lav battery with its riser, let the hangers count themselves, multiply a typical floor, flag an RFI, open the proof, and hand off to PipeTooling — checking each step against what you actually did, with a *Do it for me* button on every step.
+**New here?** Open the app with nothing loaded and click **plumbing** under *take the five-minute tour*. It walks you through this whole article on the sample plan (set and prove the scale, count a restroom, chain a lav battery with its riser, let the hangers count themselves, multiply a typical floor, flag an RFI, open the proof, and hand off to PipeTooling), checking each step against what you actually did, with a *Do it for me* button on every step.
 
-![A plumbing takeoff in CountTooling — water closets and lavatories counted with trade icons, a measured waste line, and the live legend tallying it all.](/guides/img/plan-takeoff.png)
+![A plumbing takeoff in CountTooling, water closets and lavatories counted with trade icons, a measured waste line, and the live legend tallying it all.](/guides/img/plan-takeoff.png)
 
 ## Count the fixtures
 
-Make a **counter** [[counter]] for each fixture type — water closets, lavatories, floor drains, hose bibbs — with its own icon and color so the plan stays readable. Click each one and watch the count tally live. **Groups** let you keep fixture families together (for example, all of a single restroom group) and see subtotals.
+Make a **counter** [[counter]] for each fixture type (water closets, lavatories, floor drains, hose bibbs) with its own icon and color so the plan stays readable. Click each one and watch the count tally live. **Groups** let you keep fixture families together (for example, all of a single restroom group) and see subtotals.
 
 If you place the same counters across many sheets, the running totals roll up across the whole project, not just the page you're on.
 
@@ -29,7 +29,7 @@ For a plan with isometrics or details drawn at a different scale, wrap a **scale
 
 - The **legend** and **Show Report** give you counts and lengths by type as you work.
 - **Copy to PipeTooling** drops the takeoff straight into a bid for pricing.
-- **Export PDFs** hands a marked-up, reviewable plan to whoever needs it — with the report, highlights, and notes included.
+- **Export PDFs** hands a marked-up, reviewable plan to whoever needs it, with the report, highlights, and notes included.
 
 Because it runs in the browser and saves as you go, you can start a plumbing takeoff on a desktop and pick it up on a tablet in the field.
 

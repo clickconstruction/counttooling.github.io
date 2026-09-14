@@ -2982,9 +2982,12 @@
     if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = (state.pages.length > 1 && anyMultiCanvas) ? '' : 'none';
     const reportEverythingOpt = document.querySelector('.show-report-option[data-mode="all-pages-canvases"]');
     if (reportEverythingOpt) reportEverythingOpt.style.display = anyMultiCanvas ? '' : 'none';
-    document.querySelectorAll('.pipe-tooling-option[data-mode="all"], .copy-summary-option[data-mode="all"]').forEach(el => {
-      el.style.display = anyMultiCanvas ? '' : 'none';
-    });
+    // D25 (X6 option D): the copy menus' "Everything" is no longer a duplicate
+    // of a middle scope — "Every sheet (visible layers)" is retired — so it
+    // stays on every project; its layer picker (features/output.js) is what
+    // appears only when a page has 2+ layers. Show Report / Download keep
+    // their three modes and the rule above.
+    document.querySelectorAll('.pipe-tooling-option[data-mode="all"], .copy-summary-option[data-mode="all"]').forEach(el => { el.style.display = ''; });
     if (App.updateBurgerMenu) App.updateBurgerMenu();
     if (App.scheduleHeaderCollapseCheck) App.scheduleHeaderCollapseCheck();
     document.querySelectorAll('.pipe-tooling-option[data-mode="this-canvas"], .copy-summary-option[data-mode="this-canvas"]').forEach(el => {

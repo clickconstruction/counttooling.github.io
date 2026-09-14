@@ -125,7 +125,7 @@ test.describe('Output cluster (features/output.js)', () => {
     }, mode);
 
     // All-pages copy -> the check modal opens, listing only the line page.
-    await clickToolingOption('visible');
+    await clickToolingOption('all');
     await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
     const listed = await page.evaluate(() => [...document.querySelectorAll('#toolingScaleCheckList li')].map(li => li.textContent));
     expect(listed).toEqual(['P-2 Underground']);
@@ -135,7 +135,7 @@ test.describe('Output cluster (features/output.js)', () => {
     await expect(page.locator('#toolingScaleCheckModal')).not.toHaveClass(/visible/);
 
     // Export anyway: the copy proceeds and carries the px unit.
-    await clickToolingOption('visible');
+    await clickToolingOption('all');
     await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
     await page.locator('#toolingScaleCheckExport').click();
     await page.waitForFunction(() => {
@@ -146,7 +146,7 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(pipeText).toContain('px of Copper');
 
     // Set scale: jumps to the flagged page and opens the Set Scale modal.
-    await clickToolingOption('visible');
+    await clickToolingOption('all');
     await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
     await page.locator('#toolingScaleCheckGoSet').click();
     await expect(page.locator('#toolingScaleCheckModal')).not.toHaveClass(/visible/);
@@ -167,7 +167,7 @@ test.describe('Output cluster (features/output.js)', () => {
       c1.annotations.scaleZones = [{ id: 'z1', x1: 50, y1: 50, x2: 300, y2: 200, scale: { pixelsPerUnit: 12, unit: 'ft', label: 'zone' } }];
       App.updateUI();
     });
-    await clickToolingOption('visible');
+    await clickToolingOption('all');
     await page.waitForFunction(() => /view link/i.test(document.getElementById('airboardToastText')?.textContent || ''), { timeout: 5000 });
     expect(await page.evaluate(() => document.getElementById('toolingScaleCheckModal').classList.contains('visible'))).toBe(false);
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('of Copper');
@@ -199,7 +199,7 @@ test.describe('Output cluster (features/output.js)', () => {
 
     // Copy Summary opens the scale-check modal and writes NOTHING.
     await page.evaluate(() => {
-      document.querySelector('.copy-summary-option[data-mode="visible"]')
+      document.querySelector('.copy-summary-option[data-mode="all"]')
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
@@ -214,7 +214,7 @@ test.describe('Output cluster (features/output.js)', () => {
 
     // Export anyway: the email summary copies with the honest px row.
     await page.evaluate(() => {
-      document.querySelector('.copy-summary-option[data-mode="visible"]')
+      document.querySelector('.copy-summary-option[data-mode="all"]')
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
@@ -375,7 +375,7 @@ test.describe('Output cluster (features/output.js)', () => {
 
     // Copy -> gate -> Set scale: jumps to the flagged page, arms the resume.
     await page.evaluate(() => {
-      document.querySelector('.pipe-tooling-option[data-mode="visible"]')
+      document.querySelector('.pipe-tooling-option[data-mode="all"]')
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     await page.waitForSelector('#toolingScaleCheckModal.visible', { timeout: 5000 });
@@ -455,15 +455,18 @@ test.describe('Output cluster (features/output.js)', () => {
 
     // --- Single-canvas project: sheet dialect, no layer words anywhere ---
     expect(await label('.pipe-tooling-option[data-mode="this-canvas"]')).toBe('This sheet');
-    expect(await label('.pipe-tooling-option[data-mode="visible"]')).toBe('Every sheet');
-    expect(await label('.copy-summary-option[data-mode="visible"]')).toBe('Every sheet');
+    // D25 (X6 option D): the "Every sheet (visible layers)" scope is retired — it
+    // copied the ACTIVE layer per page and lied about the peek. Two scopes now.
+    expect(await page.evaluate(() => document.querySelectorAll('.pipe-tooling-option').length)).toBe(2);
+    expect(await page.evaluate(() => document.querySelectorAll('.copy-summary-option').length)).toBe(2);
     expect(await label('.download-page-option[data-mode="this-canvas"]')).toBe('Download this sheet');
     expect(await label('.download-page-option[data-mode="all-pages"]')).toBe('Download every sheet');
     expect(await label('.show-report-option[data-mode="this-canvas"]')).toBe('This sheet');
     expect(await label('.show-report-option[data-mode="all-pages-current-canvas"]')).toBe('Every sheet');
-    // "Everything" duplicates "Every sheet" when every page has one canvas — hidden.
-    expect(await hidden('.pipe-tooling-option[data-mode="all"]')).toBe(true);
-    expect(await hidden('.copy-summary-option[data-mode="all"]')).toBe(true);
+    // "Everything" is the every-sheet scope now; with one layer per page its
+    // picker stays hidden (nothing to choose) and the option stays.
+    expect(await label('.pipe-tooling-option[data-mode="all"]')).toBe('Everything');
+    expect(await label('.copy-summary-option[data-mode="all"]')).toBe('Everything');
     expect(await hidden('.download-page-option[data-mode="all-pages-canvases"]')).toBe(true);
     expect(await hidden('.show-report-option[data-mode="all-pages-canvases"]')).toBe(true);
 
@@ -474,8 +477,8 @@ test.describe('Output cluster (features/output.js)', () => {
       s.pages[0].canvases.push({ id: 'c-extra', name: 'Layer 2', annotations: App.makeAnnotations() });
       App.updateUI();
     });
-    expect(await label('.pipe-tooling-option[data-mode="visible"]')).toBe('Every sheet (visible layers)');
-    expect(await label('.copy-summary-option[data-mode="visible"]')).toBe('Every sheet (visible layers)');
+    // D25: with a second layer the picker appears in each copy menu, pre-checked to what is on screen.
+    expect(await page.evaluate(() => { document.getElementById('forPipeTooling')?.click(); const p = document.getElementById('pipeToolingLayerPicker'); return { hidden: p.hidden, rows: p.querySelectorAll('input').length }; })).toEqual({ hidden: false, rows: 2 });
     expect(await label('.download-page-option[data-mode="this-canvas"]')).toBe('Download this sheet (active layer)');
     expect(await label('.download-page-option[data-mode="all-canvases"]')).toBe('Download this sheet (every layer)');
     expect(await label('.download-page-option[data-mode="all-pages"]')).toBe('Download every sheet (active layer)');

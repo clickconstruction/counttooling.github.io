@@ -470,8 +470,21 @@
     return html;
   }
 
+  // D25 (X6 option D): the scope line a copy carries when it was made from a
+  // scope menu — "Counts — <project> · every sheet · layers: Main, Gas". Only
+  // when opts.scope is present: legacy callers (the bid-basis manifest, the
+  // spec seams) get the text they always got.
+  function scopeHeaderText(opts) {
+    const sc = opts && opts.scope;
+    if (!sc) return null;
+    const name = (window.state && state.currentProjectName) || 'Untitled';
+    const parts = ['Counts — ' + name, sc.mode === 'this-canvas' ? 'this sheet' : 'every sheet'];
+    if (Array.isArray(sc.layers) && sc.layers.length) parts.push('layers: ' + sc.layers.join(', '));
+    return parts.join(' · ');
+  }
   function getPipeToolingSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
+    const scopeLine = scopeHeaderText(options);
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
     const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
@@ -549,6 +562,7 @@
       lines.push(DUCT_COPY_HEADING);
       lines.push(...ductRows);
     }
+    if (scopeLine) lines.unshift('--- ' + scopeLine + ' ---');   // D25: framed like '--- Duct ---', which the paste parser treats as a heading
     return lines.join('\n');
   }
 
@@ -629,6 +643,9 @@
     String(text).split(/\r?\n/).forEach((line) => {
       if (!line.trim()) { inDuct = false; return; }
       if (line.trim() === DUCT_COPY_HEADING) { inDuct = true; out.duct = { rows: 0, bidWeightLb: 0 }; return; }
+      // D25: the scope header ("--- Counts — <project> · every sheet · layers: … ---")
+      // is a heading in the same frame, never a row — nor is any framed line.
+      if (/^---\s.*\s---$/.test(line.trim())) return;
       if (inDuct) {
         out.duct.rows += 1;
         const m = /^Bid weight\t.*?([\d,]+) lb$/.exec(line);
@@ -707,6 +724,7 @@
   }
 
   function getEmailTextSummary(options) {
+    const scopeLine = scopeHeaderText(options);
     if (!window.state || !state.pages || !state.pages.length) return '';
     const opts = options || {};
     const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
@@ -827,6 +845,7 @@
       });
       lines.push('');
     }
+    if (scopeLine && lines.length) { const at = lines[0] === 'Takeoff Summary' ? 2 : 0; lines.splice(at, 0, scopeLine); }   // D25
     return lines.join('\n');
   }
 

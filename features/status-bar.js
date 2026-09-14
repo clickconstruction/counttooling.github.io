@@ -27,6 +27,9 @@
   // so the wrap measurement's forced layout read runs only when either changes.
   let footerHintKey = null;
   let footerHintFits = true;
+  // D19 (J19 Friction #5): which save-stamp variant the cached verdict was
+  // reached with — the bar compacts the stamp before it sacrifices the hint.
+  let footerHintCompactStamp = false;
   function invalidateFooterTotals() { footerTotalsDirty = true; }
   function computeFooterTotals() {
     const state = App.state;
@@ -200,6 +203,8 @@
         const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : '—'))
           + (state.currentProjectExternalRef ? ' · ' + state.currentProjectExternalRef : '');
         let lastSavedSegment = '—';
+        // Same text unless the local-save branch below offers a shorter twin.
+        let lastSavedSegmentCompact = null;
         if (lastLocalBackupAt) {
           // B11 (J12/J15): signed-out, the segment shows the local-save stamp
           // the engine already tracks ("Saved on this device · 4:42 PM")
@@ -213,6 +218,13 @@
             .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
           const words = window.innerWidth >= 1280 ? 'Saved on this device' : 'Saved';
           lastSavedSegment = words + ' · ' + timeStr;
+          // D19 (J19 Friction #5): the compact twin is kept ready even on a
+          // wide bar. At ~1380 px the long stamp fits but pushes the tool hint
+          // over the one-line budget, and B11's fixed 1280 px threshold had no
+          // way to notice — the hint (and the duct readout with it) just
+          // vanished for the rest of the session. The fit negotiation below
+          // now spends this before it spends the hint.
+          lastSavedSegmentCompact = 'Saved · ' + timeStr;
         } else if (state.lastSavedAt) {
           const d = new Date(state.lastSavedAt);
           const agoSec = (Date.now() - d.getTime()) / 1000;
@@ -221,6 +233,7 @@
           lastSavedSegment = timeStr + ' | ' + agoStr;
         }
         mode = projectSegment + ' - ' + lastSavedSegment;
+        const modeCompact = lastSavedSegmentCompact ? projectSegment + ' - ' + lastSavedSegmentCompact : mode;
         let toolHint = '';
         // Wrap-cache variant of the hint: live length readout replaced by the
         // fixed worst-case placeholder ('' = no readout, key on toolHint).
@@ -287,20 +300,31 @@
         // the growing number — the verdict stays stable per (static text,
         // width) and the live string is swapped in after the cached verdict.
         if (toolHint && modeEl) {
-          const fullMode = mode + ' | ' + toolHint;
-          const keyedMode = mode + ' | ' + (toolHintKeyed || toolHint);
           const barEl = modeEl.parentElement;
           const actionsEl = document.getElementById('statusBarActions');
+          // D19 (J19 Friction #5): three candidates, in the order the bar
+          // should spend its width — full stamp + hint, COMPACT stamp + hint,
+          // then full stamp alone. B11's own narrow-bar rule says the stamp's
+          // words are the droppable part; the hint carries the only on-screen
+          // mention of "S = size" and the live duct readout, so it goes last.
+          const keyed = (m) => m + ' | ' + (toolHintKeyed || toolHint);
           if (barEl && actionsEl) {
-            const key = keyedMode + '@' + barEl.clientWidth;
+            const key = keyed(mode) + '@' + barEl.clientWidth;
             if (key !== footerHintKey) {
               footerHintKey = key;
-              modeEl.textContent = keyedMode;
-              footerHintFits = actionsEl.offsetTop <= modeEl.offsetTop;
+              modeEl.textContent = keyed(mode);
+              let fits = actionsEl.offsetTop <= modeEl.offsetTop;
+              let compact = false;
+              if (!fits && modeCompact !== mode) {
+                modeEl.textContent = keyed(modeCompact);
+                if (actionsEl.offsetTop <= modeEl.offsetTop) { fits = true; compact = true; }
+              }
+              footerHintFits = fits;
+              footerHintCompactStamp = compact;
             }
-            if (footerHintFits) mode = fullMode;
+            if (footerHintFits) mode = (footerHintCompactStamp ? modeCompact : mode) + ' | ' + toolHint;
           } else {
-            mode = fullMode;
+            mode = mode + ' | ' + toolHint;
           }
         }
       }

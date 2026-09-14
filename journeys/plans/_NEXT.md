@@ -96,6 +96,8 @@ findings into the Tier-2/3 queues.
 > remains unwalked except the 30-min expiry-under-contention (time-gated;
 > machinery covered by unit/spec).
 
+> **RE-CHECKED 2026-09-14 — finding (3) RESOLVED: the purge is healthy.** `cron.job_run_details` shows `cleanup-test-accounts-daily` succeeding every day 2026-08-21 → 2026-09-13 at 08:30 UTC; the 2026-09-13 pg_net response is HTTP 200 `{ok:true, rowsDeleted:0, filesRemoved:0}` with the 7-day cutoff; and `projects` holds **zero rows** for either test account (the 132 Aug 30–31 debris rows are gone). Nothing for ops. The side nit (specs double-creating identically-named rows) stands as a nit.
+
 ## Stage 6 — ⚑ Tier-5 product session (roadmap, not code)
 The 17 verified `gap` rows, intersected with the standing HVAC direction
 (duct-by-size → pounds remains the named #1 product gap). One conversation:

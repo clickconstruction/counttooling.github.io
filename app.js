@@ -141,6 +141,10 @@
     if (changed) {
       markProjectDirty();
       logUserEvent('trade_set', state.currentProjectId || null, { trade: t, route: (opts && opts.route) || 'settings' });
+      // D21 (J5-D): a trade change is one of the TWO events allowed to move a
+      // tool between the strip and the ⋯ (the other is a pin). Re-resolve now
+      // so the strip settles at the change, never mid-use.
+      if (App.updateHeaderMore) App.updateHeaderMore();
     }
     updateUI();
   }
@@ -291,7 +295,7 @@
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
-    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
+    counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, stripPins: {}, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
     iconOrder: null,
@@ -394,6 +398,15 @@
     const ltScope = localStorage.getItem('lineTypeSidebarFilterScope');
     if (ltScope === 'page' || ltScope === 'project') setLineTypeListFilterScope(ltScope);
   } catch (_) {}
+  // D21 (J5-D): the device's last strip pins seed a new project, so an
+  // estimator who pinned Duct keeps it across a plain reload and into the next
+  // bid. A project that carries its own pins overwrites this on hydrate.
+  try {
+    const sp = JSON.parse(localStorage.getItem('stripPins') || '{}');
+    if (sp && typeof sp === 'object' && !Array.isArray(sp)) {
+      state.stripPins = Object.fromEntries(Object.entries(sp).filter(([, v]) => typeof v === 'boolean'));
+    }
+  } catch (_) { /* corrupted entry -> trade defaults */ }
   try {
     const rrh = JSON.parse(localStorage.getItem('recentRoomHeights') || '[]');
     if (Array.isArray(rrh)) state.recentRoomHeights = rrh.filter(h => typeof h === 'number' && h > 0).slice(0, 5);
@@ -796,6 +809,7 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.trade = null;
+    state.stripPins = {};   // D21: pins are per project; the device default is re-read at boot
     state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
     state.parkedScaleDraft = null;
     state.ceilingHeightFt = null;
@@ -4421,7 +4435,7 @@
   // (features/bid-basis.js), which stores it on the PipeTooling bid as the
   // "which marks did we bid to" snapshot.
   function buildCanvasExportData() {
-    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, stripPins: state.stripPins || {}, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
   }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
@@ -4962,7 +4976,7 @@
       try {
         indexedDB.deleteDatabase('clickcount-pdf-cache');
       } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
       for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);

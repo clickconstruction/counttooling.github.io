@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,066 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 3,018 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 8,080 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 3,021 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,522 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 3,490 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,205 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 730 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
+| [styles.css](styles.css) | 2,215 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 732 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 925 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 882 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (84 files) | 23,998 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (84 files) | 24,093 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -186,7 +186,7 @@ modules. Candidates in priority order:
 | [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
 | [rect-drag.spec.js](rect-drag.spec.js) | Playwright regression for the **rect-tool drag gesture** (JOURNEY-MAP Tier-2 #14, T2-10) — on all five rectangle tools (Highlight, Multiply Zone, Scale Zone, Room Sizer, Delete Area) a press-drag-release past the 6px threshold arms corner 1 at the press point and completes the rectangle at the release point through the tool's normal corner-2 click path (dialogs, overlap checks, undo identical to two-click); a sub-threshold press stays a plain click (two-click path unchanged); the aim-loupe coexistence contract holds (hold still 280ms → loupe wins, commits ONE corner, drag machinery inert); a release outside the page completes clamped to the page edge; leaving the canvas mid-drag cancels the whole gesture (no phantom corner). D14 (2026-09-12) closed the bake-in — the TEMP `rect_drag_complete` Save-Status probe is gone from app.js and a static guard here keeps it gone. Asserts no console / page errors; `npx playwright test rect-drag.spec.js` |
 | [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
-| [features/header-more.js](features/header-more.js) + [header-more.spec.js](header-more.spec.js) | The header **"⋯ More tools"** group (2026-08-14/15 field feedback): at every desktop width (>768px) the low-frequency tool tail (Polyline, Highlight, Multiply Zone, Scale Zone, Room Sizer, Ghost, Delete Area, Note, Legend, Grid — the `OVERFLOW_TOOLS` list, hidden inline by styles.css's `body.header-more` rule) lives UNCONDITIONALLY behind `#headerMoreBtn`'s dropdown `#headerMoreMenu`; rows show icon + name + hotkey, click through to the REAL buttons (gating, active classes preserved) and forward right-clicks to the tool-context-menu. Engages first, then `App.updateHeaderCollapsed()` (features/burger-menu.js) measures compact mode against the reduced row; mobile (≤768px) hides the ⋯ and leaves the strip to the media-query regime (B9's padded scroll). `App.onHeaderMoreSync` (updateUI's defensive hook) keeps the ⋯ gold when a tucked tool is active. **D14 (2026-09-12, Will: "keep the strip order")**: `ductBtn` is a menu row too, flagged `strip: true` — it is NOT in the CSS hide list, so the Duct button stays inline at its shipped strip position (after Polyline's slot, before Highlight's) and the row is the reachable path when the strip scrolls in compact mode; `strip` rows are excluded from the ⋯ gold indicator (the inline button shows it). Spec: unconditional tuck at 1700/1000px, 11 rows, click-through + active tracking, Duct inline + row + 390px padded-scroll reachability. D18: the rows carry NO key literals — the hotkey column is read from `App.HOTKEYS` by btnId (`hotkeyFor`), so a key shows here exactly when the keydown handler executes it (Duct's U arrived that way). |
+| [features/header-more.js](features/header-more.js) + [header-more.spec.js](header-more.spec.js) | The header **"⋯ More tools"** group (2026-08-14/15 field feedback): at every desktop width (>768px) the low-frequency tool tail (Polyline, Highlight, Multiply Zone, Scale Zone, Room Sizer, Ghost, Delete Area, Note, Legend, Grid — the `OVERFLOW_TOOLS` list, hidden inline by styles.css's `body.header-more` rule) lives UNCONDITIONALLY behind `#headerMoreBtn`'s dropdown `#headerMoreMenu`; rows show icon + name + hotkey, click through to the REAL buttons (gating, active classes preserved) and forward right-clicks to the tool-context-menu. Engages first, then `App.updateHeaderCollapsed()` (features/burger-menu.js) measures compact mode against the reduced row; mobile (≤768px) hides the ⋯ and leaves the strip to the media-query regime (B9's padded scroll). `App.onHeaderMoreSync` (updateUI's defensive hook) keeps the ⋯ gold when a tucked tool is active. **D14 (2026-09-12, Will: "keep the strip order")**: `ductBtn` is a menu row too, flagged `strip: true` — it is NOT in the CSS hide list, so the Duct button stays inline at its shipped strip position (after Polyline's slot, before Highlight's) and the row is the reachable path when the strip scrolls in compact mode; `strip` rows are excluded from the ⋯ gold indicator (the inline button shows it). Spec: unconditional tuck at 1700/1000px, 11 rows, click-through + active tracking, Duct inline + row + 390px padded-scroll reachability. D18: the rows carry NO key literals — the hotkey column is read from `App.HOTKEYS` by btnId (`hotkeyFor`), so a key shows here exactly when the keydown handler executes it (Duct's U arrived that way). D21 (J5-D, Will's option (b) + Pin — contra D14): WHICH drawing tools sit inline in the strip and which live behind the ⋯ is no longer a fixed CSS id list. `isOverflowed(id)` resolves it from the project's STATED trade (`statedTrade` — `state.trade`, else the device `defaultTrade`, else **null**; deliberately NOT `App.getQuickTrade`, whose final 'plumbing' fallback picks a Quick-creator VOCABULARY and would silently re-arrange the toolbar of every project that never named a trade). `tradeOverflowDefaults`: nothing stated **or** HVAC keeps D14's shipped arrangement (Duct inline, Polyline tucked); a stated plumbing / electrical takes the reverse, since Polyline is their daily tool — so re-arranging the strip is an OPT-IN overridden per tool by `state.stripPins` (`true` = pinned inline, `false` = explicitly tucked, absent = follow the trade). `applyOverflowClasses` paints `.hm-overflowed` onto the buttons and styles.css hides that class under `body.header-more`, so a tool moves between the two places by CLASS alone — the strip's DOM order is never touched and cannot re-order mid-session. Each ⋯ row carries a `.hm-pin` control (`App.setStripPin`), whose click is stopPropagation'd so pinning never also arms the tool. The resolved set is a function of (trade, pins) alone; a trade change re-resolves through `App.updateHeaderMore` (app.js `setProjectTrade`). Registers `setStripPin`, `isToolOverflowed` (spec seam), `applyStripOverflow`, `updateHeaderMore`. Regression: [header-strip-trade.spec.js](header-strip-trade.spec.js). |
 | [mobile-touch.spec.js](mobile-touch.spec.js) | Playwright regression for the **Tier-3 B9 mobile / touch batch** (J1 J15) — the mobile LEFT drawer (`#hamburger` / `body.sidebar-open`) auto-closes on a tool pick: the drawer tool grid (Move, Note, … — Legend/Grid overlay toggles, section headers and the two picker openers do NOT close it), a Counters-list row **arm** (toggle-off keeps the drawer), and Create Counter (a cancelled picker leaves the drawer open); the header tool strip's `padding-right` keeps the last tool clear of `#headerBurger` at full scroll (390 **and** exactly 768, where Quick Line used to sit untappable under the burger); the coarse-pointer copy swaps under `hasTouch` emulation (status hints "Tap …", tap Set-Scale copy, right-click tooltip suffixes stripped at boot and by the dynamic `withRightClickHint` writer, ⇧Q chips hidden) plus a mouse-context control test proving desktop wording is untouched. Asserts no console / page errors; `npx playwright test mobile-touch.spec.js` |
 | [features/canvas-layers.js](features/canvas-layers.js) | Thirty-first feature-file split (`window.App` registry pilot #31; the last candidate named by the original extraction recipe) — the **canvas-layer management UI**: the Add Canvas modal (`#addCanvasModal`, new/duplicate modes; duplicate deep-copies the active layer via the new publish-only dep `App.deepCopyAnnotations`), the Canvas Details modal (`#canvasDetailsModal`, rename-committed on close; the Escape branch in app.js dispatches `#canvasDetailsClose`'s click so the commit lives in one place), the Delete Canvas confirm (→ the private `performDeleteCanvas`, which reactivates the first remaining layer), the footer layers menu (`#canvasLayersBtn`/`#canvasMenu`/`#canvasMenuAdd`), `#addCanvasBtn`, the show-all-canvases peek toggle, and the selective peek chooser (`#canvasPeekMenu` — right-click on `#showAllCanvasesBtn`; a checklist over the page's layers writing `state.peekCanvasIdsByPage`, active layer pinned, tool-context-menu-style dismissal listeners attached only while open, Escape swallowed in capture phase). The three state flags (`pendingAddCanvasMode`/`pendingCanvasEdit`/`pendingDeleteCanvas`) move as private `let`s; the `hideModal` resets go through the `App.onCanvasDetailsHidden`/`App.onDeleteCanvasConfirmHidden` callbacks; the canvas switcher's edit pen (renderCanvasSwitcher, app.js) opens the details modal via `App.openCanvasDetailsModal`. The canvas JSON export (`#exportBtn`) that shared the old section stays in app.js under the renamed marker `// SECTION: Export canvas JSON` |
 | [canvas-layers.spec.js](canvas-layers.spec.js) | Playwright regression for pilot #31 — Add creates an empty active layer; duplicate mode deep-copies the seeded layer's markers into a distinct annotations object; rename commits via Done **and** via Escape (same `#canvasDetailsClose` path); the delete confirm names the layer, removes it, and reactivates the first remaining one. Asserts no console / page errors; `npx playwright test canvas-layers.spec.js` (the peek toggle is covered by [show-all-canvases.spec.js](show-all-canvases.spec.js)) |
@@ -573,71 +573,71 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 <!-- BEGIN SECTION TOC (generated by scripts/build-toc.js - do not edit by hand) -->
 
 - L2 - Constants
-- L195 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
-- L239 - ICONS array lives in icons.js (see icon-data note above).
-- L289 - State
-- L487 - [sync] Sync recovery & client recycle
-- L568 - [sync] Global force reload
-- L656 - [sync] Save Status log & envelope
-- L659 - [sync] Field-error telemetry
-- L718 - [sync] Dirty tracking & local session reset
-- L724 - Undo/redo stacks
-- L882 - [sync] Checkout probe, hashing & PDF cache
-- L944 - Math & Format Helpers
-- L1475 - Coordinate Helpers
-- L1483 - PDF render bitmap cache
-- L1537 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1548 - PDF Rendering
-- L2346 - UI Render Functions
-- L3037 - Inline rename & polyline edit mode
-- L3151 - Modal primitives (showModal / hideModal)
-- L3186 - Toasts & line color picker
-- L3254 - Airboard cloud sync
-- L3299 - Supabase RPC & presence heartbeat
-- L3339 - User activity / event telemetry
-- L3398 - Supabase auth & dev auth
-- L3584 - [sync] Checkout subscription & permission refresh
-- L3594 - Modals & Handlers
-- L3662 - PDF intake (upload, test PDF, hashing)
-- L3670 - Toolbar tool buttons
-- L3873 - Tool sidebar buttons & legend overlay
-- L3964 - Add Line Type modal
-- L4123 - Line color & sidebar handlers
-- L4332 - Polyline modal & drawing
-- L4387 - Zoom bar & page navigation
-- L4413 - Export canvas JSON
-- L4437 - PDF download helpers
-- L4446 - View-link URL helpers & show-highlights/notes
-- L4518 - Custom icon upload handler
-- L4528 - Export & report dropdown menus
-- L4621 - Sidebar drawer toggles
-- L4652 - Mobile actions burger menu pointer & header logo
-- L4664 - User Activity pointer (format.js + features/user-activity.js)
-- L4676 - My Settings pointer (features/my-settings.js)
-- L4701 - Auth & settings entry buttons
-  - L4761 - Project Settings checkout & Save Status bell
-  - L4853 - [sync] Checkout expired recovery
-  - L4909 - [sync] Turn In
-  - L5018 - Share modal pointer & copy-project openers
-  - L5049 - Settings menu actions
-  - L5087 - Auth sign-in form
-  - L5112 - Save Project modal
-  - L5125 - Checkout expired recovery modal wiring
-  - L5230 - Last-session restore prompt
-  - L5237 - Canvas Repair modal wiring
-- L5424 - Canvas Event Handlers
-- L5949 - Event Binding
-- L5959 - Aim loupe (mobile press-hold precise placement)
-- L6111 - Zoom transform preview & commit
-- L6190 - Canvas mouse, wheel & touch handlers
-- L6925 - Global dropdown dismissal & keyboard hotkeys
-- L7308 - [sync] Manual save to cloud
-- L7318 - [sync] Auto-save
-- L7325 - [sync] Local backup (IndexedDB takeoff state)
-- L7458 - [sync] Checkout keep-alive
-- L7472 - App feature registry
-- L7827 - View-only mode
-- L7833 - Init / boot
+- L199 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
+- L243 - ICONS array lives in icons.js (see icon-data note above).
+- L293 - State
+- L500 - [sync] Sync recovery & client recycle
+- L581 - [sync] Global force reload
+- L669 - [sync] Save Status log & envelope
+- L672 - [sync] Field-error telemetry
+- L731 - [sync] Dirty tracking & local session reset
+- L737 - Undo/redo stacks
+- L896 - [sync] Checkout probe, hashing & PDF cache
+- L958 - Math & Format Helpers
+- L1489 - Coordinate Helpers
+- L1497 - PDF render bitmap cache
+- L1551 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1562 - PDF Rendering
+- L2360 - UI Render Functions
+- L3051 - Inline rename & polyline edit mode
+- L3165 - Modal primitives (showModal / hideModal)
+- L3200 - Toasts & line color picker
+- L3268 - Airboard cloud sync
+- L3313 - Supabase RPC & presence heartbeat
+- L3353 - User activity / event telemetry
+- L3412 - Supabase auth & dev auth
+- L3598 - [sync] Checkout subscription & permission refresh
+- L3608 - Modals & Handlers
+- L3676 - PDF intake (upload, test PDF, hashing)
+- L3684 - Toolbar tool buttons
+- L3887 - Tool sidebar buttons & legend overlay
+- L3978 - Add Line Type modal
+- L4137 - Line color & sidebar handlers
+- L4346 - Polyline modal & drawing
+- L4401 - Zoom bar & page navigation
+- L4427 - Export canvas JSON
+- L4451 - PDF download helpers
+- L4460 - View-link URL helpers & show-highlights/notes
+- L4532 - Custom icon upload handler
+- L4542 - Export & report dropdown menus
+- L4635 - Sidebar drawer toggles
+- L4666 - Mobile actions burger menu pointer & header logo
+- L4678 - User Activity pointer (format.js + features/user-activity.js)
+- L4690 - My Settings pointer (features/my-settings.js)
+- L4715 - Auth & settings entry buttons
+  - L4775 - Project Settings checkout & Save Status bell
+  - L4867 - [sync] Checkout expired recovery
+  - L4923 - [sync] Turn In
+  - L5032 - Share modal pointer & copy-project openers
+  - L5063 - Settings menu actions
+  - L5101 - Auth sign-in form
+  - L5126 - Save Project modal
+  - L5139 - Checkout expired recovery modal wiring
+  - L5244 - Last-session restore prompt
+  - L5251 - Canvas Repair modal wiring
+- L5438 - Canvas Event Handlers
+- L5963 - Event Binding
+- L5973 - Aim loupe (mobile press-hold precise placement)
+- L6125 - Zoom transform preview & commit
+- L6204 - Canvas mouse, wheel & touch handlers
+- L6939 - Global dropdown dismissal & keyboard hotkeys
+- L7322 - [sync] Manual save to cloud
+- L7332 - [sync] Auto-save
+- L7339 - [sync] Local backup (IndexedDB takeoff state)
+- L7472 - [sync] Checkout keep-alive
+- L7486 - App feature registry
+- L7841 - View-only mode
+- L7847 - Init / boot
 
 <!-- END SECTION TOC -->
 

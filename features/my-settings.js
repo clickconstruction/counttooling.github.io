@@ -43,7 +43,7 @@
       else document.getElementById('authBtn').click();
       return;
     }
-    document.getElementById('mySettingsEmail').textContent = user.email || '—';
+    document.getElementById('mySettingsEmail').textContent = user.email || 'none';
     document.getElementById('mySettingsNewPassword').value = '';
     document.getElementById('mySettingsConfirmPassword').value = '';
     document.getElementById('mySettingsPasswordError').style.display = 'none';

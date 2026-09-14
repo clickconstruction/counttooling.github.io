@@ -545,7 +545,7 @@
             <span id="statusPdfLabel" class="status-indicator-label"></span>
           </span>
           <span id="statusMode">Ready</span>
-          <span id="statusCoords">—</span>
+          <span id="statusCoords">none</span>
           <span id="statusTotals" class="status-totals" style="display:none;"></span>
           <!-- Measure-tool result chip: renders state.lastMeasure while it
                belongs to the current page (features/status-bar.js, T2 #15). -->
@@ -623,10 +623,10 @@
         </div>
         <div id="scaleCheckResult" style="display:none;">
           <div class="scale-check-tiles">
-            <div class="scale-check-tile"><div class="scale-check-tile-label">Expected</div><div class="scale-check-tile-value" id="scaleCheckExpected">—</div></div>
-            <div class="scale-check-tile"><div class="scale-check-tile-label">Current scale reads</div><div class="scale-check-tile-value" id="scaleCheckMeasured">—</div></div>
+            <div class="scale-check-tile"><div class="scale-check-tile-label">Expected</div><div class="scale-check-tile-value" id="scaleCheckExpected">none</div></div>
+            <div class="scale-check-tile"><div class="scale-check-tile-label">Current scale reads</div><div class="scale-check-tile-value" id="scaleCheckMeasured">none</div></div>
           </div>
-          <div class="scale-check-delta" id="scaleCheckDelta">—</div>
+          <div class="scale-check-delta" id="scaleCheckDelta">none</div>
           <div class="scale-check-sheet-hint" id="scaleCheckSheetHint" style="display:none;"></div>
         </div>
         <div class="actions">
@@ -977,7 +977,7 @@
         </div>
         <div>
           <label title="Project-wide. The auto riser on runs that start at a system's equipment marker reads it">Deck height (project)</label>
-          <div class="duct-size-inputs"><input type="number" id="ductCreateDeck" min="0" step="0.5" placeholder="—" aria-label="Project deck height, feet"><span>ft</span></div>
+          <div class="duct-size-inputs"><input type="number" id="ductCreateDeck" min="0" step="0.5" placeholder="none" aria-label="Project deck height, feet"><span>ft</span></div>
         </div>
       </div>
       <div class="form-group">
@@ -1033,7 +1033,7 @@
            and VD per tap counts a Volume damper fittings row at every tap. -->
       <div class="duct-schedule-design-row">
         <span class="duct-schedule-section-label">Polish</span>
-        <label>Deck height <input type="number" id="ductDeckHeight" class="duct-schedule-pct duct-schedule-num" min="0" step="0.5" placeholder="—" aria-label="Project deck height, feet"> ft</label>
+        <label>Deck height <input type="number" id="ductDeckHeight" class="duct-schedule-pct duct-schedule-num" min="0" step="0.5" placeholder="none" aria-label="Project deck height, feet"> ft</label>
         <label>Max flex <input type="number" id="ductMaxFlex" class="duct-schedule-pct duct-schedule-num" min="1" max="25" step="0.5" aria-label="Maximum single flex drop, feet"> ft</label>
         <label class="duct-schedule-vd-label">VD per tap
           <button type="button" class="toggle-switch" id="ductVdPerTapBtn" aria-pressed="true" title="Count a volume damper at every tap">
@@ -1368,7 +1368,7 @@
           <div class="form-group" id="gridOriginDisplay" style="display:none;">
             <label style="display:none;">Origin</label>
             <div style="display:flex;align-items:center;gap:12px;">
-              <span id="gridOriginText" style="display:none;color:var(--text2);">—</span>
+              <span id="gridOriginText" style="display:none;color:var(--text2);">none</span>
               <button type="button" class="settings-menu-btn" id="gridClearOrigin">Origin set, click to reset</button>
             </div>
           </div>

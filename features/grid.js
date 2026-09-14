@@ -65,7 +65,7 @@
     const txt = document.getElementById('gridOriginText');
     disp.style.display = hasOrigin ? '' : 'none';
     document.getElementById('gridSetOriginFormGroup').style.display = hasOrigin ? 'none' : '';
-    txt.textContent = hasOrigin ? (ox.toFixed(2) + ', ' + oy.toFixed(2) + ' ' + (gs.unit || 'ft')) : '—';
+    txt.textContent = hasOrigin ? (ox.toFixed(2) + ', ' + oy.toFixed(2) + ' ' + (gs.unit || 'ft')) : 'none';
     document.getElementById('gridMajorInterval').value = gs.majorInterval != null && gs.majorInterval > 0 ? String(gs.majorInterval) : '';
     const opacityPct = Math.round((gs.opacity ?? 0.35) * 100);
     document.getElementById('gridOpacity').value = opacityPct;
@@ -114,7 +114,7 @@
     state.gridSettings.offsetY = 0;
     document.getElementById('gridOriginDisplay').style.display = 'none';
     document.getElementById('gridSetOriginFormGroup').style.display = '';
-    document.getElementById('gridOriginText').textContent = '—';
+    document.getElementById('gridOriginText').textContent = 'none';
     App.renderAnnotations();
     App.updateUI();
   };

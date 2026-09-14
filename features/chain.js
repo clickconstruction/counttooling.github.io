@@ -251,7 +251,7 @@
       : '<span class="chain-pair-icon">?</span>';
     const swatchHtml = '<span class="chain-pair-swatch" style="background:' + esc(lt?.color || '#4a9eff') + '"></span>';
     chip.innerHTML = iconHtml + '<span class="chain-pair-plus">+</span>' + swatchHtml;
-    chip.title = 'Chaining ' + (counter?.name || '—') + ' + ' + (lt?.name || '—') + '. Click to change';
+    chip.title = 'Chaining ' + (counter?.name || 'none') + ' + ' + (lt?.name || 'none') + '. Click to change';
   }
 
   // Core->feature sync: updateUI calls this every pass. Shows/hides the panel

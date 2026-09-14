@@ -309,7 +309,7 @@
     const chip = (id) => (App.ruleChipHtml ? ' ' + App.ruleChipHtml(id, { cls: 'rule-chip-th' }) : '');
     html += '<table class="duct-schedule-table"><tr><th>Size</th><th>Gauge' + chip('hvac.duct.gauge-schedule') + '</th><th>LF</th><th>lb/ft' + chip('hvac.duct.sheet-weight') + '</th><th>lb</th></tr>';
     s.straightRows.forEach((r) => {
-      html += '<tr><td class="mono">' + esc(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : '—') + '</td><td class="mono">' + esc(lfLabel(r)) + '</td><td class="mono">' + r.lbPerFt.toFixed(2) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
+      html += '<tr><td class="mono">' + esc(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td class="mono">' + esc(lfLabel(r)) + '</td><td class="mono">' + r.lbPerFt.toFixed(2) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
     });
     html += '<tr class="duct-schedule-total-row"><td>Straight total</td><td></td><td class="mono">' + fmtFt(s.straightTotalFt) + '</td><td></td><td class="mono num">' + fmtLb(s.straightTotalLb) + '</td></tr>';
     html += '</table>';
@@ -445,7 +445,7 @@
     lines.push('');
     lines.push('Straight duct');
     s.straightRows.forEach((r) => {
-      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : '—'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
+      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : 'none'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
     });
     lines.push(['Straight total', '', fmtFt(s.straightTotalFt), '', fmtLb(s.straightTotalLb) + ' lb'].join('\t'));
     if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));
@@ -488,7 +488,7 @@
     if (!s) return [];
     const lines = [];
     s.straightRows.forEach((r) => {
-      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : '—'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
+      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : 'none'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
     });
     lines.push(['Straight total', '', fmtFt(s.straightTotalFt), '', fmtLb(s.straightTotalLb) + ' lb'].join('\t'));
     if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));

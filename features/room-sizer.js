@@ -181,7 +181,7 @@
     if (!dims) { el.textContent = 'Set the page scale to size this box.'; return; }
     const lengthFt = Math.max(dims.widthFt, dims.lengthFt);
     const widthFt = Math.min(dims.widthFt, dims.lengthFt);
-    const hCell = heightFt > 0 ? fmtFtIn(heightFt) : '—';
+    const hCell = heightFt > 0 ? fmtFtIn(heightFt) : 'none';
     const volCell = heightFt > 0 ? fmtVol(dims.areaSqFt * heightFt) + ' Air Volume' : 'enter height for air volume';
     el.innerHTML = '<table class="room-dims-table">'
       + '<tr><th>Length</th><th>Width</th><th>Height</th><th>Totals</th></tr>'

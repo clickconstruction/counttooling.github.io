@@ -118,7 +118,7 @@ test.describe('Polyline arm — no dialog tax', () => {
     expect(errors).toEqual([]);
   });
 
-  test('zero line types: "—" is blocked — empty-state copy, disabled Start, forced click commits nothing', async ({ page }) => {
+  test('zero line types: "none" is blocked — empty-state copy, disabled Start, forced click commits nothing', async ({ page }) => {
     await page.evaluate(() => { window.state.lineTypes = []; window.state.activeLineTypeId = null; });
     await page.evaluate(() => { document.getElementById('polylineBtn').click(); });
     await page.waitForSelector('#polylineModal.visible', { timeout: 5000 });
@@ -127,7 +127,7 @@ test.describe('Polyline arm — no dialog tax', () => {
       const sel = /** @type {HTMLSelectElement} */ (document.getElementById('polylineLineType'));
       return { text: sel.options[0]?.textContent, value: sel.value };
     });
-    expect(select.text).toBe('—');
+    expect(select.text).toBe('none');
     expect(select.value).toBe('');
     await expect(page.locator('#polylineEmpty')).toBeVisible();
     await expect(page.locator('#polylineEmpty')).toHaveText('Add a line type first using Create or Quick.');

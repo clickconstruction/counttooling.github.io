@@ -238,7 +238,7 @@
     const sizeSel = document.getElementById('counterQuickCountSize');
     const typeSel = document.getElementById('counterQuickCountType');
     const materialSel = document.getElementById('counterQuickCountMaterial');
-    const opt = (v) => '<option value="' + esc(v) + '">' + (v === '' ? '—' : esc(v)) + '</option>';
+    const opt = (v) => '<option value="' + esc(v) + '">' + (v === '' ? 'none' : esc(v)) + '</option>';
     if (sizeSel) sizeSel.innerHTML = m.sizes.map(opt).join('');
     if (typeSel) typeSel.innerHTML = m.types.map(opt).join('');
     if (materialSel) materialSel.innerHTML = m.materials.map(opt).join('');

@@ -58,7 +58,7 @@
         listEl.innerHTML = data.map((p) => {
           const sizeStr = formatSizeMb(p.size_bytes);
           const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';
-          const metaLine1 = [esc(p.owner_email || '—') + (App.twinBadgeHtml ? App.twinBadgeHtml(p.owner_email) : ''), dateStr, sizeStr].filter(Boolean).join(' · ');
+          const metaLine1 = [esc(p.owner_email || 'none') + (App.twinBadgeHtml ? App.twinBadgeHtml(p.owner_email) : ''), dateStr, sizeStr].filter(Boolean).join(' · ');
           const metaLine2Parts = [];
           const countStr = (p.counter_count != null || p.line_count != null)
             ? [p.counter_count != null ? p.counter_count + (p.counter_count === 1 ? ' counter' : ' counters') : null, p.line_count != null ? p.line_count + (p.line_count === 1 ? ' line' : ' lines') : null].filter(Boolean).join(' · ')

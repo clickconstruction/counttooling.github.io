@@ -63,7 +63,7 @@
     return '<div class="ua-tile"><div class="ua-tile-num">' + (num || 0) + '</div><div class="ua-tile-label">' + label + '</div></div>';
   }
   function renderActivityHeader(d, email) {
-    const member = d.member_since ? App.formatUserActivityDateTime(d.member_since) : '—';
+    const member = d.member_since ? App.formatUserActivityDateTime(d.member_since) : 'none';
     const n = d.project_count || 0;
     return '<div class="ua-overview-header">' +
       '<div><span style="font-weight:600;">' + ovEsc(d.email || email || '') + '</span>' + (App.twinBadgeHtml ? App.twinBadgeHtml(d.email || email) : '') + ' <span class="ua-role-pill">' + ovEsc(d.role || 'User') + '</span></div>' +

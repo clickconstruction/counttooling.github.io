@@ -75,7 +75,7 @@
     if (listOk && Array.isArray(users) && users.length) {
       const sorted = users.slice().sort((a, b) => String(a.email || '').localeCompare(String(b.email || ''), undefined, { sensitivity: 'base' }));
       sorted.forEach((u) => {
-        html += '<option value="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + esc(App.twinEmailText ? App.twinEmailText(u.email || '—') : (u.email || '—')) + '</option>';
+        html += '<option value="' + esc(u.id) + '" data-email="' + esc(u.email || '') + '">' + esc(App.twinEmailText ? App.twinEmailText(u.email || 'none') : (u.email || 'none')) + '</option>';
       });
     }
     sel.innerHTML = html;
@@ -246,7 +246,7 @@
         const esc = (s) => App.escapeHtml(s);
         if (listEl) {
           listEl.innerHTML = data.map((row) => {
-            const when = row.created_at ? App.formatUserActivityDateTime(row.created_at) : '—';
+            const when = row.created_at ? App.formatUserActivityDateTime(row.created_at) : 'none';
             let meta;
             try { meta = row.metadata && typeof row.metadata === 'object' ? JSON.stringify(row.metadata) : String(row.metadata || ''); } catch (_) { meta = ''; }
             return '<div class="settings-user-row" style="flex-wrap:wrap;align-items:flex-start;">' +

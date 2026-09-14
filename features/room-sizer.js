@@ -293,6 +293,56 @@
     else delete room.roomType;
   }
 
+  // D24 (X4 option D): read a printed room name out of the text inside the box.
+  // The text layer is the D10 primitive (features/tag-reader.js pageTextItems,
+  // lazy per page); the grammar is duct-model's parseRoomNameCallout. Among
+  // several candidates the LARGEST print wins (a room's name is set bigger
+  // than its notes), ties to the one nearest the box's center.
+  let pendingRoomNameFromPlan = null;
+  function roomNameFromPlan(rect, pageIdx) {
+    if (!App.pageTextItems || typeof parseRoomNameCallout !== 'function') return null;
+    const minX = Math.min(rect.x1, rect.x2), maxX = Math.max(rect.x1, rect.x2);
+    const minY = Math.min(rect.y1, rect.y2), maxY = Math.max(rect.y1, rect.y2);
+    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+    let best = null;
+    App.pageTextItems(pageIdx).forEach((it) => {
+      const ix = it.x + it.w / 2, iy = it.y + it.h / 2;
+      if (ix < minX || ix > maxX || iy < minY || iy > maxY) return;
+      const name = parseRoomNameCallout(it.str);
+      if (!name) return;
+      const d = Math.hypot(ix - cx, iy - cy);
+      if (!best || it.h > best.h + 0.5 || (Math.abs(it.h - best.h) <= 0.5 && d < best.d)) best = { name, h: it.h, d };
+    });
+    return best ? best.name : null;
+  }
+  function applyRoomNamePrefill(name) {
+    const note = document.getElementById('roomBoxNameNote');
+    const input = document.getElementById('roomBoxNewRoomName');
+    pendingRoomNameFromPlan = null;
+    if (note) note.hidden = true;
+    if (!name || !input) return;
+    const rooms = App.state.rooms || [];
+    const existing = rooms.find((r) => (r.name || '').trim().toLowerCase() === name.toLowerCase());
+    if (existing) { renderRoomPicker(existing.id); syncRoomBoxTypeField(); return; }   // the plan says this box is a room we already have
+    renderRoomPicker('__new__');
+    syncRoomBoxTypeField();
+    input.value = name;
+    pendingRoomNameFromPlan = name;
+    if (note) { note.textContent = 'from the plan — "' + name + '"'; note.hidden = false; }
+  }
+  // A text layer still loading when the dialog opened lands here (the D10
+  // pattern): prefill only if the box is still pending and the name box is
+  // still empty — a name the estimator has typed is never overwritten.
+  (App.pageTextLoadedListeners = App.pageTextLoadedListeners || []).push((pageIdx) => {   // order-independent: tag-reader reads this list at notify time
+    const state = App.state;
+    const rect = state.pendingRoomBox;
+    if (!rect || pageIdx !== state.currentPage) return;
+    if (!document.getElementById('roomBoxModal')?.classList.contains('visible')) return;
+    const input = document.getElementById('roomBoxNewRoomName');
+    if (input && input.value.trim()) return;
+    applyRoomNamePrefill(roomNameFromPlan(rect, pageIdx));
+  });
+
   function openRoomBoxModal(rect) {
     const state = App.state;
     if (state.isViewer) return;
@@ -315,6 +365,7 @@
     renderRecentHeightChips();
     syncDeckField();
     syncRoomBoxTypeField();   // D19
+    applyRoomNamePrefill(roomNameFromPlan(rect, state.currentPage));   // D24
     updateDimsPreview(rect, currentHeightInput() || 0);
     App.showModal('roomBoxModal');
     if (!(lastHeightFt > 0)) h.focus();
@@ -337,6 +388,7 @@
     renderRecentHeightChips();
     syncDeckField();
     syncRoomBoxTypeField();   // D19
+    applyRoomNamePrefill(null);   // D24: an edit never re-reads the plan
     updateDimsPreview(box, box.heightFt || 0);
     App.showModal('roomBoxModal');
   }
@@ -357,6 +409,7 @@
   }
 
   document.getElementById('roomBoxCancel').onclick = () => {
+    pendingRoomNameFromPlan = null;   // D24
     App.hideModal('roomBoxModal');
     App.state.pendingRoomBox = null;
     App.state.pendingRoomBoxEdit = null;
@@ -399,6 +452,14 @@
         App.markProjectDirty();
       }
       // Tool stays TOOL.ROOM: the workflow is draw -> assign -> draw the next box.
+    }
+    // D24: a room created from a plan-read name is labelled the option-D way
+    // (a totals tag placed off the printed text) — the flag rides the room,
+    // and rooms serialize wholesale. A name the estimator changed is theirs.
+    if (pendingRoomNameFromPlan) {
+      const created = (state.rooms || []).find((r) => r.id === roomId);
+      if (created && (created.name || '').trim() === pendingRoomNameFromPlan && !created.nameFromPlan) { created.nameFromPlan = true; }
+      pendingRoomNameFromPlan = null;
     }
     lastRoomId = roomId;
     lastHeightFt = heightFt;

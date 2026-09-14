@@ -813,6 +813,21 @@ test('attachDuctDevices: nearest run within snap wins; far devices unattached', 
   assert.strictEqual(wide.attached.length, 1);
 });
 
+test('parseRoomNameCallout: room-name-shaped strings read as names — D24', () => {
+  assert.strictEqual(dm.parseRoomNameCallout('OPEN OFFICE 204'), 'OPEN OFFICE 204');
+  assert.strictEqual(dm.parseRoomNameCallout('MECH'), 'MECH');
+  assert.strictEqual(dm.parseRoomNameCallout('Corridor 12A'), 'Corridor 12A');
+  assert.strictEqual(dm.parseRoomNameCallout('Conf. Rm 3B'), 'Conf. Rm 3B');
+  assert.strictEqual(dm.parseRoomNameCallout('  Break   Room  '), 'Break Room');   // whitespace collapsed
+});
+
+test('parseRoomNameCallout: sizes, dimensions, dates, ratios, notes and titles read as null — D24', () => {
+  for (const s of ['24x12', '12"Ø', '24\'-0"', '12/25/2026', '1/4" = 1\'-0"', '1:100', '450', 'A-1', 'TYP', 'SEE NOTE 3',
+    'MECHANICAL PLAN', 'SHEET 3', 'SCALE', 'DETAIL 2', '', null, undefined, 'x'.repeat(41)]) {
+    assert.strictEqual(dm.parseRoomNameCallout(s), null, JSON.stringify(s));
+  }
+});
+
 test('ductNearestOnPolyline: carries the foot of the perpendicular — D19', () => {
   const verts = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
   const hit = dm.ductNearestOnPolyline({ x: 40, y: 9 }, verts);

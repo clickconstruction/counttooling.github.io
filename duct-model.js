@@ -2109,6 +2109,30 @@ function ductCalloutDimOk(n) { return Number.isInteger(n) && n >= DUCT_CALLOUT_M
  * both a rect and a round token the EARLIER one wins (a transition callout
  * "24x12 to 12"Ø" reads its first size).
  */
+// D24 (X4 option D): a printed ROOM NAME — "OPEN OFFICE 204", "MECH", "Corridor
+// 12A" — read out of the text inside a Room box. Letters first (a word of 2+
+// letters, more words allowed), an optional trailing room number; NOT a
+// dimension, a duct size, a date, a scale ratio, a bare number or one of the
+// drawing-note words that live inside rooms on every sheet ("TYP", "SEE
+// NOTE 3"). Returns the name as printed (whitespace collapsed) or null.
+const ROOM_NAME_STOPWORDS = new Set(['TYP', 'TYPICAL', 'SEE', 'NOTE', 'NOTES', 'DETAIL', 'SCALE', 'SHEET', 'PLAN', 'REV', 'NORTH', 'NTS', 'REF', 'EQ', 'MIN', 'MAX', 'CLR', 'AFF', 'VIF', 'NIC', 'EXISTING', 'NEW', 'DEMO', 'CFM', 'DIA', 'UP', 'DN']);
+const ROOM_NAME_RE = /^\s*([A-Za-z][A-Za-z.&'/-]*(?:\s+[A-Za-z][A-Za-z.&'/-]*)*)(?:\s+(\d{1,4}[A-Za-z]?))?\s*$/;
+function parseRoomNameCallout(text) {
+  const s = String(text == null ? '' : text).replace(/\s+/g, ' ').trim();
+  if (!s || s.length > 40) return null;
+  if (parseDuctCallout(s)) return null;                 // a duct size is not a room
+  if (/\d\s*['"″”]|\d\s*-\s*\d|\d\/\d|\d:\d/.test(s)) return null;   // dimensions, dates, ratios
+  const m = ROOM_NAME_RE.exec(s);
+  if (!m) return null;
+  const words = m[1].split(' ');
+  if (words.every((w) => w.replace(/[^A-Za-z]/g, '').length < 2)) return null;
+  if (words.length === 1 && ROOM_NAME_STOPWORDS.has(words[0].toUpperCase())) return null;
+  // Drawing-note and title-block words disqualify a phrase outright: "SEE
+  // NOTE 3" is a note, "MECHANICAL PLAN" is a title, neither is a room.
+  if (words.some((w) => ['SEE', 'NOTE', 'NOTES', 'TYP', 'PLAN', 'SHEET', 'SCALE', 'DETAIL', 'REV', 'SECTION', 'ELEVATION'].includes(w.toUpperCase()))) return null;
+  return m[2] ? m[1] + ' ' + m[2] : m[1];
+}
+
 function parseDuctCallout(text) {
   const s = String(text == null ? '' : text);
   if (!s || !/\d/.test(s)) return null;
@@ -2181,6 +2205,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // design-build accumulation (D6)
     ductMarkerCfm, ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,
+    // room names from the plan (D24)
+    parseRoomNameCallout, ROOM_NAME_STOPWORDS,
     // flex leaders + stray rescue (D19)
     ductDeviceLeaders, ductNearestRunPoint, DUCT_ATTACH_SEARCH_PDF,
     // room CFM defaults + air balance (D7)

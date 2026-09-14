@@ -216,9 +216,70 @@ function createCanvasDraw(deps) {
   // Boxes render in their room's color with a name + W×L×H label; a box whose
   // page (or containing scale zone) has no scale gets an explicit "no scale"
   // label instead of silently wrong numbers.
+  // D24 (X4 option D): which label each room box gets on this sheet.
+  //   'full'     — today's Name + L×W×H block (rooms the estimator named)
+  //   'nameOnly' — the name alone (option B: a plan-named room whose text layer
+  //                is not available at paint time, e.g. an export of a page
+  //                whose text was never fetched — nothing to collide against)
+  //   'none'     — a plan-named room's non-largest box (the union is labelled once)
+  // and, per plan-named room, ONE totals tag on its largest box: text
+  // "5,670 ft³ · 450 CFM · ✓", placed at the first anchor (corners first, then
+  // edge midpoints) whose estimated rect clears every printed text item in
+  // the box. Pure over (ann, pageIdx) through deps — the spec seam.
+  const ROOM_TAG_ANCHORS = ['nw', 'ne', 'sw', 'se', 'n', 's', 'w', 'e'];
+  function planRoomLabels(ann, pageIdx) {
+    const state = deps.getState();
+    const boxes = ann.roomBoxes || [];
+    // Nothing to plan unless some box belongs to a plan-named room — the common
+    // case exits here without touching the text layer or the balance rows.
+    const anyFromPlan = boxes.some(b => (state.rooms || []).some(r => r.id === b.roomId && r.nameFromPlan));
+    if (!anyFromPlan) return { boxes: boxes.map((b, i) => ({ index: i, mode: 'full' })), tags: [] };
+    const items = deps.getPageTextItems ? (deps.getPageTextItems(pageIdx) || []) : [];
+    const balance = deps.getRoomBalanceForPage ? (deps.getRoomBalanceForPage(pageIdx) || []) : [];
+    const byRoom = new Map();
+    const plan = boxes.map((b, i) => {
+      const room = (state.rooms || []).find(r => r.id === b.roomId);
+      if (!room || !room.nameFromPlan) return { index: i, mode: 'full' };
+      if (!items.length) return { index: i, mode: 'nameOnly' };
+      const dims = roomBoxDimsFeet(b, deps.getEffectiveScaleForLine(ann, b, false, pageIdx));
+      const area = Math.abs(b.x2 - b.x1) * Math.abs(b.y2 - b.y1);
+      const e = byRoom.get(room.id) || { room, largest: -1, largestArea: -1, volume: 0, sqft: 0 };
+      if (area > e.largestArea) { e.largest = i; e.largestArea = area; }
+      if (dims) { e.volume += dims.volumeCuFt; e.sqft += dims.areaSqFt; }
+      byRoom.set(room.id, e);
+      return { index: i, mode: 'none' };
+    });
+    const tags = [];
+    byRoom.forEach((e) => {
+      const b = boxes[e.largest];
+      const minX = Math.min(b.x1, b.x2), maxX = Math.max(b.x1, b.x2), minY = Math.min(b.y1, b.y2), maxY = Math.max(b.y1, b.y2);
+      const parts = [Math.round(e.volume).toLocaleString() + ' ft³'];
+      const target = typeof roomTargetCfm === 'function' ? roomTargetCfm(e.room, e.sqft) : 0;
+      if (target > 0) {
+        parts.push(Math.round(target).toLocaleString() + ' CFM');
+        const row = balance.find(r => r.id === e.room.id);
+        if (row) parts.push(row.under ? '⚠' : '✓');
+      }
+      const text = parts.join(' · ');
+      // Estimated tag rect in PDF pts (9 pt DM Sans ≈ 0.55 em per char, 12 pt tall, 3 pt pad).
+      const w = Math.min(maxX - minX, text.length * 4.95 + 6), hgt = 13, pad = 3;
+      const inBox = items.filter(it => it.x + it.w > minX && it.x < maxX && it.y + it.h > minY && it.y < maxY);
+      const rectFor = (a) => {
+        const x = a.endsWith('w') ? minX + pad : a.endsWith('e') ? maxX - pad - w : (minX + maxX) / 2 - w / 2;
+        const y = a.startsWith('n') ? minY + pad : a.startsWith('s') ? maxY - pad - hgt : (minY + maxY) / 2 - hgt / 2;
+        return { x, y, w, h: hgt };
+      };
+      const clear = (r) => !inBox.some(it => it.x < r.x + r.w && it.x + it.w > r.x && it.y < r.y + r.h && it.y + it.h > r.y);
+      let anchor = ROOM_TAG_ANCHORS.find(a => clear(rectFor(a))) || 'nw';
+      tags.push({ roomId: e.room.id, boxIndex: e.largest, text, anchor, rect: rectFor(anchor), collided: !clear(rectFor(anchor)) });
+    });
+    return { boxes: plan, tags };
+  }
   function drawRoomBoxesToContext(ctx, ann, pageIdx, tcFn, fontScale) {
     const state = deps.getState();
-    (ann.roomBoxes || []).forEach(b => {
+    const labelPlan = planRoomLabels(ann, pageIdx);
+    (ann.roomBoxes || []).forEach((b, bi) => {
+      const mode = labelPlan.boxes[bi]?.mode || 'full';
       const room = (state.rooms || []).find(r => r.id === b.roomId);
       const color = room?.color || '#47c88e';
       const minX = Math.min(b.x1, b.x2), maxX = Math.max(b.x1, b.x2);
@@ -234,6 +295,19 @@ function createCanvasDraw(deps) {
       const effScale = deps.getEffectiveScaleForLine(ann, b, false, pageIdx);
       const dims = roomBoxDimsFeet(b, effScale);
       const nameLabel = room?.name || 'Room';
+      if (mode === 'none') return;   // D24: the union is labelled once, on the largest box
+      if (mode === 'nameOnly') {     // D24 option B: the name alone, centered
+        const nameSize = 13 * fontScale, pad = 4 * fontScale;
+        const center = tcFn({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+        ctx.font = '600 ' + nameSize + 'px DM Sans';
+        const nw = ctx.measureText(nameLabel).width;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(center.x - nw / 2 - pad, center.y - nameSize / 2 - pad, nw + pad * 2, nameSize + pad * 2);
+        ctx.fillStyle = '#222'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.fillText(nameLabel, center.x, center.y - nameSize / 2);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        return;
+      }
       // Dims read L × W (× H): longer side first, matching the modal's table,
       // with small (L)/(W)/(H) tags centered under their segments.
       let segs = null;
@@ -280,6 +354,22 @@ function createCanvasDraw(deps) {
         });
       }
       ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+    });
+    // D24: the totals tags — one per plan-named room, off the printed text.
+    labelPlan.tags.forEach(t => {
+      const room = (state.rooms || []).find(r => r.id === t.roomId);
+      const color = room?.color || '#47c88e';
+      const size = 9 * fontScale, pad = 3 * fontScale;
+      const p = tcFn({ x: t.rect.x, y: t.rect.y });
+      ctx.font = '600 ' + size + 'px DM Sans';
+      const tw = ctx.measureText(t.text).width;
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillRect(p.x, p.y, tw + pad * 2, size + pad * 2);
+      ctx.strokeStyle = color; ctx.lineWidth = 1;
+      ctx.strokeRect(p.x, p.y, tw + pad * 2, size + pad * 2);
+      ctx.fillStyle = '#222'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(t.text, p.x + pad, p.y + pad);
       ctx.textBaseline = 'alphabetic';
     });
   }
@@ -1509,7 +1599,7 @@ function createCanvasDraw(deps) {
     drawAnnotationsCore,
     drawGhosts,
     drawLegend,
-    legendHasRows,
+    legendHasRows, planRoomLabels,
     computeLegendRows,   // D17 spec seam (App.legendRowsFor) — the rows the legend paints
     drawGrid,
   };

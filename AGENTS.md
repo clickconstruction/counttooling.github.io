@@ -423,7 +423,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   every intake like `legendSettings`), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is
   true OR the project has groups; latched true on first group create; restored
-  by BOTH shared hydrate paths and the copy/load/import intakes), `rooms` (Room Sizer palette —
+  by BOTH shared hydrate paths and the copy/load/import intakes), `rooms` (Room Sizer palette — a room carries `nameFromPlan: true` when D24 read its name off the plan's text layer, which switches its label to the once-per-room totals tag;
   each canvas's `annotations.roomBoxes` references a room id), `activeCanvasIdByPage`. Each saved
   page also carries `bakeFrame` `{ w, h, intrinsic }` (the viewport dims at `page.rotation`
   + the PDF's intrinsic `/Rotate`) so a later load / view-link viewer can detect when the

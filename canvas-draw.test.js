@@ -747,3 +747,55 @@ test('drawAnnotationsCore: no ghost without a scale, under the cutoff, or with l
   const on = paint({ legendSettings: { showRooms: true } }, { pixelsPerUnit: 12, unit: 'ft' });
   assert.strictEqual(ghostStrokes(on), 2);
 });
+
+// --- planRoomLabels (D24, X4 option D) -----------------------------------------
+
+function roomState(nameFromPlan) {
+  return { rooms: [{ id: 'r1', name: 'OPEN OFFICE 204', color: '#47c88e', roomType: 'office', nameFromPlan }], groups: [], counters: [], lineTypes: [] };
+}
+function roomDeps(state, items, balance) {
+  return Object.assign(makeDeps(state), {
+    getEffectiveScaleForLine: () => ({ pixelsPerUnit: 12, unit: 'ft' }),
+    getPageTextItems: () => items,
+    getRoomBalanceForPage: () => balance || [],
+  });
+}
+
+test('planRoomLabels: estimator-named rooms keep the full label; plan-named rooms get one tag on the largest box', () => {
+  const ann = { roomBoxes: [
+    { x1: 0, y1: 0, x2: 240, y2: 200, heightFt: 9, roomId: 'r1' },
+    { x1: 0, y1: 200, x2: 100, y2: 248, heightFt: 9, roomId: 'r1' },
+  ] };
+  const full = createCanvasDraw(roomDeps(roomState(false), [])).planRoomLabels(ann, 0);
+  assert.deepStrictEqual(full.boxes.map(b => b.mode), ['full', 'full']);
+  assert.deepStrictEqual(full.tags, []);
+  const items = [{ str: 'OPEN OFFICE 204', x: 60, y: 90, w: 110, h: 14 }];
+  const d = createCanvasDraw(roomDeps(roomState(true), items, [{ id: 'r1', under: false }])).planRoomLabels(ann, 0);
+  assert.deepStrictEqual(d.boxes.map(b => b.mode), ['none', 'none']);
+  assert.strictEqual(d.tags.length, 1);
+  assert.strictEqual(d.tags[0].boxIndex, 0);
+  // 20x16.67x9 + 8.33x4x9 ≈ 3,000 + 300 ft³; office 1 CFM/ft² over ~366 ft²; balance says ✓.
+  assert.match(d.tags[0].text, /^3,3\d\d ft³ · 36\d CFM · ✓$/);
+  assert.strictEqual(d.tags[0].collided, false);
+});
+
+test('planRoomLabels: the tag takes the first anchor clear of the printed text, corners first', () => {
+  const ann = { roomBoxes: [{ x1: 0, y1: 0, x2: 240, y2: 200, heightFt: 9, roomId: 'r1' }] };
+  // Text pinned at the NW corner: the tag moves to NE.
+  const nw = [{ str: 'OPEN OFFICE 204', x: 2, y: 2, w: 120, h: 14 }];
+  assert.strictEqual(createCanvasDraw(roomDeps(roomState(true), nw)).planRoomLabels(ann, 0).tags[0].anchor, 'ne');
+  // Text across the whole top edge: NW/NE both blocked → SW.
+  const top = [{ str: 'OPEN OFFICE 204', x: 0, y: 0, w: 240, h: 16 }];
+  assert.strictEqual(createCanvasDraw(roomDeps(roomState(true), top)).planRoomLabels(ann, 0).tags[0].anchor, 'sw');
+  // Text everywhere: nothing clears → NW with collided:true, never nothing.
+  const all = [{ str: 'x', x: -10, y: -10, w: 300, h: 300 }];
+  const p = createCanvasDraw(roomDeps(roomState(true), all)).planRoomLabels(ann, 0).tags[0];
+  assert.strictEqual(p.anchor, 'nw'); assert.strictEqual(p.collided, true);
+});
+
+test('planRoomLabels: a plan-named room with no text items available falls back to name-only (option B)', () => {
+  const ann = { roomBoxes: [{ x1: 0, y1: 0, x2: 240, y2: 200, heightFt: 9, roomId: 'r1' }] };
+  const d = createCanvasDraw(roomDeps(roomState(true), [])).planRoomLabels(ann, 0);
+  assert.deepStrictEqual(d.boxes.map(b => b.mode), ['nameOnly']);
+  assert.deepStrictEqual(d.tags, []);
+});

@@ -53,8 +53,7 @@ const doorDouble = (x, y, size, rot = 0) => `<g transform="translate(${x},${y}) 
   <line x1="${2 * size}" y1="0" x2="${2 * size}" y2="${-size}"/><path d="M${2 * size} ${-size} A ${size} ${size} 0 0 0 ${size} 0"/></g>`;
 const lightFix = (x, y) => `<g transform="translate(${x},${y})" fill="none" stroke="${INK}" stroke-width="1.1">
   <circle r="5.5"/><line x1="-3.9" y1="-3.9" x2="3.9" y2="3.9"/><line x1="3.9" y1="-3.9" x2="-3.9" y2="3.9"/></g>`;
-const stall = (x, y, w, h) => `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y + h} ${x},${y} ${x + w},${y}"/></g>`;
-// A stall against the BOTTOM wall: partition, back wall, partition — open at the top.
+// A stall against the bottom wall: partition, back wall, partition, open to the room.
 const stallUp = (x, y, w, h) => `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y} ${x},${y + h} ${x + w},${y + h}"/></g>`;
 
 const roomTag = (x, y, label, num) => `<g font-family="${F}" text-anchor="middle">

@@ -61,7 +61,7 @@
           const metaLine1 = [esc(p.owner_email || '—') + (App.twinBadgeHtml ? App.twinBadgeHtml(p.owner_email) : ''), dateStr, sizeStr].filter(Boolean).join(' · ');
           const metaLine2Parts = [];
           const countStr = (p.counter_count != null || p.line_count != null)
-            ? [p.counter_count != null ? p.counter_count + ' counters' : null, p.line_count != null ? p.line_count + ' lines' : null].filter(Boolean).join(' · ')
+            ? [p.counter_count != null ? p.counter_count + (p.counter_count === 1 ? ' counter' : ' counters') : null, p.line_count != null ? p.line_count + (p.line_count === 1 ? ' line' : ' lines') : null].filter(Boolean).join(' · ')
             : '';
           if (countStr) metaLine2Parts.push(countStr);
           if (p.checked_out_email) metaLine2Parts.push('Checked out by ' + esc(p.checked_out_email) + (App.twinBadgeHtml ? App.twinBadgeHtml(p.checked_out_email) : ''));

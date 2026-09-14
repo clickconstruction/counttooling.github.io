@@ -280,6 +280,10 @@
     // Create tab's rule: a stale value must never silently ride a new counter.
     const cfmEl = document.getElementById('counterQuickCountCfm');
     if (cfmEl) { cfmEl.value = ''; cfmEl.oninput = syncQuickIconToCfm; }   // D16: CFM ↔ diffuser default
+    // D19 (B19 part 2): the Create tab's "More ▸ air & mounting" disclosure,
+    // folding the mount + CFM rows here too. One shared flag, so the tab the
+    // estimator opened it on does not matter.
+    App.applyCounterAirMore && App.applyCounterAirMore('counterQuickCountAirMoreToggle', 'counterQuickCountAirMoreFields');
     const swatchEl = document.getElementById('counterQuickCountSwatch');
     if (swatchEl) {
       swatchEl.onclick = () => {

@@ -433,6 +433,11 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   re-upload can hash-verify the re-apply),
   `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
   `state.showAllCanvases` (the desktop show-all-layers peek toggle),
+  `state.counterAirMoreOpen` (D19 — the Counter modal's "More ▸ air &
+  mounting" disclosure on the Create and Quick Count tabs: null = follow the
+  trade (open on hvac/electrical), true/false = the estimator's override for
+  this project; a view preference like the peek, reset with the project by
+  `resetLocalSessionState`),
   `state.emphasizedCounterId` (the "find this counter" halo — counter-type id
   whose markers ring on the live overlay; toggled by clicking a marker,
   features/drop-peek.js),

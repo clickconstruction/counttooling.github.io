@@ -18,6 +18,17 @@
  *   (the per-project persistence round trip).
  */
 const { test, expect } = require('@playwright/test');
+
+// D19: the CFM / Mount height / Flex drop fields now fold under the
+// "More ▸ air & mounting" disclosure on the Counter modal, which starts CLOSED
+// on a trade-less (plumbing-default) project like these fixtures. Unfold it
+// before touching them — the same click the estimator makes.
+const unfoldAirMore = (page, which) => page.evaluate((w) => {
+  const id = w === 'quick' ? 'counterQuickCountAirMore' : 'counterAirMore';
+  const fields = document.getElementById(id + 'Fields');
+  if (fields && fields.hidden) document.getElementById(id + 'Toggle').click();
+}, which);
+
 const path = require('path');
 
 test.describe('Duct design-build suggestions (D6)', () => {
@@ -49,6 +60,7 @@ test.describe('Duct design-build suggestions (D6)', () => {
     const createPanelHidden = await page.locator('#counterCreatePanel').isHidden();
     if (createPanelHidden) await page.locator('#counterModal .counter-tab[data-tab="create"]').click();
     await page.locator('#counterName').fill(name);
+    await unfoldAirMore(page);
     if (cfm != null) await page.locator('#counterCfm').fill(String(cfm));
     await page.locator('#counterCreate').click();
     await page.waitForFunction(() => window.state.tool === window.App.TOOL.COUNTER);

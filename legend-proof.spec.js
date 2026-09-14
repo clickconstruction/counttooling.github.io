@@ -244,7 +244,10 @@ test.describe('Tier-3 B10 — legend & proof surface', () => {
     const totals = page.locator('#statusTotals');
     await expect(totals).toBeVisible();
     const text = await totals.textContent();
-    expect(text).toContain('counts');
+    // X13 (D19): the count word agrees with the number — one marker reads
+    // "1 count". B10's claim (the words ride inline, not just on hover) is
+    // unchanged; only the grammar is.
+    expect(text).toMatch(/\d+ counts?\b/);
     expect(text).toContain('of lines');
     const title = await totals.getAttribute('title');
     expect(title).toContain('click to see the Summary');

@@ -178,6 +178,15 @@ const DUCT_GHOST_ALPHA = 0.14;
 // noise; skip it so tiny cases paint byte-identically to a ghost-free run.
 const DUCT_GHOST_MIN_PX = 1.5;
 
+// The flex leader (D19, J19 Friction #3): a thin dashed tie from an ATTACHED
+// CFM device to the point on the run that taps it. Attachment was invisible —
+// a branch ending 1.5' short of a diffuser attached nothing, silently — so the
+// leader makes it visible instead of announced. A stray device draws no
+// leader; its bare glyph IS the tell. Quiet by construction: it is evidence,
+// not a mark the estimator placed.
+const DUCT_LEADER_ALPHA = 0.55;
+const DUCT_LEADER_DASH = [4, 3];
+
 // px-per-pdf-pt of a pdf->canvas mapper — measured, not assumed, so the same
 // code serves the live overlay (zoom·DPR), every export raster (its scale),
 // and any future transform.
@@ -593,6 +602,43 @@ function createCanvasDraw(deps) {
           ctx.globalAlpha = 1;
         });
       });
+    }
+    // D19 (J19 Friction #3): flex leaders. Painted under the run strokes and
+    // the counter glyphs, so the tie never competes with either. Devices are
+    // the placed markers whose counter (or per-marker override) carries a CFM
+    // — ductMarkerCfm is the one rule, and attachment comes from
+    // ductDeviceLeaders, which wraps the SAME attachDuctDevices the tallies
+    // use. A project with no duct runs and no CFM devices paints nothing, so
+    // duct-free renders stay byte-identical.
+    if ((ann.ductRuns || []).length && typeof ductDeviceLeaders === 'function' && typeof ductMarkerCfm === 'function') {
+      const devices = [];
+      (deps.getState().counters || []).forEach(c => {
+        (ann.counterMarkers?.[c.id] || []).forEach(m => {
+          if (ductMarkerCfm(m, c) > 0) devices.push({ x: m.x, y: m.y });
+        });
+      });
+      if (devices.length) {
+        const leaders = ductDeviceLeaders(devices, ann.ductRuns);
+        if (leaders.length) {
+          const lScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+          ctx.save();
+          ctx.globalAlpha = DUCT_LEADER_ALPHA;
+          ctx.lineWidth = 1 * lScale;
+          ctx.setLineDash(DUCT_LEADER_DASH.map(d => d * lScale));
+          leaders.forEach(l => {
+            // The leader wears its RUN's airside color, so a return grille's
+            // tie reads red like the run it taps, not supply blue.
+            const run = ann.ductRuns.find(r => r && r.id === l.runId);
+            ctx.strokeStyle = DUCT_AIRSIDE_COLORS[run?.airside] || DUCT_AIRSIDE_COLORS.supply;
+            const a = tc(l.from), b = tc(l.to);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          });
+          ctx.restore();
+        }
+      }
     }
     // Duct runs (DUCT-PLAN unit D2). One continuous trace whose stroke width
     // STEPS with each size segment (ductStrokePx band table in duct-model.js,

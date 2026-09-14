@@ -184,6 +184,40 @@
       },
     });
   }
+  // D19 (B19 part 2, ratcheted): the "More ▸ air & mounting" disclosure shared
+  // by the Create tab and its Quick Count twin. The fields stay REACHABLE on
+  // every trade — hiding them outright was rejected because the first CFM
+  // device on a fresh project would be impossible to create — so the toggle
+  // only decides whether they start unfolded: open on the HVAC and Electrical
+  // trade profiles, closed on plumbing. An estimator's own toggle wins for the
+  // rest of the project (state.counterAirMoreOpen; in-memory, reset with the
+  // project by resetLocalSessionState). Both tabs read the one flag, so the
+  // preference does not split between them.
+  function airMoreDefaultOpen() {
+    const trade = App.getQuickTrade ? App.getQuickTrade() : 'plumbing';
+    return trade === 'hvac' || trade === 'electrical';
+  }
+  function setAirMoreOpen(btn, fields, open) {
+    fields.hidden = !open;
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    const caret = btn.querySelector('.counter-air-more-caret');
+    if (caret) caret.textContent = open ? '▾' : '▸';
+  }
+  function applyCounterAirMore(toggleId, fieldsId) {
+    const btn = document.getElementById(toggleId);
+    const fields = document.getElementById(fieldsId);
+    if (!btn || !fields) return;
+    const stored = App.state.counterAirMoreOpen;
+    setAirMoreOpen(btn, fields, stored == null ? airMoreDefaultOpen() : !!stored);
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const next = fields.hidden;
+      App.state.counterAirMoreOpen = next;
+      setAirMoreOpen(btn, fields, next);
+    };
+  }
+
   function prepCreatePanel() {
     const state = App.state;
     showCounterIconTab('icon');
@@ -243,6 +277,7 @@
     });
     if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
     syncCreateCfmChip();   // a fresh panel: CFM empty → chip hidden
+    applyCounterAirMore('counterAirMoreToggle', 'counterAirMoreFields');
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
   }
 
@@ -414,4 +449,5 @@
   App.showCounterTab = showCounterTab;
   App.syncCfmIconChip = syncCfmIconChip;         // D18: the Quick Count twin renders the same chip
   App.scrollIconGridToSet = scrollIconGridToSet; // D18: "change" lands on the HVAC group
+  App.applyCounterAirMore = applyCounterAirMore; // D19: the Quick Count twin shares the disclosure
 })();

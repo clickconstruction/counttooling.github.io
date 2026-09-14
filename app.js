@@ -367,6 +367,7 @@
     groups: [],
     rooms: [],
     roomsListCollapsed: false,
+    counterAirMoreOpen: null,   // D19: in-memory per project — the Counter modal's "More ▸ air & mounting" disclosure. null = follow the trade (open on hvac/electrical); true/false = the estimator's override for this project. A view preference like showAllCanvases, deliberately NOT in save/load.
     recentRoomHeights: [],
     activeGroupId: null,
     activeCanvasIdByPage: {},
@@ -794,6 +795,7 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.trade = null;
+    state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
     state.ceilingHeightFt = null;
     state.codes = null;
     state.makeUpFt = null;
@@ -1009,6 +1011,56 @@
     return txt;
   }
   function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2); }
+  // D19 (J6-H): the duct fragment of the Delete Area preview —
+  // "61' · 438 lb, 2 fittings". The ft/lb come from the SAME per-run tally the
+  // Duct sidebar badge shows (App.ductRunTally), so the number in the confirm
+  // matches the row the estimator is about to lose. Returns '' when the duct
+  // feature file is not loaded, so the preview degrades to a plain count.
+  function ductDeleteSummary(collected, ann, pageIdx) {
+    if (!App.ductRunTally) return '';
+    let ft = 0, lb = 0;
+    for (const { run } of collected.ductRuns || []) {
+      try {
+        const tally = App.ductRunTally({ run, ann, pageIdx });
+        ft += tally?.totalLengthFt || 0;
+        lb += tally?.totalPounds || 0;
+      } catch (_) { /* a malformed run must not block the delete confirm */ }
+    }
+    const bits = [];
+    if (ft > 0 || lb > 0) bits.push(Math.round(ft).toLocaleString() + "' · " + Math.round(lb).toLocaleString() + ' lb');
+    const nf = collected.ductFittingCount || 0;
+    if (nf) bits.push(nf + (nf === 1 ? ' fitting' : ' fittings'));
+    return bits.join(', ');
+  }
+  // Delete Area: collect what the rectangle covers, then either report the area
+  // empty or open the confirm with its preview line. ONE builder for both call
+  // sites (mouse click and touch tap), which were an exact copy of each other —
+  // so the enumeration D19 just extended cannot drift between them.
+  function openDeleteZoneForRect(ann, pageIdx, x1, y1, x2, y2) {
+    const page = state.pages[pageIdx];
+    const collected = collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2);
+    const total = collected.counterCount + collected.lineRunCount + collected.highlightCount
+      + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount
+      + collected.roomBoxCount + collected.ductRunCount;
+    if (total === 0) { showToast('No items in this area.', 2000); return; }
+    const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
+    const parts = [];
+    if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
+    if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
+    if (collected.ductRunCount) {
+      const summary = ductDeleteSummary(collected, ann, pageIdx);
+      parts.push(collected.ductRunCount + (collected.ductRunCount === 1 ? ' duct run' : ' duct runs')
+        + (summary ? ' (' + summary + ')' : ''));
+    }
+    if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
+    if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
+    if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
+    if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
+    if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
+    state.pendingDeleteZone = { ann, collected };
+    document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
+    showModal('deleteZoneModal');
+  }
   function performDeleteZone(ann, collected) {
     pushUndoSnapshot();
     annotationModel.deleteCollectedItems(ann, collected);
@@ -1032,10 +1084,21 @@
   function pickScaleForLineType(pageIndices) {
     return scaleForLineType(pageIndices, state.pages);
   }
+  // X11 (D19 fold-in): a page the estimator has SET A SCALE on is "marked" for
+  // Shift+←/→ navigation — the pages list has said so since B10 (the
+  // `badge-scale-set` class beside `badge-has-ann`), and skipping straight
+  // past a sheet you just calibrated contradicts the badge you are looking at.
+  // Deliberately NOT folded into pageHasAnyAnnotations: that predicate also
+  // powers projectHasAnyCanvasMarkup, which gates Import Canvas (B12), and a
+  // scale is page metadata, not canvas markup — treating it as markup would
+  // disable Import Canvas on a project that has no marks at all.
+  function pageIsMarkedForNav(p) {
+    return !!p && (!!p.scale || pageHasAnyAnnotations(p));
+  }
   function getMarkedPageIndices() {
     return state.pages
       .map((p, i) => ({ p, i }))
-      .filter(({ p }) => pageHasAnyAnnotations(p))
+      .filter(({ p }) => pageIsMarkedForNav(p))
       .map(({ i }) => i);
   }
   // formatDist / formatDistFeetInches / formatDistFeetInchesFromReal / formatArea
@@ -2729,7 +2792,16 @@
     const advancedImport = document.getElementById('advancedImport');
     if (advancedImport) advancedImport.style.display = state.isViewer ? 'none' : '';
     const rotatePageBtn = document.getElementById('rotatePage');
-    if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
+    if (rotatePageBtn) {
+      rotatePageBtn.style.display = state.isViewer ? 'none' : '';
+      // X13 (D19 fold-in): the button was always enabled and silently no-opped
+      // with no PDF loaded (rotatePage90 returns early without page.pdfPage) —
+      // a control that looks live and does nothing. Gate it on the page it
+      // acts on, the T2-01 has-pdf pattern.
+      const rotatable = !!state.pages[state.currentPage]?.pdfPage;
+      rotatePageBtn.disabled = !rotatable;
+      rotatePageBtn.title = rotatable ? 'Rotate 90° right' : 'Rotate 90° right — load a PDF first';
+    }
     App.renderPagesList && App.renderPagesList();
     App.renderCanvasSwitcher && App.renderCanvasSwitcher();
     App.renderCountersList && App.renderCountersList();
@@ -3892,7 +3964,7 @@
   };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
   document.getElementById('lineTypeCreate').onclick = () => {
-    const name = document.getElementById('lineTypeName').value.trim() || 'Line';
+    const name = document.getElementById('lineTypeName').value.trim() || nextLineTypeName(state.lineTypes);
     const color = document.getElementById('lineTypeColorRow').dataset.selectedColor || COLORS[2];
     const curveSel = document.querySelector('input[name="lineTypeCurve"]:checked');
     const curveStyle = curveSel ? curveSel.value : 'straight';
@@ -5340,6 +5412,29 @@
   };
 
   // SECTION: Canvas Event Handlers
+  // D19 (J19 Friction #3): the context target, when it is a CFM device that no
+  // run currently taps and a run is within reach. Returns
+  // { marker, point, runId } or null. Attachment in this model is DERIVED from
+  // proximity (duct-model attachDuctDevices), never stored, so the rescue moves
+  // the device onto the run rather than minting a link the geometry would
+  // contradict.
+  function strayDeviceAttachTarget() {
+    const t = state.ctxTarget;
+    if (state.isViewer || !t || t.type !== 'marker') return null;
+    if (typeof ductMarkerCfm !== 'function' || typeof ductNearestRunPoint !== 'function' || typeof attachDuctDevices !== 'function') return null;
+    const counter = (state.counters || []).find(c => c.id === t.typeId);
+    if (!counter) return null;
+    const page = state.pages[state.currentPage];
+    const ann = page ? getActiveAnnotations(page) : null;
+    const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
+    if (!marker || !(ductMarkerCfm(marker, counter) > 0)) return null;
+    const runs = ann?.ductRuns || [];
+    if (!runs.length) return null;
+    // Already attached? Then there is nothing to rescue.
+    if (attachDuctDevices([{ x: marker.x, y: marker.y }], runs).attached.length) return null;
+    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs);
+    return near ? { marker, point: near.point, runId: near.runId } : null;
+  }
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
@@ -5384,6 +5479,12 @@
         ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
       ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
     }
+    // D19 (J19 Friction #3): "Attach to nearest run" — the rescue for a CFM
+    // device that finished a foot short of its branch. Offered ONLY when the
+    // device is genuinely unattached AND a run sits close enough to be the
+    // obvious intent, so the row never appears as a no-op.
+    const ctxAttachBtn = document.getElementById('ctxAttachToRun');
+    if (ctxAttachBtn) ctxAttachBtn.style.display = strayDeviceAttachTarget() ? 'block' : 'none';
     const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
     if (ctxNameHighlightBtn) {
       const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';
@@ -5741,24 +5842,7 @@
         if (ann) {
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
-          const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount + collected.roomBoxCount;
-          if (total === 0) {
-            showToast('No items in this area.', 2000);
-          } else {
-            const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
-            const parts = [];
-            if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
-            if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
-            if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
-            if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
-            if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
-            if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
-            if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
-            state.pendingDeleteZone = { ann, collected };
-            document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
-            showModal('deleteZoneModal');
-          }
+          openDeleteZoneForRect(ann, state.currentPage, x1, y1, x2, y2);
         }
         state.deleteZoneStart = null;
       }
@@ -6734,24 +6818,7 @@
         if (ann) {
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
-          const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount + collected.roomBoxCount;
-          if (total === 0) {
-            showToast('No items in this area.', 2000);
-          } else {
-            const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
-            const parts = [];
-            if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
-            if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
-            if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
-            if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
-            if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
-            if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
-            if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
-            state.pendingDeleteZone = { ann, collected };
-            document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
-            showModal('deleteZoneModal');
-          }
+          openDeleteZoneForRect(ann, state.currentPage, x1, y1, x2, y2);
         }
         state.deleteZoneStart = null;
       }
@@ -7497,6 +7564,8 @@
   App.syncTradeSegment = syncTradeSegment;
   App.saveTradeModifiers = saveTradeModifiers;
   App.getQuickTrade = getQuickTrade;
+  App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
+  App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;
   App.tradeIconForType = tradeIconForType;
@@ -7637,6 +7706,7 @@
   // PDF-intake re-apply gate (features/pdf-intake.js, T1-01/J4): "do the
   // current pages carry any annotations at all?"
   App.projectHasAnyCanvasMarkup = projectHasAnyCanvasMarkup;
+  App.getMarkedPageIndices = getMarkedPageIndices;   // X11 spec seam: Shift+←/→ marked-page nav
   App.logProjectOpenEvent = logProjectOpenEvent;
   // Annex-B hoisted from the SUPABASE_ENABLED block; resolved at call time.
   App.openCheckoutExpiredRecoveryModal = (opts) => openCheckoutExpiredRecoveryModal(opts);

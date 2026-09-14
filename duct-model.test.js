@@ -813,6 +813,57 @@ test('attachDuctDevices: nearest run within snap wins; far devices unattached', 
   assert.strictEqual(wide.attached.length, 1);
 });
 
+test('ductNearestOnPolyline: carries the foot of the perpendicular — D19', () => {
+  const verts = [{ x: 0, y: 0 }, { x: 100, y: 0 }];
+  const hit = dm.ductNearestOnPolyline({ x: 40, y: 9 }, verts);
+  close(hit.dist, 9);
+  close(hit.s, 40);
+  close(hit.point.x, 40);
+  close(hit.point.y, 0);
+  // Past the end the foot clamps to the last vertex, never past it.
+  const off = dm.ductNearestOnPolyline({ x: 500, y: 0 }, verts);
+  close(off.point.x, 100);
+  // A degenerate run has no point to offer.
+  assert.strictEqual(dm.ductNearestOnPolyline({ x: 0, y: 0 }, [{ x: 0, y: 0 }]).point, null);
+});
+
+test('ductDeviceLeaders: one leader per ATTACHED device, drawn to the tap point — D19', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
+  const branch = netRun('branch', [{ x: 200, y: 4 }, { x: 200, y: 150 }]);
+  const near = dev(100, 8, 150);      // 8 from trunk
+  const far = dev(100, 50, 200);      // 50 from everything — stray, no leader
+  const leaders = dm.ductDeviceLeaders([near, far], [trunk, branch]);
+  assert.strictEqual(leaders.length, 1);
+  assert.strictEqual(leaders[0].runId, 'trunk');
+  close(leaders[0].from.x, 100); close(leaders[0].from.y, 8);
+  close(leaders[0].to.x, 100);   close(leaders[0].to.y, 0);
+});
+
+test('ductDeviceLeaders: a device sitting ON the run draws nothing — D19', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
+  // Zero-length leader would paint as dirt on the sheet.
+  assert.deepStrictEqual(dm.ductDeviceLeaders([dev(150, 0, 100)], [trunk]), []);
+  // No runs, no leaders.
+  assert.deepStrictEqual(dm.ductDeviceLeaders([dev(150, 8, 100)], []), []);
+});
+
+test('ductNearestRunPoint: the stray rescue finds the nearest run within the search radius — D19', () => {
+  const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
+  const branch = netRun('branch', [{ x: 200, y: 40 }, { x: 200, y: 150 }]);
+  // 30 from the trunk: outside the 12 pt tap snap, inside the 96 pt search.
+  const near = dm.ductNearestRunPoint({ x: 100, y: 30 }, [trunk, branch]);
+  assert.strictEqual(near.runId, 'trunk');
+  close(near.point.x, 100); close(near.point.y, 0);
+  close(near.dist, 30);
+  // Beyond the search radius nothing is the obvious intent.
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 100, y: 400 }, [trunk, branch]), null);
+  // A tighter search can refuse what the default would accept.
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 100, y: 30 }, [trunk], { searchDist: 10 }), null);
+  // Garbage in, null out.
+  assert.strictEqual(dm.ductNearestRunPoint(null, [trunk]), null);
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 0, y: 0 }, []), null);
+});
+
 test('ductChildLinks: a run starting on another run links to that parent at the tap arclength', () => {
   const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
   const branch = netRun('branch', [{ x: 120, y: 6 }, { x: 120, y: 150 }]);

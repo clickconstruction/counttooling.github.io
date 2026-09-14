@@ -332,6 +332,28 @@
     const counter = (state.counters || []).find((c) => c.id === t.typeId);
     if (marker && counter) openMarkerCfmModal(marker, counter);
   };
+  // D19 (J19 Friction #3): the stray-device rescue. Attachment is derived from
+  // proximity, so "attach" MOVES the device onto the nearest run — the same
+  // thing the estimator would do by hand, in one click and one undo step. The
+  // toast names the distance closed so the move is never silent.
+  const ctxAttachBtn = document.getElementById('ctxAttachToRun');
+  if (ctxAttachBtn) ctxAttachBtn.onclick = () => {
+    const state = App.state;
+    const target = App.strayDeviceAttachTarget && App.strayDeviceAttachTarget();
+    document.getElementById('contextMenu').classList.remove('visible');
+    state.ctxTarget = null;
+    if (!target) return;
+    App.pushUndoSnapshot();
+    const before = { x: target.marker.x, y: target.marker.y };
+    target.marker.x = target.point.x;
+    target.marker.y = target.point.y;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+    const moved = Math.hypot(target.point.x - before.x, target.point.y - before.y);
+    App.showToast('Attached to the run' + (moved > 0 ? ' — moved ' + moved.toFixed(0) + ' pt' : '') + '.', 2400);
+  };
+
   document.getElementById('markerCfmSave')?.addEventListener('click', commitMarkerCfm);
   document.getElementById('markerCfmCancel')?.addEventListener('click', cancelMarkerCfm);
   document.getElementById('markerCfmInput')?.addEventListener('keydown', (e) => {

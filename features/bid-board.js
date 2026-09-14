@@ -69,8 +69,8 @@
     const ago = daysAgoLabel(proj.updated_at);
     if (date && ago) date += ' · ' + ago;
     const counts = [
-      proj.counter_count > 0 ? (proj.counter_count + ' counts') : null,
-      proj.line_count > 0 ? (proj.line_count + ' lines') : null,
+      proj.counter_count > 0 ? (proj.counter_count + (proj.counter_count === 1 ? ' count' : ' counts')) : null,
+      proj.line_count > 0 ? (proj.line_count + (proj.line_count === 1 ? ' line' : ' lines')) : null,
     ].filter(Boolean).join(' · ');
     // Cloud completeness: a bid with its PDF in storage is fully in the cloud
     // (canvas markups always ride in the project row); without it, only the

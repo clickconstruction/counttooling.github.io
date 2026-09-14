@@ -149,6 +149,7 @@
         selectedRoomChoice = item.dataset.roomId;
         list.querySelectorAll('.room-picker-item').forEach(x => x.classList.toggle('selected', x === item));
         document.getElementById('roomBoxNewRoomNameGroup').style.display = 'none';
+        syncRoomBoxTypeField();   // D19: the type follows the room just picked
       };
     });
     document.getElementById('roomBoxNewRoomNameGroup').style.display = selectedRoomChoice === '__new__' ? '' : 'none';
@@ -227,6 +228,71 @@
     if (val !== cur) App.setDuctDeckHeight(val);
   }
 
+  // D19 (J19 Friction #6): the room type on the Room Size dialog. D7 put it on
+  // Edit Room only, so boxing five rooms cost fifteen extra actions on the
+  // design-build front door — and the guide's "give the room a type on its
+  // edit dialog" was the only hint it existed. Same HVAC-shaped gate as the
+  // deck row, so a plumber's dialog is untouched. The select reflects the
+  // room the box is being added to; a NEW room starts with no type.
+  function syncRoomBoxTypeField() {
+    const group = document.getElementById('roomBoxTypeGroup');
+    const sel = document.getElementById('roomBoxType');
+    if (!group || !sel) return;
+    const show = deckFieldApplies() && balanceReady();
+    group.style.display = show ? '' : 'none';
+    if (!show) return;
+    const room = (App.state.rooms || []).find(r => r.id === selectedRoomChoice);
+    const selected = room?.roomType || '';
+    let html = '<option value="">None</option>';
+    Object.entries(ROOM_TYPE_CFM_PER_SQFT).forEach(([key, t]) => {
+      html += '<option value="' + key + '"' + (key === selected ? ' selected' : '') + '>'
+        + escapeHtmlText(t.label) + (t.cfmPerSqFt > 0 ? ' — ' + t.cfmPerSqFt + ' CFM/ft²' : '') + '</option>';
+    });
+    sel.innerHTML = html;
+    sel.value = ROOM_TYPE_CFM_PER_SQFT[selected] ? selected : '';
+    syncRoomBoxTypeDerived();
+  }
+  // The derived target, read off the room's area INCLUDING the box about to be
+  // added — the number the estimator is actually about to create. A per-room
+  // override (Edit Room) wins and is said so rather than silently contradicted.
+  function syncRoomBoxTypeDerived() {
+    const note = document.getElementById('roomBoxTypeDerived');
+    const sel = document.getElementById('roomBoxType');
+    if (!note || !sel) return;
+    const type = sel.value;
+    if (!type || !balanceReady()) { note.hidden = true; return; }
+    const state = App.state;
+    const room = (state.rooms || []).find(r => r.id === selectedRoomChoice);
+    let area = room ? (getRoomVolumeTotals().find(t => t.id === room.id)?.areaSqFt || 0) : 0;
+    // The pending box is not committed yet, so add its own area in.
+    const pending = state.pendingRoomBox;
+    if (pending) {
+      const page = state.pages[state.currentPage];
+      const ann = page ? App.getActiveAnnotations(page) : null;
+      const dims = App.roomBoxDimsFeet(pending, App.getEffectiveScaleForLine(ann, pending, false, state.currentPage));
+      if (dims) area += dims.areaSqFt;
+    }
+    const derived = roomTargetCfm({ roomType: type }, area);
+    if (!(derived > 0)) { note.hidden = true; return; }
+    const override = room && room.targetCfmOverride > 0 ? room.targetCfmOverride : 0;
+    note.textContent = override > 0
+      ? 'Target ' + override + ' CFM (override — ' + derived + ' from ' + Math.round(area) + ' ft²)'
+      : 'Target ' + derived + ' CFM (from ' + Math.round(area) + ' ft²)';
+    note.hidden = false;
+  }
+  // The chosen type is written to the room on Apply, through the same shape
+  // Edit Room writes (roomType, or deleted when None).
+  function applyRoomBoxTypeField(roomId) {
+    const group = document.getElementById('roomBoxTypeGroup');
+    const sel = document.getElementById('roomBoxType');
+    if (!group || !sel || group.style.display === 'none') return;
+    const room = (App.state.rooms || []).find(r => r.id === roomId);
+    if (!room) return;
+    const type = sel.value;
+    if (type) room.roomType = type;
+    else delete room.roomType;
+  }
+
   function openRoomBoxModal(rect) {
     const state = App.state;
     if (state.isViewer) return;
@@ -248,6 +314,7 @@
     document.getElementById('roomBoxNewRoomName').value = '';
     renderRecentHeightChips();
     syncDeckField();
+    syncRoomBoxTypeField();   // D19
     updateDimsPreview(rect, currentHeightInput() || 0);
     App.showModal('roomBoxModal');
     if (!(lastHeightFt > 0)) h.focus();
@@ -269,6 +336,7 @@
     document.getElementById('roomBoxNewRoomName').value = '';
     renderRecentHeightChips();
     syncDeckField();
+    syncRoomBoxTypeField();   // D19
     updateDimsPreview(box, box.heightFt || 0);
     App.showModal('roomBoxModal');
   }
@@ -303,6 +371,7 @@
     document.querySelectorAll('#roomBoxRoomList .room-picker-item').forEach(x => x.classList.remove('selected'));
     document.getElementById('roomBoxNewRoomNameGroup').style.display = '';
     document.getElementById('roomBoxNewRoomName').focus();
+    syncRoomBoxTypeField();   // D19: a new room starts with no type
   };
   document.getElementById('roomBoxApply').onclick = () => {
     const state = App.state;
@@ -334,6 +403,7 @@
     lastRoomId = roomId;
     lastHeightFt = heightFt;
     pushRecentHeight(heightFt);
+    applyRoomBoxTypeField(roomId);   // D19: the room type, when the field is shown
     applyDeckField();   // D17: the project deck height, when the field is shown
     state.pendingRoomBox = null;
     state.pendingRoomBoxEdit = null;
@@ -491,6 +561,7 @@
   // D7: re-derive the placeholder / row visibility as the type changes
   // (static DOM, bound once at load like the rest of this modal).
   document.getElementById('roomEditType').addEventListener('change', syncRoomEditTargetRow);
+  document.getElementById('roomBoxType')?.addEventListener('change', syncRoomBoxTypeDerived);   // D19
   document.getElementById('roomEditSave').onclick = () => {
     if (!editingRoom) { App.hideModal('roomEditModal'); return; }
     const name = document.getElementById('roomEditName').value.trim();

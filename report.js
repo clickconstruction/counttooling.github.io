@@ -787,10 +787,20 @@
       lines.push('');
     }
     const bidCheck = getBidCheck(pageIndices, getAnn);
+    // D19 (J11-I): the EMAIL block carries verdicts, not setup hints. An 'na'
+    // row is the panel telling the estimator how to make the row computable
+    // ("Give a room a type on its Edit Room dialog…") — useful in the panel,
+    // noise in a bid email sent to someone else. They are skipped here only;
+    // the panel and the report table still show them. The header count is
+    // unaffected: bidCheckOpenCount already counts 'warn' rows alone.
+    // The gate stays on the UNFILTERED auto list: a project that had no Bid
+    // Check block in its email before must not gain one now (the manual rows
+    // are per-trade defaults and are almost never empty).
+    const bidAuto = bidCheck.auto.filter(r => r.verdict !== 'na');
     if (bidCheck.auto.length) {
       if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
       lines.push('--- Bid Check (' + bidCheck.open.total + ' open) ---');
-      bidCheck.auto.forEach(r => lines.push((r.verdict === 'ok' ? '✓ ' : r.verdict === 'warn' ? '⚠ ' : '— ') + r.label + ': ' + r.detail));
+      bidAuto.forEach(r => lines.push((r.verdict === 'ok' ? '✓ ' : '⚠ ') + r.label + ': ' + r.detail));
       bidCheck.manual.forEach(r => lines.push((r.done ? '☑ ' : '☐ ') + r.label));
       lines.push('');
     }

@@ -21,6 +21,17 @@
  */
 const { test, expect } = require('@playwright/test');
 
+// D19: the CFM / Mount height / Flex drop fields now fold under the
+// "More ▸ air & mounting" disclosure on the Counter modal, which starts CLOSED
+// on a trade-less (plumbing-default) project like these fixtures. Unfold it
+// before touching them — the same click the estimator makes.
+const unfoldAirMore = (page, which) => page.evaluate((w) => {
+  const id = w === 'quick' ? 'counterQuickCountAirMore' : 'counterAirMore';
+  const fields = document.getElementById(id + 'Fields');
+  if (fields && fields.hidden) document.getElementById(id + 'Toggle').click();
+}, which);
+
+
 // Letter page 612 × 792 pt; pdf-lib y is bottom-up, the app's PDF-space is
 // top-down: a 12-pt string drawn at (x, y) lands in app-space at
 // x..x+w, (792 − y − 12)..(792 − y). Both callouts sit at app y ≈ 300..312.
@@ -202,6 +213,7 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     await expect(page.locator('#counterModal')).toHaveClass(/visible/);
     if (await page.locator('#counterCreatePanel').isHidden()) await page.locator('#counterModal .counter-tab[data-tab="create"]').click();
     await page.locator('#counterName').fill('Diffuser 150');
+    await unfoldAirMore(page);
     await page.locator('#counterCfm').fill('150');
     await page.locator('#counterCreate').click();
     await page.waitForFunction(() => window.state.tool === window.App.TOOL.COUNTER);

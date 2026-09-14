@@ -20,6 +20,17 @@
  *   byte-identical — its fixture uses only pre-existing icons.
  */
 const { test, expect } = require('@playwright/test');
+
+// D19: the CFM / Mount height / Flex drop fields now fold under the
+// "More ▸ air & mounting" disclosure on the Counter modal, which starts CLOSED
+// on a trade-less (plumbing-default) project like these fixtures. Unfold it
+// before touching them — the same click the estimator makes.
+const unfoldAirMore = (page, which) => page.evaluate((w) => {
+  const id = w === 'quick' ? 'counterQuickCountAirMore' : 'counterAirMore';
+  const fields = document.getElementById(id + 'Fields');
+  if (fields && fields.hidden) document.getElementById(id + 'Toggle').click();
+}, which);
+
 const path = require('path');
 
 // In my-counters/hvac/ filename order (build:icons sorts each set by file).
@@ -41,11 +52,13 @@ async function openCreateTab(page) {
   await page.evaluate(() => document.getElementById('addCounter')?.click());
   await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
   await expect(page.locator('#counterCreatePanel')).toBeVisible();
+  await unfoldAirMore(page);
 }
 async function openQuickTab(page) {
   await page.evaluate(() => { window.App.showModal('counterModal'); window.App.showCounterTab('quickcount'); });
   await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
   await expect(page.locator('#counterQuickCountPanel')).toBeVisible();
+  await unfoldAirMore(page, 'quick');
 }
 const hvacIcons = (page) => page.evaluate(() => window.App.getEffectiveCustomIcons().filter((ic) => ic.set === 'hvac').map((ic) => ({ name: ic.name, value: ic.value, viewBox: ic.viewBox })));
 const lastCounter = (page) => page.evaluate(() => { const c = window.state.counters[window.state.counters.length - 1]; return { name: c.name, icon: c.icon, cfm: 'cfm' in c ? c.cfm : undefined }; });

@@ -513,6 +513,53 @@ test('collectItemsToDeleteInRect: center-point hits for zones/highlights/rooms, 
   assert.strictEqual(c.quickLines[0].index, 0); // the second quickLine survived
 });
 
+test('collectItemsToDeleteInRect: duct runs follow the line rule and drag their fittings — D19 (J6-H)', () => {
+  const { m, ann } = rectFixture();
+  ann.ductRuns = [
+    { id: 'in', vertices: [{ x: 10, y: 10 }, { x: 60, y: 10 }, { x: 60, y: 60 }] },
+    { id: 'straddle', vertices: [{ x: 10, y: 10 }, { x: 160, y: 10 }] },
+    { id: 'short', vertices: [{ x: 10, y: 10 }] },
+  ];
+  ann.ductFittings = [
+    { id: 'f1', runId: 'in', vertexIdx: 1, type: 'elbow' },
+    { id: 'f2', runId: 'straddle', vertexIdx: 0, type: 'elbow' },  // its run survives
+    { id: 'f3', runId: 'in', position: { x: 900, y: 900 }, type: 'tap' },  // OUTSIDE the rect, but its run dies
+  ];
+  const c = m.collectItemsToDeleteInRect(ann, 0, 0, 0, 100, 100);
+  assert.strictEqual(c.ductRunCount, 1);
+  assert.deepStrictEqual(c.ductRuns.map((r) => r.run.id), ['in']);
+  // A fitting cannot outlive its run — f3 goes even though it sits outside the
+  // rectangle; f2's run straddles the edge and survives, so f2 stays.
+  assert.strictEqual(c.ductFittingCount, 2);
+  assert.deepStrictEqual(c.ductFittings.map((f) => f.index), [0, 2]);
+});
+
+test('collectItemsToDeleteInRect: a duct-free area reports zero duct — D19', () => {
+  const { m, ann } = rectFixture();
+  const c = m.collectItemsToDeleteInRect(ann, 0, 0, 0, 100, 100);
+  assert.strictEqual(c.ductRunCount, 0);
+  assert.strictEqual(c.ductFittingCount, 0);
+  assert.deepStrictEqual(c.ductRuns, []);
+  assert.deepStrictEqual(c.ductFittings, []);
+});
+
+test('deleteCollectedItems: duct runs and their fittings splice out together — D19 (J6-H)', () => {
+  const state = { counters: [], pages: [] };
+  const { ctx } = makeCtx(state);
+  ctx.getLineRealWorldLengthFeet = () => 0;
+  const m = createAnnotationModel(ctx);
+  const ann = m.makeAnnotations();
+  ann.ductRuns.push({ id: 'a' }, { id: 'b' }, { id: 'c' });
+  ann.ductFittings.push({ id: 'f0', runId: 'a' }, { id: 'f1', runId: 'b' }, { id: 'f2', runId: 'c' }, { id: 'f3', runId: 'a' });
+  // Same descending-splice contract as every other list: drop runs 0 and 2.
+  m.deleteCollectedItems(ann, {
+    ductRuns: [{ index: 0 }, { index: 2 }],
+    ductFittings: [{ index: 0 }, { index: 2 }, { index: 3 }],
+  });
+  assert.deepStrictEqual(ann.ductRuns.map((r) => r.id), ['b']);
+  assert.deepStrictEqual(ann.ductFittings.map((f) => f.id), ['f1']);
+});
+
 test('deleteCollectedItems: descending-index splices delete the right items', () => {
   const state = { counters: [{ id: 'wc' }], pages: [] };
   const { ctx } = makeCtx(state);

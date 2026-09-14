@@ -27,6 +27,17 @@
  *    tenth `npm run check` step.
  */
 const { test, expect } = require('@playwright/test');
+
+// D19: the CFM / Mount height / Flex drop fields now fold under the
+// "More ▸ air & mounting" disclosure on the Counter modal, which starts CLOSED
+// on a trade-less (plumbing-default) project like these fixtures. Unfold it
+// before touching them — the same click the estimator makes.
+const unfoldAirMore = (page, which) => page.evaluate((w) => {
+  const id = w === 'quick' ? 'counterQuickCountAirMore' : 'counterAirMore';
+  const fields = document.getElementById(id + 'Fields');
+  if (fields && fields.hidden) document.getElementById(id + 'Toggle').click();
+}, which);
+
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -79,11 +90,13 @@ async function openCreateTab(page) {
   await page.evaluate(() => document.getElementById('addCounter')?.click());
   await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
   await expect(page.locator('#counterCreatePanel')).toBeVisible();
+  await unfoldAirMore(page);
 }
 async function openQuickTab(page) {
   await page.evaluate(() => { window.App.showModal('counterModal'); window.App.showCounterTab('quickcount'); });
   await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
   await expect(page.locator('#counterQuickCountPanel')).toBeVisible();
+  await unfoldAirMore(page, 'quick');
 }
 // Is the HVAC heading inside the grid's visible box (the "pre-scrolled" claim)?
 const hvacHeadingInView = (page, gridId) => page.evaluate((id) => {

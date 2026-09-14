@@ -1,7 +1,7 @@
 ---
 title: Duct takeoff by the pound
 description: Trace duct runs with size step-downs, let fittings count themselves, and read one Bid weight off the Duct Schedule — sheet metal priced like a bid.
-updated: 2026-09-13
+updated: 2026-09-14
 order: 9.15
 icon: duct
 category: By trade
@@ -39,9 +39,9 @@ Where a plan callout and a design-build suggestion (below) are both available at
 
 Most duct jobs are **design-build** — there's no engineered duct to copy, just an architectural background and a load. CountTooling turns the takeoff into the design pass:
 
-1. **Give your air devices a CFM.** The counter Create tab, the Quick tab and each counter's settings carry an optional **CFM** field — 150 on the lay-in diffuser, 300 on the big register. Leave it empty on anything that isn't an air device; nothing changes for those. The moment you type a CFM, a chip appears beside the field — *→ Supply Diffuser · change* — naming the symbol the counter will take (the HVAC set's diffuser unless you pick another); **change** opens the Custom Icons grid at the HVAC group, where every cell names itself on hover (RTU, return grille, VAV box, fire/smoke damper). When one placed diffuser is sized differently from its type — the 250 in the corner office — right-click that mark and pick **CFM for this one…**: the number belongs to that mark alone, the counter's CFM stays as it was, and everything downstream (the suggestion, the room's served total, the system's designed air) reads the override. Clear the box to go back to the type's CFM; the counter's settings list any marks that carry their own.
+1. **Give your air devices a CFM.** The counter Create tab, the Quick tab and each counter's settings carry an optional **CFM** field (on the Create tab and Quick Count it lives with Flex drop and Mount height under **More ▸ air & mounting** — folded away on a plumbing project, open by itself once the project's trade is HVAC or Electrical) — 150 on the lay-in diffuser, 300 on the big register. Leave it empty on anything that isn't an air device; nothing changes for those. The moment you type a CFM, a chip appears beside the field — *→ Supply Diffuser · change* — naming the symbol the counter will take (the HVAC set's diffuser unless you pick another); **change** opens the Custom Icons grid at the HVAC group, where every cell names itself on hover (RTU, return grille, VAV box, fire/smoke damper). When one placed diffuser is sized differently from its type — the 250 in the corner office — right-click that mark and pick **CFM for this one…**: the number belongs to that mark alone, the counter's CFM stays as it was, and everything downstream (the suggestion, the room's served total, the system's designed air) reads the override. Clear the box to go back to the type's CFM; the counter's settings list any marks that carry their own.
 2. **Place the diffusers first**, straight off the reflected ceiling plan.
-3. **Trace the main.** While you trace, the size chip grows a second line: *"450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S accepts."* Every device the trace passes hands off its air, and the suggestion shrinks with the remaining CFM — the classic ductulator answer (equal friction, 0.08″/100 ft by default) computed live at the cursor.
+3. **Trace the main.** While you trace, the size chip grows a second line: *"450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S accepts."* The number is the system's air **not yet served by a committed branch** — the classic ductulator answer (equal friction, 0.08″/100 ft by default) computed live at the cursor. So the main reads the whole system's CFM end to end while you trace it, and a branch traced afterwards reads only what the branches already committed haven't taken: the suggestion shrinks branch by branch, not foot by foot along the trunk. (A device hands its air to a run only once it's *attached* — within about 8" on the sheet — which is why the trunk's number doesn't drop as the trace passes a diffuser a foot away.)
 4. **Accept with a tap.** Press `S`: the suggestion sits at the top of the step popover as two chips — spiral first, then the rectangular equivalent (*"10"Ø or 12×8"*, the way a master sizes it); one tap on either steps the run down to that size. Suggestions only ever *inform* — the size never changes unless you take it.
 
 ### The true-width ghost
@@ -59,6 +59,10 @@ Once a room has a target, its sidebar row keeps score: *"needs 450 · served 300
 And before any duct is traced at all, the New Duct Run dialog reads the room targets and offers the **equipment-first** rule of thumb: *"Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (edit in Groups)"* (~400 CFM per ton, ~5 tons per light-commercial rooftop unit). It's one quiet line, it never creates anything, and it disappears as soon as a system group carries a real capacity. Naming an equipment counter after a group's tag (place an "RTU-1" counter for the RTU-1 system) also anchors the system's unit on the sheet, so return mains accumulate correctly no matter which end you traced them from.
 
 Systems live in the **Groups** section of the sidebar, which a project keeps off until it needs it. You never have to go find the switch: wherever a duct surface names Groups while they're off — that equipment-first line, the Bid Check's *Systems within capacity* hint — the phrase is a **Turn on groups** link that flips them on in place, and the first duct run you commit turns them on by itself with one quiet note (*"Groups are on — assign this run to a system in Groups."*). Projects with no duct never see any of this.
+
+### Which run a device hangs off
+
+A device belongs to the run that taps it — the nearest run within about **8" on the sheet** (12 points). You can see it: every attached CFM device draws a thin **dashed leader** to the point on the run that serves it, in the run's airside color, and a device with no leader is a stray — it hangs off nothing, so its flex, its share of the system's air and the room's served CFM are all missing. To fix a stray without redrawing, **right-click it → Attach to nearest run**: the device moves onto the nearest run within reach and a toast says how far it moved (one undo step). A branch that ends a foot short of a diffuser is the usual cause.
 
 ### Vertical footage, flex, and necks
 

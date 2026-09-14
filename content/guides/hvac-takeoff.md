@@ -1,7 +1,7 @@
 ---
 title: Doing an HVAC takeoff
 description: Room volumes for airflow and equipment sizing, counters for diffusers and equipment, and duct runs measured off the plan — HVAC estimating on the PDF.
-updated: 2026-09-13
+updated: 2026-09-14
 order: 9.1
 icon: room
 category: By trade
@@ -26,6 +26,8 @@ Everything the dialog does is built for doing a whole floor fast:
 3. **Add to Room** assigns the box to a room — each room in the list shows its running area and volume so far — or **+ New room** creates one on the spot, with its own color.
 
 After **Apply**, the tool **stays armed** with your last height and room preselected, so the next room is literally two clicks. For an **L-shaped or irregular room**, draw it as two or more boxes assigned to the same room — the room's totals are the sum of its boxes. Boxes render in their room's color with name and L×W×H labels, are edited from their right-click menu, and respect [scale zones](/guides/scale-zones-and-multiply-zones/).
+
+A room whose name came off the plan is labelled differently on the sheet: instead of a Name + L×W×H block on every box (which covered the plan's own room names on multi-box rooms), it gets **one small totals tag** — *1,237 ft³ · 137 CFM · ⚠* — on its largest box, placed in a corner or along an edge where the printed text isn't. Rooms you named yourself keep the full label.
 
 Per-room area and volume land in the Rooms sidebar, on the sheet as labels, in the legend, and in a **Room Volumes** table in the report and email summary. The full walkthrough: [Measuring room volumes](/guides/measuring-room-volumes/).
 

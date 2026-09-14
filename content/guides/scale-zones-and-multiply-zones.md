@@ -1,7 +1,7 @@
 ---
 title: Scale zones and multiply zones
 description: Handle multi-scale sheets and repeated areas — give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
-updated: 2026-09-13
+updated: 2026-09-14
 order: 5
 icon: scale-zone
 category: Working with plans
@@ -40,7 +40,7 @@ Here's both zones live on a sheet — note the legend: the four lavatories insid
 - Scale zones can't overlap — each region gets one scale.
 - If the page's scale was corrected for a compressed or rescaled sheet, zone presets are corrected the same way automatically — the zone's label shows the same "· ANSI D"-style suffix, and the dialog says so. Calibrating a zone by clicking two points is never corrected (it's already ground truth).
 - A multiply zone changes the **totals**, not the marks on the sheet, so the plan stays readable.
-- Both are visual boundaries you can edit or delete later from their right-click menu.
+- Both are visual boundaries you can edit or delete later from their right-click menu — and in **Move**, you can drag one: grab the body to move it, a corner to resize it (the cursor changes to say which), and the label and every total re-tally as you go. One drag is one undo step.
 - After **Apply**, the zone tool stays armed — draw the next typical floor or detail right away, and press **Esc** (or pick **Move**) when you're done.
 
 These two tools are what make CountTooling practical on messy, real-world plan sets — see them in context in [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/).

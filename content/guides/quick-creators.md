@@ -1,7 +1,7 @@
 ---
 title: Building your palette in two clicks
 description: The Quick Count and Quick Line creators build correctly-named counters and line types from Size, Type, and Material pickers — no typing, consistent names.
-updated: 2026-09-08
+updated: 2026-09-14
 order: 3.9
 icon: line
 category: Counting
@@ -26,6 +26,8 @@ And if the counter you're adding would come out looking identical to one you alr
 ## The Trade switch
 
 The **Trade** control at the top of the Quick tab — Plumbing, Electrical, HVAC — decides which vocabulary the pickers speak. Plumbing is Size / Type / Material as above. **Electrical** turns them into **Category / Variant / Rating**: pick *Receptacle · Duplex* and the name reads "Duplex Receptacle", the drafting symbol is already selected, and a **Mount height** row appears prefilled with the trade's working figure (18" for a receptacle, 44" for a GFCI at a counter, 48" for a switch) — overwrite it if your job differs. The mount height rides the counter, and the [Chain tool uses it to write the vertical](/guides/electrical-takeoff/) on every run. The trade is per project (Project Settings has the same switch) and remembered as your default for the next bid; each trade keeps its own editable option lists.
+
+Stating a trade also arranges the **toolbar**: a plumbing or electrical project keeps **Polyline** inline and tucks **Duct** behind the **⋯** menu; HVAC does the reverse. A project that has never named a trade keeps the toolbar it always had. To override the profile for one tool, open **⋯** and use the pin on its row — *Pin Duct to the toolbar* / *Unpin* — and the choice sticks with the project (and seeds your next one). The toolbar never re-orders on its own.
 
 ## Quick Line — line types from modifiers
 

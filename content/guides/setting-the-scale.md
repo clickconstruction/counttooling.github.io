@@ -1,7 +1,7 @@
 ---
 title: Setting the scale on a plan
 description: Calibrate a PDF so measurements are accurate — set scale from two points, use architectural/engineering presets, or enter a custom scale.
-updated: 2026-08-10
+updated: 2026-09-14
 order: 2
 icon: set-scale
 category: Getting started
@@ -36,9 +36,13 @@ On a non-standard (rescaled) sheet, applying a preset or custom scale flows stra
 
 You can also type a scale directly — a fraction like `1/4` or a decimal like `0.25` — and apply it. Useful when you know the ratio but don't have a dimension to click.
 
+## Change a scale you've already set
+
+Once a page has a scale, the header's Set Scale button doesn't go away — it **reads the value** (`1/4" = 1'`) and stays a button. Click it to re-open the dialog **where the scale was set**: a preset comes back with that preset marked, a custom scale with your fraction and feet already in the fields, a two-point scale on the points tab offering to measure again. The sidebar readout under it opens the same dialog. If you were mid-way through a line or polyline when you pressed `S`, the half-drawn run waits for you and picks up where it was when the dialog closes.
+
 ## Tips
 
-- The scale badge on each page in the sidebar turns yellow once a scale is set, so you can see at a glance which sheets are calibrated.
+- The scale badge on each page in the sidebar turns yellow once a scale is set, so you can see at a glance which sheets are calibrated. Sheets with a scale also count as marked for the **Shift+←/→** marked-page navigation.
 - If a single sheet mixes scales (a detail blown up in the corner), you don't have to re-scale the whole page — see [Scale zones and multiply zones](/guides/scale-zones-and-multiply-zones/).
 - Try to measure something before you trust a takeoff. If a known 3-foot door reads as 4 feet, your scale is off — reset it and pick cleaner points.
 

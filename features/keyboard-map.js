@@ -144,7 +144,7 @@
   function captionFor(label, actions) {
     const shown = actions.slice(0, MAX_CAPTION_ACTIONS).join(' · ');
     const extra = actions.length - MAX_CAPTION_ACTIONS;
-    return label + ' — ' + shown + (extra > 0 ? ' · +' + extra + ' more' : '');
+    return label + ': ' + shown + (extra > 0 ? ' · +' + extra + ' more' : '');
   }
 
   // A readable name for the caption / aria-label, since several keycaps are

@@ -1352,7 +1352,7 @@ function createSaveEngine(ctx) {
             }
           }
           if (pdfResult.reason === 'no_usable_buffer') {
-            ctx.showToast('PDF couldn’t be uploaded — reopen the project to attach it.', 4000);
+            ctx.showToast('PDF couldn’t be uploaded. Reopen the project to attach it.', 4000);
           }
         } else if (pdfResult && !pdfResult.ok) {
           pushSaveEvent(
@@ -2158,7 +2158,7 @@ function createSaveEngine(ctx) {
                 saveDebugLog('manual.save.branch', { runId, branch: 'pdf_unchanged_hash_match' });
               } else if (row?.pdf_hash === newHash && !row?.pdf_path) {
                 saveDebugLog('manual.save.branch', { runId, branch: 'hash_match_but_no_path_force_upload' });
-                pushSaveEvent('manual_save_force_upload_missing_pdf', 'PDF hash matched but no file in cloud — uploading');
+                pushSaveEvent('manual_save_force_upload_missing_pdf', 'PDF hash matched but no file in cloud, uploading');
               }
             }
             if (!skipUpload) {

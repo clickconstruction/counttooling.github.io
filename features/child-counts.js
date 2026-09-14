@@ -179,7 +179,7 @@
           '<span class="child-count-per">' + esc(ruleLabel(ch)) + (ch.ruleId && App.ruleChipHtml ? ' ' + App.ruleChipHtml(ch.ruleId) : '') + '</span>' +
           '<button type="button" class="child-count-remove" title="Remove" aria-label="Remove">×</button>' +
           '</div>').join('')
-        : '<div class="child-count-empty">None yet — counted automatically with every ' + (kind === 'counter' ? 'placed count' : 'run') + '.</div>';
+        : '<div class="child-count-empty">None yet, counted automatically with every ' + (kind === 'counter' ? 'placed count' : 'run') + '.</div>';
       listEl.querySelectorAll('.child-count-remove').forEach((btn) => {
         btn.onclick = () => {
           const idx = Number(btn.closest('.child-count-row').dataset.idx);

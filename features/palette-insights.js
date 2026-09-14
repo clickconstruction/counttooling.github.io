@@ -245,7 +245,7 @@
       onArtboard.lineType = new Set(((ab && ab.lineTypes) || []).map((lt) => nameKey(lt.name)));
       subtitleEl.textContent = insightRows.length
         ? 'Your most-used counters and lines · ranked by how many bids use each'
-        : 'No cloud projects yet — save a project and check back.';
+        : 'No cloud projects yet. Save a project and check back.';
       renderRows();
     } catch (e) {
       subtitleEl.textContent = (e && e.message) || 'Analysis failed. Try again.';

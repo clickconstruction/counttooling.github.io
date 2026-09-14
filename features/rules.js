@@ -72,7 +72,7 @@
   function ruleChipHtml(id, opts) {
     const rule = getRule(id);
     const label = ruleChipLabel(rule);
-    const title = rule ? rule.title + ' — as the app applies it' : 'Rule';
+    const title = rule ? rule.title + ', as the app applies it' : 'Rule';
     return '<button type="button" class="rule-chip' + (opts && opts.cls ? ' ' + opts.cls : '') + '" data-rule="' + esc(id) + '" title="' + esc(title) + '"' + (label ? '' : ' hidden') + '>' + esc(label) + '</button>';
   }
   // Static chips (app/index.html) and any rendered before the list arrived.
@@ -82,7 +82,7 @@
       const label = ruleChipLabel(rule);
       b.textContent = label;
       b.hidden = !label;
-      if (rule) b.title = rule.title + ' — as the app applies it';
+      if (rule) b.title = rule.title + ', as the app applies it';
     });
   }
 
@@ -114,7 +114,7 @@
     const codes = App.getProjectCodes ? App.getProjectCodes() : null;
     const j = codes && codes.jurisdiction ? String(codes.jurisdiction).toLowerCase() : '';
     const mine = j ? all.filter((a) => j.includes(String(a.jurisdiction || '').toLowerCase())) : all;
-    if (mine.length) return '<ul class="rule-pop-amend">' + mine.map((a) => '<li><b>' + esc(a.jurisdiction) + '</b> — ' + esc(a.note) + '</li>').join('') + '</ul>';
+    if (mine.length) return '<ul class="rule-pop-amend">' + mine.map((a) => '<li><b>' + esc(a.jurisdiction) + '</b>: ' + esc(a.note) + '</li>').join('') + '</ul>';
     return '<span class="rule-pop-muted">no state or local amendment on file' + (j ? ' for ' + esc(codes.jurisdiction) : '') + '</span>';
   }
   function render(rule) {

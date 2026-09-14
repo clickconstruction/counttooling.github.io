@@ -199,7 +199,7 @@ test.describe('Interactive walkthrough', () => {
     await page.evaluate(() => { window.state.lastMeasure = { text: 'Distance: 53\'-4"', pageIdx: 0, pts: 180, scale: { pixelsPerUnit: 3.375, unit: 'ft' } }; });
     await page.waitForTimeout(600);
     expect(await stepId(page)).toBe('measure');
-    expect(await page.locator('#tourStatus').textContent()).toBe('Read 53\'-4" — go Back and set the scale again');
+    expect(await page.locator('#tourStatus').textContent()).toBe('Read 53\'-4". Go Back and set the scale again');
     // ...and the 20'-0" dimension measures 20 ft through the real Measure commit
     await page.click('#tourAction');
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');

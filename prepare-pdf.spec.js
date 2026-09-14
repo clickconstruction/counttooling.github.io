@@ -194,7 +194,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
       window.App.openPreparePdfModal(newPages, buf, window.state.currentProjectName || 'Untitled', { mode: 'append' });
     });
     await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#preparePdfTitle')).toContainText('Add pages — test-2pages');
+    await expect(page.locator('#preparePdfTitle')).toContainText('Add pages to test-2pages');
 
     await page.locator('#preparePdfDone').click();
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/, { timeout: 10000 });

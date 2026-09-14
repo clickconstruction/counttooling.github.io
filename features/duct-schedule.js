@@ -323,7 +323,7 @@
     if (s.fittingMode === 'counted') {
       html += '<table class="duct-schedule-table"><tr><th>Type</th><th>Size</th><th>Count</th><th>lb ea</th><th>lb</th></tr>';
       if (!s.fittingRows.length) {
-        html += '<tr><td colspan="5" class="duct-schedule-empty-cell">No fittings counted — corners, size steps, and taps count themselves as you trace.</td></tr>';
+        html += '<tr><td colspan="5" class="duct-schedule-empty-cell">No fittings counted. Corners, size steps, and taps count themselves as you trace.</td></tr>';
       }
       s.fittingRows.forEach((r) => {
         html += '<tr><td>' + esc(FITTING_LABELS[r.type] || r.type) + '</td><td class="mono">' + esc(r.sizeKey) + '</td><td class="mono">' + r.count + '</td><td class="mono">' + r.lbEach.toFixed(1) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
@@ -337,7 +337,7 @@
     // Flex drops (D8 — only when CFM devices hang off the scope's duct).
     // LF only, priced by the drop: deliberately outside the pounds rollup.
     if (s.flexRows.length) {
-      html += '<div class="duct-schedule-section-label">Flex duct <span class="duct-schedule-sublabel">(by the drop — not in bid weight)</span></div>';
+      html += '<div class="duct-schedule-section-label">Flex duct <span class="duct-schedule-sublabel">(by the drop, not in bid weight)</span></div>';
       html += '<table class="duct-schedule-table"><tr><th>System</th><th>Drops</th><th>LF</th><th></th></tr>';
       s.flexRows.forEach((r) => {
         const warn = flexOverLabel(r, s.maxFlexFt);
@@ -461,7 +461,7 @@
     }
     lines.push('');
     if (s.flexRows.length) {
-      lines.push('Flex duct (by the drop — not in bid weight)');
+      lines.push('Flex duct (by the drop, not in bid weight)');
       s.flexRows.forEach((r) => {
         const warn = flexOverLabel(r, s.maxFlexFt);
         lines.push([r.systemName, r.count + (r.count === 1 ? ' drop' : ' drops'), fmtFt(r.totalFt)]
@@ -535,7 +535,7 @@
       App.showToast(copiedToastText(s), 4000);
     } catch (err) {
       console.error('[copy]', err);
-      App.showToast('Nothing was copied — the browser blocked clipboard access. Click Copy Schedule again, and allow clipboard access if the browser asks.', 6000);
+      App.showToast('Nothing was copied. The browser blocked clipboard access. Click Copy Schedule again, and allow clipboard access if the browser asks.', 6000);
     }
   }
 
@@ -546,13 +546,13 @@
   // ⚠ rows — the same list it would have named — ride this toast instead,
   // after the number the estimator wants and the PipeTooling paste hint.
   function copiedToastText(s) {
-    let text = 'Duct schedule copied — Bid weight ' + fmtLb(s.bidWeightLb) + ' lb. Pastes into PipeTooling in columns.';
+    let text = 'Duct schedule copied. Bid weight ' + fmtLb(s.bidWeightLb) + ' lb. Pastes into PipeTooling in columns.';
     const check = App.getBidCheck ? App.getBidCheck() : null;
     const warn = check ? check.auto.filter((r) => r.verdict === 'warn') : [];
     if (warn.length) {
       // The gate's short row names ("fits the roof", "every room served").
-      const short = (r) => (r.short || r.label.replace(/ —.*$/, '')).replace(/ within.*| on plan.*| and reached.*/i, '').toLowerCase();
-      text += ' Bid Check: ' + warn.length + ' open item' + (warn.length === 1 ? '' : 's') + ' — ' + warn.map(short).join(', ') + '.';
+      const short = (r) => (r.short || r.label.replace(/[:—].*$/, '')).replace(/ within.*| on plan.*| and reached.*/i, '').toLowerCase();
+      text += ' Bid Check: ' + warn.length + ' open item' + (warn.length === 1 ? '' : 's') + ': ' + warn.map(short).join(', ') + '.';
     }
     return text;
   }

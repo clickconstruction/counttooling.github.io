@@ -88,13 +88,13 @@
         App.renderPdf();
         if (pageEntries.length && appliedPages < pageEntries.length) {
           App.showToast('Applied marks to ' + appliedPages + ' of ' + pageEntries.length +
-            ' pages — the plan has fewer pages than the export.', 6000);
+            ' pages. The plan has fewer pages than the export.', 6000);
         }
       } catch (err) {
         // B2 / J12: in-app toast (T2-04 toast region) instead of the native
         // alert('Invalid import file'), and it says what a valid file IS.
         console.error('[Import Canvas]', err);
-        App.showToast('That file isn’t a canvas export — Import Canvas reads the .json file that Export Canvas creates.', 6000);
+        App.showToast('That file isn’t a canvas export. Import Canvas reads the .json file that Export Canvas creates.', 6000);
       }
     };
     r.readAsText(f);

@@ -243,7 +243,7 @@ function createAnnotationModel(ctx) {
     const now = Date.now();
     if (now - lastBakeMismatchToastAt > 4000) {
       lastBakeMismatchToastAt = now;
-      try { ctx.showToast('This view may be misaligned — the PDF differs from when the marks were placed.', 6000); } catch (_) { /* showToast may not be ready */ }
+      try { ctx.showToast('This view may be misaligned. The PDF differs from when the marks were placed.', 6000); } catch (_) { /* showToast may not be ready */ }
     }
   }
 

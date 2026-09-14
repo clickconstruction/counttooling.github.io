@@ -196,7 +196,7 @@ test.describe('Duct polish (D8)', () => {
 
     // The copy text carries the same line (LF only, flagged).
     const copyText = await page.evaluate(() => window.App.buildDuctScheduleText(window.App.computeDuctSchedule({})));
-    expect(copyText).toContain('Flex duct (by the drop — not in bid weight)');
+    expect(copyText).toContain('Flex duct (by the drop, not in bid weight)');
     expect(copyText).toContain("RTU-1\t2 drops\t14'\t⚠ 1 drop over 6' max");
 
     // The cap on the Polish row re-renders live: 4.5' flags the default drop too…

@@ -38,9 +38,9 @@
       await App.refreshProjectPermissions();
       App.updateSettingsCheckoutSection();
       if (opts.hideSettings) App.hideModal('settingsModal');
-      showTurnedInToast(result.releasedByServer ? 'Edit session had already expired — turned in.' : 'Project turned in.');
+      showTurnedInToast(result.releasedByServer ? 'Edit session had already expired. Turned in.' : 'Project turned in.');
       if (App.state.pdfBuffer && !App.state.pdfStoragePath) {
-        App.showToast('PDF saved locally—use Save Project to Cloud to add it to the project.', 3000);
+        App.showToast('PDF saved locally. Use Save Project to Cloud to add it to the project.', 3000);
       }
       App.updateUI();
     } else {

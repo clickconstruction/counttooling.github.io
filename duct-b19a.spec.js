@@ -244,7 +244,7 @@ test.describe('B19 part 1 (D18)', () => {
     expect(dialogs, 'no alert fired by the copy: ' + errors.join(' | ')).toEqual([]);
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     const toast = await page.locator('#airboardToastText').textContent();
-    expect(toast).toMatch(/^Duct schedule copied — Bid weight [\d,]+ lb\. Pastes into PipeTooling in columns\. Bid Check: 1 open item — fits the roof\.$/);
+    expect(toast).toMatch(/^Duct schedule copied\. Bid weight [\d,]+ lb\. Pastes into PipeTooling in columns\. Bid Check: 1 open item: fits the roof\.$/);
     await expect(page.locator('#bidCheckAdvisoryModal.visible')).toHaveCount(0);
     expect(await page.locator('.toast-card.visible').count()).toBe(1);
     // The clipboard still got the table.
@@ -252,7 +252,7 @@ test.describe('B19 part 1 (D18)', () => {
     // Nothing open → the toast is just the number + the hint.
     await setDeck(page, 12.5);
     await page.evaluate(() => { const bc = window.App.getBidCheck(); bc.manual.forEach((r) => { window.state.bidCheck.manual[r.id] = true; }); window.App.updateUI(); });
-    expect(await page.evaluate(() => window.App.ductCopiedToastText(window.App.computeDuctSchedule({ pageIndices: [0] })))).toMatch(/^Duct schedule copied — Bid weight [\d,]+ lb\. Pastes into PipeTooling in columns\.$/);
+    expect(await page.evaluate(() => window.App.ductCopiedToastText(window.App.computeDuctSchedule({ pageIndices: [0] })))).toMatch(/^Duct schedule copied\. Bid weight [\d,]+ lb\. Pastes into PipeTooling in columns\.$/);
     expect(errors).toEqual([]);
   });
 

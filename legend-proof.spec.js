@@ -229,7 +229,7 @@ test.describe('Tier-3 B10 — legend & proof surface', () => {
 
   test('Summary heading tooltip says what a click does (J8)', async ({ page }) => {
     await boot(page);
-    await expect(page.locator('#summarySectionTitle')).toHaveAttribute('title', 'Legend settings — ▼ collapses');
+    await expect(page.locator('#summarySectionTitle')).toHaveAttribute('title', 'Legend settings, ▼ collapses');
     // The heading still opens Legend Settings (the tooltip now tells the truth).
     await page.locator('#summarySectionTitle').click();
     await expect(page.locator('#legendSettingsModal')).toHaveClass(/visible/);
@@ -250,7 +250,7 @@ test.describe('Tier-3 B10 — legend & proof surface', () => {
     expect(text).toMatch(/\d+ counts?\b/);
     expect(text).toContain('of lines');
     const title = await totals.getAttribute('title');
-    expect(title).toContain('click to see the Summary');
+    expect(title).toContain('Click to see the Summary');
 
     // Wide bar: the words are visible. Narrow bar: the words hide (CSS) so
     // the compact pair keeps the status bar on one line — the full words

@@ -160,7 +160,7 @@
         if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
         if (dotEl) { dotEl.className = 'dot dot-yellow'; dotEl.title = canvasTitle; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas Viewing (read-only)';
-        mode = state.checkedOutEmail ? ('Viewing — ' + (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing') : 'Viewing — Available (check out to edit)';
+        mode = state.checkedOutEmail ? ('Viewing, ' + (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing') : 'Viewing, Available (check out to edit)';
       } else {
         let canvasTitle = 'Canvas sync: Project not saved to cloud';
         if (state.lastSavedAt) canvasTitle += '\nCloud: ' + App.formatSaveTime(state.lastSavedAt);
@@ -250,8 +250,8 @@
             : press + ' to add points';
           const readout = liveDrawReadout();
           if (readout) {
-            toolHintKeyed = toolHint + ' — ' + HINT_READOUT_PLACEHOLDER;
-            toolHint += ' — ' + readout;
+            toolHintKeyed = toolHint + ': ' + HINT_READOUT_PLACEHOLDER;
+            toolHint += ': ' + readout;
           }
         }
         else if (state.tool === TOOL.DUCT) {
@@ -260,8 +260,8 @@
           toolHint = press + ' to trace duct · S = size';
           const readout = App.ductLiveReadout ? App.ductLiveReadout() : '';
           if (readout) {
-            toolHintKeyed = toolHint + ' — ' + DUCT_READOUT_PLACEHOLDER;
-            toolHint += ' — ' + readout;
+            toolHintKeyed = toolHint + ': ' + DUCT_READOUT_PLACEHOLDER;
+            toolHint += ': ' + readout;
           }
         }
         else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? press + ' second corner' : press + ' first corner';
@@ -274,7 +274,7 @@
           toolHint = press + ' to place marker';
           // S6: the tag the text layer reads beside the cursor ("Plan says B → Type B")
           const th = App.tagHintText ? App.tagHintText() : '';
-          if (th) { toolHintKeyed = toolHint + ' — Plan says WW → counter name placeholder'; toolHint += ' — ' + th; }
+          if (th) { toolHintKeyed = toolHint + ': Plan says WW → counter name placeholder'; toolHint += ': ' + th; }
         }
         else if (state.tool === TOOL.SCHEDULE) toolHint = state.scheduleBoxStart ? press + ' the schedule\'s far corner' : press + ' one corner of the fixture schedule';
         else if (state.tool === TOOL.CHAIN) {
@@ -284,8 +284,8 @@
           toolHint = state.chainStart && state.chainStart.page === state.currentPage ? press + ' next device (Enter ends)' : press + ' first device';
           const readout = App.chainDropHint ? App.chainDropHint() : '';
           if (readout) {
-            toolHintKeyed = toolHint + ' — ' + CHAIN_READOUT_PLACEHOLDER;
-            toolHint += ' — ' + readout;
+            toolHintKeyed = toolHint + ': ' + CHAIN_READOUT_PLACEHOLDER;
+            toolHint += ': ' + readout;
           }
         }
         else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
@@ -363,8 +363,8 @@
         seg(' | ' + lenStr); seg(' of lines', true);
         seg(']');
         totalsEl.title = countStr + countWord + ' | ' + lenStr + ' of lines'
-          + ((t.lengthPx || 0) > 0 ? ' — px lengths are on sheets with no scale' : '')
-          + ' — click to see the Summary';
+          + ((t.lengthPx || 0) > 0 ? '; px lengths are on sheets with no scale' : '')
+          + '. Click to see the Summary';
         totalsEl.style.display = '';
       }
     }
@@ -463,9 +463,9 @@
     }
 
     const title = offline
-      ? 'Save status — offline (changes saved locally)'
+      ? 'Save status: offline (changes saved locally)'
       : attention
-        ? (checkoutExpired ? 'Save status — checkout expired' : 'Save status — sync needs attention')
+        ? (checkoutExpired ? 'Save status: checkout expired' : 'Save status: sync needs attention')
         : 'Save status';
     const aria = offline
       ? 'Save status, offline, changes saved locally'

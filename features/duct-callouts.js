@@ -92,7 +92,7 @@
     const label = formatDuctSize(hit.size);
     return {
       size: hit.size, str: hit.str, x: hit.x, y: hit.y, w: hit.w, h: hit.h, dist: hit.dist,
-      chipText: 'Plan says ' + label + ' here — S accepts',
+      chipText: 'Plan says ' + label + ' here. S accepts',
       popoverLabel: 'Plan says ' + label + ' here',
     };
   }

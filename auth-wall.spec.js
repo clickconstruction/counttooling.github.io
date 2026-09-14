@@ -17,7 +17,7 @@
  */
 const { test, expect } = require('@playwright/test');
 
-const NET_COPY = 'Can’t reach the server — check your connection and try again.';
+const NET_COPY = 'Can’t reach the server. Check your connection and try again.';
 
 const pageErrors = (page) => {
   const errors = [];

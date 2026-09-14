@@ -70,7 +70,7 @@
       sel.appendChild(opt);
     });
     const offOpt = document.createElement('option');
-    offOpt.value = ''; offOpt.textContent = "Non-standard — don't correct";
+    offOpt.value = ''; offOpt.textContent = "Non-standard, don't correct";
     sel.appendChild(offOpt);
     sel.value = a.bestGuessSheet ? a.bestGuessSheet.id : '';
     setSheetCorrectionFromSheet(a.bestGuessSheet || null);
@@ -131,7 +131,7 @@
     // Long duration: this is the one toast that teaches a MODE (field review
     // 2026-08-15 — at the default duration it was gone before it registered).
     App.showToast('Scale set as if printed on ' + (sheet ? sheet.label : 'the chosen sheet') +
-      ' — click both ends of a printed dimension to check it (Esc keeps this scale)', 8000);
+      '. Click both ends of a printed dimension to check it (Esc keeps this scale)', 8000);
   }
 
   function updateScalePlaceholder() {
@@ -253,7 +253,7 @@
       pointsPanel.style.display = '';
       selectOnPdfGroup.style.display = 'none';
       if (lengthInputGroup) lengthInputGroup.style.display = '';
-      scaleInfo.textContent = 'Line selected on the plan — enter its real-world length below.';
+      scaleInfo.textContent = 'Line selected on the plan. Enter its real-world length below.';
       updateScalePlaceholder();
     } else {
       tabsEl.style.display = '';
@@ -329,7 +329,7 @@
   function applyTwoPointScale(unit, val, method) {
     const state = App.state;
     const dist = App.ptDist(state.scalePointA, state.scalePointB);
-    if (dist < 1) { App.showToast('Scale line too short — pick two points further apart'); return false; }
+    if (dist < 1) { App.showToast('Scale line too short. Pick two points further apart'); return false; }
     const scaleObj = { pixelsPerUnit: dist / val, unit, label: null, refLine: { x1: state.scalePointA.x, y1: state.scalePointA.y, x2: state.scalePointB.x, y2: state.scalePointB.y } };
     if (applyScaleObjectToZoneOrPage(scaleObj)) return true;
     App.pushUndoSnapshot();
@@ -399,7 +399,7 @@
     // silently-armed would make the post-Apply pan click a silent corner 1).
     // Toasts are non-blocking corner cards since T2-15, so this never eats
     // the very next zone drag.
-    if (stayArmed) App.showToast('Zone scale set — Scale Zone stays armed: drag the next zone, or press Esc to finish.', 4000);
+    if (stayArmed) App.showToast('Zone scale set. Scale Zone stays armed: drag the next zone, or press Esc to finish.', 4000);
     return true;
   }
   function showScaleTab(tab) {
@@ -441,7 +441,7 @@
           App.hideModal('scaleModal');
           App.updateUI();
           App.renderAnnotations();
-          App.showToast('Scale set — verify it against a known dimension');
+          App.showToast('Scale set. Verify it against a known dimension');
         };
         list.appendChild(btn);
       });
@@ -559,7 +559,7 @@
     App.hideModal('scaleModal');
     App.updateUI();
     App.renderAnnotations();
-    App.showToast('Scale set — verify it against a known dimension');
+    App.showToast('Scale set. Verify it against a known dimension');
   };
   const sheetSelectEl = document.getElementById('scaleSheetSelect');
   if (sheetSelectEl) sheetSelectEl.onchange = (e) => {
@@ -596,7 +596,7 @@
     const known = App.parseRealWorldLength(document.getElementById('scaleCheckValue').value, unit);
     if (!known || known <= 0) { App.showToast('Enter a valid length'); return; }
     const dist = App.ptDist(state.scalePointA, state.scalePointB);
-    if (dist < 1) { App.showToast('Line too short — pick two points further apart'); return; }
+    if (dist < 1) { App.showToast('Line too short. Pick two points further apart'); return; }
     const { reading, deltaPct } = App.scaleCheckDelta(dist, scale, known, unit);
     App.logUserEvent('scale_verify', state.currentProjectId || null, {
       deltaPct,
@@ -611,7 +611,7 @@
     deltaEl.classList.remove('ok', 'off');
     if (absPct < 1) {
       deltaEl.classList.add('ok');
-      deltaEl.textContent = 'Within ' + absPct.toFixed(1) + '% — the scale looks correct.';
+      deltaEl.textContent = 'Within ' + absPct.toFixed(1) + '%. The scale looks correct.';
     } else {
       deltaEl.classList.add('off');
       deltaEl.textContent = 'Off by about ' + absPct.toFixed(1) + '% (reads ' + (deltaPct > 0 ? 'long' : 'short') + '). Use measured to fix it.';
@@ -629,7 +629,7 @@
         const cfNeeded = scale.correctionFactor * (reading / known);
         const match = a ? App.sheetMatchingCorrection(a.widthPt, a.heightPt, cfNeeded) : null;
         if (match && match.id !== scale.sheetSize) {
-          hintEl.textContent = 'This page measures like a print of ' + match.label + ' — pick that sheet when applying presets to the rest of this set.';
+          hintEl.textContent = 'This page measures like a print of ' + match.label + '. Pick that sheet when applying presets to the rest of this set.';
           hintEl.style.display = '';
         }
       }

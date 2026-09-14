@@ -101,7 +101,7 @@
       const total = App.getRoomAirBalance().reduce((sum, r) => sum + r.targetCfm, 0);
       const s = suggestSystemsForCfm(total);
       if (s) {
-        txt = 'Rooms total ~' + Math.round(total).toLocaleString() + ' CFM — about '
+        txt = 'Rooms total ~' + Math.round(total).toLocaleString() + ' CFM, about '
           + s.systems + ' system' + (s.systems === 1 ? '' : 's') + ' at '
           + s.cfmEach.toLocaleString() + ' CFM';
       }
@@ -129,7 +129,7 @@
   // The duct surfaces' shared "Turn on groups" action: flip the gate (app.js
   // turnOnGroups expands the section + re-renders) and say so once.
   function turnOnGroupsFromDuct() {
-    if (App.turnOnGroups && App.turnOnGroups()) App.showToast('Groups are on — the Groups section is in the sidebar.');
+    if (App.turnOnGroups && App.turnOnGroups()) App.showToast('Groups are on. The Groups section is in the sidebar.');
   }
 
   function openDuctCreateModal() {
@@ -337,7 +337,7 @@
     const changed = ds.deckHeightFt !== next;
     ds.deckHeightFt = next;
     const n = applyDeckHeightToRuns();
-    if (n) App.showToast((next ? 'Deck height ' + next + "' — auto riser " : 'Deck height cleared — auto riser ') + (next ? 'set on ' : 'removed from ') + n + (n === 1 ? ' run.' : ' runs.'));
+    if (n) App.showToast((next ? 'Deck height ' + next + "'. Auto riser " : 'Deck height cleared. Auto riser ') + (next ? 'set on ' : 'removed from ') + n + (n === 1 ? ' run.' : ' runs.'));
     if (changed || n) App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
@@ -412,7 +412,7 @@
       // Groups — the first committed run turns the per-project gate on (the
       // group-create latch's twin) with one quiet toast. Fires only while the
       // gate is off, so it is once per project; non-duct projects never see it.
-      if (App.turnOnGroups && App.turnOnGroups()) App.showToast('Groups are on — assign this run to a system in Groups.', 5000);
+      if (App.turnOnGroups && App.turnOnGroups()) App.showToast('Groups are on. Assign this run to a system in Groups.', 5000);
       // D3: the commit is the inference moment — re-walk the canvas's runs
       // into auto fittings (corner/step/tap), reconciled against manual
       // overrides (features/duct-fittings.js).

@@ -122,8 +122,8 @@ test.describe('Duct air balance (D7)', () => {
     await expect(page.locator('#roomEditModal')).toHaveClass(/visible/);
     const optionLabels = await page.locator('#roomEditType option').allTextContents();
     expect(optionLabels[0]).toBe('None');
-    expect(optionLabels.join('|')).toContain('Office — 1 CFM/ft²');
-    expect(optionLabels.join('|')).toContain('Storage — 0.5 CFM/ft²');
+    expect(optionLabels.join('|')).toContain('Office, 1 CFM/ft²');
+    expect(optionLabels.join('|')).toContain('Storage, 0.5 CFM/ft²');
     expect(optionLabels.join('|')).toContain('Custom');
     await expect(page.locator('#roomEditTargetGroup')).toBeHidden();
     await page.selectOption('#roomEditType', 'office');
@@ -251,11 +251,11 @@ test.describe('Duct air balance (D7)', () => {
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
     const equipLine = page.locator('#ductCreateEquipFirst');
     await expect(equipLine).toBeVisible();
-    await expect(equipLine).toHaveText('Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (Turn on groups)');
+    await expect(equipLine).toHaveText('Rooms total ~2,400 CFM, about 2 systems at 1,200 CFM (Turn on groups)');
     await page.locator('#ductCreateCancel').click();
     await page.evaluate(() => { window.state.groupsEnabled = true; window.App.updateUI(); });
     await page.locator('#ductBtn').click();
-    await expect(equipLine).toHaveText('Rooms total ~2,400 CFM — about 2 systems at 1,200 CFM (edit in Groups)');
+    await expect(equipLine).toHaveText('Rooms total ~2,400 CFM, about 2 systems at 1,200 CFM (edit in Groups)');
     await page.locator('#ductCreateCancel').click();
 
     // Round trip: the REAL export payload carries the new room fields…

@@ -111,7 +111,7 @@ test.describe('Digital twin visibility', () => {
     });
 
     await expect(page.locator('#twinBanner')).toBeVisible();
-    await expect(page.locator('#twinBannerText')).toHaveText('DIGITAL TWIN — twin-estimator-1@twins.counttooling.local');
+    await expect(page.locator('#twinBannerText')).toHaveText('DIGITAL TWIN: twin-estimator-1@twins.counttooling.local');
     expect(await page.evaluate(() => document.body.classList.contains('twin-session'))).toBe(true);
 
     // The banner sits above .app, so the shell must give back its height rather
@@ -127,7 +127,7 @@ test.describe('Digital twin visibility', () => {
       window.App.state.supabaseSession.user.user_metadata = { name: 'Estimator Twin 1' };
       window.App.renderTwinBanner();
     });
-    await expect(page.locator('#twinBannerText')).toHaveText('DIGITAL TWIN — Estimator Twin 1');
+    await expect(page.locator('#twinBannerText')).toHaveText('DIGITAL TWIN: Estimator Twin 1');
 
     await page.evaluate(() => {
       window.App.state.isDigitalTwin = false;

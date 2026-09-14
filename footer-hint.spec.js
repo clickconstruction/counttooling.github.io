@@ -86,14 +86,14 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
       window.state.mousePos = { x: 90, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Tap end point — 10\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Tap end point: 10\'-0"');
 
     // Moving the cursor updates the readout live.
     await page.evaluate(() => {
       window.state.mousePos = { x: 45, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Tap end point — 5\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Tap end point: 5\'-0"');
   });
 
   test('polyline readout is cumulative', async ({ page }) => {
@@ -106,7 +106,7 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
       s.mousePos = { x: 90, y: 90 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Click to add points — 20\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Click to add points: 20\'-0"');
   });
 
   test('no scale reads px, never feet', async ({ page }) => {
@@ -118,7 +118,7 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
       window.App.updateStatus();
     });
     const text = await page.locator('#statusMode').textContent();
-    expect(text).toMatch(/— \d+ px/);
+    expect(text).toMatch(/: \d+ px/);
     expect(text).not.toMatch(/\d+'-\d+"/);
   });
 
@@ -131,7 +131,7 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
       window.state.mousePos = { x: 90, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Tap end point — 10\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Tap end point: 10\'-0"');
 
     // The borderline-width regime from the wrap test (1050px since B4's wider
     // status-bar links): the long project name alone fits, name + hint

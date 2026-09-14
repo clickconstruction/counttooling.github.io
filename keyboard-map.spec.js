@@ -117,7 +117,7 @@ test.describe('Keyboard Map — desktop (inline in Macros)', () => {
     const caption = page.locator('#macrosKeyboardCaption');
     expect(await caption.textContent()).toContain('Hover');
     await page.locator('#macrosKeyboardBoard .kb-key[data-key="S"]').hover();
-    await expect(caption).toHaveText('S — Set Scale');
+    await expect(caption).toHaveText('S: Set Scale');
     // A key used by two shortcuts lists both.
     await page.locator('#macrosKeyboardBoard .kb-key[data-key="R"]').hover();
     await expect(caption).toContainText('Rotate page');

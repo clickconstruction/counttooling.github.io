@@ -100,7 +100,7 @@ test.describe('Electrical, First-Class S6 — read the tags', () => {
     ]);
     await page.click('#schedulePaletteCreate');
     const em = await page.evaluate(() => window.state.counters.find((c) => c.tag === 'EM'));
-    expect(em.name).toBe('EM — Emergency wall pack');
+    expect(em.name).toBe('EM · Emergency wall pack');
     expect(await page.evaluate(() => window.state.tool === window.App.TOOL.COUNTER)).toBe(true);
     // a box with no rows says so rather than opening an empty proposal
     await page.evaluate(() => window.App.proposeCountersFromBox({ x1: 0, y1: 700, x2: 50, y2: 790 }));

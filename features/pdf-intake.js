@@ -38,7 +38,7 @@
       const pages = [];
       for (let i = 0; i < numPages; i++) {
         const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? ('Test PDF — p' + (i + 1)) : 'Test PDF';
+        const label = numPages > 1 ? ('Test PDF, p' + (i + 1)) : 'Test PDF';
         const canvasId = App.uid();
         pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
       }
@@ -86,7 +86,7 @@
         const numPages = pdf.numPages;
         for (let i = 0; i < numPages; i++) {
           const pdfPage = await pdf.getPage(i + 1);
-          const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
+          const label = numPages > 1 ? (f.name + ', p' + (i + 1)) : f.name;
           newPages.push({ pdfPage, label, rotation: 0 });
         }
       }
@@ -388,7 +388,7 @@
         const numPages = pdf.numPages;
         for (let i = 0; i < numPages; i++) {
           const pdfPage = await pdf.getPage(i + 1);
-          const label = numPages > 1 ? (f.name + ' — p' + (i + 1)) : f.name;
+          const label = numPages > 1 ? (f.name + ', p' + (i + 1)) : f.name;
           const canvasId = App.uid();
           const idx = App.state.pages.length;
           App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });

@@ -48,7 +48,7 @@
         state.activeGhostId = state.placingGhost.id;
         App.markProjectDirty();
         const c = App.ghostCounts(state.placingGhost);
-        App.showToast('Ghost placed — ' + describeCounts(c) + '. Right-click it to stamp or hide parts.', 3200);
+        App.showToast('Ghost placed: ' + describeCounts(c) + '. Right-click it to stamp or hide parts.', 3200);
         App.logUserEvent && App.logUserEvent('ghost_placed', { counters: c.counters, lines: c.lines });
       }
       state.placingGhost = null;
@@ -78,7 +78,7 @@
     state.placingGhost = ghost;
     state.placingGhostLast = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 };
     const c = App.ghostCounts(ghost);
-    App.showToast('Copied ' + describeCounts(c) + ' — click to drop the ghost.', 2600);
+    App.showToast('Copied ' + describeCounts(c) + '. Click to drop the ghost.', 2600);
   }
 
   function describeCounts(c) {
@@ -175,14 +175,14 @@
       App.pushUndoSnapshot();
       const res = App.stampGhostIntoAnnotations(ann, g);
       if (!res.counters && !res.lines) {
-        App.showToast('Nothing to stamp — both counts and runs are hidden on this ghost.', 2800);
+        App.showToast('Nothing to stamp. Both counts and runs are hidden on this ghost.', 2800);
         hideGhostMenu();
         return;
       }
       App.markProjectDirty();
       // The ghost SURVIVES the stamp: the whole point is to move it to the
       // next location and stamp again. Undo takes the marks back off.
-      App.showToast('Stamped ' + describeCounts(res) + ' — the ghost stays put for the next one. Stamped in error? Ctrl+Z undoes it.', 4000);
+      App.showToast('Stamped ' + describeCounts(res) + '. The ghost stays put for the next one. Stamped in error? Ctrl+Z undoes it.', 4000);
       App.logUserEvent && App.logUserEvent('ghost_stamped', { counters: res.counters, lines: res.lines });
     } else if (action === 'toggleCounters') {
       g.showCounters = g.showCounters === false;

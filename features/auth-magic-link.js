@@ -64,10 +64,10 @@
   function friendlyOtpError(error) {
     const msg = String((error && error.message) || '');
     // A dead connection surfaces the raw fetch exception here too (B7, J17).
-    if (/failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg)) return 'Can’t reach the server — check your connection and try again.';
-    if (/signups? not allowed/i.test(msg)) return 'No account found for that email. CountTooling accounts are set up by your admin — ask them to add you.';
-    if (/rate limit/i.test(msg)) return 'Email limit reached — wait a few minutes and try again.';
-    if (/banned/i.test(msg)) return 'This account has been deactivated — ask your admin.';
+    if (/failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(msg)) return 'Can’t reach the server. Check your connection and try again.';
+    if (/signups? not allowed/i.test(msg)) return 'No account found for that email. CountTooling accounts are set up by your admin. Ask them to add you.';
+    if (/rate limit/i.test(msg)) return 'Email limit reached. Wait a few minutes and try again.';
+    if (/banned/i.test(msg)) return 'This account has been deactivated. Ask your admin.';
     return msg || 'Could not send the link';
   }
 

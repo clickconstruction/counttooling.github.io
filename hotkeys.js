@@ -46,7 +46,7 @@ const HOTKEYS = [
   { key: 'r', runner: 'rotatePage', viewerAllowed: true, section: 'Tools', action: 'Rotate page', kbd: null, icon: { glyph: '↻' } },
   { key: 'h', btnId: 'highlightBtn', section: 'Tools', action: 'Highlight mode', kbd: null, icon: { btn: 'highlightBtn' } },
   { key: 'x', btnId: 'multiplyZoneBtn', section: 'Tools', action: 'Multiply Zone mode', kbd: null, icon: { btn: 'multiplyZoneBtn' } },
-  { bespoke: true, section: 'Tools', action: 'Scale Zone (rotated Scale icon in header/sidebar)', kbd: '—', icon: { btn: 'scaleZoneBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Scale Zone (rotated Scale icon in header/sidebar)', kbd: 'no key', icon: { btn: 'scaleZoneBtn' } },
   { key: 'v', btnId: 'roomBtn', section: 'Tools', action: 'Room Sizer mode', kbd: null, icon: { btn: 'roomBtn' } },
   { key: 'g', btnId: 'ghostBtn', section: 'Tools', action: 'Ghost: copy a typical as a reference overlay', kbd: null, icon: { btn: 'ghostBtn' } },
   { key: 'n', btnId: 'noteBtn', section: 'Tools', action: 'Note mode', kbd: null, icon: { btn: 'noteBtn' } },

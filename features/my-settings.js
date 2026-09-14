@@ -93,13 +93,13 @@
         // counters/lines/counts — undo-stack snapshots omit Quick Key
         // bindings and modifier prefs, so don't over-promise.
         msg = 'Load your saved Artboard from the cloud? Your ' + placed +
-          ' placed ' + (placed === 1 ? 'mark stays' : 'marks stay') + ' on the sheet — ' +
+          ' placed ' + (placed === 1 ? 'mark stays' : 'marks stay') + ' on the sheet: ' +
           plan.relinkedMarks + (plan.relinkedMarks === 1 ? ' matches' : ' match') +
           ' by name and ' + (plan.relinkedMarks === 1 ? 'keeps' : 'keep') +
           ' counting under the loaded counters and lines.';
         if (plan.orphanedMarks > 0) {
           msg += ' ' + plan.orphanedMarks + ' mark' + (plan.orphanedMarks === 1 ? ' doesn\'t' : 's don\'t') +
-            ' match anything in the saved Artboard — they\'ll keep counting under an "Unknown" row.';
+            ' match anything in the saved Artboard; they\'ll keep counting under an "Unknown" row.';
         }
         msg += ' Undo brings your current counters, lines, and counts back.';
       } else {

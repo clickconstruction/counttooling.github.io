@@ -32,7 +32,7 @@
   function reviewStatusLine(status, requestedAt, reviewedAt, note) {
     if (status === 'ready') return 'Ready for review' + (requestedAt ? ' since ' + new Date(requestedAt).toLocaleDateString() : '');
     if (status === 'reviewed') return 'Reviewed' + (reviewedAt ? ' ' + new Date(reviewedAt).toLocaleDateString() : '');
-    if (status === 'changes') return 'Changes requested' + (reviewedAt ? ' ' + new Date(reviewedAt).toLocaleDateString() : '') + (note ? ' — “' + note + '”' : '');
+    if (status === 'changes') return 'Changes requested' + (reviewedAt ? ' ' + new Date(reviewedAt).toLocaleDateString() : '') + (note ? ': “' + note + '”' : '');
     return 'Not submitted for review';
   }
 

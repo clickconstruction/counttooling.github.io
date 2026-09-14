@@ -75,7 +75,7 @@
     showViewGateScreen({
       glyph: 'email',
       title: 'This plan is shared privately',
-      message: 'Enter your work email to open it. No account needed — it’s how the sender controls who can view.',
+      message: 'Enter your work email to open it. No account needed; it’s how the sender controls who can view.',
       button: 'Enter your email',
       onButton: () => {
         const screen = document.getElementById('viewLinkDeadScreen');
@@ -135,7 +135,7 @@
       updateUI();
       showToast('Scale set for everyone viewing this plan');
     }).catch(() => {
-      App.showToast('Couldn’t share the scale — it applies only on this device for now', 5000);
+      App.showToast('Couldn’t share the scale. It applies only on this device for now', 5000);
     });
   }
   function noteViewerTempScale(pageIdx) {
@@ -276,7 +276,7 @@
         if (data.error === 'grant_invalid') {
           // The grant is spent or does not fit this link: forget it and let the
           // email gate take over (the gate shows the server's message).
-          const err = { grantInvalid: true, message: data.message || 'This plans link needs a fresh open from your portal — or enter your email to view.' };
+          const err = { grantInvalid: true, message: data.message || 'This plans link needs a fresh open from your portal, or enter your email to view.' };
           throw err;
         }
         if (data.error === 'domain_restricted') {
@@ -368,7 +368,7 @@
     const planName = projectData.name || 'Untitled';
     for (let i = 0; i < numPages; i++) {
       const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? (planName + ' — p' + (i + 1)) : planName;
+      const label = numPages > 1 ? (planName + ', p' + (i + 1)) : planName;
       const canvasId = uid();
       state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
       state.activeCanvasIdByPage[i] = canvasId;

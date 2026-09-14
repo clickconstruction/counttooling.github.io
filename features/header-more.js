@@ -188,7 +188,7 @@
       // moves a tool between the two places, so the arrangement never changes
       // by itself.
       const overflowed = isOverflowed(t.id);
-      const pinTitle = overflowed ? 'Pin ' + t.name + ' to the toolbar' : 'Unpin ' + t.name + ' — move it into this menu';
+      const pinTitle = overflowed ? 'Pin ' + t.name + ' to the toolbar' : 'Unpin ' + t.name + ', move it into this menu';
       row.innerHTML = '<span class="hm-icon">' + (svg ? svg.outerHTML : '') + '</span>'
         + '<span class="hm-name">' + t.name + '</span>'
         + '<button type="button" class="hm-pin' + (overflowed ? '' : ' pinned') + '" data-pin-id="' + t.id + '" title="' + pinTitle + '" aria-label="' + pinTitle + '">' + PIN_SVG + '</button>'

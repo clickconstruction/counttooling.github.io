@@ -1671,7 +1671,7 @@ test('ductStaticPathLine + the static-path row: ✓ shows the work, ⚠ names th
   const ok = dm.ductStaticPathLine({ name: 'RTU-1', espInWg: 0.8, path });
   assert.deepStrictEqual(ok, { over: false, text: 'RTU-1: 0.16" of 0.80" ESP · critical path 77 eq ft (55\' duct + 1 elbow + 1 tap + 1 VD @ 0.08"/100\' + 0.10" terminal) ✓' });
   const over = dm.ductStaticPathLine({ name: 'RTU-2', espInWg: 0.15, path });
-  assert.deepStrictEqual(over, { over: true, text: 'RTU-2: 0.16" of 0.15" ESP — Branch B is the long leg; upsize its 8×6 or lower the friction rate ⚠' });
+  assert.deepStrictEqual(over, { over: true, text: 'RTU-2: 0.16" of 0.15" ESP, Branch B is the long leg; upsize its 8×6 or lower the friction rate ⚠' });
   // exactly at the ESP is still ✓ (≤)
   assert.strictEqual(dm.ductStaticPathLine({ name: 'X', espInWg: path.staticInWg, path }).over, false);
   // a path with no fittings and no terminal allowance reads plain

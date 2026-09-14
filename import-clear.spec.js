@@ -125,7 +125,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
       name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('this is not json {'),
     });
     await expect(page.locator('#airboardToastText'))
-      .toHaveText('That file isn’t a canvas export — Import Canvas reads the .json file that Export Canvas creates.');
+      .toHaveText('That file isn’t a canvas export. Import Canvas reads the .json file that Export Canvas creates.');
     expect(pageErrors).toEqual([]);
     expect(consoleErrors).toEqual([]);
   });
@@ -152,7 +152,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     });
     await page.locator('#importInput').setInputFiles({ name: 'two-pages.json', mimeType: 'application/json', buffer: Buffer.from(exportJson) });
     await expect(page.locator('#airboardToastText'))
-      .toHaveText('Applied marks to 1 of 2 pages — the plan has fewer pages than the export.');
+      .toHaveText('Applied marks to 1 of 2 pages. The plan has fewer pages than the export.');
     // Page 0's marks did land; the palette import ran.
     const after = await page.evaluate(() => ({
       p0: (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers?.c1 || []).length,
@@ -286,7 +286,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     await page.locator('#exportDropdownBtn').click();
     await expect(row).toBeVisible();
     await expect(row).toBeDisabled();
-    await expect(note).toHaveText('(canvas has marks — clear or undo first)');
+    await expect(note).toHaveText('(canvas has marks: clear or undo first)');
 
     // A click on the disabled row does nothing (no import, menu stays open).
     await row.click({ force: true });
@@ -304,7 +304,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     // ...and undoing the clear (marks return) disables it again.
     await page.keyboard.press('Control+z');
     await expect(row).toBeDisabled();
-    await expect(note).toHaveText('(canvas has marks — clear or undo first)');
+    await expect(note).toHaveText('(canvas has marks: clear or undo first)');
 
     // Viewer behavior unchanged (B6): viewers never see the row at all.
     await page.evaluate(() => { window.state.isViewer = true; window.App.updateUI(); });
@@ -331,7 +331,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     const drawerRow = page.locator('.right-menu-item', { hasText: 'Import Canvas' });
     await expect(drawerRow).toBeVisible();
     await expect(drawerRow).toBeDisabled();
-    await expect(drawerRow).toContainText('(canvas has marks — clear or undo first)');
+    await expect(drawerRow).toContainText('(canvas has marks: clear or undo first)');
 
     expect(errors).toEqual([]);
   });

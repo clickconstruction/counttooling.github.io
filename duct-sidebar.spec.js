@@ -127,14 +127,14 @@ test.describe('Duct sidebar (D4)', () => {
     const trunk = page.locator('#ductList .duct-run-wrap', { hasText: 'Trunk' });
     await expect(trunk.locator('.duct-run-row .badge')).toHaveText(fmtFt(172) + ' · ' + fmtLb(lbT1 + lbT2) + ' lb');
     await expect(trunk.locator('.duct-seg-row')).toHaveCount(2);
-    await expect(trunk.locator('.duct-seg-row').nth(0)).toHaveText("24×12 24 ga — 86' · " + fmtLb(lbT1));
-    await expect(trunk.locator('.duct-seg-row').nth(1)).toHaveText("20×12 24 ga — 86' · " + fmtLb(lbT2));
+    await expect(trunk.locator('.duct-seg-row').nth(0)).toHaveText("24×12 24 ga · 86' · " + fmtLb(lbT1));
+    await expect(trunk.locator('.duct-seg-row').nth(1)).toHaveText("20×12 24 ga · 86' · " + fmtLb(lbT2));
     // D3's walk: the straight-through size boundary infers ONE transition.
     await expect(trunk.locator('.duct-fittings-line')).toHaveText('1 transition');
 
     const branch = page.locator('#ductList .duct-run-wrap', { hasText: 'Branch' });
     await expect(branch.locator('.duct-run-row .badge')).toHaveText(fmtFt(43) + ' · ' + fmtLb(lbB) + ' lb');
-    await expect(branch.locator('.duct-seg-row')).toHaveText('12"Ø 26 ga — 43\' · ' + fmtLb(lbB));
+    await expect(branch.locator('.duct-seg-row')).toHaveText('12"Ø 26 ga · 43\' · ' + fmtLb(lbB));
     await expect(branch.locator('.duct-fittings-line')).toHaveCount(0);
 
     await expect(page.locator('#ductList .duct-all-total .duct-all-total-num'))

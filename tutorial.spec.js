@@ -280,6 +280,89 @@ test.describe('Interactive walkthrough', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the HVAC tour: its own link and ?tour=hvac start it, do-it-for-me builds a real design-build duct takeoff, its own done key hides only its link', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await page.evaluate(() => { try { ['clickcount-tour-done', 'clickcount-tour-done-plumbing', 'clickcount-tour-done-hvac'].forEach((k) => localStorage.removeItem(k)); } catch (_) {} });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    expect(await page.locator('#canvasEmptyHintTourHvac').isVisible()).toBe(true);
+    await page.click('#canvasEmptyHintTourHvac');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['hvac', 'welcome']);
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 14');
+    // 1. the sample plan → stamped HVAC, not remembered
+    await page.click('#tourAction');
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await waitForStep(page, 'scale');
+    expect(await page.evaluate(() => window.state.trade)).toBe('hvac');
+    // 2-3. scale + proof through the shared steps
+    await page.click('#tourAction');
+    await waitForStep(page, 'measure');
+    await page.click('#tourAction');
+    await waitForStep(page, 'room');
+    // 4. the room: name read off the plan (D24), typed, decked, one totals tag
+    await page.click('#tourAction');
+    await waitForStep(page, 'counter');
+    const room = await page.evaluate(() => { const r = window.state.rooms.find((x) => /open office/i.test(x.name)); const a = window.App.getActiveAnnotations(window.state.pages[0]); return { name: r.name, fromPlan: !!r.nameFromPlan, type: r.roomType, boxes: a.roomBoxes.filter((b) => b.roomId === r.id).length, deck: window.App.getDuctSettings().deckHeightFt, tags: window.App.planRoomLabels(a, 0).tags.length }; });
+    // the plan prints the name and the number as two items; D24 takes the larger print
+    expect(room).toEqual({ name: 'OPEN OFFICE', fromPlan: true, type: 'office', boxes: 1, deck: 12, tags: 1 });
+    // 5. a CFM counter wearing the diffuser glyph
+    await page.click('#tourAction');
+    await waitForStep(page, 'place');
+    expect(await page.evaluate(() => { const c = window.state.counters.find((x) => /diffuser/i.test(x.name)); return { cfm: c.cfm, icon: c.icon === window.App.cfmDefaultIcon() }; })).toEqual({ cfm: 150, icon: true });
+    // 6. four placed inside the office
+    await page.click('#tourAction');
+    await waitForStep(page, 'system');
+    const marks = await page.evaluate(() => { const c = window.state.counters.find((x) => /diffuser/i.test(x.name)); return window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id].map((m) => [m.x, m.y]); });
+    expect(marks.length).toBe(4);
+    marks.forEach(([x, y]) => { expect(x).toBeGreaterThan(114); expect(x).toBeLessThan(321); expect(y).toBeGreaterThan(268); expect(y).toBeLessThan(441); });
+    // 7. RTU-1 through the real Groups modal, and it is the active group
+    await page.click('#tourAction');
+    await waitForStep(page, 'duct');
+    expect(await page.evaluate(() => { const g = window.state.groups.find((x) => x.equipmentTag === 'RTU-1'); return { cfm: g.capacityCfm, active: window.state.activeGroupId === g.id, groupsOn: window.state.groupsEnabled }; })).toEqual({ cfm: 2000, active: true, groupsOn: true });
+    // 8. the main: two segments (the suggestion taken at S), auto fittings, in the system
+    await page.click('#tourAction');
+    await waitForStep(page, 'attach');
+    const run = await page.evaluate(() => { const a = window.App.getActiveAnnotations(window.state.pages[0]); const r = a.ductRuns[0]; return { runs: a.ductRuns.length, segments: r.segments.length, first: r.segments[0].size, system: r.systemGroupId === window.state.activeGroupId, fittings: a.ductFittings.map((f) => f.type) }; });
+    expect(run.runs).toBe(1); expect(run.segments).toBe(2); expect(run.first).toEqual({ kind: 'rect', w: 24, h: 12 }); expect(run.system).toBe(true);
+    expect(run.fittings).toContain('transition');
+    // the two near diffusers are attached, the two deep ones are strays — the hint says so
+    expect(await page.locator('#tourStatus').textContent()).toBe('2 diffusers still hanging off nothing');
+    // 9. a REAL right-click rescues one; do-it-for-me the other
+    await page.evaluate(() => { const c = window.state.counters.find((x) => /diffuser/i.test(x.name)); window.state.ctxTarget = { type: 'marker', typeId: c.id, index: 2 }; window.App.showContextMenu(10, 10); });
+    expect(await page.evaluate(() => document.getElementById('ctxAttachToRun').style.display)).toBe('block');
+    await page.evaluate(() => document.getElementById('ctxAttachToRun').click());
+    await page.waitForTimeout(600);
+    expect(await page.locator('#tourStatus').textContent()).toBe('1 diffuser still hanging off nothing');
+    await page.click('#tourAction');
+    await waitForStep(page, 'schedule');
+    expect(await page.evaluate(() => { const c = window.state.counters.find((x) => /diffuser/i.test(x.name)); const a = window.App.getActiveAnnotations(window.state.pages[0]); const devs = a.counterMarkers[c.id].map((m) => ({ x: m.x, y: m.y })); return window.attachDuctDevices(devs, a.ductRuns).unattached.length; })).toBe(0);
+    // 10. reading; 11. the manual row ticked; 12-13 reading; 14 finish
+    expect(await page.locator('#tourNext').textContent()).toBe('Next');
+    await page.click('#tourNext');
+    await waitForStep(page, 'bidcheck');
+    await page.click('#tourAction');
+    await waitForStep(page, 'handoff');
+    expect(await page.evaluate(() => window.state.bidCheck.manual['duct-fits-roof'])).toBe(true);
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('legend');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('done');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe(null);
+    expect(await page.evaluate(() => ['clickcount-tour-done-hvac', 'clickcount-tour-done-plumbing', 'clickcount-tour-done'].map((k) => !!localStorage.getItem(k)))).toEqual([true, false, false]);
+    expect(await page.evaluate(() => ['canvasEmptyHintTourHvac', 'canvasEmptyHintTourPlumbing', 'canvasEmptyHintTour'].map((id) => document.getElementById(id).style.display))).toEqual(['none', '', '']);
+    // the takeoff is real: the /Tooling text carries the diffusers and the duct block with a bid weight
+    const summary = await page.evaluate(() => window.getPipeToolingSummary());
+    expect(summary).toContain('Supply Diffuser\t4');
+    expect(summary).toContain('--- Duct ---');
+    expect(summary).toMatch(/Bid weight\t.*\d+ lb/);
+    expect(errors).toEqual([]);
+  });
+
   test('?tour=plumbing opens the plumbing tour; the Settings link opens it; finishing electrical hides only its link', async ({ page }) => {
     await page.goto('/app/?tour=plumbing');
     await page.waitForLoadState('networkidle');
@@ -296,8 +379,16 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.locator('#canvasEmptyHintTour').isVisible()).toBe(false);
     expect(await page.locator('#canvasEmptyHintTourPlumbing').isVisible()).toBe(true);
     expect(await page.locator('#canvasEmptyHintTourSep').isVisible()).toBe(false);
-    // both done → the whole offer goes
+    // plumbing done too → the hvac link (H1) still holds the offer up; ?tour=hvac + its Settings link work
     await page.evaluate(() => { window.App.startTutorial('plumbing'); window.App.stopTutorial(true); });
+    expect(await page.locator('.canvas-empty-hint-tour').isVisible()).toBe(true);
+    expect(await page.locator('#canvasEmptyHintTourHvac').isVisible()).toBe(true);
+    await page.evaluate(() => window.App.showModal('settingsModal'));
+    await page.click('#settingsTourHvac');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['hvac', 'welcome']);
+    await page.click('#tourLeave');
+    // all three done → the whole offer goes
+    await page.evaluate(() => { window.App.startTutorial('hvac'); window.App.stopTutorial(true); });
     expect(await page.locator('.canvas-empty-hint-tour').isVisible()).toBe(false);
   });
 });

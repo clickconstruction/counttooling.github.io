@@ -9,6 +9,8 @@ category: By trade
 
 Sheet-metal bids come down to one number: **pounds of duct**. Most takeoff tools stop at linear feet and leave the gauge tables, fitting allowances, and waste factors to a spreadsheet. CountTooling carries the trace all the way to a **Bid weight** — straight duct by size, fittings counted off the geometry, insulation square footage, and seam & waste on their own labeled lines.
 
+**New here?** The **hvac** link under *take the five-minute tour* on the empty canvas walks this article on the sample plan, step by step, with a *Do it for me* on every step.
+
 ## Trace a run
 
 [Set the page scale](/guides/setting-the-scale/) first, then pick the **Duct** tool [[duct]] in the header. The create dialog asks only for what a run starts as:

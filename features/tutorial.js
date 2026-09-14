@@ -34,7 +34,7 @@
  * nothing they do touches a cloud project: a tour refuses to start while a
  * cloud project is open. Progress is per session; a finished tour is
  * remembered per device under its own key (`clickcount-tour-done` electrical,
- * `clickcount-tour-done-plumbing`) so the empty-canvas hint stops offering
+ * `clickcount-tour-done-plumbing`, `clickcount-tour-done-hvac` — H1, 2026-09-14) so the empty-canvas hint stops offering
  * THAT tour and keeps offering the other. Entry points: the hint's two links,
  * Project Settings → "plumbing tour" / "electrical tour", and ?tour=plumbing /
  * ?tour=electrical (?tour=1 still means electrical).
@@ -297,11 +297,118 @@
     },
   ];
 
+  // ===== the HVAC tour (H1, 2026-09-14) =====================================================
+  // The design-build duct loop on the sample plan: box a room the plan already
+  // names, air devices with a CFM, the system, the main sized by the
+  // ductulator at S, strays hung from the menu, pounds, sign-off, hand-off.
+  // Every step is shipped behavior with a seam; the tour adds no product code.
+  // The sample plan's drawing sits at 0.75× its SVG units on the 1224-pt sheet
+  // (the SVG is 1224 CSS px at 96 dpi) — the same factor DIM_20FT carries.
+  const OPEN_OFFICE = { x1: 114, y1: 268, x2: 321, y2: 441 };   // OPEN OFFICE 104's outline (SVG 150,355 280×235), PDF pts
+  const DIFFUSER_SPOTS = [{ x: 165, y: 358.5 }, { x: 270, y: 358.5 }, { x: 165, y: 420 }, { x: 270, y: 420 }];   // two 6 pt from the main (attached), two 67 pt off (strays, within the 96 pt rescue)
+  const MAIN_VERTICES = [{ x: 120, y: 352.5 }, { x: 225, y: 352.5 }, { x: 315, y: 352.5 }];
+  const hCounter = () => findCounter(tourCounterId, /diffuser/i);
+  const hRoom = () => (state().rooms || []).find((r) => /open office/i.test(r.name || ''));
+  const ductRuns = () => { const a = ann(); return (a && a.ductRuns) || []; };
+  const cfmDevices = () => { const a = ann(); const c = hCounter(); return (a && c && a.counterMarkers && a.counterMarkers[c.id]) || []; };
+  const unattachedDevices = () => {
+    const devs = cfmDevices().map((m) => ({ x: m.x, y: m.y }));
+    if (!devs.length || typeof attachDuctDevices !== 'function') return [];
+    return attachDuctDevices(devs, ductRuns()).unattached;
+  };
+  const HVAC_STEPS = [
+    {
+      id: 'welcome', title: 'A five-minute HVAC takeoff', kind: 'do',
+      body: 'This tour walks a design-build duct takeoff on the sample plan — set the scale and prove it, box a room the plan already names, give diffusers a CFM, let the app size the main, count the fittings and the pounds, sign off, hand it to the bid. Nothing here touches your projects. Open the sample plan.',
+      target: ['#uploadPdf', '#uploadPdfSidebar'],
+      // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
+      check: () => { const ok = !!(state().pages && state().pages.length); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
+      action: { label: 'Open the sample plan', run: openSamplePlan },
+    },
+    SCALE_STEP,
+    PROVE_STEP,
+    {
+      id: 'room', title: 'Box a room the plan already names', kind: 'do',
+      body: 'Pick Room Sizer (V) and drag a box around OPEN OFFICE 104. The dialog opens with the name already filled in — read off the plan\u2019s own text — so pick Office as the room type, enter a 9\u2019 ceiling and the 12\u2019 deck height, and Apply. The sheet gets one small totals tag placed off the printed name; the Rooms row shows what the room needs in CFM.',
+      target: ['#roomBoxApply', '#roomBoxType', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'],
+      check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType && a && (a.roomBoxes || []).some((b) => b.roomId === r.id) && ds && ds.deckHeightFt > 0); },
+      action: { label: 'Box the open office for me', run: boxOpenOffice },
+    },
+    {
+      id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
+      body: 'Counters \u2192 + Add. On an HVAC project the Create tab\u2019s air & mounting fields are already unfolded: name it Supply Diffuser and type 150 in CFM \u2014 the chip beside the field names the symbol it will take. Press Create Counter; the counter tool arms itself.',
+      target: ['#counterCreate', '#counterCfm', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      check: () => { const c = hCounter(); if (c) tourCounterId = c.id; return !!(c && c.cfm > 0); },
+      action: { label: 'Create it for me', run: addDiffuser },
+    },
+    {
+      id: 'place', title: 'Place four diffusers', kind: 'do',
+      body: 'With the counter armed, click four spots across OPEN OFFICE 104 \u2014 two near where the main will run, two deeper in the room. Each mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
+      target: ['#annCanvas'],
+      check: () => cfmDevices().length >= 4,
+      action: { label: 'Place four for me', run: placeFourDiffusers },
+    },
+    {
+      id: 'system', title: 'Name the system', kind: 'do',
+      body: 'Groups \u2192 + Add. A group with an equipment tag is a system: name it RTU-1, tag it RTU-1, give it 2,000 CFM of capacity, Done. Select it in the sidebar so the main you trace next belongs to it \u2014 the header will read the system\u2019s designed air against its capacity.',
+      target: ['#groupModalDone', '#groupModalCapacityCfm', '#addGroup', '#groupsSectionTitle'],
+      check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
+      action: { label: 'Make RTU-1 for me', run: makeSystem },
+    },
+    {
+      id: 'duct', title: 'Trace the main', kind: 'do',
+      body: 'Pick Duct (U). Start it 24\u00d712 and click along the office from the corridor side. The chip under the cursor reads the air still to serve \u2014 600 CFM downstream \u2014 and suggests a size for it at 0.08\u2033 per 100\u2019. Press S and tap the suggestion (spiral first, then the rectangular twin), click one more point, then Enter. The elbows and the transition count themselves.',
+      target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'],
+      check: () => ductRuns().some((r) => (r.segments || []).length >= 2),
+      action: { label: 'Trace and size it for me', run: traceMain },
+    },
+    {
+      id: 'attach', title: 'Hang the strays', kind: 'do',
+      body: 'Two diffusers sit within 8\u2033 of the main and draw a dashed leader to it \u2014 they are attached, their air is served. Two draw nothing: strays, hanging off nothing. Right-click each bare one \u2192 Attach to nearest run. It moves onto the main and its leader appears.',
+      target: ['#ctxAttachToRun', '#annCanvas'],
+      check: () => cfmDevices().length >= 4 && unattachedDevices().length === 0,
+      hint: () => { const n = unattachedDevices().length; return n ? n + ' diffuser' + (n === 1 ? '' : 's') + ' still hanging off nothing' : ''; },
+      action: { label: 'Hang the strays for me', run: rescueStrays },
+    },
+    {
+      id: 'schedule', title: 'Pounds, not feet', kind: 'read',
+      body: 'Duct \u2192 Schedule. Straight duct by size with its gauge and lb/ft from the SMACNA table, the fittings you did not have to count, seam & waste on its own line, and the number a sheet-metal bid is built on: Bid weight. Copy Schedule puts it on the clipboard.',
+      target: ['#ductScheduleBtn', '#ductSectionTitle'],
+      check: () => true,
+    },
+    {
+      id: 'bidcheck', title: 'Sign off', kind: 'do',
+      body: 'Bid Check judged the rooms, the flex and the scale for you \u2014 four 150-CFM diffusers serve the office\u2019s 442 CFM, so that row reads \u2713. The manual rows are yours: tick Fits the roof by clicking its label.',
+      target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
+      check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-fits-roof']),
+      action: { label: 'Tick it for me', run: tickFitsTheRoof },
+    },
+    {
+      id: 'handoff', title: 'Hand it off', kind: 'read',
+      body: 'Export Options: Copy to /Tooling \u2192 Everything. The first line names exactly what was copied \u2014 the project, the scope, the layers \u2014 and the --- Duct --- block at the end carries the pounds. With an open Bid Check row the gate asks first; Export anyway remembers your answer until something changes.',
+      target: ['#forPipeTooling', '#exportOptionsSectionTitle'],
+      check: () => true,
+    },
+    {
+      id: 'legend', title: 'What the sheet says now', kind: 'read',
+      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\u2019s air line. Legend Settings gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
+      target: ['#legendSettingsBtn', '#legendBtn', '#summarySectionTitle'],
+      check: () => true,
+    },
+    {
+      id: 'done', title: 'That is the whole loop', kind: 'read',
+      body: 'Scale, prove it, room, diffusers, system, main sized at S, strays hung, pounds, sign-off, hand-off. Your work here is saved on this device like any takeoff; Upload PDF when you are ready for a real M-sheet. The two guides \u2014 HVAC takeoff and Duct takeoff by the pound \u2014 live under Help \u2192 Guides.',
+      target: [],
+      check: () => true,
+    },
+  ];
+
   const TOURS = {
     electrical: { steps: ELECTRICAL_STEPS, doneKey: 'clickcount-tour-done', linkId: 'canvasEmptyHintTour' },
     plumbing: { steps: PLUMBING_STEPS, doneKey: 'clickcount-tour-done-plumbing', linkId: 'canvasEmptyHintTourPlumbing' },
+    hvac: { steps: HVAC_STEPS, doneKey: 'clickcount-tour-done-hvac', linkId: 'canvasEmptyHintTourHvac' },
   };
-  const tourFromParam = (v) => (v === 'plumbing' ? 'plumbing' : (v === '1' || v === 'electrical') ? 'electrical' : null);
+  const tourFromParam = (v) => (v === 'plumbing' ? 'plumbing' : v === 'hvac' ? 'hvac' : (v === '1' || v === 'electrical') ? 'electrical' : null);
 
   // --- "do it for me" actions (the same entry points a click uses) --------------------
   async function openSamplePlan() {
@@ -503,6 +610,107 @@
   }
 
   // --- the overlay ------------------------------------------------------------------
+  // ===== HVAC "do it for me" =========================================================
+  const cfmIcon = () => (App.cfmDefaultIcon && App.cfmDefaultIcon()) || customIcon('Supply diffuser') || App.getOrderedIcons()[0].value;
+  async function boxOpenOffice() {
+    if (hRoom() && ann() && (ann().roomBoxes || []).some((b) => b.roomId === hRoom().id)) return;
+    if (!App.openRoomBoxModal) return;
+    App.openRoomBoxModal(OPEN_OFFICE);
+    // D24 reads the name off the plan; the text layer may land a beat later.
+    const nameEl = el('roomBoxNewRoomName');
+    for (let i = 0; i < 20 && nameEl && !nameEl.value.trim(); i++) await wait(100);
+    if (nameEl && !nameEl.value.trim()) nameEl.value = 'OPEN OFFICE 104';
+    const h = el('roomBoxHeight'); if (h) h.value = '9';
+    const deck = el('roomBoxDeck'); if (deck) deck.value = '12';
+    const type = el('roomBoxType'); if (type) { type.value = 'office'; type.dispatchEvent(new Event('change')); }
+    await wait(50);
+    if (el('roomBoxApply')) el('roomBoxApply').click();
+    // The dialog's deck row shows only on an HVAC-shaped project; the trade
+    // stamp made it one, but keep the promise either way.
+    if (App.setDuctDeckHeight && !(App.getDuctSettings && App.getDuctSettings().deckHeightFt > 0)) App.setDuctDeckHeight(12);
+    state().tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations();
+  }
+  function addDiffuser() {
+    if (hCounter()) return;
+    const c = { id: App.uid(), name: 'Supply Diffuser', icon: cfmIcon(), color: '#e8c547', cfm: 150 };
+    tourCounterId = c.id;
+    pushCounter(c);
+  }
+  function placeFourDiffusers() {
+    if (!hCounter()) addDiffuser();
+    const have = cfmDevices().length;
+    if (have >= 4) return;
+    placeMarkers(hCounter().id, DIFFUSER_SPOTS.slice(have));
+  }
+  async function makeSystem() {
+    const s = state();
+    let g = (s.groups || []).find((x) => x.capacityCfm > 0);
+    if (!g) {
+      if (!s.groupsEnabled) { if (App.turnOnGroups) App.turnOnGroups(); else s.groupsEnabled = true; }
+      if (App.openGroupModal) {
+        App.openGroupModal(null);
+        await wait(50);
+        el('groupModalName').value = 'RTU-1';
+        el('groupModalEquipTag').value = 'RTU-1';
+        el('groupModalCapacityCfm').value = '2000';
+        el('groupModalDone').click();
+        await wait(100);
+        g = (s.groups || []).find((x) => x.equipmentTag === 'RTU-1');
+      }
+      if (!g) { App.pushUndoSnapshot(); g = { id: App.uid(), name: 'RTU-1', color: '#2e86de', equipmentTag: 'RTU-1', capacityCfm: 2000 }; s.groups = s.groups || []; s.groups.push(g); App.markProjectDirty(); }
+    }
+    s.activeGroupId = g.id;   // the main traced next inherits the system (the T2-12 convention)
+    App.updateUI();
+  }
+  async function traceMain() {
+    if (ductRuns().length) return;
+    const s = state();
+    if (!(s.groups || []).some((x) => x.capacityCfm > 0)) await makeSystem();
+    if (s.drawingDuct) { App.clearDuctDraft && App.clearDuctDraft(); }
+    // The real create dialog, sized 24×12, then the same clicks a trace makes.
+    if (el('ductBtn')) el('ductBtn').click();
+    await wait(100);
+    if (typeof makeRectSize === 'function' && App.setDuctCreateSize) App.setDuctCreateSize(makeRectSize(24, 12));
+    if (el('ductCreateStart')) el('ductCreateStart').click();
+    await wait(50);
+    if (!s.drawingDuct) return;
+    App.commitDuctClick(MAIN_VERTICES[0]);
+    App.commitDuctClick(MAIN_VERTICES[1]);
+    // The ductulator's answer at vertex 2, taken exactly as S would take it.
+    const sug = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion();
+    const next = (sug && (sug.rectSize || sug.size)) || (typeof makeRectSize === 'function' ? makeRectSize(16, 10) : null);
+    if (next) App.applyDuctSizeStep(next);
+    App.commitDuctClick(MAIN_VERTICES[2]);
+    App.finishDuctRun();
+    s.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations();
+  }
+  function rescueStrays() {
+    const s = state();
+    const c = hCounter(); if (!c) return;
+    const a = ann(); if (!a) return;
+    const markers = a.counterMarkers[c.id] || [];
+    let moved = 0;
+    markers.forEach((m, i) => {
+      s.ctxTarget = { type: 'marker', typeId: c.id, index: i };
+      const target = App.strayDeviceAttachTarget && App.strayDeviceAttachTarget();
+      if (!target) return;
+      if (!moved) App.pushUndoSnapshot();
+      target.marker.x = target.point.x; target.marker.y = target.point.y; moved++;
+    });
+    s.ctxTarget = null;
+    if (moved) { App.markProjectDirty(); App.renderAnnotations(); App.updateUI(); }
+  }
+  function tickFitsTheRoof() {
+    const s = state();
+    s.bidCheck = s.bidCheck || { manual: {} };
+    s.bidCheck.manual = s.bidCheck.manual || {};
+    if (s.bidCheck.manual['duct-fits-roof']) return;
+    App.pushUndoSnapshot();
+    s.bidCheck.manual['duct-fits-roof'] = true;
+    App.markProjectDirty(); App.updateUI();
+    App.logUserEvent && App.logUserEvent('bid_check_row_state', s.currentProjectId || null, { row: 'duct-fits-roof', kind: 'manual', state: true, surface: 'tour' });
+  }
+
   function el(id) { return document.getElementById(id); }
   let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
@@ -610,8 +818,12 @@
       if (link) link.style.display = done ? 'none' : '';
       if (!done) allDone = false;
     });
-    const sep = el('canvasEmptyHintTourSep');
-    if (sep) sep.style.display = allDone ? 'none' : (Object.keys(TOURS).every((id) => { const l = el(TOURS[id].linkId); return l && l.style.display !== 'none'; }) ? '' : 'none');
+    // A separator shows only when the links on BOTH sides of it do (three tours,
+    // two separators: "plumbing · electrical · hvac").
+    document.querySelectorAll('.canvas-empty-hint-tour-sep').forEach((sep) => {
+      const vis = (n) => !!n && n.tagName === 'A' && n.style.display !== 'none';
+      sep.style.display = (!allDone && vis(sep.previousElementSibling) && vis(sep.nextElementSibling)) ? '' : 'none';
+    });
     const wrap = document.querySelector('.canvas-empty-hint-tour');
     if (wrap) wrap.style.display = allDone ? 'none' : '';
   }
@@ -627,6 +839,7 @@
   });
   el('settingsTour') && (el('settingsTour').onclick = () => { App.hideModal('settingsModal'); startTutorial('electrical'); });
   el('settingsTourPlumbing') && (el('settingsTourPlumbing').onclick = () => { App.hideModal('settingsModal'); startTutorial('plumbing'); });
+  el('settingsTourHvac') && (el('settingsTourHvac').onclick = () => { App.hideModal('settingsModal'); startTutorial('hvac'); });
   window.addEventListener('resize', () => { if (active) render(); });
   syncEntryPoints();
   // ?tour=plumbing / ?tour=electrical (or the original ?tour=1) opens that tour on

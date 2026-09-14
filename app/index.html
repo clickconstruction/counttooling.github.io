@@ -2319,67 +2319,76 @@
         </div>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
         <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
-        <div class="settings-menu-links-row">
-          <span class="settings-menu-link" id="settingsQuickKeys">quick keys</span>
-          <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
-          <span class="settings-menu-link" id="settingsTourPlumbing" title="A guided plumbing takeoff on the sample plan">plumbing tour</span>
-          <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the sample plan">electrical tour</span>
-          <span class="settings-menu-link" id="settingsTourHvac" title="A guided design-build duct takeoff on the sample plan">hvac tour</span>
-          <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
-        </div>
-        <div class="form-group" id="settingsUseGroupsRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid var(--border);margin-top:6px;">
-          <div style="min-width:0;">
-            <div>Use groups in this project</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Off hides the Groups section and the Assign-to-Group menus. On automatically while this project has groups.</div>
+        <!-- This project: the per-project rows as one labelled section between the cloud
+             actions and the app-level footer. Short hints; the long form rides in title=. Rows
+             marked -stack wrap their control under the label on a phone. -->
+        <div class="settings-project-section" id="settingsProjectSection">
+          <div class="settings-project-label">This project</div>
+          <div class="settings-project-row settings-project-row-stack" id="settingsTradeRow">
+            <div class="settings-project-row-text">
+              <div>Trade</div>
+              <div class="settings-project-row-hint">Which vocabulary the Quick creator speaks, and what the handoff calls this takeoff.</div>
+            </div>
+            <div class="settings-project-row-control">
+              <div class="filter-scope-segment" id="settingsTradeSegment" role="group" aria-label="Project trade">
+                <button type="button" data-trade="plumbing" aria-pressed="false">Plumbing</button>
+                <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
+                <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
+              </div>
+            </div>
           </div>
-          <button type="button" class="toggle-switch" id="settingsUseGroupsBtn" aria-pressed="false" title="Show the Groups section and Assign-to-Group menus in this project">
-            <span class="toggle-switch-knob"></span>
-          </button>
-        </div>
-        <!-- Electrical, First-Class S1/S2: the project's trade (explicit, per
-             project — the Quick creator's vocabulary and the export's stamp) and
-             the vertical-by-default figures the Chain tool writes at every device. -->
-        <div class="form-group" id="settingsTradeRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px 2px;border-top:1px solid var(--border);margin-top:6px;">
-          <div style="min-width:0;">
-            <div>Trade</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Which vocabulary the Quick creator speaks, and what the handoff calls this takeoff.</div>
+          <div class="settings-project-row settings-project-row-stack" id="settingsCodesRow">
+            <div class="settings-project-row-text">
+              <div>Codes</div>
+              <div class="settings-project-row-hint">Which editions the rulebook's values resolve against. Rule chips and Bid Check say "this project" from these. Remembered for your next bid.</div>
+            </div>
+            <div class="settings-project-row-control settings-project-row-control-col">
+              <select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select>
+              <select id="settingsCodeElectrical" aria-label="Electrical code edition"></select>
+              <select id="settingsCodeHvac" aria-label="HVAC standard edition"></select>
+            </div>
           </div>
-          <div class="filter-scope-segment" id="settingsTradeSegment" role="group" aria-label="Project trade">
-            <button type="button" data-trade="plumbing" aria-pressed="false">Plumbing</button>
-            <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
-            <button type="button" data-trade="hvac" aria-pressed="false">HVAC</button>
+          <div class="settings-project-row settings-project-row-stack" id="settingsJurisdictionRow">
+            <div class="settings-project-row-text">
+              <div>Jurisdiction</div>
+              <div class="settings-project-row-hint">State and city, so amendments on file are applied and named. Not on file means the model code as written.</div>
+            </div>
+            <div class="settings-project-row-control">
+              <input type="text" id="settingsJurisdiction" placeholder="e.g. Texas · Austin" autocomplete="off" aria-label="Jurisdiction">
+            </div>
           </div>
-        </div>
-        <!-- Rulebook slice 4: which editions the rules resolve against, and whose amendments apply (app.js syncProjectSettingsRows / setProjectCodes). -->
-        <div class="form-group" id="settingsCodesRow" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
-          <div style="min-width:0;">
-            <div>Codes</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">Which editions the rulebook's values resolve against. Rule chips and Bid Check say "this project" from these. Remembered for your next bid.</div>
+          <div class="settings-project-row settings-project-row-stack" id="settingsCeilingRow">
+            <div class="settings-project-row-text">
+              <div>Ceiling height</div>
+              <div class="settings-project-row-hint">With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.</div>
+            </div>
+            <div class="settings-project-row-control">
+              <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" aria-label="Ceiling height (feet)">
+              <label class="make-up-label">make-up <button type="button" class="rule-chip" data-rule="elec.vertical.make-up" hidden></button> <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
+            </div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:flex-end;">
-            <select id="settingsCodePlumbing" aria-label="Plumbing code edition" style="width:150px;"></select>
-            <select id="settingsCodeElectrical" aria-label="Electrical code edition" style="width:150px;"></select>
-            <select id="settingsCodeHvac" aria-label="HVAC standard edition" style="width:150px;"></select>
-          </div>
-        </div>
-        <div class="form-group" id="settingsJurisdictionRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
-          <div style="min-width:0;">
-            <div>Jurisdiction</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">State and city, so amendments on file are applied and named. Not on file means the model code as written.</div>
-          </div>
-          <input type="text" id="settingsJurisdiction" placeholder="e.g. Texas · Austin" autocomplete="off" style="width:150px;flex-shrink:0;" aria-label="Jurisdiction">
-        </div>
-        <div class="form-group" id="settingsCeilingRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 2px 2px;">
-          <div style="min-width:0;">
-            <div>Ceiling height</div>
-            <div style="font-size:0.75rem;color:var(--text3);margin-top:2px;">With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" style="width:96px;" aria-label="Ceiling height (feet)">
-            <label style="display:flex;align-items:center;gap:6px;font-size:0.8rem;color:var(--text2);">make-up <button type="button" class="rule-chip" data-rule="elec.vertical.make-up" hidden></button> <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
+          <div class="settings-project-row" id="settingsUseGroupsRow">
+            <div class="settings-project-row-text">
+              <div>Use groups</div>
+              <div class="settings-project-row-hint">The Groups section and the Assign-to-Group menus. On by itself while this project has groups.</div>
+            </div>
+            <button type="button" class="toggle-switch" id="settingsUseGroupsBtn" aria-pressed="false" title="Show the Groups section and Assign-to-Group menus in this project">
+              <span class="toggle-switch-knob"></span>
+            </button>
           </div>
         </div>
-        <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
+        <!-- App-level footer: the links and Advanced, after the project's own rows. -->
+        <div class="settings-footer">
+          <div class="settings-menu-links-row">
+            <span class="settings-menu-link" id="settingsQuickKeys">quick keys</span>
+            <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
+            <span class="settings-menu-link" id="settingsTourPlumbing" title="A guided plumbing takeoff on the sample plan">plumbing tour</span>
+            <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the sample plan">electrical tour</span>
+            <span class="settings-menu-link" id="settingsTourHvac" title="A guided design-build duct takeoff on the sample plan">hvac tour</span>
+            <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
+          </div>
+          <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
+        </div>
       </div>
     </div>
   </div>

@@ -137,6 +137,27 @@ test.describe('D21 — trade-aware strip + Pin to strip (J5-D)', () => {
     expect(await inline(page, 'ductBtn')).toBe(true);
   });
 
+  test('a project that arrives with pins (import / load) paints them on hydrate, not on the next resize', async ({ page }) => {
+    errors = []; await boot(page, errors);
+    expect(await inline(page, 'ductBtn')).toBe(true);   // unstated: D14 arrangement
+    // Hydrate a payload that unpins Duct and states plumbing — the canvas JSON
+    // intake, which sets state and calls updateUI with no resize in sight.
+    await page.evaluate(() => {
+      const data = window.App.buildCanvasExportData();
+      data.stripPins = { ductBtn: false };
+      data.trade = 'plumbing';
+      window.state.stripPins = { ...data.stripPins };
+      window.state.trade = data.trade;
+      window.App.updateUI();
+    });
+    expect(await inline(page, 'ductBtn')).toBe(false);
+    expect(await inline(page, 'polylineBtn')).toBe(true);
+    // And closing the project returns to the DEVICE's arrangement, not to nothing.
+    await page.evaluate(() => { try { localStorage.setItem('stripPins', JSON.stringify({ polylineBtn: true })); } catch (_) {} });
+    await page.evaluate(async () => { window.confirm = () => true; await window.App.closeProject({ route: 'settings' }); });
+    expect(await page.evaluate(() => window.state.stripPins)).toEqual({ polylineBtn: true });
+  });
+
   test('mobile is untouched: no ⋯, the padded strip scroll still reaches every tool', async ({ page }) => {
     errors = []; await boot(page, errors, 390);
     await expect(page.locator('body')).not.toHaveClass(/header-more/);

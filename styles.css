@@ -265,11 +265,11 @@
     .header-more-menu .hm-row.active { color: var(--accent); }
     /* D21: the per-row pin. Quiet until the row is hovered or the tool is
        already pinned, so the menu still reads as a tool list first. */
-    .header-more-menu .hm-pin { margin-left: auto; flex: 0 0 auto; background: none; border: none; padding: 2px 4px; font: inherit; font-size: 0.78rem; line-height: 1; color: var(--text3); cursor: pointer; opacity: 0; border-radius: 4px; }
+    .header-more-menu .hm-pin { flex: 0 0 auto; display: inline-flex; background: none; border: none; padding: 2px 4px; line-height: 1; color: var(--text3); cursor: pointer; opacity: 0; border-radius: 4px; }
+    .header-more-menu .hm-pin svg { width: 14px; height: 14px; }
     .header-more-menu .hm-row:hover .hm-pin, .header-more-menu .hm-pin.pinned { opacity: 1; }
     .header-more-menu .hm-pin.pinned { color: var(--accent); }
     .header-more-menu .hm-pin:hover { color: var(--accent); background: var(--surface3); }
-    .header-more-menu .hm-name { flex: 0 1 auto; }
     .header-more-menu .hm-icon { width: 20px; height: 20px; display: inline-flex; color: var(--text2); flex-shrink: 0; }
     .header-more-menu .hm-icon svg { width: 20px; height: 20px; }
     .header-more-menu .hm-name { flex: 1; white-space: nowrap; }

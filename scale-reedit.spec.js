@@ -181,6 +181,63 @@ test.describe('D20 — scale re-edit (X3) + draft parking (J5-A)', () => {
     }))).toMatchObject({ tool: true, live: 0, parked: null });
   });
 
+  test('J5-A: "Select on PDF" holds the park across the two-point pick, then Set gives it back', async ({ page }) => {
+    await setScale(page, { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1\'' });
+    const wrapper = page.locator('#canvasWrapper');
+    await page.evaluate(() => {
+      window.state.lineTypes = [{ id: 'lt1', name: 'Pipe', color: '#4a9eff', curveStyle: 'straight' }];
+      window.state.activeLineTypeId = 'lt1';
+      window.App.updateUI();
+    });
+    await page.keyboard.press('p');
+    await wrapper.click({ position: { x: 120, y: 200 } });
+    await wrapper.click({ position: { x: 260, y: 200 } });
+    await openScale(page);
+    await page.locator('#scaleModalTabs .counter-tab[data-tab="points"]').click();
+    await page.locator('#scaleSelectOnPdf').click();
+    // Mid-pick: SCALE is armed, the draft is NOT live under it, and the park is held.
+    expect(await page.evaluate(() => ({
+      scale: window.state.tool === window.App.TOOL.SCALE,
+      live: window.state.drawingPolyline?.points?.length || 0,
+      parked: window.state.parkedScaleDraft?.drawingPolyline?.points?.length || 0,
+    }))).toMatchObject({ scale: true, live: 0, parked: 2 });
+    // Two picks reopen the dialog; Set applies and the draft comes back.
+    await wrapper.click({ position: { x: 300, y: 400 } });
+    await wrapper.click({ position: { x: 420, y: 400 } });
+    await expect(page.locator('#scaleModal')).toHaveClass(/visible/);
+    await page.locator('#scaleValue').fill('10');
+    await page.locator('#scaleSet').click();
+    await expect(page.locator('#scaleModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => ({
+      tool: window.state.tool === window.App.TOOL.POLYLINE,
+      live: window.state.drawingPolyline?.points?.length || 0,
+      parked: window.state.parkedScaleDraft,
+      refLine: !!window.state.pages[0].scale.refLine,
+    }))).toMatchObject({ tool: true, live: 2, parked: null, refLine: true });
+  });
+
+  test('J5-A: Esc mid-pick returns to Move AND gives the draft back', async ({ page }) => {
+    await setScale(page, { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1\'' });
+    const wrapper = page.locator('#canvasWrapper');
+    await page.evaluate(() => {
+      window.state.lineTypes = [{ id: 'lt1', name: 'Pipe', color: '#4a9eff', curveStyle: 'straight' }];
+      window.state.activeLineTypeId = 'lt1';
+      window.App.updateUI();
+    });
+    await page.keyboard.press('p');
+    await wrapper.click({ position: { x: 120, y: 200 } });
+    await wrapper.click({ position: { x: 260, y: 200 } });
+    await openScale(page);
+    await page.locator('#scaleModalTabs .counter-tab[data-tab="points"]').click();
+    await page.locator('#scaleSelectOnPdf').click();
+    await page.keyboard.press('Escape');
+    expect(await page.evaluate(() => ({
+      tool: window.state.tool === window.App.TOOL.POLYLINE,
+      live: window.state.drawingPolyline?.points?.length || 0,
+      parked: window.state.parkedScaleDraft,
+    }))).toMatchObject({ tool: true, live: 2, parked: null });
+  });
+
   test('J5-A: with no draft, Set Scale behaves exactly as before', async ({ page }) => {
     await openScale(page);
     expect(await page.evaluate(() => window.state.parkedScaleDraft)).toBeNull();

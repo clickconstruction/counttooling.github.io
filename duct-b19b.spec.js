@@ -118,8 +118,16 @@ test.describe('B19 part 2 (D19)', () => {
     // Reopening respects the override rather than re-applying the trade default.
     await openCreateTab(page);
     expect(await page.evaluate(() => document.getElementById('counterAirMoreFields').hidden)).toBe(true);
-    // The Quick Count twin reads the same flag and holds the same rows.
+    // The Quick Count twin reads the same flag and holds the same rows — and
+    // STACKS them (the panel's modifier rows are flex rows; the disclosure is not one).
     await openQuickTab(page);
+    await page.evaluate(() => { window.state.counterAirMoreOpen = true; window.App.applyCounterAirMore('counterQuickCountAirMoreToggle', 'counterQuickCountAirMoreFields'); });
+    expect(await page.evaluate(() => {
+      const b = document.getElementById('counterQuickCountAirMoreToggle').getBoundingClientRect();
+      const f = document.getElementById('counterQuickCountAirMoreFields').getBoundingClientRect();
+      return f.top >= b.bottom - 1 && Math.abs(f.left - b.left) < 2;
+    })).toBe(true);
+    await page.evaluate(() => { window.state.counterAirMoreOpen = false; window.App.applyCounterAirMore('counterQuickCountAirMoreToggle', 'counterQuickCountAirMoreFields'); });
     expect(await page.evaluate(() => {
       const f = document.getElementById('counterQuickCountAirMoreFields');
       return { hidden: f.hidden, hasCfm: !!f.querySelector('#counterQuickCountCfmRow'), hasMount: !!f.querySelector('#counterQuickCountMountRow') };

@@ -296,9 +296,12 @@
     const page = state.pages[state.currentPage];
     if (!page || !page.scale || !page.scale.pixelsPerUnit) { App.showToast('Set a scale first, then verify it'); return; }
     state.scaleCheckMode = true;
-    App.hideModal('scaleModal');
+    // D20: arm SCALE before the hide — hideModal's onScaleModalHidden reads the
+    // tool to tell a canvas hand-off from an exit (a parked draft must not
+    // resume under the two-point pick).
     state.tool = App.TOOL.SCALE;
     state.scaleMode = App.SCALE_MODES.POINT_A;
+    App.hideModal('scaleModal');
     state.scalePointA = null;
     state.scalePointB = null;
     App.updateUI();
@@ -451,6 +454,11 @@
     const parked = state.parkedScaleDraft;
     state.parkedScaleDraft = null;
     if (!parked) return false;
+    // A hand-off to the canvas — "Select on PDF" / "Verify" hide the dialog to
+    // let the estimator pick two points — is NOT an exit. Hold the park (put it
+    // back) and resume when that flow ends: the dialog reopens and Set / Cancel
+    // closes it, or Esc mid-pick returns to Move (the ladder calls this too).
+    if (state.tool === App.TOOL.SCALE) { state.parkedScaleDraft = parked; return false; }
     // Only resume into an empty hand: if the estimator armed something else
     // from inside the dialog (or a scale apply moved the tool on), that wins.
     if (state.tool !== App.TOOL.NONE) return false;
@@ -490,11 +498,13 @@
   };
   document.getElementById('scaleSelectOnPdf').onclick = () => {
     const state = App.state;
-    App.hideModal('scaleModal');
+    // D20: SCALE is armed before the hide (see startScaleCheck) so a parked
+    // draft is held across the pick, not resumed under it.
     state.tool = App.TOOL.SCALE;
     state.scaleMode = App.SCALE_MODES.POINT_A;
     state.scalePointA = null;
     state.scalePointB = null;
+    App.hideModal('scaleModal');
     App.updateUI();
     App.renderAnnotations();
   };

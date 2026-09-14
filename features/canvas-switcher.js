@@ -103,6 +103,26 @@
             : 'Showing all canvases — click to show only the active canvas, right-click to choose which')
           : 'Temporarily show all canvases at once — right-click to choose which';
       }
+      // D22 (X2): the phone's peek row. The desktop #showAllCanvasesBtn has
+      // existed since the peek shipped; mobile's footer layers menu simply
+      // lacked the row. Same flag, no new state — and shown only on a page
+      // with 2+ layers, because the flag auto-clears below that (just above),
+      // so an always-present row would be a control that silently does
+      // nothing. The right-click layer SUBSET stays desktop-only: there is no
+      // right-click on a phone, and the row reads "all", which is what it does.
+      const menuShowAll = document.getElementById('canvasMenuShowAll');
+      if (menuShowAll) {
+        const canShowAll = canvases.length > 1 && App.state.pages.length > 0;
+        menuShowAll.style.display = canShowAll ? '' : 'none';
+        menuShowAll.classList.toggle('active', !!App.state.showAllCanvases);
+        menuShowAll.textContent = App.state.showAllCanvases ? 'Show the active layer only' : 'Show all layers';
+        menuShowAll.onclick = (e) => {
+          e.stopPropagation();
+          App.state.showAllCanvases = !App.state.showAllCanvases;
+          App.renderAnnotations();
+          App.updateUI();
+        };
+      }
       menuList.innerHTML = '';
       canvases.forEach(c => {
         const row = document.createElement('div');

@@ -11,7 +11,7 @@ A sheet often needs more than one takeoff: a base bid and an alternate, a first 
 
 ## Working with layers
 
-- The layers [[layers]] control in the bottom bar shows the current page's layers. **Add Canvas** creates a new one — **empty**, or a **duplicate** of the current layer when you want to riff on what's already counted.
+- The layers [[layers]] control in the bottom bar shows the current page's layers. **+ Add layer** creates a new one — **empty**, or a **duplicate** of the current layer when you want to riff on what's already counted.
 
 ![Add Canvas: ① a new empty layer, or ② a duplicate of the current one — named whatever makes sense, like "Alternate — cast iron".](/guides/img/add-canvas.png)
 - Switch layers with `↑`/`↓` or from the layers menu. Each page remembers which layer is active.
@@ -26,7 +26,9 @@ Everything you place lands on the **active** layer only, and the sidebar tallies
 
 The **show-all** peek (the eye-on-layers button next to the layer selector, shown when a page has two or more layers) temporarily draws *every* layer at once so you can compare options in place. It's purely visual — editing still targets the active layer, and nothing is saved differently. The sidebar totals stay on your **active layer** during the peek; the on-sheet legend is where you read the merged picture.
 
-On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary — it isn't saved with the project, and it clears when a page is back to a single layer.
+On a phone the same peek lives in the layers menu as **Show all layers**, appearing once a page has two of them.
+
+On a sheet with several layers, showing everything can be its own kind of noise. **Right-click the peek button** (desktop) to choose exactly which layers to show: the current layer is always on, and you check just the one or two you want to compare against ("All canvases" brings the full merge back). A small dot on the button reminds you a subset is showing. The selection is temporary — it isn't saved with the project, and it clears when a page is back to a single layer.
 
 ## Move marks between projects: canvas JSON
 

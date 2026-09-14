@@ -433,6 +433,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   re-upload can hash-verify the re-apply),
   `state.userActivityAllRowsCache`, `state.userActivityViewMode`,
   `state.showAllCanvases` (the desktop show-all-layers peek toggle),
+  `state.parkedScaleDraft` (D20 — a live polyline / quick-line draft held
+  across the Set Scale modal and resumed when it closes; one modal
+  round-trip long, never persisted),
   `state.counterAirMoreOpen` (D19 — the Counter modal's "More ▸ air &
   mounting" disclosure on the Create and Quick Count tabs: null = follow the
   trade (open on hvac/electrical), true/false = the estimator's override for

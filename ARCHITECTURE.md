@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,056 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 8,066 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,018 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,522 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 3,490 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,185 | All CSS, token-organized. Leave. |
+| [styles.css](styles.css) | 2,205 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 730 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 925 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 882 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (84 files) | 23,912 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (84 files) | 23,998 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -142,7 +142,7 @@ modules. Candidates in priority order:
 | [line-type-settings.spec.js](line-type-settings.spec.js) | Playwright regression for pilot #11 — uploads `test-2pages.pdf`, asserts `window.App.openLineTypeSettingsModal` + `renderLineTypesList` are functions and `Array.isArray(App.DROP_ICON_STYLES)`, opens via the registry, sets `#lineTypeSize` to 8 (dispatching `input`, asserting `#lineTypeSizeVal` reads `8` and `state.lineTypeSettings.lineSize === 8`), clicks `#lineTypeOrientLengthBtn` and asserts `state.lineTypeSettings.orientLengthWithLine` flipped, asserts `#lineTypeDropIconGrid .icon-cell` count === `DROP_ICON_STYLES.length` and clicking a non-selected cell updates `state.lineTypeSettings.dropIconStyle`, clicks `#lineTypeSettingsClose` and waits for the modal to lose `.visible`; asserts no console / page errors; `npx playwright test line-type-settings.spec.js` |
 | [features/choose-create-line-type.js](features/choose-create-line-type.js) | Twelfth feature-file split (`window.App` registry pilot #12) — the **Choose/Create Line Type** modal (`#chooseLineTypeModal`), the tabbed picker opened by the Quick Line button / `L` hotkey. `showLineTypeTab` (Choose/Create/Quick panels) + `populateChooseLineTypeList` (searchable existing-type list) + `showChooseLineTypeModal`, plus the `.line-type-tab` clicks, `#lineTypeModalSearchInput`, `#chooseLineTypeCancel`, `#createLineTypeCancel`, and `#createLineTypeCreate` handlers. Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showChooseLineTypeModal` + `App.showLineTypeTab`, binds everything at load. **First split to share *constants* via the registry** — two new publish-only deps `TOOL`/`COLORS` (it also consumes `App.populateQuickLineModal`, which since pilot #16 is registered by [features/quick-line.js](features/quick-line.js), not app.js); `state`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`showModal`/`hideModal`/`updateUI` were already on `App`. Scope is this modal only — the **line color modal** (`showLineColorModal`/`applyLineColor` + `#lineColorCancel`/`#lineColorCustom`), the Quick tab body (`populateQuickLineModal`), and the Quick Line apply flow stay in app.js. The call sites — `#quickLine.onclick` and the Shift+L hotkey (the dead `#plumLineBtn` opener was deleted in Tier-3 B17) — reach it via `App.showChooseLineTypeModal()` / `App.showLineTypeTab('quick')` — though since T2-08 `#quickLine` skips the chooser when exactly one line type exists (selects + arms it directly), and the New Polyline modal's dead "Create new line type" link (an anchor with no handler anywhere) is removed from app/index.html. `#createLineTypeCreate` now arms via `App.armLineToolAfterCreate` (publish-only app.js registry entry shared by all line-type create surfaces: scale-gated, no-op mid-polyline or with no plan open) instead of an inline `state.tool` triple. **Renamed** the section marker `// SECTION: Choose/Create Line Type, line color & sidebar handlers` → `// SECTION: Line color & sidebar handlers` (TOC stays 49) |
 | [choose-create-line-type.spec.js](choose-create-line-type.spec.js) | Playwright regression for pilot #12 — uploads `test-2pages.pdf`, asserts `window.App.showChooseLineTypeModal` + `showLineTypeTab` are functions, opens via the registry, switches to the Create tab and creates a line type (asserts `state.lineTypes` grew by 1, `state.activeLineTypeId` points at the new type, and the modal closed), reopens and exercises the Choose-list search + select (asserts the modal closes and `state.activeLineTypeId` matches the picked type); plus the three T2-08 arm-on-create cases — scaled sidebar + Add arms the Line tool and two canvas clicks commit a quick line of the new type; unscaled create selects the type, stays in Move, shows `#setScaleFirstModal`; `#quickLine` skips the chooser at exactly one type and opens it at two; asserts no console / page errors; `npx playwright test choose-create-line-type.spec.js` |
-| [features/scale.js](features/scale.js) | Thirteenth feature-file split (`window.App` registry pilot #13) — the **Scale modal** (`#scaleModal`), opened by the Set Scale buttons / `S` hotkey and reused for per-page scale, scale-zone create, and scale-zone edit. `openScaleModal` is the **one no-plan gate** for every scale entrance ("Open a plan first." toast at 0 pages — the header/sidebar buttons, the S hotkey, the tool context menu, and the arm-time gate link all funnel through it; Tier-3 B8 / J3) and re-seeds the custom feet field's real default `1` when left empty; the page-mode info line reads "Tap Select on PDF, then tap two points …" on coarse pointers (`App.isCoarsePointer`, Tier-3 B9 / J15); a **new-zone** apply keeps the Scale Zone tool armed with an armed-hint toast (Tier-3 B8 / J6, counter-tool pattern — context-menu zone edits still exit to Move, the T1-04 verify hand-off untouched). `updateScalePlaceholder` + `openScaleModal` + `resetScaleModalZoneMode` + `applyScaleObjectToZoneOrPage` + `showScaleTab`, plus the `#setScale`/`#setScaleSidebar` openers and the `#scaleModalTabs`/`#scaleUnit`/`#scaleSelectOnPdf`/`#scalePresetsCancel`/`#scaleCustomApply`/`#scaleCancel`/`#scaleSet` handlers (which had lived down in the Counter-modal region). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openScaleModal` + `App.resetScaleModalZoneMode`, binds everything at load. **First split to route geometry.js globals + `SCALE_*` constants through the registry** — six new publish-only deps `SCALE_MODES`/`SCALE_PRESETS`/`ptDist`/`parseFraction`/`parseRealWorldLength`/`getActiveAnnotations` (stay in app.js, read via `App.*` so the `features/*.js` group's browser-only globals don't trip `no-undef`); `state`/`showModal`/`hideModal`/`updateUI`/`renderPdf`/`pushUndoSnapshot`/`markProjectDirty`/`uid`/`ensureActiveCanvas`/`showToast`/`TOOL` were already on `App`. The modal doubles as the scale-zone create/edit dialog (`scaleModalApplyTarget === 'zone'`), so `applyScaleObjectToZoneOrPage` moves with it; every scale commit (the three page-apply sites + the zone apply) also fires the defensive `App.onScaleApplied` copy-resume callback ([features/output.js](features/output.js), Tier-3 B3); the four `openScaleModal` callers (canvas two-point finish + scale-zone context-menu Edit) and the Escape-key `resetScaleModalZoneMode` branch keep their zone-entry state/DOM setup inline and reach the modal via `App.*`. The toolbar tool buttons (`#measureBtn`/`#moveBtn`/`#quickLine`/`#undoBtn`/`#redoBtn`/`#polylineBtn`/`#highlightBtn`/`#multiplyZoneBtn`/`#scaleZoneBtn`/`#deleteZoneBtn`) that shared the grab-bag stay in app.js. **Renamed** the section marker `// SECTION: Scale modal` → `// SECTION: Toolbar tool buttons` (TOC stays 49) |
+| [features/scale.js](features/scale.js) | Thirteenth feature-file split (`window.App` registry pilot #13) — the **Scale modal** (`#scaleModal`), opened by the Set Scale buttons / `S` hotkey and reused for per-page scale, scale-zone create, and scale-zone edit. `openScaleModal` is the **one no-plan gate** for every scale entrance ("Open a plan first." toast at 0 pages — the header/sidebar buttons, the S hotkey, the tool context menu, and the arm-time gate link all funnel through it; Tier-3 B8 / J3) and re-seeds the custom feet field's real default `1` when left empty; the page-mode info line reads "Tap Select on PDF, then tap two points …" on coarse pointers (`App.isCoarsePointer`, Tier-3 B9 / J15); a **new-zone** apply keeps the Scale Zone tool armed with an armed-hint toast (Tier-3 B8 / J6, counter-tool pattern — context-menu zone edits still exit to Move, the T1-04 verify hand-off untouched). `updateScalePlaceholder` + `openScaleModal` + `resetScaleModalZoneMode` + `applyScaleObjectToZoneOrPage` + `showScaleTab`, plus the `#setScale`/`#setScaleSidebar` openers and the `#scaleModalTabs`/`#scaleUnit`/`#scaleSelectOnPdf`/`#scalePresetsCancel`/`#scaleCustomApply`/`#scaleCancel`/`#scaleSet` handlers (which had lived down in the Counter-modal region). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openScaleModal` + `App.resetScaleModalZoneMode`, binds everything at load. **First split to route geometry.js globals + `SCALE_*` constants through the registry** — six new publish-only deps `SCALE_MODES`/`SCALE_PRESETS`/`ptDist`/`parseFraction`/`parseRealWorldLength`/`getActiveAnnotations` (stay in app.js, read via `App.*` so the `features/*.js` group's browser-only globals don't trip `no-undef`); `state`/`showModal`/`hideModal`/`updateUI`/`renderPdf`/`pushUndoSnapshot`/`markProjectDirty`/`uid`/`ensureActiveCanvas`/`showToast`/`TOOL` were already on `App`. The modal doubles as the scale-zone create/edit dialog (`scaleModalApplyTarget === 'zone'`), so `applyScaleObjectToZoneOrPage` moves with it; every scale commit (the three page-apply sites + the zone apply) also fires the defensive `App.onScaleApplied` copy-resume callback ([features/output.js](features/output.js), Tier-3 B3); the four `openScaleModal` callers (canvas two-point finish + scale-zone context-menu Edit) and the Escape-key `resetScaleModalZoneMode` branch keep their zone-entry state/DOM setup inline and reach the modal via `App.*`. The toolbar tool buttons (`#measureBtn`/`#moveBtn`/`#quickLine`/`#undoBtn`/`#redoBtn`/`#polylineBtn`/`#highlightBtn`/`#multiplyZoneBtn`/`#scaleZoneBtn`/`#deleteZoneBtn`) that shared the grab-bag stay in app.js. **Renamed** the section marker `// SECTION: Scale modal` → `// SECTION: Toolbar tool buttons` (TOC stays 49) D20 (X3 + J5-A): `preloadFromCurrentScale()` opens the dialog where the scale was SET, with its value preloaded — a `refLine` lands on the points tab naming the scale it would replace, a label matching `SCALE_PRESETS` highlights that preset (`.selected`), any other label refills the custom fraction + feet by parsing it back. Zone mode and an unset page keep today's behavior. **Draft parking:** `setScaleClick` now PARKS a live `drawingPolyline` / `quickLineStart` on `state.parkedScaleDraft` before dropping the tool, and `App.onScaleModalHidden` (app.js `hideModal`) resumes it — deliberately NOT the D17 settle rule, because S is a modal stepped into and back out of, not another drawing tool arming. The resume declines if the estimator armed something else meanwhile. |
 | [scale.spec.js](scale.spec.js) | Playwright regression for pilot #13 — uploads `test-2pages.pdf`, asserts `window.App.openScaleModal` + `resetScaleModalZoneMode` are functions and `Array.isArray(App.SCALE_PRESETS)`, opens via the registry, clicks a preset and asserts `state.pages[currentPage].scale` was set + the modal closed, reopens and exercises `#scaleCustomApply` with a valid fraction + feet asserting the computed `pixelsPerUnit` + closed modal; asserts no console / page errors; `npx playwright test scale.spec.js` |
 | [scale-modal-fixes.spec.js](scale-modal-fixes.spec.js) | Playwright regression for the **Tier-3 B8 scale-modal small fixes** — the custom feet field ships the real default `1` (fresh open, re-seeded after clearing, typed values kept, fraction-only Apply works); every scale entrance (header + sidebar buttons, `S` hotkey, the bare `App.openScaleModal` registry mouth) refuses at 0 pages with the shared "Open a plan first." toast and no fake "Scale set" success; both zone tools stay armed after Apply with the visible armed-hint toast, the re-armed tool still takes the T2-10 drag for the next zone, Esc exits to Move, and a context-menu zone EDIT still exits to Move with no hint. Asserts no console / page errors; `npx playwright test scale-modal-fixes.spec.js` |
 | [features/groups.js](features/groups.js) | Fourteenth feature-file split (`window.App` registry pilot #14) and **first two-modal move** — the group create/edit modal (`#groupModal`) and the assign-item-to-group modal (`#groupAssignModal`). `openGroupModal` + `refreshGroupAssignButtons` + `openGroupAssignModal`, the three group-modal state flags (`pendingGroupEdit`/`pendingGroupAssignTarget`/`openedGroupModalFromAssign`, now private `let`s in the IIFE), and the `#addGroup` opener + `#groupModal*` / `#groupAssign*` handlers. Its own IIFE loaded **after** [app.js](app.js); registers `App.openGroupModal` + `App.openGroupAssignModal` + `App.onGroupModalHidden`. One new publish-only dep `App.deleteGroup` (the heavier group-deletion mutation, which clears the group off every annotation, stays in app.js); the rest (`state`/`COLORS`/`uid`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`) were already on `App`. **First core-function → feature callback in the codebase**: the `hideModal('groupModal')` reset hook in app.js now calls `App.onGroupModalHidden()` instead of mutating the now-private `openedGroupModalFromAssign` directly. The `#showGroupColors` sidebar toggle stays in app.js; the two external callers (the groups-list Edit button in the render code, and the canvas right-click "Assign to Group") reach the modals via `App.*`. **Removed** the emptied `// SECTION: Groups` marker (TOC 49 → 48). **DUCT unit D4 (DUCT-PLAN §2/§1)**: the modal grew the optional SYSTEM fields — equipment tag + capacity CFM (`#groupModalEquipTag`/`#groupModalCapacityCfm`) and the plenum-return toggle (`#groupModalPlenumBtn`, its row visible only while a tag is entered). Done stores `equipmentTag`/`capacityCfm`/`plenumReturn` on the group; with no tag the three keys are **deleted**, so a plain group stays exactly `{id, name, color}` (zero change for existing projects; persistence is free — groups ride every save path as whole objects). **D11**: `espInWg` (`#groupModalEspInWg`, the unit's available external static in in. w.g., beside the CFM) is set only when > 0 and deleted otherwise, so a D4-era system without an ESP keeps its shape too; it arms the Bid Check's static-path auto row (features/duct-bidcheck.js). Regression: [duct-sidebar.spec.js](duct-sidebar.spec.js), [duct-static.spec.js](duct-static.spec.js) |
@@ -576,68 +576,68 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L195 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L239 - ICONS array lives in icons.js (see icon-data note above).
 - L289 - State
-- L486 - [sync] Sync recovery & client recycle
-- L567 - [sync] Global force reload
-- L655 - [sync] Save Status log & envelope
-- L658 - [sync] Field-error telemetry
-- L717 - [sync] Dirty tracking & local session reset
-- L723 - Undo/redo stacks
-- L880 - [sync] Checkout probe, hashing & PDF cache
-- L942 - Math & Format Helpers
-- L1473 - Coordinate Helpers
-- L1481 - PDF render bitmap cache
-- L1535 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1546 - PDF Rendering
-- L2344 - UI Render Functions
-- L3028 - Inline rename & polyline edit mode
-- L3142 - Modal primitives (showModal / hideModal)
-- L3176 - Toasts & line color picker
-- L3244 - Airboard cloud sync
-- L3289 - Supabase RPC & presence heartbeat
-- L3329 - User activity / event telemetry
-- L3388 - Supabase auth & dev auth
-- L3574 - [sync] Checkout subscription & permission refresh
-- L3584 - Modals & Handlers
-- L3652 - PDF intake (upload, test PDF, hashing)
-- L3660 - Toolbar tool buttons
-- L3863 - Tool sidebar buttons & legend overlay
-- L3954 - Add Line Type modal
-- L4113 - Line color & sidebar handlers
-- L4322 - Polyline modal & drawing
-- L4377 - Zoom bar & page navigation
-- L4403 - Export canvas JSON
-- L4427 - PDF download helpers
-- L4436 - View-link URL helpers & show-highlights/notes
-- L4508 - Custom icon upload handler
-- L4518 - Export & report dropdown menus
-- L4611 - Sidebar drawer toggles
-- L4642 - Mobile actions burger menu pointer & header logo
-- L4654 - User Activity pointer (format.js + features/user-activity.js)
-- L4666 - My Settings pointer (features/my-settings.js)
-- L4691 - Auth & settings entry buttons
-  - L4751 - Project Settings checkout & Save Status bell
-  - L4843 - [sync] Checkout expired recovery
-  - L4899 - [sync] Turn In
-  - L5008 - Share modal pointer & copy-project openers
-  - L5039 - Settings menu actions
-  - L5077 - Auth sign-in form
-  - L5102 - Save Project modal
-  - L5115 - Checkout expired recovery modal wiring
-  - L5220 - Last-session restore prompt
-  - L5227 - Canvas Repair modal wiring
-- L5414 - Canvas Event Handlers
-- L5939 - Event Binding
-- L5949 - Aim loupe (mobile press-hold precise placement)
-- L6101 - Zoom transform preview & commit
-- L6180 - Canvas mouse, wheel & touch handlers
-- L6915 - Global dropdown dismissal & keyboard hotkeys
-- L7298 - [sync] Manual save to cloud
-- L7308 - [sync] Auto-save
-- L7315 - [sync] Local backup (IndexedDB takeoff state)
-- L7448 - [sync] Checkout keep-alive
-- L7462 - App feature registry
-- L7817 - View-only mode
-- L7823 - Init / boot
+- L487 - [sync] Sync recovery & client recycle
+- L568 - [sync] Global force reload
+- L656 - [sync] Save Status log & envelope
+- L659 - [sync] Field-error telemetry
+- L718 - [sync] Dirty tracking & local session reset
+- L724 - Undo/redo stacks
+- L882 - [sync] Checkout probe, hashing & PDF cache
+- L944 - Math & Format Helpers
+- L1475 - Coordinate Helpers
+- L1483 - PDF render bitmap cache
+- L1537 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1548 - PDF Rendering
+- L2346 - UI Render Functions
+- L3037 - Inline rename & polyline edit mode
+- L3151 - Modal primitives (showModal / hideModal)
+- L3186 - Toasts & line color picker
+- L3254 - Airboard cloud sync
+- L3299 - Supabase RPC & presence heartbeat
+- L3339 - User activity / event telemetry
+- L3398 - Supabase auth & dev auth
+- L3584 - [sync] Checkout subscription & permission refresh
+- L3594 - Modals & Handlers
+- L3662 - PDF intake (upload, test PDF, hashing)
+- L3670 - Toolbar tool buttons
+- L3873 - Tool sidebar buttons & legend overlay
+- L3964 - Add Line Type modal
+- L4123 - Line color & sidebar handlers
+- L4332 - Polyline modal & drawing
+- L4387 - Zoom bar & page navigation
+- L4413 - Export canvas JSON
+- L4437 - PDF download helpers
+- L4446 - View-link URL helpers & show-highlights/notes
+- L4518 - Custom icon upload handler
+- L4528 - Export & report dropdown menus
+- L4621 - Sidebar drawer toggles
+- L4652 - Mobile actions burger menu pointer & header logo
+- L4664 - User Activity pointer (format.js + features/user-activity.js)
+- L4676 - My Settings pointer (features/my-settings.js)
+- L4701 - Auth & settings entry buttons
+  - L4761 - Project Settings checkout & Save Status bell
+  - L4853 - [sync] Checkout expired recovery
+  - L4909 - [sync] Turn In
+  - L5018 - Share modal pointer & copy-project openers
+  - L5049 - Settings menu actions
+  - L5087 - Auth sign-in form
+  - L5112 - Save Project modal
+  - L5125 - Checkout expired recovery modal wiring
+  - L5230 - Last-session restore prompt
+  - L5237 - Canvas Repair modal wiring
+- L5424 - Canvas Event Handlers
+- L5949 - Event Binding
+- L5959 - Aim loupe (mobile press-hold precise placement)
+- L6111 - Zoom transform preview & commit
+- L6190 - Canvas mouse, wheel & touch handlers
+- L6925 - Global dropdown dismissal & keyboard hotkeys
+- L7308 - [sync] Manual save to cloud
+- L7318 - [sync] Auto-save
+- L7325 - [sync] Local backup (IndexedDB takeoff state)
+- L7458 - [sync] Checkout keep-alive
+- L7472 - App feature registry
+- L7827 - View-only mode
+- L7833 - Init / boot
 
 <!-- END SECTION TOC -->
 

@@ -129,7 +129,22 @@
     .header .header-tools-tight .sidebar-triggers:hover { background: var(--surface2); }
     .header .header-tools-tight .sidebar-triggers.active { background: var(--accent); color: var(--bg); border: none; }
     .header-tools-scroll { display: flex; align-items: center; gap: 8px; }
-    .header #setScale.scale-set { display: none; }
+    /* D20 (X3, J7): the header Set Scale button no longer HIDES once a scale is
+       set — a trust-critical surface that vanishes is a findability fail by
+       construction (re-editing meant knowing the sidebar readout was clickable,
+       or knowing S). It stays in a "set" state reading the value instead. The
+       icon shrinks to make room; the value is DM Mono like every other number
+       in the chrome, and truncates rather than pushing the tool strip. */
+    .header #setScale.scale-set { color: var(--text2); gap: 5px; padding-inline: 6px; max-width: 190px; }
+    .header #setScale.scale-set:hover { color: var(--accent); }
+    .header #setScale.scale-set svg { width: 18px; height: 18px; flex: 0 0 auto; }
+    .header #setScale.scale-set .set-scale-header-value { font-family: 'DM Mono', monospace; font-size: 0.7rem; line-height: 1.15; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    /* Narrow desktop: the value goes before the button does — the icon alone
+       still re-opens the dialog, which is the half that was missing. */
+    @media (max-width: 1180px) {
+      .header #setScale.scale-set .set-scale-header-value { display: none; }
+      .header #setScale.scale-set { max-width: none; padding-inline: 0; }
+    }
     .header #setScale.scale-unset { color: var(--accent); }
     #setScale, #setScaleSidebar { display: inline-flex; align-items: center; gap: 6px; }
     #setScaleSidebar.scale-set { flex-direction: column; }
@@ -1289,6 +1304,11 @@
     .scale-presets-list { max-height: 40vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .scale-presets-list button { width: 100%; padding: 10px 16px; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 0.95rem; cursor: pointer; }
     .scale-presets-list button:hover { background: var(--surface3); }
+    /* D20 (X3): the preset that IS this page's scale, so reopening the dialog
+       shows what is set rather than a blank slate. Accent border + a ✓ marker
+       via ::after, so the row reads as chosen without changing its hit area. */
+    .scale-presets-list button.selected { border-color: var(--accent); color: var(--accent); }
+    .scale-presets-list button.selected::after { content: ' ✓'; float: right; }
     .scale-custom-row input[type="text"], .scale-custom-row input[type="number"] { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); font-family: inherit; font-size: 0.95rem; }
     .settings-users-list { max-height: 200px; overflow-y: auto; margin-top: 8px; font-size: 0.9rem; }
     .settings-users-list .settings-user-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); margin-bottom: 6px; }

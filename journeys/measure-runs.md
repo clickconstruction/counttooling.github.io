@@ -171,6 +171,8 @@ Scale is set, "2" PVC Waste" exists. Press **L**, click one end of the men's-roo
 
 ## Verification (2026-08-02)
 
+> **Re-walk 2026-09-14 (drift patrol after D25, live on counttooling.com CACHE_VERSION 02e60e921551):** J5-A — a 2-vertex polyline draft PARKED across Set Scale (tool → Move, draft off the live state, `parkedScaleDraft` held) and RESUMED on Cancel with both vertices and the Polyline tool (D20); the two-point hand-offs hold the park (spec-pinned after a review caught the resume-under-the-pick bug). J5-B (D17) and J5-D (D21: a stated plumbing project tucks Duct and keeps Polyline inline; the ⋯ pin overrides) re-driven on the 2026-09-13 live walk. #10 grammar fixed (X12: "1 count", numbered "Line 2"). Still open, as recorded: #9 vertex-edit total drop (X9, deliberately), #7 the New Polyline dialog round-trip.
+
 Adversarial re-drive: headless Chromium (Playwright) against a fresh static server on port 4305, `samples/sample-plan.pdf` through `#pdfInput`, desktop 1380×900, same recipe as the walk. Two throwaway scripts (not committed) exercised the real UI — mouse clicks on `#annCanvas`, real buttons/hotkeys — with state poked only to set the known 9 px/ft scale and to seed line types where the test wasn't about creation.
 
 **Reproduced live (9 of 10 findings):**

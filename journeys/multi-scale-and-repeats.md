@@ -181,6 +181,8 @@ Under ten seconds once the scale is set, and both numbers explain themselves.
 
 ## Verification (2026-08-02)
 
+> **Re-walk 2026-09-14 (drift patrol after D25, live):** #8 CLOSED — in Move a zone drags by its body and resizes by a corner under a `move` / `nwse-resize` cursor, one undo step, totals re-tallied on release (D23; the SE corner of a ×2 zone dragged (520,440)→(551,470) on the 2026-09-13 walk). J6-G (duct × zones, D17) and J6-H (Delete Area covers duct, D19) shipped. **#7 still a papercut:** right-click a scale zone → Edit scale opens "Edit zone scale" with the info line naming the current scale ("Current: 3/16\" = 1'") but **no preset marked and empty custom fields** — D20's preload was scoped to the PAGE scale on purpose (zone mode reads a different object); the same `preloadFromCurrentScale` shape would close it. **#9 still open:** Ctrl+Y is not bound (HOTKEYS has no redo-by-Y row); Ctrl+Shift+Z only.
+
 *Adversarial verifier pass, run 2026-08-09. Method: read features/scale.js, features/tool-context-menu.js, features/scale-zone-settings.js and the app.js zone/toast/keydown handlers, then re-drove the real app headlessly (Playwright Chromium 1380×900, static server on port 4306, sample-plan.pdf via #pdfInput, all `supabase|functions/v1` requests aborted at the driver — no cloud). Nine of eleven findings re-driven live; #5 and #9 verified against code and unit tests.*
 
 **Reproduced (headline items):**

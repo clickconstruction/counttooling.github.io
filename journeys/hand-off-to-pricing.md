@@ -150,6 +150,8 @@ Click **Copy to /Tooling** with one page still unscaled: the app stops you cold 
 
 ## Verification (2026-08-02)
 
+> **Re-walk 2026-09-14 (drift patrol after D25, live):** **#2 CLOSED by option D (D25)** — the "visible layers" scope is gone; Copy to /Tooling and Copy Summary offer This sheet / Everything with a layer picker pre-checked to what is on screen (active layer locked + the peek set), and the paste starts with "--- Counts — <project> · every sheet · layers: Main, Gas ---"; on the 2026-09-13 walk with the peek ON, Everything copied Supply Diffuser 150⇥8 (3 Main + 5 Gas) and the copied toast counted 1 count — the J11 moment cannot happen. **#5 still open (X7):** `#copySummaryTextDropdown` still renders AFTER the Home / PipeTooling / TakeoffTooling link row (DOM order verified live). **#6 still open (X8):** 20 native `alert(`/`confirm(` calls remain on the copy/export/app paths (output.js 5, report.js 2, export-pdfs.js 4, app.js 9) — the B20 sweep. #8 fixed (B3).
+
 Adversarial re-drive by the J11 verifier: fresh throwaway Playwright script (headless Chromium, static server on **port 4311**, repo root, `test-2pages.pdf` via `#pdfInput`), takeoff re-seeded from scratch with the walker's shape (WC counters + one line type, lines on both pages, page 1 scaled `1/8" = 1'`, page 2 unscaled). All supabase hosts route-aborted as a belt-and-braces no-cloud guard; nothing cloud-side was touched.
 
 **Reproduced first-hand (findings 1-6):**

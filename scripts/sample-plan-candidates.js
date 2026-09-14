@@ -220,7 +220,7 @@ function candidateA() {
   ${floorDrain(905, 505)}
 
   <!-- corridor drinking fountains + FD -->
-  ${drinkFtn(690, 342)}${drinkFtn(712, 342)}
+  ${drinkFtn(740, 342)}${drinkFtn(762, 342)}
   ${floorDrain(660, 362)}
 
   <!-- doors (openings onto corridor) -->

@@ -30,6 +30,17 @@
   no product code, only the third `TOURS` entry, its steps, its link, its done
   key, and its spec.
 
+> **Built 2026-09-14** as planned with one reorder found in the build: a run
+> inherits its system from `state.activeGroupId` at trace time and there is no
+> UI to assign a run afterwards, so **step 7 is the system and step 8 the main**
+> (RTU-1 becomes the active group; the main inherits it). Still 14 steps.
+> Also found in the build: the sample plan's drawing sits at **0.75× its SVG
+> units** (the SVG is 1224 CSS px on a 1224-pt sheet — the factor the plumbing
+> tour's `DIM_20FT` already carries), so OPEN OFFICE 104 is 207×173 pt =
+> **442 ft²**, not 812, and four 150-CFM diffusers **serve** it (600 ≥ 442):
+> ⚑2 resolves to "served by design" — the gate still has the unticked manual
+> rows to ask about. D24 reads "OPEN OFFICE" (the number is its own print).
+
 ## Design
 
 ### The route (14 steps, the plumbing tour's length)

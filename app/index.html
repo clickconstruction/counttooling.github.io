@@ -3535,7 +3535,8 @@
         // every service worker, delete every cache, then reload — each step
         // best-effort so an old browser still gets the plain reload.
         if (reload) reload.onclick = function () {
-          var done = function () { location.reload(); };
+          var fired = false;   // the purge promise and the 4 s failsafe both call done; reload once
+          var done = function () { if (fired) return; fired = true; location.reload(); };
           try {
             var work = [];
             if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {

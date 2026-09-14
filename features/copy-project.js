@@ -136,6 +136,7 @@
       App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
       App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
       App.state.groupsEnabled = !!d.groupsEnabled;
+      App.state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21
       App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
       App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
       App.state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4

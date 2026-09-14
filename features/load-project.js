@@ -456,6 +456,7 @@
               state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
               state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
               state.groupsEnabled = !!d.groupsEnabled;
+              state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21
               state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
               state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;   // S2 vertical-by-default
               state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
@@ -509,6 +510,7 @@
         state.lineTypes = Array.isArray(canvasData.lineTypes) ? canvasData.lineTypes : [];
         state.groups = ensureGroupColors(Array.isArray(canvasData.groups) ? canvasData.groups : []);
         state.groupsEnabled = !!canvasData.groupsEnabled;
+        state.stripPins = (canvasData.stripPins && typeof canvasData.stripPins === 'object') ? { ...canvasData.stripPins } : {};   // D21
         state.trade = typeof canvasData.trade === 'string' && canvasData.trade ? canvasData.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
         state.ceilingHeightFt = typeof canvasData.ceilingHeightFt === 'number' && canvasData.ceilingHeightFt > 0 ? canvasData.ceilingHeightFt : null;   // S2 vertical-by-default
         state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(canvasData.codes) : null;   // rulebook slice 4

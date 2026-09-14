@@ -52,7 +52,10 @@ test.describe('Header ⋯ More tools overflow', () => {
 
     // More mode engaged: ⋯ visible, the group hidden, everyday tools inline.
     await expect(page.locator('#headerMoreBtn')).toBeVisible();
+    // D21 (J5-D): re-arranging the strip is opt-in, so a trade-less project
+    // keeps D14's arrangement — Polyline tucked, Duct inline.
     await expect(page.locator('#polylineBtn')).toBeHidden();
+    await expect(page.locator('#ductBtn')).toBeVisible();
     await expect(page.locator('#highlightBtn')).toBeHidden();
     await expect(page.locator('#multiplyZoneBtn')).toBeHidden();
     await expect(page.locator('#counterBtn')).toBeVisible();
@@ -63,6 +66,8 @@ test.describe('Header ⋯ More tools overflow', () => {
     await page.locator('#headerMoreBtn').click();
     const rows = page.locator('#headerMoreMenu .hm-row');
     await expect(rows).toHaveCount(11);
+    // Row ORDER still mirrors the strip's DOM order — D21 moves visibility, never
+    // position, so the menu reads the same whichever tools are inline.
     await expect(rows.first()).toContainText('Polyline');
     await expect(rows.first().locator('.hm-key')).toHaveText('P');
     await expect(rows.nth(1)).toContainText('Duct');   // strip order: Polyline, Duct, Highlight …
@@ -112,8 +117,10 @@ test.describe('Header ⋯ More tools overflow', () => {
     await page.waitForLoadState('networkidle');
     await loadPdf(page);
 
-    // Inline: Duct stays VISIBLE in the strip (it is not in the CSS hide list)
-    // at its shipped DOM position — after Polyline, before Highlight.
+    // D21 (J5-D): D14's arrangement survives as the unstated AND the HVAC case.
+    // Inline: Duct stays VISIBLE in the strip at its shipped DOM position —
+    // after Polyline, before Highlight. Only visibility is trade-aware; the
+    // strip's DOM order never moves.
     await expect(page.locator('body')).toHaveClass(/header-more/);
     await expect(page.locator('#ductBtn')).toBeVisible();
     await expect(page.locator('#polylineBtn')).toBeHidden();
@@ -136,7 +143,8 @@ test.describe('Header ⋯ More tools overflow', () => {
     expect(await page.evaluate(() => window.__ductClicks)).toBe(1);
 
     // The ⋯ indicator stays quiet for Duct: the inline button shows the gold
-    // itself (a `strip` row is excluded from anyOverflowedToolActive).
+    // itself (an inline tool is excluded from anyOverflowedToolActive — D21
+    // resolves that from the trade + pins rather than a fixed `strip` flag).
     await page.evaluate(() => { document.getElementById('ductBtn').classList.add('active'); window.App.onHeaderMoreSync(); });
     await expect(page.locator('#headerMoreBtn')).not.toHaveClass(/active/);
 

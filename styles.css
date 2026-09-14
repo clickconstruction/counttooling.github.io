@@ -253,13 +253,23 @@
        #headerMoreBtn dropdown instead of scrolling out of sight. Engages BEFORE
        body.header-collapsed — with the group tucked away the row usually fits,
        so the compact mode stays the deeper fallback. */
-    body.header-more #polylineBtn, body.header-more #highlightBtn, body.header-more #multiplyZoneBtn, body.header-more #scaleZoneBtn, body.header-more #roomBtn,
-    body.header-more #ghostBtn, body.header-more #deleteZoneBtn, body.header-more #noteBtn, body.header-more #legendBtn,
-    body.header-more #gridBtn, body.header-more .header-tools-tight .divider { display: none !important; }
+    /* D21 (J5-D): the hidden set is no longer a fixed id list — features/
+       header-more.js paints .hm-overflowed from (trade profile + per-project
+       pins), so which tools sit inline follows the trade and the estimator's
+       pins. Only the CLASS moves; the strip's DOM order never changes. */
+    body.header-more .hm-overflowed,
+    body.header-more .header-tools-tight .divider { display: none !important; }
     .header-more-menu { position: fixed; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 210px; }
     .header-more-menu .hm-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--text); }
     .header-more-menu .hm-row:hover { background: var(--surface2); }
     .header-more-menu .hm-row.active { color: var(--accent); }
+    /* D21: the per-row pin. Quiet until the row is hovered or the tool is
+       already pinned, so the menu still reads as a tool list first. */
+    .header-more-menu .hm-pin { margin-left: auto; flex: 0 0 auto; background: none; border: none; padding: 2px 4px; font: inherit; font-size: 0.78rem; line-height: 1; color: var(--text3); cursor: pointer; opacity: 0; border-radius: 4px; }
+    .header-more-menu .hm-row:hover .hm-pin, .header-more-menu .hm-pin.pinned { opacity: 1; }
+    .header-more-menu .hm-pin.pinned { color: var(--accent); }
+    .header-more-menu .hm-pin:hover { color: var(--accent); background: var(--surface3); }
+    .header-more-menu .hm-name { flex: 0 1 auto; }
     .header-more-menu .hm-icon { width: 20px; height: 20px; display: inline-flex; color: var(--text2); flex-shrink: 0; }
     .header-more-menu .hm-icon svg { width: 20px; height: 20px; }
     .header-more-menu .hm-name { flex: 1; white-space: nowrap; }

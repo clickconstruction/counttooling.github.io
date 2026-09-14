@@ -50,7 +50,7 @@
   // `key` field: the hotkey column comes from App.HOTKEYS (hotkeyFor).
   const OVERFLOW_TOOLS = [
     { id: 'polylineBtn', name: 'Polyline', tool: true },
-    { id: 'ductBtn', name: 'Duct', tool: true, strip: true },
+    { id: 'ductBtn', name: 'Duct', tool: true },
     { id: 'highlightBtn', name: 'Highlight', tool: true },
     { id: 'multiplyZoneBtn', name: 'Multiply Zone', tool: true },
     { id: 'scaleZoneBtn', name: 'Scale Zone', tool: true },
@@ -69,6 +69,82 @@
     return h && h.key ? String(h.key).toUpperCase() : '';
   }
 
+  // D21 (J5-D, Will's option (b) + Pin): WHICH drawing tools sit inline in the
+  // strip and which live behind the ⋯ is seeded by the project's TRADE, then
+  // overridden per tool by the estimator's pins.
+  //
+  // D14 kept the strip order fixed and put Duct inline for everyone; J5-D's
+  // complaint was that a plumbing estimator then carries an HVAC tool in the
+  // strip while Polyline — their daily tool — is two clicks away. The trade
+  // profile decides the default instead: HVAC keeps D14's arrangement (Duct
+  // inline, Polyline in ⋯), and every other trade takes the reverse.
+  //
+  // Only VISIBILITY is computed here — the DOM order of the strip is never
+  // touched, so the strip cannot re-order on its own mid-session. The resolved
+  // set is a function of (trade, pins) alone: nothing about the current tool,
+  // the window size or a click feeds it.
+  const BASE_OVERFLOW = ['polylineBtn', 'highlightBtn', 'multiplyZoneBtn', 'scaleZoneBtn', 'roomBtn', 'ghostBtn', 'deleteZoneBtn', 'noteBtn', 'legendBtn', 'gridBtn'];
+  // The trade the project (or the device) has actually STATED — null when
+  // nothing has been. Deliberately not App.getQuickTrade, whose final fallback
+  // is 'plumbing': that fallback exists to pick a VOCABULARY for the Quick
+  // creator, and reading it here would silently re-arrange the toolbar of every
+  // project that has never named a trade — which is most of them, since
+  // state.trade is explicit and null by default. Re-arranging the strip is an
+  // opt-in, so an unstated project keeps D14's shipped arrangement exactly.
+  function statedTrade() {
+    const state = App.state;
+    const TRADES = ['plumbing', 'electrical', 'hvac'];
+    if (TRADES.includes(state && state.trade)) return state.trade;
+    const d = App.getPlumbingModifiers ? App.getPlumbingModifiers().defaultTrade : null;
+    return TRADES.includes(d) ? d : null;   // a device default IS a statement
+  }
+  function tradeOverflowDefaults() {
+    const trade = statedTrade();
+    // Nothing stated, or HVAC: D14's arrangement — Duct inline, Polyline
+    // behind the ⋯.
+    if (trade === null || trade === 'hvac') return BASE_OVERFLOW.slice();
+    // Plumbing / electrical: the reverse. Polyline is their daily tool.
+    return BASE_OVERFLOW.filter((id) => id !== 'polylineBtn').concat(['ductBtn']);
+  }
+  function stripPins() {
+    const s = App.state && App.state.stripPins;
+    return (s && typeof s === 'object') ? s : {};
+  }
+  // true = the tool lives behind the ⋯ right now.
+  function isOverflowed(id) {
+    const pins = stripPins();
+    if (pins[id] === true) return false;    // pinned to the strip
+    if (pins[id] === false) return true;    // explicitly unpinned
+    return tradeOverflowDefaults().includes(id);
+  }
+  // Paint the resolved set onto the buttons. styles.css hides
+  // `body.header-more .hm-overflowed`, so a tool moves between the strip and
+  // the menu by class alone — no DOM move, no reflowable order.
+  function applyOverflowClasses() {
+    OVERFLOW_TOOLS.forEach((t) => {
+      const el = sourceBtn(t.id);
+      if (el) el.classList.toggle('hm-overflowed', isOverflowed(t.id));
+    });
+  }
+  // The pin write. `next` true = pin to strip, false = send to the ⋯, null =
+  // back to whatever the trade says. Per project (state.stripPins), mirrored to
+  // localStorage so the device keeps the arrangement across a plain reload —
+  // the same both-places rule the sidebar filter scope uses.
+  function setStripPin(id, next) {
+    const state = App.state;
+    const pins = Object.assign({}, stripPins());
+    if (next == null) delete pins[id]; else pins[id] = !!next;
+    state.stripPins = pins;
+    try { localStorage.setItem('stripPins', JSON.stringify(pins)); } catch (_) { /* private window */ }
+    if (App.markProjectDirty) App.markProjectDirty();
+    applyOverflowClasses();
+    updateHeaderMore();
+    if (menuOpen) buildMenuRows();
+  }
+  App.setStripPin = setStripPin;
+  App.isToolOverflowed = isOverflowed;         // spec seam
+  App.applyStripOverflow = applyOverflowClasses;
+
   let menuOpen = false;
 
   function moreBtn() { return document.getElementById('headerMoreBtn'); }
@@ -80,7 +156,7 @@
   function sourceHidden(id) { const el = sourceBtn(id); return !el || el.style.display === 'none'; }
 
   function anyOverflowedToolActive() {
-    return OVERFLOW_TOOLS.some((t) => { if (!t.tool || t.strip) return false; const el = sourceBtn(t.id); return el && el.classList.contains('active'); });
+    return OVERFLOW_TOOLS.some((t) => { if (!t.tool || !isOverflowed(t.id)) return false; const el = sourceBtn(t.id); return el && el.classList.contains('active'); });
   }
 
   function closeMenu() {
@@ -104,9 +180,22 @@
       row.dataset.toolId = t.id;
       const svg = src.querySelector('svg');
       const key = hotkeyFor(t.id);
+      // D21 (J5-D): the per-tool pin. A tool already inline reads "Unpin"; one
+      // behind the ⋯ reads "Pin to strip". The pin is the ONLY control that
+      // moves a tool between the two places, so the arrangement never changes
+      // by itself.
+      const overflowed = isOverflowed(t.id);
+      const pinTitle = overflowed ? 'Pin ' + t.name + ' to the toolbar' : 'Unpin ' + t.name + ' — move it into this menu';
       row.innerHTML = '<span class="hm-icon">' + (svg ? svg.outerHTML : '') + '</span>'
         + '<span class="hm-name">' + t.name + '</span>'
+        + '<button type="button" class="hm-pin' + (overflowed ? '' : ' pinned') + '" data-pin-id="' + t.id + '" title="' + pinTitle + '" aria-label="' + pinTitle + '">' + (overflowed ? '📌' : '📍') + '</button>'
         + (key ? '<kbd class="hm-key">' + key + '</kbd>' : '');
+      const pinBtn = row.querySelector('.hm-pin');
+      if (pinBtn) pinBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();   // the row's own click arms the tool — the pin must not
+        setStripPin(t.id, overflowed ? true : false);
+      };
       row.onclick = () => { closeMenu(); src.click(); };
       // Right-click parity: forward to the source button so the shared
       // tool-context-menu settings open, positioned at the row.
@@ -149,6 +238,7 @@
       return;
     }
     document.body.classList.add('header-more');
+    applyOverflowClasses();   // D21: the resolved strip/⋯ split, before the measure
     b.style.display = OVERFLOW_TOOLS.every((t) => sourceHidden(t.id)) ? 'none' : '';
     syncMoreState();
     if (App.updateHeaderCollapsed) App.updateHeaderCollapsed();
@@ -180,6 +270,7 @@
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOpen) closeMenu(); });
 
+  App.updateHeaderMore = updateHeaderMore;   // D21: a trade change re-resolves the strip
   App.onHeaderMoreSync = syncMoreState;
   App.scheduleHeaderMoreCheck = scheduleHeaderMoreCheck;
 })();

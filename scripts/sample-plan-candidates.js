@@ -205,16 +205,16 @@ function candidateA() {
   <!-- men 107: 2 stalls + wc on the bottom wall (2026-09-14: they used to sit on the top wall
        and block the door), lavs on the top wall clear of the door swing, 2 urinals on the bottom wall beside the stalls
        (stalls enclose the fixture: partitions to the wall, front line on top), FD -->
-  ${stallEnc(590, 540, 38, 57)}${stallEnc(628, 540, 38, 57, true)}
-  ${wc(609, 591, 180)}${wc(647, 591, 180)}
-  ${urinal(686, 596, 180)}${urinal(712, 596, 180)}
+  ${stallEnc(582, 540, 38, 57)}${stallEnc(620, 540, 38, 57, true)}
+  ${wc(601, 591, 180)}${wc(639, 591, 180)}
+  ${urinal(678, 596, 180)}${urinal(704, 596, 180)}
   <rect x="642" y="387" width="60" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   ${lavCtr(657, 399)}${lavCtr(687, 399)}
   ${floorDrain(712, 505)}
 
   <!-- women 108: 3 stalls, 3 lavs, FD -->
-  ${stallEnc(770, 540, 40, 57)}${stallEnc(810, 540, 40, 57)}${stallEnc(850, 540, 40, 57, true)}
-  ${wc(790, 591, 180)}${wc(830, 591, 180)}${wc(870, 591, 180)}
+  ${stallEnc(762, 540, 40, 57)}${stallEnc(802, 540, 40, 57)}${stallEnc(842, 540, 40, 57, true)}
+  ${wc(782, 591, 180)}${wc(822, 591, 180)}${wc(862, 591, 180)}
   <rect x="820" y="387" width="112" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   ${lavCtr(838, 399)}${lavCtr(876, 399)}${lavCtr(914, 399)}
   ${floorDrain(905, 505)}

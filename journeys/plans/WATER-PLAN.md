@@ -9,6 +9,25 @@
 > (candidate 1) runs as a program unit in the gaps. **2026-09-14:** the advanced sample
 > plan (`samples/sample-plan-advanced.pdf`, a restaurant plumbing sheet) shipped as the
 > walkthrough's sheet — the plumber pokes at the real thing in the app, not only the boards.
+>
+> **Mockup round decided 2026-09-14 (all six, recommendation taken on each):**
+> **Q1 one size per run** — a size change is a new run from here; no size
+> segments on lines (rung 4 stays on the existing line model). **Q2 the cap,
+> not the pressure** — ship the velocity-capped size at S, stamped "practice,
+> not code"; *Pressure available checked (Appendix E)* starts as a manual Bid
+> Check tick and upgrades itself once the critical-path math exists. **Q3
+> occupancy** — one project-level private/public toggle beside the code
+> edition (public by default on a commercial bid), a per-counter flip to the
+> other column, and the per-mark WSFU override. **Q4 hot and cold** — water
+> side is a property of the line type (*3/4in PEX hot* / *3/4in PEX cold*);
+> the sidebar may group by side to keep the list short. **Q5 the chip** —
+> size first: *"3/4″ suggested · 6 WSFU downstream · 5 fps · S accepts"*;
+> gpm moves to the S popover and the schedule. **Q6 scope** — water only in
+> this slice; drainage (DFU → DWV, slope, vents) is the next slice. The
+> ladder in §6 is unblocked; rung 1 (the rulebook slice) can cut a branch.
+> The "Water Sizing" artboards were not reachable from the session that
+> recorded this; the calls were made against §7's worked example and the
+> advanced sample plan in the app.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -26,7 +45,7 @@ weight) and today has one auto Bid Check row (hangers). This gives it the rest.
   rule reads a material off a line type: *Lavatory* → the IPC Table
   E103.3(2) value for the project's **occupancy** (private / public, one
   project-level toggle beside the code edition; public is the default on a
-  commercial bid). A chip beside the field names the rule and the value it
+  commercial bid; a counter can be flipped to the other column — Q3). A chip beside the field names the rule and the value it
   read (*→ 2.0 WSFU · public lavatory · IPC E103.3(2)*); type over it and
   the counter keeps yours. A placed mark can carry its own override
   (right-click → *WSFU for this one…*), the CFM-override precedent.
@@ -47,9 +66,10 @@ weight) and today has one auto Bid Check row (hangers). This gives it the rest.
   to a design flow through the IPC demand curve (Table E103.3(3), flush-tank
   or flush-valve column by the fixtures present), and suggests the smallest
   nominal size whose velocity stays under the cap for that side:
-  *"6 WSFU downstream · 5 gpm · suggests 3/4″ @ 5 fps. S accepts."*
-  Press `S` and the suggestion sits at the top of the popover; one tap takes
-  it. Suggestions only ever *inform* — the size never changes unless you
+  *"3/4″ suggested · 6 WSFU downstream · 5 fps · S accepts"* (Q5: size
+  first; the design gpm shows in the popover and the schedule, not on the
+  cursor). Press `S` and the suggestion sits at the top of the popover with
+  its gpm; one tap takes it. Suggestions only ever *inform* — the size never changes unless you
   take it.
 - **A size change is a new run from here.** Water mains step down as
   fixtures peel off, but a line has one size (its type). Taking a smaller
@@ -57,8 +77,8 @@ weight) and today has one auto Bid Check row (hangers). This gives it the rest.
   one there in the sized type (the Chain tool's "run back to the previous
   one" shape, forward); the two share the point, so drops and hangers
   count once. This keeps every existing export, spec and report untouched
-  — no size segments on lines — and is the decision the walkthrough must
-  confirm (§9, Q1).
+  — no size segments on lines — confirmed by the walkthrough (§9, Q1,
+  2026-09-14).
 - **The Water Sizing schedule prices like a bid.** Per run: side, WSFU
   served, design gpm, size, velocity at that size, ✓ / ⚠ (over the cap, or
   under a fixture-supply minimum), with hot and cold totals; the two knobs
@@ -197,22 +217,22 @@ DUCT-PLAN got on day 7.
 The six artboards (the "Water Sizing" artifact) walk Men 105 end to end.
 Questions, in the order they change the build:
 
-- **Q1 — one size per run.** Is "taking a smaller size at S ends this run
+- **Q1 — one size per run.** ☑ *New run from here.* Is "taking a smaller size at S ends this run
   and starts the next" how a plumber thinks about a stepped main, or does
   the trace want size segments like duct? (Segments cost the line model,
   every export and the specs; the answer decides ladder rung 4.)
-- **Q2 — the cap, not the pressure.** Is a velocity-capped size the number
+- **Q2 — the cap, not the pressure.** ☑ *Ship the cap; the pressure check is Bid Check's.* Is a velocity-capped size the number
   you would pencil in, with the Appendix E pressure check as a Bid Check
   row — or is a suggestion without the pressure math not worth showing?
-- **Q3 — occupancy.** One project-level private/public toggle, or per
+- **Q3 — occupancy.** ☑ *Project default + per-counter flip + per-mark override.* One project-level private/public toggle, or per
   counter (a private lav and a public lav on one job)?
-- **Q4 — hot and cold as line types.** Two line types per size and
+- **Q4 — hot and cold as line types.** ☑ *Side on the line type.* Two line types per size and
   material (*3/4in PEX hot*, *3/4in PEX cold*) versus a side flag on the
   run: which keeps the Line Types list readable on a real bid?
-- **Q5 — the chip's words.** *"6 WSFU downstream · 5 gpm · suggests 3/4″
+- **Q5 — the chip's words.** ☑ *Size first; gpm in the popover.* *"6 WSFU downstream · 5 gpm · suggests 3/4″
   @ 5 fps. S accepts"* — is gpm noise to an estimator, or the number they
   trust?
-- **Q6 — what stays out.** Drainage next, or is DWV the half a plumber
+- **Q6 — what stays out.** ☑ *Water first, DWV next.* Drainage next, or is DWV the half a plumber
   actually wanted first?
 
-Decisions land in this file's status block, the way DUCT-PLAN's did.
+Decisions landed in this file's status block on 2026-09-14, the way DUCT-PLAN's did.

@@ -411,11 +411,15 @@
   const tourFromParam = (v) => (v === 'plumbing' ? 'plumbing' : v === 'hvac' ? 'hvac' : (v === '1' || v === 'electrical') ? 'electrical' : null);
 
   // --- "do it for me" actions (the same entry points a click uses) --------------------
-  async function openSamplePlan() {
+  // The two sample plans go through the app's own intake, exactly like a dropped
+  // file: the simple plan (today's office TI, the three tours' sheet) and the
+  // advanced plan (a restaurant plumbing sheet, Main St Restaurant P-101).
+  const ADVANCED_PLAN = '/samples/sample-plan-advanced.pdf';
+  async function openPlanFile(url, name) {
     try {
-      const res = await fetch(SAMPLE_PLAN);
+      const res = await fetch(url);
       const blob = await res.blob();
-      const file = new File([blob], 'sample-plan.pdf', { type: 'application/pdf' });
+      const file = new File([blob], name, { type: 'application/pdf' });
       const dt = new DataTransfer();
       dt.items.add(file);
       const inp = document.getElementById('pdfInput');
@@ -423,6 +427,8 @@
       inp.dispatchEvent(new Event('change', { bubbles: true }));
     } catch (e) { App.showToast('Could not load the sample plan. Upload PDF works the same way.'); }
   }
+  async function openSamplePlan() { return openPlanFile(SAMPLE_PLAN, 'sample-plan.pdf'); }
+  async function openAdvancedSamplePlan() { return openPlanFile(ADVANCED_PLAN, 'sample-plan-advanced.pdf'); }
   // Through the real dialog when it is there — the estimator sees the presets tab
   // and the 1/8" row get picked, the way they will do it on a real sheet — with a
   // direct write as the fallback (specs, a missing modal).
@@ -841,6 +847,9 @@
     });
     const wrap = document.querySelector('.canvas-empty-hint-tour');
     if (wrap) wrap.style.display = allDone ? 'none' : '';
+    // The advanced-plan offer stays; only its leading separator follows the tours.
+    const advSep = el('canvasEmptyHintAdvancedSep');
+    if (advSep) advSep.style.display = allDone ? 'none' : '';
   }
 
   // wiring (static DOM)
@@ -855,6 +864,8 @@
   el('settingsTour') && (el('settingsTour').onclick = () => { App.hideModal('settingsModal'); startTutorial('electrical'); });
   el('settingsTourPlumbing') && (el('settingsTourPlumbing').onclick = () => { App.hideModal('settingsModal'); startTutorial('plumbing'); });
   el('settingsTourHvac') && (el('settingsTourHvac').onclick = () => { App.hideModal('settingsModal'); startTutorial('hvac'); });
+  el('canvasEmptyHintAdvancedPlan') && (el('canvasEmptyHintAdvancedPlan').onclick = (e) => { e.preventDefault(); openAdvancedSamplePlan(); });
+  el('settingsAdvancedPlan') && (el('settingsAdvancedPlan').onclick = () => { App.hideModal('settingsModal'); openAdvancedSamplePlan(); });
   window.addEventListener('resize', () => { if (active) render(); });
   syncEntryPoints();
   // ?tour=plumbing / ?tour=electrical (or the original ?tour=1) opens that tour on
@@ -862,6 +873,7 @@
   try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) setTimeout(() => startTutorial(id), 600); } catch (_) {}
 
   App.startTutorial = startTutorial;
+  App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the advanced sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;
   App.isTutorialActive = () => active;
   App.onTutorialTick = () => { if (active) render(); };

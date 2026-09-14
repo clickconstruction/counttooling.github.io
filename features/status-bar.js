@@ -27,6 +27,7 @@
   // so the wrap measurement's forced layout read runs only when either changes.
   let footerHintKey = null;
   let footerHintFits = true;
+  let footerBareCompact = false;   // the hint dropped AND the full stamp still wrapped: show the compact stamp alone
   // D19 (J19 Friction #5): which save-stamp variant the cached verdict was
   // reached with — the bar compacts the stamp before it sacrifices the hint.
   let footerHintCompactStamp = false;
@@ -202,7 +203,7 @@
       } else {
         const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : 'none'))
           + (state.currentProjectExternalRef ? ' · ' + state.currentProjectExternalRef : '');
-        let lastSavedSegment = 'none';
+        let lastSavedSegment = 'not saved yet';
         // Same text unless the local-save branch below offers a shorter twin.
         let lastSavedSegmentCompact = null;
         if (lastLocalBackupAt) {
@@ -231,9 +232,14 @@
           const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
           const agoStr = App.formatAgo(agoSec);
           lastSavedSegment = timeStr + ' | ' + agoStr;
+        } else {
+          lastSavedSegmentCompact = '';   // never saved: the compact twin is the name alone
         }
-        mode = projectSegment + ' - ' + lastSavedSegment;
-        const modeCompact = lastSavedSegmentCompact ? projectSegment + ' - ' + lastSavedSegmentCompact : mode;
+        // Nothing loaded: one plain phrase instead of "none · not saved yet".
+        const noProject = !state.pages.length && !state.currentProjectName;
+        mode = noProject ? 'No project open' : projectSegment + ' · ' + lastSavedSegment;
+        const modeCompact = (noProject || lastSavedSegmentCompact === null) ? mode
+          : (lastSavedSegmentCompact ? projectSegment + ' · ' + lastSavedSegmentCompact : projectSegment);
         let toolHint = '';
         // Wrap-cache variant of the hint: live length readout replaced by the
         // fixed worst-case placeholder ('' = no readout, key on toolHint).
@@ -319,10 +325,18 @@
                 modeEl.textContent = keyed(modeCompact);
                 if (actionsEl.offsetTop <= modeEl.offsetTop) { fits = true; compact = true; }
               }
+              // Fourth rung: no hint at all — does the full stamp fit? If not, the compact stamp alone.
+              let bareCompact = false;
+              if (!fits && modeCompact !== mode) {
+                modeEl.textContent = mode;
+                bareCompact = !(actionsEl.offsetTop <= modeEl.offsetTop);
+              }
               footerHintFits = fits;
               footerHintCompactStamp = compact;
+              footerBareCompact = bareCompact;
             }
             if (footerHintFits) mode = (footerHintCompactStamp ? modeCompact : mode) + ' | ' + toolHint;
+            else if (footerBareCompact) mode = modeCompact;
           } else {
             mode = mode + ' | ' + toolHint;
           }

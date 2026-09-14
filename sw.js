@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '9b181b439515';
+const CACHE_VERSION = '14006c4077d5';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -246,7 +246,7 @@ const PRECACHE_SHA256 = {
   '/features/quick-line.js': 'a5d6570246ccf7e3b8bf508869b3216fa5e147831b537d5b89d3c36e08a864ad',
   '/features/counter.js': 'bd0c976dfc44b3708e4e0b1cb6197733d39a43243fc75663f19157f2684e7e0a',
   '/features/save-status.js': 'd4af89c0258d6609d19b402ec5684198948d44fc75d7446592e79d29bf15d919',
-  '/features/status-bar.js': 'd6832c7c59ad921ef05a363a3fa383507a04e6b8b5ca729c07173b07ee9fbe69',
+  '/features/status-bar.js': '337c051b7d3583c4ca9e63c950cfd1df3ff02c9e08c35ef73b254522d6b5011d',
   '/features/turn-in.js': 'b3f81da1597e424dd340a5d630dbabfe95bd147df489ca00edf3959a966e63f6',
   '/features/manage-projects.js': '64857b6e77d45d860b5eec677d1f2702f31cfcd00510a66115b411a05fb44717',
   '/features/user-admin.js': '87d028742ef2410468b7d492bbd3f26260c4de19dab645b2df49443964cce39f',

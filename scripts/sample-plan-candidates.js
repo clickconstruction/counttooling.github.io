@@ -96,8 +96,10 @@ const northArrow = (x, y) => `<g transform="translate(${x},${y})" stroke="${INK}
   <path d="M0 12 L6 8 L0 -13 L-6 8 Z" stroke="none"/>
   <text x="0" y="-22" text-anchor="middle" font-size="12" stroke="none">N</text></g>`;
 
-// Graphic scale bar, calibrated to the sheets' true geometry (~12 px/ft per the
-// dimension strings): four alternating 4-ft segments with ticks and aligned labels.
+// Graphic scale bar, calibrated to the sheets' true geometry (12 px/ft per the
+// dimension strings; the PDF is 1224 CSS px = 918 pt wide, so 12 px/ft = 9 pt/ft =
+// 1/8" = 1'-0", the same scale as samples/sample-plan.pdf): four alternating 4-ft
+// segments with ticks and aligned labels.
 const scaleBar = (x, y, pxPerFt = 12) => {
   const seg = 4 * pxPerFt;
   const boxes = [0, 1, 2, 3].map((i) =>
@@ -110,7 +112,7 @@ const scaleBar = (x, y, pxPerFt = 12) => {
     <rect x="0" y="0" width="${seg * 4}" height="7" fill="none" stroke="${INK}" stroke-width="0.9"/>
     ${boxes}${ticks}${labels}
     <text x="0" y="-9" font-size="9" letter-spacing="1.5">GRAPHIC SCALE</text>
-    <text x="${seg * 4 + 12}" y="7" font-size="9" fill="#444">1/4" = 1'-0"</text>
+    <text x="${seg * 4 + 12}" y="7" font-size="9" fill="#444">1/8" = 1'-0"</text>
   </g>`;
 };
 
@@ -468,7 +470,7 @@ function candidateB() {
   ${lightFix(1003, 504)}
   <text x="1019" y="508" font-family="${F}" font-size="9.5" fill="${INK}">LIGHT FIXTURE, TYP.</text>
 
-  ${titleBlock({ sheet: 'P-101', sheetName: 'PLUMBING PLAN', project: 'MAIN ST RESTAURANT', scale: '1/4" = 1&#39;-0"', date: '07/31/26' })}`;
+  ${titleBlock({ sheet: 'P-101', sheetName: 'PLUMBING PLAN', project: 'MAIN ST RESTAURANT', scale: '1/8" = 1&#39;-0"', date: '07/31/26' })}`;
 }
 
 // ---------------- render ---------------------------------------------------------

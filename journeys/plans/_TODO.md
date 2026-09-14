@@ -167,3 +167,65 @@ from the plan).
   slots — X4 label design, the X6 re-drive ☑, the sequencing slot — are Will's.)
 - ☑ 2026-09-14 Drift patrol again after D25 (a single-journey re-walk of J5, J6, J11 and
   J19 — the standing practice in _NEXT.md) — P3 in _INDEX-DUCT.md; its four papercuts shipped as B20.
+
+## Sample plan A — polish hand-off (2026-09-14, for whoever knows the trade better)
+
+**What it is.** `scripts/sample-plan-candidates.js` → `candidateA()`: the *simple*
+plan (Suite 200 Office TI, A-101, 1/8" = 1'-0" at 12 px/ft), meant to replace
+today's `samples/sample-plan.pdf` as the sheet the three tours walk. Candidate B in
+the same module is the *advanced* plan and is already live
+(`samples/sample-plan-advanced.pdf`, `npm run build:sample-plan-advanced`).
+Candidate A is **parked: drawn, not wired** — nothing in the app or the tours reads
+it yet.
+
+**Render it.** `node scripts/sample-plan-candidates.js` writes
+`samples/candidates/candidate-a-office-ti.pdf/.png` (gitignored). Drop the PDF on
+the empty canvas to count on it. Room walls, doors and fixtures are plain SVG
+in `candidateA()`; the fixture symbols are the helpers at the top of the file
+(`wc`, `lavCtr`, `urinal`, `mopSink`, `floorDrain`, `waterHeater`, `drinkFtn`,
+`stallEnc`, `door`, `dimH`/`dimV`, `scaleBar`, `titleBlock`).
+
+**Done today (Will, live review, 2026-09-14):**
+- Restrooms: stalls now ENCLOSE each water closet (`stallEnc`: partitions down to
+  the wall, front line on top, adjacent stalls share a partition), water closets
+  rotated to face in with the tank against the bottom wall, both stall banks
+  flush off the room's LEFT wall (the first partition sits on the wall line),
+  lav counters moved to the top wall clear of the door swings, the men's two
+  urinals on the bottom wall beside the stalls.
+- JAN. 106: mop sink and water heater in the top-right corner, clear of the door.
+- Corridor C-1: the drinking fountains moved right, clear of the conference door.
+- Legend: the water-heater symbol at the room's size; rows opened up under it.
+- Scale labels: the graphic-scale caption read 1/4"; the sheet is drawn at 1/8"
+  (12 px/ft on a 918 pt sheet). Fixed on both candidates; B's title block too.
+
+**Still open (polish — the trade eye):**
+- Corridor dimension: `dimV(112, COR_T, COR_B, "5'-0\"")` labels a 44 px band
+  (3'-8" at 12 px/ft) as 5'-0". Either widen the corridor to 60 px or relabel;
+  the vertical total then has to agree with 20 + corridor + 18.
+- Door swings: every top-row office door swings into the corridor; check which
+  way a real TI would hang them (egress usually swings out of the room).
+- Break 104's counter, sink and REF are placeholders; Lobby 100 is empty.
+- Restroom fixture counts against occupancy (IPC Table 403.1 for a B occupancy
+  of this size) — the women's three WCs / men's two + two urinals is a guess.
+- Grid bubbles / dimension strings: 24'-0" + 18'-4" + 25'-0" = 67'-4" ✓;
+  re-check after any wall move.
+- Whether A should keep today's room NAMES and numbers (MEN 105 / WOMEN 106 /
+  OPEN OFFICE 104 …) so the tours' scripts change as little as possible — a
+  decision before adoption, not after.
+
+**Adopting A (when the polish is done) — the cost is the tours, not the drawing:**
+1. Fold `candidateA()` into `scripts/build-sample-plan.js` (or point it at the
+   module) and regenerate `samples/sample-plan.pdf`.
+2. Re-derive the tour targets in `features/tutorial.js` (PDF pts = SVG px × 0.75):
+   `DIM_20FT` (the proved dimension), `WC_SPOTS`, `LAV_SPOTS`, `RFI_SPOT`,
+   `OPEN_OFFICE`, `DIFFUSER_SPOTS`, `MAIN_VERTICES`, `RECEPTACLE_SPOTS`,
+   `CHAIN_SPOTS`, and every step body that names a room ("Men 105", "Women
+   106", "OPEN OFFICE 104").
+3. Re-tune `takeoffSetup` / `roomSetup` in `scripts/build-screenshots.js` and
+   regenerate the guide screenshots (`npm run build:screenshots`).
+4. Re-pin the six specs that read the sheet's geometry: copy-tooling-feet,
+   render-worker, scale-modal-clamp, tutorial, zoom-no-updateui-during-gesture,
+   zoom-canvas-cap.
+5. The house loop: targeted specs + `npm run check` per unit, the full suite at
+   the push, a live walk of all three tours before calling it done.
+

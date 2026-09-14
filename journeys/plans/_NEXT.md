@@ -120,6 +120,10 @@ which gaps become features, which become "no, deliberately."
 
 > **STATUS 2026-09-14 — the sequencing slot is decided.** Will: candidate 3, plumbing fixture-unit sizing, IPC first, water only, mockups first. [WATER-PLAN.md](plans/WATER-PLAN.md) is the plan of record (model, rulebook slice, Bid Check, ladder, worked example, the six walkthrough questions); the "Water Sizing" artifact carries the six artboards for the plumber walkthrough. The X4 label-design slot and the X6 re-drive ☑ remain the open product calls.
 
+> **2026-09-14, sample plans:** two sheets now — A (simple, office TI, parked in
+> `scripts/sample-plan-candidates.js`, polish hand-off in [plans/_TODO.md](plans/_TODO.md))
+> and B (advanced, restaurant plumbing, live). Both draw 12 px/ft = 1/8" = 1'-0".
+
 ## Standing practice — drift patrol
 After any major feature ships (e.g. HVAC duct), re-run a single-journey walk +
 verify for the affected journey and update its dossier — the KB stays true the

@@ -327,7 +327,7 @@ function candidateB() {
   <!-- pass-through window: server station (dining side) -> dish pit soiled table -->
   <rect x="555" y="508" width="10" height="54" fill="#fff" stroke="${INK}" stroke-width="1"/>
   <text x="548" y="535" font-family="${F}" font-size="7.5" fill="#444" text-anchor="middle" transform="rotate(-90 548 535)">PASS-THRU</text>
-  <text x="490" y="588" font-family="${F}" font-size="8" fill="#444" text-anchor="middle">SERVER STA.</text>
+  <text x="490" y="560" font-family="${F}" font-size="8" fill="#444" text-anchor="middle">SERVER STA.</text>
 
   <!-- room tags -->
   ${roomTag(340, 250, 'DINING', '100')}
@@ -337,8 +337,8 @@ function candidateB() {
   ${roomTag(884, 150, 'MOP', '104')}
   ${roomTag(614, 268, 'HALL', '107')}
   ${roomTag(760, 400, 'KITCHEN', '105')}
-  ${roomTag(640, 522, 'DISH', '106')}
-  ${roomTag(760, 570, 'STORAGE', '108')}
+  ${roomTag(611, 524, 'DISH', '106')}
+  ${roomTag(760, 556, 'STORAGE', '108')}
 
   <!-- restrooms: WC tanks against the top wall, lavs hung on the side walls,
        FD at the room center clear of the door swings -->
@@ -355,11 +355,11 @@ function candidateB() {
   <!-- server station alcove between bar and dish -->
   ${lightFix(490, 535)}
   <!-- kitchen fixtures (clear of the hood, the piping runs and the drain row) -->
-  ${lightFix(700, 406)}${lightFix(912, 350)}${lightFix(660, 458)}${lightFix(760, 452)}
+  ${lightFix(700, 406)}${lightFix(912, 350)}${lightFix(690, 452)}${lightFix(760, 452)}
   <!-- hallway fixtures -->
   ${lightFix(665, 272)}${lightFix(775, 272)}${lightFix(885, 272)}
   <!-- dish pit + storage fixtures -->
-  ${lightFix(660, 540)}${lightFix(740, 520)}${lightFix(860, 520)}
+  ${lightFix(720, 548)}${lightFix(860, 520)}
   <text x="150" y="136" font-family="${F}" font-size="8.5" fill="#444">PENDANT, TYP.</text>
 
   <!-- bar: counter anchored to the left wall, parallel to the rear wall, with a
@@ -367,7 +367,7 @@ function candidateB() {
        to leave a pass-through. 3-comp and hand sink in the aisle, tagged. -->
   <path d="M133 520 L370 520 L370 570" fill="none" stroke="${INK}" stroke-width="2"/>
   ${sink3Comp(170, 560, 54)}${keyTag(238, 570, '3CS')}
-  ${handSink(330, 586)}${keyTag(352, 588, 'HS')}
+  ${handSink(330, 578)}${keyTag(352, 580, 'HS')}
   ${floorDrain(238, 542)}${floorDrain(340, 545)}
 
   <!-- kitchen north (hall) wall, west to east: prep sink (indirect to FS),
@@ -376,7 +376,7 @@ function candidateB() {
   <ellipse cx="602" cy="314" rx="9" ry="6" fill="none" stroke="${INK}" stroke-width="1.1"/>
   <text x="602" y="336" font-family="${F}" font-size="8" fill="#444" text-anchor="middle">PREP</text>
   ${floorSink(614, 346)}
-  ${handSink(650, 308)}${keyTag(650, 330, 'HS')}
+  ${handSink(672, 308)}${keyTag(672, 330, 'HS')}
   <!-- cook line: equipment against the wall, hood outline over it, a gas drop
        on each piece from the 1-1/4" G run behind the line -->
   <rect x="690" y="298" width="172" height="54" fill="none" stroke="${INK}" stroke-width="0.8" stroke-dasharray="6 4"/>
@@ -388,24 +388,26 @@ function candidateB() {
   ${pipeLabel(834, 420, '1-1/4" G', -90)}${pipeLabel(834, 520, '1-1/2" G', -90)}
 
   <!-- kitchen: a hand sink by the exit (the other is beside the range), floor drains along the work aisle -->
-  ${handSink(928, 392, 270)}${keyTag(904, 410, 'HS')}
-  ${floorDrain(650, 430)}${floorDrain(740, 430)}${floorDrain(860, 440)}
+  ${handSink(928, 392, 270)}${keyTag(904, 412, 'HS')}
+  ${floorDrain(610, 432)}${floorDrain(740, 430)}${floorDrain(860, 440)}
 
   <!-- dish pit (west back room): pass-through drops onto the soiled table on the
        west wall; 3-comp on the north wall; DW in the SW corner (indirect to FS);
        the clean table runs along the south wall and up the east wall to the door -->
-  ${sink3Comp(578, 476, 66)}${keyTag(610, 512, '3CS')}
+  ${sink3Comp(578, 476, 66)}${keyTag(600, 508, '3CS')}
   <rect x="566" y="500" width="22" height="60" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <rect x="570" y="506" width="14" height="16" rx="2" fill="none" stroke="${INK}" stroke-width="1.1"/>
   <text x="577" y="546" font-family="${F}" font-size="7" fill="#444" text-anchor="middle" transform="rotate(-90 577 546)">SOILED</text>
-  <rect x="596" y="568" width="44" height="28" fill="none" stroke="${INK}" stroke-width="1.2"/>
-  <text x="618" y="585" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">DW</text>
-  <path d="M646 596 L646 576 L676 576 L676 500 L696 500 L696 596 Z" fill="none" stroke="${INK}" stroke-width="1.2"/>
-  <text x="686" y="540" font-family="${F}" font-size="7.5" fill="#444" text-anchor="middle" transform="rotate(-90 686 540)">CLEAN</text>
-  ${floorSink(628, 556)}${floorDrain(600, 548)}
+  <rect x="592" y="560" width="40" height="28" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  <text x="612" y="577" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">DW</text>
+  <path d="M660 588 L660 570 L676 570 L676 500 L696 500 L696 588 Z" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  <text x="686" y="536" font-family="${F}" font-size="7.5" fill="#444" text-anchor="middle" transform="rotate(-90 686 536)">CLEAN</text>
+  ${floorSink(641, 556)}${floorDrain(582, 580)}
 
   <!-- storage / mechanical (east back room): water heater, FD -->
-  ${waterHeater(812, 578)}${floorDrain(760, 540)}
+  ${waterHeater(812, 572)}${floorDrain(740, 528)}
+  <g font-family="${F}"><rect x="856" y="560" width="62" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  <text x="887" y="575" font-size="7" fill="#444" text-anchor="middle">RECIRC PUMP</text></g>
 
   <!-- grease interceptor (exterior) -->
   <g font-family="${F}">
@@ -415,34 +417,37 @@ function candidateB() {
     <line x1="940" y1="545" x2="965" y2="540" stroke="${INK}" stroke-width="1" stroke-dasharray="5 3"/>
   </g>
 
-  <!-- domestic water: 2" service at the meter into STORAGE, cold feed to the WH,
-       the 1-1/2" CW trunk north through the kitchen and west along the cook
-       line's aisle; HW leaves the WH and parallels it. Branches: restrooms + mop
-       (1"/3/4"), dish pit (3/4"), prep + hand sinks, the bar (1"). -->
-  ${pipe('cw', [[880, 614], [880, 372], [564, 372], [564, 466], [150, 466], [150, 566], [168, 566]])}
-  ${pipe('cw', [[880, 548], [812, 548], [812, 562]])}
-  ${pipe('hw', [[818, 562], [818, 378], [570, 378], [570, 462], [156, 462], [156, 572], [168, 572]])}
-  ${pipeLabel(890, 590, '2" CW', -90)}${pipeLabel(720, 369, '1-1/2" CW')}${pipeLabel(720, 388, '1-1/4" HW')}
-  <!-- restrooms + mop room -->
-  ${pipe('cw', [[682, 372], [682, 110], [578, 110], [578, 172]])}
-  ${pipe('cw', [[682, 110], [848, 110], [848, 115]])}
-  ${pipe('hw', [[676, 378], [676, 104], [582, 104], [582, 172]])}
-  ${pipe('hw', [[676, 104], [718, 104], [718, 172]])}
+  <!-- domestic water, per the owner's 2026-09-14 sketch. COLD: 2" service at the
+       meter turns west along the south wall to the bar; one shared trunk climbs
+       through the dish pit and the kitchen to the restrooms; the top-wall run
+       feeds both restrooms and the mop room and drops the east wall to the exit
+       hand sink. HOT: leaves the WH onto the same south-wall run and trunk, crosses
+       the top wall, and comes back down the east wall through the RECIRC PUMP into
+       the heater — one loop. Sizes are a small restaurant's. -->
+  ${pipe('cw', [[883, 614], [883, 594], [192, 594], [192, 580]])}
+  ${pipe('cw', [[812, 594], [812, 588]])}
+  ${pipe('cw', [[650, 594], [650, 110], [578, 110], [578, 172]])}
+  ${pipe('cw', [[650, 110], [930, 110], [930, 384]])}
+  ${pipe('hw', [[796, 572], [786, 572], [786, 590], [196, 590], [196, 580]])}
+  ${pipe('hw', [[656, 590], [656, 105], [582, 105], [582, 172]])}
+  ${pipe('hw', [[656, 105], [936, 105], [936, 572], [918, 572]])}
+  ${pipe('hw', [[856, 572], [828, 572]])}
+  <!-- branches: restroom fixtures + mop sink -->
   ${pipe('cw', [[596, 110], [596, 114]])}${pipe('cw', [[732, 110], [732, 114]])}
-  ${pipeLabel(692, 230, '1" CW', -90)}${pipeLabel(800, 124, '3/4" CW')}
-  <!-- prep + hand sinks on the hall wall -->
-  ${pipe('cw', [[586, 372], [586, 326]])}${pipe('hw', [[592, 378], [592, 326]])}
-  ${pipe('cw', [[648, 372], [648, 316]])}${pipe('hw', [[654, 378], [654, 316]])}
-  <!-- hand sinks at the west wall and by the exit -->
-  ${pipe('cw', [[880, 392], [920, 392]])}${pipe('hw', [[818, 386], [920, 386]])}
-  <!-- dish pit -->
-  ${pipe('cw', [[620, 372], [620, 476]])}${pipe('hw', [[626, 378], [626, 476]])}
-  ${pipeLabel(634, 430, '3/4" CW', -90)}
-  <!-- bar: the trunk continues down the kitchen's west wall and along the
-       dining-side wall line to the bar's west end (1" CW / 3/4" HW) -->
-  ${pipeLabel(350, 458, '1" CW')}
+  ${pipe('cw', [[714, 110], [714, 172]])}${pipe('hw', [[718, 105], [718, 172]])}
+  ${pipe('cw', [[846, 110], [846, 115]])}${pipe('hw', [[850, 105], [850, 115]])}
+  <!-- branches: prep sink, hand sink by the range -->
+  ${pipe('cw', [[650, 314], [632, 314]])}${pipe('hw', [[656, 318], [632, 318]])}
+  ${pipe('cw', [[650, 306], [664, 306]])}${pipe('hw', [[656, 310], [664, 310]])}
+  <!-- branches: dish pit 3-comp + DW -->
+  ${pipe('cw', [[650, 486], [644, 486]])}${pipe('hw', [[656, 490], [644, 490]])}
+  ${pipe('cw', [[650, 574], [632, 574]])}${pipe('hw', [[656, 578], [632, 578]])}
+  <!-- branches: bar hand sink -->
+  ${pipe('cw', [[330, 594], [330, 584]])}${pipe('hw', [[334, 590], [334, 584]])}
+  ${pipeLabel(904, 609, '2" CW')}${pipeLabel(642, 420, '1-1/2" CW', -90)}${pipeLabel(665, 420, '1-1/4" HW', -90)}
+  ${pipeLabel(900, 124, '3/4" CW')}${pipeLabel(470, 584, '1" CW')}${pipeLabel(944, 330, '3/4" HW', -90)}
   <!-- gas to the water heater -->
-  ${pipe('gas', [[840, 578], [828, 578]])}${pipeLabel(846, 578, '3/4" G', -90)}
+  ${pipe('gas', [[840, 584], [828, 584]])}${pipeLabel(846, 545, '3/4" G', -90)}
 
   <!-- site utilities: city connections outside the walls -->
   <g font-family="${F}">
@@ -470,7 +475,7 @@ function candidateB() {
   </g>
 
   <!-- keynote tags, anchored beside their fixtures -->
-  ${keyTag(652, 192, 'FD')}${keyTag(788, 196, 'FD')}
+  ${keyTag(606, 196, 'FD')}${keyTag(788, 196, 'FD')}
   ${keyTag(622, 124, 'WC')}${keyTag(758, 124, 'WC')}
   ${keyTag(848, 158, 'MS')}
 
@@ -518,13 +523,14 @@ function candidateB() {
     'GI   GREASE INTERCEPTOR,',
     '     1000 GAL, EXTERIOR',
     'WH   WATER HEATER, 100 GAL GAS',
+    'RP   RECIRC PUMP ON THE HW RETURN',
     'SS   SANITARY SEWER TO CITY',
     'W    DOMESTIC WATER FROM CITY',
     'G    GAS SERVICE FROM CITY',
   ])}
   <g font-family="${F}" font-size="9" fill="#8a2727">
-    <text x="996" y="464" font-weight="bold">ALL KITCHEN WASTE THROUGH</text>
-    <text x="996" y="478" font-weight="bold">GREASE INTERCEPTOR, TYP.</text>
+    <text x="996" y="480" font-weight="bold">ALL KITCHEN WASTE THROUGH</text>
+    <text x="996" y="494" font-weight="bold">GREASE INTERCEPTOR, TYP.</text>
   </g>
 
   ${titleBlock({ sheet: 'P-101', sheetName: 'PLUMBING PLAN', project: 'MAIN ST RESTAURANT', scale: '1/8" = 1&#39;-0"', date: '07/31/26' })}`;

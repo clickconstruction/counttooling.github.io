@@ -1801,6 +1801,9 @@ body.tour-active .canvas-empty-hint { display: none; }
 /* D19: the Room Size dialog's derived target-CFM note under the type select. */
 .room-box-type-derived { margin-top: 6px; font-size: 0.82rem; color: var(--text2); }
 .room-box-type-derived[hidden] { display: none !important; }
+/* D24: the "from the plan" note under the new-room name. */
+.room-box-name-note { margin-top: 6px; font-size: 0.82rem; color: var(--text2); }
+.room-box-name-note[hidden] { display: none !important; }
 
 /* D8 polish: the second schedule knobs row (deck height / max flex / VD per
    tap), the schedule's Flex section (⚠ label + "not in bid weight" sublabel),

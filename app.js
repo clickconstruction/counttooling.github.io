@@ -1911,6 +1911,11 @@
     // by features/room-sizer.js — deferred App.* read so the draw core stays
     // pure and a payload without rooms/CFM devices yields no rows.
     getRoomBalanceForPage: (pageIdx) => (App.getRoomBalanceForPage ? App.getRoomBalanceForPage(pageIdx) : []),
+    // D24 room labels: the page's CACHED text items (features/tag-reader.js
+    // peekPageTextItems — never a fetch: a painter runs for every page on
+    // every frame and must not be why a text layer loads; [] until the room
+    // dialog's own prefill fetched it, and the planner then labels name-only).
+    getPageTextItems: (pageIdx) => (App.peekPageTextItems ? App.peekPageTextItems(pageIdx) : []),
   });
 
   function renderAnnotations() {
@@ -7666,6 +7671,7 @@
   App.getQuickTrade = getQuickTrade;
   App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
+  App.planRoomLabels = (ann, pageIdx) => canvasDraw.planRoomLabels(ann, pageIdx);   // D24 spec seam
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;
   App.tradeIconForType = tradeIconForType;

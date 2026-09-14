@@ -61,6 +61,22 @@
   // Items for a page: [{ str, x, y, w, h }] with x,y the box's top-left in
   // app PDF-space (viewport at scale 1 and the page's rotation — the same
   // space canvasToPdf produces). Returns [] while loading and kicks the load.
+  // D24: App.onPageTextLoaded is a single slot owned by duct-callouts; other
+  // features subscribe through App.pageTextLoadedListeners instead. The list
+  // lives on App (not in this closure) so a feature file that loads BEFORE
+  // this one can push to it at its own load time — the registry idiom.
+  function addPageTextLoadedListener(fn) { if (typeof fn === 'function') (App.pageTextLoadedListeners = App.pageTextLoadedListeners || []).push(fn); }
+  // D24: the cached items WITHOUT triggering a fetch — for painters, which run
+  // on every frame for every page and must never be the reason a page's text
+  // layer is fetched (D10's laziness: the first fetch happens only when a
+  // feature the estimator is using needs it). [] until something else fetched.
+  function peekPageTextItems(pageIdx) {
+    const state = App.state;
+    const page = state && state.pages && state.pages[pageIdx];
+    if (!page || !page.pdfPage) return [];
+    const cached = textCache.get(pageIdx);
+    return (cached && cached.pdfPage === page.pdfPage && cached.rotation === (page.rotation ?? 0)) ? (cached.items || []) : [];
+  }
   function pageTextItems(pageIdx) {
     const state = App.state;
     const page = state && state.pages && state.pages[pageIdx];
@@ -91,6 +107,7 @@
       if (textCache.get(pageIdx) !== entry) return items;
       if (App.renderAnnotations && (state.tool === App.TOOL.COUNTER || state.tool === App.TOOL.DUCT)) App.renderAnnotations();
       App.onPageTextLoaded && App.onPageTextLoaded(pageIdx);
+      (App.pageTextLoadedListeners || []).forEach((fn) => { try { fn(pageIdx); } catch (_) { /* one listener must not break another */ } });
       return items;
     }).catch(() => { entry.items = []; return []; });
     return [];
@@ -294,6 +311,8 @@
   }
 
   App.pageTextItems = pageTextItems;
+  App.addPageTextLoadedListener = addPageTextLoadedListener;   // D24
+  App.peekPageTextItems = peekPageTextItems;                   // D24: canvas-draw's non-fetching read
   App.queryPdfTextNear = queryPdfTextNear;
   App.drawTagOverlay = drawTagOverlay;
   App.tagHintText = tagHintText;

@@ -1879,6 +1879,10 @@
       <div class="form-group" id="roomBoxNewRoomNameGroup" style="display:none;">
         <label>Add new room</label>
         <input type="text" id="roomBoxNewRoomName" placeholder="e.g. Office 101" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <!-- D24 (X4 option D): the name read off the plan's text layer inside the
+             box (duct-model parseRoomNameCallout over App.pageTextItems), shown
+             exactly like the duct create dialog's "from the plan" size note. -->
+        <div id="roomBoxNameNote" class="room-box-name-note" hidden></div>
       </div>
       <!-- D19 (J19 Friction #6): the room TYPE on the dialog that draws the box.
            D7 put it on Edit Room only, so five rooms cost fifteen extra

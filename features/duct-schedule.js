@@ -526,7 +526,7 @@
     });
     const text = buildDuctScheduleText(s);
     if (!text) {
-      alert('No duct runs to schedule yet. Trace a run with the Duct tool first.');
+      App.showToast('No duct runs to schedule yet. Trace a run with the Duct tool first.', 4000);
       return;
     }
     try {
@@ -535,7 +535,7 @@
       App.showToast(copiedToastText(s), 4000);
     } catch (err) {
       console.error('[copy]', err);
-      alert('Nothing was copied — the browser blocked clipboard access. Click Copy Schedule again, and allow clipboard access if the browser asks.');
+      App.showToast('Nothing was copied — the browser blocked clipboard access. Click Copy Schedule again, and allow clipboard access if the browser asks.', 6000);
     }
   }
 

@@ -54,6 +54,7 @@ call: KEEP visible (phones' only route; tablets with keyboards use Quick Keys).
 | B15 prepare-pdf batch (rescoped) | claude/t3-b15-prepare-pdf-batch | ☑ merged 2026-08-31 — shipped: discard confirm, undo jump, "Trim your set" retitle + Save&Open hidden signed-out. The ⚑ signed-out auto-open was RESOLVED 2026-08-31 (delegated call) as **B15b, middle path**: fresh signed-out uploads of 3+ sheets auto-open the trim step; 1-2 sheets go straight in (full parity would modal the make-or-break first upload and invalidate ~90 spec fixtures) |
 | B16 cold start drag-drop | claude/t3-b16-cold-start | ☑ merged 2026-08-31 |
 | B17 dead-UI removal | claude/t3-b17-dead-ui-removal | ☑ merged 2026-08-31 — queue complete; ckpt 5-6 pushed (verified on origin/main 2026-08-31) |
+| B20 patrol papercuts (X7, X8 sweep, J6 #7, J6 #9) | claude/b20-patrol-papercuts | ☑ merged 2026-09-14 — Copy Summary above the links row; `App.confirmDialog` + toasts replace every native `alert()`/`confirm()`/`prompt()` (15 specs re-pinned); zone Edit-scale preloads; Ctrl/Cmd+Y redoes. b20-patrol.spec.js |
 
 Checkpoint pushes after: B3, B6, B9, B12, B15, B17 (row flips + ledger update
 ride each checkpoint commit). All six checkpoints confirmed on origin/main

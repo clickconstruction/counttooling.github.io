@@ -153,8 +153,8 @@
     pendingGroupEdit = null;
     App.hideModal('groupModal');
   };
-  document.getElementById('groupModalDelete').onclick = () => {
-    if (pendingGroupEdit && App.deleteGroup(pendingGroupEdit.id)) {
+  document.getElementById('groupModalDelete').onclick = async () => {
+    if (pendingGroupEdit && await App.deleteGroup(pendingGroupEdit.id)) {
       if (openedGroupModalFromAssign) { refreshGroupAssignButtons(); openedGroupModalFromAssign = false; }
       pendingGroupEdit = null;
       App.hideModal('groupModal');

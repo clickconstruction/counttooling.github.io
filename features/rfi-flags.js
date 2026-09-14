@@ -48,7 +48,7 @@
   async function copyRfiFlags() {
     const rows = collectRfiFlags();
     if (!rows.length) {
-      alert('No RFI flags found. Drop a note starting with "RFI:" at the ambiguous spot first.');
+      App.showToast('No RFI flags found. Drop a note starting with "RFI:" at the ambiguous spot first.', 4000);
       return;
     }
     const text = buildRfiFlagsText(rows);
@@ -57,7 +57,7 @@
       App.showToast(rows.length + ' RFI flag' + (rows.length === 1 ? '' : 's') + ' copied — paste into PipeTooling’s RFI queue.');
       try { App.logUserEvent?.('copy_summary', App.state.currentProjectId || null, { surface: 'rfi-flags', count: rows.length }); } catch (_) { /* best-effort */ }
     } catch (err) {
-      alert('Could not copy to clipboard: ' + (err.message || err));
+      App.showToast('Could not copy to clipboard: ' + (err.message || err), 5000);
     }
   }
 

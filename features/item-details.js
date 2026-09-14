@@ -459,12 +459,14 @@
     App.renderAnnotations();
   }
 
-  function deleteGroup(groupId) {
+  // B20: async — the confirm is the app's dialog now, so the ONE caller
+  // (features/groups.js Delete) awaits the boolean.
+  async function deleteGroup(groupId) {
     const state = App.state;
     const g = (state.groups || []).find(x => x.id === groupId);
     if (!g) return false;
     const count = App.countItemsInGroup(groupId);
-    if (count > 0 && !confirm('This group has ' + count + ' item(s). Remove group and clear assignment from those items?')) return false;
+    if (count > 0 && !(await App.confirmDialog({ title: 'Remove this group?', body: 'It has ' + count + ' item' + (count === 1 ? '' : 's') + '. They stay on the sheet and lose the group assignment.', confirmLabel: 'Remove group', danger: true }))) return false;
     App.pushUndoSnapshot();   // FULL snapshot — group removal clears assignments on every page
     state.groups = (state.groups || []).filter(x => x.id !== groupId);
     if (state.activeGroupId === groupId) state.activeGroupId = null;

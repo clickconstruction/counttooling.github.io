@@ -62,9 +62,9 @@
 
   function openSpecificPagesModal(opts) {
     const state = App.state;
-    if (!state.pages.length) { alert('No pages loaded. Upload a PDF first.'); return; }
+    if (!state.pages.length) { App.showToast('No pages loaded. Upload a PDF first.', 3000); return; }
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Export PDFs requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { App.showToast('Export PDFs requires jsPDF. Please refresh the page.', 4000); return; }
     // A PipeTooling-requested export (features/bid-basis.js) keeps its preset
     // on every open of the dialog in that tab, sidebar button included.
     const preset = (opts && opts.preset) ? opts : (App.getActiveBidBasisPreset ? App.getActiveBidBasisPreset() : null);
@@ -386,7 +386,7 @@
     try { localStorage.setItem('specificPagesIncludeReport', options.includeReport ? '1' : '0'); } catch (_) {}
     App.hideModal('specificPagesModal');
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { App.showToast('Download requires jsPDF. Please refresh the page.', 4000); return; }
     const preset = activePreset;
     const btn = document.getElementById('specificPages');
     const origHtml = btn.innerHTML;   // the label AND the D9 Bid Check badge (features/duct-bidcheck.js)
@@ -420,7 +420,7 @@
       }
     } catch (err) {
       console.error(err);
-      alert('Download failed: ' + (err.message || err));
+      App.showToast('Download failed: ' + (err.message || err), 5000);
     }
     btn.innerHTML = origHtml;
   }

@@ -195,11 +195,11 @@
         cloudPdfHash = cloudProj?.pdf_hash || null;
       } catch (_) { /* network blip: skip the confirm */ }
       if (cloudPdfHash && cloudPdfHash !== App.state.pdfHash) {
-        const proceed = confirm(
-          'Heads up: your local PDF is newer than the one in the cloud.\n\n' +
-          'Saving canvas only will leave the cloud copy referencing the old PDF. ' +
-          'Click Cancel to go back and turn Include PDF on, or OK to save canvas only anyway.'
-        );
+        const proceed = await App.confirmDialog({
+          title: 'Your local PDF is newer than the cloud copy',
+          body: 'Saving canvas only will leave the cloud copy referencing the old PDF.\n\nGo back and turn Include PDF on, or save canvas only anyway.',
+          confirmLabel: 'Save canvas only', cancelLabel: 'Go back',
+        });
         if (!proceed) {
           saveBtn.disabled = false;
           saveBtn.textContent = origText;

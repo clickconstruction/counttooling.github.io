@@ -25,8 +25,8 @@ test.describe('My Settings (features/my-settings.js)', () => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    const dialogMessages = [];
-    page.on('dialog', (d) => { dialogMessages.push(d.message()); d.accept(); });
+    // B20 (X8): confirms go through the app's confirm modal, never confirm().
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -55,9 +55,11 @@ test.describe('My Settings (features/my-settings.js)', () => {
     // NO plan open the undo snapshot no-ops (undo-stack.js pages.length
     // guard), so this state's confirm must not promise undo OR permanence.
     await page.evaluate(() => document.getElementById('mySettingsClearAirboard').click());
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmBody')).toHaveText('Empty your counters and line types?');
+    await page.locator('#confirmOk').click();
     await page.waitForFunction(() => window.state.counters.length === 0 && window.state.lineTypes.length === 0);
     expect(await page.evaluate(() => window.state.activeCounterType)).toBeNull();
-    expect(dialogMessages.pop()).toBe('Empty your counters and line types?');
 
     // The close binding hides a force-shown modal.
     await page.evaluate(() => {
@@ -106,8 +108,7 @@ test.describe('My Settings (features/my-settings.js)', () => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    const dialogs = [];
-    page.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -121,9 +122,11 @@ test.describe('My Settings (features/my-settings.js)', () => {
       window.App.updateUI();
     });
     await page.evaluate(() => document.getElementById('mySettingsClearAirboard').click());
-    await page.waitForFunction(() => window.state.counters.length === 0 && window.state.lineTypes.length === 0);
     // The copy replaced "This cannot be undone." — a snapshot IS pushed here.
-    expect(dialogs.pop()).toBe('Empty this project\'s counters and line types? Marks stay but stop counting. Undo brings counters and lines back.');
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmBody')).toHaveText('Empty this project\'s counters and line types? Marks stay but stop counting. Undo brings counters and lines back.');
+    await page.locator('#confirmOk').click();
+    await page.waitForFunction(() => window.state.counters.length === 0 && window.state.lineTypes.length === 0);
     await page.keyboard.press('Control+z');
     await page.waitForFunction(() => window.state.counters.length === 1 && window.state.lineTypes.length === 1);
     expect(await page.evaluate(() => window.state.counters[0].name)).toBe('Drain');
@@ -135,8 +138,7 @@ test.describe('My Settings (features/my-settings.js)', () => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    const dialogs = [];
-    page.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -182,15 +184,16 @@ test.describe('My Settings (features/my-settings.js)', () => {
       });
       document.getElementById('mySettingsLoadAirboard').click();
     });
-    await page.waitForFunction(() => window.state.counters.some((c) => c.id === 'new-wc'));
-
     // The confirm stated the real numbers and the Unknown fallback.
-    expect(dialogs.length).toBe(1);
-    expect(dialogs[0]).toContain('6 placed marks stay');
-    expect(dialogs[0]).toContain('4 match by name');
-    expect(dialogs[0]).toContain("2 marks don't match");
-    expect(dialogs[0]).toContain('"Unknown" row');
-    expect(dialogs[0]).toContain('Undo brings your current counters, lines, and counts back');
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    const body = await page.locator('#confirmBody').textContent();
+    expect(body).toContain('6 placed marks stay');
+    expect(body).toContain('4 match by name');
+    expect(body).toContain("2 marks don't match");
+    expect(body).toContain('"Unknown" row');
+    expect(body).toContain('Undo brings your current counters, lines, and counts back');
+    await page.locator('#confirmOk').click();
+    await page.waitForFunction(() => window.state.counters.some((c) => c.id === 'new-wc'));
 
     const after = await page.evaluate(() => {
       const s = window.state;

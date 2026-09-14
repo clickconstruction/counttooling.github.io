@@ -172,9 +172,9 @@
       if (changesBtn) {
         changesBtn.onclick = async function (e) {
           e.stopPropagation();
-          // The server refuses a blank note ('changes' without guidance is noise) —
-          // prompt keeps this dependency-free; cancel aborts cleanly.
-          const note = window.prompt('What should change before this bid comes back?');
+          // The server refuses a blank note ('changes' without guidance is noise);
+          // cancel aborts cleanly.
+          const note = await App.confirmDialog({ title: 'What should change before this bid comes back?', input: { placeholder: 'One line the estimator will read' }, confirmLabel: 'Send back' });
           if (note == null || !note.trim()) return;
           changesBtn.disabled = true;
           const res = await App.setProjectReviewStatus(proj.id, 'changes', note.trim());

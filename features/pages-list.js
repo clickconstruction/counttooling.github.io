@@ -90,7 +90,7 @@
       div.onclick = (e) => { if (!e.target.closest('.page-num-badge-wrap') && !e.target.closest('.page-delete-btn')) { state.currentPage = i; App.fitZoom(); } };
       if (showEdit) {
         const deletePage = () => {
-          if (state.pages.length <= 1) { alert('Cannot delete the only page.'); return; }
+          if (state.pages.length <= 1) { App.showToast('Cannot delete the only page.', 3000); return; }
           App.pushUndoSnapshot();
           state.pages.splice(i, 1);
           if (state.currentPage >= state.pages.length) state.currentPage = Math.max(0, state.pages.length - 1);

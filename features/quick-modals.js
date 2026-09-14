@@ -345,9 +345,9 @@
   document.getElementById('counterQuickCountRemoveSize')?.addEventListener('click', () => removeModifier('sizes', 'counterQuickCountSize'));
   document.getElementById('counterQuickCountRemoveType')?.addEventListener('click', () => removeModifier('types', 'counterQuickCountType'));
   document.getElementById('counterQuickCountRemoveMaterial')?.addEventListener('click', () => removeModifier('materials', 'counterQuickCountMaterial'));
-  const addModifier = (kind, selectId) => {
+  const addModifier = async (kind, selectId) => {
     const label = profile().labels[['sizes', 'types', 'materials'].indexOf(kind)].toLowerCase();
-    const v = prompt('Enter new ' + label + ':');
+    const v = await App.confirmDialog({ title: 'New ' + label, input: { placeholder: 'e.g. ' + (kind === 'sizes' ? '3/4in' : kind === 'types' ? 'Tee' : 'PEX') }, confirmLabel: 'Add' });
     if (v && v.trim()) {
       const m = mods();
       m[kind].push(v.trim());

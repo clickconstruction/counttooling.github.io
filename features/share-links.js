@@ -144,11 +144,11 @@
                 const via = r.source === 'pipetooling-sub-portal' ? ' · via PipeTooling portal' : '';
                 return who + via + ' — ' + (r.accessed_at ? new Date(r.accessed_at).toLocaleString() : '');
               });
-              alert('Access log:\n\n' + (lines.length ? lines.join('\n') : 'No access yet'));
+              App.confirmDialog({ title: 'Access log', body: lines.length ? lines.join('\n') : 'No access yet', confirmLabel: 'Close', infoOnly: true });
             };
             div.querySelector('.share-view-link-revoke').onclick = async function() {
               const tok = this.dataset.token;
-              if (!confirm('Revoke this view link? It will stop working immediately.')) return;
+              if (!(await App.confirmDialog({ title: 'Revoke this view link?', body: 'It will stop working immediately for everyone who has it.', confirmLabel: 'Revoke', danger: true }))) return;
               const sb = App.getSupabase ? App.getSupabase() : null;
               if (!sb) return;
               const { data: res } = await sb.rpc('revoke_view_link', { p_token: tok });

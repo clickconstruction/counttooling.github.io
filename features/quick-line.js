@@ -83,8 +83,8 @@
   }
   document.getElementById('quickLineRemoveSize').onclick = () => removeLineModifier('sizes', 'quickLineSize');
   document.getElementById('quickLineRemoveMaterial').onclick = () => removeLineModifier('materials', 'quickLineMaterial');
-  document.getElementById('quickLineAddSize').onclick = () => {
-    const v = prompt('Enter new size:');
+  document.getElementById('quickLineAddSize').onclick = async () => {
+    const v = await App.confirmDialog({ title: 'New size', input: { placeholder: 'e.g. 1in' }, confirmLabel: 'Add' });
     if (v && v.trim()) {
       const mods = App.getLineModifiers();
       mods.sizes.push(v.trim());
@@ -94,8 +94,8 @@
       updateQuickLineNamePreview();
     }
   };
-  document.getElementById('quickLineAddMaterial').onclick = () => {
-    const v = prompt('Enter new material:');
+  document.getElementById('quickLineAddMaterial').onclick = async () => {
+    const v = await App.confirmDialog({ title: 'New material', input: { placeholder: 'e.g. PEX' }, confirmLabel: 'Add' });
     if (v && v.trim()) {
       const mods = App.getLineModifiers();
       mods.materials.push(v.trim());

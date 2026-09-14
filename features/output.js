@@ -72,7 +72,7 @@
   // no raw DOMException text. The error itself still goes to the console.
   function showCopyFailed(err) {
     console.error('[copy]', err);
-    alert('Nothing was copied — the browser blocked clipboard access. Click the copy button again, and allow clipboard access if the browser asks.');
+    App.showToast('Nothing was copied — the browser blocked clipboard access. Click the copy button again, and allow clipboard access if the browser asks.', 6000);
   }
 
   async function doCopyPipeTooling(getAnnFn, pageIndices, mode, layers) {
@@ -83,7 +83,7 @@
     opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
     let text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
     if (!text) {
-      alert('No items to summarize. Add counters or line types first.');
+      App.showToast('No items to summarize. Add counters or line types first.', 3000);
       return;
     }
     // Append a project view link so importing tools (PipeTooling / TakeoffTooling)
@@ -585,7 +585,7 @@
     opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
     const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary(opts) : '';
     if (!text) {
-      alert('No items to summarize. Add counters or line types first.');
+      App.showToast('No items to summarize. Add counters or line types first.', 3000);
       return;
     }
     try {
@@ -620,7 +620,7 @@
     if (!isAllPages && !page?.pdfPage) return;
     if (!isAllPages) App.ensureActiveCanvas(page);
     const jsPDFLib = window.jspdf;
-    if (!jsPDFLib?.jsPDF) { alert('Download requires jsPDF. Please refresh the page.'); return; }
+    if (!jsPDFLib?.jsPDF) { App.showToast('Download requires jsPDF. Please refresh the page.', 4000); return; }
     const EXPORT_SCALE = 4;
     const PT_TO_MM = 25.4 / 72;
     const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
@@ -738,7 +738,7 @@
       App.logUserEvent('export_pdf', state.currentProjectId, { source: 'download-current-page', mode: mode || 'this-canvas' });
     } catch (err) {
       console.error(err);
-      alert('Download failed: ' + (err?.message || err));
+      App.showToast('Download failed: ' + (err?.message || err), 5000);
     }
     if (btn) { btn.disabled = false; btn.title = origText; }
   }

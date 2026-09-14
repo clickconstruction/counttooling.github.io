@@ -156,7 +156,11 @@ test.describe('D21 — trade-aware strip + Pin to strip (J5-D)', () => {
     expect(await inline(page, 'polylineBtn')).toBe(true);
     // And closing the project returns to the DEVICE's arrangement, not to nothing.
     await page.evaluate(() => { try { localStorage.setItem('stripPins', JSON.stringify({ polylineBtn: true })); } catch (_) {} });
-    await page.evaluate(async () => { window.confirm = () => true; await window.App.closeProject({ route: 'settings' }); });
+    // B20 (X8): closeProject asks through the app's confirm modal.
+    await page.evaluate(() => { window.App.closeProject({ route: 'settings' }); });
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmOk').click();
+    await page.waitForFunction(() => window.state.pages.length === 0);
     expect(await page.evaluate(() => window.state.stripPins)).toEqual({ polylineBtn: true });
   });
 

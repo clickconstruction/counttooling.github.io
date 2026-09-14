@@ -851,7 +851,7 @@
 
   function printReport(mode) {
     if (!window.state || !state.pages || !state.pages.length) {
-      alert('No pages loaded. Upload a PDF first.');
+      if (window.App && window.App.showToast) window.App.showToast('No pages loaded. Upload a PDF first.', 3000);
       return;
     }
     const defaultGetAnn = undefined;
@@ -873,7 +873,7 @@
     const html = buildReportHtml(options);
     const w = window.open('', '_blank');
     if (!w) {
-      alert('Popup blocked. Please allow popups for this site.');
+      if (window.App && window.App.showToast) window.App.showToast('Popup blocked — allow popups for this site and try again.', 5000);
       return;
     }
     w.document.write(html);

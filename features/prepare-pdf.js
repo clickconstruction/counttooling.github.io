@@ -375,10 +375,10 @@
     }
     return false;
   }
-  function requestClosePreparePdfModal() {
+  async function requestClosePreparePdfModal() {
     if (preparePdfEditMode === 'page') saveCurrentPageName();
     if (preparePdfHasChanges() &&
-        !confirm('Discard this upload? Your trimming and names will be lost.')) return;
+        !(await App.confirmDialog({ title: 'Discard this upload?', body: 'Your trimming and names will be lost.', confirmLabel: 'Discard', danger: true }))) return;
     closePreparePdfModal();
   }
   function closePreparePdfModal() {
@@ -536,7 +536,7 @@
       const projectedSize = existingSize + trimmedBufSize;
       const preCheck = App.assertPdfWithinLimit(projectedSize, 'commitPreparePdfToState.append.pre');
       if (preCheck && !preCheck.ok) {
-        try { alert(preCheck.message); } catch (_) {}
+        App.showToast(preCheck.message, 6000);
         return { ok: false, error: preCheck.message };
       }
       if (!existingBuf) {
@@ -545,7 +545,7 @@
         // silently replacing the project's PDF (which would orphan existing
         // page annotations).
         const msg = 'Could not load the current PDF to merge new pages. Save the project, then try again.';
-        try { alert(msg); } catch (_) {}
+        App.showToast(msg, 6000);
         return { ok: false, error: msg };
       } else {
         const mergedBuf = await App.mergePdfBuffers([existingBuf, trimmedBuf]);
@@ -553,7 +553,7 @@
         const mergedSize = mergedBuf.byteLength ?? mergedBuf.length ?? mergedBuf.size ?? 0;
         const sizeCheck = App.assertPdfWithinLimit(mergedSize, 'commitPreparePdfToState.append.merged');
         if (sizeCheck && !sizeCheck.ok) {
-          try { alert(sizeCheck.message); } catch (_) {}
+          App.showToast(sizeCheck.message, 6000);
           return { ok: false, error: sizeCheck.message };
         }
         const mergedPdf = await App.getPdfDocument(mergedBuf.slice(0)).promise;
@@ -595,7 +595,7 @@
     }
     const sizeCheck = App.assertPdfWithinLimit(trimmedBufSize, 'commitPreparePdfToState');
     if (sizeCheck && !sizeCheck.ok) {
-      try { alert(sizeCheck.message); } catch (_) {}
+      App.showToast(sizeCheck.message, 6000);
       return { ok: false, error: sizeCheck.message };
     }
     const pdf = await App.getPdfDocument(trimmedBuf.slice(0)).promise;
@@ -637,7 +637,7 @@
   document.getElementById('preparePdfDone').onclick = async () => {
     const trimMeta = capturePrepareTrimMeta();
     const r = await commitPreparePdfToState();
-    if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
+    if (!r.ok) { if (!r.error) App.showToast('Failed to build PDF.', 5000); return; }
     App.logUserEvent('prepare_trim', App.state.currentProjectId || null, trimMeta);
     App.hideModal('preparePdfModal');
     App.markProjectDirty();
@@ -658,14 +658,14 @@
     const trimmedBuf = kept.length === preparePdfPages.length
       ? preparePdfBuffer
       : await App.buildTrimmedPdfBuffer(preparePdfBuffer, kept);
-    if (!trimmedBuf) { alert('Failed to build PDF.'); return; }
+    if (!trimmedBuf) { App.showToast('Failed to build PDF.', 5000); return; }
     const name = preparePdfProjectName || preparePdfDefaultName;
     App.downloadPdfBuffer(trimmedBuf, App.sanitizeForFilename(name) + '.pdf');
   };
   document.getElementById('preparePdfSaveAndOpen').onclick = async () => {
     const trimMeta = capturePrepareTrimMeta();
     const r = await commitPreparePdfToState();
-    if (!r.ok) { if (!r.error) alert('Failed to build PDF.'); return; }
+    if (!r.ok) { if (!r.error) App.showToast('Failed to build PDF.', 5000); return; }
     App.logUserEvent('prepare_trim', App.state.currentProjectId || null, trimMeta);
     App.hideModal('preparePdfModal');
     App.markProjectDirty();

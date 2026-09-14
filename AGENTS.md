@@ -284,6 +284,13 @@
 - Scale is **per page**: `page.scale`; read via `getPageScale(pageIdx)`. There is no
   global `state.scale`.
 - Do not remove or rename the `window.*` globals consumed by report.js.
+- Never call native `alert()` / `confirm()` / `prompt()` (B20 / X8). A notice is
+  `App.showToast(msg, ms)`; a question or a text prompt is
+  `await App.confirmDialog({ title, body, confirmLabel, danger, input, infoOnly })`
+  (`Promise<boolean | string | null>`; Esc cancels; it sits above every other modal),
+  so the calling function becomes `async`. In specs, drive it by clicking `#confirmOk` /
+  `#confirmCancel` (or filling `#confirmInput`) — a `page.on('dialog')` hook is a
+  failure signal, never a driver.
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
 - A palette item's `childCounts[]` rows are `{ name, qty, per: 'count'|'run'|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` names the rulebook rule a row was taken from (the § chip). Palettes serialize wholesale, so both ride save/load, export/import and the Artboard for free.

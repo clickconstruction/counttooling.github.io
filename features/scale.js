@@ -147,11 +147,26 @@
   }
   // D20 (X3, J7): the page scale's label, when the dialog is editing the PAGE
   // (zone mode edits a zone's scale and must not be preloaded from the page).
-  function currentPageScaleLabel() {
+  // The scale the dialog is EDITING: the page's, or — J6 #7 (B20) — the zone's
+  // when it was opened from a zone's "Edit scale" (D20 preloaded the page case
+  // only; the zone dialog still opened blank). A corrected preset's label
+  // carries a sheet suffix ("1/4\" = 1' · ANSI D"), so the preset match is on
+  // the label's stem.
+  function editedScale() {
     const state = App.state;
-    if (state.scaleModalApplyTarget === 'zone') return null;
-    const sc = App.getPageScale(state.currentPage);
-    return sc ? (sc.label || null) : null;
+    if (state.scaleModalApplyTarget === 'zone') {
+      const edit = state.pendingScaleZoneEdit;
+      if (!edit) return null;
+      const page = state.pages[state.currentPage];
+      const ann = page && App.getActiveAnnotations(page);
+      return ann?.scaleZones?.[edit.zoneIndex]?.scale || null;
+    }
+    return App.getPageScale(state.currentPage);
+  }
+  const labelStem = (label) => String(label || '').split(' · ')[0];
+  function currentPageScaleLabel() {
+    const sc = editedScale();
+    return sc ? (labelStem(sc.label) || null) : null;
   }
   // D20 (X3): open where the scale was SET, with its value preloaded, instead
   // of always landing on Presets with empty fields. The three sources are
@@ -162,7 +177,7 @@
   // An unset page, or zone mode, keeps today's behavior exactly.
   function preloadFromCurrentScale() {
     const state = App.state;
-    const sc = state.scaleModalApplyTarget === 'zone' ? null : App.getPageScale(state.currentPage);
+    const sc = editedScale();
     if (!sc) { showScaleTab('presets'); return; }
     if (sc.refLine) {
       showScaleTab('points');
@@ -176,13 +191,13 @@
       return;
     }
     showScaleTab('presets');   // highlights the matching preset, if any
-    const isPreset = (App.SCALE_PRESETS || []).some((p) => p.label === sc.label);
+    const isPreset = (App.SCALE_PRESETS || []).some((p) => p.label === labelStem(sc.label));
     if (isPreset || !sc.label) return;
     // A custom scale: put its own numbers back in the custom row. The label is
     // the only record of the fraction the estimator typed ('3/32" = 1.5 ft'),
     // so it is parsed back; anything unrecognized leaves the row untouched
     // rather than guessing.
-    const m = /^(.+?)"\s*=\s*([\d.]+)\s*ft$/.exec(sc.label);
+    const m = /^(.+?)"\s*=\s*([\d.]+)\s*ft$/.exec(labelStem(sc.label));
     if (!m) return;
     const frac = document.getElementById('scaleCustomFraction');
     const feet = document.getElementById('scaleCustomFeet');

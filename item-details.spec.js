@@ -22,7 +22,7 @@ test.describe('Item detail & properties modals (features/item-details.js)', () =
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    page.on('dialog', (d) => d.accept());
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -113,8 +113,13 @@ test.describe('Item detail & properties modals (features/item-details.js)', () =
     })).toBe(5);
 
     // --- deleteGroup (registration re-homed here; groups.js consumes App.*) ---
-    const groupResult = await page.evaluate(() => {
-      const ok = window.App.deleteGroup('g1');   // confirm() auto-accepted above
+    // B20 (X8): deleteGroup is async and asks through the app's confirm modal.
+    await page.evaluate(() => { window.__delGroup = window.App.deleteGroup('g1'); });
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmTitle')).toHaveText('Remove this group?');
+    await page.locator('#confirmOk').click();
+    const groupResult = await page.evaluate(async () => {
+      const ok = await window.__delGroup;
       const ann = window.App.getActiveAnnotations(window.state.pages[0]);
       return { ok, groups: window.state.groups.length, lineGroup: ann.quickLines[0].group };
     });

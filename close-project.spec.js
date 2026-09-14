@@ -30,8 +30,8 @@ test.describe('Close project', () => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
-    const dialogs = [];
-    page.on('dialog', async (d) => { dialogs.push(d.message()); await d.accept(); });
+    // B20 (X8): Close project asks through the app's confirm modal, not confirm().
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     expect(await page.evaluate(() => typeof window.App.closeProject)).toBe('function');
@@ -43,16 +43,18 @@ test.describe('Close project', () => {
     await page.click('#exportDropdownBtn');
     expect(await row.isVisible()).toBe(true);
     await row.click();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmTitle')).toHaveText('Close project?');
+    await page.locator('#confirmOk').click();
     await page.waitForFunction(() => window.state.pages.length === 0);
-    expect(dialogs.length).toBe(1);
-    expect(dialogs[0]).toContain('Close project?');
     expect(await page.locator('#exportDropdownMenu').evaluate((m) => m.classList.contains('visible'))).toBe(false);
     expect(await row.isVisible()).toBe(false);
     // the Settings door is the same routine (cancelling the confirm keeps the project)
     await openLocalPlan(page);
-    page.removeAllListeners('dialog');
-    page.on('dialog', async (d) => { await d.dismiss(); });
-    await page.evaluate(() => window.App.closeProject({ route: 'settings' }));
+    await page.evaluate(() => { window.App.closeProject({ route: 'settings' }); });
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmCancel').click();
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => window.state.pages.length)).toBe(2);
     expect(errors).toEqual([]);
   });
@@ -69,7 +71,6 @@ test.describe('Close project', () => {
   });
 
   test('the header [Close] shows only while viewing a project this session edited, and closes it', async ({ page }) => {
-    page.on('dialog', async (d) => { await d.accept(); });
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await openLocalPlan(page);
@@ -93,6 +94,8 @@ test.describe('Close project', () => {
     // click closes the project; the memory survives (same session) so reopening the
     // project as a viewer still offers it
     await btn.click();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmOk').click();
     await page.waitForFunction(() => window.state.pages.length === 0);
     expect(await btn.isVisible()).toBe(false);
     await openLocalPlan(page);
@@ -106,7 +109,7 @@ test.describe('Close project', () => {
   });
 
   test('the "Project turned in." toast and the force-turn-in notice both carry Close project, and it closes', async ({ page }) => {
-    page.on('dialog', async (d) => { await d.accept(); });
+    const confirmClose = async () => { await expect(page.locator('#confirmModal')).toHaveClass(/visible/); await page.locator('#confirmOk').click(); };
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
     await openLocalPlan(page);
@@ -115,6 +118,7 @@ test.describe('Close project', () => {
     expect(await page.locator('#turnedInToastModal').evaluate((m) => m.classList.contains('visible'))).toBe(true);
     expect(await page.locator('#turnedInToastText').textContent()).toBe('Project turned in.');
     await page.click('#turnedInToastClose');
+    await confirmClose();
     await page.waitForFunction(() => window.state.pages.length === 0);
     expect(await page.locator('#turnedInToastModal').evaluate((m) => m.classList.contains('visible'))).toBe(false);
     // the notice the demoted editor sees
@@ -122,6 +126,7 @@ test.describe('Close project', () => {
     expect(await page.evaluate(() => window.App.openForceTurnInNoticeModal({ hadDirty: false }))).toBe(true);
     expect(await page.locator('#forceTurnInNoticeModal').evaluate((m) => m.classList.contains('visible'))).toBe(true);
     await page.click('#forceTurnInNoticeClose');
+    await confirmClose();
     await page.waitForFunction(() => window.state.pages.length === 0);
     expect(await page.locator('#forceTurnInNoticeModal').evaluate((m) => m.classList.contains('visible'))).toBe(false);
   });

@@ -215,7 +215,7 @@
     if (deleteBtn) {
       deleteBtn.onclick = async (e) => {
         e.stopPropagation();
-        if (!confirm('Delete "' + (proj.name || 'Untitled') + '" from cloud? This cannot be undone.')) return;
+        if (!(await App.confirmDialog({ title: 'Delete from the cloud?', body: '"' + (proj.name || 'Untitled') + '" will be deleted for everyone who can see it. This cannot be undone.', confirmLabel: 'Delete project', danger: true }))) return;
         const {
           state, showToast, deleteProjectAsOwner, clearUndoStacks,
           subscribeToProjectCheckoutChanges, setLastLocalBackupAt,

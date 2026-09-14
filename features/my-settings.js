@@ -70,7 +70,7 @@
       const statusEl = document.getElementById('mySettingsAirboardStatus');
       if (statusEl) statusEl.textContent = 'Last saved: just now';
     } else {
-      alert('Failed to save artboard. Please try again.');
+      App.showToast('Failed to save artboard. Please try again.', 4000);
     }
   };
   document.getElementById('mySettingsLoadAirboard').onclick = async () => {
@@ -105,7 +105,7 @@
       } else {
         msg = 'Replace your current artboard with the saved version from the cloud?';
       }
-      if (!confirm(msg)) return;
+      if (!(await App.confirmDialog({ title: 'Load the saved artboard?', body: msg, confirmLabel: 'Load artboard' }))) return;
     }
     // No-ops when no pages are open — with no pages there are no marks to
     // orphan, and the palette-only replace was the confirmed intent.
@@ -145,7 +145,7 @@
     a.click();
     App.showToast('Artboard exported');
   };
-  document.getElementById('mySettingsClearAirboard').onclick = () => {
+  document.getElementById('mySettingsClearAirboard').onclick = async () => {
     const state = App.state;
     // B14 honesty pass: with a plan open, pushUndoSnapshot() is the very next
     // line — "cannot be undone" was a lie. Marks stay drawn (their palette
@@ -156,7 +156,7 @@
     const msg = state.pages.length
       ? 'Empty this project\'s counters and line types? Marks stay but stop counting. Undo brings counters and lines back.'
       : 'Empty your counters and line types?';
-    if (!confirm(msg)) return;
+    if (!(await App.confirmDialog({ title: 'Empty the palette?', body: msg, confirmLabel: 'Empty it', danger: true }))) return;
     App.pushUndoSnapshot();
     state.counters = [];
     state.lineTypes = [];

@@ -105,17 +105,17 @@ test.describe('Custom icon upload (features/custom-icon-upload.js)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('an SVG with no supported shapes is rejected with the alert and adds nothing', async ({ page }) => {
+  test('an SVG with no supported shapes is rejected with a toast (B20/X8: not alert()) and adds nothing', async ({ page }) => {
     const errors = [];
     await bootWithCreateCounterOpen(page, errors);
     const before = await page.evaluate(() => window.App.getUserCustomIcons().length);
 
-    let alertText = '';
-    page.once('dialog', (d) => { alertText = d.message(); return d.accept(); });
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
     await page.locator('#customIconUploadInput').setInputFiles({
       name: 'empty.svg', mimeType: 'image/svg+xml', buffer: EMPTY_SVG,
     });
-    await expect.poll(() => alertText).toContain('SVG must contain at least one');
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    await expect(page.locator('#airboardToastText')).toContainText('SVG must contain at least one');
     expect(await page.evaluate(() => window.App.getUserCustomIcons().length)).toBe(before);
     expect(errors).toEqual([]);
   });

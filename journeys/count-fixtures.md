@@ -107,7 +107,7 @@ Press 1 — the toilet counter arms with a digit badge glowing in the sidebar. C
 - Creating a group from inside the Assign dialog ("+ Add group" in groupAssignModal) is not documented — the guide only gives the sidebar "+ Add" route
 - Quick Keys empty state ("This project has no counters or line types yet — add some first, then come back to bind them.") and the settingsModal "quick keys" link as a second entry point are undocumented — **walked: the settings link is behind the sign-in gear anyway**
 - The Manage Icons path is given only as "in the Advanced settings" — the actual click path (Settings → Advanced → Manage Icons) is not spelled out — **walked: and the whole path is sign-in-gated**
-- No guide documents error handling for a rejected SVG upload — **walked: it's a native alert, "SVG must contain at least one path, rect, circle, ellipse, or line."**
+- No guide documents error handling for a rejected SVG upload — **walked: it's a native alert, "SVG must contain at least one path, rect, circle, ellipse, or line."** *(B20 2026-09-14: now a 6 s toast with the same words — no native dialogs remain.)*
 - Counter modal icon search (#counterIconSearch, shown only on some tab states) vs the custom-icons.md claim "use the search box to filter by name" — **walked: the box is never shown in any state; the guide describes UI that does not appear**
 
 ## Terminology on screen (recorded, not judged)

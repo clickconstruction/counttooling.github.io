@@ -51,7 +51,7 @@ const HOTKEYS = [
   { key: 'g', btnId: 'ghostBtn', section: 'Tools', action: 'Ghost: copy a typical as a reference overlay', kbd: null, icon: { btn: 'ghostBtn' } },
   { key: 'n', btnId: 'noteBtn', section: 'Tools', action: 'Note mode', kbd: null, icon: { btn: 'noteBtn' } },
   { bespoke: true, section: 'Tools', action: 'Undo', kbd: '<kbd>Ctrl</kbd>+<kbd>Z</kbd>', icon: { btn: 'undoBtn' } },
-  { bespoke: true, section: 'Tools', action: 'Redo', kbd: '<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>', icon: { btn: 'redoBtn' } },
+  { bespoke: true, section: 'Tools', action: 'Redo', kbd: '<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> or <kbd>Ctrl</kbd>+<kbd>Y</kbd>', icon: { btn: 'redoBtn' } },
   { bespoke: true, section: 'Tools', action: 'Refresh', kbd: '<kbd>Cmd</kbd>/<kbd>Ctrl</kbd>+<kbd>R</kbd>', icon: null },
   { bespoke: true, section: 'Tools', action: 'Toggle sidebar (desktop)', kbd: '<kbd>Space</kbd>', icon: null },
   { bespoke: true, section: 'Tools', action: 'Close modal / Cancel', kbd: '<kbd>Esc</kbd>', icon: null },

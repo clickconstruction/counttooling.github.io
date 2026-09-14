@@ -409,8 +409,8 @@ test.describe('Output cluster (features/output.js)', () => {
     // diagnosis — filter it from the no-console-errors assertion.
     page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('[copy]')) errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    const alerts = [];
-    page.on('dialog', (d) => { alerts.push(d.message()); d.accept().catch(() => {}); });
+    // B20 (X8): the failure speaks through a toast, never alert().
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -429,11 +429,12 @@ test.describe('Output cluster (features/output.js)', () => {
       document.querySelector('.copy-summary-option[data-mode="this-canvas"]')
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
-    await expect.poll(() => alerts.length, { timeout: 5000 }).toBeGreaterThan(0);
-    expect(alerts[0]).toContain('Nothing was copied');
-    expect(alerts[0]).toContain('clipboard access');
-    expect(alerts[0]).not.toContain('NotAllowedError');
-    expect(alerts[0]).not.toContain('Write permission denied');
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    const toast = await page.locator('#airboardToastText').textContent();
+    expect(toast).toContain('Nothing was copied');
+    expect(toast).toContain('clipboard access');
+    expect(toast).not.toContain('NotAllowedError');
+    expect(toast).not.toContain('Write permission denied');
     // No false "Copied to clipboard." card.
     expect(await page.evaluate(() => document.getElementById('pipeToolingCopiedModal').classList.contains('visible'))).toBe(false);
 
@@ -506,8 +507,7 @@ test.describe('Output cluster (features/output.js)', () => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
-    const alerts = [];
-    page.on('dialog', (d) => { alerts.push(d.message()); d.accept().catch(() => {}); });
+    page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');
@@ -555,8 +555,8 @@ test.describe('Output cluster (features/output.js)', () => {
       document.getElementById('bundleHighlights').click();
       window.jspdf = saved;
     });
-    await expect.poll(() => alerts.length, { timeout: 5000 }).toBeGreaterThan(0);
-    expect(alerts[0]).toContain('Highlight Pages (PDF) requires jsPDF');
+    await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
+    await expect(page.locator('#airboardToastText')).toContainText('Highlight Pages (PDF) requires jsPDF');
 
     expect(errors).toEqual([]);
   });

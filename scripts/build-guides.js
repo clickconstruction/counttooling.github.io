@@ -79,7 +79,7 @@ function loadIcons() {
 const PATHS = [
   {
     slug: 'basics', title: 'The Basics', icon: 'measure',
-    blurb: 'Everything a first takeoff needs — upload to export, in order.',
+    blurb: 'Everything a first takeoff needs: upload to export, in order.',
     outcome: 'By the end you can take a plan PDF from upload to a priced-ready export: scale set and verified, fixtures counted, runs measured, mistakes fixed, and the numbers delivered.',
     steps: ['how-to-do-a-pdf-takeoff', 'preparing-a-plan-set', 'setting-the-scale', 'verifying-your-scale', 'counting-with-counters', 'measuring-runs-lines-and-polylines', 'fixing-mistakes', 'reports-and-exports'],
   },
@@ -97,7 +97,7 @@ const PATHS = [
   },
   {
     slug: 'hvac', title: 'HVAC track', icon: 'room', prereq: 'basics',
-    blurb: 'Room volumes first — then equipment and duct runs.',
+    blurb: 'Room volumes first, then equipment and duct runs.',
     outcome: 'Turn rooms into areas and air volumes for sizing, then count equipment and measure duct runs across mixed-scale sheets.',
     steps: ['measuring-room-volumes', 'hvac-takeoff', 'scale-zones-and-multiply-zones'],
   },
@@ -160,7 +160,7 @@ function articlePage(a, memberships) {
   if (memberships && memberships.length) {
     const nav = pathNavData(memberships);
     const p = nav.byPath[nav.primary];
-    pathBanner = `    <div class="path-banner">Part of <a id="pathBannerLink" href="${p.url}">${escHtml(p.title)}</a><span id="pathBannerStep"> — step ${p.step} of ${p.total}</span></div>\n`;
+    pathBanner = `    <div class="path-banner">Part of <a id="pathBannerLink" href="${p.url}">${escHtml(p.title)}</a><span id="pathBannerStep"> · step ${p.step} of ${p.total}</span></div>\n`;
     pathNav = `      <nav class="path-nav" aria-label="Learning path">
         <a class="path-nav-link" id="pathPrev"${p.prev ? ` href="${p.prev.href}"` : ' hidden'}>${p.prev ? escHtml(p.prev.label) : ''}</a>
         <a class="path-nav-all" id="pathAll" href="${p.url}">All steps</a>
@@ -179,7 +179,7 @@ function articlePage(a, memberships) {
         var link = document.getElementById('pathBannerLink');
         if (link) { link.href = m.url; link.textContent = m.title; }
         var stepEl = document.getElementById('pathBannerStep');
-        if (stepEl) stepEl.textContent = ' — step ' + m.step + ' of ' + m.total;
+        if (stepEl) stepEl.textContent = ' · step ' + m.step + ' of ' + m.total;
         var all = document.getElementById('pathAll'); if (all) all.href = m.url;
         function set(id, e) {
           var a = document.getElementById(id); if (!a) return;
@@ -201,7 +201,7 @@ ${pathNav}${pathScript}      <div class="article-foot">
         <a class="btn" href="/app/">Open the app</a>
       </div>
     </article>`;
-  return layout({ title: `${a.title} — CountTooling`, description: a.description, slug, ogType: 'article', jsonLd: ld }, body);
+  return layout({ title: `${a.title} · CountTooling`, description: a.description, slug, ogType: 'article', jsonLd: ld }, body);
 }
 
 function pathPage(p, stepArticles) {
@@ -210,14 +210,14 @@ function pathPage(p, stepArticles) {
   const ld = [
     {
       '@context': 'https://schema.org', '@type': 'ItemList',
-      name: `${p.title} — CountTooling learning path`, description: p.blurb,
+      name: `${p.title} · CountTooling learning path`, description: p.blurb,
       itemListElement: stepArticles.map((a, i) => ({ '@type': 'ListItem', position: i + 1, name: a.title, url: `${SITE}/guides/${a.slug}/` })),
     },
     breadcrumbLd(crumbs),
   ];
   const prereqP = PATHS.find((x) => x.slug === p.prereq);
   const prereqHtml = prereqP
-    ? `      <p class="path-prereq">New here? Start with <a href="/guides/path/${prereqP.slug}/">${escHtml(prereqP.title)}</a> first — this track assumes it.</p>\n`
+    ? `      <p class="path-prereq">New here? Start with <a href="/guides/path/${prereqP.slug}/">${escHtml(prereqP.title)}</a> first; this track assumes it.</p>\n`
     : '';
   const steps = stepArticles.map((a, i) => `        <a class="path-step" href="/guides/${a.slug}/?path=${p.slug}">
           <span class="path-step-n">${i + 1}</span>
@@ -241,7 +241,7 @@ ${steps}
         <a class="btn" href="/guides/${stepArticles[0].slug}/?path=${p.slug}">Start step 1</a>
       </div>
     </section>`;
-  return layout({ title: `${p.title} — CountTooling Guides`, description: p.blurb, slug, ogType: 'website', jsonLd: ld }, body);
+  return layout({ title: `${p.title} · CountTooling Guides`, description: p.blurb, slug, ogType: 'website', jsonLd: ld }, body);
 }
 
 function indexPage(articles, icons) {
@@ -271,10 +271,10 @@ function indexPage(articles, icons) {
   const body = `${breadcrumb(crumbs)}
     <section class="guides-hero">
       <h1>Guides &amp; help</h1>
-      <p>How to get the most out of CountTooling — from your first PDF takeoff to scale zones, reports, and exports.</p>
+      <p>How to get the most out of CountTooling, from your first PDF takeoff to scale zones, reports, and exports.</p>
     </section>
     <section class="paths-section">
-      <h2>Start here — pick a path</h2>
+      <h2>Start here: pick a path</h2>
       <p class="paths-intro">New to CountTooling? Take <a href="/guides/path/basics/">The Basics</a>, then pick the track for your trade. Each path walks the guides below in order.</p>
       <div class="guides-list paths-list">
 ${pathCards}
@@ -284,7 +284,7 @@ ${pathCards}
     <section class="guides-list">
 ${cards}
     </section>`;
-  return layout({ title: 'Guides & Help — CountTooling', description: 'How-to guides and help for construction and plumbing takeoffs with CountTooling.', slug: '/guides/', ogType: 'website', jsonLd: ld }, body);
+  return layout({ title: 'Guides & Help · CountTooling', description: 'How-to guides and help for construction and plumbing takeoffs with CountTooling.', slug: '/guides/', ogType: 'website', jsonLd: ld }, body);
 }
 
 // The sitemap lists the guides AND the rulebook (build-rules.js writes the rule

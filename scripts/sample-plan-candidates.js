@@ -54,6 +54,8 @@ const doorDouble = (x, y, size, rot = 0) => `<g transform="translate(${x},${y}) 
 const lightFix = (x, y) => `<g transform="translate(${x},${y})" fill="none" stroke="${INK}" stroke-width="1.1">
   <circle r="5.5"/><line x1="-3.9" y1="-3.9" x2="3.9" y2="3.9"/><line x1="3.9" y1="-3.9" x2="-3.9" y2="3.9"/></g>`;
 const stall = (x, y, w, h) => `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y + h} ${x},${y} ${x + w},${y}"/></g>`;
+// A stall against the BOTTOM wall: partition, back wall, partition — open at the top.
+const stallUp = (x, y, w, h) => `<g fill="none" stroke="${INK}" stroke-width="1"><polyline points="${x},${y} ${x},${y + h} ${x + w},${y + h}"/></g>`;
 
 const roomTag = (x, y, label, num) => `<g font-family="${F}" text-anchor="middle">
   <text x="${x}" y="${y}" font-size="13" font-weight="bold" fill="${INK}">${label}</text>
@@ -199,19 +201,20 @@ function candidateA() {
   ${waterHeater(548, 425, 14)}
   ${floorDrain(525, 560)}
 
-  <!-- men 107: 2 stalls + wc, 2 urinals, 2 lavs, FD -->
-  ${stall(590, 392, 38, 52)}${stall(628, 392, 38, 52)}
-  ${wc(609, 400)}${wc(647, 400)}
-  ${urinal(700, 392)}${urinal(728, 392)}
-  <rect x="588" y="562" width="80" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
-  ${lavCtr(610, 574)}${lavCtr(646, 574)}
+  <!-- men 107: 2 stalls + wc on the bottom wall (2026-09-14: they used to sit on the top wall
+       and block the door), lavs on the top wall clear of the door swing, 2 urinals, FD -->
+  ${stallUp(590, 540, 38, 52)}${stallUp(628, 540, 38, 52)}
+  ${wc(609, 586, 180)}${wc(647, 586, 180)}
+  ${urinal(712, 392)}${urinal(740, 392)}
+  <rect x="642" y="387" width="60" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  ${lavCtr(657, 399)}${lavCtr(687, 399)}
   ${floorDrain(712, 505)}
 
   <!-- women 108: 3 stalls, 3 lavs, FD -->
-  ${stall(770, 392, 40, 52)}${stall(810, 392, 40, 52)}${stall(850, 392, 40, 52)}
-  ${wc(790, 400)}${wc(830, 400)}${wc(870, 400)}
-  <rect x="778" y="562" width="118" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
-  ${lavCtr(800, 574)}${lavCtr(837, 574)}${lavCtr(874, 574)}
+  ${stallUp(770, 540, 40, 52)}${stallUp(810, 540, 40, 52)}${stallUp(850, 540, 40, 52)}
+  ${wc(790, 586, 180)}${wc(830, 586, 180)}${wc(870, 586, 180)}
+  <rect x="820" y="387" width="112" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
+  ${lavCtr(838, 399)}${lavCtr(876, 399)}${lavCtr(914, 399)}
   ${floorDrain(905, 505)}
 
   <!-- corridor drinking fountains + FD -->

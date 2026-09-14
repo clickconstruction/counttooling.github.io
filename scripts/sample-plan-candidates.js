@@ -213,7 +213,7 @@ function candidateA() {
   ${floorDrain(712, 505)}
 
   <!-- women 108: 3 stalls, 3 lavs, FD -->
-  ${stallUp(770, 540, 40, 52)}${stallUp(810, 540, 40, 52)}${stallUp(850, 540, 40, 52)}
+  ${stallUp(770, 540, 40, 52, 'right')}${stallUp(810, 540, 40, 52, 'right')}${stallUp(850, 540, 40, 52, 'right')}
   ${wc(790, 586, 180)}${wc(830, 586, 180)}${wc(870, 586, 180)}
   <rect x="820" y="387" width="112" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   ${lavCtr(838, 399)}${lavCtr(876, 399)}${lavCtr(914, 399)}

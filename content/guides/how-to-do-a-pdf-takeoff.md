@@ -9,7 +9,7 @@ category: Getting started
 
 A takeoff is just a structured count and measurement of what's on a drawing. With CountTooling you do it straight on the PDF: no printing, no exporting to another tool first. Here's the whole workflow.
 
-**Prefer to learn by doing?** Open the app with nothing loaded and pick a **five-minute tour** under the canvas, **plumbing** or **electrical** (Project Settings has the same two links). Each walks you through a small takeoff of its trade on the sample plan, step by step, checking each step against what you actually did, and every step has a *Do it for me* button if you would rather watch.
+**Prefer to learn by doing?** Open the app with nothing loaded and pick a **five-minute tour** under the canvas, **plumbing**, **electrical** or **hvac** (Project Settings has the same three links). Each walks you through a small takeoff of its trade on the sample plan, step by step, checking each step against what you actually did, and every step has a *Do it for me* button if you would rather watch.
 
 ![A finished takeoff in CountTooling, counters on every fixture, a measured waste line, and a live legend tallying the counts and lengths.](/guides/img/plan-takeoff.png)
 

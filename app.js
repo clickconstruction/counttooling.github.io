@@ -367,6 +367,7 @@
     groups: [],
     rooms: [],
     roomsListCollapsed: false,
+    counterAirMoreOpen: null,   // D19: in-memory per project — the Counter modal's "More ▸ air & mounting" disclosure. null = follow the trade (open on hvac/electrical); true/false = the estimator's override for this project. A view preference like showAllCanvases, deliberately NOT in save/load.
     recentRoomHeights: [],
     activeGroupId: null,
     activeCanvasIdByPage: {},
@@ -794,6 +795,7 @@
     state.groups = [];
     state.groupsEnabled = false;
     state.trade = null;
+    state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
     state.ceilingHeightFt = null;
     state.codes = null;
     state.makeUpFt = null;

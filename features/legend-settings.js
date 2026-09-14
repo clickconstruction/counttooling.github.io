@@ -53,6 +53,17 @@
     const legendShowDuctGhostBtn = document.getElementById('legendShowDuctGhostBtn');
     legendShowDuctGhostCb.checked = ls.showDuctGhost !== false;   // default on; the D13 true-width band under every run (live + exports)
     legendShowDuctGhostBtn.setAttribute('aria-pressed', legendShowDuctGhostCb.checked);
+    // D19 (J5-E): a toggle for something the project does not have teaches a
+    // feature that is not on screen. The duct rows / true-width ghost appear
+    // once a run is traced, room volumes once a room is boxed. The settings
+    // themselves are untouched — only the rows are gated, so a project that
+    // later gains duct finds its remembered choice intact.
+    const hasDuct = !!(App.hasDuctRuns && App.hasDuctRuns());
+    const hasRooms = !!(App.state.rooms && App.state.rooms.length);
+    const gate = (id, show) => { const el = document.getElementById(id); if (el) el.hidden = !show; };
+    gate('legendShowDuctRow', hasDuct);
+    gate('legendShowDuctGhostRow', hasDuct);
+    gate('legendShowRoomsRow', hasRooms);
     App.showModal('legendSettingsModal');
   }
 

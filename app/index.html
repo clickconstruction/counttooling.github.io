@@ -674,32 +674,45 @@
         <!-- DUCT unit D6: optional CFM on a counter — air devices only. Empty
              = not an air device (zero behavior change); placed markers inherit
              it for the design-build duct suggestions. -->
-        <div class="form-group">
-          <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
-          <!-- D18 (B19 ratchet): the inline icon chip beside the field —
-               "→ [icon] Supply Diffuser · change" — names the glyph a CFM
-               counter will take (features/counter.js syncCreateCfmChip);
-               "change" opens the Custom Icons grid at the HVAC group. -->
-          <div class="cfm-row">
-            <input type="number" id="counterCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;">
-            <span class="cfm-icon-chip" id="counterCfmIconChip" hidden></span>
+        <!-- D19 (B19 part 2, ratcheted): the three device fields fold under ONE
+             "More ▸ air & mounting" disclosure so a plumbing Create tab is not
+             three air/electrical fields deep. Hiding them outright was rejected
+             — the FIRST CFM device on a fresh project would be impossible to
+             create — so the toggle is always present; it opens by itself on the
+             HVAC / Electrical trade profiles and remembers the estimator's
+             override for the open project (features/counter.js
+             applyCounterAirMore, state.counterAirMoreOpen). -->
+        <div class="form-group counter-air-more">
+          <button type="button" id="counterAirMoreToggle" class="counter-air-more-toggle" aria-expanded="false" aria-controls="counterAirMoreFields">More <span class="counter-air-more-caret" aria-hidden="true">▸</span> air &amp; mounting</button>
+          <div id="counterAirMoreFields" class="counter-air-more-fields" hidden>
+            <div class="form-group">
+              <label>CFM <span class="form-sublabel">(air devices only — leave empty otherwise)</span></label>
+              <!-- D18 (B19 ratchet): the inline icon chip beside the field —
+                   "→ [icon] Supply Diffuser · change" — names the glyph a CFM
+                   counter will take (features/counter.js syncCreateCfmChip);
+                   "change" opens the Custom Icons grid at the HVAC group. -->
+              <div class="cfm-row">
+                <input type="number" id="counterCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;">
+                <span class="cfm-icon-chip" id="counterCfmIconChip" hidden></span>
+              </div>
+            </div>
+            <!-- Electrical, First-Class S1: optional mount height in inches AFF.
+                 Empty = at the ceiling / no default vertical (zero behavior change);
+                 the Chain tool reads it for the default drop (S2). -->
+            <div class="form-group">
+              <label>Mount height <span class="form-sublabel">(inches AFF — devices on a wall; leave empty for ceiling)</span></label>
+              <input type="text" id="counterMountHeight" placeholder='e.g. 18 or 4&#39;-0"' style="width:120px;" autocomplete="off">
+            </div>
+            <!-- DUCT unit D8: optional per-type flex-drop length (ft) beside the
+                 CFM it belongs to. Empty = the data-table default (duct-model.js
+                 DUCT_FLEX_DEFAULTS.dropFt — D18: the sublabel + placeholder are
+                 stamped from it at render, never a literal here); only CFM
+                 devices attached to duct contribute flex to the schedule. -->
+            <div class="form-group">
+              <label>Flex drop <span class="form-sublabel">(ft per drop — air devices; empty = <span id="counterFlexDropDefault">the default</span>)</span></label>
+              <input type="number" id="counterFlexDrop" min="0" step="0.5" style="width:120px;">
+            </div>
           </div>
-        </div>
-        <!-- Electrical, First-Class S1: optional mount height in inches AFF.
-             Empty = at the ceiling / no default vertical (zero behavior change);
-             the Chain tool reads it for the default drop (S2). -->
-        <div class="form-group">
-          <label>Mount height <span class="form-sublabel">(inches AFF — devices on a wall; leave empty for ceiling)</span></label>
-          <input type="text" id="counterMountHeight" placeholder='e.g. 18 or 4&#39;-0"' style="width:120px;" autocomplete="off">
-        </div>
-        <!-- DUCT unit D8: optional per-type flex-drop length (ft) beside the
-             CFM it belongs to. Empty = the data-table default (duct-model.js
-             DUCT_FLEX_DEFAULTS.dropFt — D18: the sublabel + placeholder are
-             stamped from it at render, never a literal here); only CFM
-             devices attached to duct contribute flex to the schedule. -->
-        <div class="form-group">
-          <label>Flex drop <span class="form-sublabel">(ft per drop — air devices; empty = <span id="counterFlexDropDefault">the default</span>)</span></label>
-          <input type="number" id="counterFlexDrop" min="0" step="0.5" style="width:120px;">
         </div>
         <div class="form-group">
           <div class="counter-icon-tabs">
@@ -785,26 +798,35 @@
             <button type="button" id="counterQuickCountAddMaterial" class="plum-add-btn" title="Add material">+</button>
           </div>
         </div>
-        <!-- S1/S2: the device's mount height (inches AFF), prefilled from the
-             trade profile per variant; shown for trades that carry one. -->
-        <div class="form-group plum-modifier-row" id="counterQuickCountMountRow" style="display:none;">
-          <label>Mount height</label>
-          <div class="plum-select-btn-row">
-            <input type="text" id="counterQuickCountMount" placeholder="18" style="width:110px;" autocomplete="off" title="Inches above finished floor; empty = ceiling">
-            <span id="counterQuickCountMountHint" style="font-size:0.78rem;color:var(--text3);"></span>
-          </div>
-        </div>
-        <!-- DUCT unit D15: optional CFM beside the name — the Create tab's
-             #counterCfm twin (same set-only-when-positive rule; empty = not an
-             air device, zero behavior change). -->
-        <div class="form-group plum-modifier-row" id="counterQuickCountCfmRow">
-          <label>CFM</label>
-          <div class="plum-select-btn-row">
-            <input type="number" id="counterQuickCountCfm" min="0" step="5" placeholder="e.g. 150" style="width:110px;" autocomplete="off" title="Air devices only — leave empty otherwise">
-            <!-- D18: the Create tab's icon chip, beside this field too (the
-                 hint yields to it while a CFM is typed). -->
-            <span class="cfm-icon-chip" id="counterQuickCountCfmIconChip" hidden></span>
-            <span id="counterQuickCountCfmHint" style="font-size:0.78rem;color:var(--text3);">air devices only — empty = not an air device</span>
+        <!-- D19 (B19 part 2): the Create tab's "More ▸ air & mounting"
+             disclosure, twinned here. Same rule — always present (the first CFM
+             device must stay creatable), open by itself on HVAC / Electrical.
+             The mount row keeps its own per-trade display gate inside. -->
+        <div class="form-group plum-modifier-row counter-air-more">
+          <button type="button" id="counterQuickCountAirMoreToggle" class="counter-air-more-toggle" aria-expanded="false" aria-controls="counterQuickCountAirMoreFields">More <span class="counter-air-more-caret" aria-hidden="true">▸</span> air &amp; mounting</button>
+          <div id="counterQuickCountAirMoreFields" class="counter-air-more-fields" hidden>
+            <!-- S1/S2: the device's mount height (inches AFF), prefilled from the
+                 trade profile per variant; shown for trades that carry one. -->
+            <div class="form-group plum-modifier-row" id="counterQuickCountMountRow" style="display:none;">
+              <label>Mount height</label>
+              <div class="plum-select-btn-row">
+                <input type="text" id="counterQuickCountMount" placeholder="18" style="width:110px;" autocomplete="off" title="Inches above finished floor; empty = ceiling">
+                <span id="counterQuickCountMountHint" style="font-size:0.78rem;color:var(--text3);"></span>
+              </div>
+            </div>
+            <!-- DUCT unit D15: optional CFM beside the name — the Create tab's
+                 #counterCfm twin (same set-only-when-positive rule; empty = not an
+                 air device, zero behavior change). -->
+            <div class="form-group plum-modifier-row" id="counterQuickCountCfmRow">
+              <label>CFM</label>
+              <div class="plum-select-btn-row">
+                <input type="number" id="counterQuickCountCfm" min="0" step="5" placeholder="e.g. 150" style="width:110px;" autocomplete="off" title="Air devices only — leave empty otherwise">
+                <!-- D18: the Create tab's icon chip, beside this field too (the
+                     hint yields to it while a CFM is typed). -->
+                <span class="cfm-icon-chip" id="counterQuickCountCfmIconChip" hidden></span>
+                <span id="counterQuickCountCfmHint" style="font-size:0.78rem;color:var(--text3);">air devices only — empty = not an air device</span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="form-group">
@@ -1218,21 +1240,21 @@
         </button>
         <input type="checkbox" id="legendShowResizeHighlight" hidden>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div class="form-group legend-gated-row" id="legendShowRoomsRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <span title="Show Room Sizer volume rows in the legend">Show room volumes</span>
         <button type="button" class="toggle-switch" id="legendShowRoomsBtn" aria-pressed="true" title="Show room volumes">
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="legendShowRooms" checked hidden>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div class="form-group legend-gated-row" id="legendShowDuctRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <span title="Show per-size duct LF · lb rows and the all-duct total in the legend">Show duct rows</span>
         <button type="button" class="toggle-switch" id="legendShowDuctBtn" aria-pressed="true" title="Show duct rows">
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="legendShowDuct" checked hidden>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div class="form-group legend-gated-row" id="legendShowDuctGhostRow" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
         <span title="Paint a translucent band at each duct run's true scaled width under its stroke (live, exports)">Show duct true width</span>
         <button type="button" class="toggle-switch" id="legendShowDuctGhostBtn" aria-pressed="true" title="Show duct true width">
           <span class="toggle-switch-knob"></span>

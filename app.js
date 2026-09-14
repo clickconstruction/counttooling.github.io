@@ -1011,6 +1011,56 @@
     return txt;
   }
   function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2); }
+  // D19 (J6-H): the duct fragment of the Delete Area preview —
+  // "61' · 438 lb, 2 fittings". The ft/lb come from the SAME per-run tally the
+  // Duct sidebar badge shows (App.ductRunTally), so the number in the confirm
+  // matches the row the estimator is about to lose. Returns '' when the duct
+  // feature file is not loaded, so the preview degrades to a plain count.
+  function ductDeleteSummary(collected, ann, pageIdx) {
+    if (!App.ductRunTally) return '';
+    let ft = 0, lb = 0;
+    for (const { run } of collected.ductRuns || []) {
+      try {
+        const tally = App.ductRunTally({ run, ann, pageIdx });
+        ft += tally?.totalLengthFt || 0;
+        lb += tally?.totalPounds || 0;
+      } catch (_) { /* a malformed run must not block the delete confirm */ }
+    }
+    const bits = [];
+    if (ft > 0 || lb > 0) bits.push(Math.round(ft).toLocaleString() + "' · " + Math.round(lb).toLocaleString() + ' lb');
+    const nf = collected.ductFittingCount || 0;
+    if (nf) bits.push(nf + (nf === 1 ? ' fitting' : ' fittings'));
+    return bits.join(', ');
+  }
+  // Delete Area: collect what the rectangle covers, then either report the area
+  // empty or open the confirm with its preview line. ONE builder for both call
+  // sites (mouse click and touch tap), which were an exact copy of each other —
+  // so the enumeration D19 just extended cannot drift between them.
+  function openDeleteZoneForRect(ann, pageIdx, x1, y1, x2, y2) {
+    const page = state.pages[pageIdx];
+    const collected = collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2);
+    const total = collected.counterCount + collected.lineRunCount + collected.highlightCount
+      + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount
+      + collected.roomBoxCount + collected.ductRunCount;
+    if (total === 0) { showToast('No items in this area.', 2000); return; }
+    const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
+    const parts = [];
+    if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
+    if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
+    if (collected.ductRunCount) {
+      const summary = ductDeleteSummary(collected, ann, pageIdx);
+      parts.push(collected.ductRunCount + (collected.ductRunCount === 1 ? ' duct run' : ' duct runs')
+        + (summary ? ' (' + summary + ')' : ''));
+    }
+    if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
+    if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
+    if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
+    if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
+    if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
+    state.pendingDeleteZone = { ann, collected };
+    document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
+    showModal('deleteZoneModal');
+  }
   function performDeleteZone(ann, collected) {
     pushUndoSnapshot();
     annotationModel.deleteCollectedItems(ann, collected);
@@ -5743,24 +5793,7 @@
         if (ann) {
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
-          const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount + collected.roomBoxCount;
-          if (total === 0) {
-            showToast('No items in this area.', 2000);
-          } else {
-            const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
-            const parts = [];
-            if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
-            if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
-            if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
-            if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
-            if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
-            if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
-            if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
-            state.pendingDeleteZone = { ann, collected };
-            document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
-            showModal('deleteZoneModal');
-          }
+          openDeleteZoneForRect(ann, state.currentPage, x1, y1, x2, y2);
         }
         state.deleteZoneStart = null;
       }
@@ -6736,24 +6769,7 @@
         if (ann) {
           const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
           const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
-          const collected = collectItemsToDeleteInRect(ann, state.currentPage, x1, y1, x2, y2);
-          const total = collected.counterCount + collected.lineRunCount + collected.highlightCount + collected.noteCount + collected.multiplyZoneCount + collected.scaleZoneCount + collected.roomBoxCount;
-          if (total === 0) {
-            showToast('No items in this area.', 2000);
-          } else {
-            const lenStr = formatFeet(collected.lengthRealSum, page?.scale);
-            const parts = [];
-            if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
-            if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
-            if (collected.highlightCount) parts.push(collected.highlightCount + ' highlight(s)');
-            if (collected.noteCount) parts.push(collected.noteCount + ' note(s)');
-            if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
-            if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
-            if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
-            state.pendingDeleteZone = { ann, collected };
-            document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
-            showModal('deleteZoneModal');
-          }
+          openDeleteZoneForRect(ann, state.currentPage, x1, y1, x2, y2);
         }
         state.deleteZoneStart = null;
       }

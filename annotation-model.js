@@ -556,8 +556,10 @@ function createAnnotationModel(ctx) {
     const result = {
       counterCount: 0, lineRunCount: 0, lengthRealSum: 0,
       highlightCount: 0, noteCount: 0, multiplyZoneCount: 0, scaleZoneCount: 0, roomBoxCount: 0,
+      ductRunCount: 0, ductFittingCount: 0,
       counters: [], quickLines: [], polylines: [],
-      highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: []
+      highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [],
+      ductRuns: [], ductFittings: []
     };
     (ctx.getState().counters || []).forEach(c => {
       (ann?.counterMarkers?.[c.id] || []).forEach(m => {
@@ -618,6 +620,29 @@ function createAnnotationModel(ctx) {
         result.roomBoxes.push({ index: i });
       }
     });
+    // D19 (J6-H): duct runs follow the LINE rule — both end vertices inside —
+    // the same test D17 gave the Multiply Zone preview, so the two area tools
+    // agree about what a rectangle "holds". A run's fittings go with it
+    // wherever they sit: a fitting cannot outlive the run it is anchored to,
+    // and leaving one behind would strand it in the schedule.
+    const doomedRunIds = new Set();
+    (ann?.ductRuns || []).forEach((run, i) => {
+      const verts = run?.vertices || [];
+      const start = verts[0], end = verts[verts.length - 1];
+      if (verts.length >= 2 && inRect(start) && inRect(end)) {
+        result.ductRunCount++;
+        result.ductRuns.push({ index: i, run });
+        if (run.id != null) doomedRunIds.add(run.id);
+      }
+    });
+    if (doomedRunIds.size) {
+      (ann?.ductFittings || []).forEach((f, i) => {
+        if (f && doomedRunIds.has(f.runId)) {
+          result.ductFittingCount++;
+          result.ductFittings.push({ index: i });
+        }
+      });
+    }
     return result;
   }
   // The splice core of Delete Area. Descending-index order is load-bearing:
@@ -652,6 +677,15 @@ function createAnnotationModel(ctx) {
     });
     (collected.notes || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
       (ann?.notes || []).splice(index, 1);
+    });
+    // D19 (J6-H): fittings first, then the runs they hang off — each list is
+    // spliced descending within itself, so the order between them is cosmetic,
+    // but it reads the way the deletion actually cascades.
+    (collected.ductFittings || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.ductFittings || []).splice(index, 1);
+    });
+    (collected.ductRuns || []).slice().sort((a, b) => b.index - a.index).forEach(({ index }) => {
+      (ann?.ductRuns || []).splice(index, 1);
     });
   }
 

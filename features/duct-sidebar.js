@@ -200,5 +200,10 @@
     renderDuctList();
   };
 
+  // D19 (J6-H): the Delete Area preview quotes the SAME per-run tally the
+  // sidebar badge shows, so "61' · 438 lb" in the confirm matches the row the
+  // estimator is about to lose. entry = { run, ann, pageIdx }.
+  App.ductRunTally = runTally;
+
   App.renderDuctList = renderDuctList;
 })();

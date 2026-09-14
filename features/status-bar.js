@@ -355,10 +355,14 @@
           if (words) sp.className = 'status-totals-words';
           totalsEl.appendChild(sp);
         };
-        seg('[' + countStr); seg(' counts', true);
+        // X13 (D19 fold-in): "1 counts" read as a bug in the one place the
+        // footer is supposed to be the audit entry point. Same grammar in the
+        // chip and its tooltip, which are the same sentence twice.
+        const countWord = (t.count || 0) === 1 ? ' count' : ' counts';
+        seg('[' + countStr); seg(countWord, true);
         seg(' | ' + lenStr); seg(' of lines', true);
         seg(']');
-        totalsEl.title = countStr + ' counts | ' + lenStr + ' of lines'
+        totalsEl.title = countStr + countWord + ' | ' + lenStr + ' of lines'
           + ((t.lengthPx || 0) > 0 ? ' — px lengths are on sheets with no scale' : '')
           + ' — click to see the Summary';
         totalsEl.style.display = '';

@@ -94,7 +94,7 @@
   document.getElementById('createLineTypeCancel').onclick = () => App.hideModal('chooseLineTypeModal');
   document.getElementById('createLineTypeCreate').onclick = () => {
     const state = App.state;
-    const name = document.getElementById('createLineTypeName').value.trim() || 'Line';
+    const name = document.getElementById('createLineTypeName').value.trim() || nextLineTypeName(state.lineTypes);
     const color = document.getElementById('createLineTypeColorRow').dataset.selectedColor || App.COLORS[2];
     const curveSel = document.querySelector('input[name="createLineTypeCurve"]:checked');
     const curveStyle = curveSel ? curveSel.value : 'straight';

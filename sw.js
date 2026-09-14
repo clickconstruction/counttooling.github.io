@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '86d5081cbbaf';
+const CACHE_VERSION = '90ceeea3a287';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -211,7 +211,7 @@ const PRECACHE_SHA256 = {
   '/constants.js': '50d6c9dd6351965c230bc5cbbfbd1d654dc6ab6392440629d6551ceeefc290c0',
   '/zoom-ladder.js': 'c8396a9b8610ce94c703b575e3180ad3152d17a5b23c9e576c8d45b980005ba3',
   '/hotkeys.js': 'ed2e426116633f881d724af2f3fa4c9520172492271ed86bfce238ee3af41392',
-  '/recent-colors.js': '8f201f7c7e067580483aab71948653274ce8c97facfb0a25f56f51517e5c5f84',
+  '/recent-colors.js': '01a7af7515a037ac51f0819601156c64035b903ce55a2739a5393988792285a7',
   '/recent-drops.js': '3b04d7b96c6260858a3ce9de59a9e862fa88ddf3e563de3ef46d354020358b7b',
   '/idb.js': '9049553ce54d58b56dc33d8e166721ba26602cfd65b82098a6a51c59956c75da',
   '/format.js': 'c8958ee9c4f87c854deebc128f2db5b7e1c25b33dfe5d2f68334ac947b844ea5',
@@ -220,7 +220,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': 'd17b643b180ef7ff6e55a2bd9905435ed3bbbcf3b750d91ad88f966c9431a203',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': 'ff2894a8f5a7d10d4e24e3b4b87aeb9e4d2610188a4fa39c1047055888565def',
+  '/app.js': '51729a9d61ed2b5bcd35b7441b6b71ffe0ea3773ac7a3ba76c10ef3332a3e7a5',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': '9661cefd7251eb82a9459bb348f31320500c590cbd745bb7153f424e612b51f9',
   '/features/save-project.js': 'f97a6e7abbb63388a22c5cf05fd69b0f7a700f051d9e10fba77758febf0c59c2',
@@ -238,20 +238,20 @@ const PRECACHE_SHA256 = {
   '/features/page-settings.js': '2e9b961016930ea467a50e9a426cf8aa3a901f10dd2fb2fbe11a9186c7020e40',
   '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',
   '/features/line-type-settings.js': '91bcfa06e0f4d29360effb6b1178d869020cbb5aa427f2e2550eb3b1fa48ed60',
-  '/features/choose-create-line-type.js': 'c8cb905e7e0d38bf85460cabf7cec5f82f611810b57f6cb37380039ccd113839',
+  '/features/choose-create-line-type.js': 'fd26611fd14483d91a3da3c823d2a0fd3331c665311653e11cc8a03cf7fdff81',
   '/features/scale.js': 'dc5a5d2be704ffc1304d523f4e5f930d0d58cc047617d7fe6b9d439f2e178109',
   '/features/scale-zone-settings.js': '67a8a802e7aeaf629a235dbd0e4d9c42ea5c746412ae6749b90ecf35be7a9c9f',
   '/features/groups.js': 'a6397bfbea34bfbd7b67b6eacee0c4f048c58bdd267a256b14fcde96696049c1',
   '/features/grid.js': 'e8819e7a36df6e8911090ca3eb03946c53bb36dc97b5dbeac6fb5c00520719d3',
-  '/features/quick-line.js': '12f987130bbcdcd06d8f27aaeeb7cc535a86d6364914569b99a061fe6329e63f',
+  '/features/quick-line.js': 'e86ad2bf25f3cfd3da2455eff215f150551b30d6ac52116d0ea556f6ad0f9088',
   '/features/counter.js': '1e4a70cb23d65e7b940e2b508727beebee298e0d28d6460a5b5d36aee05202e2',
   '/features/save-status.js': 'd4af89c0258d6609d19b402ec5684198948d44fc75d7446592e79d29bf15d919',
-  '/features/status-bar.js': '8a1afc1aa34b70e12772b15c8a69cb3dcd9b18e329e640a72cdcbdeb7b0a5e2a',
+  '/features/status-bar.js': '5360434f3988d7a72682aa81ad288e3893072f12fcd0d1979173d26e2648c768',
   '/features/turn-in.js': 'e3c2af69f1693f3819cb31733aeead36be659546f53d86c0da406dadee664944',
-  '/features/manage-projects.js': 'c010b8f2b84ba5715ca33a6e907baf3de488fad439b9651d966d795674fe257c',
+  '/features/manage-projects.js': '2b8bdb4ce00fbfa84097a651a76b07e2fc28e7dd483639ceb3d172122d0f076f',
   '/features/user-admin.js': '3857cff271dbb61e78c2c76bd2dee626d6327058243725c911c03736bdb5371a',
   '/features/load-project.js': 'b9595554c2510a94eac2f6410303de25be1ba4d271ba18cb42ebadc11f00bcbc',
-  '/features/bid-board.js': '8e91d2640ef8e9e050232ee962daa03054f1f8712198eee97114c17caa4da143',
+  '/features/bid-board.js': '81b907e0a0e93c832303af7df85367a5fa11736098adbc2083990ff9c487a770',
   '/features/review-flow.js': '7fe62b8120ac3ea327db6851365a4b17ef19e60fa8bf5646ccc3970d142f2405',
   '/features/copy-project.js': 'e5a1b0a04292778d70fd898d4beb6ba11eeb3f3e6683076302a9af275b45315c',
   '/features/prepare-pdf.js': 'fa59aad964c2c0282cd1e85f38aca90a099ae38905376fe023c59d38cc39f76d',

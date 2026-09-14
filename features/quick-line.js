@@ -112,7 +112,7 @@
     const material = document.getElementById('quickLineMaterial').value;
     const computedName = [size, material].filter(Boolean).join(' ');
     const nameInput = document.getElementById('quickLineName');
-    const name = (nameInput?.value?.trim() || computedName) || 'Line';
+    const name = (nameInput?.value?.trim() || computedName) || nextLineTypeName(App.state.lineTypes);
     const mods = App.getLineModifiers();
     const color = mods.defaultColor || App.COLORS[2];
     const curveSel = document.querySelector('input[name="quickLineCurve"]:checked');

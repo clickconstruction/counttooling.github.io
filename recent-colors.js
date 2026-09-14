@@ -37,8 +37,28 @@ function nextUnusedCounterColor(counters, palette, current) {
 }
 
 
+// X12 (D19 fold-in): the fallback name for a line type created with the name
+// field left blank. T2-05 gave the COUNTER twin this treatment — a blank
+// counter name falls back to the icon's name rather than the literal
+// "Counter" — but the line-type twin kept minting types all called "Line",
+// indistinguishable in the sidebar, the legend and every report the moment
+// there are two. A line type has no icon to borrow a name from, so the
+// fallback is numbered against the palette instead: "Line", then "Line 2",
+// "Line 3" — the same shape resolveCounterTwin gives duplicate counter names.
+// Pure: (lineTypes, base?) -> string.
+function nextLineTypeName(lineTypes, base) {
+  const stem = ((base || '').trim()) || 'Line';
+  const taken = new Set((lineTypes || []).map((lt) => ((lt && lt.name) || '').trim().toLowerCase()));
+  if (!taken.has(stem.toLowerCase())) return stem;
+  for (let n = 2; n < 1000; n++) {
+    const candidate = stem + ' ' + n;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+  }
+  return stem;
+}
+
 // Node test harness only: in a classic browser <script> `module` is undefined,
 // so this is a no-op there and the declarations above stay plain globals.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { RECENT_COLORS_MAX, nextRecentColors, nextUnusedCounterColor };
+  module.exports = { RECENT_COLORS_MAX, nextRecentColors, nextUnusedCounterColor, nextLineTypeName };
 }

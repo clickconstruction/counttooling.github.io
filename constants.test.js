@@ -283,3 +283,34 @@ test('takeoff-backup IDB record keys are pinned (restore prompt key-aside)', () 
   // Must never collide with the live local record key.
   assert.notStrictEqual(c.TAKEOFF_BACKUP_HELD_ID, 'local');
 });
+
+// --- nextLineTypeName (recent-colors.js) — X12, D19 fold-in -----------------
+
+test('nextLineTypeName: an empty palette takes the bare stem', () => {
+  assert.strictEqual(c.nextLineTypeName([]), 'Line');
+  assert.strictEqual(c.nextLineTypeName(null), 'Line');
+  assert.strictEqual(c.nextLineTypeName(undefined), 'Line');
+});
+
+test('nextLineTypeName: a taken name numbers up rather than duplicating', () => {
+  assert.strictEqual(c.nextLineTypeName([{ name: 'Line' }]), 'Line 2');
+  assert.strictEqual(c.nextLineTypeName([{ name: 'Line' }, { name: 'Line 2' }]), 'Line 3');
+  // Gaps are filled, not skipped past.
+  assert.strictEqual(c.nextLineTypeName([{ name: 'Line' }, { name: 'Line 3' }]), 'Line 2');
+});
+
+test('nextLineTypeName: the taken compare ignores case and surrounding space', () => {
+  assert.strictEqual(c.nextLineTypeName([{ name: '  line  ' }]), 'Line 2');
+  assert.strictEqual(c.nextLineTypeName([{ name: 'LINE' }, { name: 'line 2' }]), 'Line 3');
+});
+
+test('nextLineTypeName: a caller-supplied stem is honored', () => {
+  assert.strictEqual(c.nextLineTypeName([], '2in CPVC'), '2in CPVC');
+  assert.strictEqual(c.nextLineTypeName([{ name: '2in CPVC' }], '2in CPVC'), '2in CPVC 2');
+  // A blank or whitespace stem falls back to "Line".
+  assert.strictEqual(c.nextLineTypeName([], '   '), 'Line');
+});
+
+test('nextLineTypeName: malformed palette rows are ignored, not thrown on', () => {
+  assert.strictEqual(c.nextLineTypeName([null, {}, { name: null }, { name: 'Line' }]), 'Line 2');
+});

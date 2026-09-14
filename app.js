@@ -1084,10 +1084,21 @@
   function pickScaleForLineType(pageIndices) {
     return scaleForLineType(pageIndices, state.pages);
   }
+  // X11 (D19 fold-in): a page the estimator has SET A SCALE on is "marked" for
+  // Shift+←/→ navigation — the pages list has said so since B10 (the
+  // `badge-scale-set` class beside `badge-has-ann`), and skipping straight
+  // past a sheet you just calibrated contradicts the badge you are looking at.
+  // Deliberately NOT folded into pageHasAnyAnnotations: that predicate also
+  // powers projectHasAnyCanvasMarkup, which gates Import Canvas (B12), and a
+  // scale is page metadata, not canvas markup — treating it as markup would
+  // disable Import Canvas on a project that has no marks at all.
+  function pageIsMarkedForNav(p) {
+    return !!p && (!!p.scale || pageHasAnyAnnotations(p));
+  }
   function getMarkedPageIndices() {
     return state.pages
       .map((p, i) => ({ p, i }))
-      .filter(({ p }) => pageHasAnyAnnotations(p))
+      .filter(({ p }) => pageIsMarkedForNav(p))
       .map(({ i }) => i);
   }
   // formatDist / formatDistFeetInches / formatDistFeetInchesFromReal / formatArea
@@ -2781,7 +2792,16 @@
     const advancedImport = document.getElementById('advancedImport');
     if (advancedImport) advancedImport.style.display = state.isViewer ? 'none' : '';
     const rotatePageBtn = document.getElementById('rotatePage');
-    if (rotatePageBtn) rotatePageBtn.style.display = state.isViewer ? 'none' : '';
+    if (rotatePageBtn) {
+      rotatePageBtn.style.display = state.isViewer ? 'none' : '';
+      // X13 (D19 fold-in): the button was always enabled and silently no-opped
+      // with no PDF loaded (rotatePage90 returns early without page.pdfPage) —
+      // a control that looks live and does nothing. Gate it on the page it
+      // acts on, the T2-01 has-pdf pattern.
+      const rotatable = !!state.pages[state.currentPage]?.pdfPage;
+      rotatePageBtn.disabled = !rotatable;
+      rotatePageBtn.title = rotatable ? 'Rotate 90° right' : 'Rotate 90° right — load a PDF first';
+    }
     App.renderPagesList && App.renderPagesList();
     App.renderCanvasSwitcher && App.renderCanvasSwitcher();
     App.renderCountersList && App.renderCountersList();
@@ -3944,7 +3964,7 @@
   };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
   document.getElementById('lineTypeCreate').onclick = () => {
-    const name = document.getElementById('lineTypeName').value.trim() || 'Line';
+    const name = document.getElementById('lineTypeName').value.trim() || nextLineTypeName(state.lineTypes);
     const color = document.getElementById('lineTypeColorRow').dataset.selectedColor || COLORS[2];
     const curveSel = document.querySelector('input[name="lineTypeCurve"]:checked');
     const curveStyle = curveSel ? curveSel.value : 'straight';
@@ -7686,6 +7706,7 @@
   // PDF-intake re-apply gate (features/pdf-intake.js, T1-01/J4): "do the
   // current pages carry any annotations at all?"
   App.projectHasAnyCanvasMarkup = projectHasAnyCanvasMarkup;
+  App.getMarkedPageIndices = getMarkedPageIndices;   // X11 spec seam: Shift+←/→ marked-page nav
   App.logProjectOpenEvent = logProjectOpenEvent;
   // Annex-B hoisted from the SUPABASE_ENABLED block; resolved at call time.
   App.openCheckoutExpiredRecoveryModal = (opts) => openCheckoutExpiredRecoveryModal(opts);

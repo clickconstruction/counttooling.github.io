@@ -1,6 +1,8 @@
 # TO DO — hand-off of the remaining build queue (written 2026-09-13)
 
 > **COMPLETE 2026-09-14.** D19–D25 shipped (Wave 3), the after-the-queue items are ticked below. What is still open is not a build: the three `[decision]` slots in [_STAGE6.md](_STAGE6.md), the day-7 telemetry re-read on 2026-09-19, and the standing drift patrol.
+>
+> **Re-opened 2026-09-14 (evening) with one unit:** [D26 — drift patrol after the sample-plan promotion](#d26--drift-patrol-after-the-sample-plan-promotion). The candidate-A hand-off below shipped the same day (CT #94).
 
 > Will's call: stop after D18 lands; the rest is handed to whoever picks it up
 > next (a person or a fresh Claude session). Every unit below is a complete
@@ -170,6 +172,8 @@ from the plan).
 
 ## Sample plan A — polish hand-off (2026-09-14, for whoever knows the trade better)
 
+> **SHIPPED 2026-09-14 (CT #94):** candidate A is the simple (design-build) sample plan on a true ANSI B sheet, the three tours / their spec / the guide screenshots re-pinned, the room schedule and the LP-1 / RTU-1 / service notes added. Plan of record: [SAMPLE-PLANS.md](SAMPLE-PLANS.md). The steps below are kept as the record of what the promotion touched.
+
 **What it is.** `scripts/sample-plan-candidates.js` → `candidateA()`: the *simple*
 plan (Suite 200 Office TI, A-101, 1/8" = 1'-0" at 12 px/ft), meant to replace
 today's `samples/sample-plan.pdf` as the sheet the three tours walk. Candidate B in
@@ -229,3 +233,39 @@ in `candidateA()`; the fixture symbols are the helpers at the top of the file
 5. The house loop: targeted specs + `npm run check` per unit, the full suite at
    the push, a live walk of all three tours before calling it done.
 
+## D26 — Drift patrol after the sample-plan promotion
+
+Branch `claude/d26-sample-plan-drift-patrol`. The standing practice in
+[_NEXT.md](_NEXT.md) ("after any major feature ships, re-walk the affected journey
+and update its dossier"), owed since `samples/sample-plan.pdf` became candidate A
+(CT #94, 2026-09-14) and the engineered plan moved to a true ANSI B sheet. The
+dossiers are dated walk logs: **do not rewrite them** — add a dated addendum per
+journey, and re-walk the one whose headline stumble no longer reproduces.
+
+1. **Re-walk J5 (set-a-scale-you-can-trust) on the new sheet.** Its blocker — the
+   Set Scale dialog pre-selecting a sheet correction on a non-standard sheet, the
+   65'-0" wall reading 173'-1" — cannot happen on the sample any more (both sample
+   plans are true ANSI B now; `getPageSheetAnalysis(0).isStandard` is true). Walk
+   the preset path and the verify path on the 67'-4" dimension; record what a user
+   sees today; keep the old finding as history with a "no longer on the sample"
+   note. The rescaled-PDF case still exists in the wild — say where a walker can
+   reproduce it (any 918 × 594 pt print).
+2. **Dated addenda, no re-walk needed** (the sheet changed under the walk, the
+   findings did not): [count-fixtures.md](../count-fixtures.md) (7 WC → 5 WC + 2
+   urinals; rooms are 107 / 108), [measure-runs.md](../measure-runs.md) (stumble #4,
+   the preset correction, is sample-specific history now), [multi-scale-and-repeats.md](../multi-scale-and-repeats.md)
+   (line 159's "synthetic 921.6×597.6pt sheet"), [hvac-room-sizing.md](../hvac-room-sizing.md)
+   (Office 101 is 14'-2" × 20'-0" = 283 ft²; Break Room 102 is BREAK 104; Open
+   Office 104 is 105; the non-standard-sheet precondition is gone), [fix-mistakes.md](../fix-mistakes.md),
+   [annotate-and-review.md](../annotate-and-review.md), [first-plan-to-first-count.md](../first-plan-to-first-count.md),
+   [field-tablet-offline.md](../field-tablet-offline.md), [save-load-return.md](../save-load-return.md),
+   [reuse-standards-across-bids.md](../reuse-standards-across-bids.md), [share-and-collaborate.md](../share-and-collaborate.md),
+   [share-with-an-outsider.md](../share-with-an-outsider.md) (environment lines only).
+3. **Plans that cite the old rooms as history stay as written** — [H1-HVAC-TOUR.md](H1-HVAC-TOUR.md),
+   [T1-04.md](T1-04.md), [T1-01.md](T1-01.md) — with one line at the top: "sheet
+   replaced 2026-09-14, see SAMPLE-PLANS.md".
+4. **Dossier screenshots** (`journeys/img/*`) are not regenerated; the addendum says
+   the images show the old sheet.
+5. Gates: docs only, `npm run check` (the TOC / guides stamps). One PR.
+
+Size S–M (an afternoon: one walk, a dozen addenda).

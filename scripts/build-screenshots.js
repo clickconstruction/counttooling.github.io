@@ -647,8 +647,8 @@ const SHOTS = [
       await takeoffSetup(page);
       await page.evaluate(() => {
         const s = window.state, App = window.App;
-        s.groups.push({ id: App.uid(), name: 'Restroom 105', color: '#e8c547' });
-        s.groups.push({ id: App.uid(), name: 'Restroom 106', color: '#4a9eff' });
+        s.groups.push({ id: App.uid(), name: 'Restroom 107', color: '#e8c547' });
+        s.groups.push({ id: App.uid(), name: 'Restroom 108', color: '#4a9eff' });
         const wc = s.counters.find((c) => c.name === 'Water Closet');
         const item = s.pages[0].canvases[0].annotations.counterMarkers[wc.id][0];
         App.openGroupAssignModal(item);

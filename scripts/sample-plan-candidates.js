@@ -323,6 +323,11 @@ function candidateA() {
 }
 
 // ---------------- Candidate B: restaurant plumbing plan (P-101) ----------------
+// Like candidate A, the plan is drawn at 12 px/ft in its own space and placed on the
+// sheet at PLAN_AT (0.75 → 9 pt/ft) so the engineered plan prints on a true ANSI B
+// sheet too (2026-09-14; it used to print at 918 × 594 pt, the size that trips Set
+// Scale's standard-sheet check). The legend, keynotes and title block sit in sheet
+// coordinates.
 // Round 2 (estimator feedback, 2026-09-14): the cook line sits along the hall wall
 // with the hood drawn over it (range, flat top, two fryers, a gas drop each); the
 // dish pit moved to the west back room so a PASS-THRU from the server station on
@@ -342,9 +347,9 @@ const gasDrop = (x, y) => `<circle cx="${x}" cy="${y}" r="2.4" fill="${INK}"/>`;
 const equip = (x, y, w, h, label, rot = 0) => `<g font-family="${F}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <text x="${x + w / 2}" y="${y + h / 2 + 2.5}" font-size="7" fill="#444" text-anchor="middle"${rot ? ` transform="rotate(${rot} ${x + w / 2} ${y + h / 2})"` : ''}>${label}</text></g>`;
 
-function candidateB() {
+function candidateBPlan() {
   const L = 130, R = 940, T = 100, B = 600;
-  return `${sheetFrame()}
+  return `
   <!-- outer wall (entry opening 480-510 masked out of the top run) -->
   <rect x="${L}" y="${T}" width="${R - L}" height="${B - T}" fill="#fff" stroke="${INK}" stroke-width="6"/>
   <line x1="480" y1="${T}" x2="510" y2="${T}" stroke="#fff" stroke-width="8"/>
@@ -555,6 +560,12 @@ function candidateB() {
 
   ${northArrow(990, 132)}
   ${scaleBar(130, 648)}
+
+`;
+}
+function candidateB() {
+  return `${sheetFrame()}
+  <g transform="translate(${PLAN_AT.x},${PLAN_AT.y}) scale(${PLAN_AT.k})">${candidateBPlan()}</g>
 
   <!-- line + symbol legend (bottom left, beside the scale bar) -->
   <g font-family="${F}" font-size="9.5" fill="${INK}">

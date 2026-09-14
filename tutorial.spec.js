@@ -22,7 +22,7 @@
  * done key (finishing it hides only its link), the project stamped plumbing on
  * open, and a do-it-for-me path that ends with three water closets, a 1in PEX
  * type with a hanger rule, three chained lavatories with a 3 ft riser on the
- * first run, a ×3 zone around Men 105, an RFI note, and the proof modal open.
+ * first run, a ×3 zone around Women 108, an RFI note, and the proof modal open.
  */
 const { test, expect } = require('@playwright/test');
 
@@ -223,7 +223,7 @@ test.describe('Interactive walkthrough', () => {
     const wc = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Water Closet'); const t = window.App.getEffectiveCustomIcons().find((i) => i.name === 'Toilet'); return { has: !!c, toilet: !!c && c.icon === t.value }; });
     expect(wc).toEqual({ has: true, toilet: true });
     await waitForStep(page, 'place');
-    // 5. three marks on the drawn water closets inside Men 105
+    // 5. three marks on the drawn water closets inside Women 108
     await page.click('#tourAction');
     const marks = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Water Closet'); return window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id]; });
     expect(marks.length).toBe(3);
@@ -248,7 +248,7 @@ test.describe('Interactive walkthrough', () => {
     // the hanger comes from the rulebook: PEX at 1 in → 32 in, stamped with its rule
     expect(await page.evaluate(() => window.state.lineTypes[0].childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }]);
     await waitForStep(page, 'zone');
-    // 10. the ×3 zone around Men 105 triples the water closets in the tally
+    // 10. the ×3 zone around Women 108 triples the water closets in the tally
     await page.click('#tourAction');
     expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).multiplyZones.map((z) => z.multiplier))).toEqual([3]);
     expect(await page.evaluate(() => window.getPipeToolingSummary())).toContain('Water Closet\t9');

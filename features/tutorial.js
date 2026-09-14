@@ -412,8 +412,8 @@
 
   // --- "do it for me" actions (the same entry points a click uses) --------------------
   // The two sample plans go through the app's own intake, exactly like a dropped
-  // file: the simple plan (today's office TI, the three tours' sheet) and the
-  // advanced plan (a restaurant plumbing sheet, Main St Restaurant P-101).
+  // file: the design-build sample plan (the office TI, the three tours' sheet) and
+  // the engineered sample plan (a restaurant plumbing sheet, Main St Restaurant P-101).
   const ADVANCED_PLAN = '/samples/sample-plan-advanced.pdf';
   async function openPlanFile(url, name) {
     try {
@@ -873,7 +873,7 @@
   try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) setTimeout(() => startTutorial(id), 600); } catch (_) {}
 
   App.startTutorial = startTutorial;
-  App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the advanced sample plan (restaurant plumbing sheet) through the intake
+  App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;
   App.isTutorialActive = () => active;
   App.onTutorialTick = () => { if (active) render(); };

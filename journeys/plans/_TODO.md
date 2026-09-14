@@ -1,5 +1,7 @@
 # TO DO — hand-off of the remaining build queue (written 2026-09-13)
 
+> **COMPLETE 2026-09-14.** D19–D25 shipped (Wave 3), the after-the-queue items are ticked below. What is still open is not a build: the three `[decision]` slots in [_STAGE6.md](_STAGE6.md), the day-7 telemetry re-read on 2026-09-19, and the standing drift patrol.
+
 > Will's call: stop after D18 lands; the rest is handed to whoever picks it up
 > next (a person or a fresh Claude session). Every unit below is a complete
 > brief — read this file, the ledger row, and the cited plan sections, and
@@ -158,9 +160,10 @@ the header value; copy with two layers and read the header; trim a room name
 from the plan).
 
 ## After the queue
-- Day-7 `duct_run` telemetry look (~2026-09-19): read-only `user_activity`
-  pull, note counts in _INDEX-DUCT.md.
-- Update JOURNEY-MAP's B19 row and _STAGE6.md `[decision]` slots to ☑ as
-  units land; the KB stays true the same way the guides do.
-- Drift patrol again after D25 (a single-journey re-walk of J5, J6, J11 and
-  J19 — the standing practice in _NEXT.md).
+- ☑ (early read 2026-09-14, re-read 2026-09-19) Day-7 `duct_run` telemetry look (~2026-09-19): read-only `user_activity`
+  pull, note counts in _INDEX-DUCT.md — zero duct_run in prod so far, pipe healthy.
+- ☑ 2026-09-14 Update JOURNEY-MAP's B19 row and _STAGE6.md `[decision]` slots to ☑ as
+  units land; the KB stays true the same way the guides do. (The three product-call
+  slots — X4 label design, the X6 re-drive ☑, the sequencing slot — are Will's.)
+- ☑ 2026-09-14 Drift patrol again after D25 (a single-journey re-walk of J5, J6, J11 and
+  J19 — the standing practice in _NEXT.md) — P3 in _INDEX-DUCT.md; its four papercuts shipped as B20.

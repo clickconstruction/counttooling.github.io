@@ -198,8 +198,8 @@ function candidateA() {
   <text x="912" y="150" font-family="${F}" font-size="8.5" fill="${INK}" text-anchor="middle">REF</text>
 
   <!-- janitor / mech: mop sink, WH, FD -->
-  ${mopSink(505, 415)}
-  ${waterHeater(548, 425, 14)}
+  ${mopSink(536, 399)}
+  ${waterHeater(564, 401, 14)}
   ${floorDrain(525, 560)}
 
   <!-- men 107: 2 stalls + wc on the bottom wall (2026-09-14: they used to sit on the top wall

@@ -7545,6 +7545,7 @@
   App.saveTradeModifiers = saveTradeModifiers;
   App.getQuickTrade = getQuickTrade;
   App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
+  App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;
   App.tradeIconForType = tradeIconForType;

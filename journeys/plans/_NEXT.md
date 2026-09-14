@@ -118,6 +118,8 @@ which gaps become features, which become "no, deliberately."
 > and the sequencing slot re-asked now that duct-by-size has shipped. Every
 > `[decision]` slot is blank — the conversation remains.
 
+> **STATUS 2026-09-14 — the sequencing slot is decided.** Will: candidate 3, plumbing fixture-unit sizing, IPC first, water only, mockups first. [WATER-PLAN.md](plans/WATER-PLAN.md) is the plan of record (model, rulebook slice, Bid Check, ladder, worked example, the six walkthrough questions); the "Water Sizing" artifact carries the six artboards for the plumber walkthrough. The X4 label-design slot and the X6 re-drive ☑ remain the open product calls.
+
 ## Standing practice — drift patrol
 After any major feature ships (e.g. HVAC duct), re-run a single-journey walk +
 verify for the affected journey and update its dossier — the KB stays true the

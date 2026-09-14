@@ -256,7 +256,7 @@ Recommendation, for the slot only: **2 then 3**, with 1 run as a program unit
 in the gap between them (it is mostly agents, not code). The X ladder is a
 week of small branches that retires this document's reason to exist; the
 plumbing skin is the build that moves the core user, and the mockup rounds
-can start while the X ladder ships. `[decision]` ____
+can start while the X ladder ships. `[decision]` **3 — plumbing fixture-unit sizing (Will, 2026-09-14): IPC first, water only, mockups before code.** Plan of record: [WATER-PLAN.md](WATER-PLAN.md); the X ladder had already shipped as D20–D25; candidate 1 (the J20 electrical dossier walk) runs as a program unit in the gaps.
 
 ## After the session
 

@@ -121,6 +121,8 @@ which gaps become features, which become "no, deliberately."
 > **STATUS 2026-09-14 — the sequencing slot is decided.** Will: candidate 3, plumbing fixture-unit sizing, IPC first, water only, mockups first. [WATER-PLAN.md](plans/WATER-PLAN.md) is the plan of record (model, rulebook slice, Bid Check, ladder, worked example, the six walkthrough questions); the "Water Sizing" artifact carries the six artboards for the plumber walkthrough. The X4 label-design slot and the X6 re-drive ☑ remain the open product calls.
 >
 > **2026-09-14 — the water-sizing mockup round is decided** (six of six, recorded in WATER-PLAN.md's status block: new run from here · velocity cap at S with the pressure check in Bid Check · project occupancy + per-counter flip · side on the line type · size-first chip · water first, DWV next). The §6 ladder is unblocked; rung 1 is the rulebook slice.
+>
+> **2026-09-14 — the two sample plans get a plan of record:** [SAMPLE-PLANS.md](plans/SAMPLE-PLANS.md). The owner's reframing: the simple plan teaches design-build (inputs, no answers — candidate A promoted), the advanced plan grows into a three-sheet engineered set (P/E/M) that the app-use tours re-target; design lessons per trade follow on the design sheet. Four `[decision]` slots, all the owner's.
 
 > **2026-09-14, sample plans:** two sheets now — A (simple, office TI, parked in
 > `scripts/sample-plan-candidates.js`, polish hand-off in [plans/_TODO.md](plans/_TODO.md))

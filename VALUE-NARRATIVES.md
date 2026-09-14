@@ -52,9 +52,9 @@ CountTooling *proves* its numbers are right, in front of the customer.
 
 **The scale that catches its own mistake.** On a rescaled ("compressed") PDF, apply a
 preset with the wrong sheet guess still selected, then run **Verify by measuring**: click
-both ends of a printed 65'-0" dimension and type 65. The app answers: *"Expected 65'-0" /
-Current scale reads 173'-1" / Off by about 166% (reads long). Use measured to fix it."*
-One click on **Use measured** and the plan carries a dashed 65'-0" reference line pinned
+both ends of a printed 67'-4" dimension and type 67'-4". The app answers: *"Expected 67'-4" /
+Current scale reads 179'-4" / Off by about 166% (reads long). Use measured to fix it."*
+One click on **Use measured** and the plan carries a dashed 67'-4" reference line pinned
 exactly where you clicked — the receipt. *Claim:* CountTooling detects rescaled sheets,
 walks corrected scales straight into a two-click verification, and names the size of any
 error in plain English — the exact failure mode that silently ruins bids elsewhere.
@@ -98,7 +98,7 @@ the totals, never by cloning marks.
 → [Scale zones and multiply zones](/guides/scale-zones-and-multiply-zones/)
 
 **Rooms to ft² and ft³ in one pass.** Two clicks across Office 101 — the dialog already
-knows "23'-11" × 20'-1" — 479 ft² Floor Area". Type a ceiling height of 9 and "3,665 ft³
+knows "14'-2" × 20'-0" — 283 ft² Floor Area". Type a ceiling height of 9 and "2,550 ft³
 Air Volume" appears live. Apply: the room is labeled on the plan, the sidebar tallies area
 and volume, and the next room is already armed with your height. *Claim:* equipment-sizing
 math falls out of the takeoff as you draw it.

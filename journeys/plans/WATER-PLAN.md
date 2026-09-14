@@ -189,15 +189,15 @@ before the ladder is called done — the DUCT-PLAN discipline).
 
 ## 7. Worked example (the sample plan, for the mockups and future specs)
 
-Men 105 on `sample-plan.pdf`, public occupancy. Illustrative values —
+Women 108 on `sample-plan.pdf` (the design-build sample plan, since 2026-09-14), public occupancy. Illustrative values —
 the slice transcribes the real ones:
 
-- 3 lavatories on the south wall, on one cold branch. Lavatory (public)
+- 3 lavatories on the north-wall counter, on one cold branch. Lavatory (public)
   ≈ 1.5 WSFU cold each → **4.5 WSFU** at the branch root → demand curve
   ≈ **4 gpm** (flush-tank column). Cold cap 8 fps: 1/2″ PEX (ID ≈ 0.48″)
   runs ≈ 7 fps ✓ → *suggests 1/2″*; hot at 5 fps on the same three lavs
   (≈ 1.5 hot each) → 1/2″ ≈ 7 fps ⚠ → *suggests 3/4″ @ 3.2 fps*.
-- Add the 3 water closets (flush tank, public ≈ 2.5 cold each) upstream:
+- Add the 3 water closets in the stalls on the south wall (flush tank, public ≈ 2.5 cold each) upstream:
   **12 WSFU** cold → ≈ 8 gpm → 1/2″ ≈ 14 fps ⚠, 3/4″ (ID ≈ 0.68″) ≈ 7 fps ✓
   → *suggests 3/4″*; the branch to the lavs steps down to 1/2″ after the
   last WC — "a new run from here."
@@ -214,7 +214,7 @@ DUCT-PLAN got on day 7.
 
 ## 9. The mockup round — what the walkthrough must decide
 
-The six artboards (the "Water Sizing" artifact) walk Men 105 end to end.
+The six artboards (the "Water Sizing" artifact) walk the restroom end to end (drawn against the old sheet's Men 105; the design lesson runs on Women 108).
 Questions, in the order they change the build:
 
 - **Q1 — one size per run.** ☑ *New run from here.* Is "taking a smaller size at S ends this run

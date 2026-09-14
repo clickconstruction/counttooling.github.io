@@ -17,18 +17,20 @@ async function boot(page, errors) {
   await page.waitForFunction(() => window.App && window.state);
 }
 
-test.describe('Advanced sample plan', () => {
+test.describe('Engineered (advanced) sample plan', () => {
   test('the empty canvas offers it beside the tours and opens it through the intake', async ({ page }) => {
     const errors = [];
     await boot(page, errors);
     const link = page.locator('#canvasEmptyHintAdvancedPlan');
     await expect(link).toBeVisible();
-    await expect(link).toHaveText('advanced sample plan');
+    await expect(link).toHaveText('engineered sample plan');
     await expect(page.locator('#canvasEmptyHintAdvancedSep')).toBeVisible();   // the tours are not done: the separator shows
     await link.click();
     await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     expect(await page.evaluate(() => window.state.pages[0].label)).toContain('sample-plan-advanced');
+    // a true ANSI B sheet (2026-09-14): Set Scale shows no sheet-size warning on it
+    expect(await page.evaluate(() => window.App.getPageSheetAnalysis(0).isStandard)).toBe(true);
     // the sheet's text layer carries the restaurant's room names (a real PDF, not a scan)
     await page.evaluate(() => { window.App.pageTextItems(0); });   // kicks the lazy text-layer fetch (the room-labels idiom)
     await page.waitForFunction(() => window.App.pageTextItems(0).length > 0, null, { timeout: 15000 });

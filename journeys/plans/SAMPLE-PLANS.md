@@ -13,8 +13,12 @@
 > true ANSI B, plan at 9 pt/ft) with the §2 inputs — room schedule, LP-1, RTU-1 / service /
 > gas notes, the design-build note — and the two review fixes; the three tours, their spec
 > and the guide screenshots are re-pinned. Not done in that rung: the entry-point rename
-> (§6's fourth decision). The advanced sheet still prints at 918 × 594 pt; move it to the
-> same ANSI B composition when the set's scale lesson is built (§3).
+> (§6's fourth decision) — taken later the same day, see §6.
+>
+> **Same day, the sweep:** the engineered plan moved to the same true ANSI B composition
+> (`candidateBPlan()` at `PLAN_AT`); the names landed; the old sheet's figures left the
+> scale guide, the value narratives and the architecture map; the drift patrol the
+> dossiers are owed is [_TODO.md → D26](_TODO.md#d26--drift-patrol-after-the-sample-plan-promotion).
 
 ## 1. The distinction, in the app's terms
 
@@ -140,7 +144,7 @@ full suite at push checkpoints, a live walk before the ladder is called done).
 - **Tours move to the set; lessons are new.** Alternative: keep the tours on the
   design sheet and write app-use tours fresh. Recommended: move — the tours already
   teach reading, and a design sheet has nothing to read. `[decision]` ____
-- **Names:** "design-build sample" / "sample set". `[decision]` ____
+- **Names:** "design-build sample" / "sample set". `[decision]` **Taken 2026-09-14 (owner: "do the small and medium now"): "design-build sample plan" and "engineered sample plan"** in the empty-canvas hint, Project Settings and the docs; "sample set" waits until E-101 / M-101 exist and the one sheet becomes a set.
 
 ## 7. Telemetry
 

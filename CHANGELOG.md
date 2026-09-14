@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(settings): Project Settings reachable on small viewports; the project rows as one section (2026-09-14)
+
+Reported from a phone-sized window: the settings sheet had grown (Trade, Codes, Jurisdiction,
+Ceiling height + make-up, three tour links) past the viewport, and its top, Save Project to
+Cloud, sat off-screen with no way to reach it: a flex-centred card taller than its container
+overflows equally above and below, and the part above the viewport cannot be scrolled to.
+(Re-applied from claude/settings-modal-small-viewports, 2026-09-08, onto today's block.)
+
+- **Safe centring for every modal.** `.modal-card` carries `margin: auto` and `.modal-overlay`
+  scrolls (`overflow-y: auto`, `overscroll-behavior: contain`), so a card taller than the
+  viewport starts at the top and the overlay scrolls instead of centring it off-screen. Card
+  max-height also uses `dvh` (with the `vh` fallback) so mobile browser chrome does not eat
+  the bottom.
+- **One "This project" section.** Trade, Codes, Jurisdiction, Ceiling height + make-up and
+  Use groups move out of inline-styled `.form-group` rows into a labelled section between the
+  cloud actions and the footer; the app-level links (quick keys, shortcuts, the three tours)
+  and Advanced come last. Every id is unchanged.
+- **Phone layout.** Rows marked `-stack` wrap their control under the label at ≤768px: the
+  trade segment goes full width with 44px targets, the inputs and selects grow to 44px tall.
+- `settings-modal.spec.js` (4): the card fits and scrolls at 375×812 and 820×560, the last row
+  is reachable, the trade segment and ceiling input work at phone width, the overlay scrolls
+  even with the card's max-height removed, and the row order holds.
+
+---
+
 ## feat(duct): D17 — the J19 stumbles (2026-09-13)
 
 The drift patrol's J19 walk (journeys/duct-takeoff.md) and the J5/J6 re-walks filed five

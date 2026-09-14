@@ -80,7 +80,7 @@
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
-    opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
+    opts.scope = { mode: mode || 'all', layers: layers || null, everyLayer: everyLayerFlag(mode) };   // D25: the paste header names the scope + layers
     let text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
     if (!text) {
       App.showToast('No items to summarize. Add counters or line types first.', 3000);
@@ -152,7 +152,7 @@
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
-    opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
+    opts.scope = { mode: mode || 'all', layers: layers || null, everyLayer: everyLayerFlag(mode) };   // D25: the paste header names the scope + layers
     const payload = typeof window.getTakeoffToolingPayload === 'function' ? window.getTakeoffToolingPayload(opts) : null;
     if (!payload || !payload.items.length) {
       App.showToast('Nothing to hand off. Add counters or line types first.');
@@ -382,14 +382,24 @@
         names.set(n, e);
       });
     });
-    return { show: multi, layers: [...names.values()] };
+    // Everything (2026-09-14, Will: "everything be every layer on every page")
+    // is every layer on every sheet, full stop: the picker shows them all
+    // ticked and locked so the menu says what the copy holds, and nothing on
+    // screen can narrow it. This sheet keeps the on-screen default + the picker.
+    const layers = [...names.values()];
+    if (mode === 'all') layers.forEach((l) => { l.checked = true; l.locked = true; });
+    return { show: multi, layers };
   }
+  function everyLayerFlag(mode) { return mode === 'all' && layerPickerModel('all').show; }
   function renderLayerPicker(pickerEl, mode, force) {
     if (!pickerEl) return;
     if (!force && pickerEl.dataset.mode === mode) return;   // same scope: keep the estimator's ticks
-    // Ticks made for the other scope carry over by name; a fresh open (force)
+    // This sheet's ticks survive a hover across Everything (whose rows are all
+    // locked, so it has no ticks of its own to carry); a fresh open (force)
     // starts from what is on screen — "pre-checked to what is visible at copy time".
-    const carry = (!force && pickerEl.dataset.mode) ? new Set(pickedLayers(pickerEl) || []) : null;
+    if (force) delete pickerEl.dataset.sheetTicks;
+    else if (pickerEl.dataset.mode === 'this-canvas') pickerEl.dataset.sheetTicks = JSON.stringify(pickedLayers(pickerEl) || []);
+    const carry = (!force && mode === 'this-canvas' && pickerEl.dataset.sheetTicks) ? new Set(JSON.parse(pickerEl.dataset.sheetTicks)) : null;
     pickerEl.dataset.mode = mode;
     const model = layerPickerModel(mode);
     if (carry) model.layers.forEach((l) => { if (!l.locked) l.checked = carry.has(l.name); });
@@ -398,12 +408,12 @@
     if (!model.show) return;
     const title = document.createElement('div');
     title.className = 'copy-layer-picker-title';
-    title.textContent = 'Layers';
+    title.textContent = mode === 'all' ? 'Every layer' : 'Layers';
     pickerEl.appendChild(title);
     model.layers.forEach((l) => {
       const lab = document.createElement('label');
       lab.className = l.locked ? 'locked' : '';
-      lab.title = l.locked ? 'The active layer is always included' : '';
+      lab.title = l.locked ? (mode === 'all' ? 'Everything includes every layer on every sheet' : 'The active layer is always included') : '';
       const cb = document.createElement('input');
       cb.type = 'checkbox'; cb.checked = l.checked; cb.disabled = l.locked; cb.dataset.layerName = l.name;
       cb.onclick = (e) => e.stopPropagation();   // the menu's outside-click must not close on a tick
@@ -424,6 +434,7 @@
   // a spec driving the option directly) must still copy WHAT IS ON SCREEN —
   // the option-D default — never fall back to merging every layer.
   function layersFor(pickerEl, mode) {
+    if (mode === 'all') return null;   // Everything = every layer; the getter is the full merge, the header says so
     if (pickerEl && pickerEl.dataset.mode === mode) return pickedLayers(pickerEl);
     const model = layerPickerModel(mode);
     return model.show ? model.layers.filter((l) => l.checked).map((l) => l.name) : null;
@@ -497,7 +508,7 @@
       // in scope has one layer, so active == everything and no header is needed).
       const layers = layersFor(document.getElementById('pipeToolingLayerPicker'), mode);
       if (mode === 'this-canvas') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), [App.state.currentPage], doCopyPipeTooling, 'pipe-tooling', mode, null, layers);
-      else if (mode === 'all') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), null, doCopyPipeTooling, 'pipe-tooling', mode, null, layers);
+      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyPipeTooling, 'pipe-tooling', mode, null, layers);   // every layer on every sheet
     };
   });
 
@@ -540,7 +551,7 @@
       // in scope has one layer, so active == everything and no header is needed).
       const layers = layersFor(document.getElementById('takeoffToolingLayerPicker'), mode);
       if (mode === 'this-canvas') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), [App.state.currentPage], doOpenTakeoffTooling, 'takeoff-tooling', mode, null, layers);
-      else if (mode === 'all') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), null, doOpenTakeoffTooling, 'takeoff-tooling', mode, null, layers);
+      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doOpenTakeoffTooling, 'takeoff-tooling', mode, null, layers);   // every layer on every sheet
     };
   });
 
@@ -582,7 +593,7 @@
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
-    opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
+    opts.scope = { mode: mode || 'all', layers: layers || null, everyLayer: everyLayerFlag(mode) };   // D25: the paste header names the scope + layers
     const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary(opts) : '';
     if (!text) {
       App.showToast('No items to summarize. Add counters or line types first.', 3000);
@@ -609,7 +620,7 @@
       // in scope has one layer, so active == everything and no header is needed).
       const layers = layersFor(document.getElementById('copySummaryLayerPicker'), mode);
       if (mode === 'this-canvas') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), [App.state.currentPage], doCopyEmailSummary, 'email-summary', mode, null, layers);
-      else if (mode === 'all') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), null, doCopyEmailSummary, 'email-summary', mode, null, layers);
+      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyEmailSummary, 'email-summary', mode, null, layers);   // every layer on every sheet
     };
   });
 

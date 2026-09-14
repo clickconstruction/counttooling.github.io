@@ -479,7 +479,8 @@
     if (!sc) return null;
     const name = (window.state && state.currentProjectName) || 'Untitled';
     const parts = ['Counts, ' + name, sc.mode === 'this-canvas' ? 'this sheet' : 'every sheet'];
-    if (Array.isArray(sc.layers) && sc.layers.length) parts.push('layers: ' + sc.layers.join(', '));
+    if (sc.everyLayer) parts.push('every layer');   // Everything on a layered project (2026-09-14)
+    else if (Array.isArray(sc.layers) && sc.layers.length) parts.push('layers: ' + sc.layers.join(', '));
     return parts.join(' · ');
   }
   function getPipeToolingSummary(options) {

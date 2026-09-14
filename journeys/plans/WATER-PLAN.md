@@ -1,0 +1,216 @@
+# Water sizing by fixture units — plan of record (draft for the mockup round)
+
+> Status 2026-09-14: the Stage-6 sequencing slot resolved (Will, 2026-09-14):
+> **candidate 3 — plumbing fixture-unit sizing, IPC first, water only,
+> mockups before code.** This is the plan the mockup round refines; nothing
+> here is built. The artboards for the plumber walkthrough are the "Water
+> Sizing" artifact (six boards, listed in §9; private, ask Stephen for the
+> link — https://claude.ai/code/artifact/4aeb6e7b-7aab-41e2-ba3c-dca15af6404a). The electrical J20 dossier walk
+> (candidate 1) runs as a program unit in the gaps.
+
+The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
+the S moment is the plumbing analogue of duct-by-size, riding the seams
+DUCT-PLAN named — the size chip, the `S` popover, the schedule, the export
+gate, the rulebook chips — so the smart-run pattern reads as a product, not
+two features. The P persona is the daily core (J4/J5 carry the telemetry
+weight) and today has one auto Bid Check row (hangers). This gives it the rest.
+
+## 1. The model (water only, IPC first)
+
+- **A fixture carries its water supply fixture units.** A counter gets an
+  optional **WSFU** field under **More ▸ water supply** (the CFM field's
+  twin, folded away on non-plumbing projects, open by itself on a plumbing
+  one). The rulebook fills it from the counter's name the way the hanger
+  rule reads a material off a line type: *Lavatory* → the IPC Table
+  E103.3(2) value for the project's **occupancy** (private / public, one
+  project-level toggle beside the code edition; public is the default on a
+  commercial bid). A chip beside the field names the rule and the value it
+  read (*→ 2.0 WSFU · public lavatory · IPC E103.3(2)*); type over it and
+  the counter keeps yours. A placed mark can carry its own override
+  (right-click → *WSFU for this one…*), the CFM-override precedent.
+- **A water run is a line whose type says hot or cold.** *Water side* is a
+  property of the line type (the airside precedent: Supply/Return/Exhaust →
+  **Hot / Cold**), set on the Quick Line tab and in the type's details;
+  the Quick Line name still assembles as *3/4in PEX*, and the size in the
+  name is the size the rules read (`supportSizeInFromName` already parses
+  it). Runs with no water side are what they are today: pipe with a length.
+- **Fixtures belong to the run that serves them.** The same attachment the
+  duct model uses (snap distance on the sheet, dashed leader, *Attach to
+  nearest run* rescue) puts a fixture on a run; a run started on a run is a
+  branch of it (the tap precedent). Nothing new to draw.
+- **Downstream fixture units are computed at the cursor.** While a water
+  run is being traced, the chip riding the cursor reads the WSFU of every
+  attached fixture *not yet served by a committed branch* beyond that point
+  — the ductulator's "air still to serve," in fixture units — converts it
+  to a design flow through the IPC demand curve (Table E103.3(3), flush-tank
+  or flush-valve column by the fixtures present), and suggests the smallest
+  nominal size whose velocity stays under the cap for that side:
+  *"6 WSFU downstream · 5 gpm · suggests 3/4″ @ 5 fps. S accepts."*
+  Press `S` and the suggestion sits at the top of the popover; one tap takes
+  it. Suggestions only ever *inform* — the size never changes unless you
+  take it.
+- **A size change is a new run from here.** Water mains step down as
+  fixtures peel off, but a line has one size (its type). Taking a smaller
+  size at `S` ends the current run at the last point and starts the next
+  one there in the sized type (the Chain tool's "run back to the previous
+  one" shape, forward); the two share the point, so drops and hangers
+  count once. This keeps every existing export, spec and report untouched
+  — no size segments on lines — and is the decision the walkthrough must
+  confirm (§9, Q1).
+- **The Water Sizing schedule prices like a bid.** Per run: side, WSFU
+  served, design gpm, size, velocity at that size, ✓ / ⚠ (over the cap, or
+  under a fixture-supply minimum), with hot and cold totals; the two knobs
+  (velocity cap per side, occupancy) live at its foot and stick with the
+  project. It rides Show Report / Export PDFs as a table and Copy Summary /
+  Copy to /Tooling as a `--- Water sizing ---` block, the `--- Duct ---`
+  precedent.
+
+## 2. The rulebook slice (IPC 2018 / 2021, Appendix E) — transcribed, not typed
+
+Every number the app applies must be a rulebook rule with a `code:` pointer
+into the data table that uses it (`npm run build:rules` checks them against
+each other on every build). The slice, in the order the ladder needs it:
+
+| Rule | Source | The app uses it for |
+|---|---|---|
+| `plumb.wsfu.fixtures` — load values per fixture, private and public columns, hot/cold/total | IPC Table E103.3(2) | the counter's WSFU prefill by name; the sidebar chip |
+| `plumb.wsfu.demand` — WSFU → gpm, flush-tank and flush-valve columns | IPC Table E103.3(3) | the design flow behind every suggestion |
+| `plumb.water.velocity` — maximum velocity per side (defaults: cold 8 fps, hot 5 fps) | not a code table: the trade's design practice (manufacturer / ASPE guidance; the IPC method sizes by pressure and length, §3 below) | the size pick; editable knob, stamped "practice, not code" |
+| `plumb.water.pipe-id` — nominal size → inside diameter for the materials the Quick Line knows (PEX, copper L, CPVC, galvanized) | manufacturer / ASTM dimensions | velocity = gpm ÷ area |
+| `plumb.water.fixture-supply-min` — minimum fixture supply pipe size per fixture | IPC Table 604.4 | the ⚠ on a branch smaller than its fixture's minimum; a Bid Check row |
+| `plumb.water.distribution-min` — minimum building supply and distribution sizes | IPC 604.3 / 604.4 | a Bid Check row |
+
+**The values in the mockups are illustrative.** The slice is written by
+transcribing the code tables (2018 and 2021 editions, with the project's
+edition chip already on every rule pop-over) and is checked by the plumber
+walkthrough before the first branch merges. No number in this plan or on an
+artboard is a claim about the code.
+
+## 3. Deliberately a rule of thumb (keep the spirit)
+
+The IPC Appendix E method sizes by **pressure available and developed
+length** (Tables E103.3(4)–(7): the pressure range, the equivalent length of
+the critical run, the friction loss per 100 ft). That is the master's full
+calculation, and it is the analogue of the duct's *static path* row — it
+belongs to Bid Check, not to the S moment. The S moment gives the size an
+experienced estimator would pencil in on a walk-through (fixture units →
+demand → a velocity-capped size), which is exactly what the ductulator
+suggestion is for air. The gap between the two is stated on the schedule
+foot (*"sized at 5/8 fps; the pressure check is Bid Check's"*) so nobody
+mistakes a rule of thumb for a design.
+
+Out with it, for the same reasons DUCT-PLAN kept them out: **drainage
+(DFU → DWV sizing, slope, vent sizing)** — the second slice, after water
+proves the shape; **hot-water recirculation**; **water-heater sizing**;
+**labor/dollars** (sizes and counts are the handoff; pricing stays in
+PipeTooling); **auto-tracing**.
+
+## 4. The Bid Check (the pattern's sign-off)
+
+Auto rows, arriving as their computations land:
+
+1. **Every water run sized for its fixture units** — the schedule's ⚠
+   count: runs whose velocity at the taken size exceeds the cap for their
+   side. Names the run and the size that passes (*"Lav battery cold: 1/2″ at
+   9.2 fps ⚠ → 3/4″ 4.1 fps ✓"*).
+2. **Fixture supply minimums** — a fixture attached to a branch smaller
+   than IPC Table 604.4 allows (*"WC flush valve on 3/4″; needs 1″"*).
+3. **Every fixture served** — the *strays* row: fixtures with a WSFU and no
+   run (the *Attach to nearest run* rescue clears it).
+4. **Scale set on every water sheet** — the same rule duct has.
+
+Manual rows (tickable while bidding, persisted with the bid): *Pressure
+available checked (Appendix E)* (the self-upgrading candidate once the
+critical-path math exists), *Backflow at hose bibbs and equipment*,
+*Water heater sized for the load*, *Recirculation where the code asks*.
+The export gate is the one duct has — the badge, the corner toast,
+*Review · Export anyway* remembered until the set changes.
+
+## 5. Where it lives in the app (seams, not new surfaces)
+
+| Surface | Reuses | New |
+|---|---|---|
+| Counter Create / Quick Count / settings | the CFM field's disclosure, chip, per-mark override modal (`duct-suggest.js`) | a `wsfu` field; the name → WSFU prefill |
+| Quick Line + line-type details | the raceway/airside pattern (`lineType.waterSide`) | Hot / Cold picker |
+| Tracing | the cursor chip, `S` popover sections (`registerDuctPopoverSection`), attachment + leaders, downstream walk (`duct-model.js`) | a water-model twin of the downstream walk over quickLines/polylines |
+| Sidebar | Line Types rows | a WSFU / gpm / velocity readout per water run; the ⚠ tag |
+| Schedule | the Duct Schedule modal, its knobs foot, Copy Schedule | the Water Sizing table |
+| Bid Check | `bid-check.js` auto/manual rows, the gate | the four rows above |
+| Exports | report.js tables, the `--- Duct ---` block writer | `--- Water sizing ---` |
+| Rulebook | `content/rules/plumbing/*.md`, `build:rules` checks | six rules (§2) |
+
+Data rides existing objects (the AGENTS rule): a counter's `wsfu`
+(+ `wsfuOverride` on a mark), a line type's `waterSide`, the project's
+`occupancy` and the two velocity caps in project settings; every one in
+save/load, export/import and the Artboard for free.
+
+## 6. Suggested build ladder (after the mockup round)
+
+1. **Rulebook slice** (§2) — six rules with `code:` pointers, checked by
+   the walkthrough; the project occupancy toggle beside the edition.
+2. **Fixture units on counters** — the field, the prefill, the chip, the
+   per-mark override; nothing else changes yet (an estimator can already
+   read total WSFU per sheet in the Summary).
+3. **Water side on line types + attachment** — Hot/Cold, fixtures attach,
+   leaders paint, the strays rescue; the sidebar readout shows WSFU served
+   per run.
+4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
+   the popover suggestion; "a size change is a new run from here."
+5. **Water Sizing schedule + exports** — the table, its knobs, Copy
+   Schedule, the `--- Water sizing ---` block, report table.
+6. **Bid Check rows + gate**; the guide + a fourth tour step set
+   ("Size the branch at S") in the plumbing walkthrough.
+
+Each rung is one topic branch on the house loop (targeted specs +
+`npm run check` per unit, the full suite at push checkpoints, a live walk
+before the ladder is called done — the DUCT-PLAN discipline).
+
+## 7. Worked example (the sample plan, for the mockups and future specs)
+
+Men 105 on `sample-plan.pdf`, public occupancy. Illustrative values —
+the slice transcribes the real ones:
+
+- 3 lavatories on the south wall, on one cold branch. Lavatory (public)
+  ≈ 1.5 WSFU cold each → **4.5 WSFU** at the branch root → demand curve
+  ≈ **4 gpm** (flush-tank column). Cold cap 8 fps: 1/2″ PEX (ID ≈ 0.48″)
+  runs ≈ 7 fps ✓ → *suggests 1/2″*; hot at 5 fps on the same three lavs
+  (≈ 1.5 hot each) → 1/2″ ≈ 7 fps ⚠ → *suggests 3/4″ @ 3.2 fps*.
+- Add the 3 water closets (flush tank, public ≈ 2.5 cold each) upstream:
+  **12 WSFU** cold → ≈ 8 gpm → 1/2″ ≈ 14 fps ⚠, 3/4″ (ID ≈ 0.68″) ≈ 7 fps ✓
+  → *suggests 3/4″*; the branch to the lavs steps down to 1/2″ after the
+  last WC — "a new run from here."
+- Bid Check: with the lav branch left at 1/2″ hot, row 1 reads *"Lav
+  battery hot: 1/2″ at 7.1 fps ⚠ → 3/4″ 3.2 fps ✓"*; attach the fourth
+  lav and row 3 clears.
+
+## 8. Telemetry (the day-7 line, again)
+
+`water_run` (segments, WSFU served, gpm, size, side, suggestionTaken) on
+commit; `wsfu_prefill` (accepted / overwritten) on counter create;
+`bid_check_row_state` already carries the rows. The same read-only pull
+DUCT-PLAN got on day 7.
+
+## 9. The mockup round — what the walkthrough must decide
+
+The six artboards (the "Water Sizing" artifact) walk Men 105 end to end.
+Questions, in the order they change the build:
+
+- **Q1 — one size per run.** Is "taking a smaller size at S ends this run
+  and starts the next" how a plumber thinks about a stepped main, or does
+  the trace want size segments like duct? (Segments cost the line model,
+  every export and the specs; the answer decides ladder rung 4.)
+- **Q2 — the cap, not the pressure.** Is a velocity-capped size the number
+  you would pencil in, with the Appendix E pressure check as a Bid Check
+  row — or is a suggestion without the pressure math not worth showing?
+- **Q3 — occupancy.** One project-level private/public toggle, or per
+  counter (a private lav and a public lav on one job)?
+- **Q4 — hot and cold as line types.** Two line types per size and
+  material (*3/4in PEX hot*, *3/4in PEX cold*) versus a side flag on the
+  run: which keeps the Line Types list readable on a real bid?
+- **Q5 — the chip's words.** *"6 WSFU downstream · 5 gpm · suggests 3/4″
+  @ 5 fps. S accepts"* — is gpm noise to an estimator, or the number they
+  trust?
+- **Q6 — what stays out.** Drainage next, or is DWV the half a plumber
+  actually wanted first?
+
+Decisions land in this file's status block, the way DUCT-PLAN's did.

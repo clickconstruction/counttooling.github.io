@@ -1804,6 +1804,13 @@ body.tour-active .canvas-empty-hint { display: none; }
 /* D24: the "from the plan" note under the new-room name. */
 .room-box-name-note { margin-top: 6px; font-size: 0.82rem; color: var(--text2); }
 .room-box-name-note[hidden] { display: none !important; }
+/* D25 (X6 option D): the copy menus' layer picker. */
+.copy-layer-picker { border-top: 1px solid var(--border); margin-top: 4px; padding: 6px 10px 4px; }
+.copy-layer-picker[hidden] { display: none !important; }
+.copy-layer-picker-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text3); margin-bottom: 4px; }
+.copy-layer-picker label { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 0.88rem; color: var(--text); cursor: pointer; }
+.copy-layer-picker label.locked { color: var(--text2); cursor: default; }
+.copy-layer-picker input { width: auto; margin: 0; flex: 0 0 auto; }
 
 /* D8 polish: the second schedule knobs row (deck height / max flex / VD per
    tap), the schedule's Flex section (⚠ label + "not in bid weight" sublabel),

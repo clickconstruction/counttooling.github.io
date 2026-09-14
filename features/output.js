@@ -75,11 +75,12 @@
     alert('Nothing was copied — the browser blocked clipboard access. Click the copy button again, and allow clipboard access if the browser asks.');
   }
 
-  async function doCopyPipeTooling(getAnnFn, pageIndices, mode) {
+  async function doCopyPipeTooling(getAnnFn, pageIndices, mode, layers) {
     const state = App.state;
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
+    opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
     let text = typeof window.getPipeToolingSummary === 'function' ? window.getPipeToolingSummary(opts) : '';
     if (!text) {
       alert('No items to summarize. Add counters or line types first.');
@@ -121,7 +122,7 @@
       : '';
     try {
       await navigator.clipboard.writeText(text);
-      App.logUserEvent('copy_summary', state.currentProjectId || null, { surface: 'pipe-tooling', mode: mode || 'visible' });
+      App.logUserEvent('copy_summary', state.currentProjectId || null, { surface: 'pipe-tooling', mode: mode || 'all', layers: layers ? layers.length : null });
       if (noLinkToast) {
         App.showToast(splitText ? noLinkToast + ' ' + splitText + '.' : noLinkToast);
       } else {
@@ -146,11 +147,12 @@
   function encodeHandoffPayload(obj) {
     return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
   }
-  async function doOpenTakeoffTooling(getAnnFn, pageIndices, mode) {
+  async function doOpenTakeoffTooling(getAnnFn, pageIndices, mode, layers) {
     const state = App.state;
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
+    opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
     const payload = typeof window.getTakeoffToolingPayload === 'function' ? window.getTakeoffToolingPayload(opts) : null;
     if (!payload || !payload.items.length) {
       App.showToast('Nothing to hand off. Add counters or line types first.');
@@ -232,16 +234,16 @@
   // anyway" toast, only with duct present and rows unresolved; proceed() is
   // synchronous otherwise so the clipboard gesture survives). Wrapped HERE so
   // the scale gate's Export-anyway and the Copy-again resume run it too.
-  async function runGatedCopy(getAnnFn, pageIndices, doCopyRaw, surface, mode, collectFlagged) {
+  async function runGatedCopy(getAnnFn, pageIndices, doCopyRaw, surface, mode, collectFlagged, layers) {
     resumeToolingExport = null;   // a fresh copy attempt supersedes any pending Copy-again resume
     const bidGate = App.runDuctBidGate;
     const doCopy = bidGate && (surface === 'pipe-tooling' || surface === 'takeoff-tooling')
-      ? (a, b, c) => bidGate(() => doCopyRaw(a, b, c), surface)
+      ? (a, b, c, d) => bidGate(() => doCopyRaw(a, b, c, d), surface)
       : doCopyRaw;
     const collect = collectFlagged || collectUnscaledLinePages;
     const flagged = collect(getAnnFn, pageIndices);
     if (flagged.length) {
-      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, surface, mode, collectFlagged: collect };
+      pendingToolingExport = { getAnnFn, pageIndices, firstIdx: flagged[0], doCopy, surface, mode, collectFlagged: collect, layers };
       App.logUserEvent('unscaled_ft_block', App.state.currentProjectId || null,
         { surface, flaggedPages: flagged.length });
       const listEl = document.getElementById('toolingScaleCheckList');
@@ -256,7 +258,7 @@
       App.showModal('toolingScaleCheckModal');
       return;
     }
-    await doCopy(getAnnFn, pageIndices, mode);
+    await doCopy(getAnnFn, pageIndices, mode, layers);
     App.showBidCheckAdvisory && App.showBidCheckAdvisory(surface);   // S5: advisory, never a block
   }
 
@@ -270,7 +272,7 @@
       App.hideModal('toolingScaleCheckModal');
       // The click itself is the user gesture, so the clipboard write inside
       // the stashed doCopy stays permitted (same constraint as the dropdown).
-      if (pending) await pending.doCopy(pending.getAnnFn, pending.pageIndices, pending.mode);
+      if (pending) await pending.doCopy(pending.getAnnFn, pending.pageIndices, pending.mode, pending.layers);
     };
   }
   if (toolingScaleCheckGoSet) {
@@ -311,7 +313,7 @@
       if (!resume || resume.projectId !== App.state.currentProjectId) return;
       // The click is the user gesture: the gate re-walks synchronously and the
       // clipboard write inside the stashed doCopy stays permitted.
-      await runGatedCopy(resume.getAnnFn, resume.pageIndices, resume.doCopy, resume.surface, resume.mode, resume.collectFlagged);
+      await runGatedCopy(resume.getAnnFn, resume.pageIndices, resume.doCopy, resume.surface, resume.mode, resume.collectFlagged, resume.layers);
     };
   }
   // The gate is the shared machinery — Copy Schedule (features/duct-schedule.js)
@@ -336,6 +338,117 @@
   }
   // B3 (J13): at 1 page / 1 canvas every scope option is the same set — skip
   // the chooser and copy directly, like the Download button already does.
+  // D25 (X6 option D): "every sheet" used to copy the ACTIVE layer per page —
+  // marks the show-all peek put on screen were excluded (J11: 11 showed, 6
+  // copied). The scopes are now This sheet / Everything, and when a page in
+  // scope has 2+ layers a picker lists the layer NAMES in scope, pre-checked
+  // to what is on screen at copy time (each page's active layer + its peek
+  // set). The number then matches the screen AND is explicit: the paste
+  // header names the layers, so it is reproducible and never silently
+  // depends on a view toggle. The active layer is always included (the
+  // peek's own rule), so its name is checked and locked.
+  function pagesInScope(mode) {
+    const state = App.state;
+    return mode === 'this-canvas' ? [state.currentPage] : state.pages.map((_, i) => i);
+  }
+  function layerNameOf(c) { return (c && c.name) || 'Main'; }
+  function visibleCanvasIds(pageIdx) {
+    const state = App.state;
+    const page = state.pages[pageIdx];
+    const canvases = page ? App.getPageCanvases(page) : [];
+    const active = App.getActiveCanvas ? App.getActiveCanvas(page) : null;
+    const ids = new Set(active ? [active.id] : []);
+    if (state.showAllCanvases && canvases.length > 1) {
+      const peek = (state.peekCanvasIdsByPage || {})[pageIdx];
+      (peek ? canvases.filter((c) => peek.includes(c.id)) : canvases).forEach((c) => ids.add(c.id));
+    }
+    return ids;
+  }
+  function layerPickerModel(mode) {
+    const state = App.state;
+    const names = new Map();   // name -> { checked, locked }
+    let multi = false;
+    pagesInScope(mode).forEach((pi) => {
+      const page = state.pages[pi];
+      const canvases = page ? App.getPageCanvases(page) : [];
+      if (canvases.length > 1) multi = true;
+      const vis = visibleCanvasIds(pi);
+      const active = App.getActiveCanvas ? App.getActiveCanvas(page) : null;
+      canvases.forEach((c) => {
+        const n = layerNameOf(c);
+        const e = names.get(n) || { name: n, checked: false, locked: false };
+        if (vis.has(c.id)) e.checked = true;
+        if (active && active.id === c.id) { e.checked = true; e.locked = true; }
+        names.set(n, e);
+      });
+    });
+    return { show: multi, layers: [...names.values()] };
+  }
+  function renderLayerPicker(pickerEl, mode, force) {
+    if (!pickerEl) return;
+    if (!force && pickerEl.dataset.mode === mode) return;   // same scope: keep the estimator's ticks
+    // Ticks made for the other scope carry over by name; a fresh open (force)
+    // starts from what is on screen — "pre-checked to what is visible at copy time".
+    const carry = (!force && pickerEl.dataset.mode) ? new Set(pickedLayers(pickerEl) || []) : null;
+    pickerEl.dataset.mode = mode;
+    const model = layerPickerModel(mode);
+    if (carry) model.layers.forEach((l) => { if (!l.locked) l.checked = carry.has(l.name); });
+    pickerEl.hidden = !model.show;
+    pickerEl.innerHTML = '';
+    if (!model.show) return;
+    const title = document.createElement('div');
+    title.className = 'copy-layer-picker-title';
+    title.textContent = 'Layers';
+    pickerEl.appendChild(title);
+    model.layers.forEach((l) => {
+      const lab = document.createElement('label');
+      lab.className = l.locked ? 'locked' : '';
+      lab.title = l.locked ? 'The active layer is always included' : '';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = l.checked; cb.disabled = l.locked; cb.dataset.layerName = l.name;
+      cb.onclick = (e) => e.stopPropagation();   // the menu's outside-click must not close on a tick
+      lab.onclick = (e) => e.stopPropagation();
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode(l.name));
+      pickerEl.appendChild(lab);
+    });
+  }
+  // The checked names → a per-page annotation getter (merged over that page's
+  // canvases whose name is checked; the active canvas always rides along —
+  // getMergedAnnotationsForPage's own rule) and the scope the header names.
+  function pickedLayers(pickerEl) {
+    if (!pickerEl || pickerEl.hidden) return null;
+    return [...pickerEl.querySelectorAll('input[type="checkbox"]')].filter((cb) => cb.checked).map((cb) => cb.dataset.layerName);
+  }
+  // A copy fired without the menu ever rendering its picker (a keyboard route,
+  // a spec driving the option directly) must still copy WHAT IS ON SCREEN —
+  // the option-D default — never fall back to merging every layer.
+  function layersFor(pickerEl, mode) {
+    if (pickerEl && pickerEl.dataset.mode === mode) return pickedLayers(pickerEl);
+    const model = layerPickerModel(mode);
+    return model.show ? model.layers.filter((l) => l.checked).map((l) => l.name) : null;
+  }
+  // Layers are picked by NAME, but the locked row means "each page's active
+  // layer" — never "every canvas that happens to share its name". So a page
+  // contributes its active canvas plus the canvases whose name was ticked as
+  // an UNLOCKED row; a non-active twin named like the active layer is not
+  // swept in by the lock. (getMergedAnnotationsForPage adds the active canvas
+  // itself; the ids here are the extras.)
+  function annGetterFor(layers, lockedNames) {
+    if (!layers) return null;
+    const locked = new Set(lockedNames || []);
+    const extra = new Set(layers.filter((n) => !locked.has(n)));
+    return (page) => window.getMergedAnnotationsForPage(page, App.getPageCanvases(page).filter((c) => extra.has(layerNameOf(c))).map((c) => c.id));
+  }
+  function lockedLayerNames(mode) { return layerPickerModel(mode).layers.filter((l) => l.locked).map((l) => l.name); }
+  App.copyLayerPickerModel = layerPickerModel;   // spec seam
+
+  function bindPickerScopeHover(menuEl, pickerId, optionClass) {
+    if (!menuEl) return;
+    menuEl.querySelectorAll('.' + optionClass).forEach((opt) => {
+      opt.addEventListener('mouseenter', () => renderLayerPicker(document.getElementById(pickerId), opt.dataset.mode === 'this-canvas' ? 'this-canvas' : 'all'));
+    });
+  }
   function isSingleScope() {
     const state = App.state;
     const page = state.pages[state.currentPage];
@@ -362,6 +475,7 @@
         // fixed-position menu to the viewport edge and stretches it into a
         // full-window band (J11 friction #8). Anchor to the button instead.
         forPipeToolingMenu.style.right = 'auto';
+        renderLayerPicker(document.getElementById('pipeToolingLayerPicker'), 'all', true);   // D25: fresh from the screen on every open; This sheet re-renders on hover
         forPipeToolingMenu.classList.add('visible');
         const btnRect = forPipeToolingBtn.getBoundingClientRect();
         forPipeToolingMenu.style.position = 'fixed';
@@ -379,9 +493,11 @@
       e.stopPropagation();
       const mode = opt.dataset.mode;
       closeScopeMenu(forPipeToolingMenu, forPipeToolingDropdown);
-      if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doCopyPipeTooling, 'pipe-tooling', mode);
-      else if (mode === 'visible') await runGatedCopy(null, null, doCopyPipeTooling, 'pipe-tooling', mode);
-      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyPipeTooling, 'pipe-tooling', mode);
+      // D25: the picker's checked layers (null when it is hidden — every page
+      // in scope has one layer, so active == everything and no header is needed).
+      const layers = layersFor(document.getElementById('pipeToolingLayerPicker'), mode);
+      if (mode === 'this-canvas') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), [App.state.currentPage], doCopyPipeTooling, 'pipe-tooling', mode, null, layers);
+      else if (mode === 'all') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), null, doCopyPipeTooling, 'pipe-tooling', mode, null, layers);
     };
   });
 
@@ -404,6 +520,7 @@
         prefetchExportViewLink();
         forTakeoffToolingMenu.style.left = '-9999px';
         forTakeoffToolingMenu.style.right = 'auto';
+        renderLayerPicker(document.getElementById('takeoffToolingLayerPicker'), 'all', true);   // D25: fresh from the screen on every open; This sheet re-renders on hover
         forTakeoffToolingMenu.classList.add('visible');
         const btnRect = forTakeoffToolingBtn.getBoundingClientRect();
         forTakeoffToolingMenu.style.position = 'fixed';
@@ -419,9 +536,11 @@
       e.stopPropagation();
       const mode = opt.dataset.mode;
       closeScopeMenu(forTakeoffToolingMenu, forTakeoffToolingDropdown);
-      if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doOpenTakeoffTooling, 'takeoff-tooling', mode);
-      else if (mode === 'visible') await runGatedCopy(null, null, doOpenTakeoffTooling, 'takeoff-tooling', mode);
-      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doOpenTakeoffTooling, 'takeoff-tooling', mode);
+      // D25: the picker's checked layers (null when it is hidden — every page
+      // in scope has one layer, so active == everything and no header is needed).
+      const layers = layersFor(document.getElementById('takeoffToolingLayerPicker'), mode);
+      if (mode === 'this-canvas') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), [App.state.currentPage], doOpenTakeoffTooling, 'takeoff-tooling', mode, null, layers);
+      else if (mode === 'all') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), null, doOpenTakeoffTooling, 'takeoff-tooling', mode, null, layers);
     };
   });
 
@@ -441,6 +560,7 @@
         copySummaryTextMenu.style.left = '-9999px';
         // Same `right:auto` anchor as the /Tooling drop-up (J11 friction #8).
         copySummaryTextMenu.style.right = 'auto';
+        renderLayerPicker(document.getElementById('copySummaryLayerPicker'), 'all', true);   // D25: fresh from the screen on every open; This sheet re-renders on hover
         copySummaryTextMenu.classList.add('visible');
         const btnRect = copySummaryTextBtn.getBoundingClientRect();
         copySummaryTextMenu.style.position = 'fixed';
@@ -458,10 +578,11 @@
       }
     };
   }
-  async function doCopyEmailSummary(getAnnFn, pageIndices, mode) {
+  async function doCopyEmailSummary(getAnnFn, pageIndices, mode, layers) {
     const opts = {};
     if (getAnnFn) opts.getAnnotations = getAnnFn;
     if (pageIndices != null) opts.pageIndices = pageIndices;
+    opts.scope = { mode: mode || 'all', layers: layers || null };   // D25: the paste header names the scope + layers
     const text = typeof window.getEmailTextSummary === 'function' ? window.getEmailTextSummary(opts) : '';
     if (!text) {
       alert('No items to summarize. Add counters or line types first.');
@@ -469,7 +590,7 @@
     }
     try {
       await navigator.clipboard.writeText(text);
-      App.logUserEvent('copy_summary', App.state.currentProjectId || null, { surface: 'email-summary', mode: mode || 'visible' });
+      App.logUserEvent('copy_summary', App.state.currentProjectId || null, { surface: 'email-summary', mode: mode || 'all', layers: layers ? layers.length : null });
       setCopiedDetail('');
       App.showModal('pipeToolingCopiedModal');
       setTimeout(() => App.hideModal('pipeToolingCopiedModal'), 1500);
@@ -484,9 +605,11 @@
       closeScopeMenu(copySummaryTextMenu, copySummaryTextDropdown);
       // T1-05: Copy Summary runs the same pre-copy scale gate as Copy to
       // /Tooling (previously a direct, ungated call).
-      if (mode === 'this-canvas') await runGatedCopy(null, [App.state.currentPage], doCopyEmailSummary, 'email-summary', mode);
-      else if (mode === 'visible') await runGatedCopy(null, null, doCopyEmailSummary, 'email-summary', mode);
-      else if (mode === 'all') await runGatedCopy(window.getMergedAnnotationsForPage, null, doCopyEmailSummary, 'email-summary', mode);
+      // D25: the picker's checked layers (null when it is hidden — every page
+      // in scope has one layer, so active == everything and no header is needed).
+      const layers = layersFor(document.getElementById('copySummaryLayerPicker'), mode);
+      if (mode === 'this-canvas') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), [App.state.currentPage], doCopyEmailSummary, 'email-summary', mode, null, layers);
+      else if (mode === 'all') await runGatedCopy(annGetterFor(layers, lockedLayerNames(mode)), null, doCopyEmailSummary, 'email-summary', mode, null, layers);
     };
   });
 
@@ -708,4 +831,8 @@
   App.sanitizeForFilename = sanitizeForFilename;
   App.downloadPdfBuffer = downloadPdfBuffer;
   App.downloadProjectPdf = downloadProjectPdf;
+  // D25: the picker follows the option under the pointer (This sheet vs Everything).
+  bindPickerScopeHover(document.getElementById('forPipeToolingMenu'), 'pipeToolingLayerPicker', 'pipe-tooling-option');
+  bindPickerScopeHover(document.getElementById('forTakeoffToolingMenu'), 'takeoffToolingLayerPicker', 'takeoff-tooling-option');
+  bindPickerScopeHover(document.getElementById('copySummaryTextMenu'), 'copySummaryLayerPicker', 'copy-summary-option');
 })();

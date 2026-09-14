@@ -426,16 +426,22 @@
             <button id="forPipeTooling" class="sidebar-btn">Copy to /Tooling</button>
             <div class="show-report-menu" id="forPipeToolingMenu" style="display:none;">
               <button type="button" class="pipe-tooling-option" data-mode="this-canvas">This sheet</button>
-              <button type="button" class="pipe-tooling-option" data-mode="visible">Every sheet <span class="dl-qual scope-qual" data-qual="(visible layers)"></span></button>
               <button type="button" class="pipe-tooling-option" data-mode="all">Everything</button>
+              <!-- D25 (X6 option D): the layer picker — rendered by features/output.js
+                   when the menu opens, shown only when a page in scope has 2+
+                   layers, pre-checked to what is on screen (active + the peek). -->
+              <div class="copy-layer-picker" id="pipeToolingLayerPicker" hidden></div>
             </div>
           </div>
           <div class="show-report-dropdown" id="forTakeoffToolingDropdown" style="position:relative;">
             <button id="forTakeoffTooling" class="sidebar-btn" title="Open this takeoff in TakeoffTooling — electrical assemblies, labor units and pricing — with units, groups and child counts carried across">Open in TakeoffTooling</button>
             <div class="show-report-menu" id="forTakeoffToolingMenu" style="display:none;">
               <button type="button" class="takeoff-tooling-option" data-mode="this-canvas">This sheet</button>
-              <button type="button" class="takeoff-tooling-option" data-mode="visible">Every sheet <span class="dl-qual scope-qual" data-qual="(visible layers)"></span></button>
               <button type="button" class="takeoff-tooling-option" data-mode="all">Everything</button>
+              <!-- D25 (X6 option D): the layer picker — rendered by features/output.js
+                   when the menu opens, shown only when a page in scope has 2+
+                   layers, pre-checked to what is on screen (active + the peek). -->
+              <div class="copy-layer-picker" id="takeoffToolingLayerPicker" hidden></div>
             </div>
           </div>
           <div class="sidebar-tooling-links">
@@ -447,8 +453,11 @@
             <button id="copySummaryText" class="sidebar-btn">Copy Summary (Email/Text)</button>
             <div class="show-report-menu" id="copySummaryTextMenu" style="display:none;">
               <button type="button" class="copy-summary-option" data-mode="this-canvas">This sheet</button>
-              <button type="button" class="copy-summary-option" data-mode="visible">Every sheet <span class="dl-qual scope-qual" data-qual="(visible layers)"></span></button>
               <button type="button" class="copy-summary-option" data-mode="all">Everything</button>
+              <!-- D25 (X6 option D): the layer picker — rendered by features/output.js
+                   when the menu opens, shown only when a page in scope has 2+
+                   layers, pre-checked to what is on screen (active + the peek). -->
+              <div class="copy-layer-picker" id="copySummaryLayerPicker" hidden></div>
             </div>
           </div>
           <button id="copyRfiFlags" class="sidebar-btn" title="Copy every note starting with &quot;RFI:&quot; (all pages &amp; canvases) as a paste-ready list for PipeTooling's RFI queue">Copy RFI Flags</button>

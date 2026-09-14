@@ -259,7 +259,7 @@ function candidateA() {
   ${notesColumn(985, 396, 'LEGEND', [])}
   <g font-family="${F}" font-size="9.5" fill="${INK}">
     <g transform="translate(996,428)">${floorDrain(0, 0)}</g><text x="1016" y="431">FLOOR DRAIN</text>
-    <g transform="translate(996,456)">${waterHeater(0, 0, 9)}</g><text x="1016" y="459">WATER HEATER</text>
+    <g transform="translate(996,456)">${waterHeater(0, 0, 14)}</g><text x="1016" y="459">WATER HEATER</text>
     <g transform="translate(988,478)">${mopSink(8, 6)}</g><text x="1016" y="487">MOP SINK</text>
     <g transform="translate(988,506)">${drinkFtn(8, 0)}</g><text x="1016" y="515">DRINKING FOUNTAIN</text>
   </g>

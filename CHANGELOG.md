@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(output): Everything copies every layer on every sheet (2026-09-14)
+
+Reported through Will: "when I try to Copy to /Tooling it is not moving over all of my
+counters or lines." D25 (2026-09-13) had made Everything copy what was on screen, each
+page's active layer plus the peek, unless the estimator ticked the other layers in the
+picker; a project with marks on a layer that was not showing lost them on the paste, and
+the pasted header named only the layers that made it. Will's call: "everything be every
+layer on every page."
+
+- **Everything is every layer on every sheet again**, whatever is on screen: the option
+  runs the merged-annotations getter, and on a layered project the paste header reads
+  `Counts, <project> · every sheet · every layer` (single-layer projects keep the bare
+  `every sheet`, so those pins hold). The menu's picker still renders for Everything, with
+  every layer ticked and locked under an "Every layer" title, so the menu says what the copy
+  holds and nothing narrows it.
+- **This sheet keeps option D**: pre-checked to what is on screen, pickable rows, and the
+  header names the layers. Its ticks now survive a hover across Everything.
+- Same on all three copies: Copy to /Tooling, Open in TakeoffTooling, Copy Summary.
+
+Spec: copy-layers.spec.js re-pinned (Everything copies 11 with the peek off, the This
+sheet tick, the email line). Docs: reports-and-exports + canvas-layers guides, the
+ARCHITECTURE output.js row, _STAGE6 X6.
+
+---
+
 ## feat(samples): the advanced sample plan (2026-09-14)
 
 Will: "use both, A as the simple plan and B as the advanced plan." Candidate B from the parked

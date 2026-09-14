@@ -761,14 +761,18 @@ function roomDeps(state, items, balance) {
   });
 }
 
-test('planRoomLabels: estimator-named rooms keep the full label; plan-named rooms get one tag on the largest box', () => {
+test('planRoomLabels: an estimator-named multi-box room is labelled once (X4 option A); plan-named rooms get one tag on the largest box', () => {
   const ann = { roomBoxes: [
     { x1: 0, y1: 0, x2: 240, y2: 200, heightFt: 9, roomId: 'r1' },
     { x1: 0, y1: 200, x2: 100, y2: 248, heightFt: 9, roomId: 'r1' },
   ] };
-  const full = createCanvasDraw(roomDeps(roomState(false), [])).planRoomLabels(ann, 0);
-  assert.deepStrictEqual(full.boxes.map(b => b.mode), ['full', 'full']);
-  assert.deepStrictEqual(full.tags, []);
+  const once = createCanvasDraw(roomDeps(roomState(false), [])).planRoomLabels(ann, 0);
+  assert.deepStrictEqual(once.boxes.map(b => b.mode), ['roomFull', 'namePart']);   // largest box first
+  assert.deepStrictEqual(once.boxes.map(b => b.part), ['2 boxes', '2/2']);
+  assert.deepStrictEqual(once.tags, []);
+  // a single-box estimator-named room keeps today's full label
+  const single = createCanvasDraw(roomDeps(roomState(false), [])).planRoomLabels({ roomBoxes: [ann.roomBoxes[0]] }, 0);
+  assert.deepStrictEqual(single.boxes.map(b => b.mode), ['full']);
   const items = [{ str: 'OPEN OFFICE 204', x: 60, y: 90, w: 110, h: 14 }];
   const d = createCanvasDraw(roomDeps(roomState(true), items, [{ id: 'r1', under: false }])).planRoomLabels(ann, 0);
   assert.deepStrictEqual(d.boxes.map(b => b.mode), ['none', 'none']);

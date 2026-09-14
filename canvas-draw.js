@@ -230,16 +230,42 @@ function createCanvasDraw(deps) {
   function planRoomLabels(ann, pageIdx) {
     const state = deps.getState();
     const boxes = ann.roomBoxes || [];
-    // Nothing to plan unless some box belongs to a plan-named room — the common
-    // case exits here without touching the text layer or the balance rows.
+    // X4 option A (2026-09-14): a room the estimator NAMED, drawn as 2+ boxes on
+    // this sheet, is labelled once — its largest box carries the name + the
+    // room's totals ("700 ft² · 6,300 ft³ · 3 boxes", mode 'roomFull'), the
+    // others the name with their place ("Corridor · 2/3", mode 'namePart') —
+    // so three full L×W×H blocks never bury the plan's own room name (J7).
+    // A single-box room keeps today's full label; plan-named rooms keep D24's.
+    const multi = new Map();
+    boxes.forEach((b, i) => {
+      const room = (state.rooms || []).find(r => r.id === b.roomId);
+      if (!room || room.nameFromPlan) return;
+      const dims = roomBoxDimsFeet(b, deps.getEffectiveScaleForLine(ann, b, false, pageIdx));
+      const area = Math.abs(b.x2 - b.x1) * Math.abs(b.y2 - b.y1);
+      const e = multi.get(room.id) || { idx: [], largest: -1, largestArea: -1, volume: 0, sqft: 0 };
+      e.idx.push(i);
+      if (area > e.largestArea) { e.largest = i; e.largestArea = area; }
+      if (dims) { e.volume += dims.volumeCuFt; e.sqft += dims.areaSqFt; }
+      multi.set(room.id, e);
+    });
+    const onceMode = (i) => {
+      const b = boxes[i];
+      const e = b.roomId ? multi.get(b.roomId) : null;
+      if (!e || e.idx.length < 2) return { index: i, mode: 'full' };
+      const n = e.idx.length;
+      if (i === e.largest) return { index: i, mode: 'roomFull', part: n + ' boxes', roomSqft: e.sqft, roomVolume: e.volume };
+      return { index: i, mode: 'namePart', part: (e.idx.indexOf(i) + 1) + '/' + n };
+    };
+    // Nothing more to plan unless some box belongs to a plan-named room — the
+    // common case exits here without touching the text layer or the balance rows.
     const anyFromPlan = boxes.some(b => (state.rooms || []).some(r => r.id === b.roomId && r.nameFromPlan));
-    if (!anyFromPlan) return { boxes: boxes.map((b, i) => ({ index: i, mode: 'full' })), tags: [] };
+    if (!anyFromPlan) return { boxes: boxes.map((b, i) => onceMode(i)), tags: [] };
     const items = deps.getPageTextItems ? (deps.getPageTextItems(pageIdx) || []) : [];
     const balance = deps.getRoomBalanceForPage ? (deps.getRoomBalanceForPage(pageIdx) || []) : [];
     const byRoom = new Map();
     const plan = boxes.map((b, i) => {
       const room = (state.rooms || []).find(r => r.id === b.roomId);
-      if (!room || !room.nameFromPlan) return { index: i, mode: 'full' };
+      if (!room || !room.nameFromPlan) return onceMode(i);
       if (!items.length) return { index: i, mode: 'nameOnly' };
       const dims = roomBoxDimsFeet(b, deps.getEffectiveScaleForLine(ann, b, false, pageIdx));
       const area = Math.abs(b.x2 - b.x1) * Math.abs(b.y2 - b.y1);
@@ -279,7 +305,8 @@ function createCanvasDraw(deps) {
     const state = deps.getState();
     const labelPlan = planRoomLabels(ann, pageIdx);
     (ann.roomBoxes || []).forEach((b, bi) => {
-      const mode = labelPlan.boxes[bi]?.mode || 'full';
+      const entry = labelPlan.boxes[bi] || { mode: 'full' };
+      const mode = entry.mode || 'full';
       const room = (state.rooms || []).find(r => r.id === b.roomId);
       const color = room?.color || '#47c88e';
       const minX = Math.min(b.x1, b.x2), maxX = Math.max(b.x1, b.x2);
@@ -294,9 +321,29 @@ function createCanvasDraw(deps) {
       if (boxW < 40 || boxH < 24) return;
       const effScale = deps.getEffectiveScaleForLine(ann, b, false, pageIdx);
       const dims = roomBoxDimsFeet(b, effScale);
-      const nameLabel = room?.name || 'Room';
+      const roomName = room?.name || 'Room';
+      const nameLabel = mode === 'namePart' ? roomName + ' · ' + entry.part : roomName;
       if (mode === 'none') return;   // D24: the union is labelled once, on the largest box
-      if (mode === 'nameOnly') {     // D24 option B: the name alone, centered
+      if (mode === 'roomFull') {     // X4 option A: the room's largest box — name + room totals
+        const nameSize = 13 * fontScale, lineSize = 11 * fontScale, pad = 4 * fontScale, gap = 2 * fontScale;
+        const totals = (dims ? Math.round(entry.roomSqft).toLocaleString() + ' ft² · ' + Math.round(entry.roomVolume).toLocaleString() + ' ft³ · ' : 'no scale · ') + entry.part;
+        const center = tcFn({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+        ctx.font = '600 ' + nameSize + 'px DM Sans';
+        const nw = ctx.measureText(roomName).width;
+        ctx.font = lineSize + 'px DM Sans';
+        const tw = ctx.measureText(totals).width;
+        const w = Math.max(nw, tw), h = nameSize + gap + lineSize;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillRect(center.x - w / 2 - pad, center.y - h / 2 - pad, w + pad * 2, h + pad * 2);
+        ctx.fillStyle = '#222'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+        ctx.font = '600 ' + nameSize + 'px DM Sans';
+        ctx.fillText(roomName, center.x, center.y - h / 2);
+        ctx.font = lineSize + 'px DM Sans';
+        ctx.fillText(totals, center.x, center.y - h / 2 + nameSize + gap);
+        ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        return;
+      }
+      if (mode === 'nameOnly' || mode === 'namePart') {     // D24 option B / X4 option A: the name alone, centered
         const nameSize = 13 * fontScale, pad = 4 * fontScale;
         const center = tcFn({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
         ctx.font = '600 ' + nameSize + 'px DM Sans';

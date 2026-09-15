@@ -519,6 +519,14 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   silent auto-recheckout under it. Symbols: `doTurnIn`,
   `subscribeToProjectCheckoutChanges`, `refreshProjectPermissions`,
   `handleBackgroundCheckoutExpired`, `openCheckoutExpiredRecoveryModal`.
+  A demotion seen at `refreshProjectPermissions` is CLASSIFIED before anyone is
+  blamed: our own release (the engine's self-release stamp `noteSelfRelease`,
+  window `SELF_RELEASE_GRACE_MS`; `doTurnIn` and app.js's
+  `checkInCurrentProjectIfHeld` both stamp) → `self_release_refresh`, nothing
+  shown; a stale lock → the expiry machinery; a LIVE lock cleared by someone
+  else (an admin, or another tab/device signed in as this user — the RPC is
+  per user) → the force-turn-in notice modal. Pinned by save-engine.test.js and
+  [turn-in-self-release.spec.js](turn-in-self-release.spec.js) (cloud-gated).
 
 ### Hotkeys
 

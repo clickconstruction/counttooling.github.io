@@ -4919,6 +4919,9 @@
       try {
         const { data } = await withTimeout(supabase.rpc('check_in_project', { p_project_id: state.currentProjectId }), CHECK_IN_TIMEOUT_MS, 'Sign-out check-in');
         updateServerClockFromRpc(data);
+        // Our release: the row UPDATE that follows is not a force (the
+        // engine's self-release stamp; doTurnIn stamps its own).
+        if (data?.ok) saveEngine.noteSelfRelease();
       } catch (e) {
         try { pushSaveEvent('signout_checkin_timeout', 'Sign-out check-in did not complete', (e && e.message) || String(e)); } catch (_) {}
       }

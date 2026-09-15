@@ -264,5 +264,21 @@ Global force reload were deliberately NOT exercised on prod.
   only a LIVE lock externally cleared/taken (which only an admin can do)
   gets the notice modal, and the opener refuses to stack over itself.
   Three save-engine.test.js cases pin the classification.
+
+  **Field follow-up (2026-09-15, FIXED same day, branch
+  claude/self-turn-in-not-a-force)**: the same notice, a different estimator
+  (wendi): "keeps kicking me to view only after i check things out". Not an
+  admin, not expiry: the edge logs showed her own tab calling
+  `check_in_project` through the Turn In path 3 s after each check-out, and a
+  plain `[Turn In]` click on prod-identical code reproduced it: `turn_in_ok`
+  then `force_turn_in` twice, the notice in the releasing tab. The 09-01
+  classifier's premise ("only an admin can break a LIVE lock") missed the
+  holder herself and any session signed in as the same user (the RPC is per
+  user). Fix: the engine's self-release stamp (`noteSelfRelease`,
+  `SELF_RELEASE_GRACE_MS`); a refresh inside the window is ours and shows
+  nothing. The notice copy names both remaining causes. The banner that flips
+  `[Check out to Edit]` → `[Turn In]` under the cursor is the likely re-click
+  trap and stays a product call (_TODO.md R1). Verified: the
+  load-another-project check-in did NOT trip the notice pre-fix.
 - **Global force reload**: `#advancedGlobalForceReload` present in Advanced
   (presence verified only — never clicked on prod).

@@ -2292,46 +2292,52 @@
   </div>
   <div class="modal-overlay" id="settingsModal">
     <div class="modal-card">
-      <div class="modal-card-header">
-        <h2 id="settingsTitle">Project Settings</h2>
+      <!-- Project Settings (2026-09-15 pass): the project name is a subtitle, never part of
+           the title; the checkout state is a one-line status strip (dot, text, bell), so
+           the bell never floats alone; one primary action, then a grid of same-weight
+           secondaries; "This project" rows carry a ONE-line hint (the long form rides
+           title=); the footer holds the other-project doors, a collapsed Help row, Clear
+           Page and Advanced as links. Order: status → actions → This project → footer. -->
+      <div class="modal-card-header settings-card-header">
+        <div class="settings-title-block">
+          <h2 id="settingsTitle">Project Settings</h2>
+          <div class="settings-subtitle" id="settingsSubtitle" style="display:none;"></div>
+        </div>
         <button type="button" class="modal-close-btn" id="settingsModalClose" aria-label="Close">×</button>
       </div>
       <div class="settings-menu">
-        <button type="button" class="settings-menu-btn btn-yellow" id="settingsSaveProject">Save Project to Cloud</button>
-        <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add additional PDF pages</button>
-        <button type="button" class="settings-menu-btn" id="settingsDownloadPdf" style="display:none;">Download PDF</button>
-        <div class="settings-close-checkout-row" style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;">
-          <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close Project</button>
-          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;align-self:stretch;">Check out Project</button>
-          <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;align-self:stretch;">Force turn-in (admin)</button>
+        <div id="settingsCheckoutSection" class="settings-status-strip" style="display:none;">
+          <span id="settingsCheckoutDot" class="dot dot-grey settings-status-dot" aria-hidden="true"></span>
+          <p id="settingsCheckoutStatus" class="settings-checkout-status"></p>
+          <button type="button" class="save-status-bell-btn" id="saveStatusBtn" style="display:none;" aria-label="Save status" title="Save status"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg></button>
         </div>
-        <div id="settingsCheckoutSection" class="settings-checkout-section" style="display:none;">
-          <div class="settings-checkout-row" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-            <p id="settingsCheckoutStatus" class="settings-checkout-status" style="margin:0;font-size:0.9rem;color:var(--text2);flex:1;min-width:0;"></p>
-            <button type="button" class="save-status-bell-btn" id="saveStatusBtn" style="display:none;" aria-label="Save status" title="Save status"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg></button>
-            <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;align-self:stretch;width:auto;">Turn In Project</button>
-          </div>
+        <button type="button" class="settings-menu-btn btn-yellow settings-primary-btn" id="settingsSaveProject">Save Project to Cloud</button>
+        <div class="settings-action-grid">
+          <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
+          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;">Turn in</button>
+          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;">Check out</button>
+          <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;" title="Force turn-in (admin)">Force turn-in</button>
+          <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add pages</button>
+          <button type="button" class="settings-menu-btn" id="settingsDownloadPdf" style="display:none;">Download PDF</button>
+          <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close</button>
         </div>
-        <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
         <!-- Bid review handoff: status text + transition button, rendered by
              features/review-flow.js each time this modal becomes visible. -->
-        <div class="form-group supabase-only settings-review-row" id="settingsReviewRow" style="display:none;">
+        <div class="supabase-only settings-review-row" id="settingsReviewRow" style="display:none;">
           <span class="settings-review-label">Bid review</span>
           <span id="settingsReviewStatusText" class="settings-review-status"></span>
-          <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsReviewToggleBtn" style="width:auto;">Mark ready for review</button>
+          <button type="button" class="settings-menu-link settings-review-btn" id="settingsReviewToggleBtn">Mark ready for review</button>
         </div>
-        <button type="button" class="settings-menu-btn supabase-only" id="settingsLoadProject">Load Project from Cloud</button>
-        <button type="button" class="settings-menu-btn supabase-only" id="settingsManageProjects" style="display:none;">Manage Projects</button>
         <!-- This project: the per-project rows as one labelled section between the cloud
-             actions and the app-level footer. Short hints; the long form rides in title=. Rows
+             actions and the footer. One-line hints; the long form rides in title=. Rows
              marked -stack wrap their control under the label on a phone. -->
         <div class="settings-project-section" id="settingsProjectSection">
           <div class="settings-project-label">This project</div>
-          <div class="settings-project-row settings-project-row-stack" id="settingsTradeRow">
+          <div class="settings-project-row settings-project-row-stack" id="settingsTradeRow" title="Which vocabulary the Quick creator speaks, and what the handoff calls this takeoff.">
             <div class="settings-project-row-text">
               <div>Trade</div>
-              <div class="settings-project-row-hint">Which vocabulary the Quick creator speaks, and what the handoff calls this takeoff.</div>
             </div>
+            <div class="settings-project-row-hint">Vocabulary for the Quick creator and the handoff.</div>
             <div class="settings-project-row-control">
               <div class="filter-scope-segment" id="settingsTradeSegment" role="group" aria-label="Project trade">
                 <button type="button" data-trade="plumbing" aria-pressed="false">Plumbing</button>
@@ -2340,58 +2346,77 @@
               </div>
             </div>
           </div>
-          <div class="settings-project-row settings-project-row-stack" id="settingsCodesRow">
+          <div class="settings-project-row settings-project-row-codes" id="settingsCodesRow" title="Which editions the rulebook's values resolve against. Rule chips and Bid Check say &quot;this project&quot; from these. Remembered for your next bid.">
             <div class="settings-project-row-text">
               <div>Codes</div>
-              <div class="settings-project-row-hint">Which editions the rulebook's values resolve against. Rule chips and Bid Check say "this project" from these. Remembered for your next bid.</div>
             </div>
-            <div class="settings-project-row-control settings-project-row-control-col">
-              <select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select>
-              <select id="settingsCodeElectrical" aria-label="Electrical code edition"></select>
-              <select id="settingsCodeHvac" aria-label="HVAC standard edition"></select>
+            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Remembered for your next bid.</div>
+            <div class="settings-codes-grid">
+              <label class="settings-code-cell"><span class="settings-code-label">Plumbing</span><select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select></label>
+              <label class="settings-code-cell"><span class="settings-code-label">Electrical</span><select id="settingsCodeElectrical" aria-label="Electrical code edition"></select></label>
+              <label class="settings-code-cell"><span class="settings-code-label">HVAC</span><select id="settingsCodeHvac" aria-label="HVAC standard edition"></select></label>
             </div>
           </div>
-          <div class="settings-project-row settings-project-row-stack" id="settingsJurisdictionRow">
+          <div class="settings-project-row settings-project-row-stack settings-project-row-sub" id="settingsJurisdictionRow" title="State and city, so amendments on file are applied and named. Not on file means the model code as written.">
             <div class="settings-project-row-text">
               <div>Jurisdiction</div>
-              <div class="settings-project-row-hint">State and city, so amendments on file are applied and named. Not on file means the model code as written.</div>
             </div>
+            <div class="settings-project-row-hint">Amendments on file are applied and named.</div>
             <div class="settings-project-row-control">
               <input type="text" id="settingsJurisdiction" placeholder="e.g. Texas · Austin" autocomplete="off" aria-label="Jurisdiction">
             </div>
           </div>
-          <div class="settings-project-row settings-project-row-stack" id="settingsCeilingRow">
+          <div class="settings-project-row settings-project-row-stack" id="settingsCeilingRow" title="With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.">
             <div class="settings-project-row-text">
               <div>Ceiling height</div>
-              <div class="settings-project-row-hint">With a mount height on the counter, the Chain tool adds ceiling − mount + make-up as the run's drop. Room Sizer rooms override it. Empty = off.</div>
             </div>
+            <div class="settings-project-row-hint">Chain adds ceiling − mount + make-up as the drop. Empty = off.</div>
             <div class="settings-project-row-control">
               <input type="text" id="settingsCeilingHeight" placeholder="e.g. 10'-0&quot;" autocomplete="off" aria-label="Ceiling height (feet)">
               <label class="make-up-label">make-up <button type="button" class="rule-chip" data-rule="elec.vertical.make-up" hidden></button> <input type="text" id="settingsMakeUp" placeholder="1'" autocomplete="off" style="width:56px;" aria-label="Make-up (feet)"></label>
             </div>
           </div>
-          <div class="settings-project-row" id="settingsUseGroupsRow">
+          <div class="settings-project-row" id="settingsUseGroupsRow" title="The Groups section and the Assign-to-Group menus. On by itself while this project has groups.">
             <div class="settings-project-row-text">
               <div>Use groups</div>
-              <div class="settings-project-row-hint">The Groups section and the Assign-to-Group menus. On by itself while this project has groups.</div>
             </div>
+            <div class="settings-project-row-hint">Groups section and Assign-to-Group menus.</div>
             <button type="button" class="toggle-switch" id="settingsUseGroupsBtn" aria-pressed="false" title="Show the Groups section and Assign-to-Group menus in this project">
               <span class="toggle-switch-knob"></span>
             </button>
           </div>
+          <div class="settings-project-row" id="settingsQuickKeysRow" title="The number row (1-9, 0) bound to counters and line types for this project.">
+            <div class="settings-project-row-text">
+              <div>Quick keys</div>
+            </div>
+            <div class="settings-project-row-hint">The number row, bound per project.</div>
+            <div class="settings-project-row-control settings-quick-keys-control">
+              <span class="settings-quick-keys-summary" id="settingsQuickKeysSummary"></span>
+              <span class="settings-menu-link" id="settingsQuickKeys">Edit</span>
+            </div>
+          </div>
         </div>
-        <!-- App-level footer: the links and Advanced, after the project's own rows. -->
+        <!-- Footer: the other-project doors and Help on the left, Clear Page and Advanced on
+             the right; the Help links unfold under the row. -->
         <div class="settings-footer">
-          <div class="settings-menu-links-row">
-            <span class="settings-menu-link" id="settingsQuickKeys">quick keys</span>
+          <div class="settings-footer-row">
+            <div class="settings-footer-left">
+              <span class="settings-menu-link supabase-only" id="settingsLoadProject">Load project…</span>
+              <span class="settings-menu-link supabase-only" id="settingsManageProjects" style="display:none;">Manage projects</span>
+              <button type="button" class="settings-menu-link settings-help-toggle" id="settingsHelpToggle" aria-expanded="false" aria-controls="settingsHelpLinks">Help <span class="settings-help-chevron" aria-hidden="true">▸</span></button>
+            </div>
+            <div class="settings-footer-right">
+              <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
+              <button type="button" class="settings-menu-link settings-menu-link-muted" id="settingsAdvancedBtn">Advanced ▸</button>
+            </div>
+          </div>
+          <div class="settings-menu-links-row" id="settingsHelpLinks" hidden>
             <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
             <span class="settings-menu-link" id="settingsTourPlumbing" title="A guided plumbing takeoff on the design-build sample plan">plumbing tour</span>
             <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the design-build sample plan">electrical tour</span>
             <span class="settings-menu-link" id="settingsTourHvac" title="A guided design-build duct takeoff on the design-build sample plan">hvac tour</span>
             <span class="settings-menu-link" id="settingsAdvancedPlan" title="Open the engineered sample plan: a restaurant plumbing sheet with its piping drawn (Main St Restaurant, P-101)">engineered sample plan</span>
-            <span class="settings-menu-link settings-menu-link-danger" id="settingsClearPage" style="display:none;">Clear Page</span>
           </div>
-          <button type="button" class="settings-menu-btn" id="settingsAdvancedBtn">Advanced</button>
         </div>
       </div>
     </div>

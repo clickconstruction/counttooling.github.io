@@ -2696,6 +2696,10 @@
       if (statusBarBidBoardSep) statusBarBidBoardSep.style.display = showBidBoardLink;
       const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
       if (settingsManageProjectsBtn) settingsManageProjectsBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
+      // The Bid review row is shown (with its fetched status) by features/review-flow.js when
+      // the modal opens; the .supabase-only reset above must not resurrect it signed-out.
+      const settingsReviewRowEl = document.getElementById('settingsReviewRow');
+      if (settingsReviewRowEl && !(loggedIn && state.currentProjectId)) settingsReviewRowEl.style.display = 'none';
       const globalReloadBtn = document.getElementById('advancedGlobalForceReload');
       if (globalReloadBtn) globalReloadBtn.style.display = (loggedIn && state.isAdmin) ? '' : 'none';
       const statusBarAuth = document.getElementById('statusBarAuth');
@@ -4116,6 +4120,15 @@
     if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
     const muEl = document.getElementById('settingsMakeUp');
     if (muEl) muEl.value = state.makeUpFt != null ? formatFeetInchesFromVal(state.makeUpFt, 'ft') : '';
+    // Quick keys: the first three bindings as "1 WC · 2 Lav · 3 FD · +4"; empty when none.
+    const qkEl = document.getElementById('settingsQuickKeysSummary');
+    if (qkEl) {
+      const labels = App.getQuickKeyLabels ? App.getQuickKeyLabels() : {};
+      const slots = Object.keys(labels);
+      const shown = slots.slice(0, 3).map((k) => k + ' ' + labels[k]);
+      if (slots.length > 3) shown.push('+' + (slots.length - 3));
+      qkEl.textContent = shown.join(' · ');
+    }
   }
   function syncTradeSegment(segmentId, trade) {
     const seg = document.getElementById(segmentId);
@@ -4820,9 +4833,22 @@
     // the modal is mostly local work (add PDF pages, Close Project, quick keys,
     // Advanced -> Export / Import / Canvas Repair), and the
     // cloud rows inside prompt for sign-in themselves.
+    function setSettingsHelpOpen(open) {
+      const toggle = document.getElementById('settingsHelpToggle');
+      const links = document.getElementById('settingsHelpLinks');
+      if (toggle) toggle.setAttribute('aria-expanded', String(open));
+      if (links) links.hidden = !open;
+    }
     function openProjectSettings() {
-      const titleEl = document.getElementById('settingsTitle');
-      if (titleEl) titleEl.textContent = state.pages.length || state.currentProjectId ? ('Project Settings - ' + (state.currentProjectName || 'Untitled')) : 'Project Settings';
+      setSettingsHelpOpen(false);
+      // The title stays "Project Settings"; the project name is the subtitle line under it
+      // (a long bid-set name used to wrap the title onto two lines).
+      const subEl = document.getElementById('settingsSubtitle');
+      if (subEl) {
+        const open = state.pages.length || state.currentProjectId;
+        subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
+        subEl.style.display = open ? '' : 'none';
+      }
       document.body.classList.remove('sidebar-open');
       updateSettingsCheckoutSection();
       syncProjectSettingsRows();
@@ -4856,16 +4882,27 @@
       checkOutBtn.style.display = 'none';
       checkInBtn.style.display = 'none';
       forceBtn.style.display = 'none';
+      // One line: the checkout state, then the last save time when there is one. The dot
+      // colours it (green = yours, yellow = someone else's, grey = available).
+      let dot = 'grey';
+      let text = '';
       if (state.canCheckOut) {
-        statusEl.innerHTML = 'Project is available.<br>Check out to edit.';
+        text = 'Available · check out to edit';
         checkOutBtn.style.display = '';
       } else if (state.checkedOutBy === state.supabaseSession?.user?.id) {
-        statusEl.innerHTML = 'You have this project<br><strong style="text-decoration:underline">checked out.</strong>';
+        dot = 'green';
+        text = 'Checked out by you';
         checkInBtn.style.display = '';
       } else if (state.checkedOutEmail) {
-        statusEl.textContent = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing.';
+        dot = 'yellow';
+        text = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
         if (state.isAdmin) forceBtn.style.display = '';
       }
+      const saved = formatSaveTimeParts(state.lastSavedAt).clock;
+      if (saved) text += (text ? ' · ' : '') + 'saved ' + saved;
+      statusEl.textContent = text;
+      const dotEl = document.getElementById('settingsCheckoutDot');
+      if (dotEl) dotEl.className = 'dot dot-' + dot + ' settings-status-dot';
       updateSaveStatusIndicator();
     }
     async function copyOrCreateViewLinkToClipboard(btn) {
@@ -5032,6 +5069,10 @@
     };
     document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
     document.getElementById('settingsAdvancedBtn').onclick = () => showModal('settingsAdvancedModal');
+    // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
+    // folded again every time the modal opens (openProjectSettings).
+    const settingsHelpToggle = document.getElementById('settingsHelpToggle');
+    if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
     document.getElementById('settingsAdvancedModalClose').onclick = () => hideModal('settingsAdvancedModal');
     document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
     document.querySelector('#settingsAdvancedModal .modal-card').onclick = (e) => e.stopPropagation();

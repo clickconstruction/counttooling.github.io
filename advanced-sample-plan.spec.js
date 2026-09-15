@@ -49,6 +49,8 @@ test.describe('Engineered (advanced) sample plan', () => {
     await expect(page.locator('#canvasEmptyHintAdvancedPlan')).toBeVisible();
     await expect(page.locator('#canvasEmptyHintAdvancedSep')).toBeHidden();
     await page.evaluate(() => window.App.showModal('settingsModal'));
+    // the door sits under the footer's Help row
+    await page.click('#settingsHelpToggle');
     const door = page.locator('#settingsAdvancedPlan');
     await expect(door).toBeVisible();
     await door.click();

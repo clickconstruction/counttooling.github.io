@@ -20,7 +20,7 @@ Object.assign(globalThis, require('./constants.js'));
 Object.assign(globalThis, require('./save-utils.js'));
 // Local bindings for the keys this file asserts on (the globalThis assigns
 // above feed the engine; the lint test-group doesn't know module globals).
-const { GLOBAL_RELOAD_STAMP_KEY, PENDING_GLOBAL_RELOAD_STAMP_KEY, SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_INACTIVITY_MS } = require('./constants.js');
+const { GLOBAL_RELOAD_STAMP_KEY, PENDING_GLOBAL_RELOAD_STAMP_KEY, SAVE_STATUS_LOG_MS, SAVE_STATUS_LOG_VERBOSE_MS, CHECKOUT_INACTIVITY_MS, SELF_RELEASE_GRACE_MS } = require('./constants.js');
 
 // Browser-global stubs. `window` exists so the CLICKCOUNT_DEBUG_SAVE flag can
 // toggle verbose mode per test; the caches-clear branch sees window.caches
@@ -634,6 +634,94 @@ test('refreshProjectPermissions: a stale lock taken by someone else is still exp
   assert.ok(logKinds(engine).includes('checkout_expired_on_refresh'));
   assert.strictEqual(state.checkedOutEmail, 'other@x.com', 'the new holder is shown');
 });
+
+// --- Self-release stamp (field report 2026-09-15) --------------------------
+// Our own check_in_project reaches the tab as a row UPDATE with the exact
+// "was editor, now viewer, lock not stale" shape of an external force. The
+// Turn In button's own tab was getting the "an admin turned this project in"
+// notice after EVERY release (reproduced on prod-identical code, test
+// account). doTurnIn stamps the release; refreshProjectPermissions inside
+// SELF_RELEASE_GRACE_MS is ours.
+
+test('refreshProjectPermissions: the refresh after our own doTurnIn is not a force (no notice, no toast)', async () => {
+  // The row the server shows right after OUR check_in_project: lock cleared,
+  // we can claim it again. Fresh stamp on our side (we were the holder a
+  // moment ago).
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [], counters: [], lineTypes: [], pdfStoragePath: null };
+  const notices = [];
+  const { ctx, calls } = makeCtx({
+    getState: () => state,
+    getSupabase: () => supabase,
+    notifyForceTurnedIn: (info) => { notices.push(info); return true; },
+  });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.doTurnIn();
+  assert.deepStrictEqual(res, { ok: true });
+  // Both refreshes the real app runs land inside the grace window: the
+  // realtime UPDATE callback and doTurnInAndHandleResult's own refresh.
+  await engine.refreshProjectPermissions();
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [], 'our own turn-in must not open the force notice');
+  assert.ok(!logKinds(engine).includes('force_turn_in'), 'not classified as a force');
+  assert.ok(!logKinds(engine).includes('checkout_expired_on_refresh'), 'not classified as expiry either');
+  assert.ok(logKinds(engine).includes('self_release_refresh'), 'recorded as our own release');
+  assert.deepStrictEqual(calls.toasts, [], 'the caller already said "Project turned in."');
+  assert.strictEqual(state.isViewer, true);
+  assert.strictEqual(state.canCheckOut, true, 'the banner offers Check out to Edit again');
+  assert.strictEqual(state.checkedOutBy, null);
+});
+
+test('refreshProjectPermissions: the app-side check-in (close / load another / sign-out) stamps too', async () => {
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();   // what checkInCurrentProjectIfHeld does on data.ok
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, []);
+  assert.ok(logKinds(engine).includes('self_release_refresh'));
+  assert.ok(!logKinds(engine).includes('force_turn_in'));
+});
+
+test('refreshProjectPermissions: the self-release window closes — the same row later IS a force', async () => {
+  // Same released row, but our stamp has aged past SELF_RELEASE_GRACE_MS:
+  // someone else (an admin, or another session as us) cleared a LIVE lock.
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease(Date.now() - SELF_RELEASE_GRACE_MS - 1);
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [{ hadDirty: false }], 'outside the window the classifier is unchanged');
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.ok(!logKinds(engine).includes('self_release_refresh'));
+});
+
+test('refreshProjectPermissions: a dirty flag at our own release is not flushed over the released lock', async () => {
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: () => true });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();
+  engine.setAutoSaveDirty(true);
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.strictEqual(sub.updates.length, 0, 'no flush attempted against a lock we gave up');
+  assert.ok(logKinds(engine).includes('self_release_flush_skipped'));
+  assert.ok(!logKinds(engine).includes('autosave_start'));
+  assert.deepStrictEqual(calls.toasts, []);
+});
+
 
 test('refreshProjectPermissions: a live lock externally cleared IS a force — notice fires', async () => {
   const freshAt = new Date(Date.now() - 60000).toISOString();

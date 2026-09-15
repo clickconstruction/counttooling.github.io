@@ -13,6 +13,53 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(save-engine): our own Turn In is not a force turn-in (2026-09-15)
+
+Field report through Robert: wendi, "count tooling keeps kicking me to view only after
+i check things out", with a screenshot of the force-turn-in notice ("An admin turned this
+project in while you had it checked out. You're now viewing only."). Nobody had: the only
+admin was idle, the project unshared, one live session. The Supabase edge logs showed her
+own browser calling `check_in_project` through the Turn In path three seconds after each
+`check_out_project`; reproduced on prod-identical code with the test account: a plain
+click on `[Turn In]` logged `turn_in_ok` then `force_turn_in` twice and opened the notice
+in the very tab that released the lock.
+
+- **Root cause.** `doTurnIn` never clears `state.checkedOutBy`; the caller learns the
+  release from `refreshProjectPermissions`, which ALSO runs from the realtime row UPDATE.
+  Both refreshes saw "was the lock holder, now viewer, lock not stale", the exact shape the
+  2026-09-01 classifier reserves for an external force ("only an admin can clear a live
+  lock" — false: the holder can, and so can any session signed in as the same user, since
+  the RPC is per user). Before the 2026-08-31 notice modal this misclassification was a
+  redundant toast, so nobody noticed.
+- **The self-release stamp.** `noteSelfRelease()` in the engine, stamped by `doTurnIn` on
+  success (and on the already-released short-circuit) and by app.js's
+  `checkInCurrentProjectIfHeld` (close / load another / sign-out) on `ok`. A demotion seen
+  at `refreshProjectPermissions` while a Turn In is in progress or within
+  `SELF_RELEASE_GRACE_MS` (15 s, constants.js) is ours: `self_release_refresh` in the Save
+  Status log, no notice, no toast, no flush over the released lock
+  (`self_release_flush_skipped`). Outside the window the classifier is unchanged.
+- **Copy.** The notice no longer asserts an admin: "This project was turned in while you
+  had it checked out, by an admin or by another tab or device signed in as you."
+- **Why the banner mattered.** `[Check out to Edit]` becomes `[Turn In]` in the same spot
+  the instant checkout succeeds, so a re-click releases the lock; that is the loop she was
+  in. Left as is (a product call, see _TODO.md R1); the fix stops the false accusation and
+  the double surfacing, not the re-click.
+
+Tests: four save-engine.test.js cases (own doTurnIn → not a force; the app-side stamp; the
+window closing → still a force; no flush over a self-released lock — all red on the old
+engine), and turn-in-self-release.spec.js (cloud-gated, a real Turn In in a real browser:
+turned-in toast, no notice, `[Check out to Edit]` works again; red on the old engine at
+the notice assertion). Verified pre-fix that the load-another-project path did NOT show
+the notice (state resets before the UPDATE lands), so the spec pins the Turn In button.
+
+Side findings recorded in _TODO.md, not fixed here: 13 client event types
+(`project_close`, `tour_step`, `trade_set`, `bid_check_row_state`, …) are missing from
+the deployed `log_user_event` allowlist and 400 on every call (needs a migration); the
+2026-09-01 field report in admin-onboards-a-team.md was very likely the same estimator
+and the same button.
+
+---
+
 ## Project Settings: the layout pass, direction A (2026-09-15)
 
 Reported with a screenshot of a real bid: the settings card had grown into a stack of

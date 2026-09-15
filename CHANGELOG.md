@@ -13,6 +13,48 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## Project Settings: the layout pass, direction A (2026-09-15)
+
+Reported with a screenshot of a real bid: the settings card had grown into a stack of
+same-weight buttons, a bell floating alone in an empty row, a two-line title carrying the
+project name, and two-sentence hints squeezed beside their controls until "Ceiling
+height" read one word per line. Three directions were mocked (same-shape tidy, tabs,
+collapsed summary rows); the tidy one shipped.
+
+- **Header**: the title stays "Project Settings"; the project name is a subtitle line
+  (`#settingsSubtitle`, ellipsised) under it.
+- **Status strip**: `#settingsCheckoutSection` is one line, a dot (`#settingsCheckoutDot`,
+  green yours / yellow someone else's / grey available), the checkout state in one short
+  sentence (`Checked out by you · saved 9:46 PM`), and the Save Status bell at the right;
+  hidden with no cloud project, so the bell never sits in an empty row.
+- **Actions**: Save to Cloud is the one primary (centred, full width); Share, Turn in,
+  Check out, Force turn-in, Add pages, Download PDF and Close sit in an auto-fit grid of
+  same-weight secondaries (`.settings-action-grid`; hidden ones leave no hole).
+- **Bid review** is a single line (`Bid review · not started` + the link-styled
+  transition button). Pre-existing bug fixed on the way: `updateUI`'s `.supabase-only`
+  reset resurrected the row signed-out (blank status, live button); it now stays hidden
+  unless signed in with a cloud project.
+- **This project** rows are a small grid: label + control on one line, a ONE-line hint on
+  its own full-width line under them (`grid-template-areas: "text control" "hint hint"`;
+  the long form rides the row's `title=`). Codes is three labelled selects
+  (Plumbing / Electrical / HVAC, DM Mono) in one line; Ceiling height stacks like Codes
+  because its control (ceiling, make-up + the § chip) is wider than the card allows
+  beside a label. **Quick keys** joined the section as a row (`#settingsQuickKeysRow`:
+  the first three bindings as `1 WC · 2 Lav · 3 FD · +4`, plus the Edit link that keeps
+  the `#settingsQuickKeys` id).
+- **Footer**: one line of links, `Load project…` (`#settingsLoadProject`) and
+  `Manage projects` (admin) with a **Help ▸** disclosure (`#settingsHelpToggle` →
+  `#settingsHelpLinks`: keyboard shortcuts, the three tours, the engineered sample
+  plan; folded again every open) on the left, `Clear Page` and `Advanced ▸` on the
+  right. Phones: stacked rows, one code select per line, 44px targets.
+
+Specs: settings-modal.spec.js re-pinned (order, hint-under-control, three code cells on
+one line, subtitle, Help toggle, review row hidden after updateUI); tutorial.spec.js and
+advanced-sample-plan.spec.js open Help before their door. Guide: how-to-do-a-pdf-takeoff
+names the Help row.
+
+---
+
 ## fix(output): Everything copies every layer on every sheet (2026-09-14)
 
 Reported through Will: "when I try to Copy to /Tooling it is not moving over all of my

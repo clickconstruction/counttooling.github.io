@@ -371,6 +371,7 @@ test.describe('Interactive walkthrough', () => {
     await page.click('#tourLeave');
     // Settings → plumbing tour
     await page.evaluate(() => window.App.showModal('settingsModal'));
+    if (await page.getAttribute('#settingsHelpToggle', 'aria-expanded') !== 'true') await page.click('#settingsHelpToggle');
     await page.click('#settingsTourPlumbing');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['plumbing', 'welcome']);
     await page.click('#tourLeave');
@@ -384,6 +385,7 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.locator('.canvas-empty-hint-tour').isVisible()).toBe(true);
     expect(await page.locator('#canvasEmptyHintTourHvac').isVisible()).toBe(true);
     await page.evaluate(() => window.App.showModal('settingsModal'));
+    if (await page.getAttribute('#settingsHelpToggle', 'aria-expanded') !== 'true') await page.click('#settingsHelpToggle');
     await page.click('#settingsTourHvac');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['hvac', 'welcome']);
     await page.click('#tourLeave');

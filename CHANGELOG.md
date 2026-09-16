@@ -13,6 +13,10 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(bids): the header bid switcher (2026-09-16, PR #100)
+
+PUNCHLIST.md row BID-SWITCH, closed: `claude/bid-switcher` landed as PR #100 (squash edcea00), live on counttooling.com the same hour (`CACHE_VERSION 2dd90a5d4738` verified). The plan of record and the full write-up are [journeys/plans/BID-SWITCHER.md](journeys/plans/BID-SWITCHER.md); in one line: the Export control stops impersonating Upload PDF when nothing is open, a header chip names the bid you are in and opens a menu of recent ones (`recent-bids.js`, per device), and clicking a recent opens it through the same save gate as Load Project. Known limit written down there: no chip between 769 and 1099 px.
+
 ## chore(repo): the branch sweep (2026-09-16)
 
 PUNCHLIST.md row BRANCH-SWEEP, closed. Every merged `claude/*` topic branch is gone from origin and from this Mac, and the two worktrees that sat on merged branches are removed.

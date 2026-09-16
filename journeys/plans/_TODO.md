@@ -3,6 +3,8 @@
 > **COMPLETE 2026-09-14.** D19–D25 shipped (Wave 3), the after-the-queue items are ticked below. What is still open is not a build: the three `[decision]` slots in [_STAGE6.md](_STAGE6.md), the day-7 telemetry re-read on 2026-09-19, and the standing drift patrol.
 >
 > **Re-opened 2026-09-14 (evening) with one unit:** [D26 — drift patrol after the sample-plan promotion](#d26--drift-patrol-after-the-sample-plan-promotion). The candidate-A hand-off below shipped the same day (CT #94).
+>
+> **Re-opened 2026-09-15 with a field fix shipped DORMANT:** [R1 — review: our own Turn In was reported as an admin force](#r1--review-our-own-turn-in-was-reported-as-an-admin-force) (PR #97, merged to main behind the per-device flag `?ff=self-release`; OFF for everyone). **Open, in order:** [R1-TEST — a tester walks it on counttooling.com](#r1-test--a-tester-walks-the-fix-on-counttoolingcom-own-login) → [R1-FLIP — make it live for everyone](#r1-flip--make-the-fix-live-for-everyone-after-r1-test) → the side finding [R2 — 13 client event types 400 against the deployed `log_user_event` allowlist](#r2--13-client-event-types-400-against-the-deployed-log_user_event-allowlist) (needs a migration; Will's go). **Until R1-FLIP lands, wendi's bug is still live.**
 
 > Will's call: stop after D18 lands; the rest is handed to whoever picks it up
 > next (a person or a fresh Claude session). Every unit below is a complete
@@ -232,6 +234,294 @@ in `candidateA()`; the fixture symbols are the helpers at the top of the file
    zoom-canvas-cap.
 5. The house loop: targeted specs + `npm run check` per unit, the full suite at
    the push, a live walk of all three tours before calling it done.
+
+## R1 — review: our own Turn In was reported as an admin force
+
+Branch `claude/self-turn-in-not-a-force`, cut from main @ 55bca6d (PR #95), **open as
+PR #97** (2026-09-15, NOT merged) and written to ship **DORMANT behind the per-device flag
+`?ff=self-release`** — Robert's call: another individual tests it on the real site before
+it goes live for anyone. With the flag off, prod behaves exactly as before (a fifth node
+test pins that). **Review pass 2026-09-15** (a second session, at the owner's ask "what
+else would this touch?"): the diff was re-read against main rather than taken from this
+brief; the AND-gate dormancy was verified line by line, `doTurnIn`'s flush-before-release
+confirmed (so the skipped post-release flush loses nothing), `pushSaveEvent` confirmed to
+be the in-app log only (so the two new event kinds need no allowlist migration and are
+untouched by R2), and ONE real gap was found and closed — see the project scope below.
+The test is [R1-TEST](#r1-test--a-tester-walks-the-fix-on-counttoolingcom-own-login);
+making it live is [R1-FLIP](#r1-flip--make-the-fix-live-for-everyone-after-r1-test).
+Written by the session that diagnosed it; nothing below depends on that conversation.
+
+### The report
+wendi@clickplumbing.com, 2026-09-15, through Robert: "count tooling keeps kicking me
+to view only after i check things out", screenshot of the force-turn-in notice
+(`#forceTurnInNoticeModal`: "An admin turned this project in while you had it
+checked out. You're now viewing only.") over "PONLY Palmer winery Plans 2".
+
+### What the evidence showed (Supabase project `mep-plans-markup`, all read-only)
+- Palmer is her own project, no `project_shares` rows; the only admin (robert@) was last
+  seen 2026-09-14; one live `auth.sessions` row (Mac Chrome). No second device, no
+  admin action, no shared login.
+- Edge logs 16:34–16:48 UTC from her IP/UA: `check_out_project` 16:34:56, 16:35:34;
+  `check_in_project` 16:35:53 and 16:36:04 with an EMPTY `x-client-info` header (the
+  engine's raw-fetch fallback, which only `doTurnIn` uses for check-in), each ~3 s after a
+  `check_out_project`; `check_out_project` 16:37:26; `check_in_project` 16:48:35 with
+  the supabase-js header (`checkInCurrentProjectIfHeld`, i.e. close / load another). The
+  request "pairs" in the log are CORS preflights (OPTIONS+POST), not two tabs.
+- **Not explained:** the two check-outs at 16:34:56 and 16:35:34 with no check-in
+  between. Edge logs don't carry RPC bodies; the first may have returned `ok:false`, or
+  been a different project (she reloaded the app three times 16:22–16:27:
+  `restore_prompt_shown`, `session_start` ×2 in `user_activity`). Doesn't change the
+  diagnosis; recorded so nobody thinks it was checked.
+- `user_activity` has NO `project_close` rows for anyone — see R2.
+
+### The reproduction (prod-identical shell, `CACHE_VERSION 5834c3a8c8d2`, test account)
+Save & Open the advanced sample plan (creates + checks out) → click the header
+`[Turn In]` → Save Status log: `turn_in_ok`, `force_turn_in`, `force_turn_in`; the
+notice opens in the releasing tab on top of the "Project turned in." toast. Every time.
+
+### Root cause
+`doTurnIn` (save-engine.js) never clears `state.checkedOutBy`; `doTurnInAndHandleResult`
+(features/turn-in.js) learns the release from `refreshProjectPermissions`, which ALSO
+runs from the `projects` realtime UPDATE the check-in caused. Both refreshes see
+`prevWasCheckedOut && isViewer`, lock not stale → the 2026-09-01 classifier's "GENUINE
+FORCE" branch (`cf90903`), whose premise "only admins can break a LIVE lock" is false:
+the holder can (`check_in_project`), and so can any other tab/device signed in as the
+same user (`where checked_out_by = auth.uid()`, per user not per session). Before the
+2026-08-31 notice modal (`f5ce075`) this was a redundant toast, so nobody noticed; the
+2026-09-01 field report in `journeys/admin-onboards-a-team.md` ("keeps coming back")
+was very likely the same estimator hitting the same button.
+
+### What the branch changes (5 source files, 2 tests, 4 docs)
+1. `constants.js` — `SELF_RELEASE_GRACE_MS = 15 * 1000` (+ export).
+2. `save-engine.js` — `lastSelfReleaseAt` / `lastSelfReleaseProjectId` /
+   `noteSelfRelease(atMs, projectId)` / `isSelfReleaseRecent(projectId)` declared just
+   above `refreshProjectPermissions`; stamped in
+   `doTurnIn` on `result.ok` AND on the `alreadyReleased` short-circuit; exported.
+   In `refreshProjectPermissions`: `selfRelease = turnInInProgress ||
+   isSelfReleaseRecent()`; when set, (a) the dirty-flush over the lost lock is skipped
+   (`self_release_flush_skipped`), (b) the demotion branch logs `self_release_refresh`
+   and does nothing else. The expiry and force branches are byte-identical otherwise;
+   the "only admins" comments corrected.
+3. `app.js` `checkInCurrentProjectIfHeld` — `if (data?.ok) saveEngine.noteSelfRelease()`.
+   Belt-and-braces: verified pre-fix that this path (load another project) did NOT trip
+   the notice, because load resets state before the UPDATE lands.
+4. `app/index.html` — `#forceTurnInNoticeBody` gets an id; the shipped copy is unchanged.
+   With the flag on, features/turn-in.js `openForceTurnInNoticeModal` swaps it to "This
+   project was turned in while you had it checked out, by an admin or by another tab or
+   device signed in as you." (R1-FLIP moves that text into the markup.)
+4b. **The flag** (added before merge): app.js `// SECTION: Feature flags` —
+   `featureFlagEnabled(name)` reads localStorage `clickcount-ff-<name>`; `?ff=<name>` on
+   the URL sets it once per device, `?ff=-<name>` clears it. The engine reads
+   `ctx.isSelfReleaseStampEnabled()` (app.js: `featureFlagEnabled('self-release')`) and
+   ANDs it into `selfRelease`. Published as `App.featureFlagEnabled`. Not in the sign-out
+   key list on purpose (a device preference). Conventions bullet in AGENTS.md.
+5. Tests: 5 `save-engine.test.js` cases (own doTurnIn → no notice/no toast/
+   `self_release_refresh`; the app-side stamp; the window closing → still a force; no
+   flush over a self-released lock — all four RED on the old engine — and flag OFF → the
+   old classification, i.e. the dormant ship is a no-op), 67/67 green.
+   `turn-in-self-release.spec.js` (cloud-gated, self-skips without dev-auth), one project,
+   both halves: flag off → a real `[Turn In]` still trips the notice with the shipped
+   copy; flag on → turned-in toast, no notice, `[Check out to Edit]` works again,
+   console-clean. RED on the old engine at the notice assertion.
+6. Docs: CHANGELOG entry, ARCHITECTURE turn-in.js row, AGENTS "Save / sync" bullet,
+   dossier addendum in admin-onboards-a-team.md.
+
+### What a reviewer should check
+- [ ] `turnInInProgress` is a `let` declared ~400 lines BELOW `refreshProjectPermissions`
+      in the same closure. Call-time read only (both run long after `createSaveEngine`
+      returns), so no TDZ; confirm no lint rule wants it hoisted.
+- [x] **The cross-project leak — FOUND AND FIXED 2026-09-15 (review pass).** The stamp
+      was a bare timestamp with no project id, so the window covered whatever project was
+      current when the refresh landed: release A, check out B inside 15 s, an admin forces
+      B, and B's genuine force was classified as our own release — a silent demotion with
+      no notice, on a project the user never released. `noteSelfRelease` now records the
+      project (defaulting to the current one at stamp time, which is the released one on
+      every call path) and `isSelfReleaseRecent(projectId)` requires a match. Pinned by
+      `refreshProjectPermissions: the stamp does not leak across projects` in
+      save-engine.test.js, verified RED against the unscoped engine (0 notices, expected 1)
+      and green after. 68 node tests.
+- [ ] The window: 15 s is generous on purpose (a wedged supabase-js can delay the
+      handler's own refresh by the 8 s `REFRESH_PERMISSIONS_TIMEOUT_MS` + retry). Cost of
+      too long: an admin force within 15 s of our own turn-in is absorbed silently — we
+      are already a viewer, nothing is lost. Cost of too short: the bug comes back.
+- [ ] The flush skip: `willBecomeViewer && hadDirty && !hadInflight && selfRelease` now
+      logs and leaves `autoSaveDirty` as is. Before, the flush would have hit
+      `CHECKOUT_NOT_OWNED` and set `lastCloudSaveAttemptFailed` (yellow bell) for a lock
+      we gave up. Confirm no caller relied on that flush after a self turn-in (doTurnIn
+      flushes BEFORE releasing; `checkInCurrentProjectIfHeld` callers reset state).
+- [ ] The admin's own Force turn-in on a project they hold (features/turn-in.js
+      `settingsForceCheckIn`) sets `checkedOutBy = null` synchronously after the RPC; it
+      does NOT stamp. Pre-existing tiny race with the realtime refresh; left alone. Decide
+      whether to stamp there too (one line) or leave.
+- [ ] Copy has no em dashes (house rule) and the sentence reads right to an estimator.
+- [ ] Run: `npm run check` (10/10 green at hand-off), `node --test save-engine.test.js`,
+      the targeted set (`close-project save-project save-status restore-last-session
+      load-project load-project-delete upload-then-save user-activity
+      turn-in-self-release` — 25/25 at hand-off), the full suite before merge (from a
+      `.claude/worktrees/*` checkout: `--config=playwright.worktree.config.js`, own server
+      + `BASE_URL`; the test account needs `config.local.js` with dev-auth).
+- [ ] Live walk after deploy (dev account on counttooling.com): Save & Open the sample,
+      `[Turn In]`, expect ONLY "Project turned in." and `[Check out to Edit]`; then have
+      a second browser signed in as the same account turn it in and expect the notice
+      with the new copy.
+
+### Not in this branch, on purpose (product calls)
+- **The re-click trap.** `[Check out to Edit]` and `[Turn In]` are the same button in
+  the same pixels (app.js `updateUI`, the edit banner); the flip happens the instant
+  checkout succeeds, so a second click releases the lock. Wendi's 16:36:01 → 16:36:04
+  pair is this. Options: hold a "Checked out ✓" state ~2 s before showing `[Turn In]`;
+  or a confirm on Turn In. Both change a flow the J13 walk verified. Will's call.
+- **Confirming with wendi.** Her Save Status bell → Export logs: the event before each
+  `force_turn_in` should be `turn_in_ok`. Closes the loop on the inference that she
+  clicked the banner (only user buttons reach `doTurnIn`; WHY she clicked is inferred).
+- **Same-account co-editing.** A second tab/device signed in as the same user becomes a
+  silent co-editor (`can_edit` is per user) and both autosave to the same row. Not
+  involved here (one session), but real: consider a session id on the lock.
+
+## R1-TEST — a tester walks the fix on counttooling.com (own login)
+
+For the person testing, not a developer. Takes about ten minutes. Use your own
+CountTooling login and a project you own (or make a throwaway: open the sample plan
+from the empty canvas and Save & Open it). Nothing you do here can affect anyone
+else's project unless you pick a shared one — pick one that is yours alone.
+
+**Turn the fix on for your browser (once):**
+1. Open **https://counttooling.com/app/?ff=self-release** and sign in. That switch is
+   remembered by this browser only; nobody else sees any change. (To turn it off again
+   later: open `https://counttooling.com/app/?ff=-self-release`.)
+
+**Walk A — the bug is gone:**
+2. Open a project you own. The header shows `[Check out to Edit]` (if it shows
+   `[Turn In]` you already have it checked out; skip to 4).
+3. Click `[Check out to Edit]`. The button becomes `[Turn In]` and a toast says
+   "Project checked out. You can now edit."
+4. Click `[Turn In]`.
+5. **Expected:** ONE small card, "Project turned in. Close project", top right, gone in
+   about six seconds, and the header reads `[Check out to Edit]` again.
+   **The bug (must NOT appear):** a dark dialog titled "Project turned in" saying "An
+   admin turned this project in while you had it checked out. You're now viewing only",
+   with Close project / Check out to edit / Keep viewing buttons.
+6. Do 3 → 4 → 5 five times in a row, quickly. Same expectation every time.
+7. Click `[Check out to Edit]`, place a counter or draw a line, wait ten seconds (the
+   auto-save), then `[Turn In]`. Same expectation; reload the page and confirm the mark
+   is still there.
+
+**Walk B — a real turn-in from elsewhere still tells you (needs a second browser or
+your phone, signed in as YOU):**
+8. In browser 1, `[Check out to Edit]` on the project. In browser 2, open the same
+   project — it will show you as editing (`[Turn In]`) because it is the same account.
+   In browser 2 click `[Turn In]`. (Browser 2 has not opened the `?ff=` switch, so it
+   may show the dark dialog to itself — that is today's behavior on an unswitched
+   browser; ignore it there, browser 1 is the one under test.)
+9. **Expected in browser 1 within a few seconds:** the dark "Project turned in" dialog
+   DOES appear, and it now reads "This project was turned in while you had it checked
+   out, by an admin or by another tab or device signed in as you." — not "An admin".
+   Close it with Keep viewing.
+
+**Walk C — nothing else moved:** open Project Settings, Save Status (the bell), Load
+Project, Close project; open a view link if you have one. Everything as before.
+
+**Report** (a line each is enough): which walks passed; the exact text of anything
+unexpected; and, for anything odd, the bell → Export logs file. If the dark dialog
+appeared in Walk A even once, that is a fail — attach the export.
+
+⚑ Sign-off recorded here: `[tester] ____ [date] ____ [result] ____`
+
+### Agent pre-walk, 2026-09-15 — evidence, NOT the sign-off
+
+Run by the review session before handing the walk over, so the tester starts from a known
+state rather than from a hand-off note. **The sign-off slot above stays blank on purpose:**
+Robert's condition was that another *individual* walks it, and this was not a person.
+
+- **The live bundle carries both PRs.** `save-engine.js`, `features/turn-in.js` and
+  `app/index.html` fetched from counttooling.com: the scoping (`lastSelfReleaseProjectId`,
+  `noteSelfRelease(atMs, projectId)`, `isSelfReleaseRecent(state.currentProjectId)`), the
+  `self_release_refresh` / `self_release_flush_skipped` events, the flag-gated copy swap,
+  and `#forceTurnInNoticeBody` still holding the OLD copy in the markup (correct until
+  R1-FLIP). `CACHE_VERSION 77212f605f87` matched main.
+- **The flag seam works on prod.** Opening `/app/?ff=self-release` set
+  `clickcount-ff-self-release=1` and `App.featureFlagEnabled('self-release')` read `true`.
+  First confirmation of the flag mechanism outside a test.
+- **The cloud-gated spec ran for the first time** (dev-auth supplied):
+  `turn-in-self-release.spec.js` PASSED in 28.8 s against the real backend, both halves.
+- **Walk A — 6 check-out/turn-in cycles** (5 of them back to back) on a throwaway project
+  made from the engineered sample plan: every one gave the small turned-in card and
+  `[Check out to Edit]`, never the notice. Log: 6 `turn_in_ok`, 7 `self_release_refresh`
+  (the extra is the documented double refresh: realtime UPDATE + the caller's own),
+  **0 `force_turn_in`**. The field signature was `turn_in_ok, force_turn_in, force_turn_in`.
+- **Walk B — a genuine outside release still warns.** A second tab signed in as the same
+  user released the lock; the first tab raised the notice, logged `force_turn_in` (1), body
+  text exactly: "This project was turned in while you had it checked out, by an admin or by
+  another tab or device signed in as you. You're now viewing only."
+- **Walk C** — Project Settings (post-#96 layout), the Save Status modal and its log all
+  intact; **zero console errors** across the whole walk.
+
+**What this evidence does not cover, and why the human walk still matters:**
+
+1. It ran from `localhost:4571`, not counttooling.com. Same commit and the real Supabase
+   backend, and the deployed artifact is verified identical by the CACHE_VERSION content
+   hash, but it is not the prod URL (dev-auth is localhost-gated by design).
+2. Walk B's second tab called `check_in_project` directly rather than loading the project
+   and pressing Turn In. Same wire call another device makes, but not a button press.
+3. It used the `dev-agent@clickplumbing.com` test account, not an estimator's own login on
+   their own bid, which is the case wendi actually hit.
+4. Nobody judged whether the new sentence *reads right to an estimator* — a human call the
+   R1 checklist asks for explicitly.
+
+## R1-FLIP — make the fix live for everyone (after R1-TEST)
+
+**Do not run before R1-TEST is signed off above.** One topic branch, `claude/r1-flip`,
+size S (an hour with the gates). It makes the flagged behavior the default and removes
+the flag, leaving the code as if the fix had shipped plainly.
+
+1. app.js engine ctx: `isSelfReleaseStampEnabled: () => true` is wrong — instead DELETE
+   the ctx entry, and in save-engine.js drop the `ctx.isSelfReleaseStampEnabled` factor
+   from `selfRelease` (leave `turnInInProgress || isSelfReleaseRecent()`); update the
+   engine header's ctx-contract line.
+2. app/index.html `#forceTurnInNoticeBody`: replace the shipped sentence with the new
+   copy (no em dashes: "This project was turned in while you had it checked out, by an
+   admin or by another tab or device signed in as you."). features/turn-in.js: delete
+   the flag-gated `innerHTML` swap (keep the id).
+3. app.js `// SECTION: Feature flags`: remove `self-release` from the "Live flags" list.
+   Keep the mechanism (it is the house pattern now — AGENTS.md Conventions); if no flag
+   is live, say so in the comment.
+4. save-engine.test.js: delete the "flag OFF" pin and the four `isSelfReleaseStampEnabled:
+   () => true` overrides; remove the default from `makeCtx`. turn-in-self-release.spec.js:
+   drop the flag-off half and the localStorage set (keep flag-on assertions as the plain
+   path). Expect 66 node tests.
+5. Docs: CHANGELOG entry ("R1-FLIP: live for everyone, <date>, tested by <name>"), the
+   AGENTS.md save/sync bullet and the ARCHITECTURE turn-in.js row lose their DORMANT
+   clauses; flip this unit and R1-TEST to ☑ here.
+6. Gates: `npm run check`, `node --test save-engine.test.js`, the targeted set from R1,
+   `npm run build:sw`, the full suite, push, then `curl -s https://counttooling.com/sw.js
+   | grep CACHE_VERSION` matches, then the live walk: R1-TEST Walks A and B WITHOUT the
+   `?ff=` switch (open `?ff=-self-release` first so the device flag is not masking).
+7. Tell wendi it is live and ask her to confirm the loop is gone.
+
+## R2 — 13 client event types 400 against the deployed `log_user_event` allowlist
+
+Found 2026-09-15 while running R1's spec (its cleanup's `closeProject` produced a console
+`400 /rest/v1/rpc/log_user_event`). Diffed `logUserEvent('…')` call sites in app.js +
+features/*.js against `pg_get_functiondef(public.log_user_event)` on prod. These are
+called by the client and REJECTED ("invalid event type") on every call, no migration
+ever added them:
+
+`bid_check_row_state`, `ceiling_set`, `child_count_from_rule`, `codes_set`, `drop_set`,
+`ghost_placed`, `ghost_stamped`, `project_close`, `restore_prompt_deferred`,
+`rule_open`, `tag_suggestion_accepted`, `tour_step`, `trade_set`.
+
+Consequences: `user_activity` has none of them (the telemetry re-reads in _NEXT.md were
+blind to tours, trade choice, Bid Check ticks, closes); every signed-in Close project
+logs a console error in prod (the console-clean specs never saw it because they run
+signed out). The client swallows the error, so nothing else breaks.
+
+Unit: one migration `supabase/migrations/<stamp>_log_user_event_allowlist_catchup.sql`
+re-creating `public.log_user_event` with the CURRENT deployed body plus the 13 (copy the
+deployed body from `pg_get_functiondef`, never the 20260326230000 original — the
+migration-chain rule in _INDEX.md conflict note 5). Also add a node test that diffs the
+client's `logUserEvent('…')` literals against the newest migration's allowlist so this
+cannot drift again (`rules.test.js` has the pattern for reading migrations). ⚑ Applying
+the migration is Will's go (AGENTS.md: Supabase MCP `apply_migration`). Size S.
 
 ## D26 — Drift patrol after the sample-plan promotion
 

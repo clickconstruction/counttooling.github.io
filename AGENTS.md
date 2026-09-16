@@ -307,6 +307,14 @@
   override rides the annotation). Wire and cable are DERIVED at tally time
   (features/conductors.js) — never marks, never stored totals.
 - Keep the app functional with Supabase disabled.
+- **Feature flags (dormant ships).** A change that must land on main before a tester has
+  walked it on the real site ships OFF behind `featureFlagEnabled('<name>')` (app.js
+  `// SECTION: Feature flags`): `/app/?ff=<name>` turns it on for that device (localStorage
+  `clickcount-ff-<name>`, survives sign-out on purpose, never rides a project), `?ff=-<name>`
+  turns it off, `?ff=a,b` several. The engine reads flags through `ctx` (e.g.
+  `isSelfReleaseStampEnabled`). A flag is a staging area, not a settings surface: the
+  follow-up "flip" PR makes the behavior the default and deletes the reads. Live flags are
+  listed in that section's comment.
 - When adding a new persisted setting or per-project field, include it in
   export/import and save/load.
 
@@ -388,7 +396,8 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` / `clickcount-tour-done-plumbing` / `clickcount-tour-done-hvac` (the electrical / plumbing / HVAC walkthrough was finished on this device — hides that tour's empty-canvas link; the whole offer goes when all three are set),
 `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
-mode), `chainPanelPos` (the dragged Chain palette position, per device;
+mode), `clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,
+NOT wiped by the sign-out key list; see Conventions), `chainPanelPos` (the dragged Chain palette position, per device;
 ignored when it no longer fits the viewport), `dropPanelPos` (same, for the
 Drop tool palette), `highlightPanelPos` (same, for the Highlights bookmarks
 panel — features/highlight-labels.js; the highlight *labels* themselves ride
@@ -520,6 +529,18 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   silent auto-recheckout under it. Symbols: `doTurnIn`,
   `subscribeToProjectCheckoutChanges`, `refreshProjectPermissions`,
   `handleBackgroundCheckoutExpired`, `openCheckoutExpiredRecoveryModal`.
+  A demotion seen at `refreshProjectPermissions` is CLASSIFIED before anyone is
+  blamed: our own release (the engine's self-release stamp `noteSelfRelease`,
+  window `SELF_RELEASE_GRACE_MS`, scoped to the project that was released;
+  `doTurnIn` and app.js's
+  `checkInCurrentProjectIfHeld` both stamp) → `self_release_refresh`, nothing
+  shown; a stale lock → the expiry machinery; a LIVE lock cleared by someone
+  else (an admin, or another tab/device signed in as this user — the RPC is
+  per user) → the force-turn-in notice modal. **The self-release rung is
+  DORMANT behind `?ff=self-release` until _TODO.md R1-FLIP** (with the flag off
+  our own Turn In still shows the notice — the 2026-09-15 field bug). Pinned by
+  save-engine.test.js and [turn-in-self-release.spec.js](turn-in-self-release.spec.js)
+  (cloud-gated, both halves).
 
 ### Hotkeys
 

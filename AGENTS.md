@@ -270,7 +270,13 @@
   [SUPABASE_SETUP.md](SUPABASE_SETUP.md)). PDF uploads capped at 50 MB.
 - **Supabase migrations**: when creating or modifying files in
   `supabase/migrations/`, apply them via the Supabase MCP `apply_migration` tool
-  (name = filename without `.sql`, query = file contents).
+  (name = filename without `.sql`, query = file contents). Without the MCP, the
+  CLI works with no database password: `supabase link --project-ref hrqxvfydmvtvwhvefmqc -p ""`
+  (the CLI's login role connects), `supabase migration list --linked` to see what prod has,
+  `supabase db push --dry-run --linked` (must list ONLY your file), then `db push --linked --yes`.
+  If prod shows a version the repo lacks, `supabase migration fetch --linked` in a scratch
+  copy reveals it (the MCP has recorded a file under an auto stamp before, 2026-09-13);
+  rename the repo file to prod's stamp rather than repairing prod's history.
 
 ## Navigation
 

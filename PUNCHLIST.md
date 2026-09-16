@@ -43,4 +43,3 @@ How agents add to this list: AGENTS.md, "Recording a to-do".
 | EXPIRY-30 | 30-minute checkout expiry under contention is still unwalked (time-gated; machinery covered by unit and spec) | test | tester | — | [_NEXT.md](journeys/plans/_NEXT.md) |
 | SPEC-DUPES | Nit: specs double-create identically-named test projects, churning rows on the test account | chore | agent | — | [_NEXT.md](journeys/plans/_NEXT.md) |
 | BID-SWITCH | Land or close `claude/bid-switcher`: a six-stage header bid-chip plan plus uncommitted `recent-bids.js` in the ecosystem worktree, all invisible from main | chore | dev | — | — |
-| BRANCH-SWEEP | Delete the merged `claude/*` topic branches and prune the stale worktrees | chore | agent | — | — |

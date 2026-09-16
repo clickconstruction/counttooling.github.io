@@ -13,6 +13,14 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(repo): the branch sweep (2026-09-16)
+
+PUNCHLIST.md row BRANCH-SWEEP, closed. Every merged `claude/*` topic branch is gone from origin and from this Mac, and the two worktrees that sat on merged branches are removed.
+
+- **Remote:** `claude/boot-skew-recovery` (landed as 359fdb6 + a5f1f06), `claude/settings-modal-small-viewports` (landed as 883951a), and `claude/journey-batch-final` (the 2026-08-20 batch; every JOURNEY-MAP row it carried is marked merged 2026-08-30, so the handoff's "keep until reviewed" condition was met). `origin/claude/bid-switcher` (PR #100) is the only topic branch left on origin.
+- **Local:** `claude/app-review-docs-7feac0` (PR #88), `claude/ecosystem-app-review-dfd122` (PRs #84, #87), `claude/nifty-curie-67f201` (PR #98) and `claude/punchlist` (merged 04e02dd) deleted; worktrees `musing-wu-4d8868` and `app-review-docs-4e5b52` removed, both clean.
+- **Also found on the way:** the punch list merge (04e02dd) had been committed to local main and never pushed; pushed 2026-09-16.
+
 ## fix(save-engine): our own Turn In is not a force turn-in (2026-09-15)
 
 Field report through Robert: wendi, "count tooling keeps kicking me to view only after

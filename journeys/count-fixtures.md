@@ -228,3 +228,9 @@ Diane from estimator Wendi, with screenshots; prod, macOS + Dock):
    no message ("hiding the ability to change the icon" — she self-blamed, the
    UI contributed). Now a grid-spanning empty state names the query and says
    to clear the search. Both fixes pinned in counter.spec.js.
+
+## Addendum 2026-09-16 (D26, after the sample-plan promotion)
+
+**Environment note.** The walks and screenshots above ran on the first synthetic office plan (921.6 × 597.6 pt, a non-standard sheet). Since 2026-09-14 `samples/sample-plan.pdf` is candidate A, the design-build sheet (Suite 200 Office TI, A-101): a true ANSI B, 1224 × 792 pt, the plan at 9 pt/ft (1/8" = 1'-0"), rooms Lobby 100, Office 101, Office 102, Conference 103, Break 104, Open Office 105, Jan. 106, Men 107, Women 108, Corridor C-1, with a room schedule, LP-1 and RTU-1 notes and no MEP drawn ([plans/SAMPLE-PLANS.md](plans/SAMPLE-PLANS.md)). `getPageSheetAnalysis(0)` reports `isStandard: true` (ANSI_B), so the "isn't a standard sheet size" warning never shows on it. The dossier images in `img/` were not regenerated and show the old sheet.
+
+Specific to this journey: the restrooms are **Men 107** (two water closets in stalls, two urinals, two lavs, a floor drain) and **Women 108** (three water closets in stalls, three lavs, a floor drain), so the sheet carries **5 WC + 2 urinals + 5 lavs**, not the seven water closets the walk and the demo moment count ("seven numbered toilet glyphs across the MEN and WOMEN rooms" is five today; the plumbing tour counts Women 108). The findings are about the create surfaces and the palette, none of them depends on the fixture count, and none was re-driven.

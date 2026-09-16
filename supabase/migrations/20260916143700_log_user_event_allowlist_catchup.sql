@@ -13,7 +13,7 @@
 --     the repo allowlists them either, so they ride the same catch-up)
 --
 -- Re-creates the function from the latest body in the migration chain
--- (20260906120000_log_user_event_duct_run.sql, itself on the T2-15 / T1 chain and
+-- (20260913025935_log_user_event_duct_run.sql, itself on the T2-15 / T1 chain and
 -- the original 20260326230000) with the fifteen added. Migration chain discipline
 -- (_INDEX.md conflict note 6): a re-creation must carry the DEPLOYED body, because
 -- copying an older one silently un-allowlists the events later branches shipped.

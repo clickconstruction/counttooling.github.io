@@ -13,13 +13,13 @@ expired recovery UX" work occupies that slot).
 
 ---
 
-## chore(telemetry): R2, the log_user_event allowlist catch-up, written not applied (2026-09-16)
+## chore(telemetry): R2, the log_user_event allowlist catch-up, applied (2026-09-16)
 
 Found 2026-09-15 while running R1's spec: thirteen event types the client sends (`project_close`, `tour_step`, `trade_set`, `codes_set`, `ceiling_set`, `drop_set`, `bid_check_row_state`, `child_count_from_rule`, `rule_open`, `tag_suggestion_accepted`, `ghost_placed`, `ghost_stamped`, `restore_prompt_deferred`) are rejected by the deployed `public.log_user_event` with "invalid event type", so `user_activity` never saw a tour, a trade choice, a Bid Check tick or a Close project, and every signed-in Close logged a console 400. Two more, `client_error` and `client_unhandled_rejection` (app.js `reportClientError`'s server mirror), were in no migration either.
 
-- **The migration** `supabase/migrations/20260916143700_log_user_event_allowlist_catchup.sql` re-creates the function from the chain-latest body (`20260906120000`, duct_run) with the fifteen added and the grant / revokes re-asserted. **Not applied**: Will's go, and the applier diffs the list against `pg_get_functiondef` on prod first (this session could not; no Supabase MCP, CLI unlinked).
+- **The migration** `supabase/migrations/20260916143700_log_user_event_allowlist_catchup.sql` re-creates the function from the chain-latest body (`20260913025935`, duct_run) with the fifteen added and the grant / revokes re-asserted. **Not applied**: Will's go, and the applier diffs the list against `pg_get_functiondef` on prod first (this session could not; no Supabase MCP, CLI unlinked).
 - **The drift test** [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js): every `logUserEvent('…')` / `reportClientError('…')` literal in the client must be in the newest allowlist migration; each re-creation in the chain must carry every earlier type (the _INDEX.md conflict-note-6 rule, now pinned); the one non-literal call is asserted to be the only one. Runs under `npm run test:unit`, so `npm run check` fails the moment a new event ships without its migration.
-- Docs: SUPABASE_SETUP.md migration paragraph, ARCHITECTURE Files row, AGENTS test list, _TODO.md R2 status; punch row R2 reworded, still open.
+- Docs: SUPABASE_SETUP.md migration paragraph, ARCHITECTURE Files row, AGENTS test list, _TODO.md R2 status; punch row R2 closed.
 
 ---
 

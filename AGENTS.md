@@ -10,6 +10,9 @@
   Spec").
 - [CHANGELOG.md](CHANGELOG.md) — implementation history (the sync-hardening PRs and
   other detail). Consult when you need the "why" behind the save/sync machinery.
+- [PUNCHLIST.md](PUNCHLIST.md) — **every open item, one line each**. An index, not
+  a container: the detail stays in the plan file or dossier that owns it. Read it
+  to answer "what is still open?"; write to it per "Recording a to-do" below.
 - [SUPABASE_SETUP.md](SUPABASE_SETUP.md) — cloud setup, migrations, Edge Functions.
 - [CUSTOM_ICONS.md](CUSTOM_ICONS.md) — bundled vs user-uploaded icons.
 
@@ -197,7 +200,8 @@
   `my-counters/` — a symbol added without `npm run build:icons` fails here)
   + `build:sw --check`
   + `check-brand-tokens` (the styles.css ↔ marketing.css ↔ manifest token
-  mirror) — ten steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  mirror) + `check-punchlist` (PUNCHLIST.md row shape + every `Detail` link
+  resolves) — eleven steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is
@@ -297,6 +301,31 @@
   `[[+ Add]]`; features/tutorial.js renders it as a `.tour-ui` chip. Write the body as
   lines, one action per `1. …` line (where the control is, what to click, what to
   type); the renderer numbers them.
+- **Recording a to-do.** When the user asks for something to be noted for later
+  ("add a to-do", "someone should…", "make sure we come back to this"), it goes in
+  [PUNCHLIST.md](PUNCHLIST.md) — never only in the conversation, never only in a
+  branch that may not merge. The recipe:
+  1. **Add the row first, before the work it came out of.** One line, six cells:
+     a stable `ID`, the item in trade language, `Kind` (bug · build · decision ·
+     test · chore), `Who` (agent · dev · tester · ⚑ call), `Blocked by`, `Detail`.
+  2. **Land it within minutes, not at the end of the task.** A one-file branch off
+     the latest `main` (`claude/punch-<id>`) that merges immediately — the house
+     "never commit on `main` directly" rule still holds, but this branch is never
+     left open. A to-do that sits on an unmerged feature branch is a to-do nobody
+     can find.
+  3. **One line, or a link.** If the item needs more than a line, write the detail
+     into the document that owns it (the plan file, the dossier, `_STAGE6.md`) and
+     point the `Detail` cell at that heading. A row must never be the only copy of
+     anything, so there is exactly one place to be wrong.
+  4. **Don't rank it.** Priority lives in [JOURNEY-MAP.md](JOURNEY-MAP.md)'s tiers.
+     Rows are in insertion order; if the user says it is urgent, say so in the item
+     text and set `Who` to `⚑ call` when it needs a product decision first.
+  5. **Closing a row deletes it**, and the outcome is recorded where the work
+     landed (CHANGELOG, the plan file, the dossier). A done row left in the list is
+     a bug in the list.
+  `npm run check` runs [scripts/check-punchlist.js](scripts/check-punchlist.js),
+  which fails on a malformed row, a duplicate ID, a `Blocked by` naming no row, or
+  a `Detail` link whose file or heading anchor does not resolve.
 - `makeAnnotations()` is the canonical annotation shape; new annotation kinds must
   be added there and to save/load + export/import.
 - A palette item's `childCounts[]` rows are `{ name, qty, per: 'count'|'run'|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` names the rulebook rule a row was taken from (the § chip). Palettes serialize wholesale, so both ride save/load, export/import and the Artboard for free.

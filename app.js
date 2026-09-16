@@ -2709,7 +2709,6 @@
       const authBtnSidebar = document.getElementById('authBtnSidebar');
       const saveProjectBtn = document.getElementById('saveProjectBtn');
       const saveProjectBtnSidebar = document.getElementById('saveProjectBtnSidebar');
-      const loadProjectBtn = document.getElementById('loadProjectBtn');
       const loadProjectBtnSidebar = document.getElementById('loadProjectBtnSidebar');
       const manageUsersBtn = document.getElementById('manageUsersBtn');
       const manageUsersBtnSidebar = document.getElementById('manageUsersBtnSidebar');
@@ -2719,7 +2718,6 @@
       if (authBtnSidebar) authBtnSidebar.textContent = loggedIn ? 'User' : 'Sign In';
       if (saveProjectBtn) saveProjectBtn.style.display = (loggedIn && !state.isViewer) ? '' : 'none';
       if (saveProjectBtnSidebar) saveProjectBtnSidebar.style.display = (loggedIn && !state.isViewer) ? '' : 'none';
-      if (loadProjectBtn) loadProjectBtn.style.display = loggedIn ? '' : 'none';
       if (loadProjectBtnSidebar) loadProjectBtnSidebar.style.display = loggedIn ? '' : 'none';
       if (manageUsersBtn) manageUsersBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
@@ -5256,7 +5254,6 @@
     // PDF toggle, and the save action with its checkout-expiry preflight and
     // stale-PDF confirm) lives in features/save-project.js (registry split
     // #35b).
-    document.getElementById('loadProjectBtn').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectBtnSidebar').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
     document.getElementById('copyProjectModalCancel').onclick = () => {

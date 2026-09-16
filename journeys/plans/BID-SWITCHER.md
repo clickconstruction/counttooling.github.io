@@ -198,3 +198,50 @@ Close the inversion the investigation turned up.
 2. Measure a real `list_accessible_projects` response on an account with many bids —
    if the Load Project modal is already slow to open, **D3** gets more urgent and the
    lightweight RPC moves into Stage 4.
+
+---
+
+## Built 2026-09-15/16 — what the stages changed about the plan
+
+All six stages shipped. Three of the plan's own claims were wrong and are
+corrected here, because the plan is the thing the next session reads.
+
+**The width budget in "What the pre-plan checks changed" was measured wrong.**
+Forcing `.header-tools-scroll` to `flex:0 0 auto` and zeroing the `.spacer` to
+read an "intrinsic width" removed the slack the real layout runs on, and
+reported a 139px chip cost and a 1391px header that do not exist. The correct
+method is to compare the SAME state with the chip against without it, and to
+ask "is the chip what tips the header" rather than "does the header fit". Done
+that way, with the wordmark yielding: the chip is free at 1100px and up, and
+below that no chip wide enough to name a bid is safe. The ladder lives in
+styles.css beside the measurements.
+
+**D2 resolved: the chip takes the wordmark's slot** (Will, 2026-09-16), which
+is what buys the reach down to 1100 instead of 1280. That made
+`#statusBarSidebar` load-bearing rather than a nicety: `#headerLogo` was the
+only VISIBLE desktop sidebar toggle, its only companion an unlabelled spacebar
+binding.
+
+**D6 was wrong.** The `.replaced-by-status-bar` buttons are NOT dead markup.
+They are hidden command hubs: the handlers hang off them and other surfaces
+reach the action by dispatching a click (`authBtn`, `saveProjectBtn`,
+`exportBtn`, `manageUsersBtn`, `importBtn`, `clearPage`). Deleting them would
+break a dozen call sites. `#loadProjectBtn` was the one true orphan, never
+dispatched, and it is gone; the block now carries a comment saying what the
+rest are.
+
+**D1 resolved: bid.** D3 stands (local, no new RPC). D4 stands (both the chip
+and the settings subtitle name the bid). D5 stands (no chip for a view link).
+
+### Known limits, not done
+
+- The breakpoint ladder is a proxy. The real spare width depends on which
+  right-side controls a session has up, so a state with an unusually wide
+  banner could still tip at a width the ladder calls safe. Making the chip
+  yield only when it is ACTUALLY the cause belongs in burger-menu's measure
+  pipeline, not a fourth independent measurer.
+- **769px to 1099px has no chip**: too narrow for one, too wide for the
+  `.sidebar-header-buttons` block that carries the mobile door. The door there
+  is Project Settings, exactly as it was before this work, so it is not a
+  regression, but it is the one desktop band the fix does not reach.
+- Recents are per device. A second machine starts empty (D3).

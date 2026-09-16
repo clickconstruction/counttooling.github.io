@@ -15,7 +15,8 @@
  * checkoutKeepalive) so every call site, the App registry, and the window.*
  * contracts stay frozen while clusters migrate in behind this seam.
  *
- * ctx contract (grown per stage; Stage 6 graduated every entry that only
+ * ctx contract (grown per stage; 2026-09-15 adds the optional
+ * isSelfReleaseStampEnabled() flag read — _TODO.md R1; Stage 6 graduated every entry that only
  * existed to reach the then-app-side save paths — getAutoSaveDirty/set,
  * autosaveEventDetail, noteSupabaseCallOk, getConsecutiveAutoSaveFailures,
  * clearAutoSaveBackoff, isSaveInProgress, getInFlightAutoSavePromise,
@@ -830,6 +831,26 @@ function createSaveEngine(ctx) {
       });
   }
 
+  // --- [sync] Self-release stamp ------------------------------------------
+  // When OUR check_in_project succeeds (doTurnIn below, or app.js's
+  // checkInCurrentProjectIfHeld on close / load-another / sign-out), the
+  // server UPDATE reaches this tab twice: the realtime channel, and the
+  // post-release refreshProjectPermissions the caller runs. Both see
+  // "was the lock holder, now viewer, lock not stale" — the exact shape the
+  // demotion classifier treats as an external force (only the holder or an
+  // admin can clear a live lock; the classifier assumed admin). Field report
+  // 2026-09-15: the Turn In button's own tab got the "an admin turned this
+  // project in" notice after every release. The stamp names the window in
+  // which a demotion is ours; noteSelfRelease(atMs) takes an explicit time
+  // so node tests can age it.
+  let lastSelfReleaseAt = 0;
+  function noteSelfRelease(atMs) {
+    lastSelfReleaseAt = Number.isFinite(atMs) ? atMs : Date.now();
+  }
+  function isSelfReleaseRecent() {
+    return lastSelfReleaseAt > 0 && (Date.now() - lastSelfReleaseAt) < SELF_RELEASE_GRACE_MS;
+  }
+
   async function refreshProjectPermissions() {
     const state = ctx.getState();
     const supabase = ctx.getSupabase();
@@ -885,7 +906,16 @@ function createSaveEngine(ctx) {
     const willBecomeViewer = prevWasCheckedOut && !proj.can_edit;
     const hadDirty = autoSaveDirty;
     const hadInflight = saveInProgress;
-    if (willBecomeViewer && hadDirty && !hadInflight) {
+    // Our own release in flight or just done (see the self-release stamp):
+    // doTurnIn already flushed before releasing, and a flush now would fail
+    // CHECKOUT_NOT_OWNED and paint the bell yellow for a lock we gave up.
+    // Dormant until the flag flips (app.js feature flags; _TODO.md R1-FLIP):
+    // with it off this refresh classifies exactly as before 2026-09-15.
+    const selfRelease = !!(ctx.isSelfReleaseStampEnabled && ctx.isSelfReleaseStampEnabled()) &&
+      (turnInInProgress || isSelfReleaseRecent());
+    if (willBecomeViewer && hadDirty && !hadInflight && selfRelease) {
+      try { pushSaveEvent('self_release_flush_skipped', 'Permissions refresh after our own turn-in: dirty flag left for the caller, no flush over a released lock'); } catch (_) {}
+    } else if (willBecomeViewer && hadDirty && !hadInflight) {
       if (ctx.isAutoSaveSuspended()) {
         try { pushSaveEvent('force_turn_in_flush_skipped_suspended', 'Force turn-in flush skipped: autosave suspended pending re-checkout'); } catch (_) {}
       } else {
@@ -939,17 +969,26 @@ function createSaveEngine(ctx) {
     state.canCheckOut = proj.can_check_out || false;
     ctx.updateUI();
     ctx.updateStatus();
-    if (prevWasCheckedOut && state.isViewer) {
+    if (prevWasCheckedOut && state.isViewer && selfRelease) {
+      // Our own check_in_project (Turn In / close / load another / sign-out)
+      // reaching us as a row UPDATE. Not a force, not an expiry: the caller
+      // already told the user ("Project turned in."), so record and move on.
+      pushSaveEvent('self_release_refresh', 'Permissions refreshed after our own turn-in (not a force)');
+    } else if (prevWasCheckedOut && state.isViewer) {
       // Classify the demotion before claiming anyone forced it. Two shapes:
       //  - EXPIRY: the lock is still self-attributed (selfStaleLock), or our
       //    last-known checkout stamp had aged past the inactivity window when
-      //    someone else claimed it. Only admins can break a LIVE lock, so a
-      //    stale stamp means expiry, not a force. Route to the existing
+      //    someone else claimed it. Only admins (or another session signed
+      //    in as us — see the self-release stamp) can break a LIVE lock, so
+      //    a stale stamp means expiry, not a force. Route to the existing
       //    one-shot expiry machinery (attention flag, capped silent
       //    auto-recheckout, one-shot toast) instead of the turn-in notice —
       //    the notice's "an admin turned this project in" would be false.
       //  - GENUINE FORCE: a live lock externally cleared/taken → the notice
-      //    modal (Stage-5 J17), once per demotion.
+      //    modal (Stage-5 J17), once per demotion. "External" here is an
+      //    admin's force_check_in_project OR check_in_project from another
+      //    tab/device signed in as this user (the RPC is per user, not per
+      //    session) — the modal copy names both.
       const prevStampMs = prevCheckedOutAt ? new Date(prevCheckedOutAt).getTime() : NaN;
       const prevLockStale = Number.isFinite(prevStampMs) &&
         (ctx.serverNowMs() - prevStampMs) >= CHECKOUT_INACTIVITY_MS;
@@ -1438,6 +1477,7 @@ function createSaveEngine(ctx) {
             releaseCode === 'CHECKOUT_NOT_OWNED' ||
             /CHECKOUT_EXPIRED|NOT_OWNED|not.checked.out|do not have .* checked out|expired/i.test(releaseMsg);
           if (alreadyReleased) {
+            noteSelfRelease();
             pushSaveEvent('turn_in_already_released', 'Server had already released the lock; treating as Turn In success', JSON.stringify({ message: releaseMsg || releaseCode, elapsedMs: Date.now() - tTurnIn, stage: currentStage, attempt: checkInAttempt }));
             return { ok: true, releasedByServer: true };
           }
@@ -1470,6 +1510,7 @@ function createSaveEngine(ctx) {
         pushSaveEvent('turn_in_phase_done', currentStage + ' done', JSON.stringify({ stage: currentStage, durationMs: Date.now() - stageStartedAt, elapsedMs: Date.now() - tTurnIn }));
       }
       if (result.ok) {
+        noteSelfRelease();
         pushSaveEvent('turn_in_ok', 'Project turned in (checkout released)', JSON.stringify({ elapsedMs: Date.now() - tTurnIn, attempts: checkInAttempt + 1, usedRawFetchForCheckIn }));
         return { ok: true };
       }
@@ -2938,6 +2979,9 @@ function createSaveEngine(ctx) {
     getDirtyStartedAt,
     clearDirtyStartedAt,
     resetDirtyTracking,
+    // Self-release stamp (2026-09-15): app.js's checkInCurrentProjectIfHeld
+    // stamps its own successful check-ins; doTurnIn stamps internally.
+    noteSelfRelease,
     // Stage 3: storage ring
     probeCheckoutLock,
     sha256Hex,

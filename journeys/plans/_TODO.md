@@ -427,6 +427,47 @@ appeared in Walk A even once, that is a fail — attach the export.
 
 ⚑ Sign-off recorded here: `[tester] ____ [date] ____ [result] ____`
 
+### Agent pre-walk, 2026-09-15 — evidence, NOT the sign-off
+
+Run by the review session before handing the walk over, so the tester starts from a known
+state rather than from a hand-off note. **The sign-off slot above stays blank on purpose:**
+Robert's condition was that another *individual* walks it, and this was not a person.
+
+- **The live bundle carries both PRs.** `save-engine.js`, `features/turn-in.js` and
+  `app/index.html` fetched from counttooling.com: the scoping (`lastSelfReleaseProjectId`,
+  `noteSelfRelease(atMs, projectId)`, `isSelfReleaseRecent(state.currentProjectId)`), the
+  `self_release_refresh` / `self_release_flush_skipped` events, the flag-gated copy swap,
+  and `#forceTurnInNoticeBody` still holding the OLD copy in the markup (correct until
+  R1-FLIP). `CACHE_VERSION 77212f605f87` matched main.
+- **The flag seam works on prod.** Opening `/app/?ff=self-release` set
+  `clickcount-ff-self-release=1` and `App.featureFlagEnabled('self-release')` read `true`.
+  First confirmation of the flag mechanism outside a test.
+- **The cloud-gated spec ran for the first time** (dev-auth supplied):
+  `turn-in-self-release.spec.js` PASSED in 28.8 s against the real backend, both halves.
+- **Walk A — 6 check-out/turn-in cycles** (5 of them back to back) on a throwaway project
+  made from the engineered sample plan: every one gave the small turned-in card and
+  `[Check out to Edit]`, never the notice. Log: 6 `turn_in_ok`, 7 `self_release_refresh`
+  (the extra is the documented double refresh: realtime UPDATE + the caller's own),
+  **0 `force_turn_in`**. The field signature was `turn_in_ok, force_turn_in, force_turn_in`.
+- **Walk B — a genuine outside release still warns.** A second tab signed in as the same
+  user released the lock; the first tab raised the notice, logged `force_turn_in` (1), body
+  text exactly: "This project was turned in while you had it checked out, by an admin or by
+  another tab or device signed in as you. You're now viewing only."
+- **Walk C** — Project Settings (post-#96 layout), the Save Status modal and its log all
+  intact; **zero console errors** across the whole walk.
+
+**What this evidence does not cover, and why the human walk still matters:**
+
+1. It ran from `localhost:4571`, not counttooling.com. Same commit and the real Supabase
+   backend, and the deployed artifact is verified identical by the CACHE_VERSION content
+   hash, but it is not the prod URL (dev-auth is localhost-gated by design).
+2. Walk B's second tab called `check_in_project` directly rather than loading the project
+   and pressing Turn In. Same wire call another device makes, but not a button press.
+3. It used the `dev-agent@clickplumbing.com` test account, not an estimator's own login on
+   their own bid, which is the case wendi actually hit.
+4. Nobody judged whether the new sentence *reads right to an estimator* — a human call the
+   R1 checklist asks for explicitly.
+
 ## R1-FLIP — make the fix live for everyone (after R1-TEST)
 
 **Do not run before R1-TEST is signed off above.** One topic branch, `claude/r1-flip`,

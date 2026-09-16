@@ -210,6 +210,7 @@
       .header-active-type .header-type-icon svg { width: 18px; height: 18px; }
       .header-active-type .header-type-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
     @media (min-width: 769px) { .header-active-type { display: none !important; } }
+
       .header .header-primary-divider { display: none; }
       .header .spacer { flex: 0; min-width: 0; }
       /* B9 (J15): padding-right >= the burger button's tap zone (44px + the 8px
@@ -326,6 +327,8 @@
       .status-bar #statusBarQuickKeysSep.status-bar-desktop-only { display: inline !important; }
       .status-bar #statusBarMacros.status-bar-desktop-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarMacrosSep.status-bar-desktop-only { display: inline !important; }
+      .status-bar #statusBarSidebar.status-bar-desktop-only { display: inline-flex !important; }
+      .status-bar #statusBarSidebarSep.status-bar-desktop-only { display: inline !important; }
     }
     /* Sign In / account entry in the status bar — all widths (on mobile it is the
        only sign-in entry point; signed-in it shows the email -> My Settings). */
@@ -2321,3 +2324,39 @@ body.tour-active .canvas-empty-hint { display: none; }
 .bid-check-codes b { color: var(--text); font-weight: 500; }
 .bid-check-codes-link { background: none; border: none; color: var(--accent); font: inherit; font-size: inherit; cursor: pointer; padding: 0; }
 .bid-check-codes-link:hover { text-decoration: underline; }
+
+/* The bid switcher chip (features/bid-chip.js, BID-SWITCHER.md stage 2).
+   Sized from measurements against the real layout, in a realistic signed-in
+   state with a plan open. At 1280px the header does not collapse today, and a
+   230px chip tips it over; at 1366px and 1440px the chip changes nothing. Two
+   remedies clear 1280 -- drop the wordmark and keep the full chip, or keep the
+   wordmark and cap the chip at 180px. The cap is the cheaper trade: it costs
+   about 50px of bid name on small laptops instead of the branding, and only
+   there. Above the breakpoint the chip gets its full width back. flex-shrink
+   stays on so the chip also yields gracefully to anything unforeseen. */
+.header-bid-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  /* Shrink-to-fit rather than a breakpoint: the chip gives width back to the
+     tool strip exactly when the header runs out, instead of stepping at one
+     guessed size. min-width keeps enough for a few characters and the caret. */
+  flex: 0 1 auto; min-width: 88px; max-width: 230px; padding: 5px 9px 5px 11px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: inherit; font-size: 0.78rem; font-weight: 500;
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.header-bid-chip:hover { background: var(--surface3); border-color: var(--border2); }
+.header-bid-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.header-bid-chip-name { overflow: hidden; text-overflow: ellipsis; }
+.header-bid-chip-caret { color: var(--text2); font-size: 0.7rem; flex: 0 0 auto; }
+.header-bid-chip.is-empty { border-style: dashed; color: var(--text2); }
+@media (max-width: 1400px) { .header-bid-chip { max-width: 180px; } }
+/* Below 1280px the header has less spare width than any chip that can carry a
+   name, and header-overflow.spec.js pins compact mode staying OFF at 900px, so
+   the chip steps aside there rather than shrinking into an unreadable stub. The
+   door stays reachable through Project Settings, exactly as it is today.
+   This is a breakpoint, not a measurement, and the spare width really depends
+   on which right-side controls a session has up; 1280/1366/1440 are pinned in
+   bid-switcher.spec.js. Making the chip yield only when it is ACTUALLY what
+   tips the header would be better, and belongs in the burger-menu measure
+   pipeline rather than a fourth independent measurer. */
+@media (max-width: 1279px) { .header-bid-chip, .header-bid-chip-divider { display: none !important; } }

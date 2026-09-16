@@ -2417,6 +2417,7 @@
     const t0 = performance.now();
     recordCurrentBidAsRecent();
     updateUIInner();
+    App.renderBidChip && App.renderBidChip();
     // Defensive core->feature callback: the header "⋯ More tools" overflow
     // (features/header-more.js) re-syncs its button/menu active state after
     // every UI reconcile.

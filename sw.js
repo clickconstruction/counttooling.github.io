@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '2860aae69cb1';
+const CACHE_VERSION = '8c7e6169ddb7';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -223,7 +223,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': '2ecc7a3e80457139426c35caa09df22d01caf05654ea2606fd9292af37c0b845',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '6f3d68d2a43fa2c9b25501be51f48483d2714ec525ee262ac3b76eb85798b361',
+  '/app.js': '9c60b29e63ac4d6cb265413013672bc5c65b15ed8edf8ea48a9d117a1c780bce',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
@@ -256,7 +256,7 @@ const PRECACHE_SHA256 = {
   '/features/load-project.js': 'a03d437aedafbf1c48fa08c1a7b15f527a2ec48cfa055cb74d2dceaec33cc990',
   '/features/bid-board.js': '50ddfa711b57340fcc00aefaee2f4a51925b070d0fcbd14945660712cd7ead18',
   '/features/review-flow.js': 'c8fa38b8391329961e85310ec0f7860c094b450796d3599e125e23f66007acf5',
-  '/features/copy-project.js': '7e23ae5fd9360c03300e59e69d7fb7d368403c9119522e3233fbfc81d168279a',
+  '/features/copy-project.js': '1847f11f0c559cf4c01fc1972c1103b8c459df3273f3a9a5aa8b9ab65dd4e44d',
   '/features/prepare-pdf.js': '4a4f2b7465a4b6828dc068aae209cf73875865552cc6816eeac9d7033fc42204',
   '/features/quick-modals.js': '2d7e9a99fd074b9a04bbd87d517a8b21b49edc68bbd5cd9f50e26fed6c862fcc',
   '/features/pdf-bundle.js': '9f08fe5a316ff8c82561c4655c6b2d4d4858268bb3ee2807fe6e61df0cc8351e',
@@ -271,7 +271,7 @@ const PRECACHE_SHA256 = {
   '/features/summary-detail.js': '3ddb0f2ea207bc53a913aede32cfbdc10de8c1af1ea48bdbdd982ccf49bc27b3',
   '/features/room-sizer.js': 'ea64b0f2ec7ead20a82afde94a17afe86f72fb0778970a91ca6d5bf7942f82a1',
   '/features/burger-menu.js': 'defc53bc9189dc014ca34f7f6e679881b2f00dbd499592b07faec95edaa3cc9f',
-  '/features/bid-chip.js': '50b126c7eba4c19ecc60ca6c86468aad28d8910890fd158068c35d5a380a4c3c',
+  '/features/bid-chip.js': 'ea2c1237839710c4c06a9ecef59e15c6aaae0666df2658c986a3ec6b21bfb109',
   '/features/header-more.js': '5b74e8f40464c9caf78ab4bda862ea8ef254e157cf6b5e6804574f8b8f85b41c',
   '/features/canvas-layers.js': '70e4624b94af4a178bebc998bfa521eac07a4a519510aff81f55837673e4e06b',
   '/features/ghost.js': '998578dd2ef4bcc6bf9acec75fbee697a297a963ed9ec5aa27e30a83a142ba8f',

@@ -167,11 +167,55 @@
     m.appendChild(upload);
   }
 
-  // Stage 4 registers the direct load. Until it does, the row falls back to the
-  // full list so the menu is never a dead end.
+  // Clicking a recent opens that bid. It goes through the SAME save gate the
+  // full list uses (features/copy-project.js), which now carries the target
+  // through rather than dropping the estimator on the list.
   function openRecentBid(bid) {
-    if (App.loadRecentBidById) App.loadRecentBidById(bid);
+    if (App.loadRecentBidOrPromptSave) App.loadRecentBidOrPromptSave(bid);
     else if (App.openLoadProjectModalOrPromptSave) App.openLoadProjectModalOrPromptSave();
+  }
+
+  // The load itself, once the gate is satisfied. The menu is free because it
+  // reads the local store, but the OPEN pays what the Load Project modal pays
+  // today for the same action: one list_accessible_projects call, whose row is
+  // then handed to the shared host-agnostic loader (features/load-project.js,
+  // already shared with features/bid-board.js). Fetching fresh matters: the
+  // checkout columns the loader hydrates from change server-side.
+  let loading = false;
+  async function loadRecentBidNow(bid) {
+    if (loading || !bid || !bid.id) return;
+    const { chip, name } = chipEls();
+    const supabase = App.getSupabase && App.getSupabase();
+    if (!supabase) { App.showToast('Cloud is not configured.', 4000); return; }
+    loading = true;
+    const restore = name ? name.textContent : '';
+    if (chip) chip.disabled = true;
+    if (name) name.textContent = 'Opening…';
+    try {
+      const { data: projects, error } = await supabase.rpc('list_accessible_projects');
+      if (error) throw error;
+      const proj = (projects || []).find(p => p.id === bid.id);
+      if (!proj) {
+        // Deleted, or access revoked while it sat in this device's list. Drop
+        // it and hand the estimator the real list rather than a dead row.
+        if (App.forgetRecentBid) App.forgetRecentBid(bid.id);
+        App.showToast('That bid is no longer available.', 4000);
+        if (App.openLoadProjectModal) App.openLoadProjectModal();
+        return;
+      }
+      await App.loadCloudProjectRow(proj, {
+        hostModalId: null,
+        showError: function () { App.showToast('Could not open that bid.', 4000); },
+      });
+    } catch (e) {
+      console.error('[Bid chip] open recent', e);
+      App.showToast('Could not open that bid: ' + (e?.message || 'unknown error'), 4000);
+    } finally {
+      loading = false;
+      if (chip) chip.disabled = false;
+      if (name && name.textContent === 'Opening…') name.textContent = restore;
+      if (App.updateUI) App.updateUI();
+    }
   }
 
   function openBidMenu() {
@@ -223,4 +267,5 @@
   App.renderBidChip = renderBidChip;
   App.toggleBidMenu = toggleBidMenu;
   App.closeBidMenu = closeBidMenu;
+  App.loadRecentBidNow = loadRecentBidNow;
 })();

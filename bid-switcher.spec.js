@@ -313,3 +313,114 @@ test.describe('The bid menu (features/bid-chip.js)', () => {
     await expect(page.locator('#authModal')).toHaveClass(/visible/);
   });
 });
+
+// Stand in for the cloud seam: the RPC the direct load makes, and the shared
+// loader it hands the row to. `rows` is what list_accessible_projects returns.
+async function stubCloud(page, rows) {
+  await page.evaluate((r) => {
+    window.__loaded = null;
+    window.__toasts = [];
+    const App = window.App;
+    App.getSupabase = () => ({ rpc: async () => ({ data: r, error: null }) });
+    App.loadCloudProjectRow = async (proj) => { window.__loaded = proj.id; };
+    const toast = App.showToast;
+    App.showToast = (msg, ms) => { window.__toasts.push(msg); return toast(msg, ms); };
+  }, rows);
+}
+
+test.describe('Opening a recent bid (stage 4)', () => {
+  test('a clean session opens the bid straight from the menu', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await seedRecents(page, WEEK);
+    await page.reload();
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+    await stubCloud(page, [{ id: 'bbb', name: 'Midland Clinic \u00b7 M-200', pdf_path: null }]);
+    await page.evaluate(() => { window.App.getAutoSaveDirty = () => false; });
+
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-recent', { hasText: 'Midland Clinic' }).click();
+
+    await expect.poll(() => page.evaluate(() => window.__loaded)).toBe('bbb');
+    // No gate: nothing was dirty.
+    await expect(page.locator('#saveBeforeLoadModal')).not.toHaveClass(/visible/);
+
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('a dirty session is gated, and the gate names the bid it will open', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await seedRecents(page, WEEK);
+    await page.reload();
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+    await stubCloud(page, [{ id: 'bbb', name: 'Midland Clinic \u00b7 M-200', pdf_path: null }]);
+    await page.evaluate(() => { window.App.getAutoSaveDirty = () => true; });
+
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-recent', { hasText: 'Midland Clinic' }).click();
+
+    const gate = page.locator('#saveBeforeLoadModal');
+    await expect(gate).toHaveClass(/visible/);
+    // The old gate always said "another project". It names the target now.
+    await expect(gate.locator('p')).toContainText('Midland Clinic');
+    expect(await page.evaluate(() => window.__loaded)).toBe(null);
+
+    // Discard carries the target through instead of dumping you on the list.
+    await page.locator('#saveBeforeLoadDiscard').click();
+    await expect.poll(() => page.evaluate(() => window.__loaded)).toBe('bbb');
+  });
+
+  test('Cancel at the gate abandons the target, it does not open later', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await seedRecents(page, WEEK);
+    await page.reload();
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+    await stubCloud(page, [{ id: 'bbb', name: 'Midland Clinic \u00b7 M-200', pdf_path: null }]);
+    await page.evaluate(() => { window.App.getAutoSaveDirty = () => true; });
+
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-recent', { hasText: 'Midland Clinic' }).click();
+    await page.locator('#saveBeforeLoadCancel').click();
+    await expect(page.locator('#saveBeforeLoadModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.__loaded)).toBe(null);
+
+    // And the abandoned target must not ride along the NEXT trip through the
+    // gate: the full list opens, nothing loads behind it.
+    await page.evaluate(() => { window.App.openLoadProjectModal = async () => { window.__listOpened = true; }; });
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-action').click();
+    await page.locator('#saveBeforeLoadDiscard').click();
+    await expect.poll(() => page.evaluate(() => window.__listOpened)).toBe(true);
+    expect(await page.evaluate(() => window.__loaded)).toBe(null);
+  });
+
+  test('a bid that is gone is dropped from recents and says so', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await seedRecents(page, WEEK);
+    await page.reload();
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+    // Deleted, or access revoked, while it sat in this device's list.
+    await stubCloud(page, []);
+    await page.evaluate(() => {
+      window.App.getAutoSaveDirty = () => false;
+      window.App.openLoadProjectModal = async () => { window.__listOpened = true; };
+    });
+
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-recent', { hasText: 'Midland Clinic' }).click();
+
+    await expect.poll(() => page.evaluate(() => window.__toasts.join(' '))).toContain('no longer available');
+    await expect.poll(() => page.evaluate(() => window.__listOpened)).toBe(true);
+    // Dropped from the store, so it cannot be clicked again.
+    const ids = await page.evaluate(() => JSON.parse(localStorage.getItem('recentBids') || '[]').map((b) => b.id));
+    expect(ids).not.toContain('bbb');
+    expect(ids).toContain('ccc');
+  });
+});

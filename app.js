@@ -3269,7 +3269,11 @@
     if (id === 'summaryCountDetailModal') App.onSummaryCountDetailHidden && App.onSummaryCountDetailHidden();
     if (id === 'toolingScaleCheckModal') App.onToolingScaleCheckHidden && App.onToolingScaleCheckHidden();
     if (id === 'scaleModal') App.onScaleModalHidden && App.onScaleModalHidden();   // D20 (J5-A): resume a parked draft
-    document.getElementById(id).classList.remove('visible');
+    // A host-less caller passes no id: loadCloudProjectRow hides ui.hostModalId
+    // when it finishes, and the bid chip's direct load has no host modal to
+    // hide. Tolerate it rather than making every such caller invent one.
+    const modalEl = id ? document.getElementById(id) : null;
+    if (modalEl) modalEl.classList.remove('visible');
     // A "Project from Last Session" offer that arrived while this modal was
     // up gets its turn now (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();

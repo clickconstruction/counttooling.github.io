@@ -101,6 +101,8 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     await expect(chip).toBeVisible();
     await expect(page.locator('#headerBidChipName')).toHaveText('No bid open');
     await expect(chip).toHaveClass(/is-empty/);
+    // Nothing open: there is room and no bid to name, so the wordmark stays.
+    await expect(page.locator('#headerLogo')).toBeVisible();
 
     await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
@@ -109,6 +111,8 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     await expect(page.locator('#headerBidChipName')).toHaveText('Sysco Cold Box · P-101');
     await expect(chip).not.toHaveClass(/is-empty/);
     await expect(chip).toHaveAttribute('title', 'Sysco Cold Box · P-101');
+    // The wordmark hands over its slot once there is a bid to name.
+    await expect(page.locator('#headerLogo')).toBeHidden();
 
     expect(realErrors(errors)).toEqual([]);
   });
@@ -165,8 +169,8 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
       });
 
       expect(r.withChip).toBe(r.without);
-      // The wordmark stays: capping the chip bought the same width for less.
-      expect(r.wordmarkVisible).toBe(true);
+      // With a bid open the wordmark has yielded its slot to the chip.
+      expect(r.wordmarkVisible).toBe(false);
     });
   }
 

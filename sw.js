@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'b6ac87a213af';
+const CACHE_VERSION = '23b8a25b1987';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -192,7 +192,7 @@ const PRECACHE_SHA256 = {
   '/app/': 'db5e9f0cf3e44c4b44a6eba567bfc86f7443c12e2b6b9000a2596b453905a9c2',
   '/app/index.html': 'db5e9f0cf3e44c4b44a6eba567bfc86f7443c12e2b6b9000a2596b453905a9c2',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': 'b43242510ec470e3ccff5a3d263df4e2b0e34e0fe2ec3756a943ff0cb3580c92',
+  '/styles.css': '2656746b5d232e10920110bbfebaad228c608be7449d076e11473145d5428696',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '4fad0716f98809c79c9a32bb6c9e3365b737119f8e1f9e3ac5001caa4a6791ab',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -271,7 +271,7 @@ const PRECACHE_SHA256 = {
   '/features/summary-detail.js': '3ddb0f2ea207bc53a913aede32cfbdc10de8c1af1ea48bdbdd982ccf49bc27b3',
   '/features/room-sizer.js': 'ea64b0f2ec7ead20a82afde94a17afe86f72fb0778970a91ca6d5bf7942f82a1',
   '/features/burger-menu.js': 'defc53bc9189dc014ca34f7f6e679881b2f00dbd499592b07faec95edaa3cc9f',
-  '/features/bid-chip.js': 'f4dac6c3dcff53e401431cf3cb3556ec923ce853d4bb7b3b76c439cce34ac58c',
+  '/features/bid-chip.js': '1408e3bce14ea38b9dc8e3168801273bb71d7736c00d01d9754adf5081e6e544',
   '/features/header-more.js': '5b74e8f40464c9caf78ab4bda862ea8ef254e157cf6b5e6804574f8b8f85b41c',
   '/features/canvas-layers.js': '70e4624b94af4a178bebc998bfa521eac07a4a519510aff81f55837673e4e06b',
   '/features/ghost.js': '998578dd2ef4bcc6bf9acec75fbee697a297a963ed9ec5aa27e30a83a142ba8f',

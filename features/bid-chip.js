@@ -8,25 +8,24 @@
  * state.currentProjectName was rendered in exactly one place before this, the
  * settings modal's subtitle.
  *
- * The wordmark stays, and the chip is capped instead. The first width budget
- * for this was measured wrong: forcing .header-tools-scroll to flex:0 0 auto
- * and zeroing the .spacer to read an "intrinsic width" removed the slack the
- * real layout runs on, and reported a 139px cost and a 1391px header that do
- * not exist. Re-measured against the live layout in a realistic signed-in
- * state with a plan open: at 1366px and 1440px the chip changes nothing at
- * all, and at 1280px a full-width chip is what tips the header into
- * features/burger-menu.js's collapsed mode. Two remedies clear 1280 -- drop
- * the wordmark and keep a 230px chip, or keep the wordmark and cap the chip at
- * 180px. The cap is the cheaper trade, so styles.css steps the cap down by
- * width and the branding stays. Below ~1200px the header has under 120px
- * spare and the chip does tip it early; that band was left alone, since
- * collapsed mode is the designed fallback there and a chip too narrow to
- * carry a name is not worth the rules to build it.
+ * The wordmark yields its slot once a bid is open (Will, 2026-09-16). Nothing
+ * open, there is room and no bid to name, so the wordmark stays and the chip
+ * reads "No bid open".
  *
- * #statusBarSidebar rides along anyway: the wordmark doubling as the desktop
- * sidebar toggle is genuinely undiscoverable (its only companion is an
- * unlabelled spacebar binding in app.js's keydown), and the status bar is
- * where this class of view control already lives.
+ * On the width budget, which the first pass got wrong: measuring "intrinsic
+ * width" by forcing .header-tools-scroll to flex:0 0 auto and zeroing the
+ * .spacer removed the slack the real layout runs on, and reported a 139px chip
+ * cost and a 1391px header that do not exist. Re-measured against the live
+ * layout in a realistic signed-in state, comparing WITH the chip against
+ * WITHOUT it rather than against an absolute, the chip is free at 1280px and
+ * up once the wordmark is out of the way; the caps in styles.css cover the
+ * narrower bands.
+ *
+ * #headerLogo was ALSO the only visible desktop sidebar toggle (its click; the
+ * spacebar in app.js's keydown is the invisible other half), so hiding it hands
+ * that job to #statusBarSidebar, beside quick keys and shortcuts, where this
+ * class of view control already lives. Without it a collapsed sidebar would be
+ * unrecoverable for anyone who does not know the key.
  *
  * Gating: SUPABASE_ENABLED (the chip is a CLOUD bid switcher; the
  * .supabase-only class handles the disabled case) and never for a view-link
@@ -45,6 +44,7 @@
       chip: document.getElementById('headerBidChip'),
       name: document.getElementById('headerBidChipName'),
       divider: document.getElementById('headerBidChipDivider'),
+      logo: document.getElementById('headerLogo'),
     };
   }
 
@@ -53,7 +53,7 @@
   // skipped) and the header re-measure only when something actually changed.
   let lastRendered = '';
   function renderBidChip() {
-    const { chip, name, divider } = chipEls();
+    const { chip, name, divider, logo } = chipEls();
     if (!chip || !name) return;
     const state = App.state;
     const enabled = !!App.SUPABASE_ENABLED;
@@ -61,8 +61,8 @@
     const show = enabled && !state.loadedViaViewLink;
     const hasBid = !!state.currentProjectId;
     // Once a plan is on screen, uploadPdf and both primary dividers hide
-    // (app.js updateUI), so the chip needs its own rule to stay separated
-    // from the tool strip.
+    // (app.js updateUI); the wordmark joins them, handing the chip its slot,
+    // and the chip brings its own divider to stay clear of the tool strip.
     const hasPlan = show && !!(state.pages.length || state.isViewer);
 
     const label = hasBid ? (state.currentProjectName || 'Untitled') : 'No bid open';
@@ -76,6 +76,7 @@
 
     chip.style.display = show ? '' : 'none';
     if (divider) divider.style.display = hasPlan ? '' : 'none';
+    if (logo) logo.style.display = hasPlan ? 'none' : '';
     name.textContent = label;
     chip.classList.toggle('is-empty', !hasBid);
     chip.title = hasBid ? label : 'Open one of your bids';

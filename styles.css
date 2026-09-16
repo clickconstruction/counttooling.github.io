@@ -2349,14 +2349,15 @@ body.tour-active .canvas-empty-hint { display: none; }
 .header-bid-chip-name { overflow: hidden; text-overflow: ellipsis; }
 .header-bid-chip-caret { color: var(--text2); font-size: 0.7rem; flex: 0 0 auto; }
 .header-bid-chip.is-empty { border-style: dashed; color: var(--text2); }
-@media (max-width: 1400px) { .header-bid-chip { max-width: 180px; } }
-/* Below 1280px the header has less spare width than any chip that can carry a
-   name, and header-overflow.spec.js pins compact mode staying OFF at 900px, so
-   the chip steps aside there rather than shrinking into an unreadable stub. The
-   door stays reachable through Project Settings, exactly as it is today.
-   This is a breakpoint, not a measurement, and the spare width really depends
-   on which right-side controls a session has up; 1280/1366/1440 are pinned in
-   bid-switcher.spec.js. Making the chip yield only when it is ACTUALLY what
-   tips the header would be better, and belongs in the burger-menu measure
+/* The width ladder, measured against the live layout with the wordmark
+   yielding. The test is never "does the header fit" but "is the CHIP what tips
+   it": the same state, compared with the chip against without it. 180px is safe
+   down to 1152px, 150px down to 1100px, and below that no chip wide enough to
+   name a bid is safe, so it steps aside and the door stays Project Settings, as
+   it is today. These are breakpoints, not measurements, and the real spare
+   width depends on which right-side controls a session has up; making the chip
+   yield only when it is ACTUALLY the cause belongs in burger-menu's measure
    pipeline rather than a fourth independent measurer. */
-@media (max-width: 1279px) { .header-bid-chip, .header-bid-chip-divider { display: none !important; } }
+@media (max-width: 1400px) { .header-bid-chip { max-width: 180px; } }
+@media (max-width: 1199px) { .header-bid-chip { max-width: 150px; } }
+@media (max-width: 1099px) { .header-bid-chip, .header-bid-chip-divider { display: none !important; } }

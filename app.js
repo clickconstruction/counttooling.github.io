@@ -323,6 +323,7 @@
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
+    recentBids: [],
     recentDrops: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
@@ -437,6 +438,14 @@
     if (Array.isArray(rd)) {
       state.recentDrops = rd.filter(d => d && typeof d.value === 'number' && d.value > 0 && typeof d.unit === 'string').slice(0, RECENT_DROPS_MAX);
     }
+  } catch (_) {}
+  try {
+    // Recent bids ({ id, name, at }), per device. The header switcher's menu
+    // reads this instead of the cloud: list_accessible_projects carries every
+    // project's whole `data` payload, which a menu that opens on click cannot
+    // afford. nextRecentBids re-filters, so a corrupted store is harmless.
+    const rb = JSON.parse(localStorage.getItem(RECENT_BIDS_KEY) || '[]');
+    if (Array.isArray(rb)) state.recentBids = nextRecentBids(rb, null).slice(0, RECENT_BIDS_MAX);
   } catch (_) {}
 
   function getGroupColor(groupId) {
@@ -2377,8 +2386,36 @@
   }
 
   // SECTION: UI Render Functions
+  // SECTION: Recent bids
+  // One writer: whatever bid the session is in becomes the most recent one.
+  // Hooking the CURRENT project rather than each intake covers load, first
+  // save, copy/fork and view-link-to-editor in one place, and a rename
+  // re-stamps in place because the guard keys on id AND name.
+  let lastRecordedBidKey = '';
+  function pushRecentBid(id, name) {
+    if (!id) return;
+    state.recentBids = nextRecentBids(state.recentBids, { id, name }, Date.now());
+    try { localStorage.setItem(RECENT_BIDS_KEY, JSON.stringify(state.recentBids)); } catch (_) {}
+  }
+  function forgetRecentBid(id) {
+    state.recentBids = withoutRecentBid(state.recentBids, id);
+    try { localStorage.setItem(RECENT_BIDS_KEY, JSON.stringify(state.recentBids)); } catch (_) {}
+  }
+  function recordCurrentBidAsRecent() {
+    // A view-link recipient is not collecting bids of their own.
+    if (state.loadedViaViewLink) return;
+    const id = state.currentProjectId;
+    if (!id) return;
+    const name = state.currentProjectName || 'Untitled';
+    const key = id + '\u0000' + name;
+    if (key === lastRecordedBidKey) return;
+    lastRecordedBidKey = key;
+    pushRecentBid(id, name);
+  }
+
   function updateUI() {
     const t0 = performance.now();
+    recordCurrentBidAsRecent();
     updateUIInner();
     // Defensive core->feature callback: the header "⋯ More tools" overflow
     // (features/header-more.js) re-syncs its button/menu active state after
@@ -5062,7 +5099,7 @@
       try {
         indexedDB.deleteDatabase('clickcount-pdf-cache');
       } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+      const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
       for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
@@ -7713,6 +7750,9 @@
   App.getUserCustomIcons = getUserCustomIcons;
   App.saveUserCustomIcons = saveUserCustomIcons;
   App.showToast = showToast;
+  App.pushRecentBid = pushRecentBid;
+  App.forgetRecentBid = forgetRecentBid;
+  App.getRecentBids = () => state.recentBids;
   App.getPageCanvases = getPageCanvases;
   App.renderAnnotationsToContext = renderAnnotationsToContext;
   // addReportPagesToPdf / addHighlightsToPdf / addNotesToPdf / hasAnyHighlights /

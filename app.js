@@ -2905,31 +2905,15 @@
     const exportDropdown = document.getElementById('exportDropdown');
     const showExportDropdownBase = !state.isViewer || state.pages.length > 0;
     const exportContent = document.getElementById('exportDropdownExportContent');
-    const shieldImportMode = !state.isViewer && state.pages.length === 0;
-    if (exportContent) exportContent.style.display = shieldImportMode ? 'none' : '';
-    const exportDropdownBtn = document.getElementById('exportDropdownBtn');
-    if (exportDropdownBtn) {
-      if (shieldImportMode) {
-        exportDropdownBtn.setAttribute('aria-label', 'Import PDF');
-        exportDropdownBtn.title = 'Upload PDF to start';
-        exportDropdownBtn.setAttribute('aria-haspopup', 'false');
-      } else {
-        exportDropdownBtn.setAttribute('aria-label', 'Export');
-        exportDropdownBtn.title = 'Export project';
-        exportDropdownBtn.setAttribute('aria-haspopup', 'menu');
-      }
-      const iconImport = document.getElementById('exportDropdownIconImport');
-      const iconExport = document.getElementById('exportDropdownIconExport');
-      if (iconImport) iconImport.style.display = shieldImportMode ? '' : 'none';
-      if (iconExport) iconExport.style.display = shieldImportMode ? 'none' : '';
-    }
+    const noProjectYet = !state.isViewer && state.pages.length === 0;
+    if (exportContent) exportContent.style.display = noProjectYet ? 'none' : '';
     const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
     const hasPdfExport = !!(state.pdfBuffer || state.pdfStoragePath);
     if (exportPdfOpt) exportPdfOpt.style.display = hasPdfExport ? '' : 'none';
     const exportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="canvas"]');
     const exportBothOpt = document.querySelector('.export-dropdown-option[data-action="both"]');
     const hasCanvasMarkupForExport = projectHasAnyCanvasMarkup();
-    if (!shieldImportMode) {
+    if (!noProjectYet) {
       // B6 (J13 J14): Export Canvas/Both are editor tools (canvas JSON hand-off),
       // never a viewer surface. Hiding them here leaves a view session's menu
       // with no rows (view links carry no pdfBuffer/pdfStoragePath), so the
@@ -2948,7 +2932,7 @@
       // the burger drawer copies labels via textContent, which would leak
       // hidden text). Viewers still never see it (B6); shield-import mode
       // hides the whole menu content anyway.
-      exportImportCanvasOpt.style.display = (!shieldImportMode && !state.isViewer) ? '' : 'none';
+      exportImportCanvasOpt.style.display = (!noProjectYet && !state.isViewer) ? '' : 'none';
       exportImportCanvasOpt.disabled = hasCanvasMarkupForExport;
       const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
       if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks: clear or undo first)' : '';
@@ -2958,10 +2942,10 @@
     // close (B6 keeps that menu empty), and a shared-project reader who was
     // just turned in still gets the door (state.isViewer, NOT a view link).
     const exportCloseOpt = document.querySelector('.export-dropdown-option[data-action="close-project"]');
-    const showCloseRow = !shieldImportMode && !state.loadedViaViewLink && state.pages.length > 0;
+    const showCloseRow = !noProjectYet && !state.loadedViaViewLink && state.pages.length > 0;
     if (exportCloseOpt) exportCloseOpt.style.display = showCloseRow ? '' : 'none';
-    let showExportDropdown = showExportDropdownBase;
-    if (showExportDropdown && !shieldImportMode && exportContent) {
+    let showExportDropdown = showExportDropdownBase && !noProjectYet;
+    if (showExportDropdown && exportContent) {
       const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer) || showCloseRow;
       if (!anyExportRow) showExportDropdown = false;
     }
@@ -4622,12 +4606,6 @@
   if (exportDropdownBtn && exportDropdownMenu) {
     exportDropdownBtn.onclick = (e) => {
       e.stopPropagation();
-      const shieldImportModeClick = !state.isViewer && state.pages.length === 0;
-      if (shieldImportModeClick) {
-        exportDropdownMenu.classList.remove('visible');
-        document.getElementById('pdfInput').click();
-        return;
-      }
       if (exportDropdownMenu.classList.contains('visible')) {
         exportDropdownMenu.classList.remove('visible');
       } else {

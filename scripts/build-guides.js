@@ -47,10 +47,6 @@ const ICON_BTN = {
   keys: { id: 'statusBarQuickKeys', vb: '96 96 544 544' }, macros: 'statusBarMacros',
   layers: 'canvasLayersBtn', undo: 'undoBtn',
   rotate: 'preparePdfRotate',
-  // The header cloud control's button holds two svgs; the first is the
-  // cloud-UPLOAD glyph (shown when no pages are loaded), which is the one the
-  // regex extracts — but its title says "Export project", so override it.
-  upload: { id: 'exportDropdownBtn', title: 'Upload PDF' },
 };
 function loadIcons() {
   const html = fs.readFileSync(APP_HTML, 'utf8');

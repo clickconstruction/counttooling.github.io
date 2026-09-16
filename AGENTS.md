@@ -178,7 +178,8 @@
   [line-metrics.test.js](line-metrics.test.js),
   [canvas-draw.test.js](canvas-draw.test.js),
   [render-service.test.js](render-service.test.js),
-  [save-engine.test.js](save-engine.test.js)) via
+  [save-engine.test.js](save-engine.test.js),
+  [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
   auto-skips its two en-CA-hyphen-dependent cases on a limited-ICU runtime and

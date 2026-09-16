@@ -500,6 +500,8 @@ the flag, leaving the code as if the fix had shipped plainly.
 
 ## R2 — 13 client event types 400 against the deployed `log_user_event` allowlist
 
+> **WRITTEN 2026-09-16, NOT APPLIED** (branch `claude/r2-log-user-event-allowlist`): `supabase/migrations/20260916143700_log_user_event_allowlist_catchup.sql` re-creates the function from the chain-latest body (`20260906120000`, duct_run) with the thirteen plus two: `client_error` and `client_unhandled_rejection`, which app.js's `reportClientError` mirrors to the feed and which no migration in the repo allowlists either (the 2026-09-15 prod diff did not name them; either prod carries them from outside the chain or they 400 too, and the file is right both ways). The drift test `log-user-event-allowlist.test.js` (3 node tests, in `npm run check`) pins client ⊆ newest allowlist and the chain-only-grows rule; it passed against the repo as found, so no earlier migration had dropped a type. **Could not copy the deployed body from `pg_get_functiondef`:** this session had no Supabase MCP and the CLI is not linked, so the body is the chain-latest one; the reviewer applying it runs the `select pg_get_functiondef(…)` in the file header first and adds anything prod has that the file lacks. ⚑ Applying is still Will's go (Supabase MCP `apply_migration`, name = filename without `.sql`). The punch row stays open until it is applied.
+
 Found 2026-09-15 while running R1's spec (its cleanup's `closeProject` produced a console
 `400 /rest/v1/rpc/log_user_event`). Diffed `logUserEvent('…')` call sites in app.js +
 features/*.js against `pg_get_functiondef(public.log_user_event)` on prod. These are

@@ -87,15 +87,118 @@
     if (changed && App.scheduleHeaderCollapseCheck) App.scheduleHeaderCollapseCheck();
   }
 
+
+  // --- the menu -------------------------------------------------------------
+  // Mirrors features/header-more.js's idiom (fixed panel, display toggle,
+  // pointerdown-away + Escape) rather than inventing a third menu in one header.
+  let menuOpen = false;
+  function menuEl() { return document.getElementById('headerBidMenu'); }
+
+  function closeBidMenu() {
+    menuOpen = false;
+    const m = menuEl();
+    if (m) m.style.display = 'none';
+    const { chip } = chipEls();
+    if (chip) chip.setAttribute('aria-expanded', 'false');
+  }
+
+  function row(cls, label, when) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'bm-row' + (cls ? ' ' + cls : '');
+    b.setAttribute('role', 'menuitem');
+    const n = document.createElement('span');
+    n.className = 'bm-name';
+    n.textContent = label;
+    b.appendChild(n);
+    if (when) {
+      const w = document.createElement('span');
+      w.className = 'bm-when';
+      w.textContent = when;
+      b.appendChild(w);
+    }
+    return b;
+  }
+
+  function buildBidMenu() {
+    const m = menuEl();
+    if (!m) return;
+    const state = App.state;
+    m.innerHTML = '';
+    const now = Date.now();
+    const recents = (App.getRecentBids ? App.getRecentBids() : []) || [];
+    // The bid you are already in is listed but inert: it answers "which one is
+    // this" without offering a reload that would only cost a save prompt.
+    const others = recents.filter(b => b.id !== state.currentProjectId);
+    const current = recents.find(b => b.id === state.currentProjectId);
+
+    if (current) {
+      const head = document.createElement('div');
+      head.className = 'bm-head';
+      head.textContent = 'This bid';
+      m.appendChild(head);
+      const r = row('is-current', current.name || 'Untitled', 'open now');
+      r.disabled = true;
+      m.appendChild(r);
+    }
+    if (others.length) {
+      const head = document.createElement('div');
+      head.className = 'bm-head';
+      head.textContent = 'Recent bids';
+      m.appendChild(head);
+      others.forEach((b) => {
+        const r = row('bm-recent', b.name || 'Untitled', App.formatBidAge ? App.formatBidAge(b.at, now) : '');
+        r.title = b.name || 'Untitled';
+        r.onclick = () => { closeBidMenu(); openRecentBid(b); };
+        m.appendChild(r);
+      });
+    }
+    // No empty-state copy: with no recents the two actions ARE the menu.
+    if (current || others.length) {
+      const sep = document.createElement('div');
+      sep.className = 'bm-sep';
+      m.appendChild(sep);
+    }
+    const all = row('bm-action', 'All my bids…');
+    all.onclick = () => { closeBidMenu(); if (App.openLoadProjectModalOrPromptSave) App.openLoadProjectModalOrPromptSave(); };
+    m.appendChild(all);
+    const upload = row('', 'Upload a new plan');
+    upload.onclick = () => { closeBidMenu(); const i = document.getElementById('pdfInput'); if (i) i.click(); };
+    m.appendChild(upload);
+  }
+
+  // Stage 4 registers the direct load. Until it does, the row falls back to the
+  // full list so the menu is never a dead end.
+  function openRecentBid(bid) {
+    if (App.loadRecentBidById) App.loadRecentBidById(bid);
+    else if (App.openLoadProjectModalOrPromptSave) App.openLoadProjectModalOrPromptSave();
+  }
+
+  function openBidMenu() {
+    const { chip } = chipEls();
+    const m = menuEl();
+    if (!chip || !m) return;
+    buildBidMenu();
+    m.style.display = 'block';
+    const r = chip.getBoundingClientRect();
+    m.style.top = (r.bottom + 6) + 'px';
+    // Left-aligned to the chip, clamped to the viewport.
+    m.style.left = Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8)) + 'px';
+    chip.setAttribute('aria-expanded', 'true');
+    menuOpen = true;
+  }
+
+  function toggleBidMenu() {
+    if (menuOpen) closeBidMenu();
+    else openBidMenu();
+  }
+
   function wireBidChip() {
     const { chip } = chipEls();
     if (chip) {
       chip.onclick = function (e) {
         e.stopPropagation();
-        // Deferred binding: stage 3 registers the menu. Until it does, the chip
-        // still opens the full list, so this stage is useful if it ships alone.
-        if (App.toggleBidMenu) App.toggleBidMenu();
-        else if (App.openLoadProjectModalOrPromptSave) App.openLoadProjectModalOrPromptSave();
+        toggleBidMenu();
       };
     }
     const sidebarLink = document.getElementById('statusBarSidebar');
@@ -109,5 +212,15 @@
   }
   wireBidChip();
 
+  document.addEventListener('pointerdown', (e) => {
+    if (!menuOpen) return;
+    const m = menuEl();
+    const { chip } = chipEls();
+    if (m && !m.contains(e.target) && chip && !chip.contains(e.target)) closeBidMenu();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOpen) closeBidMenu(); });
+
   App.renderBidChip = renderBidChip;
+  App.toggleBidMenu = toggleBidMenu;
+  App.closeBidMenu = closeBidMenu;
 })();

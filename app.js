@@ -7754,6 +7754,7 @@
   App.pushRecentBid = pushRecentBid;
   App.forgetRecentBid = forgetRecentBid;
   App.getRecentBids = () => state.recentBids;
+  App.formatBidAge = formatBidAge;
   App.getPageCanvases = getPageCanvases;
   App.renderAnnotationsToContext = renderAnnotationsToContext;
   // addReportPagesToPdf / addHighlightsToPdf / addNotesToPdf / hasAnyHighlights /

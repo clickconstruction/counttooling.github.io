@@ -75,16 +75,16 @@ test.describe('Empty-state header: one upload door, no decoy', () => {
 
 // Drive the header into "a bid is open" without a cloud round trip, the way
 // view-only.spec.js flips state and re-runs updateUI.
-async function openFakeBid(page, name) {
-  await page.evaluate((nm) => {
+async function openFakeBid(page, name, id) {
+  await page.evaluate(([nm, pid]) => {
     const s = window.App.state;
     s.supabaseSession = { user: { id: 'u1', email: 'wendi@clickplumbing.com' } };
-    s.currentProjectId = 'proj-bid-chip';
+    s.currentProjectId = pid || 'proj-bid-chip';
     s.currentProjectName = nm;
     s.isViewer = false;
     s.loadedViaViewLink = false;
     window.App.updateUI();
-  }, name);
+  }, [name, id]);
 }
 
 test.describe('The bid chip (features/bid-chip.js)', () => {
@@ -201,5 +201,115 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     await expect(page.locator('body')).toHaveClass(/sidebar-collapsed/);
     await link.click();
     await expect(page.locator('body')).not.toHaveClass(/sidebar-collapsed/);
+  });
+});
+
+// Seed the local recents store the way a working week would leave it.
+async function seedRecents(page, rows) {
+  await page.evaluate((r) => {
+    const now = Date.now();
+    localStorage.setItem('recentBids', JSON.stringify(r.map((x) => ({ id: x.id, name: x.name, at: now - x.agoMs }))));
+  }, rows);
+}
+
+const WEEK = [
+  { id: 'aaa', name: 'Sysco Cold Box \u00b7 P-101', agoMs: 2 * 3600e3 },
+  { id: 'bbb', name: 'Midland Clinic \u00b7 M-200', agoMs: 26 * 3600e3 },
+  { id: 'ccc', name: 'Bastrop ISD High School Field House Addition \u00b7 M-201', agoMs: 4 * 86400e3 },
+];
+
+test.describe('The bid menu (features/bid-chip.js)', () => {
+  test('lists the recents, marks the open bid inert, and offers the two doors', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await seedRecents(page, WEEK);
+    await page.reload();
+    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await openFakeBid(page, 'Sysco Cold Box \u00b7 P-101', 'aaa');
+
+    await page.locator('#headerBidChip').click();
+    const menu = page.locator('#headerBidMenu');
+    await expect(menu).toBeVisible();
+    await expect(page.locator('#headerBidChip')).toHaveAttribute('aria-expanded', 'true');
+
+    // The bid you are in is named but not re-openable.
+    const current = menu.locator('.bm-row.is-current');
+    await expect(current).toHaveText(/Sysco Cold Box/);
+    await expect(current).toBeDisabled();
+
+    // The others are offered, newest first, with coarse ages.
+    const others = menu.locator('.bm-row.bm-recent');
+    await expect(others.first()).toHaveText(/Midland Clinic/);
+    await expect(menu).toContainText('yesterday');
+    await expect(menu).toContainText('4d ago');
+    // Listed once, not twice: the open bid is filtered out of the recents.
+    await expect(menu.locator('.bm-row', { hasText: 'Sysco Cold Box' })).toHaveCount(1);
+    await expect(others).toHaveCount(2);
+
+    await expect(menu.locator('.bm-action')).toHaveText(/All my bids/);
+    await expect(menu).toContainText('Upload a new plan');
+
+    expect(realErrors(errors)).toEqual([]);
+  });
+
+  test('Escape and a click away both close it', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await seedRecents(page, WEEK);
+    await page.reload();
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+
+    const chip = page.locator('#headerBidChip');
+    const menu = page.locator('#headerBidMenu');
+
+    await chip.click();
+    await expect(menu).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    await expect(chip).toHaveAttribute('aria-expanded', 'false');
+
+    await chip.click();
+    await expect(menu).toBeVisible();
+    await page.mouse.click(700, 500);
+    await expect(menu).toBeHidden();
+  });
+
+  test('with no recents the two actions are the whole menu', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await page.evaluate(() => localStorage.removeItem('recentBids'));
+    await page.reload();
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+
+    await page.locator('#headerBidChip').click();
+    const menu = page.locator('#headerBidMenu');
+    await expect(menu).toBeVisible();
+    // No headings, no separator, no empty-state copy: just the doors.
+    await expect(menu.locator('.bm-head')).toHaveCount(0);
+    await expect(menu.locator('.bm-sep')).toHaveCount(0);
+    await expect(menu.locator('.bm-row')).toHaveCount(2);
+  });
+
+  test('the two doors are wired: the list opens, and Upload fires the picker', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 800 });
+    await page.goto('/app/');
+    await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
+    await page.evaluate(() => { window.__pdfClicks = 0; document.getElementById('pdfInput').click = () => { window.__pdfClicks++; }; });
+
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-row', { hasText: 'Upload a new plan' }).click();
+    await expect(page.locator('#headerBidMenu')).toBeHidden();
+    expect(await page.evaluate(() => window.__pdfClicks)).toBe(1);
+
+    // Signed out, "All my bids…" routes through the auth gate rather than
+    // dead-ending (Tier-3 B7), which is the wiring this asserts.
+    await page.locator('#headerBidChip').click();
+    await page.locator('#headerBidMenu .bm-action').click();
+    await expect(page.locator('#authModal')).toHaveClass(/visible/);
   });
 });

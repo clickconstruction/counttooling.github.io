@@ -237,10 +237,16 @@ in `candidateA()`; the fixture symbols are the helpers at the top of the file
 
 ## R1 — review: our own Turn In was reported as an admin force
 
-Branch `claude/self-turn-in-not-a-force`, cut from main @ 55bca6d (PR #95), merged as
-**PR #97** (2026-09-15) **DORMANT behind the per-device flag `?ff=self-release`** —
-Robert's call: another individual tests it on the real site before it goes live for
-anyone. With the flag off, prod behaves exactly as before (a fifth node test pins that).
+Branch `claude/self-turn-in-not-a-force`, cut from main @ 55bca6d (PR #95), **open as
+PR #97** (2026-09-15, NOT merged) and written to ship **DORMANT behind the per-device flag
+`?ff=self-release`** — Robert's call: another individual tests it on the real site before
+it goes live for anyone. With the flag off, prod behaves exactly as before (a fifth node
+test pins that). **Review pass 2026-09-15** (a second session, at the owner's ask "what
+else would this touch?"): the diff was re-read against main rather than taken from this
+brief; the AND-gate dormancy was verified line by line, `doTurnIn`'s flush-before-release
+confirmed (so the skipped post-release flush loses nothing), `pushSaveEvent` confirmed to
+be the in-app log only (so the two new event kinds need no allowlist migration and are
+untouched by R2), and ONE real gap was found and closed — see the project scope below.
 The test is [R1-TEST](#r1-test--a-tester-walks-the-fix-on-counttoolingcom-own-login);
 making it live is [R1-FLIP](#r1-flip--make-the-fix-live-for-everyone-after-r1-test).
 Written by the session that diagnosed it; nothing below depends on that conversation.
@@ -287,8 +293,9 @@ was very likely the same estimator hitting the same button.
 
 ### What the branch changes (5 source files, 2 tests, 4 docs)
 1. `constants.js` — `SELF_RELEASE_GRACE_MS = 15 * 1000` (+ export).
-2. `save-engine.js` — `lastSelfReleaseAt` / `noteSelfRelease(atMs)` /
-   `isSelfReleaseRecent()` declared just above `refreshProjectPermissions`; stamped in
+2. `save-engine.js` — `lastSelfReleaseAt` / `lastSelfReleaseProjectId` /
+   `noteSelfRelease(atMs, projectId)` / `isSelfReleaseRecent(projectId)` declared just
+   above `refreshProjectPermissions`; stamped in
    `doTurnIn` on `result.ok` AND on the `alreadyReleased` short-circuit; exported.
    In `refreshProjectPermissions`: `selfRelease = turnInInProgress ||
    isSelfReleaseRecent()`; when set, (a) the dirty-flush over the lost lock is skipped
@@ -323,6 +330,16 @@ was very likely the same estimator hitting the same button.
 - [ ] `turnInInProgress` is a `let` declared ~400 lines BELOW `refreshProjectPermissions`
       in the same closure. Call-time read only (both run long after `createSaveEngine`
       returns), so no TDZ; confirm no lint rule wants it hoisted.
+- [x] **The cross-project leak — FOUND AND FIXED 2026-09-15 (review pass).** The stamp
+      was a bare timestamp with no project id, so the window covered whatever project was
+      current when the refresh landed: release A, check out B inside 15 s, an admin forces
+      B, and B's genuine force was classified as our own release — a silent demotion with
+      no notice, on a project the user never released. `noteSelfRelease` now records the
+      project (defaulting to the current one at stamp time, which is the released one on
+      every call path) and `isSelfReleaseRecent(projectId)` requires a match. Pinned by
+      `refreshProjectPermissions: the stamp does not leak across projects` in
+      save-engine.test.js, verified RED against the unscoped engine (0 notices, expected 1)
+      and green after. 68 node tests.
 - [ ] The window: 15 s is generous on purpose (a wedged supabase-js can delay the
       handler's own refresh by the 8 s `REFRESH_PERMISSIONS_TIMEOUT_MS` + retry). Cost of
       too long: an admin force within 15 s of our own turn-in is absorbed silently — we

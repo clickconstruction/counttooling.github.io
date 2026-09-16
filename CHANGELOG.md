@@ -31,13 +31,17 @@ in the very tab that released the lock.
   lock" — false: the holder can, and so can any session signed in as the same user, since
   the RPC is per user). Before the 2026-08-31 notice modal this misclassification was a
   redundant toast, so nobody noticed.
-- **The self-release stamp.** `noteSelfRelease()` in the engine, stamped by `doTurnIn` on
-  success (and on the already-released short-circuit) and by app.js's
+- **The self-release stamp.** `noteSelfRelease(atMs, projectId)` in the engine, stamped by
+  `doTurnIn` on success (and on the already-released short-circuit) and by app.js's
   `checkInCurrentProjectIfHeld` (close / load another / sign-out) on `ok`. A demotion seen
   at `refreshProjectPermissions` while a Turn In is in progress or within
-  `SELF_RELEASE_GRACE_MS` (15 s, constants.js) is ours: `self_release_refresh` in the Save
-  Status log, no notice, no toast, no flush over the released lock
-  (`self_release_flush_skipped`). Outside the window the classifier is unchanged.
+  `SELF_RELEASE_GRACE_MS` (15 s, constants.js) **of a release of that same project** is
+  ours: `self_release_refresh` in the Save Status log, no notice, no toast, no flush over
+  the released lock (`self_release_flush_skipped`). Outside the window the classifier is
+  unchanged. The stamp records the project it released (defaulting to whatever is current
+  at stamp time, which is the released one on every path) so the window cannot leak across
+  projects: release A, check out B, and a genuine force on B inside the 15 s still raises
+  the notice. Pinned by a node test that is red without the scope.
 - **Copy.** Behind the same flag the notice stops asserting an admin: "This project was
   turned in while you had it checked out, by an admin or by another tab or device signed in
   as you." (features/turn-in.js swaps `#forceTurnInNoticeBody`; R1-FLIP moves it into the

@@ -693,6 +693,28 @@ test('refreshProjectPermissions: the app-side check-in (close / load another / s
   assert.ok(!logKinds(engine).includes('force_turn_in'));
 });
 
+test('refreshProjectPermissions: the stamp does not leak across projects — releasing A never covers a force on B', async () => {
+  // Release A (stamped), then open and check out B inside the 15s window and
+  // have an admin force B. The stamp is time-based, so without a project
+  // scope B's genuine force would be swallowed and the estimator silently
+  // demoted with no notice on a project they never released.
+  const rowB = { id: 'p2', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([rowB]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();                 // we let go of A, moments ago
+  state.currentProjectId = 'p2';            // ...then opened and checked out B
+  state.checkedOutBy = 'u1';
+  state.checkedOutAt = new Date().toISOString();
+  await engine.refreshProjectPermissions(); // B's live lock cleared by an admin
+  await new Promise((r) => setTimeout(r, 20));
+  assert.strictEqual(notices.length, 1, 'a force on B still tells the user');
+  assert.ok(logKinds(engine).includes('force_turn_in'), 'classified as a force, not our release');
+  assert.ok(!logKinds(engine).includes('self_release_refresh'), "A's stamp must not cover B");
+});
+
 test('refreshProjectPermissions: the self-release window closes — the same row later IS a force', async () => {
   // Same released row, but our stamp has aged past SELF_RELEASE_GRACE_MS:
   // someone else (an admin, or another session as us) cleared a LIVE lock.

@@ -190,12 +190,15 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     expect(hidden).toBe('none');
   });
 
-  test('the status bar carries the sidebar toggle the wordmark hides behind', async ({ page }) => {
+  test('the header keeps a sidebar toggle once the wordmark yields', async ({ page }) => {
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
     await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
 
-    const link = page.locator('#statusBarSidebar');
+    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await openFakeBid(page, 'Sysco Cold Box \u00b7 P-101', 'aaa');
+    const link = page.locator('#headerSidebarToggle');
     await expect(link).toBeVisible();
     await link.click();
     await expect(page.locator('body')).toHaveClass(/sidebar-collapsed/);
@@ -431,7 +434,7 @@ test.describe('The wordmark only yields where the chip can take over', () => {
   // lost the branding AND the only visible sidebar toggle, and gained no chip.
   // footer-hint.spec.js surfaced it from the other side: the status-bar toggle
   // added for the swap was pushing that bar's one-line budget at 1050px.
-  for (const [width, chipExpected] of [[1024, false], [1152, true]]) {
+  for (const [width, chipExpected] of [[1024, false], [1180, false], [1280, true]]) {
     test('at ' + width + 'px the wordmark is ' + (chipExpected ? 'replaced' : 'kept'), async ({ page }) => {
       await page.setViewportSize({ width, height: 820 });
       await page.goto('/app/');
@@ -445,15 +448,16 @@ test.describe('The wordmark only yields where the chip can take over', () => {
         // would also catch body.header-collapsed hiding the wordmark, which is
         // pre-existing compact-mode behavior and not this feature's doing.
         wordmarkYieldedByChip: document.getElementById('headerLogo').style.display === 'none',
-        sidebarLink: getComputedStyle(document.getElementById('statusBarSidebar')).display !== 'none',
+        // The toggle stands in for the wordmark's click wherever it yields.
+        sidebarToggle: document.getElementById('headerSidebarToggle').style.display !== 'none',
       }));
 
       expect(r).toEqual({
         chip: chipExpected,
         // Never yield the slot where nothing takes it over.
         wordmarkYieldedByChip: chipExpected,
-        // The toggle appears exactly where the wordmark can vanish.
-        sidebarLink: chipExpected,
+        // The toggle appears exactly where the wordmark vanishes.
+        sidebarToggle: chipExpected,
       });
     });
   }

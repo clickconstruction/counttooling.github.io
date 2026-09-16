@@ -22,10 +22,13 @@
  * narrower bands.
  *
  * #headerLogo was ALSO the only visible desktop sidebar toggle (its click; the
- * spacebar in app.js's keydown is the invisible other half), so hiding it hands
- * that job to #statusBarSidebar, beside quick keys and shortcuts, where this
- * class of view control already lives. Without it a collapsed sidebar would be
- * unrecoverable for anyone who does not know the key.
+ * spacebar in app.js's keydown is the invisible other half), so whenever the
+ * chip takes its slot, #headerSidebarToggle appears in its place: the same job
+ * in a narrow icon. Exactly one of the two is ever shown. It deliberately does
+ * NOT live in the status bar -- that bar's width is pinned by
+ * footer-hint.spec.js (one line at 1050px) and duct-b19b.spec.js Friction #5
+ * (the save stamp's words are spent before the tool hint), and a link there
+ * broke both.
  *
  * Gating: SUPABASE_ENABLED (the chip is a CLOUD bid switcher; the
  * .supabase-only class handles the disabled case) and never for a view-link
@@ -45,6 +48,7 @@
       name: document.getElementById('headerBidChipName'),
       divider: document.getElementById('headerBidChipDivider'),
       logo: document.getElementById('headerLogo'),
+      sidebarToggle: document.getElementById('headerSidebarToggle'),
     };
   }
 
@@ -53,7 +57,7 @@
   // skipped) and the header re-measure only when something actually changed.
   let lastRendered = '';
   function renderBidChip() {
-    const { chip, name, divider, logo } = chipEls();
+    const { chip, name, divider, logo, sidebarToggle } = chipEls();
     if (!chip || !name) return;
     const state = App.state;
     const enabled = !!App.SUPABASE_ENABLED;
@@ -65,12 +69,13 @@
     // and the chip brings its own divider to stay clear of the tool strip.
     //
     // But ONLY where the chip is actually rendered. styles.css hides it below
-    // 1100px, where no chip wide enough to name a bid fits, and yielding the
+    // 1240px, where no chip wide enough to name a bid fits once the sidebar-toggle
+    // icon that replaces the wordmark is counted, and yielding the
     // wordmark there would empty the slot instead of handing it over: that
     // band would lose the branding AND the sidebar toggle and gain nothing.
     // matchMedia rather than a computed-style read, which updateUI would pay
     // for as a forced reflow on every call. Keep in step with styles.css.
-    const chipFits = window.matchMedia('(min-width: 1100px)').matches;
+    const chipFits = window.matchMedia('(min-width: 1240px)').matches;
     const hasPlan = show && !!(state.pages.length || state.isViewer);
     const logoYields = hasPlan && chipFits;
 
@@ -86,6 +91,8 @@
     chip.style.display = show ? '' : 'none';
     if (divider) divider.style.display = hasPlan ? '' : 'none';
     if (logo) logo.style.display = logoYields ? 'none' : '';
+    // Exactly one of the wordmark and the icon carries the sidebar toggle.
+    if (sidebarToggle) sidebarToggle.style.display = logoYields ? '' : 'none';
     name.textContent = label;
     chip.classList.toggle('is-empty', !hasBid);
     chip.title = hasBid ? label : 'Open one of your bids';
@@ -254,9 +261,10 @@
         toggleBidMenu();
       };
     }
-    const sidebarLink = document.getElementById('statusBarSidebar');
-    if (sidebarLink) {
-      sidebarLink.onclick = function () {
+    const sidebarToggle = document.getElementById('headerSidebarToggle');
+    if (sidebarToggle) {
+      // Same behavior as #headerLogo's click, which this stands in for.
+      sidebarToggle.onclick = function () {
         if (window.matchMedia('(min-width: 769px)').matches) {
           document.body.classList.toggle('sidebar-collapsed');
         }

@@ -2350,15 +2350,16 @@ body.tour-active .canvas-empty-hint { display: none; }
 /* The width ladder, measured against the live layout with the wordmark
    yielding. The test is never "does the header fit" but "is the CHIP what tips
    it": the same state, compared with the chip against without it. 180px is safe
-   down to 1152px, 150px down to 1100px, and below that no chip wide enough to
-   name a bid is safe, so it steps aside and the door stays Project Settings, as
-   it is today. These are breakpoints, not measurements, and the real spare
+   down to 1240px. Below that no chip wide enough to name a bid is safe once the
+   sidebar-toggle icon replacing the wordmark is counted (the true edge measured
+   between 1180 and 1210; 1240 leaves margin, because this ladder is a proxy and
+   CI's Linux metrics differ slightly from a Mac's), so the chip steps aside and
+   the door stays Project Settings, as it is today. These are breakpoints, not measurements, and the real spare
    width depends on which right-side controls a session has up; making the chip
    yield only when it is ACTUALLY the cause belongs in burger-menu's measure
    pipeline rather than a fourth independent measurer. */
 @media (max-width: 1400px) { .header-bid-chip { max-width: 180px; } }
-@media (max-width: 1199px) { .header-bid-chip { max-width: 150px; } }
-@media (max-width: 1099px) { .header-bid-chip, .header-bid-chip-divider { display: none !important; } }
+@media (max-width: 1239px) { .header-bid-chip, .header-bid-chip-divider { display: none !important; } }
 
 /* The bid switcher's menu (features/bid-chip.js). Mirrors .header-more-menu's
    idiom rather than inventing a third menu look in the same header. */
@@ -2374,12 +2375,3 @@ body.tour-active .canvas-empty-hint { display: none; }
 .bid-menu .bm-row.bm-action { color: var(--accent); }
 .bid-menu .bm-sep { height: 1px; background: var(--border); margin: 5px 4px; }
 
-/* The sidebar toggle the wordmark used to carry. It appears only where the
-   wordmark can actually vanish (>= 1100px, where the bid chip takes its slot);
-   below that the wordmark is still there doing the job, and the extra link
-   would only push the status bar's one-line budget, which footer-hint.spec.js
-   pins at 1050px. Keep the breakpoint in step with the chip's. */
-@media (min-width: 1100px) {
-  .status-bar #statusBarSidebar.status-bar-desktop-only { display: inline-flex !important; }
-  .status-bar #statusBarSidebarSep.status-bar-desktop-only { display: inline !important; }
-}

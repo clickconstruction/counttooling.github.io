@@ -240,8 +240,15 @@ and the settings subtitle name the bid). D5 stands (no chip for a view link).
   banner could still tip at a width the ladder calls safe. Making the chip
   yield only when it is ACTUALLY the cause belongs in burger-menu's measure
   pipeline, not a fourth independent measurer.
-- **769px to 1099px has no chip**: too narrow for one, too wide for the
+- **769px to 1239px has no chip**: too narrow for one, too wide for the
   `.sidebar-header-buttons` block that carries the mobile door. The door there
   is Project Settings, exactly as it was before this work, so it is not a
-  regression, but it is the one desktop band the fix does not reach.
+  regression, but it is the one desktop band the fix does not reach. The
+  threshold moved up twice during the build: once when the sidebar-toggle icon
+  that replaces the wordmark was counted, and once for margin, because the
+  ladder is a proxy and CI's Linux metrics differ slightly from a Mac's.
+- **The status bar is a budgeted surface, not spare room.** A `sidebar` link
+  there broke footer-hint.spec.js (one line at 1050px) and then duct-b19b.spec.js
+  Friction #5 (the save stamp's words are spent before the tool hint). The
+  toggle lives in the header instead. Treat that bar as full.
 - Recents are per device. A second machine starts empty (D3).

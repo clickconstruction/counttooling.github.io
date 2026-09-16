@@ -327,8 +327,6 @@
       .status-bar #statusBarQuickKeysSep.status-bar-desktop-only { display: inline !important; }
       .status-bar #statusBarMacros.status-bar-desktop-only { display: inline-flex !important; }
       body.supabase-enabled .status-bar #statusBarMacrosSep.status-bar-desktop-only { display: inline !important; }
-      .status-bar #statusBarSidebar.status-bar-desktop-only { display: inline-flex !important; }
-      .status-bar #statusBarSidebarSep.status-bar-desktop-only { display: inline !important; }
     }
     /* Sign In / account entry in the status bar — all widths (on mobile it is the
        only sign-in entry point; signed-in it shows the email -> My Settings). */
@@ -2375,3 +2373,13 @@ body.tour-active .canvas-empty-hint { display: none; }
 .bid-menu .bm-row.is-current .bm-when { color: var(--text3); }
 .bid-menu .bm-row.bm-action { color: var(--accent); }
 .bid-menu .bm-sep { height: 1px; background: var(--border); margin: 5px 4px; }
+
+/* The sidebar toggle the wordmark used to carry. It appears only where the
+   wordmark can actually vanish (>= 1100px, where the bid chip takes its slot);
+   below that the wordmark is still there doing the job, and the extra link
+   would only push the status bar's one-line budget, which footer-hint.spec.js
+   pins at 1050px. Keep the breakpoint in step with the chip's. */
+@media (min-width: 1100px) {
+  .status-bar #statusBarSidebar.status-bar-desktop-only { display: inline-flex !important; }
+  .status-bar #statusBarSidebarSep.status-bar-desktop-only { display: inline !important; }
+}

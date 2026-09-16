@@ -424,3 +424,37 @@ test.describe('Opening a recent bid (stage 4)', () => {
     expect(ids).toContain('ccc');
   });
 });
+
+test.describe('The wordmark only yields where the chip can take over', () => {
+  // The bug this pins: the wordmark hid on "a plan is open" while the chip's
+  // visibility is a CSS breakpoint, so between 769px and 1099px the header
+  // lost the branding AND the only visible sidebar toggle, and gained no chip.
+  // footer-hint.spec.js surfaced it from the other side: the status-bar toggle
+  // added for the swap was pushing that bar's one-line budget at 1050px.
+  for (const [width, chipExpected] of [[1024, false], [1152, true]]) {
+    test('at ' + width + 'px the wordmark is ' + (chipExpected ? 'replaced' : 'kept'), async ({ page }) => {
+      await page.setViewportSize({ width, height: 820 });
+      await page.goto('/app/');
+      await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
+      await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+      await openFakeBid(page, 'Sysco Cold Box \u00b7 P-101', 'aaa');
+
+      const r = await page.evaluate(() => ({
+        chip: getComputedStyle(document.getElementById('headerBidChip')).display !== 'none',
+        // The INLINE style is what features/bid-chip.js writes. Computed display
+        // would also catch body.header-collapsed hiding the wordmark, which is
+        // pre-existing compact-mode behavior and not this feature's doing.
+        wordmarkYieldedByChip: document.getElementById('headerLogo').style.display === 'none',
+        sidebarLink: getComputedStyle(document.getElementById('statusBarSidebar')).display !== 'none',
+      }));
+
+      expect(r).toEqual({
+        chip: chipExpected,
+        // Never yield the slot where nothing takes it over.
+        wordmarkYieldedByChip: chipExpected,
+        // The toggle appears exactly where the wordmark can vanish.
+        sidebarLink: chipExpected,
+      });
+    });
+  }
+});

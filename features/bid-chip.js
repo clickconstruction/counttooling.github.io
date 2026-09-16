@@ -63,10 +63,19 @@
     // Once a plan is on screen, uploadPdf and both primary dividers hide
     // (app.js updateUI); the wordmark joins them, handing the chip its slot,
     // and the chip brings its own divider to stay clear of the tool strip.
+    //
+    // But ONLY where the chip is actually rendered. styles.css hides it below
+    // 1100px, where no chip wide enough to name a bid fits, and yielding the
+    // wordmark there would empty the slot instead of handing it over: that
+    // band would lose the branding AND the sidebar toggle and gain nothing.
+    // matchMedia rather than a computed-style read, which updateUI would pay
+    // for as a forced reflow on every call. Keep in step with styles.css.
+    const chipFits = window.matchMedia('(min-width: 1100px)').matches;
     const hasPlan = show && !!(state.pages.length || state.isViewer);
+    const logoYields = hasPlan && chipFits;
 
     const label = hasBid ? (state.currentProjectName || 'Untitled') : 'No bid open';
-    const key = JSON.stringify([show, hasBid, label, hasPlan]);
+    const key = JSON.stringify([show, hasBid, label, hasPlan, logoYields]);
     // The visibility writes are NOT memoized: updateUI's `.supabase-only` pass
     // resets every such element to display:'' on each run, so an early return
     // here would resurrect a chip we had hidden (a view-link session). Only the
@@ -76,7 +85,7 @@
 
     chip.style.display = show ? '' : 'none';
     if (divider) divider.style.display = hasPlan ? '' : 'none';
-    if (logo) logo.style.display = hasPlan ? 'none' : '';
+    if (logo) logo.style.display = logoYields ? 'none' : '';
     name.textContent = label;
     chip.classList.toggle('is-empty', !hasBid);
     chip.title = hasBid ? label : 'Open one of your bids';

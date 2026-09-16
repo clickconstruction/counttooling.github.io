@@ -841,14 +841,23 @@ function createSaveEngine(ctx) {
   // admin can clear a live lock; the classifier assumed admin). Field report
   // 2026-09-15: the Turn In button's own tab got the "an admin turned this
   // project in" notice after every release. The stamp names the window in
-  // which a demotion is ours; noteSelfRelease(atMs) takes an explicit time
-  // so node tests can age it.
+  // which a demotion is ours; noteSelfRelease(atMs, projectId) takes an
+  // explicit time so node tests can age it, and an explicit project so the
+  // window cannot leak across projects: releasing A then checking out B must
+  // not swallow a genuine force on B (the stamp defaults to whatever project
+  // is current at stamp time, which is the one being released on every path).
   let lastSelfReleaseAt = 0;
-  function noteSelfRelease(atMs) {
+  let lastSelfReleaseProjectId = null;
+  function noteSelfRelease(atMs, projectId) {
     lastSelfReleaseAt = Number.isFinite(atMs) ? atMs : Date.now();
+    lastSelfReleaseProjectId = (projectId === undefined || projectId === null)
+      ? (ctx.getState().currentProjectId || null)
+      : projectId;
   }
-  function isSelfReleaseRecent() {
-    return lastSelfReleaseAt > 0 && (Date.now() - lastSelfReleaseAt) < SELF_RELEASE_GRACE_MS;
+  function isSelfReleaseRecent(projectId) {
+    return lastSelfReleaseAt > 0 &&
+      (Date.now() - lastSelfReleaseAt) < SELF_RELEASE_GRACE_MS &&
+      !!projectId && lastSelfReleaseProjectId === projectId;
   }
 
   async function refreshProjectPermissions() {
@@ -912,7 +921,7 @@ function createSaveEngine(ctx) {
     // Dormant until the flag flips (app.js feature flags; _TODO.md R1-FLIP):
     // with it off this refresh classifies exactly as before 2026-09-15.
     const selfRelease = !!(ctx.isSelfReleaseStampEnabled && ctx.isSelfReleaseStampEnabled()) &&
-      (turnInInProgress || isSelfReleaseRecent());
+      (turnInInProgress || isSelfReleaseRecent(state.currentProjectId));
     if (willBecomeViewer && hadDirty && !hadInflight && selfRelease) {
       try { pushSaveEvent('self_release_flush_skipped', 'Permissions refresh after our own turn-in: dirty flag left for the caller, no flush over a released lock'); } catch (_) {}
     } else if (willBecomeViewer && hadDirty && !hadInflight) {

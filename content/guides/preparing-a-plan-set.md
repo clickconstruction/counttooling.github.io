@@ -11,7 +11,7 @@ Bid sets arrive as one big combined PDF where only some sheets matter to your tr
 
 ## Upload the PDF
 
-Open the app and click **Upload PDF** in the header (the same upload also lives behind the cloud button [[upload]] and in the sidebar; before a plan is loaded, the cloud button skips its export menu and opens the file picker directly, so any plausible first click lands on upload.) Or skip the picker entirely: **drag the PDF from your file manager and drop it anywhere on the app**; the empty canvas says so, and a dropped plan opens exactly like an uploaded one. Pick your plan PDF (up to 50 MB); you can select more than one PDF at once (or drop several) and they merge into a single set, in order. Each page becomes a sheet you can mark up.
+Open the app and click **Upload PDF** in the header (the same upload also lives in the sidebar). Or skip the picker entirely: **drag the PDF from your file manager and drop it anywhere on the app**; the empty canvas says so, and a dropped plan opens exactly like an uploaded one. Pick your plan PDF (up to 50 MB); you can select more than one PDF at once (or drop several) and they merge into a single set, in order. Each page becomes a sheet you can mark up.
 
 ## Trim the set with Prepare PDF
 
@@ -27,7 +27,7 @@ When a fresh PDF comes in, the **Prepare PDF** dialog lets you shape the set bef
 
 ## Add pages later (addenda)
 
-When an addendum or revised sheet arrives mid-bid, click **Upload PDF** [[upload]] again while your project is open; the new sheets are added to the current set. The project keeps its name, a toast confirms "Added N sheets" to it by name, and nothing you've already counted moves or changes. Signed-in users can instead use **Project Settings > Add additional PDF pages** to trim the addendum first (the "Add pages" dialog, titled with your project's name) before it joins the set.
+When an addendum or revised sheet arrives mid-bid, **drag the new PDF onto the app** while your project is open; the new sheets are added to the current set. The project keeps its name, a toast confirms "Added N sheets" to it by name, and nothing you've already counted moves or changes. Signed-in users can instead use **Project Settings > Add additional PDF pages** to trim the addendum first (the "Add pages" dialog, titled with your project's name) before it joins the set.
 
 ## Find your way around a big set
 

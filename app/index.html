@@ -54,6 +54,7 @@
   <script src="/hotkeys.js"></script>
   <script src="/recent-colors.js"></script>
   <script src="/recent-drops.js"></script>
+  <script src="/recent-bids.js"></script>
   <script src="/idb.js"></script>
   <script src="/format.js"></script>
   <script src="/save-utils.js"></script>
@@ -82,9 +83,28 @@
       <button class="hamburger" id="hamburger" aria-label="Menu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M96 192C96 174.3 110.3 160 128 160L512 160C529.7 160 544 174.3 544 192C544 209.7 529.7 224 512 224L128 224C110.3 224 96 209.7 96 192zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 448C544 465.7 529.7 480 512 480L128 480C110.3 480 96 465.7 96 448C96 430.3 110.3 416 128 416L512 416C529.7 416 544 430.3 544 448z"/></svg></button>
       <div class="header-tools-scroll">
       <button type="button" class="logo logo-btn" id="headerLogo" aria-label="Toggle sidebar">CountTooling</button>
+      <!-- The sidebar toggle the wordmark carries. #headerLogo is that toggle,
+           so when the bid chip takes its slot this narrow icon keeps the job
+           visible (features/bid-chip.js shows exactly one of the two). It does
+           NOT live in the status bar: that bar's width is pinned by
+           footer-hint.spec.js and duct-b19b.spec.js Friction #5, and a link
+           there spent budget the save stamp and tool hint need. -->
+      <button type="button" id="headerSidebarToggle" class="sidebar-triggers" style="display:none;" aria-label="Show or hide the sidebar" title="Show or hide the sidebar (spacebar)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg>
+      </button>
       <span class="divider header-primary-divider"></span>
       <button id="uploadPdf" class="header-primary-btn">Upload PDF</button>
       <input type="file" id="pdfInput" accept=".pdf" multiple>
+      <!-- The bid switcher (features/bid-chip.js). Names the bid you are in and
+           opens the recents menu. With a bid open the wordmark yields its slot
+           to this (BID-SWITCHER.md option 1): the header's intrinsic width is
+           1106px bare, and only dropping the 103px wordmark keeps a chip under
+           the 1280px laptop collapse threshold. -->
+      <button type="button" id="headerBidChip" class="header-bid-chip supabase-only" style="display:none;" aria-haspopup="menu" aria-expanded="false">
+        <span class="header-bid-chip-name" id="headerBidChipName">No bid open</span>
+        <span class="header-bid-chip-caret" aria-hidden="true">▾</span>
+      </button>
+      <span class="divider header-bid-chip-divider" id="headerBidChipDivider" style="display:none;"></span>
       <span class="divider header-primary-divider"></span>
       <span class="header-tools-tight">
         <button id="setScale" class="sidebar-triggers" title="Set Scale" aria-label="Set Scale">
@@ -188,9 +208,15 @@
       <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Project Settings" title="Project Settings">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
       </button>
+      <!-- .replaced-by-status-bar: hidden in the header (styles.css), but NOT
+           dead markup. These are the command hubs their handlers hang off, and
+           other surfaces reach the action by dispatching a click at them (the
+           settings modal, the burger drawer, My Settings, the auth gate). Do
+           not delete one without moving its handler and every .click() caller.
+           #loadProjectBtn used to sit here; it was the one genuine orphan,
+           never dispatched, and the header bid chip is its replacement. -->
       <button id="authBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Sign In</button>
       <button id="saveProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Save Project to Cloud</button>
-      <button id="loadProjectBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Load Project from Cloud</button>
       <button id="manageUsersBtn" class="header-primary-btn supabase-only replaced-by-status-bar" style="display:none;">Manage Users</button>
       <button id="exportBtn" class="header-primary-btn replaced-by-status-bar">Export</button>
       <button id="importBtn" class="header-primary-btn replaced-by-status-bar">Import</button>
@@ -198,8 +224,7 @@
       <input type="file" id="customIconUploadInput" accept=".svg,image/svg+xml">
       <button id="clearPage" class="danger replaced-by-status-bar">Clear Page</button>
       <div class="export-dropdown consolidated-mobile" id="exportDropdown" style="position:relative;display:none;">
-        <button id="exportDropdownBtn" class="header-settings-gear sidebar-triggers" aria-label="Export" title="Export project">
-          <svg id="exportDropdownIconImport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" style="display:none" aria-hidden="true"><path fill="currentColor" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM337 255C327.6 245.6 312.4 245.6 303.1 255L231.1 327C221.7 336.4 221.7 351.6 231.1 360.9C240.5 370.2 255.7 370.3 265 360.9L296 329.9L296 432C296 445.3 306.7 456 320 456C333.3 456 344 445.3 344 432L344 329.9L375 360.9C384.4 370.3 399.6 370.3 408.9 360.9C418.2 351.5 418.3 336.3 408.9 327L336.9 255z"/></svg>
+        <button id="exportDropdownBtn" class="header-settings-gear sidebar-triggers" aria-label="Export" title="Export project" aria-haspopup="menu">
           <svg id="exportDropdownIconExport" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28" aria-hidden="true"><path fill="currentColor" d="M176 544C96.5 544 32 479.5 32 400C32 336.6 73 282.8 129.9 263.5C128.6 255.8 128 248 128 240C128 160.5 192.5 96 272 96C327.4 96 375.5 127.3 399.6 173.1C413.8 164.8 430.4 160 448 160C501 160 544 203 544 256C544 271.7 540.2 286.6 533.5 299.7C577.5 320 608 364.4 608 416C608 486.7 550.7 544 480 544L176 544zM409 377C418.4 367.6 418.4 352.4 409 343.1C399.6 333.8 384.4 333.7 375.1 343.1L344.1 374.1L344.1 272C344.1 258.7 333.4 248 320.1 248C306.8 248 296.1 258.7 296.1 272L296.1 374.1L265.1 343.1C255.7 333.7 240.5 333.7 231.2 343.1C221.9 352.5 221.8 367.7 231.2 377L303.2 449C312.6 458.4 327.8 458.4 337.1 449L409.1 377z"/></svg>
         </button>
         <div class="export-dropdown-menu" id="exportDropdownMenu" style="display:none;">
@@ -230,6 +255,7 @@
       </button>
     </header>
   <div id="headerMoreMenu" class="header-more-menu" style="display:none;"></div>
+  <div id="headerBidMenu" class="bid-menu" style="display:none;" role="menu" aria-labelledby="headerBidChip"></div>
     <div id="sidebarReorderBanner" class="sidebar-reorder-banner" style="display:none;">
       <span>Drag Counters and Lines by their left colors to re-order.</span>
       <button type="button" id="sidebarReorderFinish" class="sidebar-btn-inline sidebar-reorder-finish-btn">Finish reordering</button>
@@ -3504,6 +3530,7 @@
   <script src="/features/summary-detail.js"></script>
   <script src="/features/room-sizer.js"></script>
   <script src="/features/burger-menu.js"></script>
+  <script src="/features/bid-chip.js"></script>
   <script src="/features/header-more.js"></script>
   <script src="/features/canvas-layers.js"></script>
   <script src="/features/ghost.js"></script>

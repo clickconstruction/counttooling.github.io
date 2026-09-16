@@ -210,6 +210,7 @@
       .header-active-type .header-type-icon svg { width: 18px; height: 18px; }
       .header-active-type .header-type-swatch { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; }
     @media (min-width: 769px) { .header-active-type { display: none !important; } }
+
       .header .header-primary-divider { display: none; }
       .header .spacer { flex: 0; min-width: 0; }
       /* B9 (J15): padding-right >= the burger button's tap zone (44px + the 8px
@@ -2321,3 +2322,56 @@ body.tour-active .canvas-empty-hint { display: none; }
 .bid-check-codes b { color: var(--text); font-weight: 500; }
 .bid-check-codes-link { background: none; border: none; color: var(--accent); font: inherit; font-size: inherit; cursor: pointer; padding: 0; }
 .bid-check-codes-link:hover { text-decoration: underline; }
+
+/* The bid switcher chip (features/bid-chip.js, BID-SWITCHER.md stage 2).
+   Sized from measurements against the real layout, in a realistic signed-in
+   state with a plan open. At 1280px the header does not collapse today, and a
+   230px chip tips it over; at 1366px and 1440px the chip changes nothing. Two
+   remedies clear 1280 -- drop the wordmark and keep the full chip, or keep the
+   wordmark and cap the chip at 180px. The cap is the cheaper trade: it costs
+   about 50px of bid name on small laptops instead of the branding, and only
+   there. Above the breakpoint the chip gets its full width back. flex-shrink
+   stays on so the chip also yields gracefully to anything unforeseen. */
+.header-bid-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  /* Shrink-to-fit rather than a breakpoint: the chip gives width back to the
+     tool strip exactly when the header runs out, instead of stepping at one
+     guessed size. min-width keeps enough for a few characters and the caret. */
+  flex: 0 1 auto; min-width: 88px; max-width: 230px; padding: 5px 9px 5px 11px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: inherit; font-size: 0.78rem; font-weight: 500;
+  cursor: pointer; white-space: nowrap; overflow: hidden;
+}
+.header-bid-chip:hover { background: var(--surface3); border-color: var(--border2); }
+.header-bid-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.header-bid-chip-name { overflow: hidden; text-overflow: ellipsis; }
+.header-bid-chip-caret { color: var(--text2); font-size: 0.7rem; flex: 0 0 auto; }
+.header-bid-chip.is-empty { border-style: dashed; color: var(--text2); }
+/* The width ladder, measured against the live layout with the wordmark
+   yielding. The test is never "does the header fit" but "is the CHIP what tips
+   it": the same state, compared with the chip against without it. 180px is safe
+   down to 1240px. Below that no chip wide enough to name a bid is safe once the
+   sidebar-toggle icon replacing the wordmark is counted (the true edge measured
+   between 1180 and 1210; 1240 leaves margin, because this ladder is a proxy and
+   CI's Linux metrics differ slightly from a Mac's), so the chip steps aside and
+   the door stays Project Settings, as it is today. These are breakpoints, not measurements, and the real spare
+   width depends on which right-side controls a session has up; making the chip
+   yield only when it is ACTUALLY the cause belongs in burger-menu's measure
+   pipeline rather than a fourth independent measurer. */
+@media (max-width: 1400px) { .header-bid-chip { max-width: 180px; } }
+@media (max-width: 1239px) { .header-bid-chip, .header-bid-chip-divider { display: none !important; } }
+
+/* The bid switcher's menu (features/bid-chip.js). Mirrors .header-more-menu's
+   idiom rather than inventing a third menu look in the same header. */
+.bid-menu { position: fixed; z-index: 400; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); min-width: 248px; max-width: min(320px, calc(100vw - 16px)); }
+.bid-menu .bm-head { font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text3); padding: 6px 10px 4px; }
+.bid-menu .bm-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer; color: var(--text); background: none; border: 0; width: 100%; text-align: left; font: inherit; }
+.bid-menu .bm-row:hover:not(:disabled) { background: var(--surface2); }
+.bid-menu .bm-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.bid-menu .bm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bid-menu .bm-when { flex: 0 0 auto; font-family: 'DM Mono', monospace; font-size: 0.66rem; color: var(--text3); }
+.bid-menu .bm-row.is-current { color: var(--text2); cursor: default; }
+.bid-menu .bm-row.is-current .bm-when { color: var(--text3); }
+.bid-menu .bm-row.bm-action { color: var(--accent); }
+.bid-menu .bm-sep { height: 1px; background: var(--border); margin: 5px 4px; }
+

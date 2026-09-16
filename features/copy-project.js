@@ -18,6 +18,10 @@
   // await site (it can be recycled). See ARCHITECTURE.md "Feature files /
   // window.App registry". No build step.
   let pendingCopyProject = null;
+  // The bid switcher's direct load (features/bid-chip.js): the save gate has
+  // always routed to the full LIST, but a recents row names its target, so the
+  // target has to survive the gate. Same shape as pendingCopyProject.
+  let pendingDirectLoad = null;
   let copyProjectModalTarget = null;
 
   function openCopyProjectModal(proj) {
@@ -257,6 +261,27 @@
     App.showModal('saveBeforeLoadModal');
   }
 
+  // The bid switcher's entry to the same gate, carrying its target through.
+  function loadRecentBidOrPromptSave(bid) {
+    if (!App.getAutoSaveDirty()) {
+      pendingCopyProject = null;
+      pendingDirectLoad = null;
+      if (App.loadRecentBidNow) App.loadRecentBidNow(bid);
+      return;
+    }
+    pendingCopyProject = null;
+    pendingDirectLoad = bid;
+    const msgEl = document.querySelector('#saveBeforeLoadModal p');
+    const cancelBtn = document.getElementById('saveBeforeLoadCancel');
+    const discardBtn = document.getElementById('saveBeforeLoadDiscard');
+    const saveBtn = document.getElementById('saveBeforeLoadSave');
+    if (msgEl) msgEl.textContent = 'You have unsaved changes. Save before opening ' + (bid.name || 'another bid') + '?';
+    if (cancelBtn) { cancelBtn.disabled = false; cancelBtn.textContent = 'Cancel'; }
+    if (discardBtn) discardBtn.style.display = '';
+    if (saveBtn) saveBtn.style.display = '';
+    App.showModal('saveBeforeLoadModal');
+  }
+
   // SECTION: Copy project modal
   document.getElementById('copyProjectModalConfirm').onclick = async () => {
     const proj = copyProjectModalTarget;
@@ -284,14 +309,22 @@
   // SECTION: Save-before-load modal
   document.getElementById('saveBeforeLoadCancel').onclick = () => {
     pendingCopyProject = null;
+    pendingDirectLoad = null;
     App.hideModal('saveBeforeLoadModal');
   };
+  // Where the gate resumes: a named bid, a copy target, or the full list.
+  function resumeAfterSaveGate() {
+    const copy = pendingCopyProject;
+    const direct = pendingDirectLoad;
+    pendingCopyProject = null;
+    pendingDirectLoad = null;
+    if (copy) openCopyProjectModal(copy);
+    else if (direct && App.loadRecentBidNow) App.loadRecentBidNow(direct);
+    else App.openLoadProjectModal();
+  }
   document.getElementById('saveBeforeLoadDiscard').onclick = () => {
     App.hideModal('saveBeforeLoadModal');
-    const p = pendingCopyProject;
-    pendingCopyProject = null;
-    if (p) openCopyProjectModal(p);
-    else App.openLoadProjectModal();
+    resumeAfterSaveGate();
   };
   document.getElementById('saveBeforeLoadSave').onclick = async () => {
     const cancelBtn = document.getElementById('saveBeforeLoadCancel');
@@ -306,10 +339,7 @@
     const result = await App.performAutoSave();
     if (result.ok) {
       App.hideModal('saveBeforeLoadModal');
-      const p = pendingCopyProject;
-      pendingCopyProject = null;
-      if (p) openCopyProjectModal(p);
-      else App.openLoadProjectModal();
+      resumeAfterSaveGate();
     } else {
       if (result.error?.code === 'CHECKOUT_EXPIRED') {
         App.pushSaveEvent('checkout_expired', CHECKOUT_EXPIRED_SAVE_STATUS_MSG);
@@ -318,6 +348,7 @@
         App.updateSaveStatusIndicator();
         App.hideModal('saveBeforeLoadModal');
         pendingCopyProject = null;
+        pendingDirectLoad = null;
         App.openCheckoutExpiredRecoveryModal({ trigger: 'save_before_load' });
         return;
       } else if (App.isAuthError(result.error)) {
@@ -337,9 +368,10 @@
 
   App.openCopyProjectModalOrPromptSave = openCopyProjectModalOrPromptSave;
   App.openLoadProjectModalOrPromptSave = openLoadProjectModalOrPromptSave;
+  App.loadRecentBidOrPromptSave = loadRecentBidOrPromptSave;
   App.hydrateProjectFromCloudRow = hydrateProjectFromCloudRow;
   App.resolvePdfBufferForCloudProject = resolvePdfBufferForCloudProject;
   App.buildPagesFromPdfArrayBufferAndProjectData = buildPagesFromPdfArrayBufferAndProjectData;
-  App.resetCopyProjectState = () => { pendingCopyProject = null; copyProjectModalTarget = null; };
+  App.resetCopyProjectState = () => { pendingCopyProject = null; pendingDirectLoad = null; copyProjectModalTarget = null; };
   App.clearCopyProjectModalTarget = () => { copyProjectModalTarget = null; };
 })();

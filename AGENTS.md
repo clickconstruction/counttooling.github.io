@@ -141,7 +141,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->84<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->85<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -412,6 +412,7 @@ label: show/size/position, default top-left; per-project in save/load +
 export/import like `multiplyZoneSettings`), `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),
 `recentRoomHeights` (Room Sizer recent ceiling heights, decimal feet, max 5),
+`recentBids` (the header bid switcher's list, `{ id, name, at }` newest-first, max 5, per device; pure core `nextRecentBids` in recent-bids.js, written by `recordCurrentBidAsRecent` on every updateUI whose bid changed, wiped by the sign-out key list; the menu reads THIS rather than the cloud because `list_accessible_projects` returns every project's whole `data` payload),
 `recentLineColors` (shared recent-color list, written by `pushRecentColor` —
 custom/off-palette colors only, presets skipped; consumed by the edit color
 picker and the Create Counter / Create Line Type pickers), `iconNames`,

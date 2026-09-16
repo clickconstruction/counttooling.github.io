@@ -323,6 +323,7 @@
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
     recentLineColors: [],
+    recentBids: [],
     recentDrops: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
     longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
@@ -437,6 +438,14 @@
     if (Array.isArray(rd)) {
       state.recentDrops = rd.filter(d => d && typeof d.value === 'number' && d.value > 0 && typeof d.unit === 'string').slice(0, RECENT_DROPS_MAX);
     }
+  } catch (_) {}
+  try {
+    // Recent bids ({ id, name, at }), per device. The header switcher's menu
+    // reads this instead of the cloud: list_accessible_projects carries every
+    // project's whole `data` payload, which a menu that opens on click cannot
+    // afford. nextRecentBids re-filters, so a corrupted store is harmless.
+    const rb = JSON.parse(localStorage.getItem(RECENT_BIDS_KEY) || '[]');
+    if (Array.isArray(rb)) state.recentBids = nextRecentBids(rb, null).slice(0, RECENT_BIDS_MAX);
   } catch (_) {}
 
   function getGroupColor(groupId) {
@@ -2407,9 +2416,38 @@
   }
 
   // SECTION: UI Render Functions
+  // SECTION: Recent bids
+  // One writer: whatever bid the session is in becomes the most recent one.
+  // Hooking the CURRENT project rather than each intake covers load, first
+  // save, copy/fork and view-link-to-editor in one place, and a rename
+  // re-stamps in place because the guard keys on id AND name.
+  let lastRecordedBidKey = '';
+  function pushRecentBid(id, name) {
+    if (!id) return;
+    state.recentBids = nextRecentBids(state.recentBids, { id, name }, Date.now());
+    try { localStorage.setItem(RECENT_BIDS_KEY, JSON.stringify(state.recentBids)); } catch (_) {}
+  }
+  function forgetRecentBid(id) {
+    state.recentBids = withoutRecentBid(state.recentBids, id);
+    try { localStorage.setItem(RECENT_BIDS_KEY, JSON.stringify(state.recentBids)); } catch (_) {}
+  }
+  function recordCurrentBidAsRecent() {
+    // A view-link recipient is not collecting bids of their own.
+    if (state.loadedViaViewLink) return;
+    const id = state.currentProjectId;
+    if (!id) return;
+    const name = state.currentProjectName || 'Untitled';
+    const key = id + '\u0000' + name;
+    if (key === lastRecordedBidKey) return;
+    lastRecordedBidKey = key;
+    pushRecentBid(id, name);
+  }
+
   function updateUI() {
     const t0 = performance.now();
+    recordCurrentBidAsRecent();
     updateUIInner();
+    App.renderBidChip && App.renderBidChip();
     // Defensive core->feature callback: the header "⋯ More tools" overflow
     // (features/header-more.js) re-syncs its button/menu active state after
     // every UI reconcile.
@@ -2701,7 +2739,6 @@
       const authBtnSidebar = document.getElementById('authBtnSidebar');
       const saveProjectBtn = document.getElementById('saveProjectBtn');
       const saveProjectBtnSidebar = document.getElementById('saveProjectBtnSidebar');
-      const loadProjectBtn = document.getElementById('loadProjectBtn');
       const loadProjectBtnSidebar = document.getElementById('loadProjectBtnSidebar');
       const manageUsersBtn = document.getElementById('manageUsersBtn');
       const manageUsersBtnSidebar = document.getElementById('manageUsersBtnSidebar');
@@ -2711,7 +2748,6 @@
       if (authBtnSidebar) authBtnSidebar.textContent = loggedIn ? 'User' : 'Sign In';
       if (saveProjectBtn) saveProjectBtn.style.display = (loggedIn && !state.isViewer) ? '' : 'none';
       if (saveProjectBtnSidebar) saveProjectBtnSidebar.style.display = (loggedIn && !state.isViewer) ? '' : 'none';
-      if (loadProjectBtn) loadProjectBtn.style.display = loggedIn ? '' : 'none';
       if (loadProjectBtnSidebar) loadProjectBtnSidebar.style.display = loggedIn ? '' : 'none';
       if (manageUsersBtn) manageUsersBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
@@ -2935,31 +2971,15 @@
     const exportDropdown = document.getElementById('exportDropdown');
     const showExportDropdownBase = !state.isViewer || state.pages.length > 0;
     const exportContent = document.getElementById('exportDropdownExportContent');
-    const shieldImportMode = !state.isViewer && state.pages.length === 0;
-    if (exportContent) exportContent.style.display = shieldImportMode ? 'none' : '';
-    const exportDropdownBtn = document.getElementById('exportDropdownBtn');
-    if (exportDropdownBtn) {
-      if (shieldImportMode) {
-        exportDropdownBtn.setAttribute('aria-label', 'Import PDF');
-        exportDropdownBtn.title = 'Upload PDF to start';
-        exportDropdownBtn.setAttribute('aria-haspopup', 'false');
-      } else {
-        exportDropdownBtn.setAttribute('aria-label', 'Export');
-        exportDropdownBtn.title = 'Export project';
-        exportDropdownBtn.setAttribute('aria-haspopup', 'menu');
-      }
-      const iconImport = document.getElementById('exportDropdownIconImport');
-      const iconExport = document.getElementById('exportDropdownIconExport');
-      if (iconImport) iconImport.style.display = shieldImportMode ? '' : 'none';
-      if (iconExport) iconExport.style.display = shieldImportMode ? 'none' : '';
-    }
+    const noProjectYet = !state.isViewer && state.pages.length === 0;
+    if (exportContent) exportContent.style.display = noProjectYet ? 'none' : '';
     const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
     const hasPdfExport = !!(state.pdfBuffer || state.pdfStoragePath);
     if (exportPdfOpt) exportPdfOpt.style.display = hasPdfExport ? '' : 'none';
     const exportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="canvas"]');
     const exportBothOpt = document.querySelector('.export-dropdown-option[data-action="both"]');
     const hasCanvasMarkupForExport = projectHasAnyCanvasMarkup();
-    if (!shieldImportMode) {
+    if (!noProjectYet) {
       // B6 (J13 J14): Export Canvas/Both are editor tools (canvas JSON hand-off),
       // never a viewer surface. Hiding them here leaves a view session's menu
       // with no rows (view links carry no pdfBuffer/pdfStoragePath), so the
@@ -2978,7 +2998,7 @@
       // the burger drawer copies labels via textContent, which would leak
       // hidden text). Viewers still never see it (B6); shield-import mode
       // hides the whole menu content anyway.
-      exportImportCanvasOpt.style.display = (!shieldImportMode && !state.isViewer) ? '' : 'none';
+      exportImportCanvasOpt.style.display = (!noProjectYet && !state.isViewer) ? '' : 'none';
       exportImportCanvasOpt.disabled = hasCanvasMarkupForExport;
       const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
       if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks: clear or undo first)' : '';
@@ -2988,10 +3008,10 @@
     // close (B6 keeps that menu empty), and a shared-project reader who was
     // just turned in still gets the door (state.isViewer, NOT a view link).
     const exportCloseOpt = document.querySelector('.export-dropdown-option[data-action="close-project"]');
-    const showCloseRow = !shieldImportMode && !state.loadedViaViewLink && state.pages.length > 0;
+    const showCloseRow = !noProjectYet && !state.loadedViaViewLink && state.pages.length > 0;
     if (exportCloseOpt) exportCloseOpt.style.display = showCloseRow ? '' : 'none';
-    let showExportDropdown = showExportDropdownBase;
-    if (showExportDropdown && !shieldImportMode && exportContent) {
+    let showExportDropdown = showExportDropdownBase && !noProjectYet;
+    if (showExportDropdown && exportContent) {
       const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer) || showCloseRow;
       if (!anyExportRow) showExportDropdown = false;
     }
@@ -3277,7 +3297,11 @@
     if (id === 'summaryCountDetailModal') App.onSummaryCountDetailHidden && App.onSummaryCountDetailHidden();
     if (id === 'toolingScaleCheckModal') App.onToolingScaleCheckHidden && App.onToolingScaleCheckHidden();
     if (id === 'scaleModal') App.onScaleModalHidden && App.onScaleModalHidden();   // D20 (J5-A): resume a parked draft
-    document.getElementById(id).classList.remove('visible');
+    // A host-less caller passes no id: loadCloudProjectRow hides ui.hostModalId
+    // when it finishes, and the bid chip's direct load has no host modal to
+    // hide. Tolerate it rather than making every such caller invent one.
+    const modalEl = id ? document.getElementById(id) : null;
+    if (modalEl) modalEl.classList.remove('visible');
     // A "Project from Last Session" offer that arrived while this modal was
     // up gets its turn now (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
@@ -4652,12 +4676,6 @@
   if (exportDropdownBtn && exportDropdownMenu) {
     exportDropdownBtn.onclick = (e) => {
       e.stopPropagation();
-      const shieldImportModeClick = !state.isViewer && state.pages.length === 0;
-      if (shieldImportModeClick) {
-        exportDropdownMenu.classList.remove('visible');
-        document.getElementById('pdfInput').click();
-        return;
-      }
       if (exportDropdownMenu.classList.contains('visible')) {
         exportDropdownMenu.classList.remove('visible');
       } else {
@@ -5117,7 +5135,7 @@
       try {
         indexedDB.deleteDatabase('clickcount-pdf-cache');
       } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+      const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
       for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
@@ -5269,7 +5287,6 @@
     // PDF toggle, and the save action with its checkout-expiry preflight and
     // stale-PDF confirm) lives in features/save-project.js (registry split
     // #35b).
-    document.getElementById('loadProjectBtn').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectBtnSidebar').onclick = () => App.openLoadProjectModalOrPromptSave();
     document.getElementById('loadProjectCancel').onclick = () => hideModal('loadProjectModal');
     document.getElementById('copyProjectModalCancel').onclick = () => {
@@ -7768,6 +7785,10 @@
   App.getUserCustomIcons = getUserCustomIcons;
   App.saveUserCustomIcons = saveUserCustomIcons;
   App.showToast = showToast;
+  App.pushRecentBid = pushRecentBid;
+  App.forgetRecentBid = forgetRecentBid;
+  App.getRecentBids = () => state.recentBids;
+  App.formatBidAge = formatBidAge;
   App.getPageCanvases = getPageCanvases;
   App.renderAnnotationsToContext = renderAnnotationsToContext;
   // addReportPagesToPdf / addHighlightsToPdf / addNotesToPdf / hasAnyHighlights /

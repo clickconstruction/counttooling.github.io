@@ -191,6 +191,8 @@ in `candidateA()`; the fixture symbols are the helpers at the top of the file
 (`wc`, `lavCtr`, `urinal`, `mopSink`, `floorDrain`, `waterHeater`, `drinkFtn`,
 `stallEnc`, `door`, `dimH`/`dimV`, `scaleBar`, `titleBlock`).
 
+**Found 2026-09-16 (D26 re-walk), open:** the 67'-4" overall dimension is drawn 810 plan px = 67'-6" (the 24'-0" bay spans 290 px where 288 is exact), so Verify reads "Within 0.3%" instead of 0.0%; shorten the bay 2 px or relabel.
+
 **Done today (Will, live review, 2026-09-14):**
 - Restrooms: stalls now ENCLOSE each water closet (`stallEnc`: partitions down to
   the wall, front line on top, adjacent stalls share a partition), water closets
@@ -524,6 +526,8 @@ cannot drift again (`rules.test.js` has the pattern for reading migrations). ⚑
 the migration is Will's go (AGENTS.md: Supabase MCP `apply_migration`). Size S.
 
 ## D26 — Drift patrol after the sample-plan promotion
+
+> **DONE 2026-09-16** (branch `claude/d26-sample-plan-drift-patrol`): J5 re-walked on the promoted sheet (preset at 9 px/ft uncorrected, verify on the 67'-4" overall reads "Within 0.3%"; findings #1–#3 no longer reproduce on the sample, #1 still lives on non-standard prints), dated addenda on the twelve dossiers, the one-line note on the three plans, images left as the old sheet. Punch row D26 closed.
 
 Branch `claude/d26-sample-plan-drift-patrol`. The standing practice in
 [_NEXT.md](_NEXT.md) ("after any major feature ships, re-walk the affected journey

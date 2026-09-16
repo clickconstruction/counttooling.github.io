@@ -258,3 +258,9 @@ now walked except the two items noted at the end:
   to the J17 admin walk), and 30-minute expiry under contention (time-gated;
   the expiry machinery itself is covered by save-engine unit tests + the
   recovery-modal specs).
+
+## Addendum 2026-09-16 (D26, after the sample-plan promotion)
+
+**Environment note.** The walks and screenshots above ran on the first synthetic office plan (921.6 × 597.6 pt, a non-standard sheet). Since 2026-09-14 `samples/sample-plan.pdf` is candidate A, the design-build sheet (Suite 200 Office TI, A-101): a true ANSI B, 1224 × 792 pt, the plan at 9 pt/ft (1/8" = 1'-0"), rooms Lobby 100, Office 101, Office 102, Conference 103, Break 104, Open Office 105, Jan. 106, Men 107, Women 108, Corridor C-1, with a room schedule, LP-1 and RTU-1 notes and no MEP drawn ([plans/SAMPLE-PLANS.md](plans/SAMPLE-PLANS.md)). `getPageSheetAnalysis(0)` reports `isStandard: true` (ANSI_B), so the "isn't a standard sheet size" warning never shows on it. The dossier images in `img/` were not regenerated and show the old sheet.
+
+The findings in this dossier do not depend on the sheet's size, rooms or fixture count; nothing was re-driven. Where a step above names a fixture or a room ("Water Closet [3]", the MEN / WOMEN rooms, "sample-plan" as the project name, one page), the name still holds on the new sheet; only the drawing behind it changed. The sample plan is still one page.

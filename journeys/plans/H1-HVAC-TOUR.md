@@ -1,5 +1,7 @@
 # H1 — The five-minute HVAC takeoff (the third walkthrough)
 
+> Sheet replaced 2026-09-14, see [SAMPLE-PLANS.md](SAMPLE-PLANS.md): the rooms, fixtures and figures below describe the old sample plan (D26, 2026-09-16).
+
 > Plan of record, written 2026-09-14 after the D25 push and live walk. Will's
 > ask: "add a walkthrough at the start for new users like we have for Plumbing
 > and Electrical." Rows marked ⚑ are product calls; everything else is decided

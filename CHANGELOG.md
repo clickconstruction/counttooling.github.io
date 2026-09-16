@@ -38,18 +38,29 @@ in the very tab that released the lock.
   `SELF_RELEASE_GRACE_MS` (15 s, constants.js) is ours: `self_release_refresh` in the Save
   Status log, no notice, no toast, no flush over the released lock
   (`self_release_flush_skipped`). Outside the window the classifier is unchanged.
-- **Copy.** The notice no longer asserts an admin: "This project was turned in while you
-  had it checked out, by an admin or by another tab or device signed in as you."
+- **Copy.** Behind the same flag the notice stops asserting an admin: "This project was
+  turned in while you had it checked out, by an admin or by another tab or device signed in
+  as you." (features/turn-in.js swaps `#forceTurnInNoticeBody`; R1-FLIP moves it into the
+  markup.)
+- **Ships DORMANT (2026-09-15, Robert's call: a tester walks it on the real site before it
+  goes live).** The classification and the copy run only when the device has opened
+  `/app/?ff=self-release` once — the new **feature flags** seam in app.js
+  (`featureFlagEnabled(name)`, localStorage `clickcount-ff-<name>`, `?ff=-<name>` forgets,
+  a device preference that survives sign-out; the engine reads it through
+  `ctx.isSelfReleaseStampEnabled()`). With the flag off, `refreshProjectPermissions`
+  classifies byte-for-byte as before, pinned by a fifth node test. The tester's checklist
+  is _TODO.md R1-TEST; making it live for everyone is R1-FLIP.
 - **Why the banner mattered.** `[Check out to Edit]` becomes `[Turn In]` in the same spot
   the instant checkout succeeds, so a re-click releases the lock; that is the loop she was
   in. Left as is (a product call, see _TODO.md R1); the fix stops the false accusation and
   the double surfacing, not the re-click.
 
-Tests: four save-engine.test.js cases (own doTurnIn → not a force; the app-side stamp; the
+Tests: five save-engine.test.js cases (own doTurnIn → not a force; the app-side stamp; the
 window closing → still a force; no flush over a self-released lock — all red on the old
-engine), and turn-in-self-release.spec.js (cloud-gated, a real Turn In in a real browser:
-turned-in toast, no notice, `[Check out to Edit]` works again; red on the old engine at
-the notice assertion). Verified pre-fix that the load-another-project path did NOT show
+engine — and flag OFF → the old classification, the dormant pin), and
+turn-in-self-release.spec.js (cloud-gated, one project, both halves: flag off → the notice
+still fires with the shipped copy; flag on → turned-in toast, no notice, `[Check out to
+Edit]` works again; red on the old engine at the notice assertion). Verified pre-fix that the load-another-project path did NOT show
 the notice (state resets before the UPDATE lands), so the spec pins the Turn In button.
 
 Side findings recorded in _TODO.md, not fixed here: 13 client event types

@@ -206,6 +206,14 @@
     if (overlay && overlay.classList.contains('visible')) return true;
     saved.style.display = hadDirty ? 'none' : '';
     warn.style.display = hadDirty ? 'flex' : 'none';
+    // Behind ?ff=self-release (_TODO.md R1): once our own releases are
+    // classified out, what remains is an admin OR another tab/device signed
+    // in as this user (check_in_project is per user), so the copy stops
+    // asserting an admin. R1-FLIP moves this text into index.html.
+    const body = document.getElementById('forceTurnInNoticeBody');
+    if (body && App.featureFlagEnabled && App.featureFlagEnabled('self-release')) {
+      body.innerHTML = 'This project was turned in while you had it checked out, by an admin or by another tab or device signed in as you. You\'re now <strong style="color:var(--text);">viewing only</strong>.';
+    }
     App.showModal('forceTurnInNoticeModal');
     return true;
   }

@@ -582,6 +582,33 @@
   // rawCheckInProject / rawListAccessibleProjects have no app-side callers
   // anymore (Turn In + permission refresh moved in Stage 5) — saveEngine.*.
 
+  // SECTION: Feature flags (per device, dormant-by-default ships)
+  // A change that must reach main before a tester has walked it on the real
+  // site ships behind a flag: OFF for everyone until `?ff=<name>` is opened
+  // once on a device (remembered in localStorage `clickcount-ff-<name>`;
+  // `?ff=-<name>` forgets it; several: `?ff=a,b`). The flag is a device
+  // preference like the hide-marks toggle, so it survives sign-out on
+  // purpose (not in the sign-out key list) and never rides a project. When
+  // the tester signs off, the follow-up PR flips the default and deletes the
+  // reads — the flag is a staging area, not a settings surface. Live flags:
+  //   self-release   the save-engine self-release stamp (2026-09-15, _TODO R1)
+  const FEATURE_FLAG_KEY_PREFIX = 'clickcount-ff-';
+  function featureFlagEnabled(name) {
+    try { return localStorage.getItem(FEATURE_FLAG_KEY_PREFIX + name) === '1'; } catch (_) { return false; }
+  }
+  (function applyFeatureFlagsFromUrl() {
+    try {
+      const raw = new URLSearchParams(location.search || '').get('ff');
+      if (!raw) return;
+      raw.split(',').forEach((tok) => {
+        tok = tok.trim();
+        if (!tok) return;
+        if (tok[0] === '-') localStorage.removeItem(FEATURE_FLAG_KEY_PREFIX + tok.slice(1));
+        else localStorage.setItem(FEATURE_FLAG_KEY_PREFIX + tok, '1');
+      });
+    } catch (_) { /* no storage: flags stay off */ }
+  })();
+
   // SECTION: [sync] Global force reload
   // The force-reload + keep-alive implementations moved to save-engine.js
   // (createSaveEngine, a classic script loaded before this IIFE). The engine
@@ -632,6 +659,9 @@
     // T1-01 clobber guard: deferred App.* lookup (features/restore-last-session.js
     // registers after app.js, per the registry load-order rule).
     isRestorePromptPending: () => !!(window.App && window.App.isRestorePromptPending && window.App.isRestorePromptPending()),
+    // Dormant until flipped (_TODO.md R1-FLIP): the self-release stamp only
+    // classifies when the tester's device has opened ?ff=self-release.
+    isSelfReleaseStampEnabled: () => featureFlagEnabled('self-release'),
     // Stage 6 (save paths): render-core / feature hooks the engine's save
     // blobs and export envelope need; lastSaveIncludedPdf stays app-side
     // (the load paths write it).
@@ -7908,6 +7938,7 @@
   App.isAutoSaveSuspended = () => suspendAutoSaveUntilCheckout;
   App.setLastCheckoutRefreshAt = (ms) => { lastCheckoutRefreshAt = ms; };
   App.doTurnIn = () => saveEngine.doTurnIn();
+  App.featureFlagEnabled = featureFlagEnabled;
   App.setTurnInProgress = (msg) => setTurnInProgress(msg);
   App.updateSettingsCheckoutSection = (...a2) => updateSettingsCheckoutSection(...a2);
   App.applyTakeoffBackupToState = applyTakeoffBackupToState;

@@ -15,7 +15,8 @@
  * checkoutKeepalive) so every call site, the App registry, and the window.*
  * contracts stay frozen while clusters migrate in behind this seam.
  *
- * ctx contract (grown per stage; Stage 6 graduated every entry that only
+ * ctx contract (grown per stage; 2026-09-15 adds the optional
+ * isSelfReleaseStampEnabled() flag read — _TODO.md R1; Stage 6 graduated every entry that only
  * existed to reach the then-app-side save paths — getAutoSaveDirty/set,
  * autosaveEventDetail, noteSupabaseCallOk, getConsecutiveAutoSaveFailures,
  * clearAutoSaveBackoff, isSaveInProgress, getInFlightAutoSavePromise,
@@ -908,7 +909,10 @@ function createSaveEngine(ctx) {
     // Our own release in flight or just done (see the self-release stamp):
     // doTurnIn already flushed before releasing, and a flush now would fail
     // CHECKOUT_NOT_OWNED and paint the bell yellow for a lock we gave up.
-    const selfRelease = turnInInProgress || isSelfReleaseRecent();
+    // Dormant until the flag flips (app.js feature flags; _TODO.md R1-FLIP):
+    // with it off this refresh classifies exactly as before 2026-09-15.
+    const selfRelease = !!(ctx.isSelfReleaseStampEnabled && ctx.isSelfReleaseStampEnabled()) &&
+      (turnInInProgress || isSelfReleaseRecent());
     if (willBecomeViewer && hadDirty && !hadInflight && selfRelease) {
       try { pushSaveEvent('self_release_flush_skipped', 'Permissions refresh after our own turn-in: dirty flag left for the caller, no flush over a released lock'); } catch (_) {}
     } else if (willBecomeViewer && hadDirty && !hadInflight) {

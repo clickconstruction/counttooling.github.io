@@ -90,6 +90,9 @@ function makeCtx(overrides) {
     setLastModifiedAt: (ms) => { calls.lastModified.push(ms); },
     invalidateFooterTotals: () => { calls.footerInvalidations++; },
     isCheckoutExpiredAttention: () => false,
+    // Dormant by default like production (app.js ?ff=self-release); the
+    // self-release tests opt in.
+    isSelfReleaseStampEnabled: () => false,
     setLastCheckoutRefreshAt: (ms) => { appSide.lastCheckoutRefreshAt = ms; calls.refreshAt.push(ms); },
     updateServerClockFromRpc: (d) => { calls.clock.push(d); },
     serverNowMs: () => Date.now(),
@@ -641,7 +644,8 @@ test('refreshProjectPermissions: a stale lock taken by someone else is still exp
 // Turn In button's own tab was getting the "an admin turned this project in"
 // notice after EVERY release (reproduced on prod-identical code, test
 // account). doTurnIn stamps the release; refreshProjectPermissions inside
-// SELF_RELEASE_GRACE_MS is ours.
+// SELF_RELEASE_GRACE_MS is ours. Ships DORMANT behind app.js's
+// ?ff=self-release (ctx.isSelfReleaseStampEnabled) until _TODO.md R1-FLIP.
 
 test('refreshProjectPermissions: the refresh after our own doTurnIn is not a force (no notice, no toast)', async () => {
   // The row the server shows right after OUR check_in_project: lock cleared,
@@ -653,7 +657,7 @@ test('refreshProjectPermissions: the refresh after our own doTurnIn is not a for
   const notices = [];
   const { ctx, calls } = makeCtx({
     getState: () => state,
-    getSupabase: () => supabase,
+    getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true,
     notifyForceTurnedIn: (info) => { notices.push(info); return true; },
   });
   const engine = createSaveEngine(ctx);
@@ -679,7 +683,7 @@ test('refreshProjectPermissions: the app-side check-in (close / load another / s
   const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
   const notices = [];
-  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
   const engine = createSaveEngine(ctx);
   engine.noteSelfRelease();   // what checkInCurrentProjectIfHeld does on data.ok
   await engine.refreshProjectPermissions();
@@ -696,7 +700,7 @@ test('refreshProjectPermissions: the self-release window closes — the same row
   const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
   const notices = [];
-  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
   const engine = createSaveEngine(ctx);
   engine.noteSelfRelease(Date.now() - SELF_RELEASE_GRACE_MS - 1);
   await engine.refreshProjectPermissions();
@@ -710,7 +714,7 @@ test('refreshProjectPermissions: a dirty flag at our own release is not flushed 
   const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
   const { supabase, sub } = makeChannelSupabase(rpcWithProjects([row]));
   const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
-  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: () => true });
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: () => true });
   const engine = createSaveEngine(ctx);
   engine.noteSelfRelease();
   engine.setAutoSaveDirty(true);
@@ -720,6 +724,24 @@ test('refreshProjectPermissions: a dirty flag at our own release is not flushed 
   assert.ok(logKinds(engine).includes('self_release_flush_skipped'));
   assert.ok(!logKinds(engine).includes('autosave_start'));
   assert.deepStrictEqual(calls.toasts, []);
+});
+
+test('refreshProjectPermissions: with the self-release flag OFF, our own turn-in still classifies as before (the dormant ship)', async () => {
+  // Pins the pre-flip behavior so the flag is provably a no-op until R1-FLIP:
+  // same row, same stamp, flag off → the force branch fires exactly as it
+  // did before 2026-09-15 (the bug the tester is verifying the fix for).
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [{ hadDirty: false }], 'flag off: unchanged (misclassified) behavior');
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.ok(!logKinds(engine).includes('self_release_refresh'));
 });
 
 

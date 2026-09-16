@@ -418,7 +418,7 @@
       // overrides (features/duct-fittings.js).
       App.reinferDuctFittings && App.reinferDuctFittings(state.currentPage);
       // D5 telemetry: one duct_run event per committed run (allowlisted by the
-      // 20260906120000_log_user_event_duct_run migration). Metadata mirrors
+      // 20260913025935_log_user_event_duct_run migration). Metadata mirrors
       // the schedule's units: segment count, straight LF + lb of THIS run
       // (duct-model math over the app's scale glue), airside, and how many
       // fittings the inference walk anchored to it.

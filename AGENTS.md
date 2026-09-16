@@ -178,7 +178,8 @@
   [line-metrics.test.js](line-metrics.test.js),
   [canvas-draw.test.js](canvas-draw.test.js),
   [render-service.test.js](render-service.test.js),
-  [save-engine.test.js](save-engine.test.js)) via
+  [save-engine.test.js](save-engine.test.js),
+  [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
   auto-skips its two en-CA-hyphen-dependent cases on a limited-ICU runtime and
@@ -269,7 +270,13 @@
   [SUPABASE_SETUP.md](SUPABASE_SETUP.md)). PDF uploads capped at 50 MB.
 - **Supabase migrations**: when creating or modifying files in
   `supabase/migrations/`, apply them via the Supabase MCP `apply_migration` tool
-  (name = filename without `.sql`, query = file contents).
+  (name = filename without `.sql`, query = file contents). Without the MCP, the
+  CLI works with no database password: `supabase link --project-ref hrqxvfydmvtvwhvefmqc -p ""`
+  (the CLI's login role connects), `supabase migration list --linked` to see what prod has,
+  `supabase db push --dry-run --linked` (must list ONLY your file), then `db push --linked --yes`.
+  If prod shows a version the repo lacks, `supabase migration fetch --linked` in a scratch
+  copy reveals it (the MCP has recorded a file under an auto stamp before, 2026-09-13);
+  rename the repo file to prod's stamp rather than repairing prod's history.
 
 ## Navigation
 

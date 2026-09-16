@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '2dd90a5d4738';
+const CACHE_VERSION = '36c493547d4a';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -289,7 +289,7 @@ const PRECACHE_SHA256 = {
   '/features/keyboard-map.js': '32253988b54563a25c1827faacceb13609a9b8e7d15735dc0df8cc00d2c2b278',
   '/features/chain.js': '13faf99fe78bf0bf5309839c4b6128b7c7251fc8bfb06f9368a9f71e3ed5a4dd',
   '/features/drop-mode.js': 'fe9f07baa5853475b2577896c970a8bd805efe597d063df16d96478ef6208d22',
-  '/features/duct-tool.js': '82966a5dbee5d4a98bc6cc1f99b1c248694e11874a8ef161920cd721db5a5220',
+  '/features/duct-tool.js': 'ebac216f8d7735fbd708bdda185cb4d31be112fcfa55e61033f0a8a3c48653af',
   '/features/duct-size-popover.js': '7815b986d05160667c6bfafc7c974e6d3787b64f7b9ad2ce287fd2b06dbc3622',
   '/features/duct-fittings.js': '5f7928fb342f6f68361c2e1da2c9069ee71d2d35968f50a23ec6ce2f722587d7',
   '/features/duct-sidebar.js': 'ad56f2f1004f96916ce7acc6ed5deb05dc5730ee69bf49e5f40d262da503b571',

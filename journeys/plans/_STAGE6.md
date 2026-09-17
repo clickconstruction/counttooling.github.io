@@ -155,7 +155,7 @@ way:
   the most muscle memory (7 daily users, G1's caution).
 
 Prerequisite: re-drive J11 Friction #2 on main (the labels moved under B4; the
-mode may or may not have). `[decision]` ____
+mode may or may not have). `[decision]` Option D, decided 2026-09-13 (Will, "Build it all"), shipped as D25. Amended 2026-09-14 (Will) after an estimator's paste lost the marks on a hidden layer: "Everything" is every layer on every sheet again (its picker rows all ticked and locked, header `every layer`); "This sheet" keeps option D's on-screen default and its picker. Slot filled 2026-09-17 (punch row X6-SLOT).
 
 **X4 — how a multi-box room is labeled on the plan.** Either/or:
 

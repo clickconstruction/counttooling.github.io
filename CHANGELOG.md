@@ -26,6 +26,28 @@ as 2 px hairlines; and the film's overlay hides `#toastRegion`, so the Copied co
 never been in frame. The copy beat lets that one card back in at the canvas's bottom left,
 parks its 1.5 s self-hide, and holds it 1.3 s before "Done.". Still not on the landing page;
 HERO-EHVAC wires the trade chips to the films. Detail in LANDING-REFRESH.md.
+## fix(sample-plan): the 67'-4" overall measures exact (2026-09-17)
+
+The D26 re-walk found the design-build sample sheet's overall dimension drawn 810 plan px,
+which is 67'-6" at 12 px/ft, because the first bay spanned 290 px where 24'-0" is 288; the
+tour's Verify Scale on that string read "Within 0.3%". The left exterior wall `L` in
+`candidateAPlan()` moved from 130 to 132, so the three bays are 288 / 220 / 300 px and the
+overall 808 px = 67'-4". One constant; the grid, the right wall and every room to the right
+are untouched, the scale bar follows `L`. `samples/sample-plan.pdf` regenerated. The seven
+specs that read the sheet's geometry pass unchanged (20 tests); guide screenshots left as
+they are, two pixels is below their resolution. Punch row SAMPLE-A stays open for the
+trade-eye polish (corridor label, door swings, fixture counts).
+## chore(punchlist): close four rows that were already done (2026-09-17)
+
+A read of every open row against the ledgers found three that had shipped before the
+list was seeded on 2026-09-15: **J6-G** (multiply zones multiply duct) and **J5-B** (Duct and
+Polyline drafts are mutually exclusive) landed in D17 on 2026-09-13 (entries below; re-driven
+live in the 2026-09-14 dossier re-walks), and **J19-RERANK** had nothing left to rank, the
+duct dossier's 2026-09-14 verification reading "all fifteen rows are shipped" (1 to 3 by D17,
+4 to 6 by D19; the one papercut that walk filed, the arm-time callout prefill, merged as
+d4802f9 on 2026-09-14). **X6-SLOT** closed by filling the empty `[decision]` in
+`_STAGE6.md` with the 2026-09-13 call and its 2026-09-14 amendment. Rows deleted per the
+list's own rule; no app change.
 
 ## feat(landing): the three-trade landing page, direction A (2026-09-16)
 

@@ -13,6 +13,18 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(punchlist): close four rows that were already done (2026-09-17)
+
+A read of every open row against the ledgers found three that had shipped before the
+list was seeded on 2026-09-15: **J6-G** (multiply zones multiply duct) and **J5-B** (Duct and
+Polyline drafts are mutually exclusive) landed in D17 on 2026-09-13 (entries below; re-driven
+live in the 2026-09-14 dossier re-walks), and **J19-RERANK** had nothing left to rank, the
+duct dossier's 2026-09-14 verification reading "all fifteen rows are shipped" (1 to 3 by D17,
+4 to 6 by D19; the one papercut that walk filed, the arm-time callout prefill, merged as
+d4802f9 on 2026-09-14). **X6-SLOT** closed by filling the empty `[decision]` in
+`_STAGE6.md` with the 2026-09-13 call and its 2026-09-14 amendment. Rows deleted per the
+list's own rule; no app change.
+
 ## feat(landing): the three-trade landing page, direction A (2026-09-16)
 
 **Addendum, the hero video (same day, same branch):** the hero screenshot became a 24 s

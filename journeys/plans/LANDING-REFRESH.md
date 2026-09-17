@@ -138,3 +138,145 @@ Still to do: trim to about 27 s (the Prepare beat and the scale dialog), hold th
 confirmation before "Done.", keep the legend inside the frame at pull-back; then the
 electrical and HVAC films, the chip switching on the landing, and retiring the three-trade
 take. The landing keeps playing `landing-hero.mp4` until then.
+
+## Hand-off: the per-trade films (2026-09-17)
+
+Everything the next session needs to carry the films forward without the conversation.
+Read this with "The per-trade films" above, which says what shipped and why.
+
+### What is built and how to run it
+
+`npm run build:hero-video` renders a film from the REAL app, frame by frame, and encodes it
+with ffmpeg. Both outputs are committed.
+
+| Command | Writes | State |
+|---|---|---|
+| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | first cut, 33 s, 3.2 MB, NOT on the page yet |
+| `npm run build:hero-video -- --film trades` | `img/landing-hero.{mp4,png}` | the three-trade take the landing plays today |
+
+Iterating: `HERO_FPS=4 node scripts/build-hero-video.js --frames-only --keep-frames` walks the
+same timeline at 4 fps in under a minute and leaves the JPEGs in a temp dir, which it prints.
+Review them as a contact sheet rather than by eye, one frame at a time:
+
+```
+ffmpeg -framerate 24 -i f_%05d.jpg -vf "select='not(mod(n,16))',scale=640:-1,tile=5x10" -frames:v 1 sheet.jpg
+```
+
+Needs ffmpeg on the machine and both sample plans (`npm run build:sample-plan`,
+`npm run build:sample-plan-advanced`). Manual, like `build:screenshots`, so it is not in
+`npm run check`; pixels are not deterministic across machines.
+
+### Reading the generator
+
+[scripts/build-hero-video.js](../../scripts/build-hero-video.js), top to bottom:
+
+- **`Recorder`** is the whole vocabulary: `hold(s)`, `moveTo(x, y, s)`, `moveToPt(pdfPoint, s)`,
+  `moveToEl(selector, s)`, `click()`, `key(label)` (a real key press plus a drawn keycap),
+  `camera(rect, s)` and `setCamera(rect)`, `caption(trade, text)`. Every one of them advances
+  frames, so the timeline is just the order you call them in. Nothing is faked on the frames
+  except the cursor, the keycap and the caption strip.
+- **`B(x, y)`** converts the restaurant plan's own drawing coordinates to PDF points:
+  `60 + 0.75x, 70 + 0.75y`. That means any coordinate in `candidateBPlan()` in
+  [scripts/sample-plan-candidates.js](../../scripts/sample-plan-candidates.js) can be pasted
+  straight into the film. The office sheet (candidate A) uses the same transform.
+- **Page-side helpers** (`seedRestaurant`, `bigMarks`, `armPolyline`, `applyDropAt`, …) are
+  plain functions handed to `page.evaluate`, so they take exactly one argument; pass an array
+  when you need two. They may not close over anything defined in Node.
+- **`bigMarks()`** owns the mark sizes. **`SET_SHEETS` / `SET_KEEP` / `buildSampleSet()`** build
+  the thirty-sheet PDF with pdf-lib from the restaurant sheet, stamping every copy but P-101.
+- The trades film prints its three act start times on finish; `index.html` hardcodes them for
+  the chip sync, so re-paste after a re-render.
+
+### Next: trace the sheet's own hot and cold water
+
+Robert's ask, 2026-09-17: the plumbing film should trace over the piping the sheet already
+draws, hot and cold both, instead of the one invented cold main it traces now.
+
+The sheet draws three families in `candidateBPlan()`, with their sizes in the `pipeLabel`s
+beside them. In plan coordinates (wrap each in `B(...)`):
+
+| Run | Points | The plan calls it |
+|---|---|---|
+| Cold, service to the bar | `[883,614] [883,594] [192,594] [192,580]` | 2" CW at the meter, 1" CW at the bar |
+| Cold, the trunk and the top wall | `[564,594] [564,110] [930,110] [930,384]` | 1-1/2" CW up, 3/4" CW across |
+| Hot, water heater onto the south run | `[796,572] [786,572] [786,590] [188,590] [188,580]` | the loop's supply leg |
+| Hot, trunk, top wall, recirc return | `[570,590] [570,105] [936,105] [936,572] [918,572]` | 1-1/4" HW up, 3/4" HW down |
+| Gas | `[840,632] [840,346] [700,346]` and `[840,582] [822,582]` | 1-1/4" G, 1-1/2" G, 3/4" G |
+
+Today's `CW_TRUNK` is a blend of the two cold runs. Replace it with two traced runs.
+
+Notes for whoever builds it:
+
+- **Line types cannot be dashed.** A line type is `{ id, name, color, curveStyle }` and
+  `curveStyle` is only `straight` or `arc`; the `setLineDash` calls in
+  [canvas-draw.js](../../canvas-draw.js) belong to leaders, ghosts and the grid. So hot and
+  cold have to read by COLOR, not by the sheet's solid-versus-dashed convention. Cold
+  `#2e86de` and hot `#e85447` read well on the plan and in the legend.
+- **Name the types so the rulebook answers.** `2in Cu` returns a hanger every 120 in and
+  `1-1/4in HW Cu` every 72 in, both from `plumb.hanger.copper` (verify with
+  `node -e "console.log(require('./support-model.js').hangerSuggestionsFor('1-1/4in HW Cu'))"`).
+  Two runs with two different hanger spacings is a stronger "rows nobody typed" beat than one.
+- **The camera already fits it.** `CAM_PLAN` is `{145, 118, 860, 575}` in PDF points; the hot
+  loop's far corner `B(936, 105)` lands at `(762, 149)` and its near end `B(188, 580)` at
+  `(201, 505)`, so the whole loop is in frame with no camera change.
+- **Suggested shape of the beat**: trace cold as now, then switch the active line type and
+  trace the hot loop back the other way, so the viewer watches two runs, two footages and the
+  legend gaining a second row. Budget about 4 s, which the trim below pays for.
+- Arming a polyline is already in the film: `armPolyline(lineTypeId)` sets the tool and the
+  draft, clicks commit vertices, `Enter` finishes.
+
+### The rest of the queue
+
+1. **Trim the plumbing film to about 27 s.** The two slow stretches are the Prepare PDF beat
+   and the scale dialog. Shorten the tile taps, the typing delay and the holds around the
+   check result.
+2. **Hold the finish.** Copy to PipeTooling shows a confirmation that auto-hides after about
+   1.5 s, so it can be gone before the last frame. Hold on it, then "Done."
+3. **Keep the legend in frame** at the pull-back; it is slightly clipped at the sheet's edge.
+4. **The electrical and HVAC films**, scripts below, then the hero chip switching that swaps
+   the film in place, then retire the three-trade take.
+5. **Optional**: a fifteen-second feature montage for the "Everything the takeoff needs"
+   section, one second per feature, no story. Same generator.
+
+### The remaining scripts
+
+Both on the office sheet A-101, same spine as plumbing: the set lands and Prepare keeps three,
+the scale is proved in passing, the count quickens with the number row, the trade's own math
+appears as a consequence, the pull-back blinks the layer, then the hand-off and "Done."
+
+**Electrical, "Circuit 7"** (about 26 s): receptacles along the office walls at 18 in mount
+height, then switches and lights on keycaps 2 and 3; chain 3/4" EMT device to device, each
+click writing its 9.5 ft drop, the last leg home to LP-1; the run becomes circuit LP-1/7 and
+the wire row slides in by itself, 3 #12 THHN, 128 ft, tagged derived; Bid Check computes
+voltage drop 2.4 percent and conduit fill 31 percent, each wearing its NEC section; pull back,
+layer off and on; Open in TakeoffTooling.
+
+**HVAC, "Pounds, not feet"** (about 26 s): room boxes over the open office, conference and two
+offices, each reading its name off the plan and answering with ft², ft³ and the CFM it needs;
+diffusers at 150 CFM, three leaving the tag amber at 450 of 508 and the fourth turning it
+green; RTU-1 at 2,000 CFM, the main tracing out at 24×12 with the chip showing the air still
+to serve, S stepping it to 16×10 then 12×8, elbows and taps appearing on their own; the Duct
+Schedule reading 26 gauge and one bid weight, Bid Check "Fits the roof" green; pull back,
+layer off and on; copy the schedule.
+
+### Gotchas worth not rediscovering
+
+- **Mark size.** `counterSettings.size` defaults to 22, which draws an 11 px dot at hero size,
+  which is why the first videos looked empty. The film runs 72. `ringSize` is a PERCENT of the
+  mark (170), not pixels; setting it to 3 draws a 3 percent ring, which looks like nothing.
+- **One video source.** A VP9 WebM hit a Chromium decode error, so the page ships one H.264
+  MP4. The JPEG frames are full range, so the encode converts with
+  `scale=...:in_range=pc:out_range=tv` and `-color_range tv`; without that the video decodes
+  to garbage in some players.
+- **The desktop app's browser pane often reports `document.hidden`**, and then
+  requestAnimationFrame never fires, IntersectionObserver never delivers and a muted video
+  never autoplays. Anything scroll- or visibility-driven has to be verified with a short
+  headless Playwright script instead (`NODE_PATH=$PWD/node_modules node script.js` from the
+  worktree). The pane also caches `marketing.css` and images hard; refetch with
+  `fetch(url, {cache: "reload"})` before judging a change.
+- **Running specs from a `.claude/worktrees/` copy** needs
+  `npx playwright test --config playwright.worktree.config.js`, because the base config ignores
+  `**/.claude/**`. A fresh worktree also needs an `echo "// stub" > config.local.js`.
+- The Copy to PipeTooling beat needs a Playwright context with clipboard permissions, and the
+  trades film warms the page text layer before recording so the plan-named room tag appears on
+  its first frame.

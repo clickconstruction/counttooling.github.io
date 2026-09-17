@@ -40,3 +40,4 @@ How agents add to this list: AGENTS.md, "Recording a to-do".
 | P4-WATER | Water sizing by fixture units: IPC first, water only, mockups before code | build | dev | — | [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) |
 | EXPIRY-30 | 30-minute checkout expiry under contention is still unwalked (time-gated; machinery covered by unit and spec) | test | tester | — | [_NEXT.md](journeys/plans/_NEXT.md) |
 | SPEC-DUPES | Nit: specs double-create identically-named test projects, churning rows on the test account | chore | agent | — | [_NEXT.md](journeys/plans/_NEXT.md) |
+| LANDING-REFRESH | Refresh the landing page for the three trades: mockup done (canvas linked in the plan), decide headline / direction / the Bid Check shot, then build | build | ⚑ call | — | [LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md) |

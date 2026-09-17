@@ -1,7 +1,7 @@
 # Landing page refresh — three trades on the front door (2026-09-16)
 
-> Plan of record for punch row **LANDING-REFRESH**. Status: **mockup done, direction and
-> headline undecided, nothing built.** Robert's ask (2026-09-16): "now that we have HVAC and
+> Plan of record for the (closed) punch row **LANDING-REFRESH**. Status: **BUILT 2026-09-16
+> on `claude/landing-refresh`, direction A as mocked; see "Built" at the foot.** Robert's ask (2026-09-16): "now that we have HVAC and
 > Electrical I think we could give it a refresh." The mockup is the deliverable of that
 > session; this file is what the next session needs to build it without the conversation.
 
@@ -53,12 +53,13 @@ Cut on the second pass (do not add back): a separate hand-off section and a stat
 
 1. **Headline.** "Plumbing, electrical, and HVAC takeoffs, right on the plan." vs keeping
    today's "Markup plans, generate takeoffs, right in your browser." under the trade chips.
-   `[decision]` ____
+   `[decision]` the new headline, as mocked (2026-09-16, the "build it" call).
 2. **The Bid Check panel** in "numbers you can defend": replace the mock with a real
    screenshot (needs an electrical project with a voltage-drop row, a fill row and a
    hanger row; `scripts/build-screenshots.js` can stage one) or keep it as drawn.
-   `[decision]` ____
-3. **Direction.** A as mocked, or build out B or C instead. `[decision]` ____
+   `[decision]` kept as drawn (an HTML/CSS panel, values illustrative, `aria-label` says so).
+   A real screenshot stays a follow-up if anyone wants it.
+3. **Direction.** A as mocked, or build out B or C instead. `[decision]` A (2026-09-16).
 
 ## Build notes (one unit, one branch `claude/landing-refresh`)
 
@@ -78,3 +79,23 @@ Cut on the second pass (do not add back): a separate hand-off section and a stat
   chrome in `scripts/lib/site.js`: if the header gains trade links here, decide whether
   `/guides/` and `/rules/` headers follow), a look at 390 px and 1440 px.
 - Copy rule: no em dashes in user-facing text (AGENTS.md).
+
+## Built (2026-09-16, `claude/landing-refresh`)
+
+Direction A as mocked, with two copy changes asked for at review: the hero sub-copy ends
+"even on a tablet or phone in the field." (was "on a tablet in the field."), and the
+"numbers you can defend" lede breaks after "ruins a bid." on wide screens (a `br.br-wide`,
+shown from 900 px; the same device carries the hero headline's break). Files: `index.html`
+(the whole page, metas and both JSON-LD blocks say the three trades, the FAQ JSON-LD
+matches the visible FAQ, the hero image is no longer `loading="lazy"` since it is the
+page's largest paint and the SEO spec reads it at network idle) and `marketing.css` (one
+"Landing: the three-trade refresh" block plus the responsive rules; `:root` untouched).
+
+Walked at 1440, 1024, 768, 600, 390 and 320 px. Tablet (700 to 899 px) keeps the three
+trade cards in one row with tighter padding rather than leaving a 2 + 1 orphan; the proof
+pair and the four-up band stack there. Testimonials sit two-by-two from 760 px up. Gates:
+`npm run check` (11/11), `seo.spec.js` and `guides.spec.js` green.
+
+Left as they were, on purpose: the `/guides/` and `/rules/` header chrome (the trade links
+are on the landing only; whether the shared chrome follows is the sticky note's open
+question for Will), and `og-image.png` (manual regeneration, not in `npm run check`).

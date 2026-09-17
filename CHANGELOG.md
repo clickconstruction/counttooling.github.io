@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the three-trade landing page, direction A (2026-09-16)
+
+PUNCHLIST.md row LANDING-REFRESH, closed. The plan of record and the build notes are
+[journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md); in one line: `index.html`
+now leads with the three trade chips and "Plumbing, electrical, and HVAC takeoffs, right on the
+plan.", adds a card per trade (four shipped claims each, a `?tour=` walkthrough link and the trade
+guide), a "numbers you can defend" pair (the scale-check screenshot beside an illustrative Bid Check
+panel with three cited rows and a rulebook link), rewrites the six feature cards, folds the
+browser-not-desktop promises and the pricing hand-off into one band, tags the testimonials by trade,
+and puts "What trades is it for?" first in the FAQ. Header nav gains Plumbing / Electrical / HVAC on
+the landing only. Metas and both JSON-LD blocks say the three trades. Decisions taken at the review
+("build it", 2026-09-16): the new headline, the Bid Check panel as drawn, direction A; plus two copy
+tweaks recorded in the plan.
+
 ## chore(telemetry): R2, the log_user_event allowlist catch-up, applied (2026-09-16)
 
 Found 2026-09-15 while running R1's spec: thirteen event types the client sends (`project_close`, `tour_step`, `trade_set`, `codes_set`, `ceiling_set`, `drop_set`, `bid_check_row_state`, `child_count_from_rule`, `rule_open`, `tag_suggestion_accepted`, `ghost_placed`, `ghost_stamped`, `restore_prompt_deferred`) are rejected by the deployed `public.log_user_event` with "invalid event type", so `user_activity` never saw a tour, a trade choice, a Bid Check tick or a Close project, and every signed-in Close logged a console 400. Two more, `client_error` and `client_unhandled_rejection` (app.js `reportClientError`'s server mirror), were in no migration either.

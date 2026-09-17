@@ -36,6 +36,4 @@ How agents add to this list: AGENTS.md, "Recording a to-do".
 | P4-WATER | Water sizing by fixture units: IPC first, water only, mockups before code | build | dev | — | [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) |
 | EXPIRY-30 | 30-minute checkout expiry under contention is still unwalked (time-gated; machinery covered by unit and spec) | test | tester | — | [_NEXT.md](journeys/plans/_NEXT.md) |
 | SPEC-DUPES | Nit: specs double-create identically-named test projects, churning rows on the test account | chore | agent | — | [_NEXT.md](journeys/plans/_NEXT.md) |
-| HERO-PIPES | Plumbing film: trace the sheet's own hot AND cold water instead of one invented cold main (the plan already draws both, with sizes) | build | agent | — | [LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md#next-trace-the-sheets-own-hot-and-cold-water) |
-| HERO-TRIM | Plumbing film polish: trim 33 s to about 27 s, hold the Copied confirmation before "Done.", keep the legend in frame | chore | agent | — | [LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md#the-rest-of-the-queue) |
 | HERO-EHVAC | The electrical and HVAC films, then the hero chip switching that selects a trade's film, then retire the three-trade take | build | agent | — | [LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md#the-remaining-scripts) |

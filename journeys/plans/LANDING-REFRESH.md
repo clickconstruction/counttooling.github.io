@@ -134,10 +134,25 @@ pull-back with marks off and on, Copy to PipeTooling. Marks run at counter size 
 170 percent, outline 3, numbers 26. The thirty-sheet set is built in the generator from the
 restaurant sheet with pdf-lib (the P-101 copy left unstamped).
 
-Still to do: trim to about 27 s (the Prepare beat and the scale dialog), hold the "Copied"
-confirmation before "Done.", keep the legend inside the frame at pull-back; then the
-electrical and HVAC films, the chip switching on the landing, and retiring the three-trade
-take. The landing keeps playing `landing-hero.mp4` until then.
+**Second cut, 2026-09-17 (punch rows HERO-PIPES and HERO-TRIM, one render pass), 29.5 s,
+3.0 MB.** The film traces the sheet's own domestic water instead of one invented main: the
+cold service and the cold trunk on `2in Cu` (blue), then the hot supply leg and the hot
+trunk with its recirc return on `1-1/4in HW Cu` (red), captions "Cold in." and "Hot back.",
+so the legend gains a second row and the hangers row appears twice (every 120 in and every
+72 in, both IPC 308.5). The 3-Comp Sink counter went purple so red stays the hot water's.
+Two first-cut bugs found on the way: the runs had been drawing at the 2 px default because
+`bigMarks()` set a `lineWidth` key the canvas never reads (the stroke is
+`lineTypeSettings.lineSize`, now 7), and the Copied confirmation had never been in frame at
+all because the film's overlay hides `#toastRegion`; the copy beat now lets that one card
+back in, parked at the canvas's bottom left so it never covers the legend, with its 1.5 s
+self-hide disabled, and holds it 1.3 s before "Done.". The Prepare beat, the scale dialog and
+the count paid for the hot beat (about 5 s of holds and moves), which is why the film is
+29.5 s rather than the 27 s the trim alone would have reached. The legend at the pull-back
+was already inside the sheet (it clamps itself); what had looked clipped was the first cut's
+hairline runs.
+
+Still to do: the electrical and HVAC films, the chip switching on the landing, and retiring
+the three-trade take. The landing keeps playing `landing-hero.mp4` until then.
 
 ## Hand-off: the per-trade films (2026-09-17)
 
@@ -151,7 +166,7 @@ with ffmpeg. Both outputs are committed.
 
 | Command | Writes | State |
 |---|---|---|
-| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | first cut, 33 s, 3.2 MB, NOT on the page yet |
+| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | second cut, 29.5 s, 3.0 MB, NOT on the page yet |
 | `npm run build:hero-video -- --film trades` | `img/landing-hero.{mp4,png}` | the three-trade take the landing plays today |
 
 Iterating: `HERO_FPS=4 node scripts/build-hero-video.js --frames-only --keep-frames` walks the
@@ -188,6 +203,10 @@ Needs ffmpeg on the machine and both sample plans (`npm run build:sample-plan`,
   the chip sync, so re-paste after a re-render.
 
 ### Next: trace the sheet's own hot and cold water
+
+> **DONE 2026-09-17** (second cut, above). The table and notes stay as the record of the
+> coordinates and the reasoning; `COLD_SERVICE`, `COLD_TRUNK`, `HOT_SUPPLY` and
+> `HOT_RETURN` in the generator are these four rows.
 
 Robert's ask, 2026-09-17: the plumbing film should trace over the piping the sheet already
 draws, hot and cold both, instead of the one invented cold main it traces now.
@@ -227,12 +246,12 @@ Notes for whoever builds it:
 
 ### The rest of the queue
 
-1. **Trim the plumbing film to about 27 s.** The two slow stretches are the Prepare PDF beat
-   and the scale dialog. Shorten the tile taps, the typing delay and the holds around the
-   check result.
-2. **Hold the finish.** Copy to PipeTooling shows a confirmation that auto-hides after about
-   1.5 s, so it can be gone before the last frame. Hold on it, then "Done."
-3. **Keep the legend in frame** at the pull-back; it is slightly clipped at the sheet's edge.
+1. ~~Trim the plumbing film to about 27 s.~~ Done 2026-09-17: 29.5 s with the hot beat
+   added. Note that `keyboard.type` delays and `waitForTimeout` cost no film time; only
+   `hold`, `moveTo`, `click` (two frames) and `camera` advance frames.
+2. ~~Hold the finish.~~ Done 2026-09-17; the overlay had been hiding the card outright (gotcha
+   below).
+3. ~~Keep the legend in frame.~~ Not a legend problem; the hairline runs were (gotcha below).
 4. **The electrical and HVAC films**, scripts below, then the hero chip switching that swaps
    the film in place, then retire the three-trade take.
 5. **Optional**: a fifteen-second feature montage for the "Everything the takeoff needs"
@@ -261,6 +280,16 @@ layer off and on; copy the schedule.
 
 ### Gotchas worth not rediscovering
 
+- **Stroke size.** The line stroke the canvas reads is `lineTypeSettings.lineSize` (default 2,
+  constant screen weight). `lineWidth` on that object is nothing; the first cut set it and
+  the runs drew as hairlines. The film runs 7.
+- **The overlay hides every toast.** `OVERLAY_SRC` injects
+  `#toastRegion, #airboardToastModal { display: none !important }` so stray toasts never
+  land in a frame. A beat that WANTS a toast card (the Copied confirmation) has to let it
+  back in with its own style rule, and park its self-hide (`App.hideModal` wrapper), because
+  a 24 fps hold outlasts the 1.5 s wall-clock timer many times over.
+- **The 4 fps preview overstates length.** A click is two frames at any rate, so fifty clicks
+  cost 25 s at 4 fps and 4 s at 24 fps; read the 24 fps frame count for the real duration.
 - **Mark size.** `counterSettings.size` defaults to 22, which draws an 11 px dot at hero size,
   which is why the first videos looked empty. The film runs 72. `ringSize` is a PERCENT of the
   mark (170), not pixels; setting it to 3 draws a 3 percent ring, which looks like nothing.

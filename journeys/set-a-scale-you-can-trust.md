@@ -250,6 +250,6 @@ Walked as the Phase-2 recipe: headless Chromium 1380×900 against a static serve
 - **#3 (the click-swallowing toast)** was closed by the toast rework (T2 #15, 2026-08-30); confirmed incidentally, the Distance and Scale-set toasts sit in the corner and the verify picks landed through them.
 - #4–#9 are unaffected by the sheet and were not re-driven.
 
-**A sample-plan nit, not an app finding:** the overall dimension is labelled 67'-4" but drawn 810 plan px = 67'-6" (the 24'-0" bay is drawn 290 px where 288 would be exact), which is why the check reads 0.3% rather than 0.0%. Filed under the SAMPLE-A hand-off in [plans/_TODO.md](plans/_TODO.md).
+**A sample-plan nit, not an app finding:** the overall dimension is labelled 67'-4" but drawn 810 plan px = 67'-6" (the 24'-0" bay is drawn 290 px where 288 would be exact), which is why the check reads 0.3% rather than 0.0%. Filed under the SAMPLE-A hand-off in [plans/_TODO.md](plans/_TODO.md). **Fixed 2026-09-17:** the left wall moved two plan px (`L` 130 → 132), the bays are 288 / 220 / 300 px and the overall 808 px; the same two clicks now read exact. The "Within 0.3%" in the demo line below is the pre-fix reading.
 
 **Demo moment, revised.** The 166%-off catch above needs a non-standard sheet now. On the design-build sheet the ten-second story is the other half of the same machinery: one click on the title-block preset, two clicks on the 67'-4" overall, "Within 0.3%. The scale looks correct." The old demo stays as the worked example for the verifying-your-scale guide's wrong-guess case.

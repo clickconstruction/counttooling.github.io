@@ -191,7 +191,7 @@ in `candidateA()`; the fixture symbols are the helpers at the top of the file
 (`wc`, `lavCtr`, `urinal`, `mopSink`, `floorDrain`, `waterHeater`, `drinkFtn`,
 `stallEnc`, `door`, `dimH`/`dimV`, `scaleBar`, `titleBlock`).
 
-**Found 2026-09-16 (D26 re-walk), open:** the 67'-4" overall dimension is drawn 810 plan px = 67'-6" (the 24'-0" bay spans 290 px where 288 is exact), so Verify reads "Within 0.3%" instead of 0.0%; shorten the bay 2 px or relabel.
+**Found 2026-09-16 (D26 re-walk), FIXED 2026-09-17** (branch `claude/sample-a-two-px`): the 67'-4" overall was drawn 810 plan px = 67'-6" (the 24'-0" bay spanned 290 px where 288 is exact), so Verify read "Within 0.3%". The left wall `L` moved 130 → 132 (one constant; the grid lines at 420 and 640 and the right wall at 940 stay), so the bays are 288 / 220 / 300 px and the overall 808 px = 67'-4" at 12 px/ft; the scale bar follows `L`. Sample regenerated; the seven sheet-reading specs (tutorial, copy-tooling-feet, scale-modal-clamp, render-worker, zoom-canvas-cap, zoom-no-updateui-during-gesture, render-pixels) pass unchanged.
 
 **Done today (Will, live review, 2026-09-14):**
 - Restrooms: stalls now ENCLOSE each water closet (`stallEnc`: partitions down to

@@ -151,6 +151,22 @@ the count paid for the hot beat (about 5 s of holds and moves), which is why the
 was already inside the sheet (it clamps itself); what had looked clipped was the first cut's
 hairline runs.
 
+**Third cut, 2026-09-17 (Robert's ask: make the lines on camera), 43.0 s, 3.8 MB.** Nothing
+about the water is seeded any more. The estimator clicks "+ Add" under Line Types, the name
+types itself in at twelve characters a second (`2in Cu cold`: side in the name, material and
+size where the rulebook reads them), the blue swatch, Create; a `P` keycap arms Polyline with
+the new type (the Create dialog arms Quick Line, so the P is honest), the cold service and the
+cold trunk are traced over the sheet's own lines, `Enter` commits each; then the row's pencil
+opens the details dialog, where "From the rulebook" already reads "Hanger · 1 per 10 ft ·
+matches copper · horizontal · 2 in · § IPC 308.5", and one tap on Add is the row nobody typed.
+The same for `1-1/4in Cu hot` in red, every 6 ft. Captions: "Cold in." · "Hangers, from the
+rulebook." · "Hot back." · "Rise.". Floor Drain went teal so the palette's blue is cold water's.
+Film-only chrome, no app change: the bid switcher is hidden (it would read "No bid open" for
+the whole take), the sidebar is 300 px so names do not wrap, the scale reference line is off
+(a device preference that had been drawing a dashed ruler at the sheet's bottom left), and the
+pull-back camera (`CAM_PULL`) leaves a grey band under the sheet where the caption and the
+Copied card sit, clear of the sheet's legend and title block.
+
 Still to do: the electrical and HVAC films, the chip switching on the landing, and retiring
 the three-trade take. The landing keeps playing `landing-hero.mp4` until then.
 
@@ -166,7 +182,7 @@ with ffmpeg. Both outputs are committed.
 
 | Command | Writes | State |
 |---|---|---|
-| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | second cut, 29.5 s, 3.0 MB, NOT on the page yet |
+| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | third cut, 43.0 s, 3.8 MB, NOT on the page yet |
 | `npm run build:hero-video -- --film trades` | `img/landing-hero.{mp4,png}` | the three-trade take the landing plays today |
 
 Iterating: `HERO_FPS=4 node scripts/build-hero-video.js --frames-only --keep-frames` walks the
@@ -280,6 +296,17 @@ layer off and on; copy the schedule.
 
 ### Gotchas worth not rediscovering
 
+- **Driving the real dialogs.** Create Line Type: `#addLineType` → `#lineTypeName` →
+  `#lineTypeColorRow .color-swatch[data-color="#4a9eff"]` (lower-case hex, the COLORS
+  palette) → `#lineTypeCreate`. After Create the app arms Quick Line and the new type is
+  active, so `p` arms Polyline with no dialog (the New Polyline dialog only opens with no
+  active type); hotkeys are lower-case and the guard ignores keys typed into an input, so
+  blur the dialog's input first. `Enter` commits a draft of two or more points and drops the
+  tool, so each run starts with its own P. The hanger suggestion lives in the details dialog
+  (`.sidebar-item-line-type[data-line-type-id] .edit-btn` → `#childCountsSuggest
+  .child-count-suggest-add` → `#counterLineTypeDetailsClose`), not in Create.
+- **Visible typing** is `Recorder.type(text, cps)`: one character per FPS/cps frames.
+  `keyboard.type`'s own delay costs no film time.
 - **Stroke size.** The line stroke the canvas reads is `lineTypeSettings.lineSize` (default 2,
   constant screen weight). `lineWidth` on that object is nothing; the first cut set it and
   the runs drew as hairlines. The film runs 7.

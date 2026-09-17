@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the plumbing film makes its line types on camera, third cut (2026-09-17)
+
+Robert's ask: the film should show the estimator making the water lines, not find them made.
+Nothing about the water is seeded now. "+ Add" under Line Types, the name typed in at twelve
+characters a second (`2in Cu cold`, then `1-1/4in Cu hot`), the swatch, Create; a `P` keycap
+arms Polyline with the new type, the sheet's own runs are traced, `Enter` commits each; the
+row's pencil opens the details dialog where "From the rulebook" already names the hanger rule
+from the type's name, and one tap on Add is the row nobody typed, twice, at two spacings.
+43.0 s, 3.8 MB. Film-only chrome (no app change): the bid switcher hidden, a 300 px sidebar so
+names do not wrap, the scale reference line off, and a pull-back camera that leaves a band
+under the sheet for the caption and the Copied card. `Recorder.type` and `Recorder.keyAs`
+added to the generator. Still not on the landing; HERO-EHVAC wires the chips. Detail in
+LANDING-REFRESH.md.
+
 ## feat(landing): the plumbing film, second cut (2026-09-17)
 
 Punch rows HERO-PIPES and HERO-TRIM, one render pass. The film now traces the restaurant

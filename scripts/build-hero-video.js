@@ -19,9 +19,11 @@
  * Films (`--film <name>`, default plumbing):
  *   plumbing  "Kitchen, Tuesday" on the restaurant sheet P-101: a thirty-sheet set lands
  *             and Prepare PDF keeps three; the scale is proved on a printed dimension;
- *             Quick Count with the number row; the sheet's own cold and hot water traced,
- *             two line types, two hanger rows; the riser; an RFI flag; the pull-back with
- *             marks hidden and shown; Copy to PipeTooling, held. Writes img/hero-plumbing.{mp4,png}.
+ *             Quick Count with the number row; two line types made on camera (+ Add, the
+ *             name typed, the swatch) and the sheet's own cold and hot water traced over
+ *             its lines, the rulebook's hanger row accepted for each; the riser; an RFI
+ *             flag; the pull-back with marks hidden and shown; Copy to PipeTooling, held.
+ *             Writes img/hero-plumbing.{mp4,png}.
  *   trades    the original three-trade take on the office sheet, img/landing-hero.{mp4,png}.
  *
  * Manual, like build:screenshots (needs a browser and ffmpeg; pixels are not
@@ -160,6 +162,11 @@ class Recorder {
   async jump(x, y) { this.cur = { x, y }; await this.page.mouse.move(x, y); }
   // A real key press (the app's hotkey handler runs) with a keycap drawn by the cursor.
   async key(label) { this.keycap = { label, since: this.n }; await this.page.keyboard.press(label); await this.frame(); }
+  // The same, showing one glyph and pressing another (show "P", press "p": hotkeys are lower-case).
+  async keyAs(label, press) { this.keycap = { label, since: this.n }; await this.page.keyboard.press(press); await this.frame(); }
+  // Visible typing: one character per FPS/cps frames, so a name appears the way a typist writes it.
+  // (keyboard.type's own delay costs no film time; only frames do.)
+  async type(text, cps = 12) { const per = Math.max(1, Math.round(FPS / cps)); for (const ch of text) { await this.page.keyboard.type(ch); for (let i = 0; i < per; i++) await this.frame(); } }
   // Move to a DOM element's centre (a button, a tile), scrolling it into view first.
   async moveToEl(selector, s, dx = 0, dy = 0) {
     const loc = this.page.locator(selector).first();
@@ -411,6 +418,7 @@ const HOT_RETURN = [B(570, 590), B(570, 105), B(936, 105), B(936, 572), B(918, 5
 const METER = COLD_SERVICE[0];                                                          // where the 3 ft service riser lands
 const GREASE_INTERCEPTOR = B(1000, 500);
 const CAM_SHEET = { x1: 0, y1: 0, x2: 1224, y2: 792 };
+const CAM_PULL = { x1: 0, y1: 0, x2: 1224, y2: 990 };    // the sheet with a grey band beneath it: the caption and the Copied card sit there, off the sheet's legend and title block
 const CAM_PLAN = { x1: 145, y1: 118, x2: 860, y2: 575 };   // through the grease interceptor outside the east wall
 const CAM_KITCHEN = { x1: 455, y1: 255, x2: 790, y2: 465 };
 
@@ -465,23 +473,16 @@ const seedRestaurant = () => {
   const first = App.getOrderedIcons()[0].value;
   const dot = 'M320 96C196 96 96 196 96 320s100 224 224 224 224-100 224-224S444 96 320 96z';
   s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
-  const fd = { id: uid(), name: 'Floor Drain', icon: dot, color: '#4a9eff' };
+  const fd = { id: uid(), name: 'Floor Drain', icon: dot, color: '#47d4d4' };   // teal: the palette's blue is cold water's
   const hs = { id: uid(), name: 'Hand Sink', icon: ci('Mounted Sink') || bi('Sink') || first, color: '#e8c547' };
   const wc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || bi('Water Closet') || first, color: '#47c88e' };
   const cs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#a47fff' };   // purple, so red stays the hot water's
   s.counters.push(fd, hs, wc, cs);
-  // Cold reads blue and hot reads red: line types cannot be dashed, so the sheet's
-  // solid-versus-dashed convention becomes colour. The names are the rulebook's: 2in Cu
-  // hangs every 120 in and 1-1/4in HW Cu every 72 in (plumb.hanger.copper), two hanger
-  // rows nobody typed. The water-sizing slice should ship these two colours on its line types.
-  const sm = window.SupportModel;
-  const withHangers = (lt) => { const sg = sm && sm.hangerSuggestionsFor(lt.name)[0]; if (sg) lt.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }]; return lt; };
-  const cu = withHangers({ id: uid(), name: '2in Cu', color: '#2e86de', curveStyle: 'straight' });
-  const hw = withHangers({ id: uid(), name: '1-1/4in HW Cu', color: '#e85447', curveStyle: 'straight' });
-  s.lineTypes.push(cu, hw);
+  // No line types here: the film makes them on camera (+ Add, the name typed, the swatch),
+  // and accepts the hanger row the rulebook writes from each name.
   s.numberKeyBindings = { 1: { kind: 'counter', id: fd.id }, 2: { kind: 'counter', id: hs.id }, 3: { kind: 'counter', id: wc.id }, 4: { kind: 'counter', id: cs.id } };
   App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
-  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id, cu: cu.id, hw: hw.id };
+  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id };
   App.updateUI(); App.renderAnnotations();
 };
 const armScaleCheck = () => {
@@ -489,13 +490,6 @@ const armScaleCheck = () => {
   s.scaleCheckMode = true; s.tool = App.TOOL.SCALE; s.scaleMode = App.SCALE_MODES.POINT_A;
   s.scalePointA = null; s.scalePointB = null;
   App.updateUI(); App.renderAnnotations();
-};
-const armPolyline = (lineTypeId) => {
-  const s = window.state, App = window.App;
-  const lt = s.lineTypes.find((l) => l.id === lineTypeId);
-  s.activeLineTypeId = lt.id; s.tool = App.TOOL.POLYLINE;
-  s.drawingPolyline = { id: App.uid(), name: lt.name, color: lt.color, points: [], closed: false, lineTypeId: lt.id, group: s.activeGroupId || null };
-  App.updateUI();
 };
 const applyDropAt = ([pt, ft]) => {
   const s = window.state, App = window.App;
@@ -520,6 +514,14 @@ async function recordPlumbing(page, dir, setPdf) {
   const clip = await page.locator('.app').boundingBox();
   const R = new Recorder(page, clip, dir);
   await page.evaluate(OVERLAY_SRC);
+  await page.evaluate(() => {
+    // Film-only chrome: the bid switcher would read "No bid open" for the whole take (the
+    // film never saves to the cloud), and the 220 px sidebar wraps "3-Comp Sink" onto three
+    // lines at hero size. Neither is an app change.
+    const st = document.createElement('style');
+    st.textContent = '#headerBidChip, #headerBidChipDivider { display: none !important; } .sidebar { width: 300px !important; }';
+    document.head.appendChild(st);
+  });
   await page.evaluate(bigMarks);
   await R.jump(clip.x + clip.width * 0.55, clip.y + clip.height * 0.5);
 
@@ -587,26 +589,61 @@ async function recordPlumbing(page, dir, setPdf) {
   await page.evaluate(endTool);
   await R.hold(0.5);
 
-  // 5 · Run. Cold in, hot back: the sheet's own piping, each run on its own line type,
-  //     so the legend gains a second row and the hangers row appears twice.
-  const trace = async (lineTypeKey, pts, first, step) => {
-    await page.evaluate(armPolyline, await page.evaluate((k) => window.__ids[k], lineTypeKey));
+  // 5 · Run. Cold in, hot back. The estimator makes each line type on camera: + Add under
+  //     Line Types, the name typed in (side in the name, material and size where the
+  //     rulebook reads them), the swatch, Create. P arms Polyline with the new type (the
+  //     Create dialog arms Quick Line, so the P is honest), the sheet's own piping is traced,
+  //     Enter commits. Then the row's pencil: the details dialog already carries "From the
+  //     rulebook: Hanger · 1 per 10 ft · matches copper · horizontal · 2 in · § IPC 308.5",
+  //     and one tap on Add is the row nobody typed. Twice, with two spacings.
+  const createLineType = async (name, color) => {
+    await R.moveToEl('#addLineType', 0.45); await R.click();
+    await page.waitForSelector('#lineTypeModal.visible', { timeout: 5000 });
+    await R.moveToEl('#lineTypeName', 0.3); await R.click();
+    await R.type(name, 12);
+    await R.hold(0.15);
+    await R.moveToEl('#lineTypeColorRow .color-swatch[data-color="' + color + '"]', 0.35); await R.click();
+    await R.hold(0.15);
+    await R.moveToEl('#lineTypeCreate', 0.35); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#lineTypeModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });   // the hotkey guard ignores keys typed into an input
+    await R.hold(0.3);
+  };
+  const drawRun = async (pts, first, step) => {
+    await R.keyAs('P', 'p');
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.POLYLINE && !!window.state.drawingPolyline, { timeout: 3000 });
     for (const [i, p] of pts.entries()) { await R.moveToPt(p, i ? step : first); await R.click(); }
-    await page.keyboard.press('Enter');
+    await R.key('Enter');
+    await page.waitForFunction(() => !window.state.drawingPolyline, { timeout: 3000 });
+    await R.hold(0.25);
+  };
+  const acceptHangers = async (name) => {
+    const id = await page.evaluate((n) => window.state.lineTypes.find((l) => l.name === n).id, name);
+    await R.moveToEl('#lineTypesList .sidebar-item-line-type[data-line-type-id="' + id + '"] .edit-btn', 0.45); await R.click();
+    await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
+    await page.waitForSelector('#childCountsSuggest .child-count-suggest-add', { timeout: 5000 });
+    await R.hold(0.6);
+    await R.moveToEl('#childCountsSuggest .child-count-suggest-add', 0.5); await R.click();
+    await R.hold(0.6);
+    await R.moveToEl('#counterLineTypeDetailsClose', 0.35); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#counterLineTypeDetailsModal.visible'), { timeout: 5000 });
+    await R.hold(0.3);
   };
   R.caption('', 'Cold in.');
-  await trace('cu', COLD_SERVICE, 0.45, 0.22);
-  await trace('cu', COLD_TRUNK, 0.3, 0.22);
-  await page.evaluate(endTool);
-  await R.hold(0.35);
+  await createLineType('2in Cu cold', '#4a9eff');
+  await drawRun(COLD_SERVICE, 0.45, 0.22);
+  await drawRun(COLD_TRUNK, 0.3, 0.22);
+  R.caption('', 'Hangers, from the rulebook.');
+  await acceptHangers('2in Cu cold');
   R.caption('', 'Hot back.');
-  await trace('hw', HOT_SUPPLY, 0.35, 0.2);
-  await trace('hw', HOT_RETURN, 0.3, 0.2);
-  await page.evaluate(endTool);
-  await R.hold(0.6);
+  await createLineType('1-1/4in Cu hot', '#e85447');
+  await drawRun(HOT_SUPPLY, 0.35, 0.2);
+  await drawRun(HOT_RETURN, 0.3, 0.2);
+  await acceptHangers('1-1/4in Cu hot');
+  await R.hold(0.3);
 
-  // 6 · Rise and hang: the service riser at the meter, then the hangers rows nobody typed.
-  R.caption('', 'Rise and hang.');
+  // 6 · Rise: the service riser at the meter.
+  R.caption('', 'Rise.');
   await R.moveToPt(METER, 0.45); await R.click();
   await page.evaluate(applyDropAt, [METER, 3]);
   await R.hold(0.8);
@@ -618,7 +655,7 @@ async function recordPlumbing(page, dir, setPdf) {
 
   // 8 · Nothing missed: the whole sheet, marks off, marks on.
   R.caption('', 'Nothing missed.');
-  await R.camera(CAM_SHEET, 0.9);
+  await R.camera(CAM_PULL, 0.9);
   await page.waitForTimeout(400);
   await R.hold(0.5);
   await page.evaluate(setHideMarks, true); await R.hold(0.4);
@@ -685,7 +722,10 @@ function ffmpeg(args) {
       if (!fs.existsSync(PLAN_B)) { console.error('Missing samples/sample-plan-advanced.pdf: run `npm run build:sample-plan-advanced` first.'); process.exit(1); }
       const setPdf = path.join(dir, 'sample-set.pdf');
       await buildSampleSet(setPdf);
-      await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
+      // Drop sizes on (the "3 ft" beside the riser); the scale reference line off (a device
+      // preference that draws a dashed ruler at the sheet's bottom left whenever a preset scale
+      // has no measured line; on the film it read as a stray mark).
+      await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); localStorage.setItem('showScaleRefLine', 'false'); } catch (_) { /* private mode */ } });
       await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
       frames = await recordPlumbing(page, dir, setPdf);

@@ -26,6 +26,15 @@ with ffmpeg (about 1 MB of H.264; the PNG is the poster, the last frame). The
 into view, pauses when it leaves, and stays hidden under `prefers-reduced-motion`.
 `build:screenshots` dropped its `landing-hero` shot. Detail in the plan file.
 
+**Addendum, the plumbing film (2026-09-17):** the generator gained `--film plumbing`
+(now the default), a 33 s per-trade film on the restaurant sheet: a thirty-sheet set
+built with pdf-lib and trimmed in Prepare PDF, the scale proved in the check dialog, Quick
+Count with the number row and drawn keycaps, the cold-water main traced, the riser and the
+hangers row, an RFI flag, the pull-back with marks hidden and shown, Copy to PipeTooling.
+Marks at counter size 72 with a 170 percent ring so they read at hero size. Written to
+`img/hero-plumbing.{mp4,png}`; the landing still plays the three-trade take until the
+electrical and HVAC films and the chip switching land. Plan file: "The per-trade films".
+
 PUNCHLIST.md row LANDING-REFRESH, closed. The plan of record and the build notes are
 [journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md); in one line: `index.html`
 now leads with the three trade chips and "Plumbing, electrical, and HVAC takeoffs, right on the

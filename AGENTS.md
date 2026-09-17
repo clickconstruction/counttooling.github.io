@@ -46,6 +46,9 @@
   `img/landing-hero.{mp4,png}` with ffmpeg (the PNG is the poster and the SEO spec's
   `img.hero-shot`). Manual, like `build:screenshots`; it prints the three act start times,
   which `index.html`'s chip-sync script hardcodes, so re-paste them after a re-render.
+  `--film plumbing` (the default now) renders the per-trade film "Kitchen, Tuesday" on the
+  restaurant sheet to `img/hero-plumbing.{mp4,png}` (scripts in the plan file); `--film trades`
+  is the original take the landing still plays until the per-trade chip switching lands.
 - **The rulebook (/rules/)**: the PUBLIC trade rules the app applies (NEC fill limits,
   the voltage-drop recommendation, SMACNA-style gauge, mount heights, hanger spacing…),
   written as the app applies them and cited by section — never the code text reprinted,

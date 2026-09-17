@@ -16,12 +16,21 @@
  *   img/landing-hero.png   the poster: the last frame (all three trades on the plan),
  *                          also the reduced-motion still and the SEO spec's img.hero-shot
  *
+ * Films (`--film <name>`, default plumbing):
+ *   plumbing  "Kitchen, Tuesday" on the restaurant sheet P-101: a thirty-sheet set lands
+ *             and Prepare PDF keeps three; the scale is proved on a printed dimension;
+ *             Quick Count with the number row; the cold-water trunk traced; the riser and
+ *             the hangers; an RFI flag; the pull-back with marks hidden and shown; Copy to
+ *             PipeTooling. Writes img/hero-plumbing.{mp4,png}.
+ *   trades    the original three-trade take on the office sheet, img/landing-hero.{mp4,png}.
+ *
  * Manual, like build:screenshots (needs a browser and ffmpeg; pixels are not
  * deterministic across machines), so it is NOT in `npm run check`:
  *
- *   npm run build:hero-video              full quality (24 fps, ~90 s to render)
- *   HERO_FPS=4 npm run build:hero-video   quick preview (same timeline, 4 fps)
- *   ... -- --keep-frames                  leave the JPEG frames in the temp dir
+ *   npm run build:hero-video                     full quality (24 fps, ~90 s to render)
+ *   npm run build:hero-video -- --film trades    the older take
+ *   HERO_FPS=4 npm run build:hero-video          quick preview (same timeline, 4 fps)
+ *   ... -- --keep-frames                         leave the JPEG frames in the temp dir
  *
  * The click targets are the three tours' own (features/tutorial.js), so the hero shows
  * exactly what "Five-minute walkthrough" under it delivers.
@@ -36,7 +45,10 @@ const { chromium } = require('@playwright/test');
 
 const ROOT = path.join(__dirname, '..');
 const PLAN = path.join(ROOT, 'samples', 'sample-plan.pdf');
+const PLAN_B = path.join(ROOT, 'samples', 'sample-plan-advanced.pdf');
 const OUT_DIR = path.join(ROOT, 'img');
+const FILM = (() => { const i = process.argv.indexOf('--film'); return i > -1 ? process.argv[i + 1] : 'plumbing'; })();
+const OUT_NAME = FILM === 'trades' ? 'landing-hero' : 'hero-' + FILM;
 const FPS = Number(process.env.HERO_FPS) || 24;
 const VIEWPORT = { width: 1280, height: 800 };   // the app is captured whole at 2x → 2560×1600
 const OUT_W = 1920;                              // encoded width (1920×1200: 2x of the 980 px hero)
@@ -80,9 +92,10 @@ const OVERLAY_SRC = `window.__hero = (() => {
   root.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100000;font-family:"DM Sans",system-ui,sans-serif;';
   root.innerHTML =
     '<div id="heroRipples"></div>' +
-    '<div id="heroCursor" style="position:absolute;left:0;top:0;width:22px;height:28px;will-change:transform">' +
-      '<svg viewBox="0 0 22 28" width="22" height="28"><path d="M2 2 L2 22 L7.5 17.2 L11 25.5 L14.6 24 L11.2 15.8 L18.5 15.8 Z" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
+    '<div id="heroCursor" style="position:absolute;left:0;top:0;width:26px;height:33px;will-change:transform;filter:drop-shadow(0 2px 3px rgba(0,0,0,.45))">' +
+      '<svg viewBox="0 0 22 28" width="26" height="33"><path d="M2 2 L2 22 L7.5 17.2 L11 25.5 L14.6 24 L11.2 15.8 L18.5 15.8 Z" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
     '</div>' +
+    '<div id="heroKey" style="position:absolute;left:0;top:0;min-width:30px;height:30px;padding:0 8px;border-radius:7px;background:#1e1e22;border:1px solid #e8c547;box-shadow:0 2px 0 #b8952f,0 6px 16px rgba(0,0,0,.45);color:#f0ede8;font:600 16px/28px "DM Mono",monospace;text-align:center;opacity:0"></div>' +
     '<div id="heroCap" style="position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;align-items:center;gap:12px;padding:11px 18px;border-radius:12px;background:rgba(15,15,17,.9);border:1px solid #3a3a44;box-shadow:0 8px 28px rgba(0,0,0,.45);white-space:nowrap;opacity:0">' +
       '<span id="heroCapTrade" style="font-family:\\'DM Mono\\',monospace;font-size:13px;letter-spacing:.14em;color:#e8c547"></span>' +
       '<span id="heroCapText" style="font-size:17px;color:#f0ede8"></span>' +
@@ -90,9 +103,16 @@ const OVERLAY_SRC = `window.__hero = (() => {
   document.body.appendChild(root);
   const cursor = root.querySelector('#heroCursor'), ripples = root.querySelector('#heroRipples');
   const cap = root.querySelector('#heroCap'), capTrade = root.querySelector('#heroCapTrade'), capText = root.querySelector('#heroCapText');
+  const key = root.querySelector('#heroKey');
   return {
-    update(cur, clicks, caption, n, fps) {
+    update(cur, clicks, caption, n, fps, keycap) {
       cursor.style.transform = 'translate(' + (cur.x - 2) + 'px,' + (cur.y - 2) + 'px)';
+      if (keycap && n - keycap.since < Math.round(fps * 0.8)) {
+        const t = (n - keycap.since) / Math.round(fps * 0.8);
+        key.textContent = keycap.label;
+        key.style.opacity = (t < 0.15 ? t / 0.15 : t > 0.7 ? (1 - t) / 0.3 : 1).toFixed(2);
+        key.style.transform = 'translate(' + (cur.x + 22) + 'px,' + (cur.y + 26) + 'px)';
+      } else key.style.opacity = '0';
       const life = Math.round(fps * 0.45);
       ripples.innerHTML = clicks.filter((c) => n - c.n < life).map((c) => {
         const t = (n - c.n) / life;
@@ -107,6 +127,7 @@ const OVERLAY_SRC = `window.__hero = (() => {
       }
       if (caption) {
         capTrade.textContent = caption.trade;
+        capTrade.style.display = caption.trade ? '' : 'none';
         capText.textContent = caption.text;
         const fade = Math.round(fps * 0.3);
         cap.style.opacity = Math.min(1, (n - caption.since + 1) / fade).toFixed(2);
@@ -121,11 +142,11 @@ const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 class Recorder {
   constructor(page, clip, dir) {
     this.page = page; this.clip = clip; this.dir = dir;
-    this.n = 0; this.cur = { x: 0, y: 0 }; this.clicks = []; this.cap = null; this.cam = null; this.acts = [];
+    this.n = 0; this.cur = { x: 0, y: 0 }; this.clicks = []; this.cap = null; this.cam = null; this.acts = []; this.keycap = null;
   }
   secs(s) { return Math.max(1, Math.round(s * FPS)); }
   async frame() {
-    await this.page.evaluate(({ cur, clicks, cap, n, fps }) => window.__hero.update(cur, clicks, cap, n, fps), { cur: this.cur, clicks: this.clicks, cap: this.cap, n: this.n, fps: FPS });
+    await this.page.evaluate(({ cur, clicks, cap, n, fps, keycap }) => window.__hero.update(cur, clicks, cap, n, fps, keycap), { cur: this.cur, clicks: this.clicks, cap: this.cap, n: this.n, fps: FPS, keycap: this.keycap });
     await this.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await this.page.screenshot({ path: path.join(this.dir, 'f_' + String(this.n).padStart(5, '0') + '.jpg'), clip: this.clip, type: 'jpeg', quality: 92 });
     this.n++;
@@ -137,6 +158,16 @@ class Recorder {
     this.cap = { trade, text, since: this.n };
   }
   async jump(x, y) { this.cur = { x, y }; await this.page.mouse.move(x, y); }
+  // A real key press (the app's hotkey handler runs) with a keycap drawn by the cursor.
+  async key(label) { this.keycap = { label, since: this.n }; await this.page.keyboard.press(label); await this.frame(); }
+  // Move to a DOM element's centre (a button, a tile), scrolling it into view first.
+  async moveToEl(selector, s, dx = 0, dy = 0) {
+    const loc = this.page.locator(selector).first();
+    await loc.scrollIntoViewIfNeeded().catch(() => {});
+    const b = await loc.boundingBox();
+    if (!b) throw new Error('moveToEl: ' + selector + ' has no box');
+    await this.moveTo(b.x + b.width / 2 + dx, b.y + b.height / 2 + dy, s);
+  }
   async moveTo(x, y, s) {
     const from = { ...this.cur }, N = this.secs(s);
     for (let i = 1; i <= N; i++) {
@@ -358,6 +389,231 @@ async function record(page, dir) {
   return R.n;
 }
 
+
+// ============================================================================
+// Film: plumbing, "Kitchen, Tuesday" (the restaurant sheet, P-101)
+// ============================================================================
+// Geometry in PDF points of the sheet. The restaurant plan is drawn at 12 px/ft in
+// scripts/sample-plan-candidates.js and placed at (60, 70) × 0.75, so a plan pixel p
+// lands at 60 + 0.75·x, 70 + 0.75·y (9 pt/ft; the 1/8" preset is exact).
+const B = (x, y) => ({ x: 60 + 0.75 * x, y: 70 + 0.75 * y });
+const DIM_31_8 = [B(560, 84), B(940, 84)];                       // the 31'-8" string along the top
+const FLOOR_DRAINS = [B(610, 432), B(740, 430), B(860, 440), B(648, 536), B(740, 528), B(238, 542), B(340, 545), B(630, 192), B(766, 196), B(902, 206)];
+const HAND_SINKS = [B(600, 308), B(928, 392), B(330, 578)];
+const WATER_CLOSETS = [B(596, 118), B(732, 118)];
+const THREE_COMP = [B(578, 476), B(170, 560)];
+const CW_TRUNK = [B(883, 614), B(883, 594), B(564, 594), B(564, 110), B(930, 110), B(930, 384)];   // the 2" cold water main, meter to the exit hand sink
+const GREASE_INTERCEPTOR = B(1000, 500);
+const CAM_SHEET = { x1: 0, y1: 0, x2: 1224, y2: 792 };
+const CAM_PLAN = { x1: 145, y1: 118, x2: 860, y2: 575 };   // through the grease interceptor outside the east wall
+const CAM_KITCHEN = { x1: 455, y1: 255, x2: 790, y2: 465 };
+
+// The thirty-sheet set: the restaurant sheet copied per discipline, each copy stamped
+// with a sheet number and name in a band across the top so the Prepare PDF grid reads
+// as a real submission. The three plumbing sheets are what the film keeps; P-101 itself
+// is left unstamped, since it is the sheet the takeoff happens on.
+const SET_SHEETS = [
+  ['G-001', 'COVER SHEET'], ['G-002', 'GENERAL NOTES'], ['A-101', 'FIRST FLOOR PLAN'], ['A-102', 'REFLECTED CEILING PLAN'],
+  ['A-201', 'EXTERIOR ELEVATIONS'], ['A-301', 'BUILDING SECTIONS'], ['A-401', 'WALL SECTIONS'], ['A-501', 'FINISH PLAN'],
+  ['A-601', 'DOOR AND WINDOW SCHEDULES'], ['S-101', 'FOUNDATION PLAN'], ['S-201', 'ROOF FRAMING PLAN'], ['S-301', 'STRUCTURAL DETAILS'],
+  ['M-101', 'HVAC PLAN'], ['M-201', 'DUCTWORK PLAN'], ['M-301', 'MECHANICAL SCHEDULES'], ['M-401', 'MECHANICAL DETAILS'],
+  ['M-501', 'CONTROLS'], ['E-101', 'LIGHTING PLAN'], ['E-201', 'POWER PLAN'], ['E-301', 'ONE-LINE DIAGRAM'],
+  ['E-401', 'PANEL SCHEDULES'], ['E-501', 'ELECTRICAL DETAILS'], ['FP-101', 'FIRE PROTECTION PLAN'],
+  ['P-101', 'PLUMBING PLAN'], ['P-201', 'WASTE AND VENT ISOMETRIC'], ['P-301', 'DOMESTIC WATER ISOMETRIC'],
+  ['P-401', 'PLUMBING SCHEDULES'], ['P-501', 'PLUMBING DETAILS'], ['T-101', 'TECHNOLOGY PLAN'], ['L-101', 'LANDSCAPE PLAN'],
+];
+const SET_KEEP = [23, 24, 25];   // P-101, P-201, P-301
+async function buildSampleSet(outPath) {
+  const { PDFDocument, StandardFonts, rgb } = require(path.join(ROOT, 'vendor', 'pdf-lib-1.17.1.min.js'));
+  const src = await PDFDocument.load(fs.readFileSync(PLAN_B));
+  const out = await PDFDocument.create();
+  const font = await out.embedFont(StandardFonts.HelveticaBold);
+  for (let i = 0; i < SET_SHEETS.length; i++) {
+    const [pg] = await out.copyPages(src, [0]);
+    out.addPage(pg);
+    if (SET_SHEETS[i][0] === 'P-101') continue;
+    const { width, height } = pg.getSize();
+    pg.drawRectangle({ x: 0, y: height - 92, width, height: 92, color: rgb(0.11, 0.11, 0.13) });
+    pg.drawText(SET_SHEETS[i][0], { x: 40, y: height - 66, size: 44, font, color: rgb(0.91, 0.77, 0.28) });
+    pg.drawText(SET_SHEETS[i][1], { x: 260, y: height - 62, size: 30, font, color: rgb(0.94, 0.93, 0.91) });
+  }
+  fs.writeFileSync(outPath, await out.save());
+}
+
+// --- page-side helpers for the plumbing film -----------------------------------
+const bigMarks = () => {
+  const s = window.state, App = window.App;
+  // Marks that read at hero size: twice the default, ringed in the counter's colour,
+  // outlined, numbered large. Line labels and drop crosses up to match.
+  // (ringSize is a PERCENT of the mark; the default 22 draws an 11 px dot at hero scale.)
+  s.counterSettings = Object.assign({}, s.counterSettings, { size: 72, showRings: true, ringSize: 170, ringOpacity: 0.95, ringSolid: true, outlineSize: 3, numberSize: 26 });
+  s.lineTypeSettings = Object.assign({}, s.lineTypeSettings, { lengthLabelSize: 18, dropXSize: 18, lineWidth: Math.max(s.lineTypeSettings && s.lineTypeSettings.lineWidth || 0, 4) });
+  App.renderAnnotations(); App.updateUI();
+};
+const seedRestaurant = () => {
+  const s = window.state, App = window.App, uid = () => App.uid();
+  const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+  const bi = (name) => ((App.getOrderedIcons() || []).find((i) => i.name === name) || {}).value;
+  const first = App.getOrderedIcons()[0].value;
+  const dot = 'M320 96C196 96 96 196 96 320s100 224 224 224 224-100 224-224S444 96 320 96z';
+  s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+  const fd = { id: uid(), name: 'Floor Drain', icon: dot, color: '#4a9eff' };
+  const hs = { id: uid(), name: 'Hand Sink', icon: ci('Mounted Sink') || bi('Sink') || first, color: '#e8c547' };
+  const wc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || bi('Water Closet') || first, color: '#47c88e' };
+  const cs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#e85447' };
+  s.counters.push(fd, hs, wc, cs);
+  const cu = { id: uid(), name: '2in Cu', color: '#2e86de', curveStyle: 'straight' };
+  const sm = window.SupportModel, sg = sm && sm.hangerSuggestionsFor(cu.name)[0];
+  if (sg) cu.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }];
+  s.lineTypes.push(cu);
+  s.numberKeyBindings = { 1: { kind: 'counter', id: fd.id }, 2: { kind: 'counter', id: hs.id }, 3: { kind: 'counter', id: wc.id }, 4: { kind: 'counter', id: cs.id } };
+  App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
+  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id, cu: cu.id };
+  App.updateUI(); App.renderAnnotations();
+};
+const armScaleCheck = () => {
+  const s = window.state, App = window.App;
+  s.scaleCheckMode = true; s.tool = App.TOOL.SCALE; s.scaleMode = App.SCALE_MODES.POINT_A;
+  s.scalePointA = null; s.scalePointB = null;
+  App.updateUI(); App.renderAnnotations();
+};
+const armPolyline = (lineTypeId) => {
+  const s = window.state, App = window.App;
+  const lt = s.lineTypes.find((l) => l.id === lineTypeId);
+  s.activeLineTypeId = lt.id; s.tool = App.TOOL.POLYLINE;
+  s.drawingPolyline = { id: App.uid(), name: lt.name, color: lt.color, points: [], closed: false, lineTypeId: lt.id, group: s.activeGroupId || null };
+  App.updateUI();
+};
+const applyDropAt = ([pt, ft]) => {
+  const s = window.state, App = window.App;
+  const a = App.ensureActiveCanvas(s.pages[s.currentPage]).annotations;
+  const nodes = App.collectDropNodes(a, 1) || [];
+  let best = null, bestD = Infinity;
+  nodes.forEach((n) => { const d = App.ptDist(n, pt); if (d < bestD) { bestD = d; best = n; } });
+  if (best) { App.applyDropToNode(a, best, ft, 'ft'); App.pushRecentDrop && App.pushRecentDrop(ft, 'ft'); }
+  s.tool = App.TOOL.NONE; App.markProjectDirty(); App.renderAnnotations(); App.updateUI();
+};
+const addRfi = ([pt, text]) => {
+  const s = window.state, App = window.App;
+  const page = s.pages[s.currentPage];
+  const canvas = App.ensureActiveCanvas(page);
+  canvas.annotations.notes = canvas.annotations.notes || [];
+  canvas.annotations.notes.push({ x: pt.x, y: pt.y, text, id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' });
+  App.markProjectDirty(); App.renderAnnotations(); App.updateUI();
+};
+const setHideMarks = (on) => { const s = window.state, App = window.App; s.hideMarks = !!on; App.renderAnnotations(); };
+
+async function recordPlumbing(page, dir, setPdf) {
+  const clip = await page.locator('.app').boundingBox();
+  const R = new Recorder(page, clip, dir);
+  await page.evaluate(OVERLAY_SRC);
+  await page.evaluate(bigMarks);
+  await R.jump(clip.x + clip.width * 0.55, clip.y + clip.height * 0.5);
+
+  // 1 · The set lands. Prepare PDF: thirty sheets, keep three.
+  await page.locator('#pdfInput').setInputFiles(setPdf);
+  await page.waitForSelector('#preparePdfModal.visible', { timeout: 20000 });
+  await page.waitForSelector('#preparePdfGrid .prepare-pdf-tile', { timeout: 20000 });
+  await page.waitForTimeout(900);   // the visible tiles rasterize
+  R.caption('', '30 sheets.');
+  await R.hold(0.7);
+  await R.moveToEl('#preparePdfName', 0.5); await R.click();
+  await page.keyboard.press('Meta+A'); await page.keyboard.type('Main St Restaurant', { delay: 28 }); await R.hold(0.2);
+  await R.moveToEl('#preparePdfKeepNone', 0.5); await R.click();
+  R.caption('', '30 sheets. Keep 3.');
+  await page.evaluate(() => { const w = document.getElementById('preparePdfGridWrap'); if (w) w.scrollTop = w.scrollHeight; });
+  await R.hold(0.35);
+  for (const idx of SET_KEEP) { await R.moveToEl('#preparePdfGrid .prepare-pdf-tile[data-orig-idx="' + idx + '"]', 0.4); await R.click(); }
+  await R.hold(0.25);
+  await R.moveToEl('#preparePdfDone', 0.45); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#preparePdfModal.visible') && window.state.pages.length === 3, { timeout: 30000 });
+  await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
+  await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
+  await page.evaluate(seedRestaurant);
+  await page.evaluate(bigMarks);
+
+  // 2 · P-101 opens. Push in from the sheet to the plan.
+  R.caption('', 'Main St Restaurant, P-101');
+  await R.setCamera(CAM_SHEET);
+  await page.waitForTimeout(500);
+  await R.hold(0.5);
+  await R.camera(CAM_PLAN, 1.1);
+  await page.waitForTimeout(300);
+  await R.hold(0.3);
+
+  // 3 · Prove the scale on the 31'-8" string.
+  R.caption('', 'Prove the scale.');
+  await page.evaluate(armScaleCheck);
+  await R.moveToPt(DIM_31_8[0], 0.6); await R.click();
+  await R.moveToPt(DIM_31_8[1], 0.7); await R.click();
+  await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+  await R.hold(0.3);
+  await R.moveToEl('#scaleCheckValue', 0.4); await R.click();
+  await page.keyboard.type("31'8", { delay: 60 }); await R.hold(0.2);
+  await R.moveToEl('#scaleCheckBtn', 0.35); await R.click();
+  await R.hold(1.1);
+  await R.moveToEl('#scaleCheckCancel', 0.3); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#scaleModal.visible'), { timeout: 5000 });
+  await R.hold(0.2);
+
+  // 4 · Count. Deliberate, then the number row and the pace lifts.
+  R.caption('', 'Count.');
+  await R.camera(CAM_KITCHEN, 0.8);
+  await page.waitForTimeout(300);
+  await R.key('1');
+  for (const [i, p] of FLOOR_DRAINS.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.45 : 0.6); await R.click(); await R.hold(0.1); }
+  await R.camera(CAM_PLAN, 0.7);
+  await page.waitForTimeout(300);
+  for (const p of FLOOR_DRAINS.slice(3)) { await R.moveToPt(p, 0.22); await R.click(); }
+  await R.key('2');
+  for (const p of HAND_SINKS) { await R.moveToPt(p, 0.24); await R.click(); }
+  await R.key('3');
+  for (const p of WATER_CLOSETS) { await R.moveToPt(p, 0.24); await R.click(); }
+  await R.key('4');
+  for (const p of THREE_COMP) { await R.moveToPt(p, 0.26); await R.click(); }
+  await page.evaluate(endTool);
+  await R.hold(0.7);
+
+  // 5 · Run. Trace the 2" cold water main.
+  R.caption('', 'Run.');
+  await page.evaluate(armPolyline, await page.evaluate(() => window.__ids.cu));
+  for (const [i, p] of CW_TRUNK.entries()) { await R.moveToPt(p, i ? 0.42 : 0.55); await R.click(); }
+  await page.keyboard.press('Enter');
+  await page.evaluate(endTool);
+  await R.hold(0.7);
+
+  // 6 · Rise and hang: the service riser, then the hangers row nobody typed.
+  R.caption('', 'Rise and hang.');
+  await R.moveToPt(CW_TRUNK[0], 0.5); await R.click();
+  await page.evaluate(applyDropAt, [CW_TRUNK[0], 3]);
+  await R.hold(1.1);
+
+  // 7 · A question, pinned where it belongs.
+  await R.moveToPt(GREASE_INTERCEPTOR, 0.6); await R.click();
+  await page.evaluate(addRfi, [GREASE_INTERCEPTOR, 'RFI: interceptor size?']);
+  await R.hold(0.9);
+
+  // 8 · Nothing missed: the whole sheet, marks off, marks on.
+  R.caption('', 'Nothing missed.');
+  await R.camera(CAM_SHEET, 1.0);
+  await page.waitForTimeout(400);
+  await R.hold(0.6);
+  await page.evaluate(setHideMarks, true); await R.hold(0.45);
+  await page.evaluate(setHideMarks, false); await R.hold(0.8);
+
+  // 9 · Done: Copy to PipeTooling.
+  await R.moveToEl('#forPipeTooling', 0.8); await R.click();
+  await page.waitForTimeout(150);
+  await R.moveToEl('#forPipeToolingMenu .pipe-tooling-option[data-mode="all"]', 0.4); await R.click();
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { const m = document.getElementById('pipeToolingCopiedModal'); if (m && !m.classList.contains('visible')) window.App.showModal('pipeToolingCopiedModal'); });
+  await R.hold(0.7);
+  R.caption('', 'Done.');
+  await R.hold(1.3);
+  console.log('\n  ' + R.n + ' frames');
+  return R.n;
+}
+
 async function loadApp(page, baseUrl) {
   // the Drop-sizes canvas label ("3 ft" beside the riser) is a per-device toggle
   await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
@@ -386,10 +642,21 @@ function ffmpeg(args) {
   const browser = await chromium.launch();
   let frames = 0;
   try {
-    const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 2 });
-    await loadApp(page, `http://127.0.0.1:${port}`);
-    process.stdout.write('rendering at ' + FPS + ' fps:');
-    frames = await record(page, dir);
+    const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2, permissions: ['clipboard-read', 'clipboard-write'] });
+    const page = await context.newPage();
+    process.stdout.write('rendering ' + FILM + ' at ' + FPS + ' fps:');
+    if (FILM === 'plumbing') {
+      if (!fs.existsSync(PLAN_B)) { console.error('Missing samples/sample-plan-advanced.pdf: run `npm run build:sample-plan-advanced` first.'); process.exit(1); }
+      const setPdf = path.join(dir, 'sample-set.pdf');
+      await buildSampleSet(setPdf);
+      await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
+      await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
+      await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
+      frames = await recordPlumbing(page, dir, setPdf);
+    } else {
+      await loadApp(page, `http://127.0.0.1:${port}`);
+      frames = await record(page, dir);
+    }
     console.log('\n  ' + frames + ' frames (' + (frames / FPS).toFixed(1) + ' s) in ' + dir);
     await page.close();
   } finally {
@@ -401,12 +668,12 @@ function ffmpeg(args) {
   const input = ['-framerate', String(FPS), '-i', path.join(dir, 'f_%05d.jpg')];
   // JPEG frames are full-range (yuvj420p); scale into the limited range every decoder expects.
   const vf = `scale=${OUT_W}:-2:flags=lanczos:in_range=pc:out_range=tv,fade=t=in:st=0:d=0.35,fade=t=out:st=${(dur - 0.45).toFixed(2)}:d=0.45,format=yuv420p`;
-  ffmpeg([...input, '-vf', vf, '-c:v', 'libx264', '-crf', '23', '-preset', 'slow', '-profile:v', 'high', '-color_range', 'tv', '-movflags', '+faststart', '-an', path.join(OUT_DIR, 'landing-hero.mp4')]);
-  console.log('  wrote img/landing-hero.mp4');
+  ffmpeg([...input, '-vf', vf, '-c:v', 'libx264', '-crf', '23', '-preset', 'slow', '-profile:v', 'high', '-color_range', 'tv', '-movflags', '+faststart', '-an', path.join(OUT_DIR, OUT_NAME + '.mp4')]);
+  console.log('  wrote img/' + OUT_NAME + '.mp4');
   const last = path.join(dir, 'f_' + String(frames - 1).padStart(5, '0') + '.jpg');
-  ffmpeg(['-i', last, '-vf', `scale=${OUT_W}:-2:flags=lanczos`, path.join(OUT_DIR, 'landing-hero.png')]);
-  console.log('  wrote img/landing-hero.png (poster)');
-  for (const f of ['landing-hero.mp4', 'landing-hero.png']) {
+  ffmpeg(['-i', last, '-vf', `scale=${OUT_W}:-2:flags=lanczos`, path.join(OUT_DIR, OUT_NAME + '.png')]);
+  console.log('  wrote img/' + OUT_NAME + '.png (poster)');
+  for (const f of [OUT_NAME + '.mp4', OUT_NAME + '.png']) {
     console.log('  ' + f + ': ' + (fs.statSync(path.join(OUT_DIR, f)).size / 1024 / 1024).toFixed(2) + ' MB');
   }
   if (!KEEP_FRAMES) fs.rmSync(dir, { recursive: true, force: true });

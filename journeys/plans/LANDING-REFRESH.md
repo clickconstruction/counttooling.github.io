@@ -114,3 +114,27 @@ OPEN OFFICE 105, trace the 24×12 main stepping to 16×10, four diffusers that a
 flip the room tag from ⚠ to ✓). Each trade draws on its own layer. Reduced-motion readers
 keep the still; the still is also the last frame, so it shows all three trades.
 `build:screenshots` no longer writes `img/landing-hero.png`.
+
+### The per-trade films (2026-09-17, in progress)
+
+Review of the three-trade take: no arc, marks too small (the default counter size draws an
+11 px dot at hero size), the chain palette covering the tallies. Decision: three films, one
+per trade, sharing one spine ("Done by nine": the set lands, the work flows, the fear of
+missing something is answered, the hand-off), the hero's trade chips becoming the selector.
+Scripts agreed in the session (plumbing "Kitchen, Tuesday" on P-101; electrical "Circuit 7"
+and HVAC "Pounds, not feet" on A-101), each opening on a thirty-sheet set trimmed in Prepare
+PDF, Quick Keys in the count, a hide-marks blink in the pull-back.
+
+**Plumbing, first cut, shipped as `img/hero-plumbing.{mp4,png}`** (`npm run build:hero-video`,
+33 s, 3.2 MB): Prepare PDF (name, Keep none, three plumbing sheets), the scale proved on the
+31'-8" string in the app's own check dialog, the count with the number row (ten floor drains,
+three hand sinks, two water closets, two three-comp sinks), the 2" cold water main traced,
+the 3 ft riser and the hangers row (IPC 308.5), an RFI flag at the grease interceptor, the
+pull-back with marks off and on, Copy to PipeTooling. Marks run at counter size 72, ring
+170 percent, outline 3, numbers 26. The thirty-sheet set is built in the generator from the
+restaurant sheet with pdf-lib (the P-101 copy left unstamped).
+
+Still to do: trim to about 27 s (the Prepare beat and the scale dialog), hold the "Copied"
+confirmation before "Done.", keep the legend inside the frame at pull-back; then the
+electrical and HVAC films, the chip switching on the landing, and retiring the three-trade
+take. The landing keeps playing `landing-hero.mp4` until then.

@@ -493,6 +493,10 @@
        0x0 while no page is rendered. */
     .canvas-empty-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--text3); font-size: 1.05rem; pointer-events: none; user-select: none; }
     .canvas-empty-hint strong { color: var(--text2); font-weight: 600; }
+    /* The offers are inline spans inside ONE flex item, so the whole hint is a
+       single run of text that wraps; as flex items each span held its own line
+       and the line ran off the canvas on a narrow window. */
+    .canvas-empty-hint-inner { max-width: 46rem; line-height: 1.55; text-wrap: balance; }
     .page-zoom-row { display: flex; align-items: center; gap: 0; background: var(--surface); border-top: 1px solid var(--border); }
     .page-zoom-row .page-nav { flex: 1; }
     .canvas-switcher { display: flex; align-items: center; gap: 6px; padding: 4px 8px; flex-shrink: 0; }

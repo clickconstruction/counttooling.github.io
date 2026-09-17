@@ -13,6 +13,18 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(sample-plan): the 67'-4" overall measures exact (2026-09-17)
+
+The D26 re-walk found the design-build sample sheet's overall dimension drawn 810 plan px,
+which is 67'-6" at 12 px/ft, because the first bay spanned 290 px where 24'-0" is 288; the
+tour's Verify Scale on that string read "Within 0.3%". The left exterior wall `L` in
+`candidateAPlan()` moved from 130 to 132, so the three bays are 288 / 220 / 300 px and the
+overall 808 px = 67'-4". One constant; the grid, the right wall and every room to the right
+are untouched, the scale bar follows `L`. `samples/sample-plan.pdf` regenerated. The seven
+specs that read the sheet's geometry pass unchanged (20 tests); guide screenshots left as
+they are, two pixels is below their resolution. Punch row SAMPLE-A stays open for the
+trade-eye polish (corridor label, door swings, fixture counts).
+
 ## feat(landing): the three-trade landing page, direction A (2026-09-16)
 
 **Addendum, the hero video (same day, same branch):** the hero screenshot became a 24 s

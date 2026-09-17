@@ -193,7 +193,7 @@ function roomSchedule(x, y) {
   </g>`;
 }
 function candidateAPlan() {
-  const L = 130, R = 940, T = 100, B = 600, COR_T = 340, COR_B = 384;
+  const L = 132, R = 940, T = 100, B = 600, COR_T = 340, COR_B = 384;
   return `
   <!-- structural grid -->
   ${gridLine(L, 66, L, 630)}${gridLine(420, 66, 420, 630)}${gridLine(640, 66, 640, 630)}${gridLine(R, 66, R, 630)}
@@ -284,7 +284,7 @@ function candidateAPlan() {
   ${dimV(112, T, COR_T, "20'-0\"")}${dimV(112, COR_T, COR_B, "5'-0\"")}${dimV(112, COR_B, B, "18'-0\"")}
 
   ${northArrow(990, 132)}
-  ${scaleBar(130, 648)}`;
+  ${scaleBar(L, 648)}`;
 }
 function candidateA() {
   return `${sheetFrame()}

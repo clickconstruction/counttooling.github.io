@@ -13,6 +13,40 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the three-trade landing page, direction A (2026-09-16)
+
+**Addendum, the hero video (same day, same branch):** the hero screenshot became a 24 s
+muted looping video of the real app doing a plumbing, an electrical and an HVAC takeoff
+on the sample plan, one take, each trade on its own layer, captions in frame, the trade
+chips syncing to the act. Generated, not screen-recorded: `npm run build:hero-video`
+(`scripts/build-hero-video.js`) walks a frame-stepped timeline with a real mouse and a
+drawn cursor, screenshots the app at 2x, and encodes `img/landing-hero.{mp4,png}`
+with ffmpeg (about 1 MB of H.264; the PNG is the poster, the last frame). The
+`<video>` fades in over the `img.hero-shot` still once playing, starts when it scrolls
+into view, pauses when it leaves, and stays hidden under `prefers-reduced-motion`.
+`build:screenshots` dropped its `landing-hero` shot. Detail in the plan file.
+
+**Addendum, the plumbing film (2026-09-17):** the generator gained `--film plumbing`
+(now the default), a 33 s per-trade film on the restaurant sheet: a thirty-sheet set
+built with pdf-lib and trimmed in Prepare PDF, the scale proved in the check dialog, Quick
+Count with the number row and drawn keycaps, the cold-water main traced, the riser and the
+hangers row, an RFI flag, the pull-back with marks hidden and shown, Copy to PipeTooling.
+Marks at counter size 72 with a 170 percent ring so they read at hero size. Written to
+`img/hero-plumbing.{mp4,png}`; the landing still plays the three-trade take until the
+electrical and HVAC films and the chip switching land. Plan file: "The per-trade films".
+
+PUNCHLIST.md row LANDING-REFRESH, closed. The plan of record and the build notes are
+[journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md); in one line: `index.html`
+now leads with the three trade chips and "Plumbing, electrical, and HVAC takeoffs, right on the
+plan.", adds a card per trade (four shipped claims each, a `?tour=` walkthrough link and the trade
+guide), a "numbers you can defend" pair (the scale-check screenshot beside an illustrative Bid Check
+panel with three cited rows and a rulebook link), rewrites the six feature cards, folds the
+browser-not-desktop promises and the pricing hand-off into one band, tags the testimonials by trade,
+and puts "What trades is it for?" first in the FAQ. Header nav gains Plumbing / Electrical / HVAC on
+the landing only. Metas and both JSON-LD blocks say the three trades. Decisions taken at the review
+("build it", 2026-09-16): the new headline, the Bid Check panel as drawn, direction A; plus two copy
+tweaks recorded in the plan.
+
 ## chore(telemetry): R2, the log_user_event allowlist catch-up, applied (2026-09-16)
 
 Found 2026-09-15 while running R1's spec: thirteen event types the client sends (`project_close`, `tour_step`, `trade_set`, `codes_set`, `ceiling_set`, `drop_set`, `bid_check_row_state`, `child_count_from_rule`, `rule_open`, `tag_suggestion_accepted`, `ghost_placed`, `ghost_stamped`, `restore_prompt_deferred`) are rejected by the deployed `public.log_user_event` with "invalid event type", so `user_activity` never saw a tour, a trade choice, a Bid Check tick or a Close project, and every signed-in Close logged a console 400. Two more, `client_error` and `client_unhandled_rejection` (app.js `reportClientError`'s server mirror), were in no migration either.

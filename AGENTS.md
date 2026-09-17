@@ -40,6 +40,15 @@
   `guides/img/*.png` referenced from articles via Markdown `![]()`. Both are manual (browser +
   non-deterministic pixels) and **not** in `npm run check` — like `build:og-image`; the
   link-integrity test fails only if an article references a missing image.
+  **The landing hero is a video**: `npm run build:hero-video` ([scripts/build-hero-video.js](scripts/build-hero-video.js))
+  drives the real app frame by frame on the sample plan (a plumbing, an electrical and an HVAC
+  takeoff in one take, real mouse, drawn cursor, caption strip) and encodes
+  `img/landing-hero.{mp4,png}` with ffmpeg (the PNG is the poster and the SEO spec's
+  `img.hero-shot`). Manual, like `build:screenshots`; it prints the three act start times,
+  which `index.html`'s chip-sync script hardcodes, so re-paste them after a re-render.
+  `--film plumbing` (the default now) renders the per-trade film "Kitchen, Tuesday" on the
+  restaurant sheet to `img/hero-plumbing.{mp4,png}` (scripts in the plan file); `--film trades`
+  is the original take the landing still plays until the per-trade chip switching lands.
 - **The rulebook (/rules/)**: the PUBLIC trade rules the app applies (NEC fill limits,
   the voltage-drop recommendation, SMACNA-style gauge, mount heights, hanger spacing…),
   written as the app applies them and cited by section — never the code text reprinted,

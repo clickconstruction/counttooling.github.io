@@ -1,7 +1,7 @@
 # Landing page refresh — three trades on the front door (2026-09-16)
 
-> Plan of record for punch row **LANDING-REFRESH**. Status: **mockup done, direction and
-> headline undecided, nothing built.** Robert's ask (2026-09-16): "now that we have HVAC and
+> Plan of record for the (closed) punch row **LANDING-REFRESH**. Status: **BUILT 2026-09-16
+> on `claude/landing-refresh`, direction A as mocked; see "Built" at the foot.** Robert's ask (2026-09-16): "now that we have HVAC and
 > Electrical I think we could give it a refresh." The mockup is the deliverable of that
 > session; this file is what the next session needs to build it without the conversation.
 
@@ -53,12 +53,13 @@ Cut on the second pass (do not add back): a separate hand-off section and a stat
 
 1. **Headline.** "Plumbing, electrical, and HVAC takeoffs, right on the plan." vs keeping
    today's "Markup plans, generate takeoffs, right in your browser." under the trade chips.
-   `[decision]` ____
+   `[decision]` the new headline, as mocked (2026-09-16, the "build it" call).
 2. **The Bid Check panel** in "numbers you can defend": replace the mock with a real
    screenshot (needs an electrical project with a voltage-drop row, a fill row and a
    hanger row; `scripts/build-screenshots.js` can stage one) or keep it as drawn.
-   `[decision]` ____
-3. **Direction.** A as mocked, or build out B or C instead. `[decision]` ____
+   `[decision]` kept as drawn (an HTML/CSS panel, values illustrative, `aria-label` says so).
+   A real screenshot stays a follow-up if anyone wants it.
+3. **Direction.** A as mocked, or build out B or C instead. `[decision]` A (2026-09-16).
 
 ## Build notes (one unit, one branch `claude/landing-refresh`)
 
@@ -78,3 +79,62 @@ Cut on the second pass (do not add back): a separate hand-off section and a stat
   chrome in `scripts/lib/site.js`: if the header gains trade links here, decide whether
   `/guides/` and `/rules/` headers follow), a look at 390 px and 1440 px.
 - Copy rule: no em dashes in user-facing text (AGENTS.md).
+
+## Built (2026-09-16, `claude/landing-refresh`)
+
+Direction A as mocked, with two copy changes asked for at review: the hero sub-copy ends
+"even on a tablet or phone in the field." (was "on a tablet in the field."), and the
+"numbers you can defend" lede breaks after "ruins a bid." on wide screens (a `br.br-wide`,
+shown from 900 px; the same device carries the hero headline's break). Files: `index.html`
+(the whole page, metas and both JSON-LD blocks say the three trades, the FAQ JSON-LD
+matches the visible FAQ, the hero image is no longer `loading="lazy"` since it is the
+page's largest paint and the SEO spec reads it at network idle) and `marketing.css` (one
+"Landing: the three-trade refresh" block plus the responsive rules; `:root` untouched).
+
+Walked at 1440, 1024, 768, 600, 390 and 320 px. Tablet (700 to 899 px) keeps the three
+trade cards in one row with tighter padding rather than leaving a 2 + 1 orphan; the proof
+pair and the four-up band stack there. Testimonials sit two-by-two from 760 px up. Gates:
+`npm run check` (11/11), `seo.spec.js` and `guides.spec.js` green.
+
+Left as they were, on purpose: the `/guides/` and `/rules/` header chrome (the trade links
+are on the landing only; whether the shared chrome follows is the sticky note's open
+question for Will), and `og-image.png` (manual regeneration, not in `npm run check`).
+
+### The hero video (2026-09-16, same branch)
+
+Robert's ask after the build: "a gif showing someone using the software and drawing
+lines", plumbing, electrical and HVAC one after the other. Shipped as a muted looping
+`<video>` over the poster still (a 24 s GIF at hero size would be 10 to 20 MB; the MP4 is
+about 1 MB; one H.264 source, a VP9 WebM hit a Chromium decode error and was dropped), 24 seconds, framed tight on the rooms being worked, captions in frame, and the
+hero's trade chips light up with the act in progress. `scripts/build-hero-video.js` makes
+it from the real app on the sample plan with the three tours' own click targets: plumbing
+(three water closets, the lav battery chained on 1in PEX, the 3 ft riser), electrical
+(three receptacles chained on 3/4" EMT with their drops, the conductors row), HVAC (box
+OPEN OFFICE 105, trace the 24×12 main stepping to 16×10, four diffusers that attach and
+flip the room tag from ⚠ to ✓). Each trade draws on its own layer. Reduced-motion readers
+keep the still; the still is also the last frame, so it shows all three trades.
+`build:screenshots` no longer writes `img/landing-hero.png`.
+
+### The per-trade films (2026-09-17, in progress)
+
+Review of the three-trade take: no arc, marks too small (the default counter size draws an
+11 px dot at hero size), the chain palette covering the tallies. Decision: three films, one
+per trade, sharing one spine ("Done by nine": the set lands, the work flows, the fear of
+missing something is answered, the hand-off), the hero's trade chips becoming the selector.
+Scripts agreed in the session (plumbing "Kitchen, Tuesday" on P-101; electrical "Circuit 7"
+and HVAC "Pounds, not feet" on A-101), each opening on a thirty-sheet set trimmed in Prepare
+PDF, Quick Keys in the count, a hide-marks blink in the pull-back.
+
+**Plumbing, first cut, shipped as `img/hero-plumbing.{mp4,png}`** (`npm run build:hero-video`,
+33 s, 3.2 MB): Prepare PDF (name, Keep none, three plumbing sheets), the scale proved on the
+31'-8" string in the app's own check dialog, the count with the number row (ten floor drains,
+three hand sinks, two water closets, two three-comp sinks), the 2" cold water main traced,
+the 3 ft riser and the hangers row (IPC 308.5), an RFI flag at the grease interceptor, the
+pull-back with marks off and on, Copy to PipeTooling. Marks run at counter size 72, ring
+170 percent, outline 3, numbers 26. The thirty-sheet set is built in the generator from the
+restaurant sheet with pdf-lib (the P-101 copy left unstamped).
+
+Still to do: trim to about 27 s (the Prepare beat and the scale dialog), hold the "Copied"
+confirmation before "Done.", keep the legend inside the frame at pull-back; then the
+electrical and HVAC films, the chip switching on the landing, and retiring the three-trade
+take. The landing keeps playing `landing-hero.mp4` until then.

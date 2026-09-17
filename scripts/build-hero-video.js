@@ -19,9 +19,9 @@
  * Films (`--film <name>`, default plumbing):
  *   plumbing  "Kitchen, Tuesday" on the restaurant sheet P-101: a thirty-sheet set lands
  *             and Prepare PDF keeps three; the scale is proved on a printed dimension;
- *             Quick Count with the number row; the cold-water trunk traced; the riser and
- *             the hangers; an RFI flag; the pull-back with marks hidden and shown; Copy to
- *             PipeTooling. Writes img/hero-plumbing.{mp4,png}.
+ *             Quick Count with the number row; the sheet's own cold and hot water traced,
+ *             two line types, two hanger rows; the riser; an RFI flag; the pull-back with
+ *             marks hidden and shown; Copy to PipeTooling, held. Writes img/hero-plumbing.{mp4,png}.
  *   trades    the original three-trade take on the office sheet, img/landing-hero.{mp4,png}.
  *
  * Manual, like build:screenshots (needs a browser and ffmpeg; pixels are not
@@ -402,7 +402,13 @@ const FLOOR_DRAINS = [B(610, 432), B(740, 430), B(860, 440), B(648, 536), B(740,
 const HAND_SINKS = [B(600, 308), B(928, 392), B(330, 578)];
 const WATER_CLOSETS = [B(596, 118), B(732, 118)];
 const THREE_COMP = [B(578, 476), B(170, 560)];
-const CW_TRUNK = [B(883, 614), B(883, 594), B(564, 594), B(564, 110), B(930, 110), B(930, 384)];   // the 2" cold water main, meter to the exit hand sink
+// The sheet's own domestic water, traced over the lines it already draws (LANDING-REFRESH.md,
+// "trace the sheet's own hot and cold water"); the pipeLabels beside them name the sizes.
+const COLD_SERVICE = [B(883, 614), B(883, 594), B(192, 594), B(192, 580)];              // 2" CW at the meter, 1" CW at the bar
+const COLD_TRUNK = [B(564, 594), B(564, 110), B(930, 110), B(930, 384)];                // 1-1/2" CW up the kitchen, 3/4" CW across the top wall
+const HOT_SUPPLY = [B(796, 572), B(786, 572), B(786, 590), B(188, 590), B(188, 580)];   // the water heater onto the south run
+const HOT_RETURN = [B(570, 590), B(570, 105), B(936, 105), B(936, 572), B(918, 572)];   // 1-1/4" HW up, 3/4" HW down, the recirc back to the heater
+const METER = COLD_SERVICE[0];                                                          // where the 3 ft service riser lands
 const GREASE_INTERCEPTOR = B(1000, 500);
 const CAM_SHEET = { x1: 0, y1: 0, x2: 1224, y2: 792 };
 const CAM_PLAN = { x1: 145, y1: 118, x2: 860, y2: 575 };   // through the grease interceptor outside the east wall
@@ -447,7 +453,9 @@ const bigMarks = () => {
   // outlined, numbered large. Line labels and drop crosses up to match.
   // (ringSize is a PERCENT of the mark; the default 22 draws an 11 px dot at hero scale.)
   s.counterSettings = Object.assign({}, s.counterSettings, { size: 72, showRings: true, ringSize: 170, ringOpacity: 0.95, ringSolid: true, outlineSize: 3, numberSize: 26 });
-  s.lineTypeSettings = Object.assign({}, s.lineTypeSettings, { lengthLabelSize: 18, dropXSize: 18, lineWidth: Math.max(s.lineTypeSettings && s.lineTypeSettings.lineWidth || 0, 4) });
+  // lineSize is the stroke the canvas reads (canvas-draw env.lineWidth; app.js lw = lts.lineSize);
+  // the first cut set a "lineWidth" key nothing reads and the runs drew at the 2 px default.
+  s.lineTypeSettings = Object.assign({}, s.lineTypeSettings, { lengthLabelSize: 18, dropXSize: 18, lineSize: 7 });
   App.renderAnnotations(); App.updateUI();
 };
 const seedRestaurant = () => {
@@ -460,15 +468,20 @@ const seedRestaurant = () => {
   const fd = { id: uid(), name: 'Floor Drain', icon: dot, color: '#4a9eff' };
   const hs = { id: uid(), name: 'Hand Sink', icon: ci('Mounted Sink') || bi('Sink') || first, color: '#e8c547' };
   const wc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || bi('Water Closet') || first, color: '#47c88e' };
-  const cs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#e85447' };
+  const cs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#a47fff' };   // purple, so red stays the hot water's
   s.counters.push(fd, hs, wc, cs);
-  const cu = { id: uid(), name: '2in Cu', color: '#2e86de', curveStyle: 'straight' };
-  const sm = window.SupportModel, sg = sm && sm.hangerSuggestionsFor(cu.name)[0];
-  if (sg) cu.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }];
-  s.lineTypes.push(cu);
+  // Cold reads blue and hot reads red: line types cannot be dashed, so the sheet's
+  // solid-versus-dashed convention becomes colour. The names are the rulebook's: 2in Cu
+  // hangs every 120 in and 1-1/4in HW Cu every 72 in (plumb.hanger.copper), two hanger
+  // rows nobody typed. The water-sizing slice should ship these two colours on its line types.
+  const sm = window.SupportModel;
+  const withHangers = (lt) => { const sg = sm && sm.hangerSuggestionsFor(lt.name)[0]; if (sg) lt.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }]; return lt; };
+  const cu = withHangers({ id: uid(), name: '2in Cu', color: '#2e86de', curveStyle: 'straight' });
+  const hw = withHangers({ id: uid(), name: '1-1/4in HW Cu', color: '#e85447', curveStyle: 'straight' });
+  s.lineTypes.push(cu, hw);
   s.numberKeyBindings = { 1: { kind: 'counter', id: fd.id }, 2: { kind: 'counter', id: hs.id }, 3: { kind: 'counter', id: wc.id }, 4: { kind: 'counter', id: cs.id } };
   App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
-  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id, cu: cu.id };
+  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id, cu: cu.id, hw: hw.id };
   App.updateUI(); App.renderAnnotations();
 };
 const armScaleCheck = () => {
@@ -516,16 +529,16 @@ async function recordPlumbing(page, dir, setPdf) {
   await page.waitForSelector('#preparePdfGrid .prepare-pdf-tile', { timeout: 20000 });
   await page.waitForTimeout(900);   // the visible tiles rasterize
   R.caption('', '30 sheets.');
-  await R.hold(0.7);
-  await R.moveToEl('#preparePdfName', 0.5); await R.click();
-  await page.keyboard.press('Meta+A'); await page.keyboard.type('Main St Restaurant', { delay: 28 }); await R.hold(0.2);
-  await R.moveToEl('#preparePdfKeepNone', 0.5); await R.click();
+  await R.hold(0.25);
+  await R.moveToEl('#preparePdfName', 0.35); await R.click();
+  await page.keyboard.press('Meta+A'); await page.keyboard.type('Main St Restaurant', { delay: 14 }); await R.hold(0.1);
+  await R.moveToEl('#preparePdfKeepNone', 0.35); await R.click();
   R.caption('', '30 sheets. Keep 3.');
   await page.evaluate(() => { const w = document.getElementById('preparePdfGridWrap'); if (w) w.scrollTop = w.scrollHeight; });
-  await R.hold(0.35);
-  for (const idx of SET_KEEP) { await R.moveToEl('#preparePdfGrid .prepare-pdf-tile[data-orig-idx="' + idx + '"]', 0.4); await R.click(); }
-  await R.hold(0.25);
-  await R.moveToEl('#preparePdfDone', 0.45); await R.click();
+  await R.hold(0.2);
+  for (const idx of SET_KEEP) { await R.moveToEl('#preparePdfGrid .prepare-pdf-tile[data-orig-idx="' + idx + '"]', 0.2); await R.click(); }
+  await R.hold(0.1);
+  await R.moveToEl('#preparePdfDone', 0.3); await R.click();
   await page.waitForFunction(() => !document.querySelector('#preparePdfModal.visible') && window.state.pages.length === 3, { timeout: 30000 });
   await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
   await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
@@ -536,80 +549,103 @@ async function recordPlumbing(page, dir, setPdf) {
   R.caption('', 'Main St Restaurant, P-101');
   await R.setCamera(CAM_SHEET);
   await page.waitForTimeout(500);
-  await R.hold(0.5);
-  await R.camera(CAM_PLAN, 1.1);
+  await R.hold(0.25);
+  await R.camera(CAM_PLAN, 0.75);
   await page.waitForTimeout(300);
-  await R.hold(0.3);
+  await R.hold(0.2);
 
   // 3 · Prove the scale on the 31'-8" string.
   R.caption('', 'Prove the scale.');
   await page.evaluate(armScaleCheck);
-  await R.moveToPt(DIM_31_8[0], 0.6); await R.click();
-  await R.moveToPt(DIM_31_8[1], 0.7); await R.click();
+  await R.moveToPt(DIM_31_8[0], 0.45); await R.click();
+  await R.moveToPt(DIM_31_8[1], 0.5); await R.click();
   await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
-  await R.hold(0.3);
-  await R.moveToEl('#scaleCheckValue', 0.4); await R.click();
-  await page.keyboard.type("31'8", { delay: 60 }); await R.hold(0.2);
-  await R.moveToEl('#scaleCheckBtn', 0.35); await R.click();
-  await R.hold(1.1);
-  await R.moveToEl('#scaleCheckCancel', 0.3); await R.click();
-  await page.waitForFunction(() => !document.querySelector('#scaleModal.visible'), { timeout: 5000 });
   await R.hold(0.2);
+  await R.moveToEl('#scaleCheckValue', 0.3); await R.click();
+  await page.keyboard.type("31'8", { delay: 40 }); await R.hold(0.15);
+  await R.moveToEl('#scaleCheckBtn', 0.3); await R.click();
+  await R.hold(0.6);
+  await R.moveToEl('#scaleCheckCancel', 0.25); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#scaleModal.visible'), { timeout: 5000 });
+  await R.hold(0.15);
 
   // 4 · Count. Deliberate, then the number row and the pace lifts.
   R.caption('', 'Count.');
-  await R.camera(CAM_KITCHEN, 0.8);
+  await R.camera(CAM_KITCHEN, 0.6);
   await page.waitForTimeout(300);
   await R.key('1');
-  for (const [i, p] of FLOOR_DRAINS.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.45 : 0.6); await R.click(); await R.hold(0.1); }
-  await R.camera(CAM_PLAN, 0.7);
+  for (const [i, p] of FLOOR_DRAINS.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.3 : 0.4); await R.click(); }
+  await R.camera(CAM_PLAN, 0.55);
   await page.waitForTimeout(300);
-  for (const p of FLOOR_DRAINS.slice(3)) { await R.moveToPt(p, 0.22); await R.click(); }
+  for (const p of FLOOR_DRAINS.slice(3)) { await R.moveToPt(p, 0.18); await R.click(); }
   await R.key('2');
-  for (const p of HAND_SINKS) { await R.moveToPt(p, 0.24); await R.click(); }
+  for (const p of HAND_SINKS) { await R.moveToPt(p, 0.2); await R.click(); }
   await R.key('3');
-  for (const p of WATER_CLOSETS) { await R.moveToPt(p, 0.24); await R.click(); }
+  for (const p of WATER_CLOSETS) { await R.moveToPt(p, 0.2); await R.click(); }
   await R.key('4');
-  for (const p of THREE_COMP) { await R.moveToPt(p, 0.26); await R.click(); }
+  for (const p of THREE_COMP) { await R.moveToPt(p, 0.22); await R.click(); }
   await page.evaluate(endTool);
-  await R.hold(0.7);
+  await R.hold(0.5);
 
-  // 5 · Run. Trace the 2" cold water main.
-  R.caption('', 'Run.');
-  await page.evaluate(armPolyline, await page.evaluate(() => window.__ids.cu));
-  for (const [i, p] of CW_TRUNK.entries()) { await R.moveToPt(p, i ? 0.42 : 0.55); await R.click(); }
-  await page.keyboard.press('Enter');
+  // 5 · Run. Cold in, hot back: the sheet's own piping, each run on its own line type,
+  //     so the legend gains a second row and the hangers row appears twice.
+  const trace = async (lineTypeKey, pts, first, step) => {
+    await page.evaluate(armPolyline, await page.evaluate((k) => window.__ids[k], lineTypeKey));
+    for (const [i, p] of pts.entries()) { await R.moveToPt(p, i ? step : first); await R.click(); }
+    await page.keyboard.press('Enter');
+  };
+  R.caption('', 'Cold in.');
+  await trace('cu', COLD_SERVICE, 0.45, 0.22);
+  await trace('cu', COLD_TRUNK, 0.3, 0.22);
   await page.evaluate(endTool);
-  await R.hold(0.7);
+  await R.hold(0.35);
+  R.caption('', 'Hot back.');
+  await trace('hw', HOT_SUPPLY, 0.35, 0.2);
+  await trace('hw', HOT_RETURN, 0.3, 0.2);
+  await page.evaluate(endTool);
+  await R.hold(0.6);
 
-  // 6 · Rise and hang: the service riser, then the hangers row nobody typed.
+  // 6 · Rise and hang: the service riser at the meter, then the hangers rows nobody typed.
   R.caption('', 'Rise and hang.');
-  await R.moveToPt(CW_TRUNK[0], 0.5); await R.click();
-  await page.evaluate(applyDropAt, [CW_TRUNK[0], 3]);
-  await R.hold(1.1);
+  await R.moveToPt(METER, 0.45); await R.click();
+  await page.evaluate(applyDropAt, [METER, 3]);
+  await R.hold(0.8);
 
   // 7 · A question, pinned where it belongs.
-  await R.moveToPt(GREASE_INTERCEPTOR, 0.6); await R.click();
+  await R.moveToPt(GREASE_INTERCEPTOR, 0.5); await R.click();
   await page.evaluate(addRfi, [GREASE_INTERCEPTOR, 'RFI: interceptor size?']);
-  await R.hold(0.9);
+  await R.hold(0.7);
 
   // 8 · Nothing missed: the whole sheet, marks off, marks on.
   R.caption('', 'Nothing missed.');
-  await R.camera(CAM_SHEET, 1.0);
+  await R.camera(CAM_SHEET, 0.9);
   await page.waitForTimeout(400);
-  await R.hold(0.6);
-  await page.evaluate(setHideMarks, true); await R.hold(0.45);
-  await page.evaluate(setHideMarks, false); await R.hold(0.8);
+  await R.hold(0.5);
+  await page.evaluate(setHideMarks, true); await R.hold(0.4);
+  await page.evaluate(setHideMarks, false); await R.hold(0.55);
 
-  // 9 · Done: Copy to PipeTooling.
-  await R.moveToEl('#forPipeTooling', 0.8); await R.click();
+  // 9 · Done: Copy to PipeTooling. The overlay hides #toastRegion for the whole film (stray
+  //     toasts are noise), so the Copied card is let back in here, alone; and since it hides
+  //     itself after 1.5 s of wall clock, which a 24 fps hold outlasts, its hide is parked.
+  await page.evaluate(() => {
+    const st = document.createElement('style');
+    const cw = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+    // bottom-left of the canvas, so the card never covers the legend at the sheet's top right
+    st.textContent = '#toastRegion { display: flex !important; top: auto !important; right: auto !important; left: ' + Math.round(cw.left + 28) + 'px !important; bottom: ' + Math.round(window.innerHeight - cw.bottom + 28) + 'px !important; align-items: flex-start !important; }'
+      + ' #toastRegion .toast-card:not(#pipeToolingCopiedModal) { display: none !important; }';
+    document.head.appendChild(st);
+    const App = window.App, hide = App.hideModal;
+    App.hideModal = (id) => { if (id === 'pipeToolingCopiedModal') return; return hide(id); };
+  });
+  await R.moveToEl('#forPipeTooling', 0.6); await R.click();
   await page.waitForTimeout(150);
-  await R.moveToEl('#forPipeToolingMenu .pipe-tooling-option[data-mode="all"]', 0.4); await R.click();
+  await R.moveToEl('#forPipeToolingMenu .pipe-tooling-option[data-mode="all"]', 0.3); await R.click();
   await page.waitForTimeout(250);
+  await R.moveToPt(B(520, 330), 0.35);   // off the sidebar, so no button sits highlighted under "Done."
   await page.evaluate(() => { const m = document.getElementById('pipeToolingCopiedModal'); if (m && !m.classList.contains('visible')) window.App.showModal('pipeToolingCopiedModal'); });
-  await R.hold(0.7);
-  R.caption('', 'Done.');
   await R.hold(1.3);
+  R.caption('', 'Done.');
+  await R.hold(1.0);
   console.log('\n  ' + R.n + ' frames');
   return R.n;
 }

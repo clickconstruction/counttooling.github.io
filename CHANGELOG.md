@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the plumbing film, second cut (2026-09-17)
+
+Punch rows HERO-PIPES and HERO-TRIM, one render pass. The film now traces the restaurant
+sheet's own domestic water, the cold service and trunk on `2in Cu` (blue) and the hot supply
+leg and trunk with its recirc return on `1-1/4in HW Cu` (red), so the legend gains a second
+row and the hangers row appears twice (120 in and 72 in, IPC 308.5). 29.5 s, 3.0 MB; the
+Prepare beat, the scale dialog and the count were trimmed to pay for the hot beat. Two
+first-cut bugs fixed in `scripts/build-hero-video.js`: `bigMarks()` set a `lineWidth` key the
+canvas never reads (the stroke is `lineTypeSettings.lineSize`, now 7), so the runs had drawn
+as 2 px hairlines; and the film's overlay hides `#toastRegion`, so the Copied confirmation had
+never been in frame. The copy beat lets that one card back in at the canvas's bottom left,
+parks its 1.5 s self-hide, and holds it 1.3 s before "Done.". Still not on the landing page;
+HERO-EHVAC wires the trade chips to the films. Detail in LANDING-REFRESH.md.
+
 ## feat(landing): the three-trade landing page, direction A (2026-09-16)
 
 **Addendum, the hero video (same day, same branch):** the hero screenshot became a 24 s

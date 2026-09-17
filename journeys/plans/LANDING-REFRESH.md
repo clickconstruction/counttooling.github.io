@@ -99,3 +99,18 @@ pair and the four-up band stack there. Testimonials sit two-by-two from 760 px u
 Left as they were, on purpose: the `/guides/` and `/rules/` header chrome (the trade links
 are on the landing only; whether the shared chrome follows is the sticky note's open
 question for Will), and `og-image.png` (manual regeneration, not in `npm run check`).
+
+### The hero video (2026-09-16, same branch)
+
+Robert's ask after the build: "a gif showing someone using the software and drawing
+lines", plumbing, electrical and HVAC one after the other. Shipped as a muted looping
+`<video>` over the poster still (a 24 s GIF at hero size would be 10 to 20 MB; the MP4 is
+about 1 MB; one H.264 source, a VP9 WebM hit a Chromium decode error and was dropped), 24 seconds, framed tight on the rooms being worked, captions in frame, and the
+hero's trade chips light up with the act in progress. `scripts/build-hero-video.js` makes
+it from the real app on the sample plan with the three tours' own click targets: plumbing
+(three water closets, the lav battery chained on 1in PEX, the 3 ft riser), electrical
+(three receptacles chained on 3/4" EMT with their drops, the conductors row), HVAC (box
+OPEN OFFICE 105, trace the 24×12 main stepping to 16×10, four diffusers that attach and
+flip the room tag from ⚠ to ✓). Each trade draws on its own layer. Reduced-motion readers
+keep the still; the still is also the last frame, so it shows all three trades.
+`build:screenshots` no longer writes `img/landing-hero.png`.

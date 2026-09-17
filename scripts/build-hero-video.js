@@ -1,0 +1,413 @@
+#!/usr/bin/env node
+/**
+ * Generates the landing page hero video: one continuous take on the sample plan where
+ * the cursor does a plumbing, an electrical, and an HVAC takeoff in turn, each trade on
+ * its own layer, with a caption strip naming the beat. Drives the REAL app headlessly
+ * (Chromium from @playwright/test) with real mouse moves and clicks, so every rubber
+ * band, size chip, tally and footer readout is the app's own; nothing is drawn onto the
+ * frames except the cursor and the captions.
+ *
+ * Frame-stepped, not screen-recorded: the timeline is walked one frame at a time
+ * (move the mouse, let the app paint, screenshot the app at 2x), so the output is
+ * deterministic and never drops a frame. ffmpeg then encodes:
+ *
+ *   img/landing-hero.mp4   H.264 High, limited-range yuv420p (plays in every current browser;
+ *                          a VP9 WebM was tried and hit a Chromium decode error, so one source)
+ *   img/landing-hero.png   the poster: the last frame (all three trades on the plan),
+ *                          also the reduced-motion still and the SEO spec's img.hero-shot
+ *
+ * Manual, like build:screenshots (needs a browser and ffmpeg; pixels are not
+ * deterministic across machines), so it is NOT in `npm run check`:
+ *
+ *   npm run build:hero-video              full quality (24 fps, ~90 s to render)
+ *   HERO_FPS=4 npm run build:hero-video   quick preview (same timeline, 4 fps)
+ *   ... -- --keep-frames                  leave the JPEG frames in the temp dir
+ *
+ * The click targets are the three tours' own (features/tutorial.js), so the hero shows
+ * exactly what "Five-minute walkthrough" under it delivers.
+ */
+/* global makeRectSize */   // duct-model.js global, read inside page.evaluate
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const http = require('http');
+const { spawnSync } = require('child_process');
+const { chromium } = require('@playwright/test');
+
+const ROOT = path.join(__dirname, '..');
+const PLAN = path.join(ROOT, 'samples', 'sample-plan.pdf');
+const OUT_DIR = path.join(ROOT, 'img');
+const FPS = Number(process.env.HERO_FPS) || 24;
+const VIEWPORT = { width: 1280, height: 800 };   // the app is captured whole at 2x → 2560×1600
+const OUT_W = 1920;                              // encoded width (1920×1200: 2x of the 980 px hero)
+const KEEP_FRAMES = process.argv.includes('--keep-frames');
+const FRAMES_ONLY = process.argv.includes('--frames-only');
+
+// --- geometry, in PDF points of the sample sheet (the tours' targets) -------------
+const WC_SPOTS = [{ x: 645, y: 506 }, { x: 675, y: 506 }, { x: 705, y: 506 }];
+const LAV_SPOTS = [{ x: 688.5, y: 369 }, { x: 717, y: 369 }, { x: 745.5, y: 369 }];
+const OPEN_OFFICE = { x1: 158, y1: 358, x2: 412, y2: 520 };
+const CHAIN_SPOTS = [{ x: 250, y: 506 }, { x: 310, y: 506 }, { x: 370, y: 506 }];
+const MAIN_VERTICES = [{ x: 164, y: 452 }, { x: 285, y: 452 }, { x: 406, y: 452 }];
+// four diffusers along the main, inside the 8" attach distance (6 pt at 9 pt/ft)
+const DIFFUSER_SPOTS = [{ x: 200, y: 457 }, { x: 268, y: 457 }, { x: 336, y: 457 }, { x: 404, y: 457 }];
+// camera frames: the restrooms for plumbing, Open Office for the other two
+const CAM_RESTROOMS = { x1: 555, y1: 322, x2: 800, y2: 548 };
+const CAM_OFFICE = { x1: 118, y1: 322, x2: 505, y2: 548 };   // room for the drag readout right of the box
+
+// --- tiny static file server (zero deps; same as build-screenshots) ---------------
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
+function startServer() {
+  return new Promise((resolve) => {
+    const server = http.createServer((req, res) => {
+      let p = decodeURIComponent(req.url.split('?')[0]);
+      if (p.endsWith('/')) p += 'index.html';
+      const file = path.join(ROOT, p);
+      if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); res.end(); return; }
+      res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
+      fs.createReadStream(file).pipe(res);
+    });
+    server.listen(0, '127.0.0.1', () => resolve({ server, port: server.address().port }));
+  });
+}
+
+// --- the overlay: a drawn cursor, click ripples, the caption strip ----------------
+const OVERLAY_SRC = `window.__hero = (() => {
+  const style = document.createElement('style');
+  style.textContent = '#toastRegion, #airboardToastModal, .aim-loupe { display: none !important; }';
+  document.head.appendChild(style);
+  const root = document.createElement('div');
+  root.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100000;font-family:"DM Sans",system-ui,sans-serif;';
+  root.innerHTML =
+    '<div id="heroRipples"></div>' +
+    '<div id="heroCursor" style="position:absolute;left:0;top:0;width:22px;height:28px;will-change:transform">' +
+      '<svg viewBox="0 0 22 28" width="22" height="28"><path d="M2 2 L2 22 L7.5 17.2 L11 25.5 L14.6 24 L11.2 15.8 L18.5 15.8 Z" fill="#fff" stroke="#111" stroke-width="1.6" stroke-linejoin="round"/></svg>' +
+    '</div>' +
+    '<div id="heroCap" style="position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:flex;align-items:center;gap:12px;padding:11px 18px;border-radius:12px;background:rgba(15,15,17,.9);border:1px solid #3a3a44;box-shadow:0 8px 28px rgba(0,0,0,.45);white-space:nowrap;opacity:0">' +
+      '<span id="heroCapTrade" style="font-family:\\'DM Mono\\',monospace;font-size:13px;letter-spacing:.14em;color:#e8c547"></span>' +
+      '<span id="heroCapText" style="font-size:17px;color:#f0ede8"></span>' +
+    '</div>';
+  document.body.appendChild(root);
+  const cursor = root.querySelector('#heroCursor'), ripples = root.querySelector('#heroRipples');
+  const cap = root.querySelector('#heroCap'), capTrade = root.querySelector('#heroCapTrade'), capText = root.querySelector('#heroCapText');
+  return {
+    update(cur, clicks, caption, n, fps) {
+      cursor.style.transform = 'translate(' + (cur.x - 2) + 'px,' + (cur.y - 2) + 'px)';
+      const life = Math.round(fps * 0.45);
+      ripples.innerHTML = clicks.filter((c) => n - c.n < life).map((c) => {
+        const t = (n - c.n) / life;
+        const r = 6 + 22 * t;
+        return '<div style="position:absolute;left:' + (c.x - r) + 'px;top:' + (c.y - r) + 'px;width:' + (2 * r) + 'px;height:' + (2 * r) + 'px;border-radius:50%;border:2px solid #e8c547;opacity:' + (1 - t).toFixed(2) + '"></div>';
+      }).join('');
+      const wrap = document.querySelector('.canvas-wrapper');
+      if (wrap) {
+        const r = wrap.getBoundingClientRect();
+        cap.style.left = (r.left + r.width / 2) + 'px';
+        cap.style.top = (r.bottom - 22) + 'px';
+      }
+      if (caption) {
+        capTrade.textContent = caption.trade;
+        capText.textContent = caption.text;
+        const fade = Math.round(fps * 0.3);
+        cap.style.opacity = Math.min(1, (n - caption.since + 1) / fade).toFixed(2);
+      } else cap.style.opacity = '0';
+    },
+  };
+})();`;
+
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+// --- the recorder: one method per thing the cursor does, each advancing frames --
+class Recorder {
+  constructor(page, clip, dir) {
+    this.page = page; this.clip = clip; this.dir = dir;
+    this.n = 0; this.cur = { x: 0, y: 0 }; this.clicks = []; this.cap = null; this.cam = null; this.acts = [];
+  }
+  secs(s) { return Math.max(1, Math.round(s * FPS)); }
+  async frame() {
+    await this.page.evaluate(({ cur, clicks, cap, n, fps }) => window.__hero.update(cur, clicks, cap, n, fps), { cur: this.cur, clicks: this.clicks, cap: this.cap, n: this.n, fps: FPS });
+    await this.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await this.page.screenshot({ path: path.join(this.dir, 'f_' + String(this.n).padStart(5, '0') + '.jpg'), clip: this.clip, type: 'jpeg', quality: 92 });
+    this.n++;
+    if (this.n % FPS === 0) process.stdout.write('  ' + (this.n / FPS) + 's');
+  }
+  async hold(s) { for (let i = 0; i < this.secs(s); i++) await this.frame(); }
+  caption(trade, text) {
+    if (trade && (!this.cap || this.cap.trade !== trade)) this.acts.push({ trade, at: this.n / FPS });
+    this.cap = { trade, text, since: this.n };
+  }
+  async jump(x, y) { this.cur = { x, y }; await this.page.mouse.move(x, y); }
+  async moveTo(x, y, s) {
+    const from = { ...this.cur }, N = this.secs(s);
+    for (let i = 1; i <= N; i++) {
+      const t = ease(i / N);
+      this.cur = { x: from.x + (x - from.x) * t, y: from.y + (y - from.y) * t };
+      await this.page.mouse.move(this.cur.x, this.cur.y);
+      await this.frame();
+    }
+  }
+  async click() {
+    await this.page.mouse.down();
+    this.clicks.push({ n: this.n, x: this.cur.x, y: this.cur.y });
+    await this.frame();
+    await this.page.mouse.up();
+    await this.frame();
+  }
+  // PDF point → viewport point (the annotation canvas covers the whole sheet from 0,0)
+  async pt(p) {
+    const box = await this.page.locator('#annCanvas').boundingBox();
+    const zoom = await this.page.evaluate(() => window.state.zoom);
+    return { x: box.x + p.x * zoom, y: box.y + p.y * zoom };
+  }
+  async moveToPt(p, s) { const v = await this.pt(p); await this.moveTo(v.x, v.y, s); }
+  async setCamera(r) {
+    await this.page.evaluate((r) => {
+      const s = window.state, App = window.App;
+      const w = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+      const zoom = Math.min(App.getMaxZoom(), Math.min(w.width / (r.x2 - r.x1), w.height / (r.y2 - r.y1)));
+      s.zoom = zoom;
+      s.pan = { x: (w.width - (r.x2 - r.x1) * zoom) / 2 - r.x1 * zoom, y: (w.height - (r.y2 - r.y1) * zoom) / 2 - r.y1 * zoom };
+      App.renderPdf();
+      App.updateUI();
+    }, r);
+    this.cam = r;
+  }
+  async camera(r, s) {
+    const from = this.cam, N = this.secs(s);
+    for (let i = 1; i <= N; i++) {
+      const t = ease(i / N);
+      const m = {};
+      for (const k of ['x1', 'y1', 'x2', 'y2']) m[k] = from[k] + (r[k] - from[k]) * t;
+      await this.setCamera(m);
+      await this.page.mouse.move(this.cur.x, this.cur.y);   // keep the app's mousePos current
+      await this.frame();
+    }
+  }
+}
+
+// --- app state helpers (the tours' recipes, minus the dialogs) ---------------------
+const seedPlumbing = () => {
+  const s = window.state, App = window.App, uid = () => App.uid();
+  const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+  const first = App.getOrderedIcons()[0].value;
+  s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+  s.ceilingHeightFt = 10; s.makeUpFt = 1;
+  const wc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || first, color: '#4a9eff' };
+  const lav = { id: uid(), name: 'Lavatory', icon: ci('Mounted Sink') || first, color: '#e8c547' };
+  const pex = { id: uid(), name: '1in PEX', color: '#47c88e', curveStyle: 'straight' };
+  const sm = window.SupportModel, sg = sm && sm.hangerSuggestionsFor(pex.name)[0];
+  if (sg) pex.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }];
+  s.counters.push(wc, lav); s.lineTypes.push(pex);
+  window.__ids = { wc: wc.id, lav: lav.id, pex: pex.id };
+  App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
+  App.updateUI(); App.renderAnnotations();
+};
+const armCounter = (id) => { const s = window.state, App = window.App; s.activeCounterType = id; s.tool = App.TOOL.COUNTER; App.updateUI(); };
+const armChain = ([counterId, lineTypeId]) => { const s = window.state, App = window.App; s.activeCounterType = counterId; s.activeLineTypeId = lineTypeId; s.tool = App.TOOL.CHAIN; s.chainStart = null; App.updateUI(); };
+const endTool = () => { const s = window.state, App = window.App; s.chainStart = null; s.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations(); };
+const applyRiser = (first) => {
+  const s = window.state, App = window.App;
+  const a = App.ensureActiveCanvas(s.pages[s.currentPage]).annotations;
+  const nodes = App.collectDropNodes(a, 1) || [];
+  let best = null, bestD = Infinity;
+  nodes.forEach((n) => { const d = App.ptDist(n, first); if (d < bestD) { bestD = d; best = n; } });
+  if (best) { App.applyDropToNode(a, best, 3, 'ft'); App.pushRecentDrop && App.pushRecentDrop(3, 'ft'); }
+  s.tool = App.TOOL.NONE; App.markProjectDirty(); App.renderAnnotations(); App.updateUI();
+};
+const addLayer = (name) => {
+  const s = window.state, App = window.App;
+  const page = s.pages[s.currentPage];
+  const c = { id: App.uid(), name, annotations: App.makeAnnotations() };
+  page.canvases.push(c);
+  s.activeCanvasIdByPage[s.currentPage] = c.id;
+  App.renderAnnotations(); App.updateUI();
+};
+const seedElectrical = () => {
+  const s = window.state, App = window.App, uid = () => App.uid();
+  const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+  const first = App.getOrderedIcons()[0].value;
+  const rec = { id: uid(), name: 'Duplex Receptacle', icon: (App.tradeIconForType && App.tradeIconForType('electrical', 'Duplex')) || ci('Duplex Receptacle') || first, color: '#e85447', mountHeightIn: 18 };
+  const emt = { id: uid(), name: '3/4" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors: window.ConductorModel ? window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [] };
+  s.counters.push(rec); s.lineTypes.push(emt);
+  window.__ids.rec = rec.id; window.__ids.emt = emt.id;
+  App.setProjectTrade && App.setProjectTrade('electrical', { remember: false, route: 'tour' });
+  App.updateUI(); App.renderAnnotations();
+};
+const seedHvac = () => {
+  const s = window.state, App = window.App, uid = () => App.uid();
+  const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+  const first = App.getOrderedIcons()[0].value;
+  const dif = { id: uid(), name: 'Supply Diffuser', icon: (App.cfmDefaultIcon && App.cfmDefaultIcon()) || ci('Supply diffuser') || first, color: '#e8c547', cfm: 150 };
+  s.counters.push(dif);
+  s.groups = s.groups || [];
+  const rtu = { id: uid(), name: 'RTU-1', color: '#2e86de', equipmentTag: 'RTU-1', capacityCfm: 2000 };
+  s.groups.push(rtu); s.groupsEnabled = true; s.activeGroupId = rtu.id;
+  window.__ids.dif = dif.id; window.__ids.rtu = rtu.id;
+  App.setProjectTrade && App.setProjectTrade('hvac', { remember: false, route: 'tour' });
+  if (App.setDuctDeckHeight) App.setDuctDeckHeight(12);
+  App.updateUI(); App.renderAnnotations();
+};
+const armRoom = () => { const s = window.state, App = window.App; s.tool = App.TOOL.ROOM; s.roomBoxStart = null; App.updateUI(); };
+const commitRoom = (r) => {
+  const s = window.state, App = window.App;
+  App.hideModal && App.hideModal('roomBoxModal');
+  s.pendingRoomBox = null; s.roomBoxStart = null;
+  const canvas = App.ensureActiveCanvas(s.pages[s.currentPage]);
+  s.rooms = s.rooms || [];
+  const room = { id: App.uid(), name: 'OPEN OFFICE 105', color: '#2e86de', type: 'office', roomType: 'office', nameFromPlan: true };
+  s.rooms.push(room);
+  canvas.annotations.roomBoxes = canvas.annotations.roomBoxes || [];
+  canvas.annotations.roomBoxes.push({ id: App.uid(), x1: r.x1, y1: r.y1, x2: r.x2, y2: r.y2, heightFt: 9, roomId: room.id, roomType: 'office' });
+  s.tool = App.TOOL.NONE; App.markProjectDirty(); App.updateUI(); App.renderAnnotations();
+};
+const startDuct = async () => {
+  const s = window.state, App = window.App;
+  const el = (id) => document.getElementById(id);
+  if (el('ductBtn')) el('ductBtn').click();
+  await new Promise((r) => setTimeout(r, 120));
+  if (typeof makeRectSize === 'function' && App.setDuctCreateSize) App.setDuctCreateSize(makeRectSize(24, 12));
+  if (el('ductCreateStart')) el('ductCreateStart').click();
+  await new Promise((r) => setTimeout(r, 60));
+  App.updateUI();
+  return !!s.drawingDuct;
+};
+const stepDuctSize = () => {
+  const App = window.App;
+  const sug = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion();
+  const next = (sug && (sug.rectSize || sug.size)) || (typeof makeRectSize === 'function' ? makeRectSize(16, 10) : null);
+  if (next && App.applyDuctSizeStep) App.applyDuctSizeStep(next);
+  App.renderAnnotations();
+};
+const finishDuct = () => { const s = window.state, App = window.App; App.finishDuctRun && App.finishDuctRun(); s.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations(); };
+
+// --- the take ------------------------------------------------------------------
+async function record(page, dir) {
+  const clip = await page.locator('.app').boundingBox();
+  const R = new Recorder(page, clip, dir);
+  await page.evaluate(OVERLAY_SRC);
+
+  // Act 1 · Plumbing, the restrooms
+  await page.evaluate(seedPlumbing);
+  await R.setCamera(CAM_RESTROOMS);
+  await page.waitForTimeout(400);
+  const start = await R.pt({ x: 600, y: 450 });
+  await R.jump(start.x, start.y);
+  R.caption('PLUMBING', 'Count the water closets');
+  await page.evaluate(armCounter, await page.evaluate(() => window.__ids.wc));
+  await R.hold(0.35);
+  for (const [i, p] of WC_SPOTS.entries()) { await R.moveToPt(p, i ? 0.5 : 0.8); await R.click(); await R.hold(0.15); }
+  await R.hold(0.3);
+  R.caption('PLUMBING', 'Chain the lav battery on 1in PEX');
+  await page.evaluate(armChain, await page.evaluate(() => [window.__ids.lav, window.__ids.pex]));
+  for (const [i, p] of LAV_SPOTS.entries()) { await R.moveToPt(p, i ? 0.8 : 0.7); await R.click(); await R.hold(0.15); }
+  await page.evaluate(endTool);
+  await R.hold(0.3);
+  R.caption('PLUMBING', 'Add the 3 ft riser; hangers count themselves');
+  await R.moveToPt(LAV_SPOTS[0], 0.6);
+  await R.click();
+  await page.evaluate(applyRiser, LAV_SPOTS[0]);
+  await R.hold(0.9);
+
+  // Act 2 · Electrical, Open Office on its own layer
+  R.caption('ELECTRICAL', 'Chain three receptacles on 3/4" EMT');
+  await page.evaluate(addLayer, 'Electrical');
+  await page.evaluate(seedElectrical);
+  await R.camera(CAM_OFFICE, 0.9);
+  await page.waitForTimeout(350);
+  await page.evaluate(armChain, await page.evaluate(() => [window.__ids.rec, window.__ids.emt]));
+  for (const [i, p] of CHAIN_SPOTS.entries()) { await R.moveToPt(p, i ? 0.9 : 0.8); await R.click(); await R.hold(0.15); }
+  await page.evaluate(endTool);
+  await R.hold(0.3);
+  R.caption('ELECTRICAL', 'Wire and cable derived from the raceway');
+  const emtRow = await page.getByText('3/4" EMT', { exact: false }).first().boundingBox().catch(() => null);
+  if (emtRow) await R.moveTo(emtRow.x + Math.min(120, emtRow.width / 2), emtRow.y + emtRow.height / 2, 1.0);
+  await R.hold(1.6);
+
+  // Act 3 · HVAC, Open Office on its own layer
+  R.caption('HVAC', 'Box the room, then trace the main');
+  await page.evaluate(addLayer, 'HVAC');
+  await page.evaluate(seedHvac);
+  await page.evaluate(armRoom);
+  await R.moveToPt({ x: OPEN_OFFICE.x1, y: OPEN_OFFICE.y1 }, 0.7);
+  await page.mouse.down();
+  R.clicks.push({ n: R.n, x: R.cur.x, y: R.cur.y });
+  await R.frame();
+  await R.moveToPt({ x: OPEN_OFFICE.x2, y: OPEN_OFFICE.y2 }, 0.9);
+  await page.mouse.up();
+  await page.evaluate(commitRoom, OPEN_OFFICE);
+  await R.hold(0.4);
+  const drawing = await page.evaluate(startDuct);
+  if (!drawing) throw new Error('duct trace did not arm (state.drawingDuct is false)');
+  R.caption('HVAC', 'Trace the main; the size steps down with the air');
+  await R.moveToPt(MAIN_VERTICES[0], 0.5); await R.click();
+  await R.moveToPt(MAIN_VERTICES[1], 0.9); await R.click();
+  await page.evaluate(stepDuctSize);
+  await R.hold(0.2);
+  await R.moveToPt(MAIN_VERTICES[2], 0.9); await R.click();
+  await page.evaluate(finishDuct);
+  await R.hold(0.3);
+  R.caption('HVAC', 'Diffusers attach and carry their CFM');
+  await page.evaluate(armCounter, await page.evaluate(() => window.__ids.dif));
+  for (const [i, p] of DIFFUSER_SPOTS.entries()) { await R.moveToPt(p, i ? 0.45 : 0.6); await R.click(); await R.hold(0.1); }
+  await page.evaluate(endTool);
+  const park = await R.pt({ x: 430, y: 535 });
+  R.caption('', 'One plan. Three trades. One takeoff.');
+  await R.moveTo(park.x, park.y, 0.6);
+  await R.hold(1.2);
+  console.log('\n  act starts (index.html chip sync): ' + R.acts.map((a) => a.trade.toLowerCase() + ' ' + a.at.toFixed(2) + 's').join(' · '));
+  return R.n;
+}
+
+async function loadApp(page, baseUrl) {
+  // the Drop-sizes canvas label ("3 ft" beside the riser) is a per-device toggle
+  await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
+  await page.goto(baseUrl + '/app/', { waitUntil: 'networkidle' });
+  await page.locator('#pdfInput').setInputFiles(PLAN);
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+  await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
+  await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
+  // warm the page's text layer so the plan-named room box tags itself on its first frame
+  await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
+  await page.waitForFunction(() => (window.App.peekPageTextItems(0) || []).length > 0, { timeout: 15000 });
+  await page.waitForTimeout(300);
+}
+
+function ffmpeg(args) {
+  const res = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...args], { encoding: 'utf8' });
+  if (res.status !== 0) throw new Error('ffmpeg failed: ' + (res.stderr || res.stdout));
+}
+
+(async () => {
+  if (!fs.existsSync(PLAN)) { console.error('Missing samples/sample-plan.pdf: run `npm run build:sample-plan` first.'); process.exit(1); }
+  if (!FRAMES_ONLY && spawnSync('ffmpeg', ['-version']).status !== 0) { console.error('ffmpeg is needed to encode (brew install ffmpeg), or pass --frames-only.'); process.exit(1); }
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hero-frames-'));
+  const { server, port } = await startServer();
+  const browser = await chromium.launch();
+  let frames = 0;
+  try {
+    const page = await browser.newPage({ viewport: VIEWPORT, deviceScaleFactor: 2 });
+    await loadApp(page, `http://127.0.0.1:${port}`);
+    process.stdout.write('rendering at ' + FPS + ' fps:');
+    frames = await record(page, dir);
+    console.log('\n  ' + frames + ' frames (' + (frames / FPS).toFixed(1) + ' s) in ' + dir);
+    await page.close();
+  } finally {
+    await browser.close();
+    server.close();
+  }
+  if (FRAMES_ONLY) return;
+  const dur = frames / FPS;
+  const input = ['-framerate', String(FPS), '-i', path.join(dir, 'f_%05d.jpg')];
+  // JPEG frames are full-range (yuvj420p); scale into the limited range every decoder expects.
+  const vf = `scale=${OUT_W}:-2:flags=lanczos:in_range=pc:out_range=tv,fade=t=in:st=0:d=0.35,fade=t=out:st=${(dur - 0.45).toFixed(2)}:d=0.45,format=yuv420p`;
+  ffmpeg([...input, '-vf', vf, '-c:v', 'libx264', '-crf', '23', '-preset', 'slow', '-profile:v', 'high', '-color_range', 'tv', '-movflags', '+faststart', '-an', path.join(OUT_DIR, 'landing-hero.mp4')]);
+  console.log('  wrote img/landing-hero.mp4');
+  const last = path.join(dir, 'f_' + String(frames - 1).padStart(5, '0') + '.jpg');
+  ffmpeg(['-i', last, '-vf', `scale=${OUT_W}:-2:flags=lanczos`, path.join(OUT_DIR, 'landing-hero.png')]);
+  console.log('  wrote img/landing-hero.png (poster)');
+  for (const f of ['landing-hero.mp4', 'landing-hero.png']) {
+    console.log('  ' + f + ': ' + (fs.statSync(path.join(OUT_DIR, f)).size / 1024 / 1024).toFixed(2) + ' MB');
+  }
+  if (!KEEP_FRAMES) fs.rmSync(dir, { recursive: true, force: true });
+})().catch((e) => { console.error(e); process.exit(1); });

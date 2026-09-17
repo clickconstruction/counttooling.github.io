@@ -15,6 +15,17 @@ expired recovery UX" work occupies that slot).
 
 ## feat(landing): the three-trade landing page, direction A (2026-09-16)
 
+**Addendum, the hero video (same day, same branch):** the hero screenshot became a 24 s
+muted looping video of the real app doing a plumbing, an electrical and an HVAC takeoff
+on the sample plan, one take, each trade on its own layer, captions in frame, the trade
+chips syncing to the act. Generated, not screen-recorded: `npm run build:hero-video`
+(`scripts/build-hero-video.js`) walks a frame-stepped timeline with a real mouse and a
+drawn cursor, screenshots the app at 2x, and encodes `img/landing-hero.{mp4,png}`
+with ffmpeg (about 1 MB of H.264; the PNG is the poster, the last frame). The
+`<video>` fades in over the `img.hero-shot` still once playing, starts when it scrolls
+into view, pauses when it leaves, and stays hidden under `prefers-reduced-motion`.
+`build:screenshots` dropped its `landing-hero` shot. Detail in the plan file.
+
 PUNCHLIST.md row LANDING-REFRESH, closed. The plan of record and the build notes are
 [journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md); in one line: `index.html`
 now leads with the three trade chips and "Plumbing, electrical, and HVAC takeoffs, right on the

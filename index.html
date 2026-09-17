@@ -94,9 +94,9 @@
     <section class="hero">
       <div class="wrap">
         <div class="trade-chips" aria-label="Trades">
-          <span class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5C8.2 7.6 5 11.4 5 15a7 7 0 0 0 14 0c0-3.6-3.2-7.4-7-12.5z"/></svg>Plumbing</span>
-          <span class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>Electrical</span>
-          <span class="chip"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="stroke" d="M3 8h9.5a2.5 2.5 0 1 0-2.5-2.5M3 12h13.5a2.5 2.5 0 1 1-2.5 2.5M3 16h7.5a2 2 0 1 1-2 2"/></svg>HVAC</span>
+          <span class="chip" data-trade="plumbing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5C8.2 7.6 5 11.4 5 15a7 7 0 0 0 14 0c0-3.6-3.2-7.4-7-12.5z"/></svg>Plumbing</span>
+          <span class="chip" data-trade="electrical"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>Electrical</span>
+          <span class="chip" data-trade="hvac"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="stroke" d="M3 8h9.5a2.5 2.5 0 1 0-2.5-2.5M3 12h13.5a2.5 2.5 0 1 1-2.5 2.5M3 16h7.5a2 2 0 1 1-2 2"/></svg>HVAC</span>
         </div>
         <h1>Plumbing, electrical, and HVAC takeoffs, <br class="br-wide">right on the plan.</h1>
         <p>Count fixtures and devices, measure pipe, conduit, and duct, and hand a bid-ready takeoff to your pricing app. Nothing to install, works offline, even on a tablet or phone in the field.</p>
@@ -105,9 +105,45 @@
           <a class="btn btn-ghost" href="/app/?signin=1">Already have access? Sign in</a>
         </div>
         <p class="hero-phone">New here? Call <a href="tel:+15123600599">(512) 360-0599</a> to get set up.</p>
-        <img class="hero-shot" src="/img/landing-hero.png" width="1380" height="900" alt="CountTooling in use: a marked-up floor-plan takeoff with counters on every fixture and a live count-and-length tally in the sidebar.">
+        <div class="hero-media" id="heroMedia">
+          <img class="hero-shot" src="/img/landing-hero.png" width="1920" height="1200" alt="CountTooling in use: a plumbing, electrical, and HVAC takeoff on one floor plan, with the counts, footage, and room airflow tallied in the sidebar.">
+          <video class="hero-video" muted loop playsinline preload="none" poster="/img/landing-hero.png" aria-hidden="true" tabindex="-1">
+            <source src="/img/landing-hero.mp4" type="video/mp4">
+          </video>
+        </div>
       </div>
     </section>
+    <script>
+      // The hero video (scripts/build-hero-video.js) plays muted in a loop once it scrolls
+      // into view, fading in over the poster; the trade chips above the headline light up
+      // with the act in progress. Reduced-motion readers keep the still.
+      (function () {
+        var media = document.getElementById('heroMedia');
+        var v = media && media.querySelector('video');
+        if (!v || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+        var chips = [].slice.call(document.querySelectorAll('.trade-chips .chip'));
+        var acts = [['plumbing', 0], ['electrical', 8.1], ['hvac', 15.3]];   // act starts, seconds (the generator prints them)
+        function light() {
+          var t = v.currentTime, id = '';
+          for (var i = 0; i < acts.length; i++) if (t >= acts[i][1]) id = acts[i][0];
+          chips.forEach(function (c) { c.classList.toggle('is-live', !v.paused && c.getAttribute('data-trade') === id); });
+        }
+        v.addEventListener('timeupdate', light);
+        v.addEventListener('pause', light);
+        v.addEventListener('playing', function () { media.classList.add('is-playing'); light(); });
+        function start() { v.preload = 'auto'; var p = v.play(); if (p && p.catch) p.catch(function (err) { window.__heroPlayError = String(err); }); }
+        if ('IntersectionObserver' in window) {
+          // Start once a fifth of the hero is on screen; pause only when it has left
+          // entirely, so a font swap or a scroll nudge near the line never flaps it.
+          new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (e.intersectionRatio >= 0.2) { if (v.paused) start(); }
+              else if (e.intersectionRatio === 0 && !v.paused) v.pause();
+            });
+          }, { threshold: [0, 0.2] }).observe(media);
+        } else start();
+      })();
+    </script>
 
     <section class="section">
       <div class="wrap">

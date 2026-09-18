@@ -271,6 +271,8 @@
     btn.onclick = () => {
       const cur = fm.normalizeBendFittings(item);
       commit(() => { item.bendFittings = Object.assign({}, cur, { enabled: !cur.enabled }); });
+      // Allowlisted by supabase/migrations/20260918053207_log_user_event_bend_fittings.sql (applied 2026-09-18).
+      App.logUserEvent && App.logUserEvent('bend_fittings_toggle', App.state.currentProjectId || null, { on: !cur.enabled, lineType: item.name });
       paint();
     };
     paint();

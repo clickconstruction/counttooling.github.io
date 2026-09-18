@@ -27,7 +27,9 @@ derived) so they ride the Summary, Show Report, Copy Summary and Copy to PipeToo
 the hangers do, and never become marks; a small "45" / "90" chip at each bend shows what the
 tally will say, live and in the exported markup. Bid Check gains "Fittings counted on every pipe
 run" beside the hangers row: informational while the option is off everywhere, a warning once
-some pipe types count and others do not. New: `fitting-model.js` (pure, node-tested),
+some pipe types count and others do not. Telemetry: `bend_fittings_toggle` { on, lineType } on every toggle, allowlisted by
+`supabase/migrations/20260918053207_log_user_event_bend_fittings.sql` (applied to prod through the
+Supabase MCP 2026-09-18 from the deployed body; the drift test pins it). New: `fitting-model.js` (pure, node-tested),
 `bend-fittings.spec.js`; the model honours a per-vertex `fitting` override whose edit-mode menu
 is punch row BEND-OVERRIDE. Tees wait for the water plan's attachment rung.
 

@@ -86,7 +86,9 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2p
 
 /* Landing: the three-trade refresh (journeys/plans/LANDING-REFRESH.md, direction A) */
 .br-wide { display: none; }
-.trade-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin-bottom: 26px; }
+/* The chips sit directly above the film they select (moved down from above the headline, 2026-09-18). */
+.trade-chips { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; margin: 44px 0 0; }
+.hero-media { margin-top: 16px; }
 .chip { display: inline-flex; align-items: center; gap: 7px; padding: 6px 13px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border2); color: var(--text2); font-size: 0.85rem; font-weight: 500; }
 .chip svg, .trade-ico svg { width: 14px; height: 14px; fill: var(--accent); }
 .chip svg .stroke, .trade-ico svg .stroke { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linecap: round; }

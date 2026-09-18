@@ -214,7 +214,9 @@ the video no longer loops); a click pins that trade and it loops. Selecting swap
 the `<source>` and the `img.hero-shot` (with a per-trade alt) in place and reloads the video,
 which starts again if it was playing, the click was the user's, or the hero is in view.
 Reduced-motion readers keep the stills, which the chips still switch. `window.__heroFilm()`
-reports the selection for the spec. The three-trade take (`img/landing-hero.{mp4,png}` and the
+reports the selection for the spec. **Moved 2026-09-18 (Robert, from the live page): the chips
+sit directly above the film they select, below the CTAs and the phone line, not above the
+headline** (44 px above the media, 16 px gap). The three-trade take (`img/landing-hero.{mp4,png}` and the
 generator's `--film trades`, its seeds and its `record()`) is retired; the act-time sync it
 needed is gone with it. Punch row HERO-EHVAC closed.
 

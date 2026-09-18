@@ -117,7 +117,16 @@ button.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2p
 .proof-body p { color: var(--text2); font-size: 0.95rem; line-height: 1.6; }
 .proof-body a { color: var(--accent); text-decoration: none; font-weight: 600; }
 .proof-body a:hover { text-decoration: underline; }
+.proof-body .checks { margin: 0 0 14px; }
+.proof-body .checks li b { color: var(--text); font-weight: 600; }
 .bidcheck { padding: 20px 20px 10px; border-bottom: 1px solid var(--border); background: var(--surface); }
+/* The panel follows the hero's selected trade (html[data-hero-trade], set by the hero script);
+   plumbing shows before the script runs, matching the film that plays first. */
+.bidcheck-rows { display: none; }
+html:not([data-hero-trade]) .bidcheck-rows[data-trade="plumbing"],
+html[data-hero-trade="plumbing"] .bidcheck-rows[data-trade="plumbing"],
+html[data-hero-trade="electrical"] .bidcheck-rows[data-trade="electrical"],
+html[data-hero-trade="hvac"] .bidcheck-rows[data-trade="hvac"] { display: block; }
 .bidcheck-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 600; margin-bottom: 12px; }
 .bidcheck-head .muted { color: var(--text2); font-weight: 400; font-size: 0.85rem; }
 .bidcheck-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; font-size: 0.92rem; }

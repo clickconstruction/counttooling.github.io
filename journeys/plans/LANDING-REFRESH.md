@@ -345,6 +345,30 @@ to serve, S stepping it to 16×10 then 12×8, elbows and taps appearing on their
 Schedule reading 26 gauge and one bid weight, Bid Check "Fits the roof" green; pull back,
 layer off and on; copy the schedule.
 
+## The landing for a shop owner (2026-09-18)
+
+Robert's situation: an owner of a large HVAC shop in Houston and Dallas will land on the page,
+and the page has to earn a question. Built in one pass (branch `claude/landing-hvac-owner`):
+
+1. **`/?trade=hvac`** (or plumbing, electrical) lands on that film, pinned, so the first frame is
+   their trade. Unknown values fall back to plumbing, unpinned. The link to send is
+   `counttooling.com/?trade=hvac`.
+2. **The proof panel follows the chip.** `html[data-hero-trade]` is set by the hero script; the
+   Bid Check mock has three row sets (`.bidcheck-rows[data-trade]`), plumbing showing before the
+   script runs. HVAC's rows are the ones the app really computes: every room served, systems
+   within capacity, the bid weight with its gauge citation. Values illustrative, as before.
+3. **"For the shop, not the seat"**, a section before the testimonials: the All Bids board from
+   the Overseer guide (its generated screenshot, lazy-loaded), the read-only-enforced-on-the-server
+   claim, and four rules a shop runs on (one editor at a time, email-gated view links, the access
+   log, the tablet that syncs). Every claim is shipped behaviour with a guide behind it.
+4. **The HVAC card** names both modes (plan-and-spec reads the sheet's callouts; design-build
+   sizes from the rooms' CFM) and says exactly what the gauge is: a simplified SMACNA schedule,
+   cited by rule (`content/rules/hvac/duct-gauge.md` calls itself that), not "SMACNA-style".
+5. **Austin, Texas** in the footer.
+
+Not done on purpose: no HVAC testimonial (none is real yet; a fabricated one loses a
+professional), no partner or pricing language. Pinned by `landing-trade.spec.js` (local + CI).
+
 ### Gotchas worth not rediscovering
 
 - **The size popover offers round and rectangular.** `.duct-suggest-chip` rows carry both

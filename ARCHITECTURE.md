@@ -1480,7 +1480,10 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   `npm run build:og-image` ([scripts/build-og-image.js](scripts/build-og-image.js),
   Playwright-rendered, brand fonts base64-embedded). These are **crawler-only** assets — not
   in the `sw.js` precache, so no `CACHE_VERSION` bump. Regression: [seo.spec.js](seo.spec.js)
-  (tags on `/`; noindex on `?t=`/`?devAuth=1`; local only). The app is admin-provisioned (no
+  (tags on `/`; noindex on `?t=`/`?devAuth=1`; local only) and [landing-trade.spec.js](landing-trade.spec.js)
+  (the hero's trade chips, the `/?trade=<trade>` link that lands on a film pinned, the Bid Check
+  proof rows that follow the chip through `html[data-hero-trade]`, the shop section, the Texas
+  footer line; local + CI, 2026-09-18). The app is admin-provisioned (no
   public signup), so this is brand/link-preview/privacy hygiene, not lead-gen SEO.
 
 ## Migrations naming

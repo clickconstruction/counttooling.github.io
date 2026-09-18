@@ -204,6 +204,7 @@ test.describe('Fittings from bends', () => {
   });
 
   test('edit mode edges: the menu\'s Delete vertex, undo and redo mid-edit, a closed run, outside click, screen-edge placement, touch long-press, and a save/import round trip', async ({ page }) => {
+    test.setTimeout(90000);   // a long case with a full reload; against counttooling.com the live site's realtime traffic never goes network-idle quickly
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
@@ -294,9 +295,10 @@ test.describe('Fittings from bends', () => {
       pages: [{ index: 0, canvases: window.state.pages[0].canvases, scale: window.state.pages[0].scale, rotation: 0 }],
     })));
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForFunction(() => !!(window.App && window.App.enterEditMode && document.getElementById('pdfInput')));
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 20000 });
     await page.locator('#importInput').setInputFiles({ name: 'takeoff.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
     await page.waitForFunction(() => (window.state.lineTypes || []).some((l) => l.id === 'lt-cu'));
     expect(await polyP1()).toEqual([null, null, 'bend90', null, null]);

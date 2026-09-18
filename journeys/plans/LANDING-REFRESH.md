@@ -542,7 +542,16 @@ the rest are new setups.
    derived #12 THHN rows, Bid Check (fill 10% ✓, voltage drop 2.3% ✓ on LP-1/7), and Open in
    TakeoffTooling's toast.
 3. **SPOT-3 · the plumbing set.** `plumbingSpotSetup` on the restaurant sheet, six frames.
-   Two hours.
+   Two hours. **DONE 2026-09-18** (branch `claude/spotlight-plumbing`): a per-shot `plan`
+   option loads the restaurant sheet (`PLAN_B`), `plumbingBase` seeds the film's counters,
+   the two line types with their rulebook hangers, the four traced runs and the 3 ft riser at
+   the meter, and `frameRegion` uses the film's cameras (the office sheet's `fitPlan` does not
+   apply). Per-shot `dropSizes` (the "3 ft" label) and `clipboard` (the copy) flags. Frames:
+   the Quick tab on the Plumbing profile, the details dialog offering the hanger row "From the
+   rulebook" (seeded without hangers so the offer shows), the riser at the meter, the scale
+   check reading 0.1% on the 31'-8" string, Bid Check's hangers row, and the copy toast (the
+   project is not cloud-saved in the generator, so the toast is the "save to include a view
+   link" one, which is honest).
 4. **SPOT-4 · the section.** Markup, CSS, captions, the asset test, the spec cases, the plan
    and CHANGELOG notes. Ships all three at once, so the section never shows an empty trade.
    Three hours. Gates: `landing-trade.spec.js` + `seo.spec.js` locally, `npm run check`, then

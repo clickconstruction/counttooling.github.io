@@ -13,6 +13,15 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): SPOT-3, the six plumbing spotlight frames (2026-09-18)
+
+Punch row SPOTLIGHT, third rung. `scripts/build-screenshots.js` takes a per-shot `plan` (the
+restaurant sheet for plumbing), `dropSizes` and `clipboard` flags; `plumbingBase` seeds what
+"Kitchen, Tuesday" makes on camera (the four counters, `2in Cu cold` and `1-1/4in Cu hot` with
+their rulebook hangers, the four traced runs, the 3 ft riser at the meter). Frames: the Quick tab,
+the "From the rulebook" hanger offer, the riser, the scale check at 0.1%, Bid Check's hangers row,
+the copy toast. All eighteen frames now exist; SPOT-4 ships the section.
+
 ## feat(landing): SPOT-2, the six electrical spotlight frames (2026-09-18)
 
 Punch row SPOTLIGHT, second rung. `electricalBase` in `scripts/build-screenshots.js` seeds what

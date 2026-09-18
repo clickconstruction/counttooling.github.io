@@ -61,6 +61,34 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await expect(set('hvac').locator('figure.spot')).toHaveCount(6);
   });
 
+  test('a spotlight frame opens in the lightbox, the arrows walk the set, Escape closes it', async ({ page }) => {
+    await page.goto('/?trade=hvac');
+    const set = page.locator('.spotlight-set[data-trade="hvac"]');
+    const first = set.locator('figure.spot').first();
+    const title = await first.locator('figcaption b').textContent();
+    const second = await set.locator('figure.spot').nth(1).locator('figcaption b').textContent();
+    await first.locator('.spot-open').click();
+    const lb = page.locator('#spotLightbox');
+    await expect(lb).toBeVisible();
+    await expect(lb.locator('.lb-title')).toHaveText(title);
+    await expect(lb.locator('.lb-count')).toHaveText('1 / 6');
+    await expect(lb.locator('.lb-img')).toHaveAttribute('src', /\/img\/spotlight\/hvac-1-/);
+    await page.keyboard.press('ArrowRight');
+    await expect(lb.locator('.lb-title')).toHaveText(second);
+    await expect(lb.locator('.lb-count')).toHaveText('2 / 6');
+    await lb.locator('.lb-img').click();   // a click on the picture never closes it
+    await expect(lb).toBeVisible();
+    await lb.locator('.lb-img').dblclick();
+    await expect.poll(() => lb.locator('.lb-img').evaluate((el) => el.style.transform)).toContain('scale(2.5)');
+    await lb.locator('.lb-img').dblclick();
+    await expect.poll(() => lb.locator('.lb-img').evaluate((el) => el.style.transform)).toContain('scale(1)');
+    await lb.locator('.lb-in').click();
+    await expect.poll(() => lb.locator('.lb-img').evaluate((el) => el.style.transform)).toContain('scale(1.5)');
+    await page.keyboard.press('Escape');
+    await expect(lb).toBeHidden();
+    await expect(first.locator('.spot-open')).toBeFocused();
+  });
+
   test('?trade=hvac opens on the HVAC spotlight', async ({ page }) => {
     await page.goto('/?trade=hvac');
     await expect(page.locator('.spotlight-set[data-trade="hvac"]')).toBeVisible();

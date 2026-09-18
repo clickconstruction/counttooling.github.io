@@ -13,6 +13,12 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(landing): the trade chips sit directly above the film they select (2026-09-18)
+
+Robert, from the live page: the chips read as a headline ornament above the h1 while the film they
+control sat a screen below. They now sit under the CTAs and the phone line, directly above the hero
+media (44 px above it, 16 px gap). Same buttons, same behaviour, same spec.
+
 ## fix(duct): the suggestion sentence is a card above the footer, not a label on the cursor (2026-09-18)
 
 Punch row DUCT-HINT (Robert, from the HVAC hero film). The Duct tool's one-line suggestion

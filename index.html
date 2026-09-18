@@ -93,13 +93,6 @@
   <main>
     <section class="hero">
       <div class="wrap">
-        <!-- The chips pick which trade's film plays in the hero below: the lit one is playing,
-             a click swaps the film in place, and with no click the three play in turn. -->
-        <div class="trade-chips" role="group" aria-label="Which trade's takeoff plays below">
-          <button type="button" class="chip" data-trade="plumbing" data-film="/img/hero-plumbing" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5C8.2 7.6 5 11.4 5 15a7 7 0 0 0 14 0c0-3.6-3.2-7.4-7-12.5z"/></svg>Plumbing</button>
-          <button type="button" class="chip" data-trade="electrical" data-film="/img/hero-electrical" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>Electrical</button>
-          <button type="button" class="chip" data-trade="hvac" data-film="/img/hero-hvac" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="stroke" d="M3 8h9.5a2.5 2.5 0 1 0-2.5-2.5M3 12h13.5a2.5 2.5 0 1 1-2.5 2.5M3 16h7.5a2 2 0 1 1-2 2"/></svg>HVAC</button>
-        </div>
         <h1>Plumbing, electrical, and HVAC takeoffs, <br class="br-wide">right on the plan.</h1>
         <p>Count fixtures and devices, measure pipe, conduit, and duct, and hand a bid-ready takeoff to your pricing app. Nothing to install, works offline, even on a tablet or phone in the field.</p>
         <div class="hero-cta">
@@ -107,6 +100,13 @@
           <a class="btn btn-ghost" href="/app/?signin=1">Already have access? Sign in</a>
         </div>
         <p class="hero-phone">New here? Call <a href="tel:+15123600599">(512) 360-0599</a> to get set up.</p>
+        <!-- The chips pick which trade's film plays in the hero right under them: the lit one is playing,
+             a click swaps the film in place, and with no click the three play in turn. -->
+        <div class="trade-chips" role="group" aria-label="Which trade's takeoff plays below">
+          <button type="button" class="chip" data-trade="plumbing" data-film="/img/hero-plumbing" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5C8.2 7.6 5 11.4 5 15a7 7 0 0 0 14 0c0-3.6-3.2-7.4-7-12.5z"/></svg>Plumbing</button>
+          <button type="button" class="chip" data-trade="electrical" data-film="/img/hero-electrical" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>Electrical</button>
+          <button type="button" class="chip" data-trade="hvac" data-film="/img/hero-hvac" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="stroke" d="M3 8h9.5a2.5 2.5 0 1 0-2.5-2.5M3 12h13.5a2.5 2.5 0 1 1-2.5 2.5M3 16h7.5a2 2 0 1 1-2 2"/></svg>HVAC</button>
+        </div>
         <div class="hero-media" id="heroMedia">
           <img class="hero-shot" src="/img/hero-plumbing.png" width="1920" height="1200" alt="CountTooling in use: a plumbing takeoff on a restaurant plan, the fixtures counted and the cold and hot water traced over the sheet's own lines, with the tallies and hanger rows in the sidebar.">
           <video class="hero-video" muted playsinline preload="none" poster="/img/hero-plumbing.png" aria-hidden="true" tabindex="-1">

@@ -13,6 +13,24 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(lines): the edit-mode vertex menu for fittings from bends (2026-09-18)
+
+Punch row BEND-OVERRIDE, the follow-up to BEND-FITTINGS below. In Edit Polyline, a right-click on
+a vertex of a run whose line type counts fittings from bends now opens a small menu instead of
+deleting the vertex: the heading says what the angle reads ("Vertex 2 · reads as 90°", and the
+override once one is set), then "No fitting here" (a jog drawn to route around text),
+"Count as 45", "Count as 90", "Read from the angle" (only while an override is set), and
+"Delete vertex" (the old action, kept reachable). An endpoint of an open run is never an elbow,
+so it offers Delete vertex only. The choice writes `points[i].fitting` on the vertex, which the
+model already honoured, so it rides save, load, export and the Artboard untouched; each edit is
+one undo step. A run whose type has the option off keeps the old right-click-deletes behaviour
+exactly. The bend chips now paint on the run being edited too (they were only on committed runs),
+through a helper shared with the draw core, and an overridden "no fitting" vertex shows a grey
+dashed "no" chip so the choice stays visible. The status bar's edit hint names the right-click.
+New: `features/bend-override.js` (the menu, the tool-context-menu dismissal pattern),
+`drawBendFittingChips` in canvas-draw.js; a fourth case in bend-fittings.spec.js. Tees and wyes
+still wait for the water plan's attachment rung.
+
 ## feat(lines): fittings from bends, a line type option that counts its own elbows (2026-09-18)
 
 Punch row BEND-FITTINGS (Robert's ask; mockup https://claude.ai/artifact/6Gj27nuq1uYh9BZjeSPm82).

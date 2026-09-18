@@ -74,6 +74,37 @@
 // Drop marker glyph at the start/end of a line with a drop length — style is
 // lineTypeSettings.dropIconStyle ('circle' | 'plus' | 'diamond' | 'triangle' |
 // default X), s the half-size in canvas px. Black outer stroke, colored inner.
+// BEND-FITTINGS: a small chip at each vertex that counts a fitting ("45" / "90"),
+// in the run's colour; a vertex overridden to no fitting draws a grey dashed
+// "no" chip so the choice stays visible; a forced class draws like a read one.
+// Pure read of fitting-model.js (window.FittingModel); nothing when the type has
+// the option off. Shared by the annotation draw core and app.js's edit-mode paint.
+function drawBendFittingChips(ctx, pts, closed, color, lt, tc, fontScale, fontFamily) {
+  const fm = (typeof window !== 'undefined') ? window.FittingModel : null;
+  if (!fm || !lt || !fm.bendFittingsEnabled(lt) || !pts || pts.length < 3) return;
+  const fs = fontScale || 1;
+  const w = 22 * fs, h = 12 * fs, off = 7 * fs;
+  ctx.save();
+  ctx.font = '600 ' + (8.5 * fs) + 'px ' + (fontFamily || 'DM Sans') + ', sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const k = fm.vertexBendClass(pts, i, !!closed);
+    const isNone = p && p.fitting === 'none' && (closed || (i > 0 && i < pts.length - 1));
+    if (!k && !isNone) continue;
+    const c = tc(p);
+    const x = c.x + off, y = c.y - off - h;
+    ctx.setLineDash(isNone ? [3 * fs, 2 * fs] : []);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = isNone ? '#9e9b96' : (color || '#4a9eff'); ctx.lineWidth = 1;
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = isNone ? '#9e9b96' : '#17171a';
+    ctx.fillText(isNone ? 'no' : (k === 'bend90' ? '90' : '45'), x + w / 2, y + h / 2 + 0.5);
+  }
+  ctx.restore();
+}
+
 function drawDropMarker(ctx, p, s, color, style) {
   const lwOut = Math.max(2, Math.round(s * 0.4));
   const lwIn = Math.max(1, Math.round(s * 0.2));
@@ -658,32 +689,9 @@ function createCanvasDraw(deps) {
         if ((poly.startDrop || 0) > 0) drawDropSizeLabel(pts[0], pts[1], poly.startDrop, poly.startDropUnit);
         if ((poly.endDrop || 0) > 0) drawDropSizeLabel(pts[pts.length - 1], pts[pts.length - 2], poly.endDrop, poly.endDropUnit);
       }
-      // BEND-FITTINGS: a small chip at each bend that counts a fitting ("45" / "90"),
-      // in the run's colour, so the estimator sees what the tally will say. Pure
-      // read of fitting-model.js; a run whose type has the option off draws nothing.
-      {
-        const fm = (typeof window !== 'undefined') ? window.FittingModel : null;
-        const bplt = fm ? (state.lineTypes || []).find(l => l.id === poly.lineTypeId) : null;
-        if (bplt && fm.bendFittingsEnabled(bplt) && pts.length >= 3) {
-          const fs = env.fontScale || 1;
-          const w = 22 * fs, h = 12 * fs, off = 7 * fs;
-          ctx.font = '600 ' + (8.5 * fs) + 'px ' + (env.fontFamily || 'DM Sans') + ', sans-serif';
-          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-          for (let i = 0; i < pts.length; i++) {
-            const k = fm.vertexBendClass(pts, i, !!poly.closed);
-            if (!k) continue;
-            const c = tc(pts[i]);
-            const x = c.x + off, y = c.y - off - h;
-            ctx.fillStyle = 'rgba(255,255,255,0.92)';
-            ctx.fillRect(x, y, w, h);
-            ctx.strokeStyle = poly.color || '#4a9eff'; ctx.lineWidth = 1;
-            ctx.strokeRect(x, y, w, h);
-            ctx.fillStyle = '#17171a';
-            ctx.fillText(k === 'bend90' ? '90' : '45', x + w / 2, y + h / 2 + 0.5);
-          }
-          ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-        }
-      }
+      // BEND-FITTINGS: the chip at each bend that counts a fitting (and the grey
+      // "no" chip at an overridden vertex); the shared helper above.
+      drawBendFittingChips(ctx, pts, !!poly.closed, poly.color || '#4a9eff', (state.lineTypes || []).find(l => l.id === poly.lineTypeId), tc, env.fontScale || 1, env.fontFamily);
       if (poly.showLength && pts.length >= 2) {
         const tickLen = lts.parallelEndsSize ?? 10;
         const drawPerpTick = (endPdf, tangentPdf) => {
@@ -1681,5 +1689,5 @@ function createCanvasDraw(deps) {
 // Dual-env export so canvas-draw.test.js can require() the module under
 // `node --test`; inert in the browser (classic script).
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createCanvasDraw, drawDropMarker, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS, DUCT_VERTICAL_COLOR, DUCT_GHOST_ALPHA, DUCT_GHOST_MIN_PX, ductPxPerPdfPt, ductGhostWidthPx };
+  module.exports = { createCanvasDraw, drawDropMarker, drawBendFittingChips, hexToRgb, lineStyleToDash, DUCT_AIRSIDE_COLORS, DUCT_VERTICAL_COLOR, DUCT_GHOST_ALPHA, DUCT_GHOST_MIN_PX, ductPxPerPdfPt, ductGhostWidthPx };
 }

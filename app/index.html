@@ -3365,6 +3365,10 @@
   <!-- Tool context menu: the right-click mini menu for tool buttons; items
        are built by features/tool-context-menu.js -->
   <div id="toolContextMenu" class="tool-context-menu" role="menu" aria-label="Tool options" hidden></div>
+  <!-- BEND-OVERRIDE: the edit-mode vertex menu for fittings from bends
+       (features/bend-override.js): no fitting here / count as 45 / count as 90 /
+       read from the angle / delete vertex; the tool-context-menu dismissal pattern -->
+  <div id="bendVertexMenu" class="tool-context-menu" role="menu" aria-label="Vertex fitting" hidden></div>
   <!-- Duct fitting/run context menu (features/duct-fittings.js, DUCT unit D3):
        heading + reclassify/delete rows built per right-clicked target; the
        tool-context-menu dismissal pattern (capture-phase Esc, outside click) -->
@@ -3558,6 +3562,7 @@
   <script src="/features/user-activity.js"></script>
   <script src="/features/user-activity-overview.js"></script>
   <script src="/features/tool-context-menu.js"></script>
+  <script src="/features/bend-override.js"></script>
   <script src="/features/lines-list.js"></script>
   <script src="/features/pages-list.js"></script>
   <script src="/features/sidebar-lists.js"></script>

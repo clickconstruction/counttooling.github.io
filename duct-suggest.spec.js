@@ -79,6 +79,32 @@ test.describe('Duct design-build suggestions (D6)', () => {
 
   const suggestion = (page) => page.evaluate(() => window.App.getDuctDraftSuggestion());
 
+  test('DUCT-HINT: the suggestion rides a card fixed above the footer, clear of the cursor; it leaves with the draft', async ({ page }) => {
+    const wrapper = page.locator('#canvasWrapper');
+    await createCfmCounter(page, 'Diffuser 150', 150);
+    await wrapper.click({ position: { x: 150, y: 300 } });
+    await armDuct(page);
+    const card = page.locator('#ductHintCard');
+    await expect(card).toBeHidden();   // armed, no vertex: nothing to say yet
+    await wrapper.click({ position: { x: 100, y: 300 } });
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('150 CFM downstream');
+    await expect(card.locator('b')).toHaveText('150 CFM downstream');
+    await expect(card.locator('kbd')).toHaveText('S');
+    // Fixed inside the canvas above its bottom edge, well below the row being traced,
+    // and never a click target.
+    const [cb, wb] = await Promise.all([card.boundingBox(), wrapper.boundingBox()]);
+    expect(cb.y + cb.height).toBeLessThanOrEqual(wb.y + wb.height);
+    expect(cb.y).toBeGreaterThan(wb.y + 300 + 24);
+    expect(Math.abs((cb.x + cb.width / 2) - (wb.x + wb.width / 2))).toBeLessThan(4);
+    expect(await card.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+    // Finishing the run takes the card with it.
+    await wrapper.click({ position: { x: 250, y: 300 } });
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !window.state.drawingDuct);
+    await expect(card).toBeHidden();
+  });
+
   test('CFM counter + trace: the suggestion carries the remaining CFM; the S popover applies it and records the step', async ({ page }) => {
     const wrapper = page.locator('#canvasWrapper');
 

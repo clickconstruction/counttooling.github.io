@@ -36,3 +36,4 @@ How agents add to this list: AGENTS.md, "Recording a to-do".
 | P4-WATER | Water sizing by fixture units: IPC first, water only, mockups before code | build | dev | — | [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) |
 | EXPIRY-30 | 30-minute checkout expiry under contention is still unwalked (time-gated; machinery covered by unit and spec) | test | tester | — | [_NEXT.md](journeys/plans/_NEXT.md) |
 | SPEC-DUPES | Nit: specs double-create identically-named test projects, churning rows on the test account | chore | agent | — | [_NEXT.md](journeys/plans/_NEXT.md) |
+| SPOTLIGHT | The trade spotlight under the hero: six real screenshots per trade, following the chips, generated from the app (Robert, 2026-09-18; HVAC first) | build | agent | — | [LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md#the-trade-spotlight-plan-of-record-2026-09-18) |

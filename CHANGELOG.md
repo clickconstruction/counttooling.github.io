@@ -13,6 +13,18 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the trade chips select the hero film; the three-trade take retires (2026-09-17)
+
+Punch row HERO-EHVAC closed. The three chips above the headline are buttons now: the pressed
+chip is the film selected, the lit one the film playing, a click swaps the film and its poster in
+place (the `<source>`, the `poster`, the SEO still and its alt), and with no click the three
+films play in turn (the plumbing film first; `ended` selects the next; a click pins a trade and it
+loops). Reduced-motion readers keep the stills, which the chips still switch. Playback still
+starts when the hero scrolls into view. `img/landing-hero.{mp4,png}` are deleted and the
+generator loses `--film trades`, its seeds, its `record()` and `loadApp` (the act-time sync
+`index.html` hardcoded is gone with them); `img.hero-shot` is plumbing's poster now. AGENTS.md,
+DECOMPOSITION_MAP.md and the build-screenshots comment follow.
+
 ## feat(landing): the HVAC film, "Pounds, not feet", first cut (2026-09-17)
 
 `npm run build:hero-video -- --film hvac` writes `img/hero-hvac.{mp4,png}` (49.8 s, 3.4 MB) from

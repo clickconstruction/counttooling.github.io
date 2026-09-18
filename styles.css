@@ -762,6 +762,13 @@
     .save-contents-toggle { display: flex; align-items: center; gap: 8px; margin: 0; }
     .toggle-switch { position: relative; width: 40px; height: 22px; padding: 0; border: none; border-radius: 11px; background: var(--surface3); cursor: pointer; flex-shrink: 0; transition: background 0.2s ease; }
     .toggle-switch[aria-pressed="true"] { background: var(--accent); }
+    /* BEND-FITTINGS: the per-bend-class rows under the toggle in the line type's details. */
+    .bend-fitting-rows { display: grid; gap: 6px; margin-top: 8px; }
+    .bend-fitting-row { display: grid; grid-template-columns: minmax(96px, 1fr) minmax(0, 2fr) 56px; gap: 8px; align-items: center; font-size: 0.85rem; }
+    .bend-fitting-row .bend-fitting-class { color: var(--text2); }
+    .bend-fitting-row input { min-width: 0; width: 100%; padding: 6px 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; font-size: 0.85rem; }
+    .bend-fitting-foot { color: var(--text3); font-size: 0.78rem; margin-top: 4px; }
+    @media (max-width: 480px) { .bend-fitting-row { grid-template-columns: 1fr 56px; } .bend-fitting-row .bend-fitting-class { grid-column: 1 / -1; } }
     .toggle-switch:hover { opacity: 0.9; }
     .toggle-switch-knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s ease; }
     .toggle-switch[aria-pressed="true"] .toggle-switch-knob { transform: translateX(18px); }

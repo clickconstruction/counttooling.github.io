@@ -45,6 +45,7 @@
   <script src="/bid-check-model.js"></script>
   <script src="/tag-model.js"></script>
   <script src="/support-model.js"></script>
+  <script src="/fitting-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/bid-basis-model.js"></script>
   <script src="/canvas-draw.js"></script>
@@ -2220,6 +2221,16 @@
           <span class="child-count-add-spacer"></span>
           <button type="button" id="childCountAdd">+ Add</button>
         </div>
+      </div>
+      <!-- BEND-FITTINGS (2026-09-18): elbows derived from a run's own bends and
+           drops; one row per bend class names the fitting it produces. Line types
+           only; features/child-counts.js renders the rows on modal open. -->
+      <div class="form-group" id="bendFittingsGroup" hidden>
+        <div class="child-count-add">
+          <span style="flex:1;">Fittings from bends <span class="form-sublabel">(a bend nearer 45° or 90° counts that fitting; each drop at an end counts a 90; derived, never marks)</span></span>
+          <button type="button" class="toggle-switch" id="bendFittingsBtn" aria-pressed="false" title="Count fittings from this type's bends and drops"><span class="toggle-switch-knob"></span></button>
+        </div>
+        <div id="bendFittingsRows" class="bend-fitting-rows" hidden></div>
       </div>
       <div class="actions">
         <button id="counterLineTypeDetailsDelete" class="danger">Delete</button>

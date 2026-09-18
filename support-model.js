@@ -90,6 +90,23 @@ function hangerSuggestionsFor(name) {
 function lineTypeCountsHangers(lt) {
   return ((lt && lt.childCounts) || []).some((ch) => (ch.ruleId && /^plumb\.hanger\./.test(ch.ruleId)) || (ch.per === 'ft' && /hanger|strap|clamp|support/i.test(ch.name || '')));
 }
+// BEND-FITTINGS: the row beside the hangers row. Informational ('na') while
+// no line type has fittings from bends on at all (the option is off by default
+// and a bid that never used it owes nothing); 'warn' once some pipe types count
+// their fittings and others with a supported material do not; 'ok' when every
+// supported type does. Returns null when no line type declares a material.
+function bendFittingCoverage(lineTypes) {
+  const supported = (lineTypes || []).filter((lt) => !!supportMaterialFromName(lt && lt.name));
+  if (!supported.length) return null;
+  const on = supported.filter((lt) => !!(lt.bendFittings && lt.bendFittings.enabled));
+  const off = supported.filter((lt) => !(lt.bendFittings && lt.bendFittings.enabled));
+  const names = (xs) => xs.map((x) => x.name || 'Line').join(', ');
+  const anyOn = (lineTypes || []).some((lt) => lt && lt.bendFittings && lt.bendFittings.enabled);
+  const base = { id: 'bend-fittings', kind: 'auto', label: 'Fittings counted on every pipe run', supported: supported.length, missing: off.length };
+  if (!anyOn) return Object.assign(base, { verdict: 'na', detail: 'Fittings from bends is off. A line type\'s details can count its 45s, 90s and drops from the run itself.' });
+  if (off.length) return Object.assign(base, { verdict: 'warn', detail: names(off) + (off.length === 1 ? ' does' : ' do') + ' not count fittings from bends; ' + names(on) + (on.length === 1 ? ' does' : ' do') + '.' });
+  return Object.assign(base, { verdict: 'ok', detail: names(on) + (on.length === 1 ? ' counts its' : ' count their') + ' 45s, 90s and drops from the runs.' });
+}
 // The Bid Check row: every line type whose name declares a supported material
 // should carry a hanger count. Returns null when no line type declares one.
 function hangerCoverage(lineTypes) {
@@ -113,7 +130,7 @@ function hangerCoverage(lineTypes) {
   };
 }
 
-const SUPPORT_MODEL_API = { HANGER_SPACING, SUPPORT_MATERIAL_ORDER, supportMaterialFromName, supportSizeInFromName, formatSizeIn, childIntervalFeet, childIntervalLabel, hangerSuggestionsFor, lineTypeCountsHangers, hangerCoverage };
+const SUPPORT_MODEL_API = { bendFittingCoverage, HANGER_SPACING, SUPPORT_MATERIAL_ORDER, supportMaterialFromName, supportSizeInFromName, formatSizeIn, childIntervalFeet, childIntervalLabel, hangerSuggestionsFor, lineTypeCountsHangers, hangerCoverage };
 if (typeof window !== 'undefined') window.SupportModel = SUPPORT_MODEL_API;
 // Node test harness only: in a classic browser <script> `module` is undefined.
 if (typeof module !== 'undefined' && module.exports) module.exports = SUPPORT_MODEL_API;

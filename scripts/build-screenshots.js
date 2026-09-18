@@ -1071,7 +1071,115 @@ async function hvacRun(page) {
   await page.waitForTimeout(300);
 }
 
+// --- electrical, "Circuit 7": what the film makes on camera, seeded -------------------
+const RECEPT_E = [[238.5, 371.5], [288.75, 371.5], [339, 371.5], [389.25, 371.5], [172.5, 437.5]];   // north wall east of the door, then the west wall
+const SWITCH_E = [234, 370];
+const LIGHTS_E = [[247.5, 411.25], [352.5, 411.25], [247.5, 463.75], [352.5, 463.75]];
+const CHAIN_E = [[247.5, 506.5], [300, 506.5], [352.5, 506.5]];   // along the south wall
+const LP1_E = [492, 442];                                          // panel LP-1 on the janitor's east wall
+async function electricalBase(page) {
+  await page.evaluate(({ pw, rec, sw, lights, chain, lp1 }) => {
+    const s = window.state, App = window.App, uid = () => App.uid();
+    s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+    App.setProjectTrade && App.setProjectTrade('electrical', { remember: false, route: 'tour' });
+    s.ceilingHeightFt = 10; s.makeUpFt = 1; s.groupsEnabled = true;
+    const ann = s.pages[0].canvases[0].annotations;
+    const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+    const icon = (variant, fallback) => (App.tradeIconForType && App.tradeIconForType('electrical', variant)) || ci(fallback) || App.getOrderedIcons()[0].value;
+    const r = { id: uid(), name: 'Duplex Receptacle', icon: icon('Duplex', 'Duplex Receptacle'), color: '#e85447', mountHeightIn: 18 };
+    const w = { id: uid(), name: 'Single Pole Switch', icon: icon('Single Pole', 'Single Pole Switch'), color: '#e8c547', mountHeightIn: 48 };
+    const l = { id: uid(), name: '2x4 Troffer Fixture', icon: icon('2x4 Troffer', '2x4 Troffer'), color: '#4a9eff' };
+    s.counters.push(r, w, l);
+    const cm = window.ConductorModel;
+    const emt = { id: uid(), name: '3/4in EMT', color: '#a47fff', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors: cm ? cm.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [] };
+    s.lineTypes.push(emt);
+    const g = { id: uid(), name: 'Circuit 7', color: '#c8963a', panel: 'LP-1', circuit: '7', loadAmps: 12 };
+    s.groups.push(g); s.activeGroupId = g.id;
+    ann.counterMarkers[r.id] = rec.map(([x, y]) => ({ x, y, id: uid(), group: g.id }));
+    ann.counterMarkers[w.id] = [{ x: sw[0], y: sw[1], id: uid(), group: g.id }];
+    ann.counterMarkers[l.id] = lights.map(([x, y]) => ({ x, y, id: uid(), group: g.id }));
+    s.counterSettings = Object.assign({}, s.counterSettings, { size: 40, outlineSize: 2 });
+    // the chain, device to device, each click writing its drop (ceiling 10 − mount 1.5 + make-up 1)
+    s.activeCounterType = r.id; s.activeLineTypeId = emt.id; s.tool = App.TOOL.CHAIN; s.chainStart = null;
+    chain.forEach(([x, y]) => App.commitChainPoint({ x, y }));
+    s.chainStart = null; s.tool = App.TOOL.NONE;
+    // the home run to LP-1 on the same conduit
+    ann.quickLines.push({ id: uid(), x1: chain[2][0], y1: chain[2][1], x2: lp1[0], y2: lp1[1], lineTypeId: emt.id, color: emt.color, group: g.id, homerun: true });
+    ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
+    window.__spot = { r: r.id, emt: emt.id };
+    App.markProjectDirty(); App.renderPdf(); App.updateUI(); App.renderAnnotations();
+  }, { pw: PLAN_W, rec: RECEPT_E, sw: SWITCH_E, lights: LIGHTS_E, chain: CHAIN_E, lp1: LP1_E });
+  await fitPlan(page);
+  await page.waitForTimeout(350);
+}
+
 const SPOTLIGHT = [
+  {
+    name: 'electrical-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card',
+    async setup(page) {
+      await electricalBase(page);
+      await page.evaluate(() => document.getElementById('addCounter').click());
+      await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+      await page.evaluate(() => window.App.showCounterTab && window.App.showCounterTab('quickcount'));
+      await page.waitForTimeout(200);
+      await page.locator('#counterQuickCountTradeSegment [data-trade="electrical"]').click();
+      await page.waitForTimeout(200);
+      await page.selectOption('#counterQuickCountSize', 'Receptacle');
+      await page.selectOption('#counterQuickCountType', 'Duplex');
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'electrical-2-chain', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#chainPanel',   // the panel at the canvas's top left, the chained run below it
+    async setup(page) {
+      await electricalBase(page);
+      await frameRegion(page, CAM_OPEN_OFFICE);
+      await page.evaluate(() => { const s = window.state, App = window.App; s.activeCounterType = window.__spot.r; s.activeLineTypeId = window.__spot.emt; document.getElementById('chainBtn').click(); App.updateUI(); });
+      await page.waitForSelector('#chainPanel', { state: 'visible', timeout: 5000 });
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'electrical-3-conduit', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterLineTypeDetailsModal .modal-card',
+    async setup(page) {
+      await electricalBase(page);
+      await page.evaluate(() => { const lt = window.state.lineTypes.find((l) => l.id === window.__spot.emt); window.App.openCounterLineTypeDetailsModal('lineType', lt); });
+      await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'electrical-4-wire', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#summaryList',
+    async setup(page) {
+      await electricalBase(page);
+      await page.evaluate(() => { const sec = document.getElementById('summarySection'); if (sec) sec.classList.remove('collapsed'); if ('summaryCollapsed' in window.state) window.state.summaryCollapsed = false; window.App.updateUI(); });
+      await page.locator('.summary-derived-item').first().scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'electrical-5-bid-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#bidCheckSection',
+    async setup(page) {
+      await electricalBase(page);
+      await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
+      await page.locator('#bidCheckSection').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'electrical-6-handoff', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper',
+    async setup(page) {
+      await electricalBase(page);
+      await page.evaluate(() => { window.open = () => ({ location: { set href(_) {} }, focus() {} }); });
+      await page.locator('#forTakeoffTooling').scrollIntoViewIfNeeded();
+      await page.locator('#forTakeoffTooling').click();
+      await page.waitForTimeout(300);
+      const menu = await page.evaluate(() => !!document.querySelector('#forTakeoffToolingMenu.visible'));
+      if (menu) { await page.locator('#forTakeoffToolingMenu .takeoff-tooling-option[data-mode="all"]').click(); await page.waitForTimeout(300); }
+      await page.waitForSelector('#airboardToastModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+  },
   {
     name: 'hvac-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card',
     async setup(page) {

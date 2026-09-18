@@ -531,6 +531,16 @@ the rest are new setups.
    "from the plan". Preview of the section with these frames: the "Trade Spotlight Preview"
    artifact.
 2. **SPOT-2 · the electrical set.** `electricalSpotSetup`, six frames. Two to three hours.
+   **DONE 2026-09-18** (branch `claude/spotlight-electrical`): `electricalBase` seeds the film's
+   devices (receptacles at 18 in, the switch at 48, the troffers), the `3/4in EMT` type with its
+   raceway and conductors, the circuit group LP-1/7 with every device in it, the chain along the
+   south wall through `App.commitChainPoint` (each leg carrying its 9.5 ft drop), and the home
+   run to LP-1 flagged `homerun: true`, which is what lets the voltage-drop row compute (a
+   circuit needs a panel mark or a homerun to know where the panel is). Marks at size 40 so the
+   device glyphs read at frame size. Frames: the Quick tab (Category / Variant / Rating, mount
+   18"), the Chain panel over the chained run, the conduit's details dialog, the Summary's
+   derived #12 THHN rows, Bid Check (fill 10% ✓, voltage drop 2.3% ✓ on LP-1/7), and Open in
+   TakeoffTooling's toast.
 3. **SPOT-3 · the plumbing set.** `plumbingSpotSetup` on the restaurant sheet, six frames.
    Two hours.
 4. **SPOT-4 · the section.** Markup, CSS, captions, the asset test, the spec cases, the plan

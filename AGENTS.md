@@ -37,7 +37,9 @@
   `npm run build:sample-plan` makes a synthetic floor plan (`samples/sample-plan.pdf`; `build:sample-plan-advanced` the restaurant plumbing sheet `samples/sample-plan-advanced.pdf`), and
   `npm run build:screenshots` (`scripts/build-screenshots.js`) drives the real app headlessly,
   lays a sample takeoff on it, opens dialogs, overlays numbered callouts, and writes
-  `guides/img/*.png` referenced from articles via Markdown `![]()`. Both are manual (browser +
+  `guides/img/*.png` referenced from articles via Markdown `![]()`; `--set spotlight` builds the
+  landing's trade-spotlight frames instead (`img/spotlight/<trade>-<n>-<slug>.jpg`, a fixed 4:3
+  window, JPEG; plan in journeys/plans/LANDING-REFRESH.md). Both are manual (browser +
   non-deterministic pixels) and **not** in `npm run check` — like `build:og-image`; the
   link-integrity test fails only if an article references a missing image.
   **The landing hero is three films, one per trade**: `npm run build:hero-video -- --film

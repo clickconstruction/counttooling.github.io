@@ -13,6 +13,16 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): SPOT-1, the spotlight screenshot set and the six HVAC frames (2026-09-18)
+
+Punch row SPOTLIGHT, first rung. `scripts/build-screenshots.js` gains `--set spotlight`: a second
+catalogue written to `img/spotlight/` as JPEG (quality 85) in a fixed 1200×900 window centred on the
+surface, so a trade's six frames share one aspect on the page; `frameRegion` frames a sheet region
+like the hero film's camera. The HVAC set is built: the Quick tab with a 150 CFM diffuser, Room Size
+naming CONFERENCE 103 off the plan, the traced main with its chip and hint card, the S popover, the
+Duct Schedule at 174 lb, Bid Check's HVAC rows. No landing change yet (SPOT-4 ships the section once
+all three sets exist). Detail in LANDING-REFRESH.md.
+
 ## feat(landing): the landing for a shop owner: ?trade= link, a proof panel that follows the trade, the shop section (2026-09-18)
 
 Five changes for one visit (Robert: an HVAC shop owner in Houston and Dallas landing on the page).

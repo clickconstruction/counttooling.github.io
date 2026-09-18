@@ -187,8 +187,25 @@ and the "Opened TakeoffTooling with N rows" toast is pinned for the last frame. 
 camera: the scale preset, the trade, the 10 ft ceiling and 1 ft make-up (project settings), and
 the Groups gate; the switch and troffer colours are set after the Quick tab adds them.
 
-Still to do: the HVAC film, the chip switching on the landing, and retiring the three-trade
-take. The landing keeps playing `landing-hero.mp4` until then.
+**HVAC, first cut, 2026-09-17, "Pounds, not feet" on A-101, 49.8 s, 3.4 MB, `img/hero-hvac.{mp4,png}`
+(`npm run build:hero-video -- --film hvac`).** Same spine, on camera. Prepare keeps A-101, M-101
+and M-201; the scale is proved on the 24'-0" bay. `V` arms the Room Sizer and three drags box
+OPEN OFFICE 105, CONFERENCE 103 and OFFICE 101, each Room Size dialog opening with the name
+already read off the plan; ceiling 9 typed once, the deck 12 typed on the first, the type set,
+Apply, and each room answers with ft³ and the CFM it needs (506, 374, 283). The diffuser is
+made on the Quick tab (HVAC, 12x12, Supply Diffuser, CFM 150); three in the open office leave
+its tag short, the fourth turns it green. The system is a group made under Groups with tag
+RTU-1 and capacity 2,000, made before the main so the main lands in it. `U` opens New Duct
+Run at 24×12, Start Tracing; `S` opens the size popover twice on the way across the room and
+the rectangular suggestion is tapped each time, so the main reads 24×12 → 16×8 → 12×8 with two
+transitions counted; `Enter` commits. The Duct Schedule opens on its Bid weight (174 lb), Bid
+Check is expanded and read honestly ("two rooms still short": three rooms boxed, one served;
+"Fits the roof" computes green on its own once the deck height is known, so it is no longer a
+manual tick), the pull-back frames the plan, and Copy Schedule ends it with its toast pinned.
+Seeded, not on camera: the scale preset, the trade, the Groups gate.
+
+Still to do: the chip switching on the landing (the three films exist), and retiring the
+three-trade take. The landing keeps playing `landing-hero.mp4` until then.
 
 ## Hand-off: the per-trade films (2026-09-17)
 
@@ -204,6 +221,7 @@ with ffmpeg. Both outputs are committed.
 |---|---|---|
 | `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | third cut, 43.0 s, 3.8 MB, NOT on the page yet |
 | `npm run build:hero-video -- --film electrical` | `img/hero-electrical.{mp4,png}` | first cut, 49.9 s, 3.3 MB, NOT on the page yet |
+| `npm run build:hero-video -- --film hvac` | `img/hero-hvac.{mp4,png}` | first cut, 49.8 s, 3.4 MB, NOT on the page yet |
 | `npm run build:hero-video -- --film trades` | `img/landing-hero.{mp4,png}` | the three-trade take the landing plays today |
 
 Iterating: `HERO_FPS=4 node scripts/build-hero-video.js --frames-only --keep-frames` walks the
@@ -307,7 +325,7 @@ the wire row slides in by itself, 3 #12 THHN, 128 ft, tagged derived; Bid Check 
 voltage drop 2.4 percent and conduit fill 31 percent, each wearing its NEC section; pull back,
 layer off and on; Open in TakeoffTooling.
 
-**HVAC, "Pounds, not feet"** (about 26 s): room boxes over the open office, conference and two
+**HVAC, "Pounds, not feet"** (about 26 s) — **BUILT 2026-09-17, 49.8 s, see above**: room boxes over the open office, conference and two
 offices, each reading its name off the plan and answering with ft², ft³ and the CFM it needs;
 diffusers at 150 CFM, three leaving the tag amber at 450 of 508 and the fourth turning it
 green; RTU-1 at 2,000 CFM, the main tracing out at 24×12 with the chip showing the air still
@@ -317,6 +335,11 @@ layer off and on; copy the schedule.
 
 ### Gotchas worth not rediscovering
 
+- **The size popover offers round and rectangular.** `.duct-suggest-chip` rows carry both
+  (12"Ø and 16×8 for the same air); a rectangular main stays rectangular, so pick the chip whose
+  text has the ×. Bid Check's manual "Fits the roof" upgrades itself to an auto row once the deck
+  height is known, so there is no `.bid-check-box` to tick; hover the row instead. Auto rows carry
+  `data-row-id`; manual boxes carry `data-id`.
 - **Two toast timers.** Copy to PipeTooling hides its card through `App.hideModal` (wrap it);
   `showToast` (Open in TakeoffTooling, "Counts copied…") hides through app.js's own closure
   function, which no wrapper reaches, so pin that card with a MutationObserver that puts

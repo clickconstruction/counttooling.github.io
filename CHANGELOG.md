@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the HVAC film, "Pounds, not feet", first cut (2026-09-17)
+
+`npm run build:hero-video -- --film hvac` writes `img/hero-hvac.{mp4,png}` (49.8 s, 3.4 MB) from
+the office sheet, on camera: the set lands and Prepare keeps three; the scale proved; `V` and three
+Room Sizer drags, each dialog naming its room off the plan (ceiling, deck, type); a 150 CFM
+diffuser made on the Quick tab, three leaving the open office short and the fourth turning its tag
+green; the system RTU-1 at 2,000 CFM made under Groups; `U` and the main traced at 24×12 with `S`
+stepping it to 16×8 and 12×8 on the rectangular suggestions; the Duct Schedule's bid weight; Bid
+Check read honestly (two rooms still short; "Fits the roof" computes itself once the deck is
+known); the pull-back; Copy Schedule with its toast pinned. Generator: `recordHvac`,
+`seedOfficeHvac`, the room and main geometry. Not on the landing yet; the three films now exist,
+so HERO-EHVAC is the chip switching and the retirement of the three-trade take.
+
 ## feat(landing): the electrical film, "Circuit 7", first cut (2026-09-17)
 
 `npm run build:hero-video -- --film electrical` writes `img/hero-electrical.{mp4,png}` (49.9 s,

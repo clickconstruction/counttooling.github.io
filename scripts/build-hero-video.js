@@ -30,6 +30,13 @@
  *             raceway and conductors set; the circuit group LP-1/7; the chain writing 9.5 ft
  *             drops; the home run; Bid Check's voltage drop and fill; the pull-back; Open in
  *             TakeoffTooling. Writes img/hero-electrical.{mp4,png}.
+ *   hvac      "Pounds, not feet" on A-101: the set lands and Prepare keeps three; the scale
+ *             proved; three rooms boxed with the Room Sizer (names off the plan, ceiling,
+ *             deck, type); a 150 CFM diffuser made on the Quick tab, three leaving the room
+ *             short and the fourth turning its tag green; the system RTU-1 at 2,000 CFM;
+ *             the main traced at 24×12 with S stepping it down; the Duct Schedule's bid
+ *             weight; Bid Check signed; the pull-back; Copy Schedule. Writes
+ *             img/hero-hvac.{mp4,png}.
  *   trades    the original three-trade take on the office sheet, img/landing-hero.{mp4,png}.
  *
  * Manual, like build:screenshots (needs a browser and ffmpeg; pixels are not
@@ -440,6 +447,14 @@ const LP1 = B(576, 496);                                                 // pane
 const CAM_A_PLAN = { x1: 120, y1: 95, x2: 800, y2: 560 };
 const CAM_A_OFFICE = { x1: 118, y1: 322, x2: 520, y2: 548 };             // the open office with LP-1 just in frame
 const CAM_A_PULL = { x1: 100, y1: 80, x2: 820, y2: 740 };                // the plan (not the whole sheet: one room's marks stay legible) with the band beneath
+
+// --- the HVAC film, "Pounds, not feet", on the office sheet A-101 -----------------------
+const ROOM_OPEN_OFFICE = { x1: B(132, 384).x, y1: B(132, 384).y, x2: B(470, 600).x, y2: B(470, 600).y };   // OPEN OFFICE 105, 508 ft²
+const ROOM_CONFERENCE = { x1: B(640, 100).x, y1: B(640, 100).y, x2: B(790, 340).x, y2: B(790, 340).y };    // CONFERENCE 103
+const ROOM_OFFICE_101 = { x1: B(300, 100).x, y1: B(300, 100).y, x2: B(470, 340).x, y2: B(470, 340).y };    // OFFICE 101
+const DIFFUSERS_H = [{ x: 200, y: 457 }, { x: 268, y: 457 }, { x: 336, y: 457 }, { x: 404, y: 457 }];      // four across the open office, on the main's line
+const MAIN_H = [{ x: 164, y: 452 }, { x: 240, y: 452 }, { x: 320, y: 452 }, { x: 406, y: 452 }];             // the main, corridor side to the far wall, two size steps on the way
+const SET_KEEP_H = [2, 12, 13];   // A-101, M-101, M-201
 
 // The thirty-sheet set: the restaurant sheet copied per discipline, each copy stamped
 // with a sheet number and name in a band across the top so the Prepare PDF grid reads
@@ -926,6 +941,234 @@ async function recordElectrical(page, dir, setPdf) {
   return R.n;
 }
 
+// Page-side seed for the HVAC film: the scale preset, the trade and the Groups gate. Rooms,
+// the diffuser, the system, the main and its sizes are all made on camera; the deck height
+// is typed into the first Room Size dialog.
+const seedOfficeHvac = () => {
+  const s = window.state, App = window.App;
+  s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+  App.setProjectTrade && App.setProjectTrade('hvac', { remember: false, route: 'tour' });
+  s.groupsEnabled = true;
+  App.updateUI(); App.renderAnnotations();
+};
+
+async function recordHvac(page, dir, setPdf) {
+  const clip = await page.locator('.app').boundingBox();
+  const R = new Recorder(page, clip, dir);
+  await page.evaluate(OVERLAY_SRC);
+  await page.evaluate(() => {
+    const st = document.createElement('style');
+    st.textContent = '#headerBidChip, #headerBidChipDivider { display: none !important; } .sidebar { width: 300px !important; }';
+    document.head.appendChild(st);
+  });
+  await page.evaluate(bigMarks);
+  await R.jump(clip.x + clip.width * 0.55, clip.y + clip.height * 0.5);
+
+  // 1 · The set lands. Prepare PDF: thirty sheets, keep three.
+  await page.locator('#pdfInput').setInputFiles(setPdf);
+  await page.waitForSelector('#preparePdfModal.visible', { timeout: 20000 });
+  await page.waitForSelector('#preparePdfGrid .prepare-pdf-tile', { timeout: 20000 });
+  await page.waitForTimeout(900);
+  R.caption('', '30 sheets.');
+  await R.hold(0.25);
+  await R.moveToEl('#preparePdfName', 0.35); await R.click();
+  await page.keyboard.press('Meta+A'); await page.keyboard.type('Suite 200 Office TI', { delay: 14 }); await R.hold(0.1);
+  await R.moveToEl('#preparePdfKeepNone', 0.35); await R.click();
+  R.caption('', '30 sheets. Keep 3.');
+  await R.hold(0.2);
+  for (const idx of SET_KEEP_H) { await R.moveToEl('#preparePdfGrid .prepare-pdf-tile[data-orig-idx="' + idx + '"]', 0.25); await R.click(); }
+  await R.hold(0.1);
+  await R.moveToEl('#preparePdfDone', 0.3); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#preparePdfModal.visible') && window.state.pages.length === 3, { timeout: 30000 });
+  await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
+  await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
+  await page.waitForFunction(() => (window.App.peekPageTextItems(0) || []).length > 0, { timeout: 15000 });   // the room names come off the plan's text
+  await page.evaluate(seedOfficeHvac);
+  await page.evaluate(bigMarks);
+
+  // 2 · A-101 opens. Push in from the sheet to the plan.
+  R.caption('', 'Suite 200, A-101');
+  await R.setCamera(CAM_SHEET);
+  await page.waitForTimeout(500);
+  await R.hold(0.25);
+  await R.camera(CAM_A_PLAN, 0.75);
+  await page.waitForTimeout(300);
+  await R.hold(0.2);
+
+  // 3 · Prove the scale on the 24'-0" bay.
+  R.caption('', 'Prove the scale.');
+  await page.evaluate(armScaleCheck);
+  await R.moveToPt(DIM_24[0], 0.45); await R.click();
+  await R.moveToPt(DIM_24[1], 0.5); await R.click();
+  await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+  await R.hold(0.2);
+  await R.moveToEl('#scaleCheckValue', 0.3); await R.click();
+  await page.keyboard.type('24', { delay: 40 }); await R.hold(0.15);
+  await R.moveToEl('#scaleCheckBtn', 0.3); await R.click();
+  await R.hold(0.6);
+  await R.moveToEl('#scaleCheckCancel', 0.25); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#scaleModal.visible'), { timeout: 5000 });
+  await R.hold(0.15);
+
+  // 4 · Rooms. V arms the Room Sizer; a drag over each room opens Room Size with the name
+  //     already read off the plan; ceiling 9, the deck 12 (once), the type, Apply. Each
+  //     room answers with ft², ft³ and the air it needs.
+  const boxRoom = async (r, type, deck) => {
+    await R.moveToPt({ x: r.x1, y: r.y1 }, 0.5);
+    await page.mouse.down(); R.clicks.push({ n: R.n, x: R.cur.x, y: R.cur.y }); await R.frame();
+    await R.moveToPt({ x: r.x2, y: r.y2 }, 0.7);
+    await page.mouse.up();
+    await page.waitForSelector('#roomBoxModal.visible', { timeout: 5000 });
+    await R.hold(0.35);
+    const h = await page.evaluate(() => document.getElementById('roomBoxHeight').value);
+    if (!h) { await R.moveToEl('#roomBoxHeight', 0.3); await R.click(); await R.type('9', 12); }
+    if (deck) { await R.moveToEl('#roomBoxDeck', 0.3); await R.click(); await R.type(String(deck), 12); }
+    const typeShown = await page.evaluate(() => document.getElementById('roomBoxTypeGroup').style.display !== 'none');
+    if (typeShown) { await R.moveToEl('#roomBoxType', 0.3); await R.click(); await page.selectOption('#roomBoxType', type); await R.hold(0.2); }
+    await R.moveToEl('#roomBoxApply', 0.35); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#roomBoxModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    await R.hold(0.45);
+  };
+  R.caption('', 'Box the rooms; the plan names them.');
+  await R.keyAs('V', 'v');
+  await boxRoom(ROOM_OPEN_OFFICE, 'office', 12);
+  await boxRoom(ROOM_CONFERENCE, 'conference', 0);
+  await boxRoom(ROOM_OFFICE_101, 'office', 0);
+  await page.evaluate(endTool);
+  await R.hold(0.3);
+
+  // 5 · The diffuser, made on the Quick tab with its 150 CFM, then four in the open office:
+  //     three leave the room's tag short, the fourth turns it green.
+  R.caption('', 'A diffuser, 150 CFM.');
+  await R.moveToEl('#addCounter', 0.45); await R.click();
+  await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+  await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.3); await R.click();
+  await R.hold(0.15);
+  await R.moveToEl('#counterQuickCountTradeSegment [data-trade="hvac"]', 0.35); await R.click(); await R.hold(0.2);
+  await R.moveToEl('#counterQuickCountSize', 0.3); await R.click();
+  await page.selectOption('#counterQuickCountSize', '12x12'); await R.hold(0.15);
+  await R.moveToEl('#counterQuickCountType', 0.3); await R.click();
+  await page.selectOption('#counterQuickCountType', 'Supply Diffuser'); await R.hold(0.2);
+  await R.moveToEl('#counterQuickCountCfm', 0.3); await R.click();
+  await R.type('150', 10);
+  await R.hold(0.2);
+  await R.moveToEl('#counterQuickCountAdd', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
+  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+  await R.camera(CAM_A_OFFICE, 0.6);
+  await page.waitForTimeout(300);
+  R.caption('', 'Three leave the room short.');
+  for (const [i, p] of DIFFUSERS_H.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.3 : 0.4); await R.click(); await R.hold(0.15); }
+  await R.hold(0.5);
+  R.caption('', 'The fourth turns it green.');
+  await R.moveToPt(DIFFUSERS_H[3], 0.35); await R.click();
+  await page.evaluate(endTool);
+  await R.hold(0.7);
+
+  // 6 · The system: a group with an equipment tag and a capacity. Made first, so the main lands in it.
+  R.caption('', 'RTU-1, 2,000 CFM.');
+  if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.45); await R.click(); await R.hold(0.15); }
+  await R.moveToEl('#addGroup', 0.3); await R.click();
+  await page.waitForSelector('#groupModal.visible', { timeout: 5000 });
+  await R.moveToEl('#groupModalName', 0.3); await R.click();
+  await R.type('RTU-1', 12);
+  await R.moveToEl('#groupModalEquipTag', 0.3); await R.click();
+  await R.type('RTU-1', 12);
+  await R.moveToEl('#groupModalCapacityCfm', 0.3); await R.click();
+  await R.type('2000', 12);
+  await R.hold(0.15);
+  await R.moveToEl('#groupModalDone', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
+  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+  await R.hold(0.25);
+
+  // 7 · The main. U opens New Duct Run (24×12), Start Tracing; the chip under the cursor
+  //     reads the air still to serve; S opens the size popover and the suggested size is
+  //     tapped; Enter commits, and the elbows and taps count themselves.
+  R.caption('', 'Trace the main at 24×12.');
+  await R.keyAs('U', 'u');
+  await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
+  await R.hold(0.4);
+  await R.moveToEl('#ductCreateStart', 0.4); await R.click();
+  await page.waitForFunction(() => !!window.state.drawingDuct, { timeout: 5000 });
+  await R.moveToPt(MAIN_H[0], 0.4); await R.click();
+  await R.moveToPt(MAIN_H[1], 0.7); await R.click();
+  await R.hold(0.3);
+  // S opens the popover; the suggestion offers a round and a rectangular size, and a
+  // rectangular main stays rectangular, so the chip with the × is the one tapped.
+  const stepAtS = async () => {
+    await R.keyAs('S', 's');
+    await page.waitForSelector('#ductSizePopover', { state: 'visible', timeout: 5000 });
+    await R.hold(0.45);
+    const idx = await page.evaluate(() => { const chips = [...document.querySelectorAll('#ductSizePopover .duct-suggest-chip')]; const i = chips.findIndex((c) => /×/.test(c.textContent)); return chips.length ? (i >= 0 ? i : 0) : -1; });
+    const sel = idx >= 0 ? '#ductSizePopover .duct-suggest-chip:nth-of-type(' + (idx + 1) + ')' : '#ductSizePopover .duct-step-chip';
+    await R.moveToEl(sel, 0.4); await R.click();
+    await R.hold(0.25);
+  };
+  R.caption('', 'S: the size steps down with the air.');
+  await stepAtS();
+  await R.moveToPt(MAIN_H[2], 0.7); await R.click();
+  await R.hold(0.2);
+  await stepAtS();
+  await R.moveToPt(MAIN_H[3], 0.7); await R.click();
+  await R.key('Enter');
+  await page.waitForFunction(() => !window.state.drawingDuct, { timeout: 5000 });
+  await page.evaluate(endTool);
+  await R.hold(0.6);
+
+  // 8 · Pounds, not feet: the Duct Schedule, gauge and bid weight; sign off in Bid Check.
+  R.caption('', 'Pounds, not feet.');
+  await R.moveToEl('#ductScheduleBtn', 0.5); await R.click();
+  await page.waitForSelector('#ductScheduleModal.visible', { timeout: 5000 });
+  await R.hold(0.4);
+  await R.moveToEl('#ductScheduleModal .duct-schedule-bid-row', 0.5);
+  await R.hold(1.0);
+  await R.moveToEl('#ductScheduleClose', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#ductScheduleModal.visible'), { timeout: 5000 });
+  // Bid Check, honest: three rooms boxed, one served, and the row says which two are short.
+  // "Fits the roof" computes itself once the deck height is known (12 ft), so it is green
+  // without a tick.
+  R.caption('', 'Bid Check: two rooms still short.');
+  await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-rooms-served"]', 0.6); await R.hold(1.0);
+  R.caption('', 'Fits the roof: computed, green.');
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-fits-roof"]', 0.45); await R.hold(0.9);
+
+  // 9 · Nothing missed: the plan, marks off, marks on.
+  R.caption('', 'Nothing missed.');
+  await R.camera(CAM_A_PULL, 0.9);
+  await page.waitForTimeout(400);
+  await R.hold(0.5);
+  await page.evaluate(setHideMarks, true); await R.hold(0.4);
+  await page.evaluate(setHideMarks, false); await R.hold(0.55);
+
+  // 10 · Done: Copy Schedule, its toast let back in and pinned.
+  await page.evaluate(() => {
+    const st = document.createElement('style');
+    const cw = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+    st.textContent = '#toastRegion { display: flex !important; top: auto !important; right: auto !important; left: ' + Math.round(cw.left + 28) + 'px !important; bottom: ' + Math.round(window.innerHeight - cw.bottom + 28) + 'px !important; align-items: flex-start !important; }'
+      + ' #toastRegion .toast-card.visible { display: block !important; } #bidCheckAdvisoryModal { display: none !important; }';
+    document.head.appendChild(st);
+    const m = document.getElementById('airboardToastModal');
+    let seen = false;
+    new MutationObserver(() => { const v = m.classList.contains('visible'); if (v) seen = true; else if (seen) m.classList.add('visible'); }).observe(m, { attributes: true, attributeFilter: ['class'] });
+  });
+  await R.moveToEl('#ductScheduleBtn', 0.5); await R.click();
+  await page.waitForSelector('#ductScheduleModal.visible', { timeout: 5000 });
+  await R.moveToEl('#ductScheduleCopy', 0.45); await R.click();
+  await page.waitForTimeout(400);
+  console.log('\n  copy toast: ' + JSON.stringify(await page.evaluate(() => ({ text: document.getElementById('airboardToastText').textContent, visible: document.getElementById('airboardToastModal').classList.contains('visible'), cards: [...document.querySelectorAll('#toastRegion .toast-card.visible')].map((x) => x.id) }))));
+  await R.moveToEl('#ductScheduleClose', 0.3); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#ductScheduleModal.visible'), { timeout: 5000 });
+  await R.moveToPt(B(560, 250), 0.35);
+  await R.hold(1.2);
+  R.caption('', 'Done.');
+  await R.hold(1.0);
+  console.log('\n  ' + R.n + ' frames');
+  return R.n;
+}
+
 async function loadApp(page, baseUrl) {
   // the Drop-sizes canvas label ("3 ft" beside the riser) is a per-device toggle
   await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
@@ -975,6 +1218,13 @@ function ffmpeg(args) {
       await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
       frames = await recordElectrical(page, dir, setPdf);
+    } else if (FILM === 'hvac') {
+      const setPdf = path.join(dir, 'sample-set.pdf');
+      await buildSampleSet(setPdf, PLAN, 'A-101');
+      await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); localStorage.setItem('showScaleRefLine', 'false'); } catch (_) { /* private mode */ } });
+      await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
+      await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
+      frames = await recordHvac(page, dir, setPdf);
     } else {
       await loadApp(page, `http://127.0.0.1:${port}`);
       frames = await record(page, dir);

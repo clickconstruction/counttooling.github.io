@@ -2317,6 +2317,10 @@
         ctx.fillStyle = '#e8c547'; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
       });
+      // BEND-FITTINGS: the run is out of the annotations while it is edited, so its
+      // bend chips are painted here (the same helper canvas-draw uses), overrides included.
+      const elt = (state.lineTypes || []).find(l => l.id === state.editingPolyline.lineTypeId);
+      if (typeof drawBendFittingChips === 'function') drawBendFittingChips(ctx, pts, !!state.editingPolyline.closed, state.editingPolyline.color || '#4a9eff', elt, toCanvas, z * currentEffDpr, 'DM Sans');
     }
     if (state.showLegendOverlay) {
       if (!ann.legend) {
@@ -6086,6 +6090,10 @@
       const pts = state.editingPolyline.points || [];
       const r = 12 / state.zoom;
       const idx = pts.findIndex(p => ptDist(pdf, p) < r);
+      // BEND-OVERRIDE: a vertex of a run whose type counts fittings from bends
+      // opens the fitting menu (features/bend-override.js); otherwise the
+      // right-click deletes the vertex, as it always has.
+      if (idx >= 0 && App.tryOpenBendVertexMenu && App.tryOpenBendVertexMenu(idx, e.clientX, e.clientY)) return;
       if (idx >= 0 && pts.length > 2) {
         pushUndoSnapshot();
         pts.splice(idx, 1);

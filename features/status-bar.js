@@ -294,7 +294,7 @@
             toolHint += ': ' + readout;
           }
         }
-        else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline';
+        else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline · drag a vertex · right-click a vertex';
         // The hint only rides when the bar stays on ONE line (field feedback
         // 2026-08-14): on narrow layouts the status bar flex-wraps, and a long
         // project name + "Tap start point" shoved the right-side actions onto

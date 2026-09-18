@@ -6,7 +6,9 @@
  * as rows under the type in the Summary and the exports, never as marks. The
  * fitting each class produces is named and counted on the type. Also: the
  * details dialog's toggle and rows, the Bid Check row beside the hangers row,
- * and the bend chips drawing without errors.
+ * and the bend chips drawing without errors. BEND-OVERRIDE (2026-09-18): the
+ * edit-mode vertex menu (features/bend-override.js) writes points[i].fitting;
+ * a type with the option off keeps the old right-click-deletes-the-vertex.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -30,6 +32,16 @@ async function setupProject(page) {
     ann.quickLines.push({ x1: 100, y1: 500, x2: 220, y2: 500, color: '#2e86de', id: 'q1', lineTypeId: 'lt-cu', endDrop: 3, endDropUnit: 'ft' });
     window.App.updateUI();
   });
+}
+
+// PDF-space -> viewport client coords, through the annotation canvas's rect.
+async function screenPointForPdf(page, pdf) {
+  return page.evaluate((p) => {
+    const c = document.getElementById('annCanvas');
+    const rect = c.getBoundingClientRect();
+    const bc = window.App.toCanvas(p);
+    return { x: rect.left + bc.x * (rect.width / c.width), y: rect.top + bc.y * (rect.height / c.height) };
+  }, pdf);
 }
 
 const totalsFor = (page, id) => page.evaluate((ltId) => JSON.parse(JSON.stringify(window.App.getChildCountTotals().byGroup['null']?.lineType?.[ltId] || [])), id);
@@ -122,5 +134,72 @@ test.describe('Fittings from bends', () => {
     // no supported material anywhere: no row
     await page.evaluate(() => { window.state.lineTypes.forEach((l, i) => { l.name = 'Line ' + String.fromCharCode(65 + i); }); window.App.updateUI(); });
     expect(await row()).toBeNull();
+  });
+
+  test('edit mode: a right-click on a vertex offers no fitting / count as 45 / count as 90 / read from the angle; the override rides the run', async ({ page }) => {
+    await setupProject(page);
+    const menu = page.locator('#bendVertexMenu');
+    const openOn = async (idx) => {
+      const pdf = await page.evaluate((i) => window.state.editingPolyline.points[i], idx);
+      const sp = await screenPointForPdf(page, pdf);
+      await page.mouse.click(sp.x, sp.y, { button: 'right' });
+      await expect(menu).toBeVisible();
+    };
+    await page.evaluate(() => window.App.enterEditMode('p1', 0));
+    expect(await page.evaluate(() => window.state.editingPolyline?.id)).toBe('p1');
+
+    // vertex 2 reads as a 90; say it is a jog, no fitting
+    await openOn(1);
+    await expect(menu.locator('.tool-context-menu-heading')).toHaveText('Vertex 2 · reads as 90°');
+    await expect(menu.locator('button')).toHaveText(['No fitting here', 'Count as 45', 'Count as 90', 'Delete vertex']);
+    await menu.locator('button[data-action="none"]').click();
+    await expect(menu).toBeHidden();
+    expect(await page.evaluate(() => window.state.editingPolyline.points[1].fitting)).toBe('none');
+    // the heading shows the choice; "Read from the angle" appears; the 90 is offered again
+    await openOn(1);
+    await expect(menu.locator('.tool-context-menu-heading')).toHaveText('Vertex 2 · reads as 90° · set: no fitting');
+    await expect(menu.locator('button')).toHaveText(['Count as 45', 'Count as 90', 'Read from the angle', 'Delete vertex']);
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+    // still in edit mode after the Escape (the menu ate it)
+    expect(await page.evaluate(() => window.state.editingPolyline?.id)).toBe('p1');
+
+    // vertex 3 reads as a 45; force a 90
+    await openOn(2);
+    await menu.locator('button[data-action="bend90"]').click();
+    // an endpoint is never an elbow: delete only
+    await openOn(0);
+    await expect(menu.locator('.tool-context-menu-heading')).toHaveText('Vertex 1 · an end, never an elbow');
+    await expect(menu.locator('button')).toHaveText(['Delete vertex']);
+    await page.keyboard.press('Escape');
+
+    // done: the run goes back with its overrides; the tally follows (was 2 × 45 + 1 × 90 + 1 drop)
+    await page.locator('#doneEditing').click();
+    expect(await page.evaluate(() => window.state.editingPolyline)).toBeFalsy();
+    expect(await page.evaluate(() => window.state.pages[0].canvases[0].annotations.polylines.find((p) => p.id === 'p1').points.map((p) => p.fitting || null))).toEqual([null, 'none', 'bend90', null, null]);
+    const rows = await totalsFor(page, 'lt-cu');
+    expect(rows.find((r) => r.bendClass === 'bend45').total).toBe(1);
+    expect(rows.find((r) => r.bendClass === 'bend90').total).toBe(1);
+    expect(rows.find((r) => r.bendClass === 'drop').total).toBe(1);
+
+    // read from the angle: the override leaves, the read returns
+    await page.evaluate(() => window.App.enterEditMode('p1', 0));
+    await openOn(2);
+    await menu.locator('button[data-action="angle"]').click();
+    await page.locator('#doneEditing').click();
+    expect((await totalsFor(page, 'lt-cu')).find((r) => r.bendClass === 'bend45').total).toBe(2);
+
+    // a type with the option off: the right-click deletes the vertex, no menu
+    await page.evaluate(() => {
+      const ann = window.state.pages[0].canvases[0].annotations;
+      ann.polylines.push({ id: 'p3', lineTypeId: 'lt-pex', color: '#4a9eff', closed: false, points: [{ x: 100, y: 600 }, { x: 220, y: 600 }, { x: 220, y: 700 }] });
+      window.App.updateUI();
+      window.App.enterEditMode('p3', 0);
+    });
+    const sp = await screenPointForPdf(page, { x: 220, y: 600 });
+    await page.mouse.click(sp.x, sp.y, { button: 'right' });
+    await expect(menu).toBeHidden();
+    expect(await page.evaluate(() => window.state.editingPolyline.points.length)).toBe(2);
+    await page.locator('#doneEditing').click();
   });
 });

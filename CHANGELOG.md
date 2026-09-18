@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(edit): undo while editing a run no longer loses the run (2026-09-18)
+
+Found by the BEND-OVERRIDE test round. A run in Edit Polyline is spliced out of its page into
+`state.editingPolyline`, so every undo snapshot taken mid-edit (a vertex delete, a fitting
+choice, and Done Editing's own) captured the page WITHOUT the run; an undo then dropped the run
+outright and left the tool in edit mode with nothing to edit (Done Editing still showing).
+Predates the menu (the old right-click delete took the same snapshot) but the menu made it easy
+to reach. Now app.js's snapshot wrappers put the run home for the length of the copy, undo and
+redo do the same for the snapshot they take for the opposite stack, and an undo or redo applied
+mid-edit leaves edit mode cleanly (tool, Done Editing button, canvas cursor class, the vertex
+menu). Done Editing homes the run as it was when editing BEGAN, so one undo after Done reverts the
+whole edit session, drags included (drags take no snapshot of their own). Regression: the fifth
+case in bend-fittings.spec.js, which also covers the menu's Delete vertex, a closed run, outside
+click dismissal, screen-edge placement, the touch long-press, and a save/import round trip of the
+override.
+
 ## feat(lines): the edit-mode vertex menu for fittings from bends (2026-09-18)
 
 Punch row BEND-OVERRIDE, the follow-up to BEND-FITTINGS below. In Edit Polyline, a right-click on

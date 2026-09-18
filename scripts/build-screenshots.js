@@ -235,8 +235,8 @@ async function routeViewProject(page, withDrops) {
 // callouts: [{ n, sel?, x?, y? }]  (sel → anchored to that element; else x/y are
 //           relative to the clip box). boxes: [{ sel?, rect? }].
 const SHOTS = [
-  // (The marketing landing hero is a video now: scripts/build-hero-video.js writes
-  // img/landing-hero.{mp4,webm,png}; the PNG is its poster, not a shot from here.)
+  // (The marketing landing hero is three films now: scripts/build-hero-video.js writes
+  // img/hero-<trade>.{mp4,png}; the PNGs are their posters, not shots from here.)
 
   // The plan with a takeoff on it — clean hero (markup + legend speak for themselves).
   { name: 'plan-takeoff', clip: '#canvasWrapper', setup: takeoffSetup },

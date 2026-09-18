@@ -441,7 +441,7 @@ Total features/: **10,592 lines** across 44 files.
 - **`my-counters/`**: 48 SVG sources → icons-custom.js. Naming defects = D12.
 - **`vendor/`**: 209 files, ~5.4 MB + cmaps/fonts — version-pinned, catalogue only.
   Largest: pdf.worker (1.09 MB), pdf-lib (525 KB), jspdf (364 KB), pdf.js (320 KB).
-- **`icons/`**: 5 generated PWA icons. **`img/`**: landing-hero.png (249 KB).
+- **`icons/`**: 5 generated PWA icons. **`img/`**: the three hero films, hero-{plumbing,electrical,hvac}.{mp4,png} (about 3.5 MB each).
   **`samples/`**: sample-plan.pdf (generated). **`render-pixels.spec.js-snapshots/`**:
   6 baselines (3 scenarios × darwin/linux; both platforms active — the spec runs in CI).
 - **Fixtures**: test-page.pdf, test-2pages.pdf. **SEO**: og-image.png (generated),

@@ -204,8 +204,16 @@ Check is expanded and read honestly ("two rooms still short": three rooms boxed,
 manual tick), the pull-back frames the plan, and Copy Schedule ends it with its toast pinned.
 Seeded, not on camera: the scale preset, the trade, the Groups gate.
 
-Still to do: the chip switching on the landing (the three films exist), and retiring the
-three-trade take. The landing keeps playing `landing-hero.mp4` until then.
+**The chips select the film, 2026-09-17.** The three chips above the headline are buttons now
+(`aria-pressed` names the film selected, `.is-live` the film playing). The hero plays the
+plumbing film first; with no click the three play in turn (the `ended` event selects the next,
+the video no longer loops); a click pins that trade and it loops. Selecting swaps the poster,
+the `<source>` and the `img.hero-shot` (with a per-trade alt) in place and reloads the video,
+which starts again if it was playing, the click was the user's, or the hero is in view.
+Reduced-motion readers keep the stills, which the chips still switch. `window.__heroFilm()`
+reports the selection for the spec. The three-trade take (`img/landing-hero.{mp4,png}` and the
+generator's `--film trades`, its seeds and its `record()`) is retired; the act-time sync it
+needed is gone with it. Punch row HERO-EHVAC closed.
 
 ## Hand-off: the per-trade films (2026-09-17)
 
@@ -219,10 +227,9 @@ with ffmpeg. Both outputs are committed.
 
 | Command | Writes | State |
 |---|---|---|
-| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | third cut, 43.0 s, 3.8 MB, NOT on the page yet |
-| `npm run build:hero-video -- --film electrical` | `img/hero-electrical.{mp4,png}` | first cut, 49.9 s, 3.3 MB, NOT on the page yet |
-| `npm run build:hero-video -- --film hvac` | `img/hero-hvac.{mp4,png}` | first cut, 49.8 s, 3.4 MB, NOT on the page yet |
-| `npm run build:hero-video -- --film trades` | `img/landing-hero.{mp4,png}` | the three-trade take the landing plays today |
+| `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | third cut, 43.0 s, 3.8 MB, on the page (default) |
+| `npm run build:hero-video -- --film electrical` | `img/hero-electrical.{mp4,png}` | first cut, 49.9 s, 3.3 MB, on the page |
+| `npm run build:hero-video -- --film hvac` | `img/hero-hvac.{mp4,png}` | first cut, 49.8 s, 3.4 MB, on the page |
 
 Iterating: `HERO_FPS=4 node scripts/build-hero-video.js --frames-only --keep-frames` walks the
 same timeline at 4 fps in under a minute and leaves the JPEGs in a temp dir, which it prints.

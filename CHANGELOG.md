@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): SPOT-4, the trade spotlight under the hero (2026-09-18)
+
+Punch row SPOTLIGHT closed. A section right after the hero, "Your trade, in the app", shows six
+frames of the real app for the trade the chips have selected: three `.spotlight-set` blocks shown
+through `html[data-hero-trade]` (the switch the film and the proof panel already follow), each
+with a heading, a lede naming the sheet, and six lazy 4:3 JPEG frames with one-line captions; a
+3 × 2 grid on desktop, a snap strip under 900 px; no new JavaScript, and a hidden set's frames
+are never fetched. The eighteen frames come from `scripts/build-screenshots.js --set spotlight`
+(SPOT-1 to SPOT-3). `landing-assets.test.js` joins `npm run check` as the drift guard;
+`landing-trade.spec.js` pins the visible set, the lazy loading, the chip swap and `?trade=hvac`.
+The three ⚑ decisions were built with their recommended defaults (six frames, plain headings,
+quiet captions) and remain Robert's to change. Detail in LANDING-REFRESH.md.
+
 ## feat(landing): SPOT-3, the six plumbing spotlight frames (2026-09-18)
 
 Punch row SPOTLIGHT, third rung. `scripts/build-screenshots.js` takes a per-shot `plan` (the

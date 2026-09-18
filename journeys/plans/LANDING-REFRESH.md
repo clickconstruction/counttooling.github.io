@@ -428,10 +428,10 @@ professional), no partner or pricing language. Pinned by `landing-trade.spec.js`
 
 ## The trade spotlight (plan of record, 2026-09-18)
 
-> Punch row **SPOTLIGHT**. Robert's ask: a part of the page under the video that changes with
-> the trade chips and shows, in pictures, the specific tools that trade gets. Status: **planned,
-> nothing built.** Decisions marked ⚑ are Robert's; everything else is decided here so a fresh
-> session can build it from this file alone.
+> Punch row **SPOTLIGHT** (closed 2026-09-18). Robert's ask: a part of the page under the video
+> that changes with the trade chips and shows, in pictures, the specific tools that trade gets.
+> Status: **built, all four rungs, 2026-09-18** (see the ladder). Decisions marked ⚑ were built
+> with the recommended default and remain Robert's to change.
 
 ### What it is
 
@@ -555,17 +555,24 @@ the rest are new setups.
 4. **SPOT-4 · the section.** Markup, CSS, captions, the asset test, the spec cases, the plan
    and CHANGELOG notes. Ships all three at once, so the section never shows an empty trade.
    Three hours. Gates: `landing-trade.spec.js` + `seo.spec.js` locally, `npm run check`, then
-   the headless check against counttooling.com after the merge.
+   the headless check against counttooling.com after the merge. **DONE 2026-09-18** (branch
+   `claude/spotlight-section`): `#spotlight` right after the hero, three `.spotlight-set`
+   blocks shown through `html[data-hero-trade]` (plumbing before the script runs), each with
+   its `<h2>`, a lede naming the sheet, and six `<figure class="spot">` (lazy JPEG, 4:3,
+   caption); a 3 × 2 grid on desktop, a snap strip under 900 px; no new JavaScript.
+   `landing-assets.test.js` (in `npm run check`) pins referenced ⇔ committed and six per
+   trade in order; `landing-trade.spec.js` pins the visible set, the lazy loading (a hidden
+   set's frames never fetch), the chip swap and `?trade=hvac`. Punch row SPOTLIGHT closed.
 
 About a day and a half in total. HVAC first because that is the visitor being prepared for.
 
 ### Decisions before building
 
-- ⚑ **Six frames or four.** Six tells the whole loop; four is tighter on a phone. `[decision] ____`
+- ⚑ **Six frames or four.** Six tells the whole loop; four is tighter on a phone. `[decision]` six (built with the default, 2026-09-18; Robert to say otherwise)
 - ⚑ **Heading wording.** "Plumbing, surface by surface" as drafted, or the film's own line
-  ("Kitchen, Tuesday" · "Circuit 7" · "Pounds, not feet"). `[decision] ____`
+  ("Kitchen, Tuesday" · "Circuit 7" · "Pounds, not feet"). `[decision]` as drafted (built with the default, 2026-09-18)
 - ⚑ **Captions.** Quiet one-liners as drafted (recommended), or numbered callouts on the frames
-  as the guides do. `[decision] ____`
+  as the guides do. `[decision]` quiet one-liners (built with the default, 2026-09-18)
 
 ### Out of scope, on purpose
 

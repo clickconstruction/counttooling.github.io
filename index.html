@@ -135,12 +135,16 @@
         };
         var order = chips.map(function (c) { return c.getAttribute('data-trade'); });
         var current = 'plumbing', pinned = false, inView = false;
+        // ?trade=hvac (or plumbing / electrical) lands on that film, pinned, so a link sent
+        // to an HVAC shop opens on the HVAC takeoff; the proof panel below follows the chip.
+        var asked = (new URLSearchParams(window.location.search).get('trade') || '').toLowerCase();
         window.__heroFilm = function () { return current; };   // the landing spec reads this
         function chipFor(trade) { for (var i = 0; i < chips.length; i++) if (chips[i].getAttribute('data-trade') === trade) return chips[i]; return chips[0]; }
         function light() { chips.forEach(function (c) { c.classList.toggle('is-live', !!v && !v.paused && c.getAttribute('data-trade') === current); }); }
         function start() { if (!v || reduced) return; v.preload = 'auto'; var p = v.play(); if (p && p.catch) p.catch(function (err) { window.__heroPlayError = String(err); }); }
         function select(trade, byUser) {
           current = trade;
+          document.documentElement.setAttribute('data-hero-trade', trade);
           var base = chipFor(trade).getAttribute('data-film');
           chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c.getAttribute('data-trade') === trade)); });
           if (shot) { shot.src = base + '.png'; shot.alt = alts[trade] || shot.alt; }
@@ -155,6 +159,7 @@
           light();
         }
         chips.forEach(function (c) { c.addEventListener('click', function () { pinned = true; select(c.getAttribute('data-trade'), true); }); });
+        if (order.indexOf(asked) >= 0) { pinned = true; select(asked, false); } else document.documentElement.setAttribute('data-hero-trade', current);
         if (v && !reduced) {
           v.addEventListener('pause', light);
           v.addEventListener('playing', function () { media.classList.add('is-playing'); light(); });
@@ -218,10 +223,10 @@
             </div>
             <p class="trade-tag">Rooms to airflow to duct to pounds.</p>
             <ul class="checks">
-              <li>Room boxes give ft² and ft³, with CFM by room type</li>
+              <li>Plan-and-spec or design-build: sizes read off the sheet's callouts, or from the rooms' CFM</li>
+              <li>Room boxes give ft² and ft³ with CFM by room type; diffusers and equipment carry theirs</li>
               <li>Trace duct with size steps; elbows, transitions, and taps count themselves</li>
-              <li>SMACNA-style gauge and one Bid weight on the Duct Schedule</li>
-              <li>Diffusers and equipment as counters that carry their CFM</li>
+              <li>Gauge from a simplified SMACNA schedule, cited by rule, and one Bid weight on the Duct Schedule</li>
             </ul>
             <p class="trade-links"><a href="/app/?tour=hvac">Five-minute walkthrough</a><a class="muted" href="/guides/hvac-takeoff/">Guide</a></p>
           </div>
@@ -243,11 +248,28 @@
             </div>
           </div>
           <div class="proof-card">
-            <div class="bidcheck" aria-label="Bid Check panel, illustrative values">
-              <div class="bidcheck-head"><span>Bid Check</span><span class="muted">this project · NEC 2023</span></div>
-              <div class="bidcheck-row"><span>Voltage drop on the longest branch</span><span class="cite"><b>§</b> 210.19 FPN · 2.4%</span></div>
-              <div class="bidcheck-row"><span>Conduit fill, 3/4" EMT, 6 × #12</span><span class="cite"><b>§</b> Ch. 9 Tbl. 1 · 31%</span></div>
-              <div class="bidcheck-row"><span>Hangers, 1" PEX, 1 per 32"</span><span class="cite"><b>§</b> IPC 308.5 · 15</span></div>
+            <!-- The panel shows the rows of whichever trade the hero chips have selected
+                 (html[data-hero-trade], set by the hero script). Values are illustrative;
+                 the rows are the ones the app really computes for that trade. -->
+            <div class="bidcheck" aria-label="Bid Check panel, illustrative values, following the selected trade">
+              <div class="bidcheck-rows" data-trade="plumbing">
+                <div class="bidcheck-head"><span>Bid Check</span><span class="muted">this project · IPC 2021</span></div>
+                <div class="bidcheck-row"><span>Hangers, 2" copper, 1 per 10 ft</span><span class="cite"><b>§</b> IPC 308.5 · 17</span></div>
+                <div class="bidcheck-row"><span>Hangers, 1-1/4" copper hot, 1 per 6 ft</span><span class="cite"><b>§</b> IPC 308.5 · 28</span></div>
+                <div class="bidcheck-row"><span>Scale checked on the 31'-8" string</span><span class="cite"><b>✓</b> exact</span></div>
+              </div>
+              <div class="bidcheck-rows" data-trade="electrical">
+                <div class="bidcheck-head"><span>Bid Check</span><span class="muted">this project · NEC 2023</span></div>
+                <div class="bidcheck-row"><span>Voltage drop on the longest branch</span><span class="cite"><b>§</b> 210.19 FPN · 2.4%</span></div>
+                <div class="bidcheck-row"><span>Conduit fill, 3/4" EMT, 6 × #12</span><span class="cite"><b>§</b> Ch. 9 Tbl. 1 · 31%</span></div>
+                <div class="bidcheck-row"><span>Circuits on plan vs the panel schedule, LP-1</span><span class="cite"><b>✓</b> 7 of 42 poles</span></div>
+              </div>
+              <div class="bidcheck-rows" data-trade="hvac">
+                <div class="bidcheck-head"><span>Bid Check</span><span class="muted">this project · SMACNA</span></div>
+                <div class="bidcheck-row"><span>Every room served, 3 rooms boxed</span><span class="cite"><b>✓</b> 508 of 508 CFM</span></div>
+                <div class="bidcheck-row"><span>Systems within capacity, RTU-1</span><span class="cite"><b>✓</b> 600 of 2,000 CFM</span></div>
+                <div class="bidcheck-row"><span>Bid weight, 24×12 main stepping to 12×8</span><span class="cite"><b>§</b> gauge schedule · 174 lb</span></div>
+              </div>
             </div>
             <div class="proof-body">
               <h3>Rules cited by section, not by memory</h3>
@@ -306,6 +328,35 @@
       </div>
     </section>
 
+    <section class="section" id="shop">
+      <div class="wrap">
+        <p class="eyebrow">For the shop, not the seat</p>
+        <h2>See every estimator's takeoff, without touching it</h2>
+        <p class="lede lede-wide">An owner or a senior reviewer signs in and every bid in the company is on one board. Open any of them; change nothing. The rules that keep a team's work honest are already in the app.</p>
+        <div class="proof">
+          <div class="proof-card">
+            <img class="proof-shot" src="/guides/img/overseer-all-bids.png" width="2760" height="1800" loading="lazy" alt="The All Bids board: every bid in the company as a card, with search and an estimator filter, one click to open any of them read-only.">
+            <div class="proof-body">
+              <h3>Every bid, one board</h3>
+              <p>The Overseer role sees every bid in the company, newest first, with who made it, how much takeoff is on it, and when it was last touched. One click opens the takeoff exactly as the estimator left it, and nothing an overseer clicks can change it; that is enforced on the server, not just hidden in the interface. <a href="/guides/reviewing-all-bids/">How the Overseer role works</a></p>
+            </div>
+          </div>
+          <div class="proof-card">
+            <div class="proof-body">
+              <h3>Four rules a shop can run on</h3>
+              <ul class="checks">
+                <li><b>One editor at a time.</b> A bid is checked out to edit and turned in when done; two people never overwrite each other's counts.</li>
+                <li><b>View links for a GC or an inspector,</b> gated by email, that show the plan and the takeoff and never the workbench.</li>
+                <li><b>An access log you can read:</b> who opened which bid, from where, and when.</li>
+                <li><b>Works on the tablet in the field</b> and syncs when it reconnects, so the office sees what the field counted.</li>
+              </ul>
+              <p><a href="/guides/">Guides for every role</a></p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section">
       <div class="wrap">
         <h2>What estimators say</h2>
@@ -358,7 +409,7 @@
 
   <footer class="site-footer">
     <div class="wrap">
-      <span>© 2026 CountTooling · <a href="tel:+15123600599">(512) 360-0599</a></span>
+      <span>© 2026 CountTooling · Austin, Texas · <a href="tel:+15123600599">(512) 360-0599</a></span>
       <span class="fam">
         <a href="/guides/">Guides</a>
         <a href="/rules/">Rules</a>

@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the landing for a shop owner: ?trade= link, a proof panel that follows the trade, the shop section (2026-09-18)
+
+Five changes for one visit (Robert: an HVAC shop owner in Houston and Dallas landing on the page).
+`/?trade=hvac` lands on the HVAC film, pinned (plumbing and electrical likewise; unknown values
+fall back to plumbing, unpinned). The Bid Check proof panel follows the selected chip through
+`html[data-hero-trade]` with three row sets; HVAC's are the rows the app computes (every room
+served, systems within capacity, bid weight with its gauge citation). A new section before the
+testimonials, "For the shop, not the seat": the All Bids board from the Overseer guide, read-only
+enforced on the server, and four rules a shop runs on. The HVAC card names plan-and-spec and
+design-build and says the gauge is a simplified SMACNA schedule cited by rule. "Austin, Texas" in
+the footer. No HVAC testimonial invented. Pinned by `landing-trade.spec.js`. Detail in
+LANDING-REFRESH.md.
+
 ## fix(landing): the trade chips sit directly above the film they select (2026-09-18)
 
 Robert, from the live page: the chips read as a headline ornament above the h1 while the film they

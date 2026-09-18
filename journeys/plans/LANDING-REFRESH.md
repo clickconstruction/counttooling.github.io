@@ -202,7 +202,10 @@ transitions counted; `Enter` commits. The Duct Schedule opens on its Bid weight 
 Check is expanded and read honestly ("two rooms still short": three rooms boxed, one served;
 "Fits the roof" computes green on its own once the deck height is known, so it is no longer a
 manual tick), the pull-back frames the plan, and Copy Schedule ends it with its toast pinned.
-Seeded, not on camera: the scale preset, the trade, the Groups gate.
+Seeded, not on camera: the scale preset, the trade, the Groups gate. **Re-rendered
+2026-09-18** after DUCT-HINT moved the suggestion sentence off the cursor into a card above the
+footer; the two trace-beat captions ride the top of the canvas (`R.caption(…, 'top')`) so the
+card at the bottom stays clear.
 
 **The chips select the film, 2026-09-17.** The three chips above the headline are buttons now
 (`aria-pressed` names the film selected, `.is-live` the film playing). The hero plays the

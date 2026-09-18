@@ -124,7 +124,9 @@ const OVERLAY_SRC = `window.__hero = (() => {
       if (wrap) {
         const r = wrap.getBoundingClientRect();
         cap.style.left = (r.left + r.width / 2) + 'px';
-        cap.style.top = (r.bottom - 22) + 'px';
+        // Captions ride the canvas's bottom edge unless the beat asks for the top (the
+        // duct hint card lives at the bottom while a run is traced).
+        cap.style.top = (caption && caption.pos === 'top' ? r.top + 22 + cap.offsetHeight : r.bottom - 22) + 'px';
       }
       if (caption) {
         capTrade.textContent = caption.trade;
@@ -154,9 +156,9 @@ class Recorder {
     if (this.n % FPS === 0) process.stdout.write('  ' + (this.n / FPS) + 's');
   }
   async hold(s) { for (let i = 0; i < this.secs(s); i++) await this.frame(); }
-  caption(trade, text) {
+  caption(trade, text, pos) {
     if (trade && (!this.cap || this.cap.trade !== trade)) this.acts.push({ trade, at: this.n / FPS });
-    this.cap = { trade, text, since: this.n };
+    this.cap = { trade, text, since: this.n, pos: pos || 'bottom' };
   }
   async jump(x, y) { this.cur = { x, y }; await this.page.mouse.move(x, y); }
   // A real key press (the app's hotkey handler runs) with a keycap drawn by the cursor.
@@ -900,7 +902,7 @@ async function recordHvac(page, dir, setPdf) {
   // 7 · The main. U opens New Duct Run (24×12), Start Tracing; the chip under the cursor
   //     reads the air still to serve; S opens the size popover and the suggested size is
   //     tapped; Enter commits, and the elbows and taps count themselves.
-  R.caption('', 'Trace the main at 24×12.');
+  R.caption('', 'Trace the main at 24×12.', 'top');   // the duct hint card holds the bottom
   await R.keyAs('U', 'u');
   await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
   await R.hold(0.4);
@@ -920,7 +922,7 @@ async function recordHvac(page, dir, setPdf) {
     await R.moveToEl(sel, 0.4); await R.click();
     await R.hold(0.25);
   };
-  R.caption('', 'S: the size steps down with the air.');
+  R.caption('', 'S: the size steps down with the air.', 'top');
   await stepAtS();
   await R.moveToPt(MAIN_H[2], 0.7); await R.click();
   await R.hold(0.2);

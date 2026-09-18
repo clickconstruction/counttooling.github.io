@@ -520,11 +520,31 @@
   // in-progress trace at stepped stroke widths (dashed = not yet committed),
   // per-segment size chips, and the cursor size chip (tap target for the
   // popover). env = { fontScale, lineOpacity } from the live overlay.
+  // DUCT-HINT: the suggestion / callout sentence as a card fixed above the
+  // footer (#ductHintCard, inside .canvas-wrapper). The leading "N CFM
+  // downstream" reads bold, the trailing "S accepts" wears a keycap; hidden
+  // whenever there is no draft or no line. aria-hidden: the S popover carries
+  // the same numbers for assistive tech, and this text changes with the cursor.
+  function syncDuctHintCard(line) {
+    const el = document.getElementById('ductHintCard');
+    if (!el) return;
+    if (!line || !line.text) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; } return; }
+    const esc = App.escapeHtml || ((t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+    let text = String(line.text);
+    let tail = '';
+    const m = text.match(/\s*[.\u2014-]\s*S accepts\.?\s*$/);
+    if (m) { text = text.slice(0, m.index); tail = ' · <kbd>S</kbd> accepts'; }
+    const parts = text.split(' · ');
+    const html = (parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> · ' + esc(parts.slice(1).join(' · ')) : esc(text)) + tail;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    if (el.hidden) el.hidden = false;
+  }
+
   function drawDuctOverlay(ctx, env) {
     const state = App.state;
     const draft = state.drawingDuct;
     cursorChipRect = null;
-    if (!draft || state.tool !== App.TOOL.DUCT) return;
+    if (!draft || state.tool !== App.TOOL.DUCT) { syncDuctHintCard(null); return; }
     const color = DUCT_AIRSIDE_COLORS[draft.airside] || DUCT_AIRSIDE_COLORS.supply;
     const cursor = snappedCursor();
     const { verts, spans } = draftSpansWithCursor(cursor);
@@ -610,38 +630,20 @@
       const chipX = pc.x + 24 + 14 * fontScale;
       const chipY = pc.y - 10 - 8 * fontScale;
       chip(formatDuctSize(cur) + ' ▾', chipX, chipY, true);
-      // ONE quiet line rides UNDER the size chip — never two: D10's plan
-      // callout ("Plan says 20×12 here — S accepts") when the sheet's text
-      // layer prints a different size within reach of the cursor, else D6's
-      // design-build suggestion ("450 CFM downstream · suggests 12×10 @
-      // 0.08″/100′ — S accepts"). Precedence + both sources resolved by
-      // features/duct-callouts.js getDuctCursorLine (falls back to the D6
-      // read alone if that file is absent). Informs only — S / the popover
-      // accepts. Drawn at a smaller size so the chip stays the headline;
-      // defensive reads per the registry boundary rule.
+      // ONE quiet line goes with the chip — never two: D10's plan callout
+      // ("Plan says 20×12 here — S accepts") when the sheet's text layer prints
+      // a different size within reach of the cursor, else D6's design-build
+      // suggestion ("450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S
+      // accepts"). Precedence + both sources resolved by
+      // features/duct-callouts.js getDuctCursorLine (falls back to the D6 read
+      // alone if that file is absent). Informs only — S / the popover accepts.
+      // DUCT-HINT (2026-09-18): it used to be painted under the chip, centred,
+      // which put it on the cursor's own row and across the trace, over the
+      // next click; it now rides #ductHintCard, fixed above the footer, in
+      // screen pixels (the same size at any zoom). Only the chip stays here.
       const line = App.getDuctCursorLine ? App.getDuctCursorLine()
         : (() => { const s = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion(); return s ? { kind: 'suggestion', text: s.chipText } : null; })();
-      if (line && line.text) {
-        const sFont = 8.5 * fontScale;
-        ctx.font = '600 ' + sFont + 'px DM Sans';
-        const tw = ctx.measureText(line.text).width;
-        const pad = 4;
-        const sy = chipY + (10 * fontScale) / 2 + pad * 2 + sFont / 2 + 3;
-        ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.fillRect(chipX - tw / 2 - pad, sy - sFont / 2 - pad, tw + pad * 2, sFont + pad * 2);
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(chipX - tw / 2 - pad, sy - sFont / 2 - pad, tw + pad * 2, sFont + pad * 2);
-        ctx.fillStyle = color;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(line.text, chipX, sy);
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'alphabetic';
-        // D10: ring the callout that was read, so the offer is traceable to
-        // the sheet (the tag-reader chip idiom).
-        if (line.kind === 'callout' && App.drawDuctCalloutRing) App.drawDuctCalloutRing(ctx, env, line.offer, color);
-      }
+      syncDuctHintCard(line);
     }
     ctx.restore();
   }
@@ -801,6 +803,7 @@
     if (state.isViewer && state.drawingDuct) clearDuctDraft();
     const bar = document.getElementById('ductFinishBar');
     if (bar) bar.classList.toggle('visible', !!state.drawingDuct);
+    if (!state.drawingDuct) syncDuctHintCard(null);   // DUCT-HINT: the card goes with the draft
     if (state.tool !== App.TOOL.DUCT && App.isDuctPopoverOpen && App.isDuctPopoverOpen()) App.closeDuctSizePopover();
   }
 

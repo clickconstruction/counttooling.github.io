@@ -541,6 +541,13 @@
     .page-nav button.page-nav-marked-btn:not(:disabled) { color: var(--accent); border-color: var(--accent); }
     .page-nav-marked-btn:hover:not(:disabled) { background: rgba(232, 197, 71, 0.15); }
     .page-nav-marked-btn:disabled { opacity: 0.5; color: var(--text3); border-color: var(--border); cursor: default; }
+    /* DUCT-HINT: the duct suggestion card, fixed above the footer inside the canvas wrapper
+       (toast-card look; screen pixels, so it reads the same at any zoom; pointer-events off so
+       it never takes a click). */
+    .duct-hint-card { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 60; max-width: calc(100% - 24px); padding: 8px 14px; background: var(--surface); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.45); color: var(--text); font-size: 0.9rem; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+    .duct-hint-card b { color: var(--blue); font-weight: 600; }
+    .duct-hint-card kbd { font-family: 'DM Mono', monospace; font-size: 0.85em; padding: 0 5px; border: 1px solid var(--accent); border-radius: 4px; background: var(--surface2); color: var(--text); }
+    @media (max-width: 768px) { .duct-hint-card { font-size: 0.8rem; bottom: 10px; padding: 6px 10px; } }
     .polyline-finish-bar { display: none; padding: 8px; background: var(--surface2); border-top: 1px solid var(--border); gap: 8px; }
     .polyline-finish-bar.visible { display: flex; }
     .status-bar { padding: 4px 12px calc(4px + var(--safe-bottom)); font-size: 0.8rem; color: var(--text2); background: var(--surface); border-top: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

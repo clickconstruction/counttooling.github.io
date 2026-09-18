@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(duct): the suggestion sentence is a card above the footer, not a label on the cursor (2026-09-18)
+
+Punch row DUCT-HINT (Robert, from the HVAC hero film). The Duct tool's one-line suggestion
+("600 CFM downstream · suggests 12"Ø or 16×8 @ 0.08″/100′. S accepts") was painted centred under
+the cursor size chip; the offsets put its middle on the cursor's own row, so it ran both ways
+across the cursor and along the line being traced, over the diffusers being aimed at, and at hero
+scale it was 1.5× larger still. It now rides `#ductHintCard`, a toast-look card fixed above the
+footer inside `.canvas-wrapper` (screen pixels, so the same size at any zoom; pointer-events off,
+so never a click target; the leading CFM bold, the S a keycap), filled and toggled by
+`syncDuctHintCard` from the overlay draw and hidden with the draft. Only the "24×12 ▾" chip stays
+at the cursor as the tap target it already was. Pinned by a DUCT-HINT case in duct-suggest.spec.js.
+The HVAC hero film is re-rendered; its two trace-beat captions ride the top of the canvas so the
+card stays clear. `npm run build:sw` re-stamped the shell.
+
 ## feat(landing): the trade chips select the hero film; the three-trade take retires (2026-09-17)
 
 Punch row HERO-EHVAC closed. The three chips above the headline are buttons now: the pressed

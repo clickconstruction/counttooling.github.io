@@ -100,6 +100,13 @@ riding data the plan already collects:
     space (deck height + Room Sizer heights already captured).
   - **Return path** — a Room box with supply drops in a plenum-return
     system needs a transfer grille or a ⚠ (extends §3's badge).
+  - **The suggestion is a card, not a cursor label (DUCT-HINT, 2026-09-18)** — the "N CFM
+    downstream · suggests … S accepts" line was painted centred under the cursor size chip,
+    which put it on the cursor's own row and across the trace, over the next click and the
+    diffusers being aimed at (seen in the HVAC hero film). It now rides `#ductHintCard`, fixed
+    above the footer inside the canvas wrapper, toast-look, screen pixels, pointer-events off,
+    hidden with the draft; only the size chip stays at the cursor. Pinned by the DUCT-HINT case
+    in duct-suggest.spec.js.
   - **Round-first suggestions** — the size chip offers spiral AND rect
     ("10"Ø or 12×8"); flex drops warn past the max-flex length.
   - **Neck sizes from CFM** — drops prefill the device (150 CFM →

@@ -502,6 +502,12 @@
       </aside>
       <div class="canvas-area">
         <div class="canvas-wrapper" id="canvasWrapper">
+          <!-- DUCT-HINT (2026-09-18): the Duct tool's one-line suggestion ("600 CFM downstream ·
+               suggests 16×8 … S accepts") rides this card, fixed above the footer, instead of the
+               cursor's own row where it covered the trace and the next click. Only the size chip
+               stays at the cursor. features/duct-tool.js syncDuctHintCard fills and toggles it;
+               the S popover carries the same information for assistive tech. -->
+          <div class="duct-hint-card" id="ductHintCard" aria-hidden="true" hidden></div>
           <div class="canvas-container" id="canvasContainer">
             <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             <canvas id="cropCanvas" class="crop-canvas"></canvas>

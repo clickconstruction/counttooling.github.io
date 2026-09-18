@@ -51,6 +51,31 @@ Supabase MCP 2026-09-18 from the deployed body; the drift test pins it). New: `f
 `bend-fittings.spec.js`; the model honours a per-vertex `fitting` override whose edit-mode menu
 is punch row BEND-OVERRIDE. Tees wait for the water plan's attachment rung.
 
+## feat(landing): SPOT-5, tighter spotlight frames and value captions (2026-09-18)
+
+Robert's review of the first spotlight cut: the eighteen frames were a fixed 1200×900 window with
+the surface small in the middle, and the captions described rather than sold. The generator's
+`frame` became a per-frame `crop` (a 4:3 window sized to the surface and aligned to an anchor
+element, with an optional per-shot `css`, the Bid Check and Summary frames on a 420 px sidebar),
+the riser camera tightened to the meter corner, the electrical handoff hides the sheet legend
+behind the toasts. Each figure's caption is now a value title plus a one-line description that
+quotes the numbers in the frame; the ledes say "six things the app does for…". Every `<img>`
+carries its JPEG's real width/height and `landing-assets.test.js` pins that. Plan:
+journeys/plans/LANDING-REFRESH.md, SPOT-5.
+
+## feat(landing): SPOT-4, the trade spotlight under the hero (2026-09-18)
+
+Punch row SPOTLIGHT closed. A section right after the hero, "Your trade, in the app", shows six
+frames of the real app for the trade the chips have selected: three `.spotlight-set` blocks shown
+through `html[data-hero-trade]` (the switch the film and the proof panel already follow), each
+with a heading, a lede naming the sheet, and six lazy 4:3 JPEG frames with one-line captions; a
+3 × 2 grid on desktop, a snap strip under 900 px; no new JavaScript, and a hidden set's frames
+are never fetched. The eighteen frames come from `scripts/build-screenshots.js --set spotlight`
+(SPOT-1 to SPOT-3). `landing-assets.test.js` joins `npm run check` as the drift guard;
+`landing-trade.spec.js` pins the visible set, the lazy loading, the chip swap and `?trade=hvac`.
+The three ⚑ decisions were built with their recommended defaults (six frames, plain headings,
+quiet captions) and remain Robert's to change. Detail in LANDING-REFRESH.md.
+
 ## feat(landing): SPOT-3, the six plumbing spotlight frames (2026-09-18)
 
 Punch row SPOTLIGHT, third rung. `scripts/build-screenshots.js` takes a per-shot `plan` (the

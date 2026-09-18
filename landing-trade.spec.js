@@ -40,6 +40,33 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     expect(await page.evaluate(() => window.__heroFilm())).toBe('electrical');
   });
 
+  test('the spotlight shows the selected trade\'s six frames, loads them lazily, and swaps with the chips', async ({ page }) => {
+    await page.goto('/');
+    const set = (t) => page.locator('.spotlight-set[data-trade="' + t + '"]');
+    await expect(set('plumbing')).toBeVisible();
+    await expect(set('electrical')).toBeHidden();
+    await expect(set('hvac')).toBeHidden();
+    await expect(set('plumbing').locator('figure.spot')).toHaveCount(6);
+    await expect(set('plumbing').locator('figure.spot img')).toHaveCount(6);
+    await expect(set('plumbing').locator('figure.spot figcaption')).toHaveCount(6);
+    // lazy: the visible set's frames load once scrolled to; a hidden set's never do
+    const first = set('plumbing').locator('figure.spot img').first();
+    await first.scrollIntoViewIfNeeded();
+    await expect.poll(() => first.evaluate((el) => el.complete && el.naturalWidth > 0), { timeout: 10000 }).toBe(true);
+    expect(await set('hvac').locator('figure.spot img').first().evaluate((el) => el.naturalWidth)).toBe(0);
+    await page.locator('.trade-chips .chip[data-trade="hvac"]').click();
+    await expect(set('hvac')).toBeVisible();
+    await expect(set('plumbing')).toBeHidden();
+    await expect(set('hvac').locator('h2')).toContainText('HVAC');
+    await expect(set('hvac').locator('figure.spot')).toHaveCount(6);
+  });
+
+  test('?trade=hvac opens on the HVAC spotlight', async ({ page }) => {
+    await page.goto('/?trade=hvac');
+    await expect(page.locator('.spotlight-set[data-trade="hvac"]')).toBeVisible();
+    await expect(page.locator('.spotlight-set[data-trade="plumbing"]')).toBeHidden();
+  });
+
   test('the shop section and the Texas line are on the page', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('#shop h2')).toContainText('every estimator');

@@ -122,7 +122,10 @@
     // supported material should count its hangers from the rulebook spacing.
     if (trade === 'plumbing' && window.SupportModel) {
       const row = window.SupportModel.hangerCoverage(state.lineTypes);
-      if (row) auto = [row];
+      // BEND-FITTINGS: the fittings row rides beside the hangers row.
+      const fit = window.SupportModel.bendFittingCoverage ? window.SupportModel.bendFittingCoverage(state.lineTypes) : null;
+      const rows = [row, fit].filter(Boolean);
+      if (rows.length) auto = auto.concat(rows);
     }
     const manualState = bidCheckState().manual;
     let manual = bm.BID_CHECK_MANUAL_ROWS.filter((r) => !r.trade || r.trade === trade).map((r) => ({ id: r.id, label: r.label, trade: r.trade, done: !!manualState[r.id] }));

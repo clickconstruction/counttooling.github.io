@@ -22,6 +22,7 @@ const { chromium } = require('@playwright/test');
 const ROOT = path.join(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'guides', 'img');
 const PLAN = path.join(ROOT, 'samples', 'sample-plan.pdf');
+const PLAN_B = path.join(ROOT, 'samples', 'sample-plan-advanced.pdf');   // the restaurant sheet, the plumbing film's
 const ACCENT = '#e8c547';
 // The sample plan is a true ANSI B sheet (1224 × 792 pt); the drawing (candidate A at
 // 0.75, placed at (60, 70) — see scripts/sample-plan-candidates.js PLAN_AT) and its
@@ -1113,7 +1114,138 @@ async function electricalBase(page) {
   await page.waitForTimeout(350);
 }
 
+// --- plumbing, "Kitchen, Tuesday", on the restaurant sheet --------------------------
+// The restaurant plan is drawn at 12 px/ft and placed at (60, 70) × 0.75 on the ANSI B
+// sheet (the hero film's B()), so these are PDF points of that sheet. fitPlan is the office
+// sheet's; the plumbing frames use frameRegion with the film's cameras instead.
+const RB = (x, y) => [60 + 0.75 * x, 70 + 0.75 * y];
+const FLOOR_DRAINS_P = [[610, 432], [740, 430], [860, 440], [648, 536], [740, 528], [238, 542], [340, 545], [630, 192], [766, 196], [902, 206]].map((p) => RB(...p));
+const HAND_SINKS_P = [[600, 308], [928, 392], [330, 578]].map((p) => RB(...p));
+const WATER_CLOSETS_P = [[596, 118], [732, 118]].map((p) => RB(...p));
+const THREE_COMP_P = [[578, 476], [170, 560]].map((p) => RB(...p));
+const COLD_SERVICE_P = [[883, 614], [883, 594], [192, 594], [192, 580]].map((p) => RB(...p));
+const COLD_TRUNK_P = [[564, 594], [564, 110], [930, 110], [930, 384]].map((p) => RB(...p));
+const HOT_SUPPLY_P = [[796, 572], [786, 572], [786, 590], [188, 590], [188, 580]].map((p) => RB(...p));
+const HOT_RETURN_P = [[570, 590], [570, 105], [936, 105], [936, 572], [918, 572]].map((p) => RB(...p));
+const DIM_31_8_P = [RB(560, 84), RB(940, 84)];
+const CAM_PLAN_P = { x1: 145, y1: 118, x2: 860, y2: 575 };
+const CAM_METER_P = { x1: 520, y1: 380, x2: 860, y2: 610 };   // the service riser at the meter, bottom right of the plan
+// A PDF point of the current sheet in viewport pixels (any zoom / pan; the film's R.pt).
+async function pdfPoint(page, x, y) {
+  const box = await page.locator('#annCanvas').boundingBox();
+  const zoom = await page.evaluate(() => window.state.zoom);
+  return { x: box.x + x * zoom, y: box.y + y * zoom };
+}
+async function plumbingBase(page, opts = {}) {
+  await page.evaluate(({ o, fd, hs, wc, cs, cold1, cold2, hot1, hot2 }) => {
+    const s = window.state, App = window.App, uid = () => App.uid();
+    s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+    App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
+    const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+    const bi = (name) => ((App.getOrderedIcons() || []).find((i) => i.name === name) || {}).value;
+    const first = App.getOrderedIcons()[0].value;
+    const dot = 'M320 96C196 96 96 196 96 320s100 224 224 224 224-100 224-224S444 96 320 96z';
+    const cFd = { id: uid(), name: 'Floor Drain', icon: dot, color: '#47d4d4' };
+    const cHs = { id: uid(), name: 'Hand Sink', icon: ci('Mounted Sink') || bi('Sink') || first, color: '#e8c547' };
+    const cWc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || bi('Water Closet') || first, color: '#47c88e' };
+    const cCs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#a47fff' };
+    s.counters.push(cFd, cHs, cWc, cCs);
+    const ann = s.pages[0].canvases[0].annotations;
+    const marks = (pts) => pts.map(([x, y]) => ({ x, y, id: uid(), group: null }));
+    ann.counterMarkers[cFd.id] = marks(fd); ann.counterMarkers[cHs.id] = marks(hs); ann.counterMarkers[cWc.id] = marks(wc); ann.counterMarkers[cCs.id] = marks(cs);
+    const sm = window.SupportModel;
+    const withHangers = (lt) => { const sg = sm && sm.hangerSuggestionsFor(lt.name)[0]; if (sg) lt.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }]; return lt; };
+    const cu = { id: uid(), name: '2in Cu cold', color: '#4a9eff', curveStyle: 'straight' };
+    const hw = { id: uid(), name: '1-1/4in Cu hot', color: '#e85447', curveStyle: 'straight' };
+    if (!o.noHangers) { withHangers(cu); withHangers(hw); }
+    s.lineTypes.push(cu, hw);
+    const poly = (lt, pts, name) => ({ id: uid(), name, color: lt.color, points: pts.map(([x, y]) => ({ x, y })), closed: false, lineTypeId: lt.id, group: null });
+    ann.polylines.push(poly(cu, cold1, 'Cold service'), poly(cu, cold2, 'Cold trunk'), poly(hw, hot1, 'Hot supply'), poly(hw, hot2, 'Hot return'));
+    // the service riser at the meter: 3 ft on the node nearest the meter
+    const meter = { x: cold1[0][0], y: cold1[0][1] };
+    const nodes = App.collectDropNodes(ann, 1) || [];
+    let best = null, bestD = Infinity;
+    nodes.forEach((n) => { const d = App.ptDist(n, meter); if (d < bestD) { bestD = d; best = n; } });
+    if (best) App.applyDropToNode(ann, best, 3, 'ft');
+    s.counterSettings = Object.assign({}, s.counterSettings, { size: 40, outlineSize: 2 });
+    s.lineTypeSettings = Object.assign({}, s.lineTypeSettings, { lineSize: 6, lengthLabelSize: 14, dropXSize: 14 });
+    ann.legend = { x: 1224 - 230, y: 16, w: 210, h: 60, userResized: false };
+    window.__spot = { cu: cu.id, hw: hw.id };
+    App.markProjectDirty(); App.renderPdf(); App.updateUI(); App.renderAnnotations();
+  }, { o: opts, fd: FLOOR_DRAINS_P, hs: HAND_SINKS_P, wc: WATER_CLOSETS_P, cs: THREE_COMP_P, cold1: COLD_SERVICE_P, cold2: COLD_TRUNK_P, hot1: HOT_SUPPLY_P, hot2: HOT_RETURN_P });
+  await frameRegion(page, CAM_PLAN_P);
+}
+
 const SPOTLIGHT = [
+  {
+    name: 'plumbing-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card', plan: PLAN_B,
+    async setup(page) {
+      await plumbingBase(page);
+      await page.evaluate(() => document.getElementById('addCounter').click());
+      await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+      await page.evaluate(() => window.App.showCounterTab && window.App.showCounterTab('quickcount'));
+      await page.waitForTimeout(200);
+      await page.locator('#counterQuickCountTradeSegment [data-trade="plumbing"]').click();
+      await page.waitForTimeout(200);
+      for (const [sel, val] of [['#counterQuickCountSize', '2"'], ['#counterQuickCountMaterial', 'PVC'], ['#counterQuickCountType', 'Floor Drain']]) {
+        try { await page.selectOption(sel, val); } catch (_) { /* the profile's vocabulary decides; keep its default */ }
+      }
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'plumbing-2-rulebook', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterLineTypeDetailsModal .modal-card', plan: PLAN_B,
+    async setup(page) {
+      await plumbingBase(page, { noHangers: true });   // no hanger row yet, so "From the rulebook" offers it
+      await page.evaluate(() => { const lt = window.state.lineTypes.find((l) => l.id === window.__spot.cu); window.App.openCounterLineTypeDetailsModal('lineType', lt); });
+      await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
+      await page.waitForSelector('#childCountsSuggest .child-count-suggest-add', { timeout: 5000 });
+      await page.waitForTimeout(250);
+    },
+  },
+  {
+    name: 'plumbing-3-riser', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper', plan: PLAN_B, dropSizes: true,
+    async setup(page) {
+      await plumbingBase(page);
+      await frameRegion(page, CAM_METER_P);
+    },
+  },
+  {
+    name: 'plumbing-4-scale-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#scaleModal .modal-card', plan: PLAN_B,
+    async setup(page) {
+      await plumbingBase(page);
+      await page.evaluate(() => { const s = window.state, App = window.App; s.scaleCheckMode = true; s.tool = App.TOOL.SCALE; s.scaleMode = App.SCALE_MODES.POINT_A; s.scalePointA = null; s.scalePointB = null; App.updateUI(); App.renderAnnotations(); });
+      const a = await pdfPoint(page, ...DIM_31_8_P[0]); const b = await pdfPoint(page, ...DIM_31_8_P[1]);
+      await page.mouse.click(a.x, a.y); await page.waitForTimeout(150);
+      await page.mouse.click(b.x, b.y);
+      await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+      await page.locator('#scaleCheckValue').fill("31'8");
+      await page.locator('#scaleCheckBtn').click();
+      await page.waitForTimeout(500);
+    },
+  },
+  {
+    name: 'plumbing-5-bid-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#bidCheckSection', plan: PLAN_B,
+    async setup(page) {
+      await plumbingBase(page);
+      await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
+      await page.locator('#bidCheckSection').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'plumbing-6-handoff', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper', plan: PLAN_B, clipboard: true,
+    async setup(page) {
+      await plumbingBase(page);
+      await page.locator('#forPipeTooling').scrollIntoViewIfNeeded();
+      await page.locator('#forPipeTooling').click();
+      await page.waitForTimeout(300);
+      const menu = await page.evaluate(() => !!document.querySelector('#forPipeToolingMenu.visible'));
+      if (menu) { await page.locator('#forPipeToolingMenu .pipe-tooling-option[data-mode="all"]').click(); await page.waitForTimeout(300); }
+      await page.waitForSelector('#toastRegion .toast-card.visible', { timeout: 5000 });
+      await page.waitForTimeout(150);
+    },
+  },
   {
     name: 'electrical-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card',
     async setup(page) {
@@ -1244,9 +1376,9 @@ const SPOTLIGHT = [
   },
 ];
 
-async function loadApp(page, baseUrl) {
+async function loadApp(page, baseUrl, plan = PLAN) {
   await page.goto(baseUrl + '/app/', { waitUntil: 'networkidle' });
-  await page.locator('#pdfInput').setInputFiles(PLAN);
+  await page.locator('#pdfInput').setInputFiles(plan);
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
   // dismiss any restore/last-session prompt that could cover the canvas
@@ -1269,8 +1401,9 @@ async function loadApp(page, baseUrl) {
   const browser = await chromium.launch();
   try {
     for (const shot of shots) {
-      const page = await browser.newPage({ viewport: shot.viewport || { width: 1380, height: 900 }, deviceScaleFactor: 2 });
-      if (!shot.noLoad) await loadApp(page, baseUrl);
+      const page = await browser.newPage({ viewport: shot.viewport || { width: 1380, height: 900 }, deviceScaleFactor: 2, ...(shot.clipboard ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
+      if (shot.dropSizes) await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
+      if (!shot.noLoad) await loadApp(page, baseUrl, shot.plan || PLAN);
       if (shot.setup) await shot.setup(page, baseUrl);
       let clip = await page.locator(shot.clip).first().boundingBox();
       if (!clip) throw new Error(`${shot.name}: clip ${shot.clip} not found`);

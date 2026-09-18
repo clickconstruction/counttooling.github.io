@@ -13,6 +13,15 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): SPOT-2, the six electrical spotlight frames (2026-09-18)
+
+Punch row SPOTLIGHT, second rung. `electricalBase` in `scripts/build-screenshots.js` seeds what
+the "Circuit 7" film makes on camera and `--set spotlight` writes `img/spotlight/electrical-{1..6}-*.jpg`:
+the Quick tab on the Electrical profile, the Chain panel over the chained run with its drops, the
+conduit's raceway and conductors, the derived #12 THHN rows, Bid Check with conduit fill and
+voltage drop computed (the home run is flagged as the homerun, which a circuit needs to know where
+its panel is), and the TakeoffTooling hand-off toast. No landing change yet.
+
 ## feat(landing): SPOT-1, the spotlight screenshot set and the six HVAC frames (2026-09-18)
 
 Punch row SPOTLIGHT, first rung. `scripts/build-screenshots.js` gains `--set spotlight`: a second

@@ -24,6 +24,12 @@
  *             its lines, the rulebook's hanger row accepted for each; the riser; an RFI
  *             flag; the pull-back with marks hidden and shown; Copy to PipeTooling, held.
  *             Writes img/hero-plumbing.{mp4,png}.
+ *   electrical "Circuit 7" on the office sheet A-101: the set lands and Prepare keeps three;
+ *             the scale proved on the 24'-0" bay; devices made on the Quick tab (receptacles
+ *             at 18 in, the switch, the troffers) and counted; the conduit type named, its
+ *             raceway and conductors set; the circuit group LP-1/7; the chain writing 9.5 ft
+ *             drops; the home run; Bid Check's voltage drop and fill; the pull-back; Open in
+ *             TakeoffTooling. Writes img/hero-electrical.{mp4,png}.
  *   trades    the original three-trade take on the office sheet, img/landing-hero.{mp4,png}.
  *
  * Manual, like build:screenshots (needs a browser and ffmpeg; pixels are not
@@ -422,6 +428,19 @@ const CAM_PULL = { x1: 0, y1: 0, x2: 1224, y2: 990 };    // the sheet with a gre
 const CAM_PLAN = { x1: 145, y1: 118, x2: 860, y2: 575 };   // through the grease interceptor outside the east wall
 const CAM_KITCHEN = { x1: 455, y1: 255, x2: 790, y2: 465 };
 
+// --- the electrical film, "Circuit 7", on the office sheet A-101 ----------------------
+// candidateAPlan() draws at 12 px/ft on the same 918 pt sheet, placed at (60, 70) × 0.75,
+// so B() converts its plan coordinates too. Open Office 105 is SVG (132..470, 384..600).
+const DIM_24 = [B(132, 84), B(420, 84)];                                 // the 24'-0" bay string, grid 1 to 2 (exact since the two-pixel fix)
+const RECEPT_SPOTS_E = [B(238, 402), B(305, 402), B(372, 402), B(439, 402), B(150, 490)];   // north wall east of the door, then the west wall
+const SWITCH_SPOT_E = B(232, 400);                                       // inside the door at (210, 384)
+const LIGHT_SPOTS_E = [B(250, 455), B(390, 455), B(250, 525), B(390, 525)];   // a 2 × 2 troffer grid
+const CHAIN_SPOTS_E = [B(250, 582), B(320, 582), B(390, 582)];           // along the south wall, the chain
+const LP1 = B(576, 496);                                                 // panel LP-1 on the janitor's east wall
+const CAM_A_PLAN = { x1: 120, y1: 95, x2: 800, y2: 560 };
+const CAM_A_OFFICE = { x1: 118, y1: 322, x2: 520, y2: 548 };             // the open office with LP-1 just in frame
+const CAM_A_PULL = { x1: 100, y1: 80, x2: 820, y2: 740 };                // the plan (not the whole sheet: one room's marks stay legible) with the band beneath
+
 // The thirty-sheet set: the restaurant sheet copied per discipline, each copy stamped
 // with a sheet number and name in a band across the top so the Prepare PDF grid reads
 // as a real submission. The three plumbing sheets are what the film keeps; P-101 itself
@@ -437,15 +456,16 @@ const SET_SHEETS = [
   ['P-401', 'PLUMBING SCHEDULES'], ['P-501', 'PLUMBING DETAILS'], ['T-101', 'TECHNOLOGY PLAN'], ['L-101', 'LANDSCAPE PLAN'],
 ];
 const SET_KEEP = [23, 24, 25];   // P-101, P-201, P-301
-async function buildSampleSet(outPath) {
+const SET_KEEP_E = [2, 17, 18];   // A-101, E-101, E-201 (the takeoff happens on A-101, left unstamped)
+async function buildSampleSet(outPath, srcPath = PLAN_B, unstamped = 'P-101') {
   const { PDFDocument, StandardFonts, rgb } = require(path.join(ROOT, 'vendor', 'pdf-lib-1.17.1.min.js'));
-  const src = await PDFDocument.load(fs.readFileSync(PLAN_B));
+  const src = await PDFDocument.load(fs.readFileSync(srcPath));
   const out = await PDFDocument.create();
   const font = await out.embedFont(StandardFonts.HelveticaBold);
   for (let i = 0; i < SET_SHEETS.length; i++) {
     const [pg] = await out.copyPages(src, [0]);
     out.addPage(pg);
-    if (SET_SHEETS[i][0] === 'P-101') continue;
+    if (SET_SHEETS[i][0] === unstamped) continue;
     const { width, height } = pg.getSize();
     pg.drawRectangle({ x: 0, y: height - 92, width, height: 92, color: rgb(0.11, 0.11, 0.13) });
     pg.drawText(SET_SHEETS[i][0], { x: 40, y: height - 66, size: 44, font, color: rgb(0.91, 0.77, 0.28) });
@@ -687,6 +707,225 @@ async function recordPlumbing(page, dir, setPdf) {
   return R.n;
 }
 
+// Page-side seed for the electrical film: the scale preset, the trade, the project's ceiling
+// (10 ft; with an 18 in mount height the Chain tool writes 10 − 1.5 + 1 make-up = 9.5 ft per
+// device) and the Groups gate. Devices, the conduit type and the circuit are made on camera.
+const seedOffice = () => {
+  const s = window.state, App = window.App;
+  s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+  App.setProjectTrade && App.setProjectTrade('electrical', { remember: false, route: 'tour' });
+  s.ceilingHeightFt = 10; s.makeUpFt = 1; s.groupsEnabled = true;
+  App.updateUI(); App.renderAnnotations();
+};
+
+async function recordElectrical(page, dir, setPdf) {
+  const clip = await page.locator('.app').boundingBox();
+  const R = new Recorder(page, clip, dir);
+  await page.evaluate(OVERLAY_SRC);
+  await page.evaluate(() => {
+    const st = document.createElement('style');
+    st.textContent = '#headerBidChip, #headerBidChipDivider { display: none !important; } .sidebar { width: 300px !important; }';
+    document.head.appendChild(st);
+    // The hand-off opens TakeoffTooling in a new tab; the film keeps the tab and shows the toast.
+    window.open = () => ({ location: { set href(_) {} }, focus() {} });
+  });
+  await page.evaluate(bigMarks);
+  await R.jump(clip.x + clip.width * 0.55, clip.y + clip.height * 0.5);
+
+  // 1 · The set lands. Prepare PDF: thirty sheets, keep three.
+  await page.locator('#pdfInput').setInputFiles(setPdf);
+  await page.waitForSelector('#preparePdfModal.visible', { timeout: 20000 });
+  await page.waitForSelector('#preparePdfGrid .prepare-pdf-tile', { timeout: 20000 });
+  await page.waitForTimeout(900);
+  R.caption('', '30 sheets.');
+  await R.hold(0.25);
+  await R.moveToEl('#preparePdfName', 0.35); await R.click();
+  await page.keyboard.press('Meta+A'); await page.keyboard.type('Suite 200 Office TI', { delay: 14 }); await R.hold(0.1);
+  await R.moveToEl('#preparePdfKeepNone', 0.35); await R.click();
+  R.caption('', '30 sheets. Keep 3.');
+  await R.hold(0.2);
+  for (const idx of SET_KEEP_E) { await R.moveToEl('#preparePdfGrid .prepare-pdf-tile[data-orig-idx="' + idx + '"]', 0.25); await R.click(); }
+  await R.hold(0.1);
+  await R.moveToEl('#preparePdfDone', 0.3); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#preparePdfModal.visible') && window.state.pages.length === 3, { timeout: 30000 });
+  await page.waitForFunction(() => { const c = document.getElementById('pdfCanvas'); return c && c.width > 0; }, { timeout: 15000 });
+  await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
+  await page.evaluate(seedOffice);
+  await page.evaluate(bigMarks);
+
+  // 2 · A-101 opens. Push in from the sheet to the plan.
+  R.caption('', 'Suite 200, A-101');
+  await R.setCamera(CAM_SHEET);
+  await page.waitForTimeout(500);
+  await R.hold(0.25);
+  await R.camera(CAM_A_PLAN, 0.75);
+  await page.waitForTimeout(300);
+  await R.hold(0.2);
+
+  // 3 · Prove the scale on the 24'-0" bay.
+  R.caption('', 'Prove the scale.');
+  await page.evaluate(armScaleCheck);
+  await R.moveToPt(DIM_24[0], 0.45); await R.click();
+  await R.moveToPt(DIM_24[1], 0.5); await R.click();
+  await page.waitForSelector('#scaleModal.visible', { timeout: 5000 });
+  await R.hold(0.2);
+  await R.moveToEl('#scaleCheckValue', 0.3); await R.click();
+  await page.keyboard.type('24', { delay: 40 }); await R.hold(0.15);
+  await R.moveToEl('#scaleCheckBtn', 0.3); await R.click();
+  await R.hold(0.6);
+  await R.moveToEl('#scaleCheckCancel', 0.25); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#scaleModal.visible'), { timeout: 5000 });
+  await R.hold(0.15);
+
+  // 4 · Count. Each device is made on the Quick tab (Category / Variant), arrives with its
+  //     mount height, and the tool is armed the moment it is added.
+  const quickAdd = async (category, variant, pickTrade) => {
+    await R.moveToEl('#addCounter', 0.45); await R.click();
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.3); await R.click();
+    await R.hold(0.15);
+    if (pickTrade) { await R.moveToEl('#counterQuickCountTradeSegment [data-trade="electrical"]', 0.35); await R.click(); await R.hold(0.2); }
+    await R.moveToEl('#counterQuickCountSize', 0.3); await R.click();
+    await page.selectOption('#counterQuickCountSize', category); await R.hold(0.2);
+    await R.moveToEl('#counterQuickCountType', 0.3); await R.click();
+    await page.selectOption('#counterQuickCountType', variant); await R.hold(0.3);
+    await R.moveToEl('#counterQuickCountAdd', 0.35); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    await R.hold(0.2);
+  };
+  R.caption('', 'Count.');
+  await R.camera(CAM_A_OFFICE, 0.6);
+  await page.waitForTimeout(300);
+  const recolor = (name, color) => page.evaluate(([n, c]) => { const k = window.state.counters.find((x) => x.name === n); if (k) { k.color = c; window.App.renderAnnotations(); window.App.updateUI(); } }, [name, color]);
+  await quickAdd('Receptacle', 'Duplex', true);
+  R.caption('', 'Receptacles, 18 in AFF by default.');
+  for (const [i, p] of RECEPT_SPOTS_E.entries()) { await R.moveToPt(p, i ? 0.22 : 0.4); await R.click(); }
+  await quickAdd('Switch', 'Single Pole', false);
+  await recolor('Single Pole Switch', '#e8c547');
+  R.caption('', 'The switch, 48 in.');
+  await R.moveToPt(SWITCH_SPOT_E, 0.35); await R.click();
+  await quickAdd('Fixture', '2x4 Troffer', false);
+  await recolor('2x4 Troffer Fixture', '#4a9eff');
+  R.caption('', 'Fixtures, at the ceiling.');
+  for (const [i, p] of LIGHT_SPOTS_E.entries()) { await R.moveToPt(p, i ? 0.2 : 0.35); await R.click(); }
+  await page.evaluate(endTool);
+  await R.hold(0.4);
+
+  // 5 · The conduit: a line type made on camera, then its raceway and conductors in the
+  //     details dialog. From here every run of it carries 3 #12 THHN + 1 #12 G.
+  R.caption('', 'Name the conduit.');
+  await R.moveToEl('#addLineType', 0.45); await R.click();
+  await page.waitForSelector('#lineTypeModal.visible', { timeout: 5000 });
+  await R.moveToEl('#lineTypeName', 0.3); await R.click();
+  await R.type('3/4in EMT', 12);
+  await R.hold(0.15);
+  await R.moveToEl('#lineTypeColorRow .color-swatch[data-color="#a47fff"]', 0.35); await R.click();
+  await R.hold(0.15);
+  await R.moveToEl('#lineTypeCreate', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#lineTypeModal.visible'), { timeout: 5000 });
+  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+  await page.evaluate(endTool);
+  await R.hold(0.25);
+  R.caption('', 'List the wire inside it.');
+  const emtId = await page.evaluate(() => window.state.lineTypes.find((l) => l.name === '3/4in EMT').id);
+  await R.moveToEl('#lineTypesList .sidebar-item-line-type[data-line-type-id="' + emtId + '"] .edit-btn', 0.45); await R.click();
+  await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
+  await R.moveToEl('#racewayKind', 0.4); await R.click();
+  await page.selectOption('#racewayKind', 'EMT'); await R.hold(0.25);
+  await R.moveToEl('#racewaySize', 0.3); await R.click();
+  await page.selectOption('#racewaySize', '3/4"'); await R.hold(0.25);
+  await R.moveToEl('#conductorsSpec', 0.35); await R.click();
+  await R.type('3 #12 THHN + 1 #12 G', 14);
+  await page.keyboard.press('Enter');
+  await R.hold(0.7);
+  await R.moveToEl('#counterLineTypeDetailsClose', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#counterLineTypeDetailsModal.visible'), { timeout: 5000 });
+  await R.hold(0.25);
+
+  // 6 · The circuit: a group with a panel mark. Made first, so the chain that follows lands in it.
+  R.caption('', 'Circuit 7, on LP-1.');
+  // The Groups section opens collapsed (its + Add is hidden until the title is clicked).
+  if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.45); await R.click(); await R.hold(0.15); }
+  await R.moveToEl('#addGroup', 0.3); await R.click();
+  await page.waitForSelector('#groupModal.visible', { timeout: 5000 });
+  await R.moveToEl('#groupModalName', 0.3); await R.click();
+  await R.type('Circuit 7', 12);
+  await R.moveToEl('#groupModalPanel', 0.3); await R.click();
+  await R.type('LP-1', 12);
+  await R.moveToEl('#groupModalCircuit', 0.3); await R.click();
+  await R.type('7', 12);
+  await R.hold(0.15);
+  await R.moveToEl('#groupModalDone', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
+  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+  await R.hold(0.25);
+
+  // 7 · Chain. T opens the panel: the receptacle and the conduit, then device to device along
+  //     the south wall, every click writing its 9.5 ft drop into the run.
+  R.caption('', 'Chain: each click writes its 9.5 ft drop.');
+  await R.keyAs('T', 't');
+  await page.waitForSelector('#chainPanel', { state: 'visible', timeout: 5000 });
+  const recId = await page.evaluate(() => window.state.counters.find((c) => /Receptacle/.test(c.name)).id);
+  await R.moveToEl('#chainCounterList .chain-row[data-id="' + recId + '"] .chain-row-name', 0.4); await R.click();
+  await R.moveToEl('#chainLineTypeList .chain-row[data-id="' + emtId + '"] .chain-row-name', 0.35); await R.click();
+  await R.hold(0.2);
+  await R.moveToEl('#chainPanelClose', 0.3); await R.click();
+  for (const [i, p] of CHAIN_SPOTS_E.entries()) { await R.moveToPt(p, i ? 0.4 : 0.45); await R.click(); await R.hold(0.2); }
+  await page.evaluate(endTool);
+  await R.hold(0.3);
+
+  // 8 · Home to the panel: a Quick Line from the last device to LP-1, on the same conduit.
+  R.caption('', 'Home to LP-1.');
+  await R.keyAs('L', 'l');
+  await R.moveToPt(CHAIN_SPOTS_E[2], 0.3); await R.click();
+  await R.moveToPt(LP1, 0.55); await R.click();
+  await page.evaluate(endTool);
+  await R.hold(0.5);
+
+  // 9 · What the drawing knows: the derived wire and the two checks nobody typed.
+  R.caption('', 'The wire, derived. The checks, computed.');
+  await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
+  try { await R.moveToEl('.summary-derived-item', 0.6); await R.hold(0.8); } catch (_) { /* summary collapsed */ }
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="voltage-drop"]', 0.6); await R.hold(1.2);
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="conduit-fill"]', 0.35); await R.hold(0.9);
+
+  // 10 · Nothing missed: the whole sheet, marks off, marks on.
+  R.caption('', 'Nothing missed.');
+  await R.camera(CAM_A_PULL, 0.9);
+  await page.waitForTimeout(400);
+  await R.hold(0.5);
+  await page.evaluate(setHideMarks, true); await R.hold(0.4);
+  await page.evaluate(setHideMarks, false); await R.hold(0.55);
+
+  // 11 · Done: Open in TakeoffTooling. Its toast is let back in, alone, and held.
+  await page.evaluate(() => {
+    const st = document.createElement('style');
+    const cw = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+    st.textContent = '#toastRegion { display: flex !important; top: auto !important; right: auto !important; left: ' + Math.round(cw.left + 28) + 'px !important; bottom: ' + Math.round(window.innerHeight - cw.bottom + 28) + 'px !important; align-items: flex-start !important; }'
+      + ' #airboardToastModal.visible { display: block !important; } #toastRegion .toast-card:not(#airboardToastModal) { display: none !important; }';
+    document.head.appendChild(st);
+    // showToast shows AND hides through app.js's own showModal / hideModal (not the App.*
+    // copies), so no wrapper reaches it; the park is an observer that, once the card has been
+    // seen visible, puts .visible back the moment the 2 s wall-clock timer takes it away.
+    const m = document.getElementById('airboardToastModal');
+    let seen = false;
+    new MutationObserver(() => { const v = m.classList.contains('visible'); if (v) seen = true; else if (seen) m.classList.add('visible'); }).observe(m, { attributes: true, attributeFilter: ['class'] });
+  });
+  await R.moveToEl('#forTakeoffTooling', 0.6); await R.click();
+  await page.waitForTimeout(200);
+  const menuOpen = await page.evaluate(() => !!document.querySelector('#forTakeoffToolingMenu.visible'));
+  if (menuOpen) { await R.moveToEl('#forTakeoffToolingMenu .takeoff-tooling-option[data-mode="all"]', 0.3); await R.click(); }
+  await page.waitForTimeout(400);
+  console.log('\n  hand-off toast: ' + JSON.stringify(await page.evaluate(() => ({ text: document.getElementById('airboardToastText').textContent, visible: document.getElementById('airboardToastModal').classList.contains('visible'), modals: [...document.querySelectorAll('.modal-overlay.visible')].map((x) => x.id) }))));
+  await R.moveToPt(B(560, 250), 0.35);
+  await R.hold(1.3);
+  R.caption('', 'Done.');
+  await R.hold(1.0);
+  console.log('\n  ' + R.n + ' frames');
+  return R.n;
+}
+
 async function loadApp(page, baseUrl) {
   // the Drop-sizes canvas label ("3 ft" beside the riser) is a per-device toggle
   await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
@@ -729,6 +968,13 @@ function ffmpeg(args) {
       await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
       frames = await recordPlumbing(page, dir, setPdf);
+    } else if (FILM === 'electrical') {
+      const setPdf = path.join(dir, 'sample-set.pdf');
+      await buildSampleSet(setPdf, PLAN, 'A-101');
+      await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); localStorage.setItem('showScaleRefLine', 'false'); } catch (_) { /* private mode */ } });
+      await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
+      await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
+      frames = await recordElectrical(page, dir, setPdf);
     } else {
       await loadApp(page, `http://127.0.0.1:${port}`);
       frames = await record(page, dir);

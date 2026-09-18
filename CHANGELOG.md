@@ -13,6 +13,18 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): SPOT-5, tighter spotlight frames and value captions (2026-09-18)
+
+Robert's review of the first spotlight cut: the eighteen frames were a fixed 1200×900 window with
+the surface small in the middle, and the captions described rather than sold. The generator's
+`frame` became a per-frame `crop` (a 4:3 window sized to the surface and aligned to an anchor
+element, with an optional per-shot `css`, the Bid Check and Summary frames on a 420 px sidebar),
+the riser camera tightened to the meter corner, the electrical handoff hides the sheet legend
+behind the toasts. Each figure's caption is now a value title plus a one-line description that
+quotes the numbers in the frame; the ledes say "six things the app does for…". Every `<img>`
+carries its JPEG's real width/height and `landing-assets.test.js` pins that. Plan:
+journeys/plans/LANDING-REFRESH.md, SPOT-5.
+
 ## feat(landing): SPOT-4, the trade spotlight under the hero (2026-09-18)
 
 Punch row SPOTLIGHT closed. A section right after the hero, "Your trade, in the app", shows six

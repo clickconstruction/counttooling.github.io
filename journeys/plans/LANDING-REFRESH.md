@@ -563,6 +563,18 @@ the rest are new setups.
    `landing-assets.test.js` (in `npm run check`) pins referenced ⇔ committed and six per
    trade in order; `landing-trade.spec.js` pins the visible set, the lazy loading (a hidden
    set's frames never fetch), the chip swap and `?trade=hvac`. Punch row SPOTLIGHT closed.
+5. **SPOT-5 · tighter frames, value captions.** Robert's review of the first cut (2026-09-18):
+   the frames were too loose (a dialog a third of a 1200×900 window, the rest dimmed plan) and
+   the captions read as description, not value. **DONE 2026-09-18** (branch
+   `claude/spotlight-crops`): the generator's fixed window became a per-frame
+   `crop: { sel, w, h, ax, ay, ox, oy }` (a 4:3 window aligned to an anchor element's
+   fraction point, plus an optional per-shot `css`), so the Quick tab is the Trade row to the
+   More block, the rulebook frame is Name to the offered hanger, the Bid Check frames are the
+   checklist column on a 420 px sidebar with a sliver of plan, the riser camera is the WH/WM/GM
+   corner, the trace frame is the room and its chip above the hint card. Every figure now
+   carries a value title (`<b>`) and a one-line description that quotes the numbers in the
+   frame (171.73 ft of #12 THHN, 174 lb, 376 CFM). `landing-assets.test.js` also pins each
+   `<img>`'s width/height to the JPEG's own pixels, so the grid never jumps as frames load.
 
 About a day and a half in total. HVAC first because that is the visitor being prepared for.
 

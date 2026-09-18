@@ -107,6 +107,8 @@ html[data-hero-trade="hvac"] .spotlight-set[data-trade="hvac"] { display: block;
 .spot { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .spot img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: cover; border-bottom: 1px solid var(--border); background: var(--surface2); }
 .spot figcaption { padding: 12px 14px 14px; color: var(--text2); font-size: 0.9rem; line-height: 1.5; }
+.spot figcaption b { display: block; margin-bottom: 4px; color: var(--text); font-weight: 600; font-size: 0.98rem; line-height: 1.35; text-wrap: balance; }
+.spot figcaption span { display: block; }
 @media (max-width: 900px) {
   .spotlight-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 14px; padding-bottom: 8px; scrollbar-width: thin; }
   .spot { flex: 0 0 min(420px, 82vw); scroll-snap-align: start; }

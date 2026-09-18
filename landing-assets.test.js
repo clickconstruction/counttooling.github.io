@@ -23,6 +23,30 @@ test('every committed spotlight frame is referenced by index.html', () => {
   for (const f of files) assert.ok(used.has(f), 'img/spotlight/' + f + ' is committed but not on the page');
 });
 
+// The width/height attributes reserve the frame's box before the lazy image loads, so they
+// must be the JPEG's own pixels (SOF marker) or the grid jumps as frames arrive.
+function jpegSize(file) {
+  const b = fs.readFileSync(file); let i = 2;
+  while (i < b.length) {
+    if (b[i] !== 0xFF) { i++; continue; }
+    const m = b[i + 1];
+    if (m >= 0xC0 && m <= 0xCF && m !== 0xC4 && m !== 0xC8 && m !== 0xCC) return { height: b.readUInt16BE(i + 5), width: b.readUInt16BE(i + 7) };
+    i += 2 + b.readUInt16BE(i + 2);
+  }
+  throw new Error('no SOF marker in ' + file);
+}
+
+test('every spotlight img carries its frame\'s real width and height', () => {
+  const tags = [...html.matchAll(/<img src="\/img\/spotlight\/([a-z0-9-]+\.jpg)" width="(\d+)" height="(\d+)"/g)];
+  assert.strictEqual(tags.length, refs.length, 'every spotlight img has width and height attributes');
+  for (const [, name, w, h] of tags) {
+    const file = path.join(dir, name);
+    if (!fs.existsSync(file)) continue;   // the missing-file test reports that
+    const real = jpegSize(file);
+    assert.strictEqual(Number(w) + '×' + Number(h), real.width + '×' + real.height, name + ' is ' + real.width + '×' + real.height + ' but the page says ' + w + '×' + h);
+  }
+});
+
 test('each trade has its six frames, in order', () => {
   for (const trade of ['plumbing', 'electrical', 'hvac']) {
     const mine = refs.filter((r) => r.startsWith(trade + '-'));

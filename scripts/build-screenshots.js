@@ -981,7 +981,13 @@ async function overseerBoardSetup(page) {
 // setups seed what each trade's hero film makes on camera, same names and colours, so the
 // frames match the film above them. HVAC first (the film "Pounds, not feet").
 // ============================================================================
-const SPOT_FRAME = [1200, 900];   // 4:3, the viewport's full height, so the tall dialogs keep their buttons
+// Each spotlight frame is a 4:3 window sized to its surface: `crop: { sel, w, h, ax, ay, ox, oy }`
+// aligns the window's (ax, ay) fraction point to the anchor element's (ax, ay) fraction point
+// (default its centre), then shifts by (ox, oy) px and clamps to the viewport. So a dialog's
+// valuable rows fill the frame instead of sitting in the middle of 1200×900 of dimmed plan.
+const CROP_QUICK = { sel: '#counterModal .modal-card', w: 520, h: 390, ax: 0.5, ay: 0, oy: 70 };            // the Trade row to the More block
+const CROP_BID = { sel: '#bidCheckSection', w: 560, h: 420, ax: 0, ay: 0, ox: -6, oy: -8 };                  // the checklist column, a sliver of plan beside it
+const CSS_BID = '.sidebar{width:420px}';                                                                     // wide enough that a check reads on one line
 
 // The office sheet's rooms and the HVAC main, in PDF points (the film's MAIN_H / rooms).
 const OPEN_OFFICE_105 = { x1: 159, y1: 358, x2: 412.5, y2: 520 };
@@ -1129,7 +1135,7 @@ const HOT_SUPPLY_P = [[796, 572], [786, 572], [786, 590], [188, 590], [188, 580]
 const HOT_RETURN_P = [[570, 590], [570, 105], [936, 105], [936, 572], [918, 572]].map((p) => RB(...p));
 const DIM_31_8_P = [RB(560, 84), RB(940, 84)];
 const CAM_PLAN_P = { x1: 145, y1: 118, x2: 860, y2: 575 };
-const CAM_METER_P = { x1: 520, y1: 380, x2: 860, y2: 610 };   // the service riser at the meter, bottom right of the plan
+const CAM_METER_P = { x1: 600, y1: 420, x2: 800, y2: 570 };   // the service riser at the meter (4:3, the WH/WM/GM corner of the plan)
 // A PDF point of the current sheet in viewport pixels (any zoom / pan; the film's R.pt).
 async function pdfPoint(page, x, y) {
   const box = await page.locator('#annCanvas').boundingBox();
@@ -1178,7 +1184,7 @@ async function plumbingBase(page, opts = {}) {
 
 const SPOTLIGHT = [
   {
-    name: 'plumbing-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card', plan: PLAN_B,
+    name: 'plumbing-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', crop: CROP_QUICK, clip: '#counterModal .modal-card', plan: PLAN_B,
     async setup(page) {
       await plumbingBase(page);
       await page.evaluate(() => document.getElementById('addCounter').click());
@@ -1194,7 +1200,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'plumbing-2-rulebook', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterLineTypeDetailsModal .modal-card', plan: PLAN_B,
+    name: 'plumbing-2-rulebook', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#childCountsSuggest', w: 525, h: 394, ax: 0.5, ay: 1, oy: 14 }, clip: '#counterLineTypeDetailsModal .modal-card', plan: PLAN_B,
     async setup(page) {
       await plumbingBase(page, { noHangers: true });   // no hanger row yet, so "From the rulebook" offers it
       await page.evaluate(() => { const lt = window.state.lineTypes.find((l) => l.id === window.__spot.cu); window.App.openCounterLineTypeDetailsModal('lineType', lt); });
@@ -1204,14 +1210,14 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'plumbing-3-riser', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper', plan: PLAN_B, dropSizes: true,
+    name: 'plumbing-3-riser', dir: 'img/spotlight', format: 'jpeg', crop: { w: 800, h: 600 }, clip: '#canvasWrapper', plan: PLAN_B, dropSizes: true,
     async setup(page) {
       await plumbingBase(page);
       await frameRegion(page, CAM_METER_P);
     },
   },
   {
-    name: 'plumbing-4-scale-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#scaleModal .modal-card', plan: PLAN_B,
+    name: 'plumbing-4-scale-check', dir: 'img/spotlight', format: 'jpeg', crop: { w: 587, h: 440 }, clip: '#scaleModal .modal-card', plan: PLAN_B,
     async setup(page) {
       await plumbingBase(page);
       await page.evaluate(() => { const s = window.state, App = window.App; s.scaleCheckMode = true; s.tool = App.TOOL.SCALE; s.scaleMode = App.SCALE_MODES.POINT_A; s.scalePointA = null; s.scalePointB = null; App.updateUI(); App.renderAnnotations(); });
@@ -1225,16 +1231,16 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'plumbing-5-bid-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#bidCheckSection', plan: PLAN_B,
+    name: 'plumbing-5-bid-check', dir: 'img/spotlight', format: 'jpeg', crop: CROP_BID, css: CSS_BID, clip: '#bidCheckSection', plan: PLAN_B,
     async setup(page) {
       await plumbingBase(page);
       await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
-      await page.locator('#bidCheckSection').scrollIntoViewIfNeeded();
+      await page.evaluate(() => document.getElementById('bidCheckSection').scrollIntoView({ block: 'start' }));
       await page.waitForTimeout(300);
     },
   },
   {
-    name: 'plumbing-6-handoff', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper', plan: PLAN_B, clipboard: true,
+    name: 'plumbing-6-handoff', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#toastRegion .toast-card.visible', w: 640, h: 480, ax: 1, ay: 0, ox: 14, oy: -14 }, clip: '#canvasWrapper', plan: PLAN_B, clipboard: true,
     async setup(page) {
       await plumbingBase(page);
       await page.locator('#forPipeTooling').scrollIntoViewIfNeeded();
@@ -1247,7 +1253,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'electrical-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card',
+    name: 'electrical-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', crop: CROP_QUICK, clip: '#counterModal .modal-card',
     async setup(page) {
       await electricalBase(page);
       await page.evaluate(() => document.getElementById('addCounter').click());
@@ -1262,7 +1268,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'electrical-2-chain', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#chainPanel',   // the panel at the canvas's top left, the chained run below it
+    name: 'electrical-2-chain', dir: 'img/spotlight', format: 'jpeg', crop: { w: 880, h: 660, ax: 0, ay: 0, ox: -12, oy: -12 }, clip: '#chainPanel',   // the panel at the canvas's top left, the chained run below it
     async setup(page) {
       await electricalBase(page);
       await frameRegion(page, CAM_OPEN_OFFICE);
@@ -1272,7 +1278,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'electrical-3-conduit', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterLineTypeDetailsModal .modal-card',
+    name: 'electrical-3-conduit', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#homerunGroup', w: 525, h: 394, ax: 0.5, ay: 0, oy: -202 }, clip: '#counterLineTypeDetailsModal .modal-card',
     async setup(page) {
       await electricalBase(page);
       await page.evaluate(() => { const lt = window.state.lineTypes.find((l) => l.id === window.__spot.emt); window.App.openCounterLineTypeDetailsModal('lineType', lt); });
@@ -1281,7 +1287,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'electrical-4-wire', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#summaryList',
+    name: 'electrical-4-wire', dir: 'img/spotlight', format: 'jpeg', crop: { w: 560, h: 420, ax: 0, ay: 0, ox: -6, oy: -40 }, css: CSS_BID, clip: '#summaryList',
     async setup(page) {
       await electricalBase(page);
       await page.evaluate(() => { const sec = document.getElementById('summarySection'); if (sec) sec.classList.remove('collapsed'); if ('summaryCollapsed' in window.state) window.state.summaryCollapsed = false; window.App.updateUI(); });
@@ -1290,19 +1296,19 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'electrical-5-bid-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#bidCheckSection',
+    name: 'electrical-5-bid-check', dir: 'img/spotlight', format: 'jpeg', crop: CROP_BID, css: CSS_BID, clip: '#bidCheckSection',
     async setup(page) {
       await electricalBase(page);
       await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
-      await page.locator('#bidCheckSection').scrollIntoViewIfNeeded();
+      await page.evaluate(() => document.getElementById('bidCheckSection').scrollIntoView({ block: 'start' }));
       await page.waitForTimeout(300);
     },
   },
   {
-    name: 'electrical-6-handoff', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper',
+    name: 'electrical-6-handoff', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#toastRegion .toast-card.visible', w: 640, h: 480, ax: 1, ay: 0, ox: 14, oy: -14 }, clip: '#canvasWrapper',
     async setup(page) {
       await electricalBase(page);
-      await page.evaluate(() => { window.open = () => ({ location: { set href(_) {} }, focus() {} }); });
+      await page.evaluate(() => { window.open = () => ({ location: { set href(_) {} }, focus() {} }); window.state.showLegendOverlay = false; window.App.renderAnnotations(); });
       await page.locator('#forTakeoffTooling').scrollIntoViewIfNeeded();
       await page.locator('#forTakeoffTooling').click();
       await page.waitForTimeout(300);
@@ -1313,7 +1319,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'hvac-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card',
+    name: 'hvac-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', crop: CROP_QUICK, clip: '#counterModal .modal-card',
     async setup(page) {
       await hvacBase(page);
       await page.evaluate(() => document.getElementById('addCounter').click());
@@ -1329,7 +1335,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'hvac-2-room-size', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#roomBoxModal .modal-card',
+    name: 'hvac-2-room-size', dir: 'img/spotlight', format: 'jpeg', crop: { w: 747, h: 560, ax: 0.5, ay: 0, oy: 22 }, clip: '#roomBoxModal .modal-card',
     async setup(page) {
       await hvacBase(page);
       await page.evaluate(() => { const s = window.state, App = window.App; s.tool = App.TOOL.ROOM; s.roomBoxStart = null; App.updateUI(); });
@@ -1346,9 +1352,9 @@ const SPOTLIGHT = [
       await page.waitForTimeout(250);
     },
   },
-  { name: 'hvac-3-trace', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper', setup: hvacDraft },
+  { name: 'hvac-3-trace', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#ductHintCard', w: 800, h: 600, ax: 0.5, ay: 1, ox: -100, oy: 16 }, clip: '#canvasWrapper', setup: hvacDraft },
   {
-    name: 'hvac-4-size-popover', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper',
+    name: 'hvac-4-size-popover', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#ductSizePopover', w: 693, h: 520, ax: 1, ay: 0.5, ox: 16 }, clip: '#canvasWrapper',
     async setup(page) {
       await hvacDraft(page);
       await page.keyboard.press('s');
@@ -1357,7 +1363,7 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'hvac-5-schedule', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#ductScheduleModal .modal-card',
+    name: 'hvac-5-schedule', dir: 'img/spotlight', format: 'jpeg', crop: { w: 680, h: 510, ax: 0.5, ay: 0, oy: 46 }, clip: '#ductScheduleModal .modal-card',
     async setup(page) {
       await hvacRun(page);
       await page.evaluate(() => document.getElementById('ductScheduleBtn').click());
@@ -1366,11 +1372,11 @@ const SPOTLIGHT = [
     },
   },
   {
-    name: 'hvac-6-bid-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#bidCheckSection',
+    name: 'hvac-6-bid-check', dir: 'img/spotlight', format: 'jpeg', crop: CROP_BID, css: CSS_BID, clip: '#bidCheckSection',
     async setup(page) {
       await hvacRun(page);
       await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
-      await page.locator('#bidCheckSection').scrollIntoViewIfNeeded();
+      await page.evaluate(() => document.getElementById('bidCheckSection').scrollIntoView({ block: 'start' }));
       await page.waitForTimeout(300);
     },
   },
@@ -1404,16 +1410,19 @@ async function loadApp(page, baseUrl, plan = PLAN) {
       const page = await browser.newPage({ viewport: shot.viewport || { width: 1380, height: 900 }, deviceScaleFactor: 2, ...(shot.clipboard ? { permissions: ['clipboard-read', 'clipboard-write'] } : {}) });
       if (shot.dropSizes) await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); } catch (_) { /* private mode */ } });
       if (!shot.noLoad) await loadApp(page, baseUrl, shot.plan || PLAN);
+      if (shot.css) await page.addStyleTag({ content: shot.css });
       if (shot.setup) await shot.setup(page, baseUrl);
       let clip = await page.locator(shot.clip).first().boundingBox();
       if (!clip) throw new Error(`${shot.name}: clip ${shot.clip} not found`);
-      if (shot.frame) {
-        // A fixed window centred on the surface (clamped to the viewport), so a set of
-        // frames shares one aspect on the page whatever the dialog's own size.
+      if (shot.crop) {
+        const c = shot.crop;
+        const a = c.sel ? await page.locator(c.sel).first().boundingBox() : clip;
+        if (!a) throw new Error(`${shot.name}: crop anchor ${c.sel} not found`);
         const vp = page.viewportSize();
-        const [fw, fh] = shot.frame;
+        const ax = c.ax == null ? 0.5 : c.ax, ay = c.ay == null ? 0.5 : c.ay;
         const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-        clip = { x: clamp(clip.x + clip.width / 2 - fw / 2, 0, vp.width - fw), y: clamp(clip.y + clip.height / 2 - fh / 2, 0, vp.height - fh), width: fw, height: fh };
+        clip = { x: clamp(a.x + a.width * ax - c.w * ax + (c.ox || 0), 0, vp.width - c.w), y: clamp(a.y + a.height * ay - c.h * ay + (c.oy || 0), 0, vp.height - c.h), width: c.w, height: c.h };
+        console.log(`  ${shot.name}: anchor ${Math.round(a.x)},${Math.round(a.y)} ${Math.round(a.width)}×${Math.round(a.height)} → window ${Math.round(clip.x)},${Math.round(clip.y)} ${c.w}×${c.h}`);
       }
       const items = [];
       for (const c of shot.callouts || []) {

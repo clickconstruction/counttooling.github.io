@@ -1485,7 +1485,10 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   (tags on `/`; noindex on `?t=`/`?devAuth=1`; local only) and [landing-trade.spec.js](landing-trade.spec.js)
   (the hero's trade chips, the `/?trade=<trade>` link that lands on a film pinned, the Bid Check
   proof rows that follow the chip through `html[data-hero-trade]`, the shop section, the Texas
-  footer line; local + CI, 2026-09-18). The app is admin-provisioned (no
+  footer line, the trade spotlight's visible set and lazy frames; local + CI, 2026-09-18) plus
+  [landing-assets.test.js](landing-assets.test.js) (Node, in `npm run check`: every
+  `img/spotlight/` frame index.html references is committed and vice versa, six per trade).
+  The app is admin-provisioned (no
   public signup), so this is brand/link-preview/privacy hygiene, not lead-gen SEO.
 
 ## Migrations naming

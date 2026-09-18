@@ -168,6 +168,17 @@ save/load, export/import and the Artboard for free.
 
 ## 6. Suggested build ladder (after the mockup round)
 
+> **Rung 0 shipped 2026-09-18 (punch row BEND-FITTINGS, Robert's ask):** *fittings from
+> bends.* A line type's details carry a table (bend nearer 45° → fitting × qty, nearer 90° →
+> …, drop at an end → …), off by default, defaults from the type's name; every run of the
+> type then derives its 45s, 90s and drop-90s from its own vertices and drops as child-count
+> rows (fitting-model.js, features/child-counts.js), never marks, with a chip at each bend on
+> the canvas and a Bid Check row beside the hangers row (na while off everywhere, warn when
+> some pipe types count and others do not). Tees and wyes wait for rung 3's attachment model,
+> where a branch meeting a main is a tee for free. The edit-mode vertex override (the model
+> already honours `points[i].fitting = 'none' | 'bend45' | 'bend90'`) is punch row
+> BEND-OVERRIDE. Mockup: https://claude.ai/artifact/6Gj27nuq1uYh9BZjeSPm82.
+
 1. **Rulebook slice** (§2) — six rules with `code:` pointers, checked by
    the walkthrough; the project occupancy toggle beside the edition.
 2. **Fixture units on counters** — the field, the prefill, the chip, the

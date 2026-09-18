@@ -13,6 +13,26 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(lines): fittings from bends, a line type option that counts its own elbows (2026-09-18)
+
+Punch row BEND-FITTINGS (Robert's ask; mockup https://claude.ai/artifact/6Gj27nuq1uYh9BZjeSPm82).
+A line type's details gain "Fittings from bends": a toggle, off by default, and one row per bend
+class naming the fitting it produces and how many (bend nearer 45°, bend nearer 90°, drop at an
+end; defaults from the type's name, so "2in Cu" earns "2in Cu 45° elbow" and "2in Cu 90° elbow").
+With it on, every run of the type derives its elbows from its own geometry: each interior vertex
+of a polyline by its direction change (the duct tool's angle function, nearer of 45 and 90:
+22.5° / 67.5°; a smaller wobble counts nothing) and each drop at a run's end as a 90 (the Chain
+tool's device verticals included). The rows are child counts (per bend / per drop, tagged
+derived) so they ride the Summary, Show Report, Copy Summary and Copy to PipeTooling exactly as
+the hangers do, and never become marks; a small "45" / "90" chip at each bend shows what the
+tally will say, live and in the exported markup. Bid Check gains "Fittings counted on every pipe
+run" beside the hangers row: informational while the option is off everywhere, a warning once
+some pipe types count and others do not. Telemetry: `bend_fittings_toggle` { on, lineType } on every toggle, allowlisted by
+`supabase/migrations/20260918053207_log_user_event_bend_fittings.sql` (applied to prod through the
+Supabase MCP 2026-09-18 from the deployed body; the drift test pins it). New: `fitting-model.js` (pure, node-tested),
+`bend-fittings.spec.js`; the model honours a per-vertex `fitting` override whose edit-mode menu
+is punch row BEND-OVERRIDE. Tees wait for the water plan's attachment rung.
+
 ## feat(landing): SPOT-5, tighter spotlight frames and value captions (2026-09-18)
 
 Robert's review of the first spotlight cut: the eighteen frames were a fixed 1200×900 window with

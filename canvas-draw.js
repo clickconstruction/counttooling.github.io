@@ -658,6 +658,32 @@ function createCanvasDraw(deps) {
         if ((poly.startDrop || 0) > 0) drawDropSizeLabel(pts[0], pts[1], poly.startDrop, poly.startDropUnit);
         if ((poly.endDrop || 0) > 0) drawDropSizeLabel(pts[pts.length - 1], pts[pts.length - 2], poly.endDrop, poly.endDropUnit);
       }
+      // BEND-FITTINGS: a small chip at each bend that counts a fitting ("45" / "90"),
+      // in the run's colour, so the estimator sees what the tally will say. Pure
+      // read of fitting-model.js; a run whose type has the option off draws nothing.
+      {
+        const fm = (typeof window !== 'undefined') ? window.FittingModel : null;
+        const bplt = fm ? (state.lineTypes || []).find(l => l.id === poly.lineTypeId) : null;
+        if (bplt && fm.bendFittingsEnabled(bplt) && pts.length >= 3) {
+          const fs = env.fontScale || 1;
+          const w = 22 * fs, h = 12 * fs, off = 7 * fs;
+          ctx.font = '600 ' + (8.5 * fs) + 'px ' + (env.fontFamily || 'DM Sans') + ', sans-serif';
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          for (let i = 0; i < pts.length; i++) {
+            const k = fm.vertexBendClass(pts, i, !!poly.closed);
+            if (!k) continue;
+            const c = tc(pts[i]);
+            const x = c.x + off, y = c.y - off - h;
+            ctx.fillStyle = 'rgba(255,255,255,0.92)';
+            ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = poly.color || '#4a9eff'; ctx.lineWidth = 1;
+            ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = '#17171a';
+            ctx.fillText(k === 'bend90' ? '90' : '45', x + w / 2, y + h / 2 + 0.5);
+          }
+          ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+        }
+      }
       if (poly.showLength && pts.length >= 2) {
         const tickLen = lts.parallelEndsSize ?? 10;
         const drawPerpTick = (endPdf, tangentPdf) => {

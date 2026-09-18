@@ -35,6 +35,7 @@
   const App = (window.App = window.App || {});
 
   const SM = () => window.SupportModel;
+  const FM = () => window.FittingModel;   // BEND-FITTINGS: fitting-model.js, pure
   function ruleLabel(ch) {
     if (ch.per === 'count') return 'per count';
     if (ch.per === 'ft') return 'per ' + (SM() ? SM().childIntervalLabel(ch) : (ch.ftInterval || 10) + ' ft');
@@ -51,7 +52,8 @@
     const getAnn = o.getAnnotations || ((pi) => App.getActiveAnnotations(state.pages[pi], pi));
 
     const countersWithChildren = (state.counters || []).filter((c) => (c.childCounts || []).length);
-    const lineTypesWithChildren = (state.lineTypes || []).filter((lt) => (lt.childCounts || []).length);
+    // BEND-FITTINGS: a type with fittings from bends on has derived rows even with no child counts.
+    const lineTypesWithChildren = (state.lineTypes || []).filter((lt) => (lt.childCounts || []).length || (FM() && FM().bendFittingsEnabled(lt)));
     if (!countersWithChildren.length && !lineTypesWithChildren.length) return { byGroup: {} };
 
     // Per (group, parent) raw units the rules consume: counter zone-units,
@@ -72,10 +74,16 @@
       lineTypesWithChildren.forEach((lt) => {
         const addRun = (item, isPoly) => {
           const g = forGroup(item.group || null).lineType;
-          if (!g[lt.id]) g[lt.id] = { runUnits: 0, ftRuns: [], pxRuns: 0 };
+          if (!g[lt.id]) g[lt.id] = { runUnits: 0, ftRuns: [], pxRuns: 0, bends: { bend45: 0, bend90: 0, drop: 0 } };
           const r = g[lt.id];
           const zone = App.getMultiplyZoneForLine(ann, item, isPoly) || 1;
           r.runUnits += zone;
+          // BEND-FITTINGS: the run's own bends (polylines) and drops (any run), zone-weighted like the per-run children.
+          if (FM() && FM().bendFittingsEnabled(lt)) {
+            const b = isPoly ? FM().runBendCounts(item.points, !!item.closed) : { bend45: 0, bend90: 0 };
+            r.bends.bend45 += b.bend45 * zone; r.bends.bend90 += b.bend90 * zone;
+            r.bends.drop += FM().lineDropEnds(item) * zone;
+          }
           const split = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
           if (split.px > 0) r.pxRuns++;
           else r.ftRuns.push({ rawFeet: split.feet / zone, zone });
@@ -99,7 +107,7 @@
       lineTypesWithChildren.forEach((lt) => {
         const u = g.lineType[lt.id];
         if (!u) return;
-        const rows = lt.childCounts.map((ch) => {
+        const rows = (lt.childCounts || []).map((ch) => {
           const stamp = ch.ruleId ? { ruleId: ch.ruleId } : {};
           if (ch.per === 'ft') {
             // The interval in feet: an inch interval (the rulebook's unit for
@@ -109,7 +117,8 @@
             return { name: ch.name, qty: ch.qty, per: 'ft', ftInterval: ch.intervalIn > 0 ? null : n, ...(ch.intervalIn > 0 ? { intervalIn: ch.intervalIn } : {}), ...stamp, total, excludedPxRuns: u.pxRuns };
           }
           return { name: ch.name, qty: ch.qty, per: 'run', ftInterval: null, ...stamp, total: u.runUnits * ch.qty, excludedPxRuns: 0 };
-        }).filter((r) => r.total > 0 || r.excludedPxRuns > 0);
+        }).filter((r) => r.total > 0 || r.excludedPxRuns > 0)
+          .concat(FM() ? FM().bendFittingRows(lt, u.bends) : []);   // BEND-FITTINGS: the derived elbow rows, after the typed ones
         if (rows.length) out.lineType[lt.id] = rows;
       });
       if (Object.keys(out.counter).length || Object.keys(out.lineType).length) byGroup[gid] = out;
@@ -194,6 +203,7 @@
     };
     renderRows();
     renderSuggestions();
+    renderBendFittings(kind, item);
 
     document.getElementById('childCountAdd').onclick = () => {
       const nameEl = document.getElementById('childCountName');
@@ -215,6 +225,57 @@
       nameEl.value = '';
       renderRows();
     };
+  }
+
+  // --- BEND-FITTINGS: the "Fittings from bends" block (line types only) ------
+  // A toggle, then one row per bend class: the fitting it produces and how
+  // many. Writes lt.bendFittings (rides save/load/export with the palette);
+  // every change re-tallies and repaints (the chips at the bends).
+  function renderBendFittings(kind, item) {
+    const group = document.getElementById('bendFittingsGroup');
+    const btn = document.getElementById('bendFittingsBtn');
+    const rowsEl = document.getElementById('bendFittingsRows');
+    if (!group || !btn || !rowsEl) return;
+    const fm = FM();
+    if (kind !== 'lineType' || !fm) { group.hidden = true; return; }
+    group.hidden = false;
+    const commit = (mutate) => { App.pushUndoSnapshotCurrentPage(); mutate(); App.markProjectDirty(); App.updateUI(); App.renderAnnotations && App.renderAnnotations(); };
+    const esc = App.escapeHtml;
+    const paint = () => {
+      const bf = fm.normalizeBendFittings(item);
+      btn.setAttribute('aria-pressed', String(bf.enabled));
+      rowsEl.hidden = !bf.enabled;
+      if (!bf.enabled) { rowsEl.innerHTML = ''; return; }
+      rowsEl.innerHTML = fm.BEND_CLASSES.map((k) =>
+        '<div class="bend-fitting-row" data-class="' + k + '">' +
+        '<span class="bend-fitting-class">' + esc(fm.BEND_CLASS_LABELS[k]) + ' →</span>' +
+        '<input type="text" class="bend-fitting-name" value="' + esc(bf[k].name) + '" aria-label="Fitting for ' + esc(fm.BEND_CLASS_LABELS[k]) + '" autocomplete="off">' +
+        '<input type="number" class="bend-fitting-qty" min="0" step="1" value="' + esc(bf[k].qty) + '" aria-label="Quantity per ' + esc(fm.BEND_CLASS_LABELS[k]) + '">' +
+        '</div>').join('') +
+        '<div class="bend-fitting-foot">Names default from the type\'s name. A 90 that is really two 45s: name the 90 row "45° elbow" and count 2. DWV: "1/8 bend" and "1/4 bend".</div>';
+      rowsEl.querySelectorAll('.bend-fitting-row').forEach((row) => {
+        const k = row.dataset.class;
+        const nameEl = row.querySelector('.bend-fitting-name'), qtyEl = row.querySelector('.bend-fitting-qty');
+        const write = () => {
+          const cur = fm.normalizeBendFittings(item);
+          const name = (nameEl.value || '').trim() || fm.defaultBendFittings(item.name)[k].name;
+          const qty = Math.max(0, Math.round(Number(qtyEl.value) || 0));
+          if (name === cur[k].name && qty === cur[k].qty) return;
+          commit(() => { item.bendFittings = Object.assign({}, cur, { [k]: { name, qty } }); });
+          nameEl.value = name;
+        };
+        nameEl.onblur = write; qtyEl.onchange = write;
+        nameEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); nameEl.blur(); } };
+      });
+    };
+    btn.onclick = () => {
+      const cur = fm.normalizeBendFittings(item);
+      commit(() => { item.bendFittings = Object.assign({}, cur, { enabled: !cur.enabled }); });
+      // Allowlisted by supabase/migrations/20260918053207_log_user_event_bend_fittings.sql (applied 2026-09-18).
+      App.logUserEvent && App.logUserEvent('bend_fittings_toggle', App.state.currentProjectId || null, { on: !cur.enabled, lineType: item.name });
+      paint();
+    };
+    paint();
   }
 
   App.getChildCountTotals = getChildCountTotals;

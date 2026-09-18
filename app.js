@@ -789,9 +789,28 @@
     renderPdf: () => renderPdf(),
     updateUI: () => updateUI(),
   });
-  function pushUndoSnapshot() {
+  // A run being edited (TOOL.EDIT_POLY) is spliced OUT of its page's polylines
+  // into state.editingPolyline, so a snapshot taken mid-edit (a vertex delete,
+  // a BEND-OVERRIDE choice) would capture the page WITHOUT it and an undo
+  // would drop the run outright while the tool sat in edit mode with nothing
+  // to edit (found by the BEND-OVERRIDE test round, 2026-09-18). Both wrappers
+  // put the run back for the length of the copy; undo then restores the page
+  // with the run as it was before the change, and leaves edit mode (below).
+  // `run` substitutes the copy that goes home (Done Editing homes the run as it
+  // was when editing began, so one undo reverts the whole edit session, drags
+  // included — drags take no snapshot of their own).
+  function withEditingPolylineHome(fn, run) {
+    const poly = state.editingPolyline ? (run || state.editingPolyline) : null;
+    const page = poly ? state.pages[state.editingPolyIndex] : null;
+    const canvas = page ? getActiveCanvas(page) : null;
+    if (!canvas) return fn();
+    if (!canvas.annotations.polylines) canvas.annotations.polylines = [];
+    canvas.annotations.polylines.push(poly);
+    try { return fn(); } finally { const i = canvas.annotations.polylines.indexOf(poly); if (i >= 0) canvas.annotations.polylines.splice(i, 1); }
+  }
+  function pushUndoSnapshot(homeRun) {
     const t0 = performance.now();
-    const r = undoStackModel.pushUndoSnapshot();
+    const r = withEditingPolylineHome(() => undoStackModel.pushUndoSnapshot(), homeRun);
     notePerfSample('undoSnapshotMs', performance.now() - t0);
     return r;
   }
@@ -800,21 +819,39 @@
   // (group/room deletes, imports, canvas repair) must keep pushUndoSnapshot.
   function pushUndoSnapshotCurrentPage() {
     const t0 = performance.now();
-    const r = undoStackModel.pushUndoSnapshotPage(state.currentPage);
+    const r = withEditingPolylineHome(() => undoStackModel.pushUndoSnapshotPage(state.currentPage));
     notePerfSample('undoSnapshotMs', performance.now() - t0);
     return r;
+  }
+  // An undo/redo applied mid-edit nulls state.editingPolyline (the run is back
+  // on its page from the snapshot); the tool must follow it out of edit mode.
+  function leaveEditModeIfOrphaned() {
+    if (state.tool === TOOL.EDIT_POLY && !state.editingPolyline) {
+      state.editingPolylineOrig = null;
+      state.editingPolyIndex = null;
+      state.activePolylineId = null;
+      state.tool = TOOL.NONE;
+      state.draggingVertexIdx = null;
+      annCanvas.classList.remove('interactive');
+      if (App.hideBendVertexMenu) App.hideBendVertexMenu();
+      updateUI();
+      renderAnnotations();
+    }
   }
   // The one undo choke point (Ctrl+Z + the bottom-bar button): a successful
   // undo toasts how many are left so the 50-step ceiling is never a surprise.
   function undo() {
-    const applied = undoStackModel.undo();
+    // Undo/redo take the snapshot for the opposite stack at apply time, so the
+    // run being edited must be home for those too (else redo drops it).
+    const applied = withEditingPolylineHome(() => undoStackModel.undo());
     if (applied) {
+      leaveEditModeIfOrphaned();
       const left = undoStackModel.undoDepth();
       showToast(left + (left === 1 ? ' undo left' : ' undos left'), 1000);
     }
     return applied;
   }
-  function redo() { return undoStackModel.redo(); }
+  function redo() { const applied = withEditingPolylineHome(() => undoStackModel.redo()); if (applied) leaveEditModeIfOrphaned(); return applied; }
   function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
 
   function resetAutosaveDegradedState() { return saveEngine.resetAutosaveDegradedState(); }
@@ -3212,6 +3249,7 @@
     const idx = (canvas.annotations?.polylines || []).findIndex(p => p.id === polyId);
     if (idx < 0) return;
     state.editingPolyline = canvas.annotations.polylines.splice(idx, 1)[0];
+    state.editingPolylineOrig = JSON.parse(JSON.stringify(state.editingPolyline));   // what Done Editing's undo step restores
     state.editingPolyIndex = pageIdx;
     state.tool = TOOL.EDIT_POLY;
     state.activePolylineId = polyId;
@@ -3226,13 +3264,14 @@
   function exitEditMode(save) {
     if (!state.editingPolyline) return;
     if (save && (state.editingPolyline.points || []).length >= 2) {
-      pushUndoSnapshot();
+      pushUndoSnapshot(state.editingPolylineOrig);
       const page = state.pages[state.editingPolyIndex];
       const canvas = page && getActiveCanvas(page);
       if (canvas) { if (!canvas.annotations.polylines) canvas.annotations.polylines = []; canvas.annotations.polylines.push(state.editingPolyline); }
       markProjectDirty();
     }
     state.editingPolyline = null;
+    state.editingPolylineOrig = null;
     state.editingPolyIndex = null;
     state.activePolylineId = null;
     state.tool = TOOL.NONE;

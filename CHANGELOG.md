@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(lines): the run stays painted while it is edited (2026-09-18)
+
+Edit Polyline splices the run out of the page's annotations into `state.editingPolyline`
+(`enterEditMode`), so the unified draw core stopped painting its stroke the moment editing
+began: the estimator saw the yellow vertex dots and, since BEND-OVERRIDE, the bend chips, but
+not the segments between them. The live overlay's edit block (app.js `renderAnnotations`, the
+`state.editingPolyline` branch) now paints the run's segments first, the way the draw core
+does for a committed run: the run's colour, the line type settings' stroke width and opacity,
+a closed run closing back to its first point, solid (polylines carry no dash style), under the
+dots and chips. Live path only; the export path never sees a run mid-edit. Test: a fifth case
+in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
+after editing, and at the closing segment of a closed run while edited.
+
 ## feat(lines): the edit-mode vertex menu for fittings from bends (2026-09-18)
 
 Punch row BEND-OVERRIDE, the follow-up to BEND-FITTINGS below. In Edit Polyline, a right-click on

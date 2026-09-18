@@ -2312,6 +2312,21 @@
     if (App.drawTagOverlay) App.drawTagOverlay(ctx, { fontScale: z * currentEffDpr });   // S6: the "Plan says B" chip
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
+      const editColor = state.editingPolyline.color || '#4a9eff';
+      // The run is spliced OUT of the annotations while it is edited (enterEditMode),
+      // so the draw core no longer paints its stroke; its segments are painted here
+      // the way drawAnnotationsCore does (the line type's stroke width and opacity,
+      // a closed run closing back to its first point, solid: polylines carry no dash
+      // style), under the vertex dots and chips. Live path only; the export never
+      // sees a run mid-edit.
+      if (pts.length >= 2) {
+        ctx.strokeStyle = editColor; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([]);
+        ctx.beginPath();
+        const p0 = toCanvas(pts[0]); ctx.moveTo(p0.x, p0.y);
+        for (let i = 1; i < pts.length; i++) { const p = toCanvas(pts[i]); ctx.lineTo(p.x, p.y); }
+        if (state.editingPolyline.closed) ctx.closePath();
+        ctx.stroke(); ctx.globalAlpha = 1;
+      }
       pts.forEach((pt, i) => {
         const p = toCanvas(pt);
         ctx.fillStyle = '#e8c547'; ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI * 2); ctx.fill();
@@ -2320,7 +2335,7 @@
       // BEND-FITTINGS: the run is out of the annotations while it is edited, so its
       // bend chips are painted here (the same helper canvas-draw uses), overrides included.
       const elt = (state.lineTypes || []).find(l => l.id === state.editingPolyline.lineTypeId);
-      if (typeof drawBendFittingChips === 'function') drawBendFittingChips(ctx, pts, !!state.editingPolyline.closed, state.editingPolyline.color || '#4a9eff', elt, toCanvas, z * currentEffDpr, 'DM Sans');
+      if (typeof drawBendFittingChips === 'function') drawBendFittingChips(ctx, pts, !!state.editingPolyline.closed, editColor, elt, toCanvas, z * currentEffDpr, 'DM Sans');
     }
     if (state.showLegendOverlay) {
       if (!ann.legend) {

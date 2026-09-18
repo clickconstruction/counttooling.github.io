@@ -973,6 +973,169 @@ async function overseerBoardSetup(page) {
   await page.waitForTimeout(250);
 }
 
+// ============================================================================
+// The landing's trade spotlight (LANDING-REFRESH.md "The trade spotlight"): six frames of
+// the real app per trade, JPEG, a fixed 1200×750 window centred on the surface so the six
+// share one aspect on the page. `--set spotlight` builds them into img/spotlight/. The
+// setups seed what each trade's hero film makes on camera, same names and colours, so the
+// frames match the film above them. HVAC first (the film "Pounds, not feet").
+// ============================================================================
+const SPOT_FRAME = [1200, 900];   // 4:3, the viewport's full height, so the tall dialogs keep their buttons
+
+// The office sheet's rooms and the HVAC main, in PDF points (the film's MAIN_H / rooms).
+const OPEN_OFFICE_105 = { x1: 159, y1: 358, x2: 412.5, y2: 520 };
+const CONFERENCE_103 = { x1: 540, y1: 145, x2: 652.5, y2: 325 };
+const DIFFUSERS = [[200, 457], [268, 457], [336, 457], [404, 457]];
+const MAIN_PTS = [[164, 452], [240, 452], [320, 452], [406, 452]];
+
+// Frame a region of the sheet (PDF points) in the canvas wrapper: the film's camera, so the
+// two trace frames show the open office at the size the hero film shows it.
+async function frameRegion(page, r) {
+  await page.evaluate((r) => {
+    const s = window.state, App = window.App;
+    const w = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+    const zoom = Math.min(App.getMaxZoom(), Math.min(w.width / (r.x2 - r.x1), w.height / (r.y2 - r.y1)));
+    s.zoom = zoom;
+    s.pan = { x: (w.width - (r.x2 - r.x1) * zoom) / 2 - r.x1 * zoom, y: (w.height - (r.y2 - r.y1) * zoom) / 2 - r.y1 * zoom };
+    App.renderPdf(); App.updateUI();
+  }, r);
+  await page.waitForTimeout(350);
+}
+const CAM_OPEN_OFFICE = { x1: 118, y1: 322, x2: 560, y2: 548 };   // the open office with LP-1 in frame, the film's office camera
+
+async function clickPlanPt(page, x, y) {
+  const p = await planPoint(page, x / PLAN_W, y / PLAN_H);
+  await page.mouse.click(p.x, p.y);
+  await page.waitForTimeout(140);
+}
+async function movePlanPt(page, x, y) {
+  const p = await planPoint(page, x / PLAN_W, y / PLAN_H);
+  await page.mouse.move(p.x, p.y);
+  await page.waitForTimeout(220);
+}
+
+// Trade hvac on the office sheet; OPEN OFFICE 105 boxed (office, 9 ft, deck 12); a 150 CFM
+// diffuser four times on the main's line; the system RTU-1 at 2,000 CFM, active.
+async function hvacBase(page) {
+  await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
+  await page.waitForFunction(() => (window.App.peekPageTextItems(0) || []).length > 0, { timeout: 15000 }).catch(() => {});
+  await page.evaluate(({ pw, room, dif }) => {
+    const s = window.state, App = window.App, uid = () => App.uid();
+    s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
+    App.setProjectTrade && App.setProjectTrade('hvac', { remember: false, route: 'tour' });
+    s.groupsEnabled = true;
+    const ann = s.pages[0].canvases[0].annotations;
+    const open = uid();
+    s.rooms.push({ id: open, name: 'OPEN OFFICE 105', color: '#e85447', roomType: 'office', nameFromPlan: true });
+    ann.roomBoxes.push({ id: uid(), x1: room.x1, y1: room.y1, x2: room.x2, y2: room.y2, heightFt: 9, roomId: open });
+    const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
+    const d = { id: uid(), name: '12x12 Supply Diffuser', icon: (App.cfmDefaultIcon && App.cfmDefaultIcon()) || ci('Supply Diffuser') || App.getOrderedIcons()[0].value, color: '#e8c547', cfm: 150 };
+    s.counters.push(d);
+    ann.counterMarkers[d.id] = dif.map(([x, y]) => ({ x, y, id: uid(), group: null }));
+    const rtu = { id: uid(), name: 'RTU-1', color: '#2e86de', equipmentTag: 'RTU-1', capacityCfm: 2000 };
+    s.groups.push(rtu); s.activeGroupId = rtu.id;
+    ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
+    if (App.setDuctDeckHeight) App.setDuctDeckHeight(12);
+    App.renderPdf(); App.updateUI(); App.renderAnnotations();
+  }, { pw: PLAN_W, room: OPEN_OFFICE_105, dif: DIFFUSERS });
+  await fitPlan(page);
+  await page.waitForTimeout(350);
+}
+async function armDuctRun(page) {
+  await page.evaluate(() => document.getElementById('ductBtn').click());
+  await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
+  await page.evaluate(() => document.getElementById('ductCreateStart').click());
+  await page.waitForFunction(() => !!window.state.drawingDuct, { timeout: 5000 });
+}
+const stepRect = (page) => page.evaluate(() => { const App = window.App; const sug = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion(); const next = sug && (sug.rectSize || sug.size); if (next && App.applyDuctSizeStep) App.applyDuctSizeStep(next); App.renderAnnotations(); });
+// Two vertices placed and the cursor on the third: the chip at the cursor, the hint card above the footer.
+async function hvacDraft(page) {
+  await hvacBase(page);
+  await frameRegion(page, CAM_OPEN_OFFICE);
+  await armDuctRun(page);
+  await clickPlanPt(page, ...MAIN_PTS[0]);
+  await clickPlanPt(page, ...MAIN_PTS[1]);
+  await movePlanPt(page, ...MAIN_PTS[2]);
+}
+// The main committed: 24×12 → 16×8 → 12×8 with two transitions, the diffusers attached.
+async function hvacRun(page) {
+  await hvacBase(page);
+  await armDuctRun(page);
+  await clickPlanPt(page, ...MAIN_PTS[0]);
+  await clickPlanPt(page, ...MAIN_PTS[1]);
+  await stepRect(page);
+  await clickPlanPt(page, ...MAIN_PTS[2]);
+  await stepRect(page);
+  await clickPlanPt(page, ...MAIN_PTS[3]);
+  await page.evaluate(() => { const App = window.App; App.finishDuctRun && App.finishDuctRun(); window.state.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations(); });
+  await page.waitForTimeout(300);
+}
+
+const SPOTLIGHT = [
+  {
+    name: 'hvac-1-quick-tab', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#counterModal .modal-card',
+    async setup(page) {
+      await hvacBase(page);
+      await page.evaluate(() => document.getElementById('addCounter').click());
+      await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+      await page.evaluate(() => window.App.showCounterTab && window.App.showCounterTab('quickcount'));
+      await page.waitForTimeout(200);
+      await page.locator('#counterQuickCountTradeSegment [data-trade="hvac"]').click();
+      await page.waitForTimeout(200);
+      await page.selectOption('#counterQuickCountSize', '12x12');
+      await page.selectOption('#counterQuickCountType', 'Supply Diffuser');
+      await page.locator('#counterQuickCountCfm').fill('150');
+      await page.waitForTimeout(250);
+    },
+  },
+  {
+    name: 'hvac-2-room-size', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#roomBoxModal .modal-card',
+    async setup(page) {
+      await hvacBase(page);
+      await page.evaluate(() => { const s = window.state, App = window.App; s.tool = App.TOOL.ROOM; s.roomBoxStart = null; App.updateUI(); });
+      const a = await planPoint(page, CONFERENCE_103.x1 / PLAN_W, CONFERENCE_103.y1 / PLAN_H);
+      const b = await planPoint(page, CONFERENCE_103.x2 / PLAN_W, CONFERENCE_103.y2 / PLAN_H);
+      await page.mouse.move(a.x, a.y); await page.mouse.down();
+      for (let i = 1; i <= 6; i++) { await page.mouse.move(a.x + (b.x - a.x) * i / 6, a.y + (b.y - a.y) * i / 6); await page.waitForTimeout(40); }
+      await page.mouse.up();
+      await page.waitForSelector('#roomBoxModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(400);   // the plan's text layer names the room
+      const typeShown = await page.evaluate(() => document.getElementById('roomBoxTypeGroup').style.display !== 'none');
+      if (typeShown) await page.selectOption('#roomBoxType', 'conference');
+      await page.locator('#roomBoxHeight').fill('9');
+      await page.waitForTimeout(250);
+    },
+  },
+  { name: 'hvac-3-trace', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper', setup: hvacDraft },
+  {
+    name: 'hvac-4-size-popover', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#canvasWrapper',
+    async setup(page) {
+      await hvacDraft(page);
+      await page.keyboard.press('s');
+      await page.waitForSelector('#ductSizePopover', { state: 'visible', timeout: 5000 });
+      await page.waitForTimeout(250);
+    },
+  },
+  {
+    name: 'hvac-5-schedule', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#ductScheduleModal .modal-card',
+    async setup(page) {
+      await hvacRun(page);
+      await page.evaluate(() => document.getElementById('ductScheduleBtn').click());
+      await page.waitForSelector('#ductScheduleModal.visible', { timeout: 5000 });
+      await page.waitForTimeout(300);
+    },
+  },
+  {
+    name: 'hvac-6-bid-check', dir: 'img/spotlight', format: 'jpeg', frame: SPOT_FRAME, clip: '#bidCheckSection',
+    async setup(page) {
+      await hvacRun(page);
+      await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
+      await page.locator('#bidCheckSection').scrollIntoViewIfNeeded();
+      await page.waitForTimeout(300);
+    },
+  },
+];
+
 async function loadApp(page, baseUrl) {
   await page.goto(baseUrl + '/app/', { waitUntil: 'networkidle' });
   await page.locator('#pdfInput').setInputFiles(PLAN);
@@ -987,8 +1150,12 @@ async function loadApp(page, baseUrl) {
   if (!fs.existsSync(PLAN)) { console.error('Missing samples/sample-plan.pdf — run `npm run build:sample-plan` first.'); process.exit(1); }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   // Optional CLI args = shot name(s) to (re)build; default builds all.
-  const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-  const shots = only.length ? SHOTS.filter((s) => only.includes(s.name)) : SHOTS;
+  const argv = process.argv.slice(2);
+  const setIdx = argv.indexOf('--set');
+  const SET = setIdx > -1 ? argv[setIdx + 1] : 'guides';   // guides (default) or spotlight
+  const only = argv.filter((a, i) => !a.startsWith('-') && argv[i - 1] !== '--set');
+  const catalogue = SET === 'spotlight' ? SPOTLIGHT : SHOTS;
+  const shots = only.length ? catalogue.filter((s) => only.includes(s.name)) : catalogue;
   const { server, port } = await startServer();
   const baseUrl = `http://127.0.0.1:${port}`;
   const browser = await chromium.launch();
@@ -997,8 +1164,16 @@ async function loadApp(page, baseUrl) {
       const page = await browser.newPage({ viewport: shot.viewport || { width: 1380, height: 900 }, deviceScaleFactor: 2 });
       if (!shot.noLoad) await loadApp(page, baseUrl);
       if (shot.setup) await shot.setup(page, baseUrl);
-      const clip = await page.locator(shot.clip).boundingBox();
+      let clip = await page.locator(shot.clip).first().boundingBox();
       if (!clip) throw new Error(`${shot.name}: clip ${shot.clip} not found`);
+      if (shot.frame) {
+        // A fixed window centred on the surface (clamped to the viewport), so a set of
+        // frames shares one aspect on the page whatever the dialog's own size.
+        const vp = page.viewportSize();
+        const [fw, fh] = shot.frame;
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+        clip = { x: clamp(clip.x + clip.width / 2 - fw / 2, 0, vp.width - fw), y: clamp(clip.y + clip.height / 2 - fh / 2, 0, vp.height - fh), width: fw, height: fh };
+      }
       const items = [];
       for (const c of shot.callouts || []) {
         if (c.sel) {
@@ -1021,10 +1196,11 @@ async function loadApp(page, baseUrl) {
       const relDir = shot.dir || 'guides/img';
       const dir = path.join(ROOT, relDir);
       fs.mkdirSync(dir, { recursive: true });
-      const out = path.join(dir, shot.name + '.png');
-      await page.screenshot({ path: out, clip });
+      const ext = shot.format === 'jpeg' ? '.jpg' : '.png';
+      const out = path.join(dir, shot.name + ext);
+      await page.screenshot({ path: out, clip, ...(shot.format === 'jpeg' ? { type: 'jpeg', quality: 85 } : {}) });
       await page.close();
-      console.log('  wrote ' + relDir + '/' + shot.name + '.png');
+      console.log('  wrote ' + relDir + '/' + shot.name + ext);
     }
   } finally {
     await browser.close();

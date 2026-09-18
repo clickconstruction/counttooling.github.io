@@ -520,7 +520,16 @@ the rest are new setups.
 ### The ladder (one topic branch each, the house loop)
 
 1. **SPOT-1 · the generator and the HVAC set.** The `--set spotlight` machinery, `hvacSpotSetup`,
-   the six HVAC frames committed. Half a day. No landing change yet.
+   the six HVAC frames committed. Half a day. No landing change yet. **DONE 2026-09-18**
+   (branch `claude/spotlight-hvac`): `node scripts/build-screenshots.js --set spotlight` writes
+   `img/spotlight/hvac-{1..6}-*.jpg`, a 1200×900 window (4:3, the viewport's full height so the
+   tall dialogs keep their buttons) at 2×, JPEG 85, 215 to 335 KB each; the two trace frames use
+   the film's office camera (`frameRegion`). Setups: `hvacBase` (trade, OPEN OFFICE 105 boxed
+   with type and deck, four 150 CFM diffusers, RTU-1 at 2,000), `hvacDraft` (two vertices and
+   the cursor on the third: the chip and the hint card), `hvacRun` (the main committed with two
+   rectangular steps). The Room Size frame drags CONFERENCE 103 for real so the dialog shows
+   "from the plan". Preview of the section with these frames: the "Trade Spotlight Preview"
+   artifact.
 2. **SPOT-2 · the electrical set.** `electricalSpotSetup`, six frames. Two to three hours.
 3. **SPOT-3 · the plumbing set.** `plumbingSpotSetup` on the restaurant sheet, six frames.
    Two hours.

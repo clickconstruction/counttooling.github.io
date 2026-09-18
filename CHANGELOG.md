@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the electrical film, "Circuit 7", first cut (2026-09-17)
+
+`npm run build:hero-video -- --film electrical` writes `img/hero-electrical.{mp4,png}` (49.9 s,
+3.3 MB) from the office sheet A-101, everything on camera: the set lands and Prepare keeps three;
+the scale proved on the 24'-0" bay; receptacles, the switch and the troffers made on the Quick
+tab (Category / Variant, the mount height arriving with them) and counted; the conduit type made
+with + Add and given its raceway (EMT, 3/4") and conductors (3 #12 THHN + 1 #12 G) in the details
+dialog; the circuit group LP-1/7 made under Groups; `T` and the Chain panel, three clicks each
+writing a 9.5 ft drop; `L` for the home run to LP-1; Bid Check's voltage-drop and fill rows and
+the derived #12 THHN rows; the pull-back on the plan; Open in TakeoffTooling with its toast
+pinned. Generator: `buildSampleSet` takes the source sheet and the unstamped sheet id;
+`recordElectrical`, `seedOffice`, the A-101 geometry and cameras. Not on the landing yet.
+Detail in LANDING-REFRESH.md; punch row HERO-EHVAC now reads HVAC + the chip switching.
+
 ## feat(landing): the plumbing film makes its line types on camera, third cut (2026-09-17)
 
 Robert's ask: the film should show the estimator making the water lines, not find them made.

@@ -167,8 +167,28 @@ the whole take), the sidebar is 300 px so names do not wrap, the scale reference
 pull-back camera (`CAM_PULL`) leaves a grey band under the sheet where the caption and the
 Copied card sit, clear of the sheet's legend and title block.
 
-Still to do: the electrical and HVAC films, the chip switching on the landing, and retiring
-the three-trade take. The landing keeps playing `landing-hero.mp4` until then.
+**Electrical, first cut, 2026-09-17, "Circuit 7" on A-101, 49.9 s, 3.3 MB, `img/hero-electrical.{mp4,png}`
+(`npm run build:hero-video -- --film electrical`).** Same spine, everything on camera. The
+thirty-sheet set is built from the office sheet and Prepare keeps A-101, E-101 and E-201; the
+scale is proved on the 24'-0" bay (exact since the two-pixel fix). Devices come from the Quick
+tab: Electrical, Category Receptacle, Variant Duplex, Add Counter (it arrives at 18 in and the
+tool is armed), five receptacles along the north and west walls; then the single-pole switch
+inside the door and four 2x4 troffers. The conduit is a line type made with + Add (`3/4in EMT`,
+purple), and its pencil opens the details dialog where the raceway selects go EMT and 3/4" and
+"3 #12 THHN + 1 #12 G" is typed into Conductors. The circuit is a group made under Groups with
+panel LP-1 and circuit 7, made BEFORE the chain so the chain lands in it. `T` opens the Chain
+panel, the receptacle and the conduit are picked, three clicks along the south wall each write
+their 9.5 ft drop (ceiling 10 ft, mount 18 in, make-up 1 ft), and `L` draws the home run from
+the last device to LP-1. The Bid Check section is expanded and the cursor rests on the
+voltage-drop and conduit-fill rows, then on the derived #12 THHN rows in the Summary. The
+pull-back frames the plan rather than the whole sheet, because one room's marks would merge at
+sheet scale. Open in TakeoffTooling ends it; `window.open` is stubbed so the film keeps its tab,
+and the "Opened TakeoffTooling with N rows" toast is pinned for the last frame. Seeded, not on
+camera: the scale preset, the trade, the 10 ft ceiling and 1 ft make-up (project settings), and
+the Groups gate; the switch and troffer colours are set after the Quick tab adds them.
+
+Still to do: the HVAC film, the chip switching on the landing, and retiring the three-trade
+take. The landing keeps playing `landing-hero.mp4` until then.
 
 ## Hand-off: the per-trade films (2026-09-17)
 
@@ -183,6 +203,7 @@ with ffmpeg. Both outputs are committed.
 | Command | Writes | State |
 |---|---|---|
 | `npm run build:hero-video` (default `--film plumbing`) | `img/hero-plumbing.{mp4,png}` | third cut, 43.0 s, 3.8 MB, NOT on the page yet |
+| `npm run build:hero-video -- --film electrical` | `img/hero-electrical.{mp4,png}` | first cut, 49.9 s, 3.3 MB, NOT on the page yet |
 | `npm run build:hero-video -- --film trades` | `img/landing-hero.{mp4,png}` | the three-trade take the landing plays today |
 
 Iterating: `HERO_FPS=4 node scripts/build-hero-video.js --frames-only --keep-frames` walks the
@@ -279,7 +300,7 @@ Both on the office sheet A-101, same spine as plumbing: the set lands and Prepar
 the scale is proved in passing, the count quickens with the number row, the trade's own math
 appears as a consequence, the pull-back blinks the layer, then the hand-off and "Done."
 
-**Electrical, "Circuit 7"** (about 26 s): receptacles along the office walls at 18 in mount
+**Electrical, "Circuit 7"** (about 26 s) — **BUILT 2026-09-17, 49.9 s, see above**: receptacles along the office walls at 18 in mount
 height, then switches and lights on keycaps 2 and 3; chain 3/4" EMT device to device, each
 click writing its 9.5 ft drop, the last leg home to LP-1; the run becomes circuit LP-1/7 and
 the wire row slides in by itself, 3 #12 THHN, 128 ft, tagged derived; Bid Check computes
@@ -296,6 +317,15 @@ layer off and on; copy the schedule.
 
 ### Gotchas worth not rediscovering
 
+- **Two toast timers.** Copy to PipeTooling hides its card through `App.hideModal` (wrap it);
+  `showToast` (Open in TakeoffTooling, "Counts copied…") hides through app.js's own closure
+  function, which no wrapper reaches, so pin that card with a MutationObserver that puts
+  `.visible` back. Both cards live in `#toastRegion`, which the overlay hides with
+  `!important`; an override must be `!important` too and later in the document.
+- **Selects and collapsed sections.** `page.selectOption` on the Quick tab's Category / Variant
+  and the details dialog's raceway selects fires the app's change handlers (the cursor can
+  still be moved to the select first). The Groups section opens collapsed and hides its
+  `+ Add` until the title is clicked; the film clicks the title.
 - **Driving the real dialogs.** Create Line Type: `#addLineType` → `#lineTypeName` →
   `#lineTypeColorRow .color-swatch[data-color="#4a9eff"]` (lower-case hex, the COLORS
   palette) → `#lineTypeCreate`. After Create the app arms Quick Line and the new type is

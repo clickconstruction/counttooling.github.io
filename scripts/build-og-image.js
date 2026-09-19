@@ -15,6 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { chromium } = require('@playwright/test');
+const { mark } = require('./lib/brand-mark');
 
 const ROOT = path.join(__dirname, '..');
 const FONT_DIR = path.join(ROOT, 'vendor', 'fonts');
@@ -24,7 +25,6 @@ const W = 1200;
 const H = 630;
 const YELLOW = '#e8c547';
 const DARK = '#0f0f11';
-const GLYPH_DARK = '#161617';
 const TEXT2 = '#b9b6b1';
 
 function fontFace(family, file, weight) {
@@ -32,17 +32,9 @@ function fontFace(family, file, weight) {
   return `@font-face{font-family:'${family}';font-style:normal;font-weight:${weight};font-display:block;src:url(data:font/woff2;base64,${b64}) format('woff2');}`;
 }
 
-// The takeoff reticle (same motif as the app icon), on a 120x120 viewBox.
+// The brand mark (same source as the app icon + favicon), sized for the card.
 function reticle(size) {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-    <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="${YELLOW}"/>
-    <g fill="none" stroke="${GLYPH_DARK}" stroke-width="30" stroke-linecap="round">
-      <circle cx="256" cy="256" r="118"/>
-      <line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/>
-      <line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/>
-    </g>
-    <circle cx="256" cy="256" r="34" fill="${GLYPH_DARK}"/>
-  </svg>`;
+  return mark('rounded', `width="${size}" height="${size}"`);
 }
 
 // Faint blueprint motif: a grid + a sample line run with small counter reticles.

@@ -28,6 +28,30 @@ feeds the header logo (index.html, 404.html, the guides/rules template in
 both (ICO first for Safari, SVG for the rest); sw.js precaches them; pwa.spec.js asserts the
 links resolve. Regenerated: guides, rules, og-image.png, the SW stamp.
 
+## feat(legend): the sheet legend, compact by default for electrical and HVAC (2026-09-19)
+
+The on-plan legend can draw the way an E-sheet or M-sheet draws its own: a ruled block with
+a title ("ELECTRICAL LEGEND · THIS SHEET", the custom sheet name when there is one), the
+symbol in its own column, the description in caps, the column the trade reads (mount height
+for devices from `mountHeightIn`, neck · CFM for air devices from `cfm` and duct-model's
+neck table), the count on the right; a conduit row draws its line sample with the conductor
+spec beneath and reads linear feet; a room row carries floor area in the column and volume
+on the right; the footer names the panel (or the unit) with the device and LF totals.
+Three styles, `legendSettings.style` (per project like the other legend knobs, a segment on
+the Summary Legend dialog): `compact`, the standard for electrical and HVAC projects (one
+title line, no column header, a spec line only where no column carries the fact, a footer
+only when it names a panel or a unit); `full` (the column header, every spec line, the
+totals footer); `tally`, the original icon · name · [count] list, still the default for
+plumbing, whose icons are pictures rather than symbols. Resolution is the setting, else the
+trade (`App.resolveLegendStyle`). Two things reach the tally too: the legend follows the
+sheet size (canvas-draw `legendSheetFactor`: an ANSI B sheet draws at 1×, a D sheet at
+about 2×, capped at 3×, so a plot reduced to B still reads; letter test pages and the
+sample sheets are unchanged at 1×), and the PDF export path draws the block in ink with a
+thin colour tab per row (`drawLegend(..., { ink: true })`), so it survives a monochrome
+plot. The hit test and the resize grip are unchanged. canvas-draw.test.js pins the
+resolution, the sheet factor, the compact and full texts and the byte-identical tally;
+[legend-sheet.spec.js](legend-sheet.spec.js) drives the app.
+
 ## style(modals): the review's last fifteen asks (2026-09-19)
 
 The Modal Review's per-dialog suggestions that the polish pass left short. Copy and counts:

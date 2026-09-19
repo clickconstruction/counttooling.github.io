@@ -445,7 +445,7 @@ which are kept in sync (`true` only for `'page'`) so the settings shape is
 unchanged; the scope ALSO persists per device via the localStorage keys
 `counterSidebarFilterScope` / `lineTypeSidebarFilterScope` — written by the
 `set*ListFilterScope` setters, read at boot, wiped by the sign-out key list),
-`legendSettings`, `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
+`legendSettings` (includes `style`: `'tally' | 'compact' | 'full'`, the on-plan legend's drawing; absent = by trade, compact for electrical and HVAC, tally for plumbing; the block also scales with the sheet's long side, canvas-draw `legendSheetFactor`), `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
 label: show/size/position, default top-left; per-project in save/load +
 export/import like `multiplyZoneSettings`), `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),

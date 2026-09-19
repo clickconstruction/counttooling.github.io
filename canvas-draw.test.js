@@ -803,3 +803,86 @@ test('planRoomLabels: a plan-named room with no text items available falls back 
   assert.deepStrictEqual(d.boxes.map(b => b.mode), ['nameOnly']);
   assert.deepStrictEqual(d.tags, []);
 });
+
+// --- the sheet legend (2026-09-19): style resolution, the compact block, the sheet factor --------
+
+test('resolveLegendStyle: an explicit setting wins, else compact for electrical and HVAC, tally otherwise', () => {
+  const draw = createCanvasDraw(legendDeps(legendState()));
+  assert.strictEqual(draw.resolveLegendStyle({ legendSettings: {} }), 'tally');
+  assert.strictEqual(draw.resolveLegendStyle({ trade: 'plumbing', legendSettings: {} }), 'tally');
+  assert.strictEqual(draw.resolveLegendStyle({ trade: 'electrical', legendSettings: {} }), 'compact');
+  assert.strictEqual(draw.resolveLegendStyle({ trade: 'hvac', legendSettings: {} }), 'compact');
+  assert.strictEqual(draw.resolveLegendStyle({ trade: 'electrical', legendSettings: { style: 'tally' } }), 'tally');
+  assert.strictEqual(draw.resolveLegendStyle({ trade: 'plumbing', legendSettings: { style: 'full' } }), 'full');
+  assert.strictEqual(draw.resolveLegendStyle({ trade: 'hvac', legendSettings: { style: 'bogus' } }), 'compact');
+});
+
+test('legendSheetFactor: letter and ANSI B draw at 1×, a D sheet at about 2×, capped at 3×', () => {
+  const draw = createCanvasDraw(legendDeps(legendState()));
+  assert.strictEqual(draw.legendSheetFactor(612, 792), 1);
+  assert.strictEqual(draw.legendSheetFactor(1224, 792), 1);
+  assert.ok(Math.abs(draw.legendSheetFactor(2592, 1728) - 2.118) < 0.01);
+  assert.ok(Math.abs(draw.legendSheetFactor(1728, 2592) - 2.118) < 0.01, 'the long side counts, whichever way the sheet turns');
+  assert.strictEqual(draw.legendSheetFactor(9000, 9000), 3);
+});
+
+test('drawLegend: an electrical project draws the compact block — title with the sheet, caps descriptions, the mount column, the count', () => {
+  const state = legendState({
+    trade: 'electrical',
+    counters: [{ id: 'c1', name: 'Duplex Receptacle', icon: CIRCLE_PATH, color: '#e85447', mountHeightIn: 18 }],
+    lineTypes: [{ id: 'lt1', name: '3/4in EMT', color: '#a47fff' }],
+    groups: [{ id: 'g1', name: 'Circuit 7', panel: 'LP-1', circuit: '7' }],
+  });
+  const deps = Object.assign(legendDeps(state), { getTrade: () => 'electrical', lineTypeSpecText: () => '3/4" EMT · 3 #12 THHN + 1 #12 G' });
+  const draw = createCanvasDraw(deps);
+  const ctx = makeCtx();
+  const ann = legendAnn();
+  draw.drawLegend(ctx, makePage(1224, 792), 0, ann, 1, tc1);
+  const texts = callsOf(ctx, 'fillText').map(c => String(c[1]));
+  assert.ok(texts.includes('ELECTRICAL LEGEND · THIS SHEET'), 'title names the trade and the scope; got ' + JSON.stringify(texts));
+  assert.ok(texts.includes('DUPLEX RECEPTACLE'), 'description in caps');
+  assert.ok(texts.includes('18" AFF'), 'the mount column');
+  assert.ok(texts.includes('3'), 'the zone-adjusted count as the right-hand figure');
+  assert.ok(texts.includes('3/4" EMT · 3 #12 THHN + 1 #12 G'), 'a conduit keeps its spec line in compact');
+  assert.ok(texts.some(t => t.startsWith('PANEL LP-1')), 'the footer names the panel');
+  assert.ok(!texts.includes('SYM'), 'compact has no column header');
+  assert.ok(!texts.includes('Duplex Receptacle [3]'), 'not the tally row');
+  // The compact block is shorter than the tally for the same rows (no panel:
+  // no footer, which is the compact rule).
+  const noPanel = legendState({ trade: 'electrical', counters: state.counters, lineTypes: state.lineTypes, groups: [] });
+  const ann3 = legendAnn();
+  createCanvasDraw(Object.assign(legendDeps(noPanel), { getTrade: () => 'electrical' })).drawLegend(makeCtx(), makePage(1224, 792), 0, ann3, 1, tc1);
+  const tally = legendState({ counters: state.counters, lineTypes: state.lineTypes, legendSettings: { legendScale: 1, style: 'tally' } });
+  const ann2 = legendAnn();
+  createCanvasDraw(legendDeps(tally)).drawLegend(makeCtx(), makePage(1224, 792), 0, ann2, 1, tc1);
+  assert.ok(ann3.legend.h < ann2.legend.h, 'compact ' + ann3.legend.h + ' shorter than tally ' + ann2.legend.h);
+});
+
+test('drawLegend: full adds the column header; an HVAC project reads neck · CFM; ink is a draw option', () => {
+  const state = legendState({
+    trade: 'hvac',
+    legendSettings: { legendScale: 1, style: 'full' },
+    counters: [{ id: 'c1', name: '12x12 Supply Diffuser', icon: CIRCLE_PATH, color: '#e8c547', cfm: 150 }],
+    lineTypes: [],
+  });
+  const deps = Object.assign(legendDeps(state), { getTrade: () => 'hvac', suggestNeckSize: (cfm) => ({ neckDIn: cfm <= 150 ? 8 : 10, overCapacity: false }) });
+  const draw = createCanvasDraw(deps);
+  const ctx = makeCtx();
+  const ann = legendAnn(); ann.quickLines = [];
+  draw.drawLegend(ctx, makePage(1224, 792), 0, ann, 1, tc1, { ink: true });
+  const texts = callsOf(ctx, 'fillText').map(c => String(c[1]));
+  assert.ok(texts.includes('MECHANICAL LEGEND · THIS SHEET'), JSON.stringify(texts));
+  assert.ok(texts.includes('SYM') && texts.includes('NECK · CFM') && texts.includes('QTY'), 'full draws the column header');
+  assert.ok(texts.includes('8"Ø · 150'), 'neck from the table beside the CFM');
+  assert.ok(texts.includes('BATH'), 'the room row in caps');
+  assert.ok(texts.some(t => /DEVICES?$/.test(t)), 'full always carries the totals footer');
+});
+
+test('drawLegend: the tally is byte-for-byte the old list when no trade and no style are set', () => {
+  const state = legendState();
+  const draw = createCanvasDraw(legendDeps(state));
+  const ctx = makeCtx();
+  draw.drawLegend(ctx, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  const texts = callsOf(ctx, 'fillText').map(c => String(c[1]));
+  assert.deepStrictEqual(texts, ['This sheet', 'WC [3]', 'Waste 12.00 ft', 'Bath 800 ft³']);
+});

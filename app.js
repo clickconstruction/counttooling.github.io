@@ -1995,6 +1995,18 @@
     // every frame and must not be why a text layer loads; [] until the room
     // dialog's own prefill fetched it, and the planner then labels name-only).
     getPageTextItems: (pageIdx) => (App.peekPageTextItems ? App.peekPageTextItems(pageIdx) : []),
+    // The sheet legend (2026-09-19): the trade names the block, the neck table
+    // fills the air column, the raceway + conductors make a conduit's spec line.
+    getTrade: () => getQuickTrade(),
+    suggestNeckSize: (cfm) => (typeof suggestNeckSize === 'function' ? suggestNeckSize(cfm) : null),
+    lineTypeSpecText: (lt) => {
+      const cm = window.ConductorModel;
+      if (!cm || !lt) return '';
+      // The name already says the raceway ("3/4in EMT"); the spec line is what
+      // runs inside it, and only the raceway when nothing is listed yet.
+      if (lt.conductors && lt.conductors.length) return cm.formatConductorSpec(lt.conductors) || '';
+      return lt.raceway && lt.raceway.kind ? cm.racewayLabel(lt.raceway) : '';
+    },
   });
 
   function renderAnnotations() {
@@ -2411,7 +2423,7 @@
         const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
         ann.legend = { x: vp.width - 110, y: 16, w: 100, h: 56 };
       }
-      canvasDraw.drawLegend(ctx, page, pageIdx, ann, scale, tc);
+      canvasDraw.drawLegend(ctx, page, pageIdx, ann, scale, tc, { ink: true });   // exports plot in ink
     }
   }
 
@@ -7844,6 +7856,7 @@
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
   App.countCanvasMarks = countCanvasMarks;   // the confirms count the marks they touch
+  App.resolveLegendStyle = () => canvasDraw.resolveLegendStyle(state);   // tally | compact | full, by setting then trade
   App.applyRotationDeltaToAnnotations = applyRotationDeltaToAnnotations;
   App.reconcileOrphanedCountersAndLineTypes = reconcileOrphanedCountersAndLineTypes;
   App.planPaletteRelink = planPaletteRelink;

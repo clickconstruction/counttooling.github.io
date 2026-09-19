@@ -1,6 +1,6 @@
 # Entry-point & modal surface inventory — Phase 1 (2026-08-02)
 
-**71 modals** in app/index.html at Phase 1 (**77 `.modal-overlay` ids on 2026-09-13** after the electrical S1–S5 and duct D1–D16 builds — the duct additions are listed in the addendum at the end). Doc-derived; Phase 2 verifies.
+**71 modals** in app/index.html at Phase 1 (**77 `.modal-overlay` ids on 2026-09-13** after the electrical S1–S5 and duct D1–D16 builds; 78 on 2026-09-18 when the Modal Gallery first counted them, 77 again on 2026-09-19 after `#settingsAdvancedModal` folded into Project Settings as a disclosure, #136 — the duct additions are listed in the addendum at the end). Doc-derived; Phase 2 verifies.
 
 ## Desktop header (shared DOM with mobile; visibility flipped by CSS classes replaced-by-status-bar / consolidated-mobile / supabase-only)
 

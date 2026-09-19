@@ -28,6 +28,41 @@ feeds the header logo (index.html, 404.html, the guides/rules template in
 both (ICO first for Safari, SVG for the rest); sw.js precaches them; pwa.spec.js asserts the
 links resolve. Regenerated: guides, rules, og-image.png, the SW stamp.
 
+## style(modals): the polish pass, seven primitives and fifty-two dialogs (2026-09-18)
+
+The Modal Review (the old-versus-new page built off the Modal Gallery contact sheet) found
+that most of the 78 dialogs shared seven problems, so this pass fixes the primitives in
+styles.css once and then touches the dialogs the review marked Tune or Rework. The
+primitives: (1) `input[type=range]` is the app's own slider, an accent track and thumb
+with the fill driven by a `--fill` custom property that app.js syncs on `showModal` and on
+input, and the value pinned to the label's right edge (`label.range-label` / `.range-val`);
+(2) `input[type=color]` is a 38px swatch beside a hex read-out (`.color-field` /
+`.color-hex`, synced the same way); (3) action buttons carry a ROLE class (`ghost`,
+`primary`, `danger`, `danger-ghost`, `link`) and a middle button is ghost by default, so a
+Delete on the left or a third button never falls through to a white default (Room Size,
+Edit Room, Add Group, Unsaved Changes, Edit session expired, Project turned in, Prepare
+PDF); (4) every dismissible dialog has a × (`data-modal-close`; app.js dismisses it by
+dispatching Escape so the ladder's per-modal cleanup runs, then hides the overlay if no
+rung took it) and a title-block + `.modal-card-sub` for the dialogs that carried a link in
+the title row; (5) the confirms read as one template: a question title, a `.modal-lead`
+consequence line, a verb on the danger button (Delete sheet, Clear page, Delete user with
+`.choice-cards`), and the warnings that were accent-coloured body text are `.modal-callout`s;
+(6) `.setting-row` / `.setting-label` for label-left control-right rows (the wrapping
+"Show only counters used", "Snap counters to grid", "Verbose mode"), `.section-rule` for
+the uppercase group headings, `.form-grid-2/3` and `.field-unit` (the unit inside the
+field: the Duct Schedule knobs no longer truncate "0.08"), `.radio-seg` for the Straight /
+Curved radios, and a styled `select` chevron; (7) `.empty-state` for the cloud lists and the
+palette pickers. The reworks: Set Scale's 22 full-width preset rows are two chip grids under
+Architectural / Engineering rules (features/scale.js); the Counter details modal folds the
+icon grids and the air fields into `<details class="modal-section">` disclosures; Project
+Settings keeps one primary (Save, in a footer `.actions`), moves Add pages / Download PDF
+into a Sheets row and Close project into the footer links; Line Type Settings pairs its
+sliders under Drops / Lengths rules; Edit session expired reads as two actions plus a quiet
+discard link. Import canvas and Counters-from-schedule lost their redundant Cancel (the ×
+stays); My Standards' primary moved from the header to the footer; Assign to group's
+"+ Add group" is the last chip. Ids are unchanged throughout, so the specs and the tours
+drive the same controls. Verified across all 78 in the Modal Gallery.
+
 ## feat(dev): the Modal Gallery, every modal on one page (2026-09-18)
 
 A developer view for styling passes. `/app/?gallery=1` reparents every `.modal-overlay` in the

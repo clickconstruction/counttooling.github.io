@@ -113,7 +113,7 @@
     if (!listEl) return;
     const rows = getFilteredBidRows();
     if (!rows.length) {
-      listEl.innerHTML = '<p class="bid-board-empty">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>';
+      listEl.innerHTML = '<p class="bid-board-empty empty-state">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>';
       return;
     }
     // "Ready for review" bids get their own lane pinned above the rest — the

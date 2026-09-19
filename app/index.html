@@ -609,7 +609,7 @@
   </div>
   <div class="modal-overlay" id="scaleModal">
     <div class="modal-card">
-      <h2>Set Scale</h2>
+      <div class="modal-card-header"><h2>Set Scale</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div id="scaleModalTabs" class="counter-modal-tabs">
         <button class="counter-tab" data-tab="points">Select two points</button>
         <button class="counter-tab active" data-tab="presets">Architectural & Engineering</button>
@@ -700,7 +700,7 @@
           </div>
         </div>
         <div class="actions" style="margin-top:16px;">
-          <button id="scalePresetsCancel">Cancel</button>
+          <button id="scalePresetsCancel" class="ghost">Cancel</button>
         </div>
       </div>
     </div>
@@ -784,7 +784,7 @@
         <div class="form-group">
           <label>Color</label>
           <div class="color-row" id="counterColorRow"></div>
-          <input type="color" id="counterColorCustom" style="width:100%;height:48px;cursor:pointer;margin-top:8px;">
+          <div class="color-field"><input type="color" id="counterColorCustom" aria-label="Custom color"><span class="color-hex">#000000</span></div>
           <div id="counterColorRecentGroup" style="margin-top:8px;display:none;">
             <label>Recent</label>
             <div class="color-row" id="counterColorRecent"></div>
@@ -797,9 +797,9 @@
       </div>
       <div id="counterChoosePanel" class="counter-tab-panel">
         <div id="counterChooseList" class="counter-choose-list"></div>
-        <p id="counterChooseEmpty" class="counter-choose-empty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">No counters yet. Use the Create tab above.</p>
+        <p id="counterChooseEmpty" class="counter-choose-empty empty-state" style="display:none;">No counters yet. Use the Create tab above.</p>
         <div class="actions" style="margin-top:16px;">
-          <button id="counterChooseCancel">Cancel</button>
+          <button id="counterChooseCancel" class="ghost">Cancel</button>
         </div>
       </div>
       <div id="counterQuickCountPanel" class="counter-tab-panel" style="display:none;">
@@ -807,8 +807,8 @@
              shape per trade — the three rows relabel (Size/Type/Material ↔
              Category/Variant/Rating) and the name order follows the trade.
              Per project (state.trade); remembered as the device default. -->
-        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <span title="Which trade's vocabulary the Quick creator speaks in this project">Trade</span>
+        <div class="form-group setting-row">
+          <span class="setting-label" title="Which trade's vocabulary the Quick creator speaks in this project">Trade</span>
           <div class="filter-scope-segment" id="counterQuickCountTradeSegment" role="group" aria-label="Trade">
             <button type="button" data-trade="plumbing" aria-pressed="true">Plumbing</button>
             <button type="button" data-trade="electrical" aria-pressed="false">Electrical</button>
@@ -900,26 +900,19 @@
   </div>
   <div class="modal-overlay" id="lineTypeModal">
     <div class="modal-card">
-      <h2>Create Line Type</h2>
+      <div class="modal-card-header"><h2>Create Line Type</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="lineTypeName" placeholder="e.g. Pipe">
       </div>
       <div class="form-group">
         <label>Display</label>
-        <div style="display:flex;gap:16px;">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-            <input type="radio" name="lineTypeCurve" value="straight" checked> Straight
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-            <input type="radio" name="lineTypeCurve" value="arc"> Curved
-          </label>
-        </div>
+        <div class="radio-seg" role="radiogroup"><label><input type="radio" name="lineTypeCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="lineTypeCurve" value="arc"><span>Curved</span></label></div>
       </div>
       <div class="form-group">
         <label>Color</label>
         <div class="color-row" id="lineTypeColorRow"></div>
-        <input type="color" id="lineTypeColorCustom" style="width:100%;height:48px;cursor:pointer;margin-top:8px;">
+        <div class="color-field"><input type="color" id="lineTypeColorCustom" aria-label="Custom color"><span class="color-hex">#000000</span></div>
         <div id="lineTypeColorRecentGroup" style="margin-top:8px;display:none;">
           <label>Recent</label>
           <div class="color-row" id="lineTypeColorRecent"></div>
@@ -933,18 +926,18 @@
   </div>
   <div class="modal-overlay" id="polylineModal">
     <div class="modal-card">
-      <h2>New Polyline</h2>
+      <div class="modal-card-header"><h2>New Polyline</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Line Type</label>
         <select id="polylineLineType"></select>
-        <p id="polylineEmpty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:8px;">Add a line type first using <strong>Create</strong> or <strong>Quick</strong>.</p>
+        <p id="polylineEmpty" class="empty-state" style="display:none;">Add a line type first using <strong>Create</strong> or <strong>Quick</strong>.</p>
       </div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="polylineName" placeholder="e.g. Main run">
       </div>
       <div class="form-group">
-        <label>Color</label>
+        <label>Color <span class="form-sublabel">(follows the line type unless you pick one)</span></label>
         <div class="color-row" id="polylineColorRow"></div>
       </div>
       <div class="actions">
@@ -959,7 +952,7 @@
        S popover. Name is auto-suggested like T2-12's nextPolylineName. -->
   <div class="modal-overlay" id="ductCreateModal">
     <div class="modal-card">
-      <h2>New Duct Run</h2>
+      <div class="modal-card-header"><h2>New Duct Run</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <!-- D7 equipment-first suggestion (DUCT-PLAN master walkthrough): one
            quiet line, shown only when rooms carry target CFMs and NO system
            group has a capacity yet — "Rooms total ~2,400 CFM — about
@@ -1007,14 +1000,14 @@
            Schedule's Polish row), reachable BEFORE the first run so an
            equipment-started main gets its auto riser; Start Tracing writes
            it through App.setDuctDeckHeight (retroactive on existing runs). -->
-      <div class="form-group duct-create-row">
-        <div>
-          <label>Pressure class (in. w.g.)</label>
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label>Pressure class</label>
           <select id="ductCreatePressure"></select>
         </div>
-        <div>
-          <label title="Project-wide. The auto riser on runs that start at a system's equipment marker reads it">Deck height (project)</label>
-          <div class="duct-size-inputs"><input type="number" id="ductCreateDeck" min="0" step="0.5" placeholder="none" aria-label="Project deck height, feet"><span>ft</span></div>
+        <div class="form-group">
+          <label title="Project-wide. The auto riser on runs that start at a system's equipment marker reads it">Deck height <span class="form-sublabel">(project)</span></label>
+          <div class="field-unit"><input type="number" id="ductCreateDeck" min="0" step="0.5" placeholder="none" aria-label="Project deck height, feet"><span>ft</span></div>
         </div>
       </div>
       <div class="form-group">
@@ -1047,7 +1040,7 @@
           <button type="button" data-scope="page">This sheet</button>
           <button type="button" data-scope="project" class="active">Every sheet</button>
         </div>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div id="ductScheduleBody"></div>
       <!-- D6: the design-build ductulator knobs behind the size-chip / S-popover
            suggestions (state.ductSettings.frictionInPer100ft / maxVelocityFpm —
@@ -1055,24 +1048,24 @@
            features/duct-schedule.js). Housed here, not on the create modal:
            this modal already owns every editable duct setting, while the
            create modal sits inside the arm-a-trace flow (least chrome). -->
-      <div class="duct-schedule-design-row">
-        <span class="duct-schedule-section-label">Suggestions</span>
-        <label>Friction <input type="number" id="ductFrictionRate" class="duct-schedule-pct duct-schedule-num" min="0.01" max="1" step="0.01" aria-label="Friction rate, inches per 100 feet">″/100′</label>
-        <label>Max velocity <input type="number" id="ductMaxVelocity" class="duct-schedule-pct duct-schedule-num" min="100" max="5000" step="50" aria-label="Maximum velocity, feet per minute"> fpm</label>
+      <div class="section-rule"><b>Suggestions</b></div>
+      <div class="duct-schedule-knobs">
+        <label class="duct-knob">Friction <input type="number" id="ductFrictionRate" class="duct-schedule-pct duct-schedule-num" min="0.01" max="1" step="0.01" aria-label="Friction rate, inches per 100 feet"><span>″/100′</span></label>
+        <label class="duct-knob">Max velocity <input type="number" id="ductMaxVelocity" class="duct-schedule-pct duct-schedule-num" min="100" max="5000" step="50" aria-label="Maximum velocity, feet per minute"><span>fpm</span></label>
         <!-- D11: the diffuser + flex allowance added once at the end of the
              static-path walk (ductSettings.terminalAllowanceInWg, 0.10 default). -->
-        <label title="Terminal allowance: the diffuser + flex drop's static, added once at the end of the critical path">Terminal <input type="number" id="ductTerminalAllowance" class="duct-schedule-pct duct-schedule-num" min="0" max="1" step="0.01" aria-label="Terminal allowance, inches w.g.">″</label>
+        <label class="duct-knob" title="Terminal allowance: the diffuser + flex drop's static, added once at the end of the critical path">Terminal <input type="number" id="ductTerminalAllowance" class="duct-schedule-pct duct-schedule-num" min="0" max="1" step="0.01" aria-label="Terminal allowance, inches w.g."><span>″</span></label>
       </div>
       <!-- D8 polish knobs (state.ductSettings — per project like the row
            above; synced/wired by features/duct-schedule.js): deck height arms
            the auto-riser on runs started at a system's equipment marker
            (empty = off), max flex caps a single drop before the schedule's ⚠,
            and VD per tap counts a Volume damper fittings row at every tap. -->
-      <div class="duct-schedule-design-row">
-        <span class="duct-schedule-section-label">Polish</span>
-        <label>Deck height <input type="number" id="ductDeckHeight" class="duct-schedule-pct duct-schedule-num" min="0" step="0.5" placeholder="none" aria-label="Project deck height, feet"> ft</label>
-        <label>Max flex <input type="number" id="ductMaxFlex" class="duct-schedule-pct duct-schedule-num" min="1" max="25" step="0.5" aria-label="Maximum single flex drop, feet"> ft</label>
-        <label class="duct-schedule-vd-label">VD per tap
+      <div class="section-rule"><b>Polish</b></div>
+      <div class="duct-schedule-knobs">
+        <label class="duct-knob">Deck height <input type="number" id="ductDeckHeight" class="duct-schedule-pct duct-schedule-num" min="0" step="0.5" placeholder="none" aria-label="Project deck height, feet"><span>ft</span></label>
+        <label class="duct-knob">Max flex <input type="number" id="ductMaxFlex" class="duct-schedule-pct duct-schedule-num" min="1" max="25" step="0.5" aria-label="Maximum single flex drop, feet"><span>ft</span></label>
+        <label class="duct-knob duct-schedule-vd-label">VD per tap
           <button type="button" class="toggle-switch" id="ductVdPerTapBtn" aria-pressed="true" title="Count a volume damper at every tap">
             <span class="toggle-switch-knob"></span>
           </button>
@@ -1087,11 +1080,10 @@
   <div class="modal-overlay" id="counterSettingsModal">
     <div class="modal-card">
       <div class="modal-card-header">
-        <h2>Counter Settings</h2>
-        <span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">Reorder Artboard</span>
+        <div class="modal-title-block"><h2>Counter Settings</h2><div class="modal-card-sub"><span class="settings-menu-link" id="counterSettingsReorder" title="Close and drag counters in the sidebar to reorder">Reorder Artboard</span></div></div><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span title="Show only counters with marks on the current sheet, or anywhere in this project">Show only counters used</span>
+      <div class="form-group setting-row setting-row-stack">
+        <span class="setting-label" title="Show only counters with marks on the current sheet, or anywhere in this project">Show only counters used</span>
         <div class="filter-scope-segment" id="counterShowOnlySegment">
           <button type="button" data-scope="off" aria-pressed="true">Off</button>
           <button type="button" data-scope="page" aria-pressed="false">This sheet</button>
@@ -1099,23 +1091,23 @@
         </div>
       </div>
       <div class="form-group">
-        <label>Icon size: <span id="counterSizeVal">22</span>px</label>
+        <label class="range-label"><span>Icon size</span><span class="range-val"><span id="counterSizeVal">22</span>px</span></label>
         <input type="range" id="counterSize" min="12" max="96" value="22" step="2">
       </div>
       <div class="form-group">
-        <label>Opacity: <span id="counterOpacityVal">100</span>%</label>
+        <label class="range-label"><span>Opacity</span><span class="range-val"><span id="counterOpacityVal">100</span>%</span></label>
         <input type="range" id="counterOpacity" min="20" max="100" value="100" step="5">
       </div>
       <div class="form-group">
-        <label>Outline: <span id="counterOutlineVal">0</span>px</label>
+        <label class="range-label"><span>Outline</span><span class="range-val"><span id="counterOutlineVal">0</span>px</span></label>
         <input type="range" id="counterOutline" min="0" max="6" value="0" step="1">
       </div>
       <div class="form-group">
-        <label>Number size: <span id="counterNumberSizeVal">10</span>px</label>
+        <label class="range-label"><span>Number size</span><span class="range-val"><span id="counterNumberSizeVal">10</span>px</span></label>
         <input type="range" id="counterNumberSize" min="1" max="32" value="10" step="1">
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Show ring around counters</span>
+      <div class="form-group setting-row">
+        <span class="setting-label">Show ring around counters</span>
         <button type="button" class="toggle-switch" id="counterShowRingsBtn" aria-pressed="false" title="Show ring around counters">
           <span class="toggle-switch-knob"></span>
         </button>
@@ -1123,15 +1115,15 @@
       </div>
       <div id="counterRingSection">
         <div class="form-group counter-ring-options">
-          <label>Ring size: <span id="counterRingSizeVal">100</span>%</label>
+          <label class="range-label"><span>Ring size</span><span class="range-val"><span id="counterRingSizeVal">100</span>%</span></label>
           <input type="range" id="counterRingSize" min="50" max="200" value="100" step="5">
         </div>
         <div class="form-group counter-ring-options">
-          <label>Ring opacity: <span id="counterRingOpacityVal">100</span>%</label>
+          <label class="range-label"><span>Ring opacity</span><span class="range-val"><span id="counterRingOpacityVal">100</span>%</span></label>
           <input type="range" id="counterRingOpacity" min="20" max="100" value="100" step="5">
         </div>
-        <div class="form-group counter-ring-options" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <span>Solid ring</span>
+        <div class="form-group counter-ring-options setting-row">
+          <span class="setting-label">Solid ring</span>
           <button type="button" class="toggle-switch" id="counterRingSolidBtn" aria-pressed="false" title="Solid ring">
             <span class="toggle-switch-knob"></span>
           </button>
@@ -1145,16 +1137,16 @@
   </div>
   <div class="modal-overlay" id="pageSettingsModal">
     <div class="modal-card">
-      <h2>Page Settings</h2>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Truncate long titles</span>
+      <div class="modal-card-header"><h2>Page Settings</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group setting-row">
+        <span class="setting-label">Truncate long titles</span>
         <button type="button" class="toggle-switch" id="pageSettingsTruncateBtn" aria-pressed="true" title="Truncate long page titles">
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="pageSettingsTruncate" checked hidden>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span title="Unmarked pages remain accessible via arrow keys">Hide unmarked pages from sidebar</span>
+      <div class="form-group setting-row">
+        <span class="setting-label" title="Unmarked pages remain accessible via arrow keys">Hide unmarked pages from sidebar</span>
         <button type="button" class="toggle-switch" id="pageSettingsHideUnmarkedBtn" aria-pressed="false" title="Hide unmarked pages from sidebar">
           <span class="toggle-switch-knob"></span>
         </button>
@@ -1167,8 +1159,8 @@
   </div>
   <div class="modal-overlay" id="viewerScaleNoticeModal">
     <div class="modal-card">
-      <h2>Scale changed by a viewer</h2>
-      <p id="viewerScaleNoticeText" style="margin-bottom:16px;"></p>
+      <h2>A viewer set a scale</h2>
+      <p id="viewerScaleNoticeText" class="modal-lead"></p>
       <div class="actions">
         <button id="viewerScaleNoticeOk" class="btn-yellow">Got it</button>
       </div>
@@ -1176,13 +1168,13 @@
   </div>
   <div class="modal-overlay" id="zoomModal">
     <div class="modal-card">
-      <h2>Zoom Settings</h2>
+      <div class="modal-card-header"><h2>Zoom Settings</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
-        <label>Maximum zoom for this project: <span id="zoomMaxVal">400</span>%</label>
+        <label class="range-label"><span>Maximum zoom for this project</span><span class="range-val"><span id="zoomMaxVal">400</span>%</span></label>
         <input type="range" id="zoomMax" min="100" max="1200" value="400" step="50">
       </div>
       <div class="form-group">
-        <label>Mousewheel zoom speed (all projects): <span id="zoomSpeedVal">1.0</span>x</label>
+        <label class="range-label"><span>Mousewheel zoom speed (all projects)</span><span class="range-val"><span id="zoomSpeedVal">1.0</span>x</span></label>
         <input type="range" id="zoomSpeed" min="50" max="200" value="100" step="10">
       </div>
       <div class="actions">
@@ -1193,36 +1185,37 @@
   <div class="modal-overlay" id="lineTypeSettingsModal">
     <div class="modal-card">
       <div class="modal-card-header">
-        <h2>Line Type Settings</h2>
-        <span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">reorder artboard</span>
+        <div class="modal-title-block"><h2>Line Type Settings</h2><div class="modal-card-sub"><span class="settings-menu-link" id="lineTypeSettingsReorder" title="Close and drag line types in the sidebar to reorder">Reorder Artboard</span></div></div><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span title="Show only line types with runs on the current sheet, or anywhere in this project">Show only line types used</span>
+      <div class="form-group setting-row setting-row-stack">
+        <span class="setting-label" title="Show only line types with runs on the current sheet, or anywhere in this project">Show only line types used</span>
         <div class="filter-scope-segment" id="lineTypeShowOnlySegment">
           <button type="button" data-scope="off" aria-pressed="true">Off</button>
           <button type="button" data-scope="page" aria-pressed="false">This sheet</button>
           <button type="button" data-scope="project" aria-pressed="false">This project</button>
         </div>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Snap to 45° angles</span>
+      <div class="form-group setting-row">
+        <span class="setting-label">Snap to 45° angles</span>
         <button type="button" class="toggle-switch" id="lineTypeSnapToHVBtn" aria-pressed="false" title="Constrain lines to horizontal, vertical, or 45° diagonals when placing">
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="lineTypeSnapToHV" hidden>
       </div>
+      <div class="form-grid-2">
       <div class="form-group">
-        <label>Line width: <span id="lineTypeSizeVal">2</span>px</label>
+        <label class="range-label"><span>Line width</span><span class="range-val"><span id="lineTypeSizeVal">2</span>px</span></label>
         <input type="range" id="lineTypeSize" min="1" max="8" value="2" step="1">
       </div>
       <div class="form-group">
-        <label>Opacity: <span id="lineTypeOpacityVal">100</span>%</label>
+        <label class="range-label"><span>Opacity</span><span class="range-val"><span id="lineTypeOpacityVal">100</span>%</span></label>
         <input type="range" id="lineTypeOpacity" min="20" max="100" value="100" step="5">
       </div>
+      </div>
       <div class="line-type-settings-group">
-        <h3 class="line-type-settings-section-header">Line Drop Settings</h3>
+        <div class="section-rule"><b>Drops</b></div>
         <div class="form-group">
-          <label>Drop X size: <span id="lineTypeDropXSizeVal">10</span>px</label>
+          <label class="range-label"><span>Drop X size</span><span class="range-val"><span id="lineTypeDropXSizeVal">10</span>px</span></label>
           <input type="range" id="lineTypeDropXSize" min="4" max="24" value="10" step="1">
         </div>
         <div class="form-group">
@@ -1231,21 +1224,23 @@
         </div>
       </div>
       <div class="line-type-settings-group">
-        <h3 class="line-type-settings-section-header">Show Length Settings</h3>
-        <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-          <span>Orient length with line direction</span>
+        <div class="section-rule"><b>Lengths</b></div>
+        <div class="form-group setting-row">
+          <span class="setting-label">Orient length with line direction</span>
           <button type="button" class="toggle-switch" id="lineTypeOrientLengthBtn" aria-pressed="true" title="Rotate length label to align with line">
             <span class="toggle-switch-knob"></span>
           </button>
           <input type="checkbox" id="lineTypeOrientLength" checked hidden>
         </div>
+        <div class="form-grid-2">
         <div class="form-group">
-          <label>Parallel ends: <span id="lineTypeParallelEndsVal">10</span>px</label>
+          <label class="range-label"><span>Parallel ends</span><span class="range-val"><span id="lineTypeParallelEndsVal">10</span>px</span></label>
           <input type="range" id="lineTypeParallelEnds" min="4" max="64" value="10" step="1">
         </div>
         <div class="form-group">
-          <label>Length label size: <span id="lineTypeLengthLabelVal">12</span>px</label>
+          <label class="range-label"><span>Label size</span><span class="range-val"><span id="lineTypeLengthLabelVal">12</span>px</span></label>
           <input type="range" id="lineTypeLengthLabel" min="1" max="24" value="12" step="1">
+        </div>
         </div>
       </div>
       <div class="actions">
@@ -1255,9 +1250,9 @@
   </div>
   <div class="modal-overlay" id="legendSettingsModal">
     <div class="modal-card">
-      <h2>Summary Legend</h2>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Show border</span>
+      <div class="modal-card-header"><h2>Summary Legend</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group setting-row">
+        <span class="setting-label">Show border</span>
         <button type="button" class="toggle-switch" id="legendShowBorderBtn" aria-pressed="true" title="Show border around legend">
           <span class="toggle-switch-knob"></span>
         </button>
@@ -1265,25 +1260,22 @@
       </div>
       <div class="form-group">
         <label>Background color</label>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <input type="color" id="legendBgColor" value="#ffffff" style="width:48px;height:32px;cursor:pointer;padding:0;border:1px solid var(--border);border-radius:4px;">
-          <span id="legendBgColorHex" style="font-family:monospace;font-size:0.9rem;color:var(--text2);">#ffffff</span>
-        </div>
+        <div class="color-field"><input type="color" id="legendBgColor" value="#ffffff"><span id="legendBgColorHex" class="color-hex">#ffffff</span></div>
       </div>
       <div class="form-group">
-        <label>Background opacity: <span id="legendBgOpacityVal">100</span>%</label>
+        <label class="range-label"><span>Background opacity</span><span class="range-val"><span id="legendBgOpacityVal">100</span>%</span></label>
         <input type="range" id="legendBgOpacity" min="20" max="100" value="100" step="5">
       </div>
       <div class="form-group">
-        <label>Text opacity: <span id="legendTextOpacityVal">100</span>%</label>
+        <label class="range-label"><span>Text opacity</span><span class="range-val"><span id="legendTextOpacityVal">100</span>%</span></label>
         <input type="range" id="legendTextOpacity" min="20" max="100" value="100" step="5">
       </div>
       <div class="form-group">
-        <label>Legend size: <span id="legendScaleVal">100</span>%</label>
+        <label class="range-label"><span>Legend size</span><span class="range-val"><span id="legendScaleVal">100</span>%</span></label>
         <input type="range" id="legendScale" min="50" max="400" value="100" step="5">
       </div>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span title="Show a highlight over the resize grip area">Highlight resize area</span>
+      <div class="form-group setting-row">
+        <span class="setting-label" title="Show a highlight over the resize grip area">Highlight resize area</span>
         <button type="button" class="toggle-switch" id="legendShowResizeHighlightBtn" aria-pressed="false" title="Highlight resize area">
           <span class="toggle-switch-knob"></span>
         </button>
@@ -1317,9 +1309,9 @@
   </div>
   <div class="modal-overlay" id="multiplyZoneSettingsModal">
     <div class="modal-card">
-      <h2>Multiply Zone Settings</h2>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Show label on zones</span>
+      <div class="modal-card-header"><h2>Multiply Zone Settings</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group setting-row">
+        <span class="setting-label">Show label on zones</span>
         <button type="button" class="toggle-switch" id="multiplyZoneSettingsShowLabelBtn" aria-pressed="true" title="Show multiplier label on zones">
           <span class="toggle-switch-knob"></span>
         </button>
@@ -1330,7 +1322,7 @@
         <input type="number" id="multiplyZoneSettingsDefaultMult" min="1" value="2">
       </div>
       <div class="form-group">
-        <label>Label size: <span id="multiplyZoneSettingsLabelSizeVal">14</span></label>
+        <label class="range-label"><span>Label size</span><span class="range-val"><span id="multiplyZoneSettingsLabelSizeVal">14</span></span></label>
         <input type="range" id="multiplyZoneSettingsLabelSize" min="1" max="24" value="14" step="1">
       </div>
       <div class="form-group">
@@ -1350,16 +1342,16 @@
   </div>
   <div class="modal-overlay" id="scaleZoneSettingsModal">
     <div class="modal-card">
-      <h2>Scale Zone Settings</h2>
-      <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-        <span>Show scale label on zones</span>
+      <div class="modal-card-header"><h2>Scale Zone Settings</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group setting-row">
+        <span class="setting-label">Show scale label on zones</span>
         <button type="button" class="toggle-switch" id="scaleZoneSettingsShowLabelBtn" aria-pressed="true" title="Show scale label on zones">
           <span class="toggle-switch-knob"></span>
         </button>
         <input type="checkbox" id="scaleZoneSettingsShowLabel" checked hidden>
       </div>
       <div class="form-group">
-        <label>Label size: <span id="scaleZoneSettingsLabelSizeVal">14</span></label>
+        <label class="range-label"><span>Label size</span><span class="range-val"><span id="scaleZoneSettingsLabelSizeVal">14</span></span></label>
         <input type="range" id="scaleZoneSettingsLabelSize" min="1" max="24" value="14" step="1">
       </div>
       <div class="form-group">
@@ -1379,14 +1371,14 @@
   </div>
   <div class="modal-overlay" id="gridSettingsModal">
     <div class="modal-card">
-      <h2>Grid overlay</h2>
+      <div class="modal-card-header"><h2>Grid overlay</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
           <label for="gridSpacingValue" style="margin:0;">Space between lines</label>
-          <div style="display:flex;gap:16px;">
-          <button type="button" class="gridSpacingPreset" data-spacing="10" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">10ft</button>
-          <button type="button" class="gridSpacingPreset" data-spacing="3" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">3ft</button>
-          <button type="button" class="gridSpacingPreset" data-spacing="1" data-unit="ft" style="background:none;border:none;padding:0;cursor:pointer;color:var(--yellow);font-size:0.9rem;font-family:inherit;">1ft</button>
+          <div class="chip-row">
+          <button type="button" class="gridSpacingPreset chip" data-spacing="10" data-unit="ft">10 ft</button>
+          <button type="button" class="gridSpacingPreset chip" data-spacing="3" data-unit="ft">3 ft</button>
+          <button type="button" class="gridSpacingPreset chip" data-spacing="1" data-unit="ft">1 ft</button>
         </div>
         </div>
         <div style="display:flex;gap:12px;align-items:center;">
@@ -1400,50 +1392,38 @@
           </select>
         </div>
       </div>
-      <div class="grid-origin-snap-row">
-        <div style="flex:1;min-width:0;">
-          <div class="form-group" id="gridOriginDisplay" style="display:none;">
-            <label style="display:none;">Origin</label>
-            <div style="display:flex;align-items:center;gap:12px;">
-              <span id="gridOriginText" style="display:none;color:var(--text2);">none</span>
-              <button type="button" class="settings-menu-btn" id="gridClearOrigin">Origin set, click to reset</button>
-            </div>
-          </div>
-          <div class="form-group" id="gridSetOriginFormGroup">
-            <button type="button" class="settings-menu-btn" id="gridSetOriginOnPage">Set origin on page (optional)</button>
-          </div>
-        </div>
-        <div class="form-group">
-          <span style="display:block;margin-bottom:4px;">Snap counters</span>
-          <div style="display:flex;align-items:center;gap:12px;">
-            <span>to grid</span>
-            <button type="button" class="toggle-switch" id="gridSnapToGridBtn" aria-pressed="false" title="Snap counters to grid">
-              <span class="toggle-switch-knob"></span>
-            </button>
-            <input type="checkbox" id="gridSnapToGrid" hidden>
-          </div>
-        </div>
+      <div class="form-group setting-row" id="gridSetOriginFormGroup">
+        <span class="setting-label">Origin<small>Top-left of the sheet unless you set one</small></span>
+        <button type="button" class="settings-menu-btn settings-menu-btn-inline" id="gridSetOriginOnPage">Set on page…</button>
       </div>
-      <div class="grid-major-color-row">
+      <div class="form-group setting-row" id="gridOriginDisplay" style="display:none;">
+        <span class="setting-label">Origin<small>Set on the page</small><span id="gridOriginText" style="display:none;">none</span></span>
+        <button type="button" class="settings-menu-btn settings-menu-btn-inline" id="gridClearOrigin">Reset</button>
+      </div>
+      <div class="form-group setting-row">
+        <span class="setting-label">Snap counters to grid</span>
+        <button type="button" class="toggle-switch" id="gridSnapToGridBtn" aria-pressed="false" title="Snap counters to grid">
+          <span class="toggle-switch-knob"></span>
+        </button>
+        <input type="checkbox" id="gridSnapToGrid" hidden>
+      </div>
+      <div class="form-grid-2">
         <div class="form-group">
           <label>Line color</label>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <input type="color" id="gridColor" value="#e8c547" style="width:48px;height:32px;cursor:pointer;padding:0;border:1px solid var(--border);border-radius:4px;">
-            <span id="gridColorHex" style="font-family:monospace;font-size:0.9rem;color:var(--text2);">#e8c547</span>
-          </div>
+          <div class="color-field"><input type="color" id="gridColor" value="#e8c547"><span id="gridColorHex" class="color-hex">#e8c547</span></div>
         </div>
         <div class="form-group">
-          <label>Major line every N lines</label>
-          <input type="number" id="gridMajorInterval" min="0" placeholder="none">
+          <label>Major line every</label>
+          <div class="field-unit"><input type="number" id="gridMajorInterval" min="0" placeholder="none"><span>lines</span></div>
         </div>
       </div>
-      <div class="grid-opacity-width-row">
+      <div class="form-grid-2">
         <div class="form-group">
-          <label>Line opacity: <span id="gridOpacityVal">35</span>%</label>
+          <label class="range-label"><span>Line opacity</span><span class="range-val"><span id="gridOpacityVal">35</span>%</span></label>
           <input type="range" id="gridOpacity" min="10" max="100" value="35" step="5">
         </div>
         <div class="form-group">
-          <label>Line width: <span id="gridLineWidthVal">1</span> px</label>
+          <label class="range-label"><span>Line width</span><span class="range-val"><span id="gridLineWidthVal">1</span> px</span></label>
           <input type="range" id="gridLineWidth" min="0.5" max="3" value="1" step="0.25">
         </div>
       </div>
@@ -1476,15 +1456,15 @@
       <div class="specific-pages-title-row">
         <h2>Export PDFs</h2>
         <span id="specificPagesBidBasisChip" class="specific-pages-bid-basis-chip" hidden></span>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group specific-pages-intro" id="specificPagesIntro" style="color:var(--text2);">Adjust marker and line sizes for the exported PDF:</p>
       <div class="specific-pages-scale-row">
         <div class="form-group">
-          <label>Marker size: <span id="specificPagesMarkerScaleVal">75</span>%</label>
+          <label class="range-label"><span>Marker size</span><span class="range-val"><span id="specificPagesMarkerScaleVal">75</span>%</span></label>
           <input type="range" id="specificPagesMarkerScale" min="25" max="150" value="75" step="5">
         </div>
         <div class="form-group">
-          <label>Line width: <span id="specificPagesLineScaleVal">75</span>%</label>
+          <label class="range-label"><span>Line width</span><span class="range-val"><span id="specificPagesLineScaleVal">75</span>%</span></label>
           <input type="range" id="specificPagesLineScale" min="25" max="150" value="75" step="5">
         </div>
       </div>
@@ -1566,21 +1546,21 @@
   </div>
   <div class="modal-overlay" id="lineColorModal">
     <div class="modal-card">
-      <h2>Choose Color</h2>
+      <div class="modal-card-header"><h2>Choose Color</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Presets</label>
         <div class="color-row" id="lineColorPresets"></div>
       </div>
       <div class="form-group">
         <label>Choose color</label>
-        <input type="color" id="lineColorCustom" style="width:100%;height:48px;cursor:pointer;">
+        <div class="color-field"><input type="color" id="lineColorCustom" aria-label="Custom color"><span class="color-hex">#000000</span></div>
       </div>
       <div class="form-group" id="lineColorRecentGroup">
         <label>Recent</label>
         <div class="color-row" id="lineColorRecent"></div>
       </div>
       <div class="actions">
-        <button id="lineColorCancel">Cancel</button>
+        <button id="lineColorCancel" class="ghost">Cancel</button>
       </div>
     </div>
   </div>
@@ -1612,7 +1592,6 @@
       </div>
       <p style="margin:0 0 1rem;font-size:0.95rem;color:var(--text2);">PDF loaded. Choose a canvas export (.json) to apply annotations.</p>
       <div class="actions">
-        <button type="button" id="importCanvasAfterPdfCancel">Cancel</button>
         <button type="button" class="btn-yellow" id="importCanvasAfterPdfChoose">Choose canvas file…</button>
       </div>
     </div>
@@ -1754,9 +1733,9 @@
       <div id="chooseLineTypePanel" class="line-type-tab-panel">
         <p class="form-group" style="margin-bottom:12px;color:var(--text2);">Choose a line type for Quick Line:</p>
         <div id="chooseLineTypeList" class="choose-line-type-list"></div>
-        <p id="chooseLineTypeEmpty" style="display:none;color:var(--text2);font-size:0.9rem;margin-top:12px;">Add a line type first using <strong>Create</strong> or <strong>Quick</strong>.</p>
+        <p id="chooseLineTypeEmpty" class="empty-state" style="display:none;">Add a line type first using <strong>Create</strong> or <strong>Quick</strong>.</p>
         <div class="actions" style="margin-top:16px;">
-          <button id="chooseLineTypeCancel">Cancel</button>
+          <button id="chooseLineTypeCancel" class="ghost">Cancel</button>
         </div>
       </div>
       <div id="createLineTypePanel" class="line-type-tab-panel" style="display:none;">
@@ -1767,19 +1746,12 @@
         </div>
         <div class="form-group">
           <label>Display</label>
-          <div style="display:flex;gap:16px;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="radio" name="createLineTypeCurve" value="straight" checked> Straight
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="radio" name="createLineTypeCurve" value="arc"> Curved
-            </label>
-          </div>
+          <div class="radio-seg" role="radiogroup"><label><input type="radio" name="createLineTypeCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="createLineTypeCurve" value="arc"><span>Curved</span></label></div>
         </div>
         <div class="form-group">
           <label>Color</label>
           <div class="color-row" id="createLineTypeColorRow"></div>
-          <input type="color" id="createLineTypeColorCustom" style="width:100%;height:48px;cursor:pointer;margin-top:8px;">
+          <div class="color-field"><input type="color" id="createLineTypeColorCustom" aria-label="Custom color"><span class="color-hex">#000000</span></div>
           <div id="createLineTypeColorRecentGroup" style="margin-top:8px;display:none;">
             <label>Recent</label>
             <div class="color-row" id="createLineTypeColorRecent"></div>
@@ -1815,14 +1787,7 @@
         </div>
         <div class="form-group">
           <label>Display</label>
-          <div style="display:flex;gap:16px;">
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="radio" name="quickLineCurve" value="straight" checked> Straight
-            </label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-              <input type="radio" name="quickLineCurve" value="arc"> Curved
-            </label>
-          </div>
+          <div class="radio-seg" role="radiogroup"><label><input type="radio" name="quickLineCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="quickLineCurve" value="arc"><span>Curved</span></label></div>
         </div>
         <div class="actions">
           <button id="quickLineCancel">Cancel</button>
@@ -1836,7 +1801,7 @@
       <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
         <h2 id="noteModalTitle">Add Note</h2>
         <span id="noteModalColorSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;flex-shrink:0;" title="Note color"></span>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <textarea id="noteModalText" rows="5" placeholder="Enter note text..."></textarea>
       </div>
@@ -1848,7 +1813,7 @@
   </div>
   <div class="modal-overlay" id="highlightNameModal">
     <div class="modal-card">
-      <h2 id="highlightNameModalTitle">Name Highlight</h2>
+      <div class="modal-card-header"><h2 id="highlightNameModalTitle">Name Highlight</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Label, shown on the plan and listed in the Highlights panel</label>
         <input type="text" id="highlightNameInput" placeholder="e.g. Pipe material" autocomplete="off" maxlength="80" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -1864,7 +1829,7 @@
        (features/duct-suggest.js owns it; the highlight-name modal pattern). -->
   <div class="modal-overlay" id="markerCfmModal">
     <div class="modal-card">
-      <h2>CFM for this one</h2>
+      <div class="modal-card-header"><h2>CFM for this one</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>CFM <span class="form-sublabel" id="markerCfmHint"></span></label>
         <input type="number" id="markerCfmInput" min="0" step="5" placeholder="e.g. 150" autocomplete="off" style="width:140px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -1877,7 +1842,7 @@
   </div>
   <div class="modal-overlay" id="multiplyZoneModal">
     <div class="modal-card">
-      <h2>Multiply Zone</h2>
+      <div class="modal-card-header"><h2>Multiply Zone</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p id="multiplyZonePreview" class="form-group" style="margin-bottom:12px;color:var(--text2);">In this area: 0 counter(s), 0 line run(s) (0 ft)</p>
       <div class="form-group">
         <label>Enter multiplier</label>
@@ -1901,7 +1866,7 @@
   </div>
   <div class="modal-overlay" id="roomBoxModal">
     <div class="modal-card">
-      <h2 id="roomBoxModalTitle">Room Size</h2>
+      <div class="modal-card-header"><h2 id="roomBoxModalTitle">Room Size</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div id="roomBoxDimsPreview" class="form-group" style="margin-bottom:12px;color:var(--text2);"></div>
       <div class="form-group">
         <label>Ceiling height (ft)</label>
@@ -1946,7 +1911,7 @@
         <div id="roomBoxTypeDerived" class="room-box-type-derived" hidden></div>
       </div>
       <div class="actions">
-        <button id="roomBoxDelete" class="danger" style="display:none;margin-right:auto;">Delete</button>
+        <button id="roomBoxDelete" class="danger-ghost" style="display:none;margin-right:auto;">Delete</button>
         <button id="roomBoxCancel">Cancel</button>
         <button id="roomBoxApply">Apply</button>
       </div>
@@ -1957,7 +1922,7 @@
       <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
         <h2>Edit Room</h2>
         <span id="roomEditSwatch" class="color-swatch" title="Change color" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="roomEditName" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -1976,7 +1941,7 @@
         <input type="number" id="roomEditTargetCfm" min="0" step="10" inputmode="numeric" autocomplete="off" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="actions">
-        <button id="roomEditDelete" class="danger" style="margin-right:auto;">Delete</button>
+        <button id="roomEditDelete" class="danger-ghost" style="margin-right:auto;">Delete</button>
         <button id="roomEditCancel">Cancel</button>
         <button id="roomEditSave">Save</button>
       </div>
@@ -2015,7 +1980,7 @@
       <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
         <h2>Line Properties</h2>
         <span id="linePropertiesSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p id="linePropertiesLineType" style="margin:0 0 12px 0;font-size:0.9rem;color:var(--text2);line-height:1.35;text-align:center;"></p>
       <div class="form-group">
         <label>Name</label>
@@ -2081,29 +2046,27 @@
         <button type="button" id="linePropertiesEditVertices" class="settings-menu-btn">Edit vertices</button>
       </div>
       <div class="actions">
-        <button id="linePropertiesClose">Close</button>
+        <button id="linePropertiesClose">Done</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="clearPageConfirmModal">
     <div class="modal-card">
-      <h2>Clear Page</h2>
-      <p id="clearPageConfirmMessage" style="margin:0 0 24px 0;color:var(--text2);">Are you sure?</p>
+      <h2>Clear this page?</h2>
+      <p id="clearPageConfirmMessage" class="modal-lead">Are you sure?</p>
       <div class="actions">
         <button id="clearPageCancel">Cancel</button>
-        <button id="clearPageConfirm" class="danger">Clear Page</button>
+        <button id="clearPageConfirm" class="danger">Clear page</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="deletePageConfirmModal">
     <div class="modal-card">
-      <h2>Delete Page</h2>
-      <p style="margin:0 0 8px 0;color:var(--text2);">Are you sure you want to delete:</p>
-      <p id="deletePageName" style="margin:0 0 16px 0;font-weight:500;"></p>
-      <p style="margin:0 0 24px 0;color:var(--text2);">All annotations will be lost and you will have to re-upload the page to add it back without annotations.</p>
+      <h2>Delete <span id="deletePageName">this sheet</span>?</h2>
+      <p class="modal-lead">Its marks go with it. You would have to upload the page again to get it back.</p>
       <div class="actions">
         <button id="deletePageCancel">Cancel</button>
-        <button id="deletePageConfirm" class="danger">Delete Page</button>
+        <button id="deletePageConfirm" class="danger">Delete sheet</button>
       </div>
     </div>
   </div>
@@ -2112,21 +2075,26 @@
       <div class="modal-card-header" style="display:flex;justify-content:space-between;align-items:center;">
         <h2 id="counterLineTypeDetailsTitle">Counter / Line</h2>
         <span id="counterLineTypeDetailsSwatch" class="color-swatch" style="width:32px;height:32px;cursor:pointer;border-radius:4px;"></span>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="counterLineTypeDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
-      <div class="form-group" id="counterLineTypeDetailsIconGroup" style="display:none;">
-        <label>Icon</label>
+      <details class="modal-section" id="counterLineTypeDetailsIconGroup" style="display:none;">
+        <summary>Icon<small>bundled and custom symbols</small></summary>
+        <div class="modal-section-body">
         <div class="icon-grid" id="counterLineTypeDetailsIconGrid"></div>
         <div id="counterLineTypeDetailsCustomIconsGroup">
           <label id="counterLineTypeDetailsCustomIconsLabel" style="display:block;margin-top:12px;cursor:pointer;user-select:none;" title="Click for tips">Custom Icons</label>
           <div class="icon-grid" id="counterLineTypeDetailsIconGridCustom"></div>
         </div>
-      </div>
+        </div>
+      </details>
       <!-- DUCT unit D6: the per-counter CFM (counters only; hidden for line
            types). Same optional-field semantics as the Create tab. -->
+      <details class="modal-section" id="counterLineTypeDetailsAirSection" style="display:none;" open>
+        <summary>Air &amp; mounting<small>CFM, flex drop, mount height, fixture tag</small></summary>
+        <div class="modal-section-body">
       <div class="form-group" id="counterLineTypeDetailsCfmGroup" style="display:none;">
         <label>CFM <span class="form-sublabel">(air devices only, leave empty otherwise)</span></label>
         <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -2154,19 +2122,14 @@
         <label>Mount height <span class="form-sublabel">(inches AFF; empty = ceiling / no default vertical)</span></label>
         <input type="text" id="counterLineTypeDetailsMount" placeholder='e.g. 18 or 4&#39;-0"' autocomplete="off" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
+        </div>
+      </details>
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
-        <div style="display:flex;gap:16px;">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-            <input type="radio" name="counterLineTypeDetailsCurve" value="straight"> Straight
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-            <input type="radio" name="counterLineTypeDetailsCurve" value="arc"> Curved
-          </label>
-        </div>
+        <div class="radio-seg" role="radiogroup"><label><input type="radio" name="counterLineTypeDetailsCurve" value="straight"><span>Straight</span></label><label><input type="radio" name="counterLineTypeDetailsCurve" value="arc"><span>Curved</span></label></div>
       </div>
       <div class="form-group">
-        <label>On pages</label>
+        <div class="section-rule"><b>On pages</b></div>
         <div id="counterLineTypeDetailsPages" class="counter-line-type-pages-list"></div>
       </div>
       <!-- Electrical, First-Class S3 (features/conductors.js): raceway +
@@ -2209,7 +2172,7 @@
       </div>
       <!-- Child counts: rows built by features/child-counts.js on modal open -->
       <div class="form-group" id="childCountsGroup">
-        <label>Child counts</label>
+        <div class="section-rule"><b>Child counts</b></div>
         <div id="childCountsList"></div>
         <div id="childCountsSuggest" class="child-count-suggest" hidden></div>
         <div class="child-count-add">
@@ -2234,8 +2197,8 @@
         <div id="bendFittingsRows" class="bend-fitting-rows" hidden></div>
       </div>
       <div class="actions">
-        <button id="counterLineTypeDetailsDelete" class="danger">Delete</button>
-        <button id="counterLineTypeDetailsClose">Close</button>
+        <button id="counterLineTypeDetailsDelete" class="danger-ghost" style="margin-right:auto;">Delete</button>
+        <button id="counterLineTypeDetailsClose">Done</button>
       </div>
     </div>
   </div>
@@ -2260,14 +2223,13 @@
       <p id="schedulePaletteIntro" style="margin:0 0 10px;font-size:0.9rem;color:var(--text2);"></p>
       <div id="schedulePaletteList" class="schedule-palette-list"></div>
       <div class="actions">
-        <button type="button" id="schedulePaletteCancel">Cancel</button>
         <button type="button" id="schedulePaletteCreate">Create counters</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="groupModal">
     <div class="modal-card">
-      <h2 id="groupModalTitle">Add Group</h2>
+      <div class="modal-card-header"><h2 id="groupModalTitle">Add Group</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="groupModalName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -2282,37 +2244,34 @@
            tag is set — it is a per-system call. -->
       <div class="form-group">
         <label>Equipment tag <span class="group-modal-hint">(optional, makes this a system)</span></label>
-        <div class="duct-size-inputs">
-          <input type="text" id="groupModalEquipTag" placeholder="e.g. RTU-1" style="width:100px;">
-          <input type="number" id="groupModalCapacityCfm" min="0" step="50" placeholder="CFM" aria-label="Capacity (CFM)" style="width:72px;">
-          <span>CFM</span>
+        <input type="text" id="groupModalEquipTag" placeholder="e.g. RTU-1">
+      </div>
+      <div class="form-grid-2 group-system-fields">
+        <div class="form-group"><label>Capacity</label><div class="field-unit"><input type="number" id="groupModalCapacityCfm" min="0" step="50" placeholder="2000" aria-label="Capacity (CFM)"><span>CFM</span></div></div>
+        <div class="form-group"><label>Static available</label><div class="field-unit">
           <!-- D11: the unit's available external static (in. w.g.) — arms the
                Bid Check "Static path" auto row. Stored only when > 0. -->
-          <input type="number" id="groupModalEspInWg" min="0" step="0.05" placeholder="ESP" aria-label="External static pressure available (inches w.g.)" title="External static pressure available at the unit, inches w.g. Arms the Bid Check static-path row" style="width:62px;">
-          <span style="white-space:nowrap;">″ ESP</span>
-        </div>
+<input type="number" id="groupModalEspInWg" min="0" step="0.05" placeholder="1.5" aria-label="External static pressure available (inches w.g.)" title="External static pressure available at the unit, inches w.g. Arms the Bid Check static-path row"><span>″ ESP</span></div></div>
       </div>
       <!-- Electrical, First-Class S4 (features/circuits.js): a group with a
            panel tag is a CIRCUIT — "LP-1 / 7", with the load the voltage-drop
            check assumes. Shown for electrical projects / tagged groups. -->
       <div class="form-group" id="groupModalCircuitRow" style="display:none;">
         <label>Circuit <span class="group-modal-hint">(panel · number, makes this group a circuit)</span></label>
-        <div class="duct-size-inputs">
-          <input type="text" id="groupModalPanel" list="panelNamesList" placeholder="Panel LP-1" autocomplete="off" style="width:110px;" aria-label="Panel">
-          <datalist id="panelNamesList"></datalist>
-          <input type="text" id="groupModalCircuit" placeholder="7" autocomplete="off" style="width:60px;" aria-label="Circuit number">
-          <input type="number" id="groupModalLoadAmps" min="0" step="1" placeholder="12" style="width:64px;" aria-label="Load (amps)">
-          <span>A</span>
+        <div class="form-grid-3">
+          <div><input type="text" id="groupModalPanel" list="panelNamesList" placeholder="Panel LP-1" autocomplete="off" aria-label="Panel"><datalist id="panelNamesList"></datalist></div>
+          <div><input type="text" id="groupModalCircuit" placeholder="Circuit 7" autocomplete="off" aria-label="Circuit number"></div>
+          <div class="field-unit"><input type="number" id="groupModalLoadAmps" min="0" step="1" placeholder="12" aria-label="Load (amps)"><span>A</span></div>
         </div>
       </div>
-      <div class="form-group" id="groupModalPlenumRow" style="display:none;">
-        <span style="color:var(--text2);">Plenum return</span>
+      <div class="form-group setting-row" id="groupModalPlenumRow" style="display:none;">
+        <span class="setting-label">Plenum return<small>No ducted return: grilles and boots only</small></span>
         <button type="button" class="toggle-switch" id="groupModalPlenumBtn" aria-pressed="false" title="Plenum return: no ducted return; return grilles + boots only">
           <span class="toggle-switch-knob"></span>
         </button>
       </div>
       <div class="actions">
-        <button id="groupModalDelete" class="danger" style="display:none;">Delete</button>
+        <button id="groupModalDelete" class="danger-ghost" style="display:none;margin-right:auto;">Delete</button>
         <button id="groupModalCancel">Cancel</button>
         <button id="groupModalDone">Done</button>
       </div>
@@ -2322,11 +2281,10 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>Assign to group</h2>
-        <button type="button" id="groupAssignAddGroup" style="background:none;border:none;color:var(--accent);font-size:0.9rem;cursor:pointer;padding:4px 8px;margin:-4px -4px -4px 8px;border-radius:4px;">+ Add group</button>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Group</label>
-        <div id="groupAssignButtons" class="group-assign-buttons"></div>
+        <div class="group-assign-buttons-wrap"><div id="groupAssignButtons" class="group-assign-buttons"></div><button type="button" id="groupAssignAddGroup" class="group-assign-btn group-assign-add">+ New group</button></div>
       </div>
       <div class="actions">
         <button id="groupAssignCancel">Cancel</button>
@@ -2355,15 +2313,11 @@
           <p id="settingsCheckoutStatus" class="settings-checkout-status"></p>
           <button type="button" class="save-status-bell-btn" id="saveStatusBtn" style="display:none;" aria-label="Save status" title="Save status"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M320 64C355.3 64 384 92.7 384 128L384 160C459.6 173.9 512 237.3 512 320L512 416L576 480L576 512L64 512L64 480L128 416L128 320C128 237.3 180.4 173.9 256 160L256 128C256 92.7 284.7 64 320 64zM320 576C288.2 576 261.8 556.8 250.6 528L389.4 528C378.2 556.8 351.8 576 320 576z"/></svg></button>
         </div>
-        <button type="button" class="settings-menu-btn btn-yellow settings-primary-btn" id="settingsSaveProject">Save Project to Cloud</button>
         <div class="settings-action-grid">
           <button type="button" class="settings-menu-btn supabase-only" id="settingsShareProject" style="display:none;">Share</button>
           <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckIn" style="display:none;">Turn in</button>
           <button type="button" class="settings-menu-btn btn-yellow-outline" id="settingsCheckOut" style="display:none;">Check out</button>
           <button type="button" class="settings-menu-btn danger" id="settingsForceCheckIn" style="display:none;" title="Force turn-in (admin)">Force turn-in</button>
-          <button type="button" class="settings-menu-btn" id="settingsAddAdditionalPages" style="display:none;">Add pages</button>
-          <button type="button" class="settings-menu-btn" id="settingsDownloadPdf" style="display:none;">Download PDF</button>
-          <button type="button" class="settings-menu-btn" id="settingsCloseProject">Close</button>
         </div>
         <!-- Bid review handoff: status text + transition button, rendered by
              features/review-flow.js each time this modal becomes visible. -->
@@ -2429,6 +2383,16 @@
               <span class="toggle-switch-knob"></span>
             </button>
           </div>
+          <div class="settings-project-row" id="settingsSheetsRow" title="Add sheets from another PDF, or download this project's PDF.">
+            <div class="settings-project-row-text">
+              <div>Sheets</div>
+            </div>
+            <div class="settings-project-row-hint">Add pages from another PDF, or download this one.</div>
+            <div class="settings-project-row-control">
+              <button type="button" class="settings-menu-btn settings-menu-btn-inline" id="settingsAddAdditionalPages" style="display:none;">Add pages</button>
+              <button type="button" class="settings-menu-btn settings-menu-btn-inline" id="settingsDownloadPdf" style="display:none;">Download PDF</button>
+            </div>
+          </div>
           <div class="settings-project-row" id="settingsQuickKeysRow" title="The number row (1-9, 0) bound to counters and line types for this project.">
             <div class="settings-project-row-text">
               <div>Quick keys</div>
@@ -2445,6 +2409,7 @@
         <div class="settings-footer">
           <div class="settings-footer-row">
             <div class="settings-footer-left">
+              <span class="settings-menu-link settings-menu-link-muted" id="settingsCloseProject">Close project</span>
               <span class="settings-menu-link supabase-only" id="settingsLoadProject">Load project…</span>
               <span class="settings-menu-link supabase-only" id="settingsManageProjects" style="display:none;">Manage projects</span>
               <button type="button" class="settings-menu-link settings-help-toggle" id="settingsHelpToggle" aria-expanded="false" aria-controls="settingsHelpLinks">Help <span class="settings-help-chevron" aria-hidden="true">▸</span></button>
@@ -2462,6 +2427,9 @@
             <span class="settings-menu-link" id="settingsAdvancedPlan" title="Open the engineered sample plan: a restaurant plumbing sheet with its piping drawn (Main St Restaurant, P-101)">engineered sample plan</span>
           </div>
         </div>
+      </div>
+      <div class="actions settings-actions">
+        <button type="button" class="primary" id="settingsSaveProject">Save Project to Cloud</button>
       </div>
     </div>
   </div>
@@ -2501,7 +2469,7 @@
         <div id="saveStatusEventList" class="save-status-event-list"></div>
       </div>
       <div class="actions">
-        <label class="save-status-verbose-toggle" style="margin-right:auto;font-size:0.9rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+        <label class="save-status-verbose-toggle" style="margin-right:auto;font-size:0.9rem;display:inline-flex;align-items:center;gap:6px;cursor:pointer;white-space:nowrap;">
           <input type="checkbox" id="saveStatusVerboseToggle" /> Verbose mode
         </label>
         <button type="button" id="saveStatusCopyBtn">Copy logs</button>
@@ -2584,12 +2552,9 @@
         <h2>User Settings</h2>
         <button type="button" class="modal-close-btn" id="mySettingsModalClose" aria-label="Close">×</button>
       </div>
-      <div class="form-group">
-        <label>Email</label>
-        <p id="mySettingsEmail" class="form-group" style="margin:0;font-weight:500;"></p>
-      </div>
-      <div class="form-group supabase-only">
-        <button type="button" class="settings-menu-btn" id="mySettingsMyActivity">My Activity</button>
+      <div class="form-group setting-row">
+        <span class="setting-label"><b id="mySettingsEmail" style="font-weight:500;"></b><small>Signed in on this device</small></span>
+        <button type="button" class="settings-menu-link supabase-only" id="mySettingsMyActivity" style="padding:0;font-size:0.9rem;">My activity</button>
       </div>
       <div class="form-group settings-password-section collapsed" id="mySettingsPasswordSection">
         <h3 class="settings-advanced-header" id="mySettingsPasswordHeader" title="Click to expand">Password <span class="collapse-icon" id="mySettingsPasswordCollapseIcon">▶</span></h3>
@@ -2641,8 +2606,7 @@
   <div class="modal-overlay" id="paletteInsightsModal">
     <div class="modal-card modal-card-flex" style="max-width:520px;">
       <div class="modal-card-header">
-        <h2>My Standards</h2>
-        <button type="button" id="paletteInsightsAddAll" class="plum-header-add-btn">Add all frequently used</button>
+        <div class="modal-title-block"><h2>My Standards</h2><div class="modal-card-sub">What your bids use most, ready to add</div></div><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button>
       </div>
       <p id="paletteInsightsSubtitle" class="form-group" style="margin:0 0 8px 0;color:var(--text3);font-size:0.85rem;"></p>
       <div class="pi-filter-row">
@@ -2658,13 +2622,14 @@
       </div>
       <p class="form-group" style="margin:10px 0 0 0;font-size:0.8rem;color:var(--text3);">Added items go onto your open project right away and ride your Artboard into every new bid.</p>
       <div class="actions">
-        <button type="button" id="paletteInsightsClose">Done</button>
+        <button type="button" id="paletteInsightsClose" class="ghost">Done</button>
+        <button type="button" id="paletteInsightsAddAll" class="primary">Add all frequently used</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="authModal">
     <div class="modal-card">
-      <h2>Sign In</h2>
+      <div class="modal-card-header"><h2>Sign In</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p id="authGateLine" class="auth-gate-line" style="display:none;"></p>
       <form id="authForm">
         <div class="form-group">
@@ -2713,9 +2678,9 @@
   </div>
   <div class="modal-overlay" id="adminPanelModal">
     <div class="modal-card">
-      <h2>Add User</h2>
+      <div class="modal-card-header"><h2>Add User</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Create the account, then hand the teammate their email and password.</p>
-      <p class="form-group" style="margin-bottom:12px;color:var(--yellow);font-size:0.85rem;">Accounts are normally provisioned from PipeTooling (the system of record for people). A user created here is CT-only until PT's weekly roster audit flags the drift &mdash; use this as the escape hatch, not the front door.</p>
+      <p class="modal-callout">People are normally provisioned from PipeTooling, the system of record for people. A user created here is CountTooling-only until the weekly roster audit flags the drift. Escape hatch, not front door.</p>
       <form id="adminCreateForm">
         <div class="form-group">
           <label>Email</label>
@@ -2728,7 +2693,7 @@
         <p id="adminCreateError" class="form-group" style="color:var(--red);display:none;"></p>
         <p id="adminCreateSuccess" class="form-group" style="color:var(--green);display:none;"></p>
         <div class="actions">
-          <button type="button" id="adminPanelClose">Close</button>
+          <button type="button" id="adminPanelClose">Cancel</button>
           <button type="submit" id="adminCreateUser">Create User</button>
         </div>
       </form>
@@ -2738,8 +2703,8 @@
     <div class="modal-card modal-card-large user-list-modal modal-card-flex">
       <div class="manage-users-modal-header">
         <h2>Manage Users</h2>
-        <button type="button" id="manageUserModalAllActivityBtn" class="manage-users-header-activity-btn" aria-label="View activity for all users"></button>
-      </div>
+        <button type="button" id="manageUserModalAllActivityBtn" class="settings-menu-link manage-users-header-activity-btn" aria-label="View activity for all users" style="padding:0 8px;font-size:0.9rem;">All activity</button>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Passwords, transfers, activity, and deletes &mdash; per user.</p>
       <div id="manageUserList" class="settings-users-list modal-flex-scroll" style="max-height:64vh;"></div>
       <div class="actions" style="margin-top:16px;">
@@ -2749,21 +2714,13 @@
   </div>
   <div class="modal-overlay" id="deleteUserConfirmModal">
     <div class="modal-card">
-      <h2>Delete User</h2>
-      <p style="margin:0 0 8px 0;color:var(--text2);">Delete:</p>
-      <p id="deleteUserName" style="margin:0 0 8px 0;font-weight:500;"></p>
+      <h2>Delete <span id="deleteUserName">user</span></h2>
       <p id="deleteUserCountNote" style="margin:0 0 16px 0;color:var(--text2);font-size:0.9rem;"></p>
-      <div class="form-group" style="margin-bottom:8px;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;color:var(--text);">
-          <input type="radio" name="deleteUserMode" value="delete" checked style="width:auto;padding:0;background:none;border:none;"> Delete this user's projects too
-        </label>
+      <div class="choice-cards" role="radiogroup">
+        <label><input type="radio" name="deleteUserMode" value="delete" checked><span>Delete their projects too<small>Storage is freed. This cannot be undone.</small></span></label>
+        <label><input type="radio" name="deleteUserMode" value="reassign"><span>Move their projects to another user<small>Pick who below.</small></span></label>
       </div>
-      <div class="form-group" style="margin-bottom:8px;">
-        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.95rem;color:var(--text);">
-          <input type="radio" name="deleteUserMode" value="reassign" style="width:auto;padding:0;background:none;border:none;"> Reassign their projects to another user
-        </label>
-      </div>
-      <div class="form-group" id="deleteUserReassignGroup" style="display:none;margin-left:24px;">
+      <div class="form-group" id="deleteUserReassignGroup" style="display:none;">
         <label>Reassign to</label>
         <select id="deleteUserReassignSelect"></select>
       </div>
@@ -2776,7 +2733,7 @@
   </div>
   <div class="modal-overlay" id="transferProjectsModal">
     <div class="modal-card">
-      <h2>Transfer Projects</h2>
+      <div class="modal-card-header"><h2>Transfer Projects</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p style="margin:0 0 8px 0;color:var(--text2);">Move all projects owned by:</p>
       <p id="transferFromName" style="margin:0 0 8px 0;font-weight:500;"></p>
       <p id="transferCountNote" style="margin:0 0 16px 0;color:var(--text2);font-size:0.9rem;"></p>
@@ -2793,7 +2750,7 @@
   </div>
   <div class="modal-overlay" id="setPasswordModal">
     <div class="modal-card">
-      <h2>Set Password</h2>
+      <div class="modal-card-header"><h2>Set Password</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p style="margin:0 0 8px 0;color:var(--text2);">Set a new password for:</p>
       <p id="setPasswordUserName" style="margin:0 0 16px 0;font-weight:500;"></p>
       <form id="setPasswordForm">
@@ -2817,7 +2774,7 @@
   </div>
   <div class="modal-overlay" id="userProjectsModal">
     <div class="modal-card modal-card-large">
-      <h2>Projects</h2>
+      <div class="modal-card-header"><h2>Projects</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p id="userProjectsSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
       <div id="userProjectsList" class="settings-users-list" style="max-height:60vh;"></div>
       <div class="actions" style="margin-top:16px;">
@@ -2827,7 +2784,7 @@
   </div>
   <div class="modal-overlay" id="allUsersModal">
     <div class="modal-card modal-card-large user-list-modal modal-card-flex">
-      <h2>All Users</h2>
+      <div class="modal-card-header"><h2>All Users</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">All users in the system.</p>
       <div id="allUsersList" class="settings-users-list modal-flex-scroll" style="max-height:60vh;"></div>
       <div class="actions" style="margin-top:16px;">
@@ -2843,7 +2800,7 @@
           <button type="button" id="userActivityViewEventsBtn" class="user-activity-view-btn" aria-pressed="true">Events</button>
           <button type="button" id="userActivityViewSummaryBtn" class="user-activity-view-btn" aria-pressed="false">Summary</button>
         </div>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" id="userActivityModalSubtitle" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;"></p>
       <div id="userActivityToolbar" class="user-activity-toolbar user-activity-toolbar-hidden">
         <div class="user-activity-toolbar-row">
@@ -2869,7 +2826,7 @@
   </div>
   <div class="modal-overlay" id="userActivityOverviewModal">
     <div class="modal-card modal-card-large modal-card-flex">
-      <h2>Activity overview</h2>
+      <div class="modal-card-header"><h2>Activity overview</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p id="uaoSubtitle" style="margin:0 0 12px 0;color:var(--text2);font-size:0.9rem;"></p>
       <div id="uaoBody" class="modal-flex-scroll" style="max-height:64vh;overflow-y:auto;"></div>
       <div class="actions" style="margin-top:16px;">
@@ -2879,7 +2836,7 @@
   </div>
   <div class="modal-overlay" id="manageProjectsModal">
     <div class="modal-card modal-card-large modal-card-flex">
-      <h2>Manage Projects</h2>
+      <div class="modal-card-header"><h2>Manage Projects</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">View and delete projects. Deletion removes the project and its stored PDF.</p>
       <div id="manageProjectsList" class="settings-users-list modal-flex-scroll"></div>
       <div class="actions" style="margin-top:16px;">
@@ -2889,7 +2846,7 @@
   </div>
   <div class="modal-overlay" id="saveProjectModal">
     <div class="modal-card">
-      <h2>Save Project to Cloud</h2>
+      <div class="modal-card-header"><h2>Save Project to Cloud</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Project name</label>
         <input type="text" id="saveProjectName" placeholder="Untitled">
@@ -2935,7 +2892,7 @@
             <select id="bidBoardOwnerFilter" class="bid-board-owner-filter" aria-label="Filter by estimator"></select>
           </span>
         </div>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group bid-board-intro">Every bid in the company, newest first. Click one to view it. Read-only, nothing can be changed by accident.</p>
       <div id="bidBoardError" class="form-group" style="display:none;"></div>
       <div id="bidBoardList" class="bid-board-list form-group"></div>
@@ -2954,7 +2911,7 @@
             <span class="toggle-switch-knob"></span>
           </button>
         </span>
-      </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group load-project-modal-intro">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
       <div id="loadProjectFilters" class="load-project-filters form-group" style="display:none;">
         <div class="load-project-filters-top">
@@ -2980,15 +2937,15 @@
         </div>
       </div>
       <div id="loadProjectList" class="form-group"></div>
-      <p id="loadProjectEmpty" class="form-group" style="color:var(--text2);display:none;">No projects yet. Save your first project to get started.</p>
+      <p id="loadProjectEmpty" class="empty-state" style="display:none;"><b>No projects in the cloud yet</b>Save this takeoff from Project Settings and it shows up here.</p>
       <div class="actions">
-        <button id="loadProjectCancel">Cancel</button>
+        <button id="loadProjectCancel" class="ghost">Cancel</button>
       </div>
     </div>
   </div>
   <div class="modal-overlay" id="copyProjectModal">
     <div class="modal-card">
-      <h2>Copy project</h2>
+      <div class="modal-card-header"><h2>Copy project</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Opens a local working copy. Save to cloud from Project Settings when you are ready.</p>
       <div class="form-group">
         <label for="copyProjectNameInput">Project name</label>
@@ -3015,7 +2972,7 @@
         <h2>Share Project</h2>
         <button type="button" class="modal-close-btn" id="shareProjectModalClose" aria-label="Close">×</button>
       </div>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Add users by email. Viewers can view only; editors can check out to edit.</p>
+      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Viewers look; editors can check out to edit.</p>
       <div id="shareProjectList" class="form-group" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
       <div class="form-group">
         <label>Select user</label>
@@ -3030,9 +2987,9 @@
               <option value="editor">Editor</option>
             </select>
           </div>
-          <div style="flex:1;display:flex;flex-direction:column;">
+          <div style="flex:0 0 auto;display:flex;flex-direction:column;">
             <label style="visibility:hidden;pointer-events:none;">Add</label>
-            <button type="button" class="settings-menu-btn btn-yellow" id="shareProjectAdd" style="min-width:0;text-align:center;padding:8px 12px;">Add</button>
+            <button type="button" class="settings-menu-btn settings-menu-btn-inline" id="shareProjectAdd" style="min-width:0;text-align:center;padding:8px 16px;">Add</button>
           </div>
         </div>
       </div>
@@ -3045,7 +3002,7 @@
              path most sharers come here for. The header still collapses it. -->
         <div id="shareViewLinksContent">
           <p class="form-group" style="margin-bottom:8px;color:var(--text2);font-size:0.85rem;">Share a view-only link. Recipients enter their email (<span id="shareViewLinksDomains">clickplumbing.com</span>) to view.</p>
-          <button type="button" class="settings-menu-btn btn-yellow" id="shareViewLinkCreate" style="margin-bottom:12px;">Create view link</button>
+          <button type="button" class="settings-menu-btn" id="shareViewLinkCreate" style="margin-bottom:12px;text-align:center;">Create view link</button>
           <div id="shareViewLinksList" style="max-height:160px;overflow-y:auto;"></div>
         </div>
       </div>
@@ -3058,7 +3015,7 @@
       <p style="margin:0 0 24px 0;color:var(--text2);">You have unsaved changes. Save before loading another project?</p>
       <div class="actions">
         <button id="saveBeforeLoadCancel">Cancel</button>
-        <button id="saveBeforeLoadDiscard">Don't Save</button>
+        <button id="saveBeforeLoadDiscard" class="danger-ghost">Don't save</button>
         <button id="saveBeforeLoadSave">Save now</button>
       </div>
     </div>
@@ -3075,7 +3032,7 @@
         <p id="checkoutExpiredRecoveryError" style="margin:0 0 16px 0;color:var(--red);font-size:0.9rem;display:none;"></p>
       </div>
       <div class="actions" style="flex-wrap:wrap;gap:8px;">
-        <button type="button" id="checkoutExpiredRecoveryDiscard" class="danger" style="margin-right:auto;">Discard local edits and reload</button>
+        <button type="button" id="checkoutExpiredRecoveryDiscard" class="link danger-link" style="margin-right:auto;">Discard local edits and reload</button>
         <button type="button" id="checkoutExpiredRecoveryCancel">Cancel</button>
         <button type="button" id="checkoutExpiredRecoveryExport">Export local backup</button>
         <button type="button" id="checkoutExpiredRecoveryRecheckout" class="btn-yellow">Re-check out and save</button>
@@ -3087,8 +3044,8 @@
       <h2>Project from Last Session</h2>
       <p id="lastSessionRestoreMessage" style="margin:0 0 24px 0;color:var(--text2);">You have a project from your last session. What would you like to do?</p>
       <div class="actions">
-        <button id="lastSessionRestoreKeep">Keep and Open</button>
-        <button id="lastSessionRestoreDiscard" class="danger">Discard</button>
+        <button id="lastSessionRestoreDiscard" class="danger-ghost">Discard</button>
+        <button id="lastSessionRestoreKeep" class="primary">Keep and open</button>
       </div>
     </div>
   </div>
@@ -3098,7 +3055,7 @@
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">You have saved annotations for this PDF. Load them?</p>
       <div id="loadAnnotationsList" class="form-group" style="max-height:200px;overflow-y:auto;"></div>
       <div class="actions">
-        <button id="loadAnnotationsSkip">Skip</button>
+        <button id="loadAnnotationsSkip" class="ghost">Start fresh</button>
       </div>
     </div>
   </div>
@@ -3116,7 +3073,7 @@
   </div>
   <div class="modal-overlay" id="preparePdfModal">
     <div class="modal-card modal-card-flex" style="max-width:min(960px,92vw);">
-      <h2 id="preparePdfTitle">Prepare PDF for Cloud</h2>
+      <div class="modal-card-header"><h2 id="preparePdfTitle">Prepare PDF for Cloud</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" id="preparePdfDescription" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Name your project and remove unnecessary pages before saving.</p>
       <div class="form-group prepare-pdf-name-row" id="preparePdfNameRow">
         <div class="prepare-pdf-name-tabs">
@@ -3163,12 +3120,12 @@
       </div>
       <div class="actions prepare-pdf-actions">
         <div class="prepare-pdf-actions-left">
-          <button type="button" id="preparePdfCancel">Cancel</button>
-          <button type="button" id="preparePdfDone">Open</button>
-          <button type="button" id="preparePdfSaveAndOpen" class="btn-yellow">Save&nbsp;&amp;<br>Open</button>
+          <button type="button" id="preparePdfDownload" class="link">Download trimmed PDF</button>
         </div>
         <div class="prepare-pdf-actions-right">
-          <button type="button" id="preparePdfDownload">Download Trimmed PDF</button>
+          <button type="button" id="preparePdfCancel" class="ghost">Cancel</button>
+          <button type="button" id="preparePdfDone" class="ghost">Open</button>
+          <button type="button" id="preparePdfSaveAndOpen" class="primary">Save &amp; open</button>
         </div>
       </div>
     </div>
@@ -3204,7 +3161,7 @@
   </div>
   <div class="modal-overlay" id="addCanvasModal">
     <div class="modal-card">
-      <h2>Add Canvas</h2>
+      <div class="modal-card-header"><h2>Add Canvas</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Choose the type of canvas to add.</p>
       <div class="form-group" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
         <button type="button" id="addCanvasModalNew" class="group-assign-btn add-canvas-mode-btn">New empty layer</button>
@@ -3222,14 +3179,14 @@
   </div>
   <div class="modal-overlay" id="canvasDetailsModal">
     <div class="modal-card">
-      <h2>Edit Layer</h2>
+      <div class="modal-card-header"><h2>Edit Layer</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="canvasDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
       <div class="actions">
-        <button type="button" id="canvasDetailsDelete" class="danger">Delete</button>
-        <button type="button" id="canvasDetailsClose">Close</button>
+        <button type="button" id="canvasDetailsDelete" class="danger-ghost" style="margin-right:auto;">Delete</button>
+        <button type="button" id="canvasDetailsClose" class="primary">Done</button>
       </div>
     </div>
   </div>
@@ -3249,7 +3206,7 @@
        keeps the full-screen .modal-overlay treatment on its own element. -->
   <div class="modal-overlay" id="turnInProgressModal">
     <div class="modal-card modal-card-toast">
-      <p id="turnInProgressText" style="margin:0;font-size:1rem;white-space:pre-line;text-align:center;"></p>
+      <div class="turn-in-progress"><span class="turn-in-spinner" aria-hidden="true"></span><p id="turnInProgressText" style="margin:0;font-size:1rem;white-space:pre-line;"></p></div>
     </div>
   </div>
   <!-- Force turn-in notice (Stage-5 J17 finding): an admin force turn-in used
@@ -3267,14 +3224,14 @@
       </div>
       <p id="forceTurnInNoticeBody" style="margin:0 0 8px 0;color:var(--text2);">An admin turned this project in while you had it checked out. You're now <strong style="color:var(--text);">viewing only</strong>.</p>
       <p id="forceTurnInNoticeSaved" style="margin:0 0 20px 0;color:var(--text2);">Your marks up to the turn-in were saved.</p>
-      <p id="forceTurnInNoticeWarn" style="display:none;margin:0 0 20px 0;color:var(--yellow);gap:8px;align-items:flex-start;">
+      <p id="forceTurnInNoticeWarn" class="modal-callout" style="display:none;">
         <svg viewBox="0 0 640 640" width="16" height="16" aria-hidden="true" style="flex-shrink:0;margin-top:3px;"><path fill="var(--yellow)" d="M320 64C331.8 64 342.7 70.5 348.4 80.9L588.4 528.9C593.7 538.8 593.4 550.8 587.6 560.5C581.8 570.2 571.3 576 560 576L80 576C68.7 576 58.2 570.1 52.4 560.5C46.6 550.9 46.3 538.8 51.6 528.9L291.6 80.9C297.3 70.5 308.2 64 320 64zM320 416C302.3 416 288 430.3 288 448C288 465.7 302.3 480 320 480C337.7 480 352 465.7 352 448C352 430.3 337.7 416 320 416zM320 224C306.7 224 296 234.7 296 248L296 360C296 373.3 306.7 384 320 384C333.3 384 344 373.3 344 360L344 248C344 234.7 333.3 224 320 224z"/></svg>
         <span>Some edits may not have been saved &mdash; check the Save status bell.</span>
       </p>
       <div class="actions">
-        <button type="button" id="forceTurnInNoticeClose">Close project</button>
-        <button type="button" id="forceTurnInNoticeCheckout">Check out to edit</button>
-        <button type="button" class="btn-yellow" id="forceTurnInNoticeKeepViewing">Keep viewing</button>
+        <button type="button" id="forceTurnInNoticeClose" class="link" style="margin-right:auto;">Close project</button>
+        <button type="button" id="forceTurnInNoticeCheckout" class="ghost">Check out to edit</button>
+        <button type="button" class="primary" id="forceTurnInNoticeKeepViewing">Keep viewing</button>
       </div>
     </div>
   </div>

@@ -2541,3 +2541,24 @@ body.tour-active .canvas-empty-hint { display: none; }
       .modal-card .actions { gap: 8px; }
       .modal-card .actions button { padding: 10px 14px; }
     }
+    /* Modal polish follow-ups (2026-09-19): the last of the review's per-dialog asks. */
+    .select-segment { display: flex; width: 100%; }
+    .select-segment button { flex: 1; text-align: center; padding: 7px 4px; font-size: 0.85rem; }
+    .field-stepper { display: flex; align-items: stretch; gap: 6px; }
+    .modal-card .field-stepper input { flex: 1; min-width: 0; }
+    .modal-card .field-stepper select { width: auto; flex: 0 0 auto; padding: 8px 32px 8px 10px; }
+    .stepper-btns { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex: 0 0 auto; }
+    .modal-card .stepper-btns .line-drop-adj-btn { border: none; border-left: 1px solid var(--border); border-radius: 0; padding: 0 9px; min-width: 40px; font-size: 0.8rem; background: var(--surface2); }
+    .modal-card .stepper-btns .line-drop-adj-btn:first-child { border-left: none; }
+    .drop-recent-line { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-height: 22px; }
+    .drop-recent-line .drop-recent-row { flex: 1; min-width: 0; }
+    .modal-card .line-drop-clear { margin-left: auto; background: none; border: none; color: var(--text2); font-size: 0.8rem; font-family: inherit; cursor: pointer; padding: 2px 4px; }
+    .modal-card .line-drop-clear:hover { color: var(--text); text-decoration: underline; }
+    .form-facts { margin: -8px 0 16px; font-size: 0.85rem; color: var(--text2); }
+    .form-facts:empty { display: none; }
+    .bid-board-filter-label { font-size: 0.8rem; color: var(--text2); margin-right: 6px; }
+    .bid-board-owner-wrap { display: inline-flex; align-items: center; }
+    .settings-footer .settings-advanced-section { margin: 6px 0 2px; }
+    .settings-footer .settings-advanced-section .settings-menu { padding: 8px 0 4px; }
+    .polyline-type-color { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; font-size: 0.85rem; color: var(--text2); }
+    .polyline-type-color .color-swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border2); cursor: default; }

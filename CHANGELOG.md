@@ -28,6 +28,25 @@ feeds the header logo (index.html, 404.html, the guides/rules template in
 both (ICO first for Safari, SVG for the rest); sw.js precaches them; pwa.spec.js asserts the
 links resolve. Regenerated: guides, rules, og-image.png, the SW stamp.
 
+## style(modals): the review's last fifteen asks (2026-09-19)
+
+The Modal Review's per-dialog suggestions that the polish pass left short. Copy and counts:
+Delete zone names the mark count in its title and button (`countCanvasMarks`, published on
+`App`, is the one counter the confirms share), Delete room names the room and says its boxes
+go while the marks inside stay, Clear page says how many marks it removes and puts the number
+on the button, Load annotations says how many cloud projects match the PDF, Edit layer shows
+a facts line (marks, sheet, layer). Controls: the zone dialogs' label position is a segment
+that mirrors its select (`.select-segment[data-for]`, built by app.js from the options and
+written back on click, so the features keep reading the select), Line Properties attaches
+its ±1 / ±10 steppers to the drop field with Clear as a small link, New polyline shows the
+chosen type's swatch above the override presets, the bid board's estimator filter has a
+label, Load project's search sits under the title, the admin lists have empty states.
+Project Settings: Advanced is a disclosure inside the footer (the same five buttons, the
+same ids; `#settingsAdvancedModal` is gone, 77 modals), Edit session expired lost its Cancel
+(the × is the way out). Two asks stayed deliberately: Room Size keeps its room list (six
+specs and the HVAC tour drive `.room-picker-item`), and the activity overview already had a
+stat-tile row.
+
 ## style(modals): the polish pass, seven primitives and fifty-two dialogs (2026-09-18)
 
 The Modal Review (the old-versus-new page built off the Modal Gallery contact sheet) found

@@ -575,6 +575,14 @@ the rest are new setups.
    carries a value title (`<b>`) and a one-line description that quotes the numbers in the
    frame (171.73 ft of #12 THHN, 174 lb, 376 CFM). `landing-assets.test.js` also pins each
    `<img>`'s width/height to the JPEG's own pixels, so the grid never jumps as frames load.
+6. **SPOT-6 · the lightbox.** Robert (2026-09-18): "when a user clicks on those photos, do they
+   become bigger … so the individual interested in the information can zoom in and zoom out?"
+   **DONE 2026-09-18** (branch `claude/spotlight-lightbox`): each frame is a
+   `<button class="spot-open">`; one `<dialog id="spotLightbox">` after the section shows the
+   frame at full size with its title and description, ← → and the arrow buttons walk the visible
+   trade's six, wheel / pinch / + − / double-click zoom to 5× about the pointer, drag pans, Escape
+   or the backdrop closes and focus returns to the opener. Inline script beside the hero's, no
+   library. Spec case in `landing-trade.spec.js`.
 
 About a day and a half in total. HVAC first because that is the visitor being prepared for.
 

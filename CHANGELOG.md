@@ -22,9 +22,25 @@ not the segments between them. The live overlay's edit block (app.js `renderAnno
 `state.editingPolyline` branch) now paints the run's segments first, the way the draw core
 does for a committed run: the run's colour, the line type settings' stroke width and opacity,
 a closed run closing back to its first point, solid (polylines carry no dash style), under the
-dots and chips. Live path only; the export path never sees a run mid-edit. Test: a fifth case
+dots and chips. Live path only; the export path never sees a run mid-edit. Test: a sixth case
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
+
+## fix(edit): undo while editing a run no longer loses the run (2026-09-18)
+
+Found by the BEND-OVERRIDE test round. A run in Edit Polyline is spliced out of its page into
+`state.editingPolyline`, so every undo snapshot taken mid-edit (a vertex delete, a fitting
+choice, and Done Editing's own) captured the page WITHOUT the run; an undo then dropped the run
+outright and left the tool in edit mode with nothing to edit (Done Editing still showing).
+Predates the menu (the old right-click delete took the same snapshot) but the menu made it easy
+to reach. Now app.js's snapshot wrappers put the run home for the length of the copy, undo and
+redo do the same for the snapshot they take for the opposite stack, and an undo or redo applied
+mid-edit leaves edit mode cleanly (tool, Done Editing button, canvas cursor class, the vertex
+menu). Done Editing homes the run as it was when editing BEGAN, so one undo after Done reverts the
+whole edit session, drags included (drags take no snapshot of their own). Regression: the fifth
+case in bend-fittings.spec.js, which also covers the menu's Delete vertex, a closed run, outside
+click dismissal, screen-edge placement, the touch long-press, and a save/import round trip of the
+override.
 
 ## feat(lines): the edit-mode vertex menu for fittings from bends (2026-09-18)
 
@@ -43,6 +59,17 @@ dashed "no" chip so the choice stays visible. The status bar's edit hint names t
 New: `features/bend-override.js` (the menu, the tool-context-menu dismissal pattern),
 `drawBendFittingChips` in canvas-draw.js; a fourth case in bend-fittings.spec.js. Tees and wyes
 still wait for the water plan's attachment rung.
+
+## feat(landing): SPOT-6, the spotlight lightbox (2026-09-18)
+
+Robert's ask: a click on a spotlight frame should make it bigger, so a visitor can read the Bid
+Check rows and the schedule and zoom in and out. Every frame is now a button that opens a
+`<dialog>` lightbox with the frame at full size (the JPEGs are rendered at 2×, so they hold the
+detail), its value title and description under it, and the trade's other five a key or a tap away
+(arrows, ← →). Wheel, pinch, + / − and double-click zoom to 5×, drag pans; Escape, the Close
+button or a click on the backdrop returns focus to the frame that opened it. No library; the
+hero's inline-script idiom. `landing-trade.spec.js` opens a frame, walks to the next, zooms and
+closes. Plan: journeys/plans/LANDING-REFRESH.md, SPOT-6.
 
 ## feat(lines): fittings from bends, a line type option that counts its own elbows (2026-09-18)
 

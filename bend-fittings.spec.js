@@ -203,6 +203,112 @@ test.describe('Fittings from bends', () => {
     await page.locator('#doneEditing').click();
   });
 
+  test('edit mode edges: the menu\'s Delete vertex, undo and redo mid-edit, a closed run, outside click, screen-edge placement, touch long-press, and a save/import round trip', async ({ page }) => {
+    test.setTimeout(90000);   // a long case with a full reload; against counttooling.com the live site's realtime traffic never goes network-idle quickly
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await setupProject(page);
+    const menu = page.locator('#bendVertexMenu');
+    const polyP1 = () => page.evaluate(() => { const p = window.App.ensureActiveCanvas(window.state.pages[0]).annotations.polylines.find((q) => q.id === 'p1'); return p ? p.points.map((q) => q.fitting || null) : null; });
+    const editState = () => page.evaluate(() => ({ tool: window.state.tool, editing: !!window.state.editingPolyline, done: document.getElementById('doneEditing').style.display }));
+
+    // Undo mid-edit: the run must come back whole, the change reverted, edit mode left cleanly
+    await page.evaluate(() => window.App.enterEditMode('p1', 0));
+    await page.evaluate(() => window.App.tryOpenBendVertexMenu(1, 300, 300));
+    await menu.locator('button[data-action="none"]').click();
+    expect(await page.evaluate(() => window.state.editingPolyline.points[1].fitting)).toBe('none');
+    await page.locator('#undoBtn').click();
+    expect(await polyP1()).toEqual([null, null, null, null, null]);
+    expect(await editState()).toEqual({ tool: 0, editing: false, done: 'none' });
+    await expect(page.locator('#annCanvas')).not.toHaveClass(/interactive/);
+    // Redo brings the change back onto the saved run
+    await page.locator('#redoBtn').click();
+    expect(await polyP1()).toEqual([null, 'none', null, null, null]);
+    expect(await editState()).toEqual({ tool: 0, editing: false, done: 'none' });
+    await page.locator('#undoBtn').click();
+    expect(await polyP1()).toEqual([null, null, null, null, null]);
+
+    // The menu's own Delete vertex, then undo restores the five points
+    await page.evaluate(() => window.App.enterEditMode('p1', 0));
+    await page.evaluate(() => window.App.tryOpenBendVertexMenu(2, 300, 300));
+    await menu.locator('button[data-action="delete"]').click();
+    expect(await page.evaluate(() => window.state.editingPolyline.points.length)).toBe(4);
+    await page.locator('#doneEditing').click();
+    expect((await polyP1()).length).toBe(4);
+    expect((await totalsFor(page, 'lt-cu')).find((r) => r.bendClass === 'bend45')).toBeUndefined();   // the two 45s left with the vertex
+    await page.keyboard.press('Control+z');
+    expect((await polyP1()).length).toBe(5);
+    // A drag (no snapshot of its own) + Done Editing: one undo restores the run as it was when editing began
+    await page.evaluate(() => { window.App.enterEditMode('p1', 0); window.state.editingPolyline.points[1].x = 250; });
+    await page.locator('#doneEditing').click();
+    expect(await page.evaluate(() => window.App.ensureActiveCanvas(window.state.pages[0]).annotations.polylines.find((q) => q.id === 'p1').points[1].x)).toBe(250);
+    await page.keyboard.press('Control+z');
+    expect(await page.evaluate(() => window.App.ensureActiveCanvas(window.state.pages[0]).annotations.polylines.find((q) => q.id === 'p1').points[1].x)).toBe(220);
+
+    // A closed run: every vertex is interior, so vertex 1 offers the full menu
+    await page.evaluate(() => {
+      const ann = window.App.ensureActiveCanvas(window.state.pages[0]).annotations;
+      ann.polylines.push({ id: 'p4', lineTypeId: 'lt-cu', color: '#2e86de', closed: true, points: [{ x: 500, y: 100 }, { x: 600, y: 100 }, { x: 600, y: 200 }, { x: 500, y: 200 }] });
+      window.App.updateUI();
+      window.App.enterEditMode('p4', 0);
+    });
+    await page.evaluate(() => window.App.tryOpenBendVertexMenu(0, 300, 300));
+    await expect(menu.locator('.tool-context-menu-heading')).toHaveText('Vertex 1 · reads as 90°');
+    await expect(menu.locator('button')).toHaveText(['No fitting here', 'Count as 45', 'Count as 90', 'Delete vertex']);
+    // Outside click dismisses without a change
+    await page.mouse.click(5, 300);
+    await expect(menu).toBeHidden();
+    expect(await page.evaluate(() => window.state.editingPolyline.points[0].fitting)).toBeUndefined();
+    // Screen-edge placement: opened at the bottom-right corner, the menu stays inside the viewport
+    await page.evaluate(() => window.App.tryOpenBendVertexMenu(1, window.innerWidth - 2, window.innerHeight - 2));
+    await expect(menu).toBeVisible();
+    const fit = await page.evaluate(() => { const r = document.getElementById('bendVertexMenu').getBoundingClientRect(); return r.right <= window.innerWidth && r.bottom <= window.innerHeight && r.left >= 0 && r.top >= 0; });
+    expect(fit).toBe(true);
+    await page.keyboard.press('Escape');
+    await page.locator('#doneEditing').click();
+
+    // Touch: a 500 ms long-press on a vertex opens the menu (the app synthesizes the contextmenu), a tap picks
+    await page.evaluate(() => {
+      window.__fireTouch = (type, x, y) => {
+        const el = document.getElementById('canvasWrapper');
+        const t = new Touch({ identifier: 1, target: el, clientX: x, clientY: y });
+        const isEnd = type === 'touchend' || type === 'touchcancel';
+        el.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: isEnd ? [] : [t], changedTouches: [t], targetTouches: isEnd ? [] : [t] }));
+      };
+      window.App.enterEditMode('p1', 0);
+    });
+    const v3 = await screenPointForPdf(page, { x: 220, y: 220 });
+    await page.evaluate(({ x, y }) => window.__fireTouch('touchstart', x, y), v3);
+    await expect(menu).toBeVisible({ timeout: 3000 });
+    await page.evaluate(({ x, y }) => window.__fireTouch('touchend', x, y), v3);
+    await expect(menu).toBeVisible();
+    await expect(menu.locator('.tool-context-menu-heading')).toHaveText('Vertex 3 · reads as 45°');
+    await menu.locator('button[data-action="bend90"]').click();
+    expect(await page.evaluate(() => { const p = window.state.editingPolyline.points[2]; return [p.x, p.y, p.fitting]; })).toEqual([220, 220, 'bend90']);   // picked, and the vertex did not drag
+    await page.locator('#doneEditing').click();
+    expect(await polyP1()).toEqual([null, null, 'bend90', null, null]);
+
+    // Round trip: the Export Canvas payload back in through #importInput after a full reload
+    const payload = await page.evaluate(() => JSON.parse(JSON.stringify({
+      version: 1, counters: window.state.counters, lineTypes: window.state.lineTypes, groups: window.state.groups || [], groupsEnabled: false, rooms: [],
+      pages: [{ index: 0, canvases: window.state.pages[0].canvases, scale: window.state.pages[0].scale, rotation: 0 }],
+    })));
+    await page.reload();
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForFunction(() => !!(window.App && window.App.enterEditMode && document.getElementById('pdfInput')));
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 20000 });
+    await page.locator('#importInput').setInputFiles({ name: 'takeoff.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(payload)) });
+    await page.waitForFunction(() => (window.state.lineTypes || []).some((l) => l.id === 'lt-cu'));
+    expect(await polyP1()).toEqual([null, null, 'bend90', null, null]);
+    const rows = await totalsFor(page, 'lt-cu');
+    expect(rows.find((r) => r.bendClass === 'bend45').total).toBe(1);
+    expect(rows.find((r) => r.bendClass === 'bend90').total).toBe(6);   // p1's forced 90 + its read 90, and the closed rectangle's four
+    expect(await page.evaluate(() => window.state.lineTypes.find((l) => l.id === 'lt-cu').bendFittings.enabled)).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
   test('edit mode: the run keeps its stroke while it is edited (the segments paint under the dots and chips)', async ({ page }) => {
     await setupProject(page);
     await page.evaluate(() => window.App.renderAnnotations());   // updateUI alone does not repaint the overlay

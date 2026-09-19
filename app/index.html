@@ -1259,6 +1259,14 @@
         </button>
         <input type="checkbox" id="legendShowBorder" checked hidden>
       </div>
+      <div class="form-group setting-row setting-row-stack" id="legendStyleRow">
+        <span class="setting-label">Legend style<small>Compact is the standard for electrical and HVAC; plumbing tallies</small></span>
+        <div class="filter-scope-segment" id="legendStyleSegment" role="group" aria-label="Legend style">
+          <button type="button" data-style="compact" aria-pressed="false">Compact</button>
+          <button type="button" data-style="full" aria-pressed="false">Full</button>
+          <button type="button" data-style="tally" aria-pressed="false">Tally</button>
+        </div>
+      </div>
       <div class="form-group">
         <label>Background color</label>
         <div class="color-field"><input type="color" id="legendBgColor" value="#ffffff"><span id="legendBgColorHex" class="color-hex">#ffffff</span></div>

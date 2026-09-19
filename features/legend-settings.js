@@ -64,8 +64,25 @@
     gate('legendShowDuctRow', hasDuct);
     gate('legendShowDuctGhostRow', hasDuct);
     gate('legendShowRoomsRow', hasRooms);
+    // The legend style segment reads the RESOLVED style (setting, else trade),
+    // so the pressed button always matches what the sheet is drawing.
+    syncLegendStyleSegment();
     App.showModal('legendSettingsModal');
   }
+  function syncLegendStyleSegment() {
+    const cur = App.resolveLegendStyle ? App.resolveLegendStyle() : 'tally';
+    document.querySelectorAll('#legendStyleSegment button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.style === cur)));
+  }
+  document.querySelectorAll('#legendStyleSegment button').forEach((b) => {
+    b.onclick = () => {
+      const state = App.state;
+      if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+      state.legendSettings.style = b.dataset.style;
+      syncLegendStyleSegment();
+      if (App.markProjectDirty) App.markProjectDirty();
+      App.renderAnnotations();
+    };
+  });
 
   document.getElementById('summarySectionTitle').onclick = (e) => {
     if (e.target.closest('#summaryCollapseIcon')) return;

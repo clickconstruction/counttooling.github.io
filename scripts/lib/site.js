@@ -10,7 +10,7 @@ const SITE = 'https://counttooling.com';
 const OG_IMAGE = SITE + '/og-image.png';
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-const RETICLE = `<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#e8c547"/><g fill="none" stroke="#161617" stroke-width="30" stroke-linecap="round"><circle cx="256" cy="256" r="118"/><line x1="256" y1="78" x2="256" y2="170"/><line x1="256" y1="342" x2="256" y2="434"/><line x1="78" y1="256" x2="170" y2="256"/><line x1="342" y1="256" x2="434" y2="256"/></g><circle cx="256" cy="256" r="34" fill="#161617"/></svg>`;
+const { LOGO_SVG: RETICLE, FAVICON_LINKS } = require('./brand-mark');
 
 function escAttr(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -58,7 +58,7 @@ function head({ title, description, slug, ogType, jsonLd }) {
   <meta name="twitter:description" content="${escAttr(description)}">
   <meta name="twitter:image" content="${OG_IMAGE}">
   <meta name="theme-color" content="#17171a">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect fill='%23e8c547' width='32' height='32' rx='4'/></svg>">
+${FAVICON_LINKS}
   <link rel="stylesheet" href="/vendor/fonts/fonts.css">
   <link rel="stylesheet" href="/marketing.css">
 ${ld}`;

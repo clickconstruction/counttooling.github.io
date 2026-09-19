@@ -32,7 +32,7 @@ off — and where it doesn't.
 | [save-engine.js](save-engine.js) | 3,074 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,693 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,598 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [app/index.html](app/index.html) | 3,599 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 2,543 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 732 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 925 | Done — extracted canvas/annotation data model + node tests. |
@@ -1410,7 +1410,9 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
 ### PWA / offline
 
 - **Installable + fully offline for a loaded takeoff.** [manifest.webmanifest](manifest.webmanifest)
-  (standalone, theme `#17171a` / bg `#0f0f11`, 192/512/maskable icons) + the head meta
+  (standalone, theme `#17171a` / bg `#0f0f11`, 192/512/maskable icons, all from the
+  C-reticle mark in `scripts/lib/brand-mark.js` via `npm run build:pwa-icons`, which also
+  writes the tab favicon: `icons/favicon.svg` + root `favicon.ico`) + the head meta
   (`apple-touch-icon`, `theme-color`, `apple/mobile-web-app-capable`, status-bar-style
   `black-translucent`) make it installable; [sw.js](sw.js) makes it work offline.
 - **Self-hosted assets** — the six runtime libs (pdf.js + worker, pdf-lib, html2canvas,

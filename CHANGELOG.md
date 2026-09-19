@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(brand): the C-reticle mark and a real tab favicon (2026-09-18)
+
+The tab favicon was an inline data-URI yellow square with nothing on it, repeated in every
+page head, and it didn't match the header logo or the home-screen icons (a yellow tile with a
+thin-stroked takeoff reticle that smeared at 16px). The mark is now a C-reticle: the ring is
+opened on the right so it reads as a C for CountTooling, with three ticks and a center dot,
+strokes weighted for tab sizes. One source, [scripts/lib/brand-mark.js](scripts/lib/brand-mark.js),
+feeds the header logo (index.html, 404.html, the guides/rules template in
+[scripts/lib/site.js](scripts/lib/site.js)), the PWA + apple-touch icons, the share card
+([scripts/build-og-image.js](scripts/build-og-image.js)), and the new favicon files:
+`icons/favicon.svg` plus a root `favicon.ico` (16/32/48 PNG-in-ICO, written by
+[scripts/build-pwa-icons.js](scripts/build-pwa-icons.js) with no new deps). Every head links
+both (ICO first for Safari, SVG for the rest); sw.js precaches them; pwa.spec.js asserts the
+links resolve. Regenerated: guides, rules, og-image.png, the SW stamp.
+
 ## style(modals): the polish pass, seven primitives and fifty-two dialogs (2026-09-18)
 
 The Modal Review (the old-versus-new page built off the Modal Gallery contact sheet) found

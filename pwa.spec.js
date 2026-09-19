@@ -46,6 +46,11 @@ test.describe('PWA', () => {
     await page.goto('/app/');
     await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#17171a');
     await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
+    // Tab favicon: ICO (Safari/legacy) + SVG, both served (scripts/build-pwa-icons.js).
+    await expect(page.locator('link[rel="icon"]')).toHaveCount(2);
+    for (const href of ['/favicon.ico', '/icons/favicon.svg']) {
+      expect(await page.evaluate((h) => fetch(h).then((r) => r.status), href)).toBe(200);
+    }
     await expect(page.locator('meta[name="apple-mobile-web-app-capable"]')).toHaveAttribute('content', 'yes');
     await expect(page.locator('meta[name="apple-mobile-web-app-status-bar-style"]')).toHaveCount(1);
   });

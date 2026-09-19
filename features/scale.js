@@ -416,7 +416,15 @@
     if (tab === 'presets') {
       const list = document.getElementById('scalePresetsList');
       list.innerHTML = '';
+      // Modal polish (2026-09-18): the presets read as two chip grids, the
+      // architectural fractions and the engineering feet-per-inch, under a
+      // section rule each.
+      const rule = (t) => { const d = document.createElement('div'); d.className = 'section-rule'; d.innerHTML = '<b></b>'; d.firstChild.textContent = t; list.appendChild(d); };
+      let ruled = null;
       App.SCALE_PRESETS.forEach(p => {
+        const eng = /^1" = (\d+)'/.exec(p.label);   // 1" = 10' and up; 1" = 1' is architectural
+        const kind = eng && Number(eng[1]) > 1 ? 'Engineering' : 'Architectural';
+        if (kind !== ruled) { rule(kind); ruled = kind; }
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.textContent = p.label;

@@ -322,6 +322,17 @@
   so the calling function becomes `async`. In specs, drive it by clicking `#confirmOk` /
   `#confirmCancel` (or filling `#confirmInput`) — a `page.on('dialog')` hook is a
   failure signal, never a driver.
+- **Modal primitives (2026-09-18 polish pass).** A dialog is a `.modal-card` with a
+  `.modal-card-header` (title, optional `.modal-card-sub`, and a × carrying `data-modal-close`,
+  which app.js dismisses the way Esc does). Action buttons in `.actions` carry a role class
+  (`ghost` / `primary` / `danger` / `danger-ghost` / `link`), never rely on first/last position;
+  a destructive button sits left with `margin-right:auto`. Sliders are plain
+  `input[type=range]` under a `label.range-label` (value in `.range-val`), colour pickers are
+  `.color-field` (the input plus a `.color-hex`), a label-left / control-right row is
+  `.setting-row` + `.setting-label`, a group heading is `<div class="section-rule"><b>…</b></div>`,
+  a numeric field with a unit is `.field-unit`, Straight/Curved-style radios are `.radio-seg`,
+  a nothing-here list is `.empty-state`. Check a change across every dialog at once in the
+  Modal Gallery (`/app/?gallery=1`).
 - Copy style (2026-09-14 pass): no em dashes in user-facing text — a comma, colon,
   period or the house ` · ` separator instead (a lone `—` as an empty-value cell is
   fine). In a tour step body, name a control the way it looks on screen with

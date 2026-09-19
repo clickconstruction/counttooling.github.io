@@ -2915,6 +2915,8 @@
     if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
     const settingsDownloadPdf = document.getElementById('settingsDownloadPdf');
     if (settingsDownloadPdf) settingsDownloadPdf.style.display = (state.pages.length && !state.isViewer && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
+    const settingsSheetsRow = document.getElementById('settingsSheetsRow');
+    if (settingsSheetsRow) settingsSheetsRow.style.display = (settingsAddAdditionalPages && settingsAddAdditionalPages.style.display !== 'none') || (settingsDownloadPdf && settingsDownloadPdf.style.display !== 'none') ? '' : 'none';
     const advancedExportBtn = document.getElementById('advancedExport');
     if (advancedExportBtn) advancedExportBtn.style.display = (state.pages.length && projectHasAnyCanvasMarkup() && !state.isViewer) ? '' : 'none';
     const advancedLoadTestPdf = document.getElementById('advancedLoadTestPdf');
@@ -3291,7 +3293,44 @@
     el.style.left = p.left + 'px';
     el.style.top = p.top + 'px';
   }
-  function showModal(id) { document.getElementById(id).classList.add('visible'); }
+  // Modal polish (2026-09-18): the slider fill and the colour hex read-out are
+  // CSS-only controls fed by the input's value; sync them when a modal shows
+  // (openers set values programmatically, which fires no event) and on input.
+  function syncRangeFill(el) {
+    const min = Number(el.min) || 0, max = Number(el.max) || 100, v = Number(el.value);
+    el.style.setProperty('--fill', (max > min ? Math.round(((v - min) / (max - min)) * 1000) / 10 : 0) + '%');
+  }
+  function syncColorHex(el) {
+    const hex = el.closest('.color-field')?.querySelector('.color-hex');
+    if (hex) hex.textContent = el.value;
+  }
+  function syncModalControls(root) {
+    root.querySelectorAll('input[type="range"]').forEach(syncRangeFill);
+    root.querySelectorAll('.color-field input[type="color"]').forEach(syncColorHex);
+  }
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    if (!(t instanceof HTMLInputElement)) return;
+    if (t.type === 'range') syncRangeFill(t);
+    else if (t.type === 'color') syncColorHex(t);
+  });
+  function showModal(id) {
+    const el = document.getElementById(id);
+    el.classList.add('visible');
+    syncModalControls(el);
+    requestAnimationFrame(() => syncModalControls(el));
+  }
+  // Every dismissible dialog's × (data-modal-close) dismisses the way Esc does:
+  // the Esc ladder below knows each modal's cleanup (pending state, parked
+  // drafts); a modal with no rung just hides.
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-modal-close]');
+    if (!btn) return;
+    const overlay = btn.closest('.modal-overlay');
+    if (!overlay) return;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    if (overlay.classList.contains('visible')) hideModal(overlay.id);
+  });
   // B20 (X8): the app's one confirm. Resolves true on OK, false on Cancel /
   // Esc / a second dialog arriving over it. String opts = the body alone.
   // `input: { placeholder?, value? }` makes it the app's one prompt too

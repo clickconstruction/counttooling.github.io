@@ -16,6 +16,13 @@
  *       # the tiles whose PNG changed — a before/after for a styling PR
  *   npm run build:modal-gallery -- --only scaleModal,counterModal --no-populate
  *   npm run build:modal-gallery -- --base-url http://localhost:5502   # a running server
+ *   npm run build:modal-gallery -- --widths 768,1024   # extra viewports beside desktop + phone
+ *
+ * Every shot is also AUDITED: the tile's card is measured for horizontal
+ * overflow, for descendants whose text is clipped (scrollWidth past clientWidth
+ * with no ellipsis), and for an action row that wrapped onto a second line.
+ * Findings ride the manifest and flag the row on the sheet, so "check them all
+ * at every viewport" is one command.
  *
  * Manual (a browser, non-deterministic pixels), NOT in `npm run check`, output
  * gitignored (contact-sheet/ — its own dir, because Playwright empties
@@ -38,6 +45,14 @@ const POPULATE = !has('--no-populate');
 const BASE_URL_ARG = arg('--base-url', null);
 const DESKTOP = { width: 1400, height: 900 };
 const PHONE = { width: 375, height: 812 };
+// Extra viewports (--widths 768,1024): the gallery's own grid at that width, the
+// media queries key off it. Labelled w<px> in file names and on the sheet.
+const EXTRA = (arg('--widths', '') || '').split(',').map((w) => parseInt(w, 10)).filter((w) => w > 0);
+const VIEWPORTS = [
+  { key: 'desktop', label: 'desktop (1400)', viewport: DESKTOP, narrow: false },
+  ...EXTRA.map((w) => ({ key: 'w' + w, label: w + 'px', viewport: { width: w, height: 900 }, narrow: w < 700 })),
+  { key: 'mobile', label: 'phone (375)', viewport: PHONE, narrow: true },
+];
 
 // --- tiny static file server (zero deps) --------------------------------------
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
@@ -103,6 +118,35 @@ async function shootTiles(page, tiles, width, manifest) {
       const entry = manifest.get(t.id + '|' + (variant || ''));
       entry.files[width] = file;
       if (populate) entry.populate[width] = err ? { ran: false, reason: err } : populate;
+      entry.audit[width] = await page.evaluate((id) => {
+        const tileEl = document.querySelector(`.mg-tile[data-id="${id}"] .mg-tile-body`);
+        const card = tileEl && (tileEl.querySelector('.modal-card') || tileEl.firstElementChild);
+        if (!card) return null;
+        const vis = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+        const findings = [];
+        if (card.scrollWidth > card.clientWidth + 1) findings.push('card overflows by ' + (card.scrollWidth - card.clientWidth) + 'px');
+        const cardRect = card.getBoundingClientRect();
+        let clipped = 0, past = 0;
+        card.querySelectorAll('*').forEach((el) => {
+          if (!vis(el)) return;
+          const cs = getComputedStyle(el);
+          if (el.scrollWidth > el.clientWidth + 2 && cs.overflowX !== 'visible' && cs.textOverflow !== 'ellipsis' && !el.matches('input, textarea, select, .icon-grid, [class*="scroll"], .modal-flex-scroll')) clipped++;
+          const r = el.getBoundingClientRect();
+          const scroller = el.parentElement && el.parentElement.closest('[class*="scroll"], .kb-board, .icon-grid');   // inside a scroll container is by design
+          if (r.right > cardRect.right + 2 && cs.position !== 'fixed' && cs.position !== 'absolute' && !scroller) past++;
+        });
+        if (clipped) findings.push(clipped + ' clipped element' + (clipped > 1 ? 's' : ''));
+        if (past) findings.push(past + ' element' + (past > 1 ? 's' : '') + ' past the card edge');
+        card.querySelectorAll('.actions').forEach((row) => {
+          if (!vis(row)) return;
+          const btns = Array.from(row.querySelectorAll('button:not(.link)')).filter(vis);   // a .link may take its own line by design
+          if (btns.length < 2) return;
+          const tops = btns.map((b) => b.getBoundingClientRect().top);
+          const tallest = Math.max(...btns.map((b) => b.getBoundingClientRect().height));
+          if (Math.max(...tops) - Math.min(...tops) > tallest * 0.6) findings.push('action row wraps (' + btns.length + ' buttons)');
+        });
+        return findings;
+      }, t.id);
     }
   }
 }
@@ -125,14 +169,15 @@ function buildSheet(entries, errors, baseUrl) {
       const badge = changed === null ? '' : `<span class="badge ${changed ? 'changed' : 'same'}">${changed ? 'changed' : 'same'}</span>`;
       const pop = e.populate[width];
       const popNote = pop && !pop.ran ? `<div class="note">populate: ${esc(pop.reason)}</div>` : '';
-      return `${baseImg}<td class="${changed ? 'changed' : ''}">${badge}<img loading="lazy" src="${esc(file)}" alt="${esc(file)}">${popNote}</td>`;
+      const audit = e.audit[width] || [];
+      const auditNote = audit.length ? `<div class="audit">${audit.map(esc).join(' · ')}</div>` : '';
+      return `${baseImg}<td class="${changed ? 'changed' : ''} ${audit.length ? 'flagged' : ''}">${badge}${auditNote}<img loading="lazy" src="${esc(file)}" alt="${esc(file)}">${popNote}</td>`;
     };
-    return `<tr id="${esc(e.id)}"><th><code>#${esc(e.id)}</code>${e.variant ? `<span class="variant">${esc(e.variant)}</span>` : ''}<div class="owner">${esc(e.owner)}</div><div class="section">${esc(e.section)}</div></th>${cell('desktop')}${cell('mobile')}</tr>`;
+    return `<tr id="${esc(e.id)}"><th><code>#${esc(e.id)}</code>${e.variant ? `<span class="variant">${esc(e.variant)}</span>` : ''}<div class="owner">${esc(e.owner)}</div><div class="section">${esc(e.section)}</div></th>${VIEWPORTS.map((vp) => cell(vp.key)).join('')}</tr>`;
   }).join('\n');
-  const changedCount = hasBase ? entries.reduce((n, e) => n + ['desktop', 'mobile'].filter((w) => { const f = e.files[w]; if (!f) return false; const old = path.join(BASELINE, f); return fs.existsSync(old) && !fs.readFileSync(old).equals(fs.readFileSync(path.join(OUT_DIR, f))); }).length, 0) : null;
-  const head = hasBase
-    ? '<tr><th>modal</th><th>desktop · baseline</th><th>desktop</th><th>phone · baseline</th><th>phone</th></tr>'
-    : '<tr><th>modal</th><th>desktop (1400)</th><th>phone (375)</th></tr>';
+  const flagged = entries.reduce((n, e) => n + VIEWPORTS.filter((vp) => (e.audit[vp.key] || []).length).length, 0);
+  const changedCount = hasBase ? entries.reduce((n, e) => n + VIEWPORTS.map((vp) => vp.key).filter((w) => { const f = e.files[w]; if (!f) return false; const old = path.join(BASELINE, f); return fs.existsSync(old) && !fs.readFileSync(old).equals(fs.readFileSync(path.join(OUT_DIR, f))); }).length, 0) : null;
+  const head = '<tr><th>modal</th>' + VIEWPORTS.map((vp) => (hasBase ? `<th>${esc(vp.label)} · baseline</th>` : '') + `<th>${esc(vp.label)}</th>`).join('') + '</tr>';
   return `<!doctype html>
 <meta charset="utf-8">
 <title>Modal contact sheet · CountTooling</title>
@@ -153,6 +198,8 @@ function buildSheet(entries, errors, baseUrl) {
   td img { max-width: 100%; height: auto; display: block; border: 1px solid #2a2a2a; border-radius: 4px; background: #0d0d0d; }
   td.miss { color: #666; font-size: 12px; }
   td.changed { outline: 2px solid #e8c547; outline-offset: -2px; }
+  td.flagged { outline: 2px solid #e85447; outline-offset: -2px; }
+  .audit { margin-bottom: 6px; font: 11px ui-monospace, monospace; color: #f0a0a0; }
   .badge { display: inline-block; margin-bottom: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
   .badge.changed { background: #e8c547; color: #111; }
   .badge.same { background: #2a2a2a; color: #888; }
@@ -163,7 +210,7 @@ function buildSheet(entries, errors, baseUrl) {
   tr.hidden { display: none; }
 </style>
 <h1>Modal contact sheet</h1>
-<div class="meta">${entries.length} shots · built ${esc(new Date().toISOString())} from <b>${esc(baseUrl)}</b>${hasBase ? ` · baseline <b>${esc(BASELINE)}</b> · <b>${changedCount}</b> changed` : ''}${POPULATE ? '' : ' · openers not run (--no-populate)'}</div>
+<div class="meta">${entries.length} shots · built ${esc(new Date().toISOString())} from <b>${esc(baseUrl)}</b>${hasBase ? ` · baseline <b>${esc(BASELINE)}</b> · <b>${changedCount}</b> changed` : ''} · <b>${flagged}</b> shots flagged by the layout audit${POPULATE ? '' : ' · openers not run (--no-populate)'}</div>
 ${errors.length ? `<div class="errors">console errors while shooting:\n${esc(errors.join('\n'))}</div>` : ''}
 <div class="filter"><input type="search" placeholder="Filter by id or owner…" oninput="for (const r of document.querySelectorAll('tbody tr')) r.classList.toggle('hidden', !!this.value && !r.textContent.toLowerCase().includes(this.value.toLowerCase()))"></div>
 <table><thead>${head}</thead><tbody>
@@ -186,14 +233,16 @@ ${rows}
     let tiles = await listTiles(desktop);
     if (ONLY) tiles = tiles.filter((t) => ONLY.has(t.id));
     if (!tiles.length) throw new Error('no tiles matched');
-    for (const t of tiles) for (const v of (t.variants.length ? t.variants : [null])) manifest.set(t.id + '|' + (v || ''), { id: t.id, variant: v, owner: t.owner, section: t.section, files: {}, populate: {} });
+    for (const t of tiles) for (const v of (t.variants.length ? t.variants : [null])) manifest.set(t.id + '|' + (v || ''), { id: t.id, variant: v, owner: t.owner, section: t.section, files: {}, populate: {}, audit: {} });
     console.log(`${tiles.length} tiles · desktop ${DESKTOP.width}px`);
     await shootTiles(desktop, tiles, 'desktop', manifest);
     await desktop.close();
-    console.log(`${tiles.length} tiles · phone ${PHONE.width}px`);
-    const phone = await openGallery(browser, baseUrl, PHONE, true, errors);
-    await shootTiles(phone, tiles, 'mobile', manifest);
-    await phone.close();
+    for (const vp of VIEWPORTS.slice(1)) {
+      console.log(`${tiles.length} tiles · ${vp.label}`);
+      const pg = await openGallery(browser, baseUrl, vp.viewport, vp.narrow, errors);
+      await shootTiles(pg, tiles, vp.key, manifest);
+      await pg.close();
+    }
   } finally {
     await browser.close();
     if (server) server.close();
@@ -201,8 +250,11 @@ ${rows}
   const entries = Array.from(manifest.values());
   fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify({ builtAt: new Date().toISOString(), baseUrl, baseline: BASELINE, populate: POPULATE, errors, tiles: entries }, null, 2));
   fs.writeFileSync(path.join(OUT_DIR, 'index.html'), buildSheet(entries, errors, baseUrl));
-  const refused = entries.flatMap((e) => ['desktop', 'mobile'].filter((w) => e.populate[w] && !e.populate[w].ran).map((w) => `${e.id}${e.variant ? ' (' + e.variant + ')' : ''} [${w}]: ${e.populate[w].reason}`));
+  const keys = VIEWPORTS.map((vp) => vp.key);
+  const refused = entries.flatMap((e) => keys.filter((w) => e.populate[w] && !e.populate[w].ran).map((w) => `${e.id}${e.variant ? ' (' + e.variant + ')' : ''} [${w}]: ${e.populate[w].reason}`));
   if (refused.length) console.log(`openers that refused (${refused.length}):\n  ` + refused.join('\n  '));
+  const flags = entries.flatMap((e) => keys.filter((w) => (e.audit[w] || []).length).map((w) => `${e.id}${e.variant ? ' (' + e.variant + ')' : ''} [${w}]: ${e.audit[w].join(', ')}`));
+  if (flags.length) console.log(`layout audit flagged (${flags.length}):\n  ` + flags.join('\n  ')); else console.log('layout audit: clean at every viewport');
   if (errors.length) console.log(`console errors (${errors.length}):\n  ` + errors.join('\n  '));
   console.log(`wrote ${entries.length} rows → ${path.join(OUT_DIR, 'index.html')}`);
 })().catch((e) => { console.error(e); process.exit(1); });

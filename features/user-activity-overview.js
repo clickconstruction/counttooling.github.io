@@ -131,7 +131,7 @@
   function renderActivityTimeline(d) {
     const items = Array.isArray(d.recent) ? d.recent : [];
     const title = '<div class="ua-section-title">Recent activity</div>';
-    if (!items.length) return title + '<p style="color:var(--text3);">No activity recorded.</p>';
+    if (!items.length) return title + '<p class="empty-state">No activity recorded.</p>';
     const now = Date.now();
     const todayKey = uaDayKey(new Date(now).toISOString());
     const yestKey = uaDayKey(new Date(now - 86400000).toISOString());

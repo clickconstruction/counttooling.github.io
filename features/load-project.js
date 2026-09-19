@@ -550,7 +550,7 @@
     listEl.innerHTML = '';
     const filtered = getFilteredLoadProjects(lp);
     if (filtered.length === 0) {
-      listEl.innerHTML = '<p class="load-project-no-match" style="color:var(--text2);margin:0;">No projects match filters.</p>';
+      listEl.innerHTML = '<p class="load-project-no-match empty-state">No projects match filters.</p>';
       App.showModal('loadProjectModal');
       return;
     }

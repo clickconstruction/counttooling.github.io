@@ -295,7 +295,7 @@
     const ds = getDuctSettings();
     const s = computeDuctSchedule({ pageIndices: scopePageIndices() });
     if (!s) {
-      body.innerHTML = '<p class="duct-schedule-empty">No duct runs ' + (scheduleScope === 'page' ? 'on this sheet' : 'yet') + '. Trace a run with the Duct tool first.</p>';
+      body.innerHTML = '<p class="duct-schedule-empty empty-state">No duct runs ' + (scheduleScope === 'page' ? 'on this sheet' : 'yet') + '. Trace a run with the Duct tool first.</p>';
       const copyBtn0 = document.getElementById('ductScheduleCopy');
       if (copyBtn0) copyBtn0.disabled = true;
       return;

@@ -70,7 +70,7 @@
     if (listEl) {
       const entries = App.getSaveStatusLog().slice().reverse();
       if (!entries.length) {
-        listEl.innerHTML = '<p class="save-status-empty" style="color:var(--text2);font-size:0.9rem;">No save activity in the last ' + windowMin + ' minutes.</p>';
+        listEl.innerHTML = '<p class="save-status-empty empty-state">No save activity in the last ' + windowMin + ' minutes.</p>';
       } else {
         listEl.innerHTML = '';
         entries.forEach((ev) => {

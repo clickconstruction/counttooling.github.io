@@ -28,6 +28,22 @@ feeds the header logo (index.html, 404.html, the guides/rules template in
 both (ICO first for Safari, SVG for the rest); sw.js precaches them; pwa.spec.js asserts the
 links resolve. Regenerated: guides, rules, og-image.png, the SW stamp.
 
+## feat(dev): the Modal Gallery, every modal on one page (2026-09-18)
+
+A developer view for styling passes. `/app/?gallery=1` reparents every `.modal-overlay` in the
+shell (78 on this date) into a grid, overriding only the overlay's fixed positioning and the card's
+width under `body.modal-gallery`, so the markup, the handlers and styles.css are the app's own:
+edit the stylesheet, Reload CSS, and all of them update together. Toasts and the fixed popovers
+get sections of their own. Per tile: `app/index.html:<line>` and the owning feature file (found
+by fetching the shell and the loaded feature files), Populate through the registered opener
+(variants get a button each), Open live on the real backdrop with the app's Esc ladder closing
+it. Load sample opens the sample plan through the intake and lays build-screenshots' takeoff plus a room and a group;
+Mobile embeds the `&narrow=1` page in a 375px iframe because the media queries key off the
+viewport. The file is injected by the boot only on the param, never a shell script tag, never
+precached. Phase 2: `npm run build:modal-gallery` shoots one PNG per tile at both widths into a
+contact sheet, with `--baseline <dir>` for a before/after. The spec doubles as the assertion
+that every overlay in the shell renders with a real height.
+
 ## fix(edit): undo while editing a run no longer loses the run (2026-09-18)
 
 Found by the BEND-OVERRIDE test round. A run in Edit Polyline is spliced out of its page into

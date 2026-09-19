@@ -109,7 +109,11 @@
     const msg = document.getElementById('clearPageConfirmMessage');
     // B14: the layer qualifier is load-bearing — "Clear Page" only empties the
     // ACTIVE layer, and trade language beats "canvas" (J9).
-    if (msg) msg.textContent = 'Remove all marks from this page\'s ' + name + ' layer?';
+    const n = canvas ? App.countCanvasMarks(canvas.annotations) : 0;
+    const marks = n + (n === 1 ? ' mark' : ' marks');
+    if (msg) msg.textContent = 'Removes ' + marks + ' from this page\'s ' + name + ' layer. Other layers keep theirs. Undo brings them back.';
+    const btn = document.getElementById('clearPageConfirm');
+    if (btn) btn.textContent = n ? 'Clear ' + marks : 'Clear page';
     App.showModal('clearPageConfirmModal');
   }
   document.getElementById('clearPage').onclick = () => showClearPageModal();

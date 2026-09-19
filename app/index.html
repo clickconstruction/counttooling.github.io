@@ -937,7 +937,8 @@
         <input type="text" id="polylineName" placeholder="e.g. Main run">
       </div>
       <div class="form-group">
-        <label>Color <span class="form-sublabel">(follows the line type unless you pick one)</span></label>
+        <label>Color</label>
+        <div class="polyline-type-color"><span id="polylineTypeSwatch" class="color-swatch"></span><span id="polylineTypeColorNote">Follows the line type</span></div>
         <div class="color-row" id="polylineColorRow"></div>
       </div>
       <div class="actions">
@@ -1327,7 +1328,7 @@
       </div>
       <div class="form-group">
         <label for="multiplyZoneSettingsLabelPosition">Label position</label>
-        <select id="multiplyZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div class="filter-scope-segment select-segment" data-for="multiplyZoneSettingsLabelPosition" role="group" aria-label="Label position"></div><select hidden id="multiplyZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
           <option value="center">Center</option>
           <option value="top-left">Top-left</option>
           <option value="top-right">Top-right</option>
@@ -1356,7 +1357,7 @@
       </div>
       <div class="form-group">
         <label for="scaleZoneSettingsLabelPosition">Label position</label>
-        <select id="scaleZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div class="filter-scope-segment select-segment" data-for="scaleZoneSettingsLabelPosition" role="group" aria-label="Label position"></div><select hidden id="scaleZoneSettingsLabelPosition" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
           <option value="top-left">Top-left</option>
           <option value="top-right">Top-right</option>
           <option value="bottom-left">Bottom-left</option>
@@ -1856,7 +1857,7 @@
   </div>
   <div class="modal-overlay" id="deleteZoneModal">
     <div class="modal-card">
-      <h2>Delete in this area?</h2>
+      <h2>Delete <span id="deleteZoneCount">everything</span> in this area?</h2>
       <p id="deleteZonePreview" class="form-group" style="margin-bottom:12px;color:var(--text2);"></p>
       <div class="actions">
         <button id="deleteZoneCancel">Cancel</button>
@@ -1967,11 +1968,11 @@
   </div>
   <div class="modal-overlay" id="roomDeleteConfirmModal">
     <div class="modal-card">
-      <h2>Delete room?</h2>
+      <h2>Delete <span id="roomDeleteName">this room</span>?</h2>
       <p id="roomDeleteConfirmText" class="form-group" style="margin-bottom:12px;color:var(--text2);"></p>
       <div class="actions">
         <button id="roomDeleteCancel">Cancel</button>
-        <button id="roomDeleteConfirm" class="danger">Delete</button>
+        <button id="roomDeleteConfirm" class="danger">Delete room</button>
       </div>
     </div>
   </div>
@@ -1988,9 +1989,10 @@
       </div>
       <div class="form-group">
         <label>Start drop</label>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" id="linePropertiesStartDrop" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off" style="flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
-          <select id="linePropertiesStartDropUnit" title="Start drop unit" style="width:auto;flex:0 0 auto;padding:8px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div class="field-stepper">
+          <input type="text" id="linePropertiesStartDrop" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off">
+          <div class="stepper-btns"><button type="button" id="linePropertiesStartDropMinus10" class="line-drop-adj-btn" title="Subtract 10">−10</button><button type="button" id="linePropertiesStartDropMinus1" class="line-drop-adj-btn" title="Subtract 1">−1</button><button type="button" id="linePropertiesStartDropPlus1" class="line-drop-adj-btn" title="Add 1">+1</button><button type="button" id="linePropertiesStartDropPlus10" class="line-drop-adj-btn" title="Add 10">+10</button></div>
+          <select id="linePropertiesStartDropUnit" title="Start drop unit">
             <option value="ft">ft</option>
             <option value="in">in</option>
             <option value="m">m</option>
@@ -1998,20 +2000,14 @@
             <option value="yd">yd</option>
           </select>
         </div>
-        <div id="linePropertiesStartDropRecent" class="drop-recent-row" style="display:none;"></div>
-        <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
-          <button type="button" id="linePropertiesStartDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
-          <button type="button" id="linePropertiesStartDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
-          <button type="button" id="linePropertiesStartDropMinus10" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 10">-10</button>
-          <button type="button" id="linePropertiesStartDropMinus1" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 1">-1</button>
-          <button type="button" id="linePropertiesClearStartDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear start drop">Clear</button>
-        </div>
+        <div class="drop-recent-line"><div id="linePropertiesStartDropRecent" class="drop-recent-row" style="display:none;"></div><button type="button" id="linePropertiesClearStartDrop" class="line-drop-clear" title="Clear start drop">Clear</button></div>
       </div>
       <div class="form-group">
         <label>End drop</label>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <input type="text" id="linePropertiesEndDrop" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off" style="flex:1;min-width:0;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
-          <select id="linePropertiesEndDropUnit" title="End drop unit" style="width:auto;flex:0 0 auto;padding:8px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+        <div class="field-stepper">
+          <input type="text" id="linePropertiesEndDrop" inputmode="decimal" placeholder="e.g. 3 or 8'6" autocomplete="off">
+          <div class="stepper-btns"><button type="button" id="linePropertiesEndDropMinus10" class="line-drop-adj-btn" title="Subtract 10">−10</button><button type="button" id="linePropertiesEndDropMinus1" class="line-drop-adj-btn" title="Subtract 1">−1</button><button type="button" id="linePropertiesEndDropPlus1" class="line-drop-adj-btn" title="Add 1">+1</button><button type="button" id="linePropertiesEndDropPlus10" class="line-drop-adj-btn" title="Add 10">+10</button></div>
+          <select id="linePropertiesEndDropUnit" title="End drop unit">
             <option value="ft">ft</option>
             <option value="in">in</option>
             <option value="m">m</option>
@@ -2019,14 +2015,7 @@
             <option value="yd">yd</option>
           </select>
         </div>
-        <div id="linePropertiesEndDropRecent" class="drop-recent-row" style="display:none;"></div>
-        <div style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:6px;flex-wrap:wrap;">
-          <button type="button" id="linePropertiesEndDropPlus1" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 1">+1</button>
-          <button type="button" id="linePropertiesEndDropPlus10" class="line-drop-adj-btn line-drop-adj-btn--plus" title="Add 10">+10</button>
-          <button type="button" id="linePropertiesEndDropMinus10" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 10">-10</button>
-          <button type="button" id="linePropertiesEndDropMinus1" class="line-drop-adj-btn line-drop-adj-btn--minus" title="Subtract 1">-1</button>
-          <button type="button" id="linePropertiesClearEndDrop" class="line-drop-adj-btn line-drop-adj-btn--clear" title="Clear end drop">Clear</button>
-        </div>
+        <div class="drop-recent-line"><div id="linePropertiesEndDropRecent" class="drop-recent-row" style="display:none;"></div><button type="button" id="linePropertiesClearEndDrop" class="line-drop-clear" title="Clear end drop">Clear</button></div>
       </div>
       <!-- S3: this run's own conductor list (overrides the line type's). -->
       <div class="form-group" id="linePropertiesConductorsGroup" style="display:none;">
@@ -2419,6 +2408,17 @@
               <button type="button" class="settings-menu-link settings-menu-link-muted" id="settingsAdvancedBtn">Advanced ▸</button>
             </div>
           </div>
+          <details class="modal-section settings-advanced-section" id="settingsAdvancedSection">
+            <summary>Advanced<small>export, import, repair, cache</small></summary>
+            <div class="modal-section-body settings-menu">
+              <button type="button" class="settings-menu-btn" id="advancedLoadTestPdf" style="display:none;">Load test PDF</button>
+        <button type="button" class="settings-menu-btn" id="advancedExport">Export Canvas</button>
+        <button type="button" class="settings-menu-btn" id="advancedImport">Import Canvas</button>
+        <button type="button" class="settings-menu-btn" id="advancedCanvasRepair" style="display:none;">Canvas Repair</button>
+        <button type="button" class="settings-menu-btn danger" id="advancedEmptyCacheReload" title="Clear app cache and reload the page">Empty cache and hard reload</button>
+        <button type="button" class="settings-menu-btn danger" id="advancedGlobalForceReload" style="display:none;" title="Force a hard reload on every signed-in user">Global force reload (admin)</button>
+            </div>
+          </details>
           <div class="settings-menu-links-row" id="settingsHelpLinks" hidden>
             <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
             <span class="settings-menu-link" id="settingsTourPlumbing" title="A guided plumbing takeoff on the design-build sample plan">plumbing tour</span>
@@ -2475,22 +2475,6 @@
         <button type="button" id="saveStatusCopyBtn">Copy logs</button>
         <button type="button" id="saveStatusExportBtn">Export logs</button>
         <button type="button" id="saveStatusModalDone">Close</button>
-      </div>
-    </div>
-  </div>
-  <div class="modal-overlay" id="settingsAdvancedModal" style="z-index:210;">
-    <div class="modal-card">
-      <div class="modal-card-header">
-        <h2>Advanced</h2>
-        <button type="button" class="modal-close-btn" id="settingsAdvancedModalClose" aria-label="Close">×</button>
-      </div>
-      <div class="settings-menu">
-        <button type="button" class="settings-menu-btn" id="advancedLoadTestPdf" style="display:none;">Load test PDF</button>
-        <button type="button" class="settings-menu-btn" id="advancedExport">Export Canvas</button>
-        <button type="button" class="settings-menu-btn" id="advancedImport">Import Canvas</button>
-        <button type="button" class="settings-menu-btn" id="advancedCanvasRepair" style="display:none;">Canvas Repair</button>
-        <button type="button" class="settings-menu-btn danger" id="advancedEmptyCacheReload" title="Clear app cache and reload the page">Empty cache and hard reload</button>
-        <button type="button" class="settings-menu-btn danger" id="advancedGlobalForceReload" style="display:none;" title="Force a hard reload on every signed-in user">Global force reload (admin)</button>
       </div>
     </div>
   </div>
@@ -2888,7 +2872,7 @@
         <h2>All Bids</h2>
         <div class="bid-board-filters">
           <input type="search" id="bidBoardSearch" placeholder="Search bids…" autocomplete="off" aria-label="Search bids by name" class="bid-board-search" />
-          <span class="bid-board-owner-wrap">
+          <span class="bid-board-owner-wrap"><label for="bidBoardOwnerFilter" class="bid-board-filter-label">Estimator</label>
             <select id="bidBoardOwnerFilter" class="bid-board-owner-filter" aria-label="Filter by estimator"></select>
           </span>
         </div>
@@ -2912,7 +2896,6 @@
           </button>
         </span>
       <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
-      <p class="form-group load-project-modal-intro">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
       <div id="loadProjectFilters" class="load-project-filters form-group" style="display:none;">
         <div class="load-project-filters-top">
           <input type="search" id="loadProjectFilterSearch" placeholder="Search by name…" autocomplete="off" aria-label="Search projects by name" class="load-project-filter-search" />
@@ -2936,6 +2919,7 @@
           </span>
         </div>
       </div>
+      <p class="form-group load-project-modal-intro">Projects with PDFs load automatically. Legacy projects: upload your PDF first, then load.</p>
       <div id="loadProjectList" class="form-group"></div>
       <p id="loadProjectEmpty" class="empty-state" style="display:none;"><b>No projects in the cloud yet</b>Save this takeoff from Project Settings and it shows up here.</p>
       <div class="actions">
@@ -3033,7 +3017,6 @@
       </div>
       <div class="actions" style="flex-wrap:wrap;gap:8px;">
         <button type="button" id="checkoutExpiredRecoveryDiscard" class="link danger-link" style="margin-right:auto;">Discard local edits and reload</button>
-        <button type="button" id="checkoutExpiredRecoveryCancel">Cancel</button>
         <button type="button" id="checkoutExpiredRecoveryExport">Export local backup</button>
         <button type="button" id="checkoutExpiredRecoveryRecheckout" class="btn-yellow">Re-check out and save</button>
       </div>
@@ -3052,7 +3035,7 @@
   <div class="modal-overlay" id="loadAnnotationsModal">
     <div class="modal-card">
       <h2>Load Annotations</h2>
-      <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">You have saved annotations for this PDF. Load them?</p>
+      <p id="loadAnnotationsIntro" class="modal-lead">You have saved annotations for this PDF. Load them?</p>
       <div id="loadAnnotationsList" class="form-group" style="max-height:200px;overflow-y:auto;"></div>
       <div class="actions">
         <button id="loadAnnotationsSkip" class="ghost">Start fresh</button>
@@ -3184,6 +3167,7 @@
         <label>Name</label>
         <input type="text" id="canvasDetailsName" style="width:100%;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
       </div>
+      <div id="canvasDetailsFacts" class="form-facts"></div>
       <div class="actions">
         <button type="button" id="canvasDetailsDelete" class="danger-ghost" style="margin-right:auto;">Delete</button>
         <button type="button" id="canvasDetailsClose" class="primary">Done</button>

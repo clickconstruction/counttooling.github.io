@@ -1155,6 +1155,9 @@
     if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
     state.pendingDeleteZone = { ann, collected };
     document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
+    const marks = total + (total === 1 ? ' mark' : ' marks');
+    document.getElementById('deleteZoneCount').textContent = marks;
+    document.getElementById('deleteZoneConfirm').textContent = 'Delete ' + marks;
     showModal('deleteZoneModal');
   }
   function performDeleteZone(ann, collected) {
@@ -3307,6 +3310,7 @@
   function syncModalControls(root) {
     root.querySelectorAll('input[type="range"]').forEach(syncRangeFill);
     root.querySelectorAll('.color-field input[type="color"]').forEach(syncColorHex);
+    root.querySelectorAll('.select-segment[data-for]').forEach((seg) => { const sel = document.getElementById(seg.dataset.for); if (sel) syncSelectSegment(seg, sel); });
   }
   document.addEventListener('input', (e) => {
     const t = e.target;
@@ -3314,6 +3318,31 @@
     if (t.type === 'range') syncRangeFill(t);
     else if (t.type === 'color') syncColorHex(t);
   });
+  // A .select-segment[data-for] mirrors a <select> as a segmented control:
+  // built once from the select's options, it writes the select's value on a
+  // click (and fires change), so the feature keeps reading the select.
+  function syncSelectSegment(seg, sel) { seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === sel.value))); }
+  function buildSelectSegments() {
+    document.querySelectorAll('.select-segment[data-for]').forEach((seg) => {
+      const sel = document.getElementById(seg.dataset.for);
+      if (!sel || seg.childElementCount) return;
+      Array.from(sel.options).forEach((o) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.textContent = o.textContent; b.dataset.value = o.value;
+        b.setAttribute('aria-pressed', String(o.value === sel.value));
+        b.onclick = () => { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); syncSelectSegment(seg, sel); };
+        seg.appendChild(b);
+      });
+    });
+  }
+  buildSelectSegments();
+  // One count for "how many marks are on this layer": the confirms name it.
+  function countCanvasMarks(ann) {
+    ann = ann || {};
+    let n = 0;
+    if (ann.counterMarkers) Object.keys(ann.counterMarkers).forEach((k) => { n += (ann.counterMarkers[k] || []).length; });
+    return n + (ann.quickLines || []).length + (ann.polylines || []).length + (ann.ductRuns || []).length + (ann.roomBoxes || []).length + (ann.notes || []).length + (ann.highlights || []).length;
+  }
   function showModal(id) {
     const el = document.getElementById(id);
     el.classList.add('visible');
@@ -4011,6 +4040,15 @@
     // T2-12: with zero line types the select's sole option is "—" and Start
     // used to commit a lineTypeId:null run whose footage landed under
     // "Unassigned" — block it with the picker's empty-state copy instead.
+    // The chosen type's own colour, so the presets read as an override.
+    const typeSel = document.getElementById('polylineLineType');
+    const syncTypeColor = () => {
+      const lt = state.lineTypes.find((l) => l.id === typeSel.value);
+      document.getElementById('polylineTypeSwatch').style.background = lt ? (lt.color || '') : 'transparent';
+      document.getElementById('polylineTypeColorNote').textContent = lt ? 'Follows ' + lt.name + ' unless you pick one below' : 'Pick a line type first';
+    };
+    syncTypeColor();
+    if (!typeSel.dataset.colorSync) { typeSel.dataset.colorSync = '1'; typeSel.addEventListener('change', syncTypeColor); }
     const none = state.lineTypes.length === 0;
     document.getElementById('polylineEmpty').style.display = none ? '' : 'none';
     document.getElementById('polylineStart').disabled = none;
@@ -5198,21 +5236,17 @@
       document.getElementById('pdfInput').click();
     };
     document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
-    document.getElementById('settingsAdvancedBtn').onclick = () => showModal('settingsAdvancedModal');
+    document.getElementById('settingsAdvancedBtn').onclick = () => { const d = document.getElementById('settingsAdvancedSection'); d.open = !d.open; if (d.open) d.scrollIntoView({ block: 'nearest' }); };
     // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
     // folded again every time the modal opens (openProjectSettings).
     const settingsHelpToggle = document.getElementById('settingsHelpToggle');
     if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
-    document.getElementById('settingsAdvancedModalClose').onclick = () => hideModal('settingsAdvancedModal');
-    document.getElementById('settingsAdvancedModal').onclick = (e) => { if (e.target.id === 'settingsAdvancedModal') hideModal('settingsAdvancedModal'); };
-    document.querySelector('#settingsAdvancedModal .modal-card').onclick = (e) => e.stopPropagation();
-    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); await App.loadTestPdf(); };
-    document.getElementById('advancedExport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-    document.getElementById('advancedImport').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); document.getElementById('importBtn').click(); };
-    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsAdvancedModal'); hideModal('settingsModal'); App.openCanvasRepairModal(); };
+    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await App.loadTestPdf(); };
+    document.getElementById('advancedExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
+    document.getElementById('advancedImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
+    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsModal'); App.openCanvasRepairModal(); };
     document.getElementById('advancedEmptyCacheReload').onclick = async () => {
       if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
-      hideModal('settingsAdvancedModal');
       hideModal('settingsModal');
       try {
         indexedDB.deleteDatabase('clickcount-pdf-cache');
@@ -7468,7 +7502,6 @@
       else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
       else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
       else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
-      else if (document.getElementById('settingsAdvancedModal').classList.contains('visible')) { hideModal('settingsAdvancedModal'); }
       else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
       // Palette Insights opens OVER My Settings (its opener doesn't hide it),
       // so it must be checked first. (Tier-3 B1 / J16)
@@ -7810,6 +7843,7 @@
   App.state = state;
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
+  App.countCanvasMarks = countCanvasMarks;   // the confirms count the marks they touch
   App.applyRotationDeltaToAnnotations = applyRotationDeltaToAnnotations;
   App.reconcileOrphanedCountersAndLineTypes = reconcileOrphanedCountersAndLineTypes;
   App.planPaletteRelink = planPaletteRelink;

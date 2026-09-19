@@ -101,6 +101,11 @@
     const deleteBtn = document.getElementById('canvasDetailsDelete');
     if (nameInput) nameInput.value = canvas.name || 'Main';
     if (deleteBtn) deleteBtn.style.display = canvases.length <= 1 ? 'none' : '';
+    const facts = document.getElementById('canvasDetailsFacts');
+    if (facts) {
+      const n = App.countCanvasMarks(canvas.annotations);
+      facts.textContent = n + (n === 1 ? ' mark' : ' marks') + ' · sheet ' + (state.currentPage + 1) + ' of ' + state.pages.length + ' · layer ' + (canvases.indexOf(canvas) + 1) + ' of ' + canvases.length;
+    }
     App.showModal('canvasDetailsModal');
     nameInput?.focus();
   }

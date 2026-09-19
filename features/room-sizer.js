@@ -655,8 +655,10 @@
     (App.state.pages || []).forEach(p => App.getPageCanvases(p).forEach(c => {
       count += (c.annotations?.roomBoxes || []).filter(b => b.roomId === editingRoom.id).length;
     }));
-    document.getElementById('roomDeleteConfirmText').textContent =
-      'Delete "' + (editingRoom.name || 'Room') + '"' + (count ? ' and its ' + count + ' box(es) on the plan?' : '?');
+    document.getElementById('roomDeleteName').textContent = editingRoom.name || 'this room';
+    document.getElementById('roomDeleteConfirmText').textContent = count
+      ? 'Its ' + count + (count === 1 ? ' box' : ' boxes') + ' on the plan go with it. The counters and lines inside stay. Undo brings it back.'
+      : 'It has no boxes on the plan yet. Undo brings it back.';
     App.hideModal('roomEditModal');
     App.showModal('roomDeleteConfirmModal');
   };

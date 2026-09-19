@@ -8164,6 +8164,14 @@
       });
     }
     const urlParams = new URLSearchParams(window.location.search || '');
+    // The Modal Gallery (features/modal-gallery.js): every modal on one page,
+    // for a developer judging a styling pass. Injected only on ?gallery=1 —
+    // never a shell script tag, never precached — once the shell's own
+    // scripts have all run, so the registry it reads is complete.
+    if (urlParams.get('gallery') === '1') {
+      const inject = () => { const s = document.createElement('script'); s.src = '/features/modal-gallery.js'; document.body.appendChild(s); };
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', inject); else inject();
+    }
     const viewToken = urlParams.get('t');
     if (viewToken && SUPABASE_ENABLED && SUPABASE_URL) {
       try {

@@ -52,6 +52,14 @@
   one is playing, a click swaps the film in place, and with no click the three play in turn.
   Gotchas for the generator (the toast timers, the stroke key, the real dialog selectors) are
   in [journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md).
+- **The Modal Gallery (developer view)**: `/app/?gallery=1` lays every modal in the shell out on
+  one page in the app's own markup and CSS (features/modal-gallery.js, injected by the boot only on
+  that param, never a shell script tag, never precached), with Populate (the real openers), Open
+  live (the fixed backdrop), Load sample, Reload CSS (cache-busted past the service worker) and a
+  375px Mobile embed. Use it to judge a styles.css change across all ~78 dialogs at once.
+  `npm run build:modal-gallery` (scripts/build-modal-gallery.js) shoots the contact sheet, one PNG
+  per tile at both widths, into `contact-sheet/`; `--baseline <dir>` makes a
+  before/after. Manual, like `build:screenshots`. Detail: ARCHITECTURE.md Files table.
 - **The rulebook (/rules/)**: the PUBLIC trade rules the app applies (NEC fill limits,
   the voltage-drop recommendation, SMACNA-style gauge, mount heights, hanger spacing…),
   written as the app applies them and cited by section — never the code text reprinted,
@@ -153,7 +161,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->86<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->87<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the

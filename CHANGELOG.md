@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(report): the report names its project and its sheets (2026-09-20)
+
+Will, reading the takeoff report the landing now shows: "Takeoff Report" over "Page 1:
+sample-set.pdf, p24" looks unfinished, and it was the same title on every report from every
+project. The title is the project's name now, "Main St Restaurant Takeoff Report" (plain
+"Takeoff Report" when nobody named the project), over a date line. A sheet someone NAMED stands
+as its own heading, "P-101 · Plumbing Plan"; only the intake's default label (the file name and
+page number) keeps its "Page N:" prefix, since there it is the only thing saying where the sheet
+sits in the set. `reportTitleFor` and `pageHeadingFor` are pure, in report.js, unit-tested. The
+hero films name their working sheet on camera (Prepare PDF, the Page Name tab:
+`nameWorkingSheet` in scripts/build-hero-video.js), so the report picture at the end of each
+film reads properly and so does every place the app names a sheet ("P-101 · Plumbing Plan: 2
+runs" in a line type's details). Punch row SHEET-TITLE: read the sheet number and title off the
+title block's text layer, the way D24 reads room names, so nobody has to type it.
+
 ## feat(landing): the HVAC film takes off the whole floor (2026-09-20)
 
 Will, on the three-room cut: incomplete, on all four counts offered (rooms left unserved, no

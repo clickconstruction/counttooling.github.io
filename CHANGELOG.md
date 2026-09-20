@@ -26,6 +26,31 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## chore(landing): the spotlight frames follow the films again (2026-09-20)
+
+Punch row **SPOTLIGHT-SYNC**, closed. The electrical and HVAC films grew into a whole room and a
+whole floor, and the twelve spotlight frames under them were still cut from their own small
+takeoffs, so six captions quoted numbers the films no longer show ("174 lb", "600 of 2,000 CFM",
+"6 rows", "2.3%").
+
+- **The seeds are the films' layouts.** scripts/build-screenshots.js: `electricalBase` builds the
+  three circuits off LP-1 (chained through `App.commitChainPoint`, each with a square home run
+  flagged `homerun`, the panel a counter named LP-1); `hvacBase` seeds the six rooms, RTU-1 at
+  3,000 CFM and 0.8 in. w.g., EF-1 and every device, and `hvacRun` traces the film's duct with
+  real clicks (the main stepping down, five branches, the return main, the exhaust run). `PB()`
+  quotes the films' plan coordinates as they stand.
+- **Twelve frames re-cut** with `--set spotlight`; no film render. They read the films' numbers
+  now: 13 runs and 202 ft of EMT, voltage drop 1.3% / 1.5% / 0.3% across circuits 7, 9 and 11,
+  14 rows to TakeoffTooling; six rooms served, 2,400 of 3,000 CFM, 19 flex drops, 244 ft of
+  straight duct at 1,082 lb. The trace frame shows the main leaving RTU-1 (880×660, so the unit
+  and the hint card are both in frame).
+- **Six captions in index.html** quote the new frames, and the trace frame's `width`/`height`
+  follow its new pixels (landing-assets.test.js pins them).
+
+Gotchas for the next re-cut are in journeys/plans/LANDING-REFRESH.md (SPOT-7): the legend over
+the Break room, the Duct button's toggle, and why the trace frame shows one leg. Cut with the
+system Chrome, since Playwright's browsers are not downloaded on this machine. Gates:
+landing-trade.spec.js and seo.spec.js (18 of 18), landing-assets.test.js, `npm run check`.
 ## chore(punchlist): DEV-AUTH closed, the cloud specs run green (2026-09-20)
 
 The test account signs in again: `config.local.js` carries new dev-auth credentials, and

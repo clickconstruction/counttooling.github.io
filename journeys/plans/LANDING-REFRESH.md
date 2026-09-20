@@ -610,6 +610,45 @@ change to the three trade cards.
 
 ## The hero chapters (plan of record, 2026-09-19)
 
+> **BUILT 2026-09-19 (punch row HERO-CHAPTERS, closed), and it differs from the plan below in
+> five places, all Will's calls on the real page.** Read this block first; the sections under
+> it are the record of how the idea got here.
+>
+> 1. **Under the film, not over it.** A bar attached beneath the frame on its own surface
+>    (`.hero-frame` holds the still and the video; `#heroChapters` follows it). Over the film the
+>    strip covered about 30% of the frame on desktop and two thirds on a phone, and sat on the
+>    app's footer and the hand-off toast. Below it nothing is covered, so the films need no
+>    footer beats moved.
+> 2. **Two lines.** The question with the clock, then the rail. The live beat line went: it
+>    repeated the film's own caption pill. **So the films keep their baked captions, and no
+>    re-render is owed for this feature.** The fade-out needs none either: the page keeps the
+>    still (the film's unfaded last frame) under the video and cross-fades the video out at
+>    `duration - 0.5`, so the hold is the finished takeoff, never black.
+> 3. **The words are Scale, then what the trade counts, then what it runs, then Pricing.**
+>    Fixtures · Pipe, Devices · Wire, Rooms · Duct. "Bid" overclaimed: the film ends at the
+>    hand-off, counts sent on for someone else to price. The answer reads "Forty-three seconds,
+>    from start to sent for pricing." and the number is `Math.round(duration)` from the chapters
+>    file, never copy (electrical is fifty-three since FILM-HOMERUN).
+> 4. **Each chapter names its own length** ("Fixtures 7s"), centred under its track, rounded by
+>    largest remainder so the four add up to the stated length. The running stamps went; the
+>    clock carries the running time.
+> 5. **The end row sits over the held frame** (Play again, the other two films with their
+>    lengths), the usual end-of-video idiom, so the bar never changes height (the phone reserves
+>    two question lines for the same reason).
+>
+> **The data.** `npm run build:hero-video -- --film <f> --chapters-only` walks the film's script
+> without shooting a frame and writes `img/hero-<film>.chapters.json` (`duration`, four
+> `chapters`, every caption as `beats`); a normal render writes it too. `CHAPTER_STARTS` in the
+> generator names each chapter and the caption it starts at. The landing fetches the file; if it
+> cannot, the bar stays hidden and the film plays as before. Pinned by landing-trade.spec.js
+> (real playback: seek, answer, hold, Play again, Next takeoff, the under-the-film geometry, the
+> seconds adding up, each file matching its mp4's length) and landing-assets.test.js.
+>
+> **Open, found on the way (punch row FILM-FIXTURES).** The plumbing film says "Nothing missed."
+> and misses four fixtures the sheet draws: the lavatory in MEN 102 and in WOMEN 103, and the two
+> floor sinks (in front of PREP, and by the clean table in DISH). Fixing it is new counters in
+> `recordPlumbing` and a plumbing re-render; the bar follows the new length by itself.
+
 **Where this came from.** Robert and Claude, 2026-09-19, after the modal polish and the
 asset refresh. The three hero films carry their beats as a caption pill baked into the
 frames ("Hangers, from the rulebook."). The idea: replace the pill with a strip the page

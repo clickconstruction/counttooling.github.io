@@ -57,6 +57,67 @@ a { color: inherit; }
 .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 12px; border: 1px solid var(--border); object-fit: cover; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
 .hero-media.is-playing .hero-video { opacity: 1; }
 .chip { transition: border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; }
+/* The hero chapters (LANDING-REFRESH.md "The hero chapters"): a bar attached UNDER the film on
+   its own surface, so nothing covers the app (its footer, its tallies, the hand-off toast). A
+   question the film's own clock answers; four chapters as a rail, each its own track filling in
+   turn and a button that seeks the film. Two lines: the beats stay in the film's own caption, and
+   the end row (Play again, the other two films) sits over the held frame, so the bar never changes
+   height. An HTML
+   layer on the video's clock: img/hero-<film>.chapters.json (the film generator) carries the times. */
+.hero-frame { position: relative; }
+.hero-media.has-chapters { border-radius: 12px; box-shadow: 0 12px 44px rgba(0, 0, 0, 0.5); }
+.hero-media.has-chapters .hero-shot { box-shadow: none; border-radius: 12px 12px 0 0; }
+.hero-media.has-chapters .hero-video { border-radius: 12px 12px 0 0; }
+.hero-chapters { text-align: left; background: var(--surface); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 12px 12px; padding: 14px 18px; }
+.hero-chapters[hidden] { display: none; }
+.hc-ask { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 5px; }
+.hero .hc-q { font-family: 'Instrument Serif', serif; font-size: clamp(1.05rem, 2.2vw, 1.3rem); line-height: 1.15; color: var(--text); text-wrap: balance; min-width: 0; margin: 0; max-width: none; text-align: left; }
+.hc-q .hc-a { display: none; color: var(--accent); }
+.hero-chapters.is-answered .hc-q .hc-ask-q { display: none; }
+.hero-chapters.is-answered .hc-q .hc-a { display: inline; }
+.hc-clock { flex: none; display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+.hc-time { font: 500 1.25rem/1 'DM Mono', ui-monospace, monospace; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.hc-time small { font-size: 0.6em; color: rgba(232, 197, 71, 0.7); }
+.hc-clock-label { font: 500 0.62rem 'DM Mono', ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); }
+.hero-chapters.is-answered .hc-time, .hero-chapters.is-answered .hc-time small { color: #47c88e; }
+.hero-chapters.is-answered .hc-clock-label::after { content: ' \00b7 no cuts'; }
+.hc-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.hc-card { all: unset; box-sizing: border-box; cursor: pointer; display: block; min-width: 0; padding-bottom: 2px; }
+.hc-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.hc-track { display: block; height: 3px; border-radius: 2px; overflow: hidden; background: var(--border2); }
+.hc-track i { display: block; height: 100%; width: 0; background: #47c88e; }
+.hc-name { display: flex; align-items: baseline; justify-content: center; gap: 7px; padding-top: 8px; font-size: 0.82rem; font-weight: 500; color: var(--text3); transition: color 0.3s; }
+.hc-name small { font: 500 0.7rem 'DM Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; opacity: 0.75; white-space: nowrap; }
+.hc-card:hover .hc-name { color: var(--text2); }
+.hc-card.is-done .hc-name { color: #47c88e; }
+.hc-card.is-now .hc-name { color: var(--text); }
+.hc-card.is-now .hc-track i { background: var(--accent); }
+.hc-end { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; max-width: calc(100% - 24px); padding: 8px 10px; border-radius: 999px; background: rgba(15, 15, 17, 0.9); border: 1px solid var(--border2); box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55); animation: hc-end-in 0.45s ease both; }
+.hc-end[hidden] { display: none; }
+@keyframes hc-end-in { from { opacity: 0; transform: translate(-50%, -46%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+.hc-again { display: inline-flex; align-items: center; gap: 8px; flex: none; white-space: nowrap; font: 600 0.88rem 'DM Sans', system-ui, sans-serif; color: var(--bg); background: var(--accent); border: none; border-radius: 999px; padding: 7px 16px 7px 12px; cursor: pointer; }
+.hc-again:hover { background: #f0d060; }
+.hc-again svg { width: 15px; height: 15px; fill: currentColor; }
+.hc-next-label { font: 500 0.66rem 'DM Mono', ui-monospace, monospace; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); margin-left: 4px; white-space: nowrap; }
+.hc-next { flex: none; white-space: nowrap; font: 500 0.82rem 'DM Sans', system-ui, sans-serif; color: var(--text); background: var(--surface2); border: 1px solid var(--border2); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.hc-next:hover { border-color: var(--accent); }
+/* Reduced motion keeps the still: the four names as a static row, nothing filling, no clock. */
+.hero-chapters.is-static .hc-ask { display: none; }
+@media (max-width: 720px) {
+  .hero-chapters { padding: 11px 12px 12px; }
+  .hc-ask { margin-bottom: 5px; gap: 10px; }
+  .hero .hc-q { min-height: 2.4em; }   /* the question wraps to two lines here; the one-line answer keeps the bar's height */
+  .hc-time { font-size: 1.05rem; }
+  .hc-clock-label { display: none; }
+  .hc-row { gap: 4px; }
+  .hc-name { font-size: 0.75rem; padding-top: 6px; }
+  .hc-name { gap: 5px; }
+  .hc-name small { font-size: 0.64rem; }
+  .hc-next-label { display: none; }
+  .hc-end { gap: 6px; padding: 7px; border-radius: 18px; width: max-content; }
+  .hc-again { padding: 6px 12px 6px 9px; font-size: 0.8rem; }
+  .hc-next { padding: 4px 10px; font-size: 0.76rem; }
+}
 /* The chips are buttons: the pressed one names the film selected, the lit one the film playing. */
 button.chip { font: inherit; font-size: 0.85rem; font-weight: 500; cursor: pointer; line-height: 1.5; }
 button.chip:hover { border-color: var(--accent); color: var(--text); }

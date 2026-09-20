@@ -1,0 +1,92 @@
+{
+  "film": "hvac",
+  "duration": 49.83,
+  "chapters": [
+    {
+      "name": "Scale",
+      "start": 0,
+      "end": 7.38
+    },
+    {
+      "name": "Rooms",
+      "start": 7.38,
+      "end": 30.08
+    },
+    {
+      "name": "Duct",
+      "start": 30.08,
+      "end": 37.54
+    },
+    {
+      "name": "Pricing",
+      "start": 37.54,
+      "end": 49.83
+    }
+  ],
+  "beats": [
+    {
+      "t": 0,
+      "text": "30 sheets."
+    },
+    {
+      "t": 1.17,
+      "text": "30 sheets. Keep 3."
+    },
+    {
+      "t": 2.83,
+      "text": "Suite 200, A-101"
+    },
+    {
+      "t": 4.04,
+      "text": "Prove the scale."
+    },
+    {
+      "t": 7.38,
+      "text": "Box the rooms; the plan names them."
+    },
+    {
+      "t": 17.83,
+      "text": "A diffuser, 150 CFM."
+    },
+    {
+      "t": 22.5,
+      "text": "Three leave the room short."
+    },
+    {
+      "t": 24.75,
+      "text": "The fourth turns it green."
+    },
+    {
+      "t": 25.88,
+      "text": "RTU-1, 2,000 CFM."
+    },
+    {
+      "t": 30.08,
+      "text": "Trace the main at 24×12."
+    },
+    {
+      "t": 32.63,
+      "text": "S: the size steps down with the air."
+    },
+    {
+      "t": 37.54,
+      "text": "Pounds, not feet."
+    },
+    {
+      "t": 40.46,
+      "text": "Bid Check: two rooms still short."
+    },
+    {
+      "t": 42.04,
+      "text": "Fits the roof: computed, green."
+    },
+    {
+      "t": 43.42,
+      "text": "Nothing missed."
+    },
+    {
+      "t": 48.83,
+      "text": "Done."
+    }
+  ]
+}

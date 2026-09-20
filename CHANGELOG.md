@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the hero chapters, a bar under the film (2026-09-19)
+
+Punch row HERO-CHAPTERS closed. Under each hero film sits a two-line bar on the page's own
+surface: a question in the site's serif ("How long does it take to count a restaurant?") with
+the film's own clock counting beside it in real time, and four chapters as a rail, each its own
+track filling in turn, each a button that seeks the film, each naming its length: Scale 7s,
+Fixtures 7s, Pipe 23s, Pricing 6s (Devices and Wire on the electrical film, Rooms and Duct on
+HVAC). Over the last two seconds the question resolves into the answer, "Forty-three seconds,
+from start to sent for pricing.", and the clock turns green with "real time · no cuts". The
+film no longer loops or hands over to the next trade: it plays once and holds on its finished
+takeoff (the still beneath the video is the film's last frame, so the hold is a cross-fade to
+it and never the encode's fade to black), with Play again and the other two films, lengths
+included, over the held frame. The chips work as before. Reduced-motion readers keep the still
+and get the four names as a static row. Decided on the real page with Will, which moved it off
+the plan of record in five places (under the film rather than over it, two lines, Pricing for
+Bid, the trade's own counting word, seconds per chapter); journeys/plans/LANDING-REFRESH.md
+records each. "Pricing" is the honest word: the films end at the hand-off, counts sent on for
+someone else to price. The times are the footage's, not copy: the film generator gains
+`--chapters-only` and writes `img/hero-<film>.chapters.json` (it re-times a film in about a
+minute without rendering), and the landing reads the answer's number, the chapter boundaries
+and the pills' lengths from it, so a re-render cannot leave "fifty seconds" on a 52.6 s film.
+No film was re-rendered for this. landing-trade.spec.js plays the films for real (seek, answer,
+hold, Play again, Next takeoff, the bar's geometry, the seconds adding up, each file against
+its mp4); landing-assets.test.js requires a well-formed chapters file beside each film.
+Found on the way, punch row FILM-FIXTURES: the plumbing film misses two lavatories and two
+floor sinks under a caption that says "Nothing missed."
+
 ## chore(punchlist): the five agent rows, worked in one sitting (2026-09-19)
 
 **CONFIRM-ROUTE.** Delete zone and Delete room were the last two confirms with dialogs of their

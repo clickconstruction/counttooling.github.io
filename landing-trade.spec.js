@@ -89,6 +89,19 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await expect(page.locator('#hcTime')).toHaveText(clockAtEnd);
     await expect(page.locator('#heroMedia')).not.toHaveClass(/is-playing/);   // the still (the last frame) shows, never the fade to black
     await expect(page.locator('#hcEnd')).toBeVisible();   // over the held frame; the bar keeps its height
+    // the results: the film's own marked-up sheet and its report, both real files, opening in the lightbox
+    await expect(page.locator('#hcResults .spot-open')).toHaveCount(2);
+    for (const id of ['#hcSheetImg', '#hcReportImg']) {
+      const src = await page.locator(id).getAttribute('src');
+      expect(src).toMatch(/^\/img\/hero-plumbing-(sheet|report)\.jpg$/);
+      expect((await request.get(src)).status()).toBe(200);
+    }
+    await page.locator('#hcResults .spot-open').nth(1).click();
+    await expect(page.locator('#spotLightbox')).toHaveAttribute('open', '');
+    await expect(page.locator('#spotLightbox .lb-title')).toHaveText('The takeoff report');
+    await expect(page.locator('#spotLightbox .lb-count')).toHaveText('2 / 2');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#spotLightbox')).not.toHaveAttribute('open', '');
     await expect(page.locator('#hcEnd .hc-next')).toHaveText([/^Electrical, \d+ s$/, /^HVAC, \d+ s$/]);
     expect(await page.evaluate(() => window.__heroFilm())).toBe('plumbing');
     // Play again

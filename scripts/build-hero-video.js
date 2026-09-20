@@ -117,6 +117,7 @@ const OVERLAY_SRC = `window.__hero = (() => {
   style.textContent = '#toastRegion, #airboardToastModal, .aim-loupe { display: none !important; }';
   document.head.appendChild(style);
   const root = document.createElement('div');
+  root.id = 'heroFilmOverlay';
   root.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:100000;font-family:"DM Sans",system-ui,sans-serif;';
   root.innerHTML =
     '<div id="heroRipples"></div>' +
@@ -259,6 +260,50 @@ class Recorder {
       await this.frame();
     }
   }
+}
+
+// --- the results: what the film made, as two pictures ---------------------------------
+// Taken from the film's OWN final state, so they are literally the result of the work on camera:
+// img/hero-<film>-sheet.jpg is the marked-up sheet (the film's chrome, toasts and cursor off),
+// img/hero-<film>-report.jpg is Show Report for that sheet (report.js buildReportHtml, rendered
+// in its own page the way the app prints it). The landing offers both when the film ends.
+// Written on every pass, --chapters-only included, so they cannot drift from the footage.
+async function captureResults(page, cam) {
+  const App = 'window.App';
+  await page.evaluate(() => {
+    const o = document.getElementById('heroFilmOverlay'); if (o) o.style.display = 'none';
+    const st = document.createElement('style');
+    st.textContent = '#toastRegion, #toastRegion * , #airboardToastModal, #ductHintCard { display: none !important; }';
+    document.head.appendChild(st);
+    const s = window.state; s.hideMarks = false; s.tool = window.App.TOOL.NONE;
+    document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible'));
+  });
+  await page.evaluate((r) => {
+    const s = window.state, A = window.App;
+    const w = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+    const zoom = Math.min(A.getMaxZoom(), Math.min(w.width / (r.x2 - r.x1), w.height / (r.y2 - r.y1)));
+    s.zoom = zoom; s.pan = { x: (w.width - (r.x2 - r.x1) * zoom) / 2 - r.x1 * zoom, y: (w.height - (r.y2 - r.y1) * zoom) / 2 - r.y1 * zoom };
+    A.renderPdf(); A.updateUI(); A.renderAnnotations();
+  }, cam);
+  await page.mouse.move(2, 2);
+  await page.waitForTimeout(700);
+  // the sheet region of the canvas, in viewport pixels
+  const clip = await page.evaluate((r) => {
+    const s = window.state, w = document.querySelector('.canvas-wrapper').getBoundingClientRect();
+    const x = w.left + s.pan.x + r.x1 * s.zoom, y = w.top + s.pan.y + r.y1 * s.zoom;
+    return { x: Math.max(w.left, x), y: Math.max(w.top, y), width: Math.min(w.width, (r.x2 - r.x1) * s.zoom), height: Math.min(w.height, (r.y2 - r.y1) * s.zoom) };
+  }, cam);
+  await page.screenshot({ path: path.join(OUT_DIR, OUT_NAME + '-sheet.jpg'), clip, type: 'jpeg', quality: 88 });
+  const html = await page.evaluate(() => window.buildReportHtml({ pageIndices: [window.state.currentPage] }));
+  const rp = await page.context().newPage();
+  await rp.setViewportSize({ width: 900, height: 1160 });
+  await rp.setContent(html, { waitUntil: 'load' });
+  await rp.waitForTimeout(300);
+  const full = await rp.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+  await rp.screenshot({ path: path.join(OUT_DIR, OUT_NAME + '-report.jpg'), fullPage: true, type: 'jpeg', quality: 86 });   // the whole report: the lightbox zooms
+  await rp.close();
+  console.log('\n  wrote img/' + OUT_NAME + '-sheet.jpg and img/' + OUT_NAME + '-report.jpg (report ' + full + ' px tall)');
+  void App;
 }
 
 // ============================================================================
@@ -619,6 +664,7 @@ async function recordPlumbing(page, dir, setPdf) {
   await R.hold(1.3);
   R.caption('', 'Done.');
   await R.hold(1.0);
+  await captureResults(page, CAM_SHEET);
   console.log('\n  ' + R.n + ' frames');
   return R.n;
 }
@@ -910,6 +956,7 @@ async function recordElectrical(page, dir, setPdf) {
   await R.hold(1.3);
   R.caption('', 'Done.');
   await R.hold(1.0);
+  await captureResults(page, CAM_SHEET);
   console.log('\n  ' + R.n + ' frames');
   return R.n;
 }
@@ -1210,6 +1257,7 @@ async function recordHvac(page, dir, setPdf) {
   await R.hold(1.2);
   R.caption('', 'Done.');
   await R.hold(1.0);
+  await captureResults(page, CAM_SHEET);
   console.log('\n  ' + R.n + ' frames');
   return R.n;
 }

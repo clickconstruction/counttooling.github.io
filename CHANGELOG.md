@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the films end on what they made: the marked-up sheet and the takeoff report (2026-09-20)
+
+Will: present the result of the work at the end, the takeoff sheet, tastefully; perhaps two
+images to click. (In the app "Ledger" is the Notes ledger; the takeoff sheet is Show Report.)
+When a film holds, the end card over the frame now carries two thumbnails above Play again and
+the other two films: **The sheet, marked up** and **The takeoff report**. A click opens either in
+the spotlight's lightbox, which zooms and pans; the arrows go between the two. Both pictures are
+the film's OWN result, not a seeded look-alike: `captureResults` in scripts/build-hero-video.js
+runs at the end of every film's script (on a render and on the one-minute `--chapters-only`
+pass alike), turns the film's chrome, cursor and toasts off, frames the whole sheet and shoots
+it (`img/hero-<film>-sheet.jpg`), then renders `buildReportHtml` for that sheet in its own page,
+the way the app prints it, and shoots the whole report (`img/hero-<film>-report.jpg`: counts,
+footage, hangers or derived wire, notes, and the Bid Check table). The chips swap the pair with
+the film. On a phone the frame is too small to carry them, so the results and the buttons sit in
+the flow between the film and the bar. The lightbox opens any `[data-lb-set]` now, and fits a
+TALL image to its stage (it only bounded width, which the 4:3 spotlight frames never tested).
+Pinned by landing-trade.spec.js (both files served, the lightbox opens on "The takeoff report",
+2 / 2, Escape closes) and landing-assets.test.js (both files beside each film). Known rough
+edge: the report titles its page "sample-set.pdf, p24"; naming the sheet P-101 is a Prepare PDF
+step the films do not take.
+
 ## feat(landing): the electrical and HVAC films finish the room (2026-09-20)
 
 Will: both bids should be more realistic. An audit of the two films against what an estimator

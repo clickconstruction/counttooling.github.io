@@ -56,7 +56,11 @@
   naming its seconds. It reads `img/hero-<film>.chapters.json`, which the generator writes
   (`--chapters-only` re-times a film in about a minute without rendering it; `CHAPTER_STARTS`
   names the chapters). Change a film's captions or beats and re-run it, or the bar drifts from
-  the footage (landing-trade.spec.js compares each file to its mp4's length).
+  the footage (landing-trade.spec.js compares each file to its mp4's length). The same pass writes
+  the end screen's two results from the film's final state, `img/hero-<film>-sheet.jpg` (the
+  marked-up sheet) and `img/hero-<film>-report.jpg` (Show Report for it), which the landing
+  offers in the lightbox when the film holds. Each film's script ends with a guard that throws
+  if the app's own Bid Check warns.
   Gotchas for the generator (the toast timers, the stroke key, the real dialog selectors) are
   in [journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md).
 - **The Modal Gallery (developer view)**: `/app/?gallery=1` lays every modal in the shell out on

@@ -117,10 +117,18 @@
           <!-- The end screen: over the held frame once the film has played, the usual end-of-video
                idiom, so the bar below never changes height. -->
           <div class="hc-end" id="hcEnd" hidden>
-            <button type="button" class="hc-again" id="hcAgain"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Play again</button>
-            <span class="hc-next-label">Next takeoff</span>
-            <button type="button" class="hc-next"></button>
-            <button type="button" class="hc-next"></button>
+            <!-- What the film made, from the film's own final state (build:hero-video writes both):
+                 the marked-up sheet and Show Report for it. A click opens the spotlight lightbox. -->
+            <div class="hc-results" id="hcResults" data-lb-set>
+              <figure class="spot hc-result"><button type="button" class="spot-open" aria-label="Enlarge: the sheet, marked up"><img id="hcSheetImg" width="1960" height="1268" loading="lazy" alt=""></button><figcaption><b>The sheet, marked up</b><span>Every mark the film placed, on the sheet it was placed on. Export PDFs writes this page.</span></figcaption></figure>
+              <figure class="spot hc-result"><button type="button" class="spot-open" aria-label="Enlarge: the takeoff report"><img id="hcReportImg" width="1800" height="2320" loading="lazy" alt=""></button><figcaption><b>The takeoff report</b><span>Show Report for the same sheet: the counts, the footage and what they derive, ready to print or hand on.</span></figcaption></figure>
+            </div>
+            <div class="hc-end-row">
+              <button type="button" class="hc-again" id="hcAgain"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Play again</button>
+              <span class="hc-next-label">Next takeoff</span>
+              <button type="button" class="hc-next"></button>
+              <button type="button" class="hc-next"></button>
+            </div>
           </div>
           </div>
           <!-- The hero chapters (LANDING-REFRESH.md): a bar under the film, two lines. A question the
@@ -164,6 +172,11 @@
         // to an HVAC shop opens on the HVAC takeoff; the proof panel below follows the chip.
         var asked = (new URLSearchParams(window.location.search).get('trade') || '').toLowerCase();
         window.__heroFilm = function () { return current; };   // the landing spec reads this
+        function setResults(base, trade) {
+          var s = document.getElementById('hcSheetImg'), r = document.getElementById('hcReportImg');
+          if (s) { s.src = base + '-sheet.jpg'; s.alt = 'The ' + trade + ' film\'s sheet with every mark it placed.'; }
+          if (r) { r.src = base + '-report.jpg'; r.alt = 'The takeoff report for the ' + trade + ' film\'s sheet.'; }
+        }
         function chipFor(trade) { for (var i = 0; i < chips.length; i++) if (chips[i].getAttribute('data-trade') === trade) return chips[i]; return chips[0]; }
         function light() { chips.forEach(function (c) { c.classList.toggle('is-live', !!v && !v.paused && c.getAttribute('data-trade') === current); }); }
         function start() { if (!v || reduced) return; v.preload = 'auto'; var p = v.play(); if (p && p.catch) p.catch(function (err) { window.__heroPlayError = String(err); }); }
@@ -175,6 +188,7 @@
           var base = chipFor(trade).getAttribute('data-film');
           chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c.getAttribute('data-trade') === trade)); });
           if (shot) { shot.src = base + '.png'; shot.alt = alts[trade] || shot.alt; }
+          setResults(base, trade);
           loadFilm(trade);
           if (!v || reduced) { light(); return; }
           var wasPlaying = !v.paused;
@@ -273,7 +287,7 @@
           window.setTimeout(function () { order.forEach(function (k) { if (!films[k] && k !== current && window.fetch) fetch(chipFor(k).getAttribute('data-film') + '.chapters.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.chapters) { films[k] = j; buildStrip(); } }).catch(function () {}); }); }, 0);
         }
         chips.forEach(function (c) { c.addEventListener('click', function () { pinned = true; select(c.getAttribute('data-trade'), true); }); });
-        if (order.indexOf(asked) >= 0) { pinned = true; select(asked, false); } else { document.documentElement.setAttribute('data-hero-trade', current); loadFilm(current); }
+        if (order.indexOf(asked) >= 0) { pinned = true; select(asked, false); } else { document.documentElement.setAttribute('data-hero-trade', current); setResults(chipFor(current).getAttribute('data-film'), current); loadFilm(current); }
         if (v && !reduced) {
           v.addEventListener('pause', light);
           v.addEventListener('playing', function () { if (!ended) media.classList.add('is-playing'); light(); });
@@ -371,7 +385,7 @@
             reset();
           }
           function open(fig) {
-            var set = fig.closest('.spotlight-set');
+            var set = fig.closest('.spotlight-set, [data-lb-set]');
             figs = Array.prototype.slice.call(set.querySelectorAll('figure.spot'));
             opener = fig.querySelector('.spot-open');
             show(figs.indexOf(fig));

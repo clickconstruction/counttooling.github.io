@@ -13,6 +13,30 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(landing): no hero caption sits under two seconds (2026-09-20)
+
+Punch row **CAPTION-DWELL**, closed. A few captions in the hero films were on screen too briefly
+to read, even in the scroller: "Open sheet…" (1.2 s) and the closing hand-off line (1 s) on all
+three films, and four quick HVAC beats (the unit placed 0.8 s, the third and fourth diffuser
+1.9 s and 0.9 s, the static-path row 1.75 s, the thermostat tick 1.1 s).
+
+- **The opener is one line.** "Name the working sheet P-101 · Plumbing Plan, then open it." covers
+  the naming and the sheet opening; the separate "Open sheet…" caption is gone.
+- **The closing caption starts with the hand-off**, at the first move toward Copy to PipeTooling /
+  Open in TakeoffTooling / Copy Schedule, not a second before the end. It reads for 3.7 s or more now
+  and "Hide the marks…" keeps 2.4 s.
+- **HVAC's quick beats hold.** Placing the unit rides the RTU-1 caption ("…then place it over the
+  corridor."); the third and fourth diffuser, the static-path row and the thermostat tick each
+  hold longer. The film is 128.6 s (was 124.9 s).
+
+Shortest caption now: plumbing 2.25 s, electrical 2.38 s, HVAC 2.21 s. Plumbing and electrical
+needed no render (a caption costs no frames): `--chapters-only` rewrote their chapters files
+and the footage stands. HVAC was rendered, on Playwright's Chromium; two of three full renders
+missed a room drag, which is written up with the workaround in LANDING-REFRESH.md's gotchas.
+The landing's numbers follow from the chapters files. Gates: landing-trade.spec.js and seo.spec.js
+(18 of 18, the HVAC chapters file against its mp4's length among them), landing-assets.test.js,
+`npm run check`.
+
 ## chore(landing): the spotlight frames follow the films again (2026-09-20)
 
 Punch row **SPOTLIGHT-SYNC**, closed. The electrical and HVAC films grew into a whole room and a

@@ -30,11 +30,7 @@
     },
     {
       "t": 2.38,
-      "text": "Name the working sheet: A-101 · First Floor Plan."
-    },
-    {
-      "t": 5.83,
-      "text": "Open sheet A-101, the office suite's floor plan."
+      "text": "Name the working sheet A-101 · First Floor Plan, then open it."
     },
     {
       "t": 7.04,
@@ -97,7 +93,7 @@
       "text": "Hide the marks, then show them again, to check the room for anything missed."
     },
     {
-      "t": 78.08,
+      "t": 75.42,
       "text": "Send the finished takeoff to the estimating app for pricing."
     }
   ]

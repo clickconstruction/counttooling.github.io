@@ -616,9 +616,13 @@ frames ("Hangers, from the rulebook."). The idea: replace the pill with a strip 
 draws over the film, so a visitor can follow along, and use it to make the app's value
 plain: ask how long the takeoff takes, and let a clock answer.
 
-**The mock, on the real plumbing film:** https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup
-(private; ask Robert to share it). Every decision below is a toggle on that page, so the
-next person can see each one against the footage rather than read about it.
+**The mock, on the real plumbing film:** [hero-chapters.html](hero-chapters.html), in this
+folder, committed so anyone can run it: `npx serve -l 3456` at the repo root, then open
+`http://localhost:3456/journeys/plans/hero-chapters.html`. It plays `/img/hero-plumbing.mp4`.
+Every decision below is a toggle on that page (Words, trade chips, the last word, placement,
+the three looks, the question on/off), so the next person can see each one against the
+footage rather than read about it. The same page is also published privately at
+https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup (ask Robert to share it).
 
 ### Decided
 
@@ -650,11 +654,24 @@ next person can see each one against the footage rather than read about it.
    seconds, start to bid."; electrical "…to wire an office suite?" → "Fifty seconds…";
    HVAC "…to duct an office suite?" → "Fifty seconds…". Wording still open, see below.
 5. **The film holds on its end screen.** No loop, no auto-advance to the next trade
-   (today the three films play in turn unprompted). The last frame stays (the finished
-   takeoff with the hand-off toast); the strip holds the answer and the four stamped
+   (today the three films play in turn unprompted). The finished takeoff stays on screen
+   (the hand-off toast, the tallies); the strip holds the answer and the four stamped
    times; the live-beat line becomes an end row: a yellow **Play again** and two pills,
    "Electrical, 50 s" and "HVAC, 50 s", which are the chips by another name. The chips
    themselves keep working as they do now. Reduced-motion readers keep the still.
+
+**The fade-out, found while building the prototype (2026-09-19).** The encode fades every
+film to black over its last 0.45 s (`scripts/build-hero-video.js`, the `vf` chain:
+`fade=t=out:st=${dur - 0.45}:d=0.45`). That exists to make the old loop seamless. Now that
+the film HOLDS at the end, stopping on the true last frame holds on **black**, which is the
+one thing the end screen must not do. Two ways out, do the second:
+
+1. The prototype pauses at `duration - 0.5`, just before the fade starts, and shows the
+   clock as the film's full length (the half second skipped is a fade, not work). This
+   works against today's mp4s with no re-render.
+2. **When the films are next rendered for this feature, drop the fade-out** (keep the
+   fade-in). Then the hold is simply the last frame and `HOLD` becomes `DUR`. The films
+   are being re-rendered anyway to remove the caption pill, so this is the same pass.
 
 ### Still open
 

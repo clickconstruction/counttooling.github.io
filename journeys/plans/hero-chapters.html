@@ -1,0 +1,529 @@
+<!--
+  HERO-CHAPTERS · the prototype (2026-09-19). The plan of record is LANDING-REFRESH.md,
+  "The hero chapters"; the punch-list row is HERO-CHAPTERS. This page is the working
+  mock behind every decision there: the chapter words, the placement, the three looks
+  for the story segments, the question and the real-time clock, the end screen. It plays
+  the REAL plumbing film from /img, so serve the repo root and open this file:
+
+      npx serve -l 3456
+      http://localhost:3456/journeys/plans/hero-chapters.html
+
+  Nothing here ships. The landing build lifts the chosen pieces (chapter cards, over the
+  film, the question and clock, hold at the end) into index.html's hero block. Kept as
+  one self-contained HTML file on purpose: no build, no dependencies beyond Google Fonts.
+-->
+<title>Hero Chapters</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Instrument+Serif&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f0f11; --surface: #17171a; --surface2: #1e1e22; --surface3: #26262c;
+    --border: #2e2e36; --border2: #3a3a44; --accent: #e8c547; --accent2: #c9a82e;
+    --text: #f0ede8; --text2: #9e9b96; --text3: #5e5c58; --green: #47c88e; --red: #e85447;
+    --mono: 'JetBrains Mono', ui-monospace, Menlo, monospace;
+  }
+  html { background: var(--bg); }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 'DM Sans', system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  .wrap { padding-block: 0 80px; padding-inline: clamp(16px, 4vw, 40px); max-width: 1180px; margin: 0 auto; }
+  .eyebrow { font: 500 11px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--text2); }
+  h1 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: clamp(32px, 4.6vw, 48px); line-height: 1.05; margin: 10px 0 0; text-wrap: balance; }
+  h2 { font-size: 20px; font-weight: 600; margin: 0 0 6px; text-wrap: balance; }
+  h3 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+  p { margin: 0; }
+  .intro { padding-block: 44px 24px; max-width: 70ch; }
+  .intro p { color: var(--text2); margin-top: 14px; }
+  .intro b { color: var(--text); font-weight: 500; }
+
+  /* the stage: the landing's hero frame, with one film and one overlay treatment at a time */
+  .stage { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 10px 14px; border-bottom: 1px solid var(--border); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tabs button { font: 500 13px 'DM Sans', sans-serif; color: var(--text2); background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .tabs button:hover { color: var(--text); border-color: var(--border2); }
+  .tabs button[aria-pressed="true"] { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .tabs .sp { flex: 1; }
+  .tabs.words { margin-bottom: 8px; }
+  .tabs .lbl { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text2); align-self: center; margin-right: 4px; }
+  .tabs .trade, .tabs .last { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .tabs .trade button, .tabs .last button { border: none; border-radius: 0; background: transparent; padding: 5px 11px; }
+  .tabs .trade button[aria-pressed="true"], .tabs .last button[aria-pressed="true"] { background: var(--surface3); color: var(--text); font-weight: 600; }
+  .tabs .last { opacity: 1; transition: opacity .2s; } .tabs .last.off { opacity: .35; pointer-events: none; }
+  .tabs .trade.off { opacity: .35; pointer-events: none; }
+  .tabs .note-inline { align-self: center; font-size: 12px; color: var(--text3); }
+  .tabs .ctl { display: flex; gap: 6px; align-items: center; }
+  .tabs .ctl button { border-radius: 6px; padding: 5px 10px; }
+  .tabs .ctl .t { font: 12px var(--mono); color: var(--text2); min-width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; align-items: start; }
+  .hero.with-rail { grid-template-columns: minmax(0, 1fr) 230px; gap: 16px; }
+  .frame { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 12px 44px rgba(0,0,0,.45); background: #000; }
+  .frame video { display: block; width: 100%; height: auto; }
+  .frame .over { position: absolute; left: 0; right: 0; bottom: 0; margin: 0; padding: 26px 18px 12px; background: linear-gradient(180deg, rgba(15,15,17,0) 0%, rgba(15,15,17,.78) 38%, rgba(15,15,17,.92) 100%); border: none; border-radius: 0; }
+  .frame .over.segs .nm { color: rgba(240,237,232,.45); }
+  .frame .over.segs .nm small { color: rgba(240,237,232,.4); }
+  .frame .over.segs .live { color: rgba(240,237,232,.85); }
+  .frame .over.bar .names span { color: rgba(240,237,232,.45); }
+  .frame .over.segs { padding: 34px 20px 14px; background: linear-gradient(180deg, rgba(15,15,17,0) 0%, rgba(15,15,17,.72) 30%, rgba(15,15,17,.94) 100%); }
+  .frame .over.segs .nm small { display: none; }
+
+  /* the question and the stopwatch: the segments become the proof of the answer */
+  .segs .ask { display: none; }
+  .segs.ask-on .ask { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+  .segs .ask .q { font-family: 'Instrument Serif', serif; font-size: clamp(18px, 2.4vw, 26px); line-height: 1.15; color: #fff; text-wrap: balance; min-width: 0; }
+  .segs .ask .q .a { display: none; color: var(--accent); }
+  .segs.answered .ask .q span:first-child { display: none; }
+  .segs.answered .ask .q .a { display: inline; }
+  .segs .ask .clock { flex: none; text-align: right; }
+  .segs .ask .clock span:first-child { display: block; font: 600 clamp(22px, 3vw, 32px)/1 var(--mono); color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .segs .ask .clock small { font-size: .6em; color: rgba(232,197,71,.7); }
+  .segs .ask .clock .lbl { display: block; margin-top: 4px; font: 500 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(240,237,232,.5); }
+  .segs.answered .ask .clock span:first-child { color: var(--green); }
+  .segs.answered .ask .clock .lbl::after { content: ' · no cuts'; }
+  .segs.ask-on .nm small { display: inline; font: 500 11px var(--mono); color: rgba(240,237,232,.4); opacity: 0; transition: opacity .3s; }
+  .segs.ask-on .row button.done .nm small { opacity: 1; color: var(--green); }
+  .segs.ask-on .row button.now .nm small { opacity: 1; color: rgba(240,237,232,.6); }
+  .frame .over.segs.ask-on { padding-top: 44px; background: linear-gradient(180deg, rgba(15,15,17,0) 0%, rgba(15,15,17,.6) 22%, rgba(15,15,17,.94) 100%); }
+  .frame .over.segs.pills .nm small, .frame .over.segs.cards .nm small, .frame .over.segs.rail .nm small { margin-left: auto; }
+  .frame .over.segs.rail .nm small { margin-left: 4px; }
+  .frame .over.segs.cards .row button .nm small { margin-left: auto; }
+  @media (max-width: 720px) { .segs .ask { margin-bottom: 10px; } .frame .over.segs.ask-on { padding-top: 26px; } }
+
+  /* the end screen: the film holds on its last frame; the strip holds on the answer until Play again */
+  .segs .end { display: none; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .segs.ended .live { display: none; }
+  .segs.ended .end { display: flex; }
+  .segs .end .again { display: inline-flex; align-items: center; gap: 8px; flex: none; white-space: nowrap; font: 600 14px 'DM Sans', sans-serif; color: var(--bg); background: var(--accent); border: none; border-radius: 999px; padding: 8px 16px 8px 12px; cursor: pointer; }
+  .segs .end .again:hover { background: #f0d060; }
+  .segs .end .again svg { width: 16px; height: 16px; fill: currentColor; }
+  .segs .end .next { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: rgba(240,237,232,.5); margin-left: 6px; }
+  .segs .end .nxt { flex: none; white-space: nowrap; font: 500 13px 'DM Sans', sans-serif; color: rgba(240,237,232,.85); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .segs .end .nxt:hover { border-color: var(--accent); color: #fff; }
+  .segs.ended .ask .clock .lbl::after { content: ' · no cuts'; }
+  @media (max-width: 720px) { .segs .end .next { display: none; } }
+
+  /* style 1 · numbered pills: a keycap per chapter, the track under it, the beat as the headline */
+  .frame .over.segs.pills .row { gap: 10px; }
+  .frame .over.segs.pills .nm { justify-content: flex-start; gap: 8px; margin-top: 8px; font-size: 14px; letter-spacing: .01em; color: rgba(240,237,232,.5); }
+  .frame .over.segs.pills .nm::before { content: attr(data-n); font: 600 11px var(--mono); width: 20px; height: 20px; border-radius: 6px; border: 1px solid rgba(255,255,255,.22); display: inline-grid; place-items: center; color: rgba(240,237,232,.6); }
+  .frame .over.segs.pills button.done .nm { color: var(--green); }
+  .frame .over.segs.pills button.done .nm::before { content: '✓'; background: var(--green); border-color: var(--green); color: #0f0f11; }
+  .frame .over.segs.pills button.now .nm { color: #fff; }
+  .frame .over.segs.pills button.now .nm::before { background: var(--accent); border-color: var(--accent); color: #0f0f11; }
+  .frame .over.segs.pills .tr { height: 3px; background: rgba(255,255,255,.16); }
+  .frame .over.segs.pills .live { margin-top: 12px; font-size: 16px; color: #fff; }
+  .frame .over.segs.pills .live b { color: var(--accent); }
+
+  /* style 2 · chapter cards: translucent cards with the app's tool glyphs, the track along each card's foot */
+  .frame .over.segs.cards .row { gap: 8px; }
+  .frame .over.segs.cards .row button { display: flex; flex-direction: column; padding: 10px 12px 0; border-radius: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(8px); overflow: hidden; transition: background .3s, border-color .3s; }
+  .frame .over.segs.cards .row button .nm { order: 1; margin: 0; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: rgba(240,237,232,.55); }
+  .frame .over.segs.cards .row button .nm svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .frame .over.segs.cards .row button .tr { order: 2; height: 3px; border-radius: 0; margin: 0 -12px; background: rgba(255,255,255,.1); }
+  .frame .over.segs.cards .row button.done { border-color: rgba(71,200,142,.35); }
+  .frame .over.segs.cards .row button.done .nm { color: var(--green); }
+  .frame .over.segs.cards .row button.now { background: rgba(232,197,71,.12); border-color: rgba(232,197,71,.55); }
+  .frame .over.segs.cards .row button.now .nm { color: #fff; }
+  .frame .over.segs.cards .row button.now .nm svg { color: var(--accent); }
+  .frame .over.segs.cards .live { margin-top: 12px; font-size: 15px; color: rgba(240,237,232,.9); }
+  .frame .over.segs.cards .live b { color: var(--accent); }
+
+  /* style 3 · the travelling rail: one line, the names as stations, the fill travelling station to station */
+  .frame .over.segs.rail .row { display: flex; align-items: center; gap: 0; }
+  .frame .over.segs.rail .row button { flex: 1; display: flex; align-items: center; gap: 0; }
+  .frame .over.segs.rail .row button .nm { order: 1; margin: 0; flex: none; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: rgba(240,237,232,.45); }
+  .frame .over.segs.rail .row button .nm::before { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: transparent; transition: all .3s; }
+  .frame .over.segs.rail .row button .tr { order: 2; flex: 1; height: 2px; margin: 0 12px; background: rgba(255,255,255,.14); }
+  .frame .over.segs.rail .row button:last-child .tr { display: none; }
+  .frame .over.segs.rail .row button.done .nm { color: var(--green); }
+  .frame .over.segs.rail .row button.done .nm::before { background: var(--green); border-color: var(--green); }
+  .frame .over.segs.rail .row button.now .nm { color: #fff; }
+  .frame .over.segs.rail .row button.now .nm::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(232,197,71,.25); }
+  .frame .over.segs.rail .live { margin-top: 14px; font-size: 16px; color: #fff; justify-content: center; }
+  .frame .over.segs.rail .live b { color: var(--accent); }
+  @media (max-width: 720px) {
+    .frame .over.segs { padding: 22px 12px 10px; }
+    .frame .over.segs.pills .nm, .frame .over.segs.cards .row button .nm, .frame .over.segs.rail .row button .nm { font-size: 12px; }
+    .frame .over.segs .live { font-size: 13px; }
+    .frame .over.segs.rail .row button .tr { margin: 0 6px; }
+    .frame .over.segs.cards .row button { padding: 7px 8px 0; }
+  }
+  @media (max-width: 720px) { .hero.with-rail { grid-template-columns: 1fr; } }
+
+  /* ---- A · the chapter bar (your sketch): four names, one fill sweeping to green ---- */
+  .ov { display: none; }
+  .ov.on { display: block; }
+  .bar { margin-top: 10px; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: 10px 14px 12px; }
+  .bar .names { display: grid; grid-template-columns: repeat(var(--n, 4), 1fr); gap: 0; margin-bottom: 8px; }
+  .bar .names span { display: flex; align-items: center; gap: 8px; font-size: clamp(12px, 1.6vw, 14px); font-weight: 500; color: var(--text3); transition: color .3s; white-space: nowrap; }
+  .bar .names span::after { content: '→'; color: var(--border2); margin-left: auto; padding-right: 14px; }
+  .bar .names span:last-child::after { content: ''; }
+  .bar .names span.done { color: var(--green); }
+  .bar .names span.now { color: var(--text); }
+  .bar .names span.done i { background: var(--green); border-color: var(--green); }
+  .bar .names span.done i::after { content: ''; width: 5px; height: 8px; border-right: 2px solid var(--bg); border-bottom: 2px solid var(--bg); transform: rotate(45deg) translate(-1px, -1px); }
+  .bar .names span.now i { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(232,197,71,.2); }
+  .bar .names i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border2); display: inline-grid; place-items: center; flex: none; transition: all .3s; }
+  .bar .track { height: 5px; border-radius: 3px; background: var(--surface3); position: relative; overflow: hidden; }
+  .bar .track i { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: linear-gradient(90deg, var(--green), var(--green) 85%, var(--accent)); transition: width .15s linear; }
+  .bar .track b { position: absolute; top: -3px; width: 1px; height: 11px; background: var(--border2); }
+  .bar .beat { margin-top: 8px; font-size: 13px; color: var(--text2); min-height: 20px; }
+  .bar .beat b { color: var(--text); font-weight: 500; }
+
+  /* ---- B · story segments: one segment per chapter, the live beat under the active one, click to jump ---- */
+  .segs { margin-top: 10px; }
+  .segs .row { display: grid; grid-template-columns: repeat(var(--n, 4), 1fr); gap: 6px; }
+  .segs .row button { all: unset; cursor: pointer; display: block; padding: 6px 0 0; }
+  .segs .row button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+  .segs .tr { height: 4px; border-radius: 2px; background: var(--surface3); overflow: hidden; }
+  .segs .tr i { display: block; height: 100%; width: 0; background: var(--green); }
+  .segs .nm { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; font-size: 13px; font-weight: 500; color: var(--text3); }
+  .segs .nm small { font: 11px var(--mono); color: var(--text3); }
+  .segs .nm svg { display: none; }
+  .frame .over.segs.cards .nm svg { display: inline-block; }
+  .segs .row button.done .nm { color: var(--green); }
+  .segs .row button.now .nm { color: var(--text); }
+  .segs .row button.now .tr i { background: linear-gradient(90deg, var(--green), var(--accent)); }
+  .segs .live { margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text2); min-height: 22px; }
+  .segs .live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; animation: pulse 1.6s ease-in-out infinite; }
+  .segs .live b { color: var(--text); font-weight: 500; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .segs .live .dot { animation: none; } }
+
+  /* ---- C · the ledger rail: a checklist beside the film that ticks as it plays ---- */
+  .rail { border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 14px; align-self: stretch; display: flex; flex-direction: column; gap: 4px; }
+  .rail .h { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--text2); margin-bottom: 6px; }
+  .rail .ch { display: flex; gap: 10px; padding: 8px 6px; border-radius: 8px; color: var(--text3); transition: background .25s, color .25s; }
+  .rail .ch i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2); flex: none; display: grid; place-items: center; margin-top: 1px; }
+  .rail .ch.done { color: var(--text2); }
+  .rail .ch.done i { background: var(--green); border-color: var(--green); }
+  .rail .ch.done i::after { content: ''; width: 5px; height: 9px; border-right: 2px solid var(--bg); border-bottom: 2px solid var(--bg); transform: rotate(45deg) translate(-1px, -1px); }
+  .rail .ch.now { background: rgba(232,197,71,.08); color: var(--text); }
+  .rail .ch.now i { border-color: var(--accent); }
+  .rail .ch .nm { font-weight: 600; font-size: 14px; }
+  .rail .ch .bt { font-size: 12.5px; color: var(--text2); margin-top: 2px; min-height: 17px; }
+  .rail .ch.now .bt { color: var(--accent); }
+  .rail .foot { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--border); font: 12px var(--mono); color: var(--text3); display: flex; justify-content: space-between; }
+  .rail-bar { display: none; }
+  @media (max-width: 720px) { .rail { display: none; } .rail-bar { display: block; } }
+
+  /* ---- D · the ticker: a thin line along the top edge of the film with the chapter word riding the playhead ---- */
+  .tick { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: rgba(255,255,255,.12); pointer-events: none; }
+  .tick i { position: absolute; left: 0; top: 0; height: 100%; width: 0; background: var(--green); }
+  .tick b { position: absolute; top: 0; width: 1px; height: 100%; background: rgba(255,255,255,.35); }
+  .tick .lab { position: absolute; top: 10px; transform: translateX(-50%); font: 600 12px 'DM Sans', sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--text); background: rgba(15,15,17,.82); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 3px 10px; white-space: nowrap; backdrop-filter: blur(6px); transition: left .3s; }
+  .tick .lab small { color: var(--green); margin-right: 6px; font-weight: 600; }
+
+  /* ---- the options list ---- */
+  .opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 28px; }
+  .opt { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .opt .k { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--accent); }
+  .opt p { color: var(--text2); font-size: 14px; }
+  .opt ul { margin: 0; padding-left: 16px; color: var(--text2); font-size: 13.5px; display: grid; gap: 4px; }
+  .opt .pick { margin-top: auto; align-self: flex-start; font: 500 13px 'DM Sans', sans-serif; color: var(--text); background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+  .opt .pick:hover { border-color: var(--accent); }
+  .opt.rec { border-color: rgba(71,200,142,.5); }
+  .opt.rec .k { color: var(--green); }
+  .sec { margin-top: 40px; padding-top: 28px; border-top: 1px solid var(--border); max-width: 76ch; }
+  .sec p, .sec li { color: var(--text2); }
+  .sec ul { padding-left: 18px; display: grid; gap: 6px; margin: 10px 0 0; }
+  .sec li b { color: var(--text); font-weight: 500; }
+  table { border-collapse: collapse; margin-top: 12px; font-size: 14px; width: 100%; max-width: 640px; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text2); font-weight: 500; font-size: 12.5px; }
+  td:first-child { font-weight: 600; white-space: nowrap; }
+  td .m { font: 12px var(--mono); color: var(--text3); }
+  .note { margin-top: 14px; padding: 10px 12px; border-left: 2px solid var(--accent); background: rgba(232,197,71,.06); font-size: 13.5px; color: var(--text2); }
+</style>
+
+<div class="wrap">
+  <section class="intro">
+    <div class="eyebrow">Landing hero · Scale → Count → Pipe → Bid · over the film · the question and the clock</div>
+    <h1>How long does it take to count a restaurant?</h1>
+    <p>The segments now answer a question. A line over the film asks it, a stopwatch counts up beside it in real time, each chapter stamps the clock as it finishes, and when the film ends the question resolves into the answer: forty-three seconds, start to bid. <b>The Question toggle turns the line and the clock on and off; the Style row still swaps the three looks; the trade chips change the question and the third word.</b> The film is untouched; everything drawn is an HTML layer on the video's clock, which is how it would ship.</p>
+  </section>
+
+  <div class="stage">
+    <div class="tabs words" role="group" aria-label="Chapter words">
+      <span class="lbl">Words</span>
+      <button type="button" data-set="2" aria-pressed="true">2 · Scale → Count → Pipe → Bid</button>
+      <button type="button" data-set="3" aria-pressed="false">3 · Set up → Mark → Run → Prove</button>
+      <button type="button" data-set="4" aria-pressed="false">4 · Sheets → Scale → Marks → Lines → Proof</button>
+      <span class="sp"></span>
+      <span class="trade" id="tradeChips"><button type="button" data-trade="plumbing" aria-pressed="true">Plumbing</button><button type="button" data-trade="electrical" aria-pressed="false">Electrical</button><button type="button" data-trade="hvac" aria-pressed="false">HVAC</button></span>
+      <span class="last" id="placeWrap" style="margin-right:6px"><button type="button" data-place="below" aria-pressed="false">Below the film</button><button type="button" data-place="over" aria-pressed="true">Over the film</button></span><span class="last" id="lastWord"><button type="button" data-last="Bid" aria-pressed="true">Bid</button><button type="button" data-last="Check" aria-pressed="false">Check</button><button type="button" data-last="Prove" aria-pressed="false">Prove</button></span>
+    </div>
+    <div class="tabs words" role="group" aria-label="Segment style">
+      <span class="lbl">Style</span>
+      <button type="button" data-style="pills" aria-pressed="false">Numbered pills</button>
+      <button type="button" data-style="cards" aria-pressed="true">Chapter cards</button>
+      <button type="button" data-style="rail" aria-pressed="false">Travelling rail</button>
+      <span class="lbl" style="margin-left:10px">Question</span>
+      <span class="last" id="askWrap"><button type="button" data-ask="on" aria-pressed="true">On</button><button type="button" data-ask="off" aria-pressed="false">Off</button></span>
+      <span class="sp"></span>
+      <span class="note-inline" id="styleNote">Styles apply to B over the film.</span>
+    </div>
+    <div class="tabs" role="tablist">
+      <button type="button" data-opt="A" aria-pressed="false">A · Chapter bar</button>
+      <button type="button" data-opt="B" aria-pressed="true">B · Story segments</button>
+      <button type="button" data-opt="C" aria-pressed="false">C · Ledger rail</button>
+      <button type="button" data-opt="D" aria-pressed="false">D · Ticker</button>
+      <span class="sp"></span>
+      <div class="ctl">
+        <span class="t" id="clock">0.0 s</span>
+        <button type="button" id="restart" title="Restart">↺</button>
+        <button type="button" id="playpause" title="Play / pause">Pause</button>
+      </div>
+    </div>
+    <div class="hero" id="hero">
+      <div>
+        <div class="frame">
+          <video id="film" src="/img/hero-plumbing.mp4" poster="/img/hero-plumbing.png" muted playsinline autoplay></video>
+          <div class="ov tick" id="ovD"><i id="tickFill"></i><span class="lab" id="tickLab"><small>1/4</small>Measure</span></div>
+        </div>
+        <div class="ov bar" id="ovA">
+          <div class="names" id="barNames"></div>
+          <div class="track"><i id="barFill"></i></div>
+          <div class="beat" id="barBeat"></div>
+        </div>
+        <div class="ov segs ask-on" id="ovB">
+          <div class="ask" id="ask">
+            <div class="q"><span id="askQ">How long does it take to count a restaurant?</span><span class="a" id="askA">Forty-three seconds, start to bid.</span></div>
+            <div class="clock" id="askClock"><span id="askTime">0:00<small>.0</small></span><span class="lbl">real time</span></div>
+          </div>
+          <div class="row" id="segRow"></div>
+          <div class="live"><span class="dot"></span><span id="segLive"></span></div>
+          <div class="end" id="segEnd">
+            <button type="button" class="again" id="again"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Play again</button>
+            <span class="next">Next takeoff</span>
+            <button type="button" class="nxt" data-next="electrical">Electrical, 50 s</button>
+            <button type="button" class="nxt" data-next="hvac">HVAC, 50 s</button>
+          </div>
+        </div>
+        <div class="ov bar rail-bar" id="ovCbar">
+          <div class="names" id="railNames"></div>
+          <div class="track"><i id="railFill"></i></div>
+        </div>
+      </div>
+      <aside class="ov rail" id="ovC">
+        <div class="h">Kitchen, Tuesday · P-101</div>
+        <div id="railList"></div>
+        <div class="foot"><span id="railClock">0:00</span><span>0:43</span></div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="opts">
+    <div class="opt">
+      <div class="k">A · Chapter bar</div>
+      <h3>The four names on one line</h3>
+      <p>The chapter names on one line under the film, a single track filling green beneath them, the current chapter lit and the passed ones ticked. The live beat ("Hangers, from the rulebook.") sits under the track, so the caption moves out of the frame and into the bar.</p>
+      <ul>
+        <li>Reads at a glance and matches the "takeoff loop" language used everywhere else on the site.</li>
+        <li>One fill across four chapters of very different lengths: Connect is 16 s, Count is 6 s, so the sweep is uneven and the arrow row can't show where you are inside a chapter.</li>
+      </ul>
+      <button type="button" class="pick" data-opt="A">Show A</button>
+    </div>
+    <div class="opt rec">
+      <div class="k">B · Story segments · recommended</div>
+      <h3>One segment per chapter, each filling in turn</h3>
+      <p>The story-progress idiom people already know from their phones. Each chapter is its own track, so the fill is honest about where you are inside it; the chapter names sit under the tracks with their length; the live beat sits beneath with a pulse. Every segment is a button: click Check and the film jumps there.</p>
+      <ul>
+        <li>The only treatment that makes the hero browsable: a plumber can skip straight to the riser or the hand-off.</li>
+        <li>Fits the 980px hero and collapses cleanly on a phone (the names stay, the beat wraps).</li>
+        <li>Costs one array per film in index.html and about forty lines of script.</li>
+      </ul>
+      <button type="button" class="pick" data-opt="B">Show B</button>
+    </div>
+    <div class="opt">
+      <div class="k">C · Ledger rail</div>
+      <h3>A checklist beside the film</h3>
+      <p>On a wide screen the four chapters stand as a column to the right, ticking green as the film passes them, the current one holding the live beat. It reads like the Bid Check list inside the app, which is a nice echo. Under 720px it becomes the A bar.</p>
+      <ul>
+        <li>The most legible while the film plays: the eye never leaves the frame's edge.</li>
+        <li>Narrows the film by 250px on desktop, and the landing spec pins the hero at 980px, so the frame would need to grow or the rail would need to sit under it.</li>
+      </ul>
+      <button type="button" class="pick" data-opt="C">Show C</button>
+    </div>
+    <div class="opt">
+      <div class="k">D · Ticker</div>
+      <h3>A thin line and one word</h3>
+      <p>The least chrome: a 3px line along the top edge of the film filling green, chapter ticks on it, and the current chapter's name riding the playhead as a small pill. Nothing below the frame changes.</p>
+      <ul>
+        <li>Keeps the hero exactly the height it is; works with the baked captions left in place.</li>
+        <li>Too quiet to be the thing a first-time visitor notices, and the four names are never shown together.</li>
+      </ul>
+      <button type="button" class="pick" data-opt="D">Show D</button>
+    </div>
+  </div>
+
+  <section class="sec">
+    <h2>The claim the clock makes, and keeping it honest</h2>
+    <p>A stopwatch over a demo film is a promise: this is how long it takes. The films can carry it, with three conditions.</p>
+    <ul>
+      <li><b>The clock is the film's own clock.</b> It reads the video's current time, so it cannot drift from what the viewer is watching, and it resets when the film loops or the chip changes.</li>
+      <li><b>The films are real interactions at real speed.</b> The generator walks a scripted takeoff frame by frame with actual mouse moves, typing at about twelve characters a second, and the app's own dialogs; nothing is sped up in the encode. That is what lets the label say "real time · no cuts". If a future film ever skips or accelerates a beat, the label has to go with it.</li>
+      <li><b>The answer names the scope.</b> "Forty-three seconds, start to bid" is true of the film: three sheets kept from thirty, the scale proved, twelve fixtures counted, two lines run with their hangers and a riser, the check, the hand-off. It is not a claim about a full restaurant set, and the question should stay as specific as the film. The electrical and HVAC films get their own question and answer, which the chips already swap in the mock.</li>
+    </ul>
+    <table>
+      <tr><th>Trade</th><th>Question</th><th>Answer at the end</th></tr>
+      <tr><td>Plumbing</td><td>How long does it take to count a restaurant?</td><td>Forty-three seconds, start to bid.</td></tr>
+      <tr><td>Electrical</td><td>How long does it take to wire an office suite?</td><td>Fifty seconds, start to bid.</td></tr>
+      <tr><td>HVAC</td><td>How long does it take to duct an office suite?</td><td>Fifty seconds, start to bid.</td></tr>
+    </table>
+    <div class="note">One wording choice for you: the question can be the page's headline as well, above the film, with the strip's question line dropped to the clock alone. That trades a little repetition for the hook being readable before the film scrolls into view. The mock keeps the question inside the frame so the answer lands where the clock stops.</div>
+  </section>
+
+  <section class="sec">
+    <h2>What building it involves</h2>
+    <ul>
+      <li><b>The end screen.</b> The film no longer loops. It stops on its last frame, the finished takeoff with the hand-off toast, and the strip holds the answer, the four stamped times, Play again and the other two trades as the next film. That replaces the landing's current behaviour, where the three films play in turn unprompted. A chip click still swaps the film at once; Play again restarts the same one; the next-takeoff buttons are the chips by another name. Reduced-motion readers are unaffected, they keep the still.</li>
+      <li><b>Placement.</b> Below the film keeps the app's own footer and status bar visible in the last row of pixels, which the films use (the tally, the save state). Over the film saves about 70px of hero height on a phone but covers that footer and needs a scrim; the toggle above shows both. If the bar goes over the film, the next render should crop the caption pill and shift the footer beats up.</li>
+      <li><b>An HTML layer, not a re-render.</b> The overlay listens to the video's <span style="font-family:var(--mono);font-size:13px">timeupdate</span> and reads a chapter array per film. The films stay as they are; only the baked caption pill goes away on the next render, because the bar carries the beat now.</li>
+      <li><b>Seek on click.</b> With B (or A with a click target per name) the chips choose the trade and the segments choose the chapter, which makes the hero the fastest tour of the app on the site.</li>
+      <li><b>Reduced motion.</b> Readers who keep the still get the four names as a static row with nothing filling, which still tells them what the app does in four words.</li>
+      <li><b>The spec.</b> seo.spec.js pins the hero's markup and the chips; the bar would join it as one assertion per film, plus the existing hero-video generator writing the chapter array so the timings can't go stale.</li>
+      <li><b>Phone.</b> The bar sits under the frame at every width; the names shrink to 12px and Connect's beat wraps to two lines, both checked here at 375px.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  const BEATS = [[0, '30 sheets.'], [1.6, '30 sheets. Keep 3.'], [4.4, 'Main St Restaurant, P-101'], [7.2, 'Prove the scale.'], [10, 'Count.'], [12.5, 'Quick Count with the number row.'], [16, 'Cold in.'], [21, 'Hangers, from the rulebook.'], [24, 'Hot back.'], [29, 'Rise.'], [32, 'Nothing missed.'], [37, 'Copy to PipeTooling.'], [41, 'Done.']];
+  const THIRD = { plumbing: 'Pipe', electrical: 'Wire', hvac: 'Duct' };
+  const ASK = { plumbing: ['How long does it take to count a restaurant?', 'Forty-three seconds, start to bid.'], electrical: ['How long does it take to wire an office suite?', 'Fifty seconds, start to bid.'], hvac: ['How long does it take to duct an office suite?', 'Fifty seconds, start to bid.'] };
+  let trade = 'plumbing', last = 'Bid', setId = '2';
+  const SETS = {
+    '2': () => [{ name: 'Scale', start: 0, end: 10 }, { name: 'Count', start: 10, end: 16 }, { name: THIRD[trade], start: 16, end: 32 }, { name: last, start: 32, end: 43 }],
+    '3': () => [{ name: 'Set up', start: 0, end: 10 }, { name: 'Mark', start: 10, end: 16 }, { name: 'Run', start: 16, end: 32 }, { name: 'Prove', start: 32, end: 43 }],
+    '4': () => [{ name: 'Sheets', start: 0, end: 4.4 }, { name: 'Scale', start: 4.4, end: 10 }, { name: 'Marks', start: 10, end: 16 }, { name: 'Lines', start: 16, end: 32 }, { name: 'Proof', start: 32, end: 43 }],
+  };
+  // the app's own tool glyphs, one per chapter (stroke icons, 24-box)
+  const G = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const GLYPH = {
+    Scale: G('<path d="M3 17 17 3l4 4L7 21z"/><path d="m7 9 2 2M10 6l2 2M13 3l2 2"/>'),
+    'Set up': G('<path d="M4 5h16v14H4z"/><path d="M4 10h16M9 10v9"/>'),
+    Sheets: G('<path d="M4 5h16v14H4z"/><path d="M4 10h16M9 10v9"/>'),
+    Count: G('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/>'),
+    Mark: G('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/>'),
+    Marks: G('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/>'),
+    Pipe: G('<path d="M3 8h9a3 3 0 0 1 3 3v9"/><path d="M3 12h9"/><circle cx="18" cy="6" r="2.5"/>'),
+    Wire: G('<path d="M3 16c3-8 6-8 9 0s6 8 9 0"/>'),
+    Duct: G('<path d="M3 7h12v10H3z"/><path d="M15 9h6v6h-6"/>'),
+    Run: G('<path d="M3 8h9a3 3 0 0 1 3 3v9"/><path d="M3 12h9"/>'),
+    Lines: G('<path d="M3 8h9a3 3 0 0 1 3 3v9"/><path d="M3 12h9"/>'),
+    Bid: G('<path d="M5 4h14v16H5z"/><path d="m8 12 3 3 5-6"/>'),
+    Check: G('<path d="M5 4h14v16H5z"/><path d="m8 12 3 3 5-6"/>'),
+    Prove: G('<path d="M5 4h14v16H5z"/><path d="m8 12 3 3 5-6"/>'),
+    Proof: G('<path d="M5 4h14v16H5z"/><path d="m8 12 3 3 5-6"/>'),
+    _: G('<circle cx="12" cy="12" r="8"/>'),
+  };
+  let CH = SETS[setId]();
+  const DUR = 43;
+  // The encode fades every film to black over its last 0.45 s
+  // (scripts/build-hero-video.js: fade=t=out:st=dur-0.45:d=0.45), which exists to make
+  // the old loop seamless. Since the film now HOLDS at the end, stopping on the true
+  // last frame would hold on black. Pause just before the fade so the end screen keeps
+  // the finished takeoff; the clock still reads the film's full length, because the
+  // half second we skip is a fade, not work. If the films are re-rendered without the
+  // fade-out (recommended, see LANDING-REFRESH.md), HOLD can simply become DUR.
+  const HOLD = DUR - 0.5;
+  const v = document.getElementById('film');
+  const fmt = (t) => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
+  const chapterAt = (t) => CH.findIndex((c) => t >= c.start && t < c.end) === -1 ? CH.length - 1 : CH.findIndex((c) => t >= c.start && t < c.end);
+  const beatAt = (t) => { let b = ''; BEATS.forEach(([at, txt]) => { if (t >= at) b = txt; }); return b; };
+
+  // build the static parts (rebuilt whenever the word set, trade or last word changes)
+  function build() {
+    CH = SETS[setId]();
+    document.documentElement.style.setProperty('--n', CH.length);
+    const names = (id) => { const el = document.getElementById(id); el.innerHTML = CH.map((c) => `<span><i></i>${c.name}</span>`).join(''); };
+    names('barNames'); names('railNames');
+    ['#ovA .track', '#ovCbar .track', '#ovD'].forEach((sel) => { const el = document.querySelector(sel); el.querySelectorAll('b').forEach((b) => b.remove()); CH.slice(1).forEach((c) => { const b = document.createElement('b'); b.style.left = (c.start / DUR * 100) + '%'; el.appendChild(b); }); });
+    document.getElementById('segRow').innerHTML = CH.map((c, i) => `<button type="button" data-i="${i}" aria-label="Jump to ${c.name}"><div class="tr"><i></i></div><div class="nm" data-n="${i + 1}">${GLYPH[c.name] || GLYPH._}<span>${c.name}</span><small>${Math.round(c.end - c.start)}s</small></div></button>`).join('');
+    document.getElementById('railList').innerHTML = CH.map((c) => `<div class="ch"><i></i><div><div class="nm">${c.name}</div><div class="bt"></div></div></div>`).join('');
+    document.getElementById('tradeChips').classList.toggle('off', setId !== '2');
+    document.getElementById('askQ').textContent = ASK[trade][0]; document.getElementById('askA').textContent = ASK[trade][1];
+    document.getElementById('lastWord').classList.toggle('off', setId !== '2');
+    render();
+  }
+  document.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => { setId = b.dataset.set; document.querySelectorAll('[data-set]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); build(); }));
+  document.querySelectorAll('[data-trade]').forEach((b) => b.addEventListener('click', () => { trade = b.dataset.trade; document.querySelectorAll('[data-trade]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); build(); }));
+  document.querySelectorAll('[data-last]').forEach((b) => b.addEventListener('click', () => { last = b.dataset.last; document.querySelectorAll('[data-last]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); build(); }));
+
+  function render() {
+    const t = Math.min(v.currentTime || 0, DUR);
+    const ci = chapterAt(t), c = CH[ci], beat = beatAt(t);
+    const pct = t / DUR * 100;
+    document.getElementById('clock').textContent = t.toFixed(1) + ' s';
+    // A + C's phone bar
+    ['barNames', 'railNames'].forEach((id) => document.querySelectorAll('#' + id + ' span').forEach((s, i) => { s.classList.toggle('done', i < ci); s.classList.toggle('now', i === ci); }));
+    document.getElementById('barFill').style.width = pct + '%';
+    document.getElementById('railFill').style.width = pct + '%';
+    document.getElementById('barBeat').innerHTML = `<b>${c.name}</b> · ${beat}`;
+    // B
+    document.querySelectorAll('#segRow button').forEach((b, i) => {
+      const ch = CH[i]; const f = t <= ch.start ? 0 : t >= ch.end ? 100 : (t - ch.start) / (ch.end - ch.start) * 100;
+      b.querySelector('.tr i').style.width = f + '%';
+      b.classList.toggle('done', i < ci); b.classList.toggle('now', i === ci);
+      const sm = b.querySelector('.nm small'); if (sm) sm.textContent = i < ci ? fmt(ch.end) : i === ci ? fmt(t) : '';
+    });
+    const segs = document.getElementById('ovB');
+        const shown = segs.classList.contains('ended') ? DUR : t;   // held: the film's full length, not the pre-fade hold
+    document.getElementById('askTime').innerHTML = fmt(shown) + '<small>.' + Math.floor((shown % 1) * 10) + '</small>';
+    segs.classList.toggle('answered', t >= DUR - 2);
+    document.getElementById('segLive').innerHTML = `<b>${c.name}</b> · ${beat}`;
+    // C
+    document.querySelectorAll('#railList .ch').forEach((el, i) => { el.classList.toggle('done', i < ci); el.classList.toggle('now', i === ci); el.querySelector('.bt').textContent = i === ci ? beat : i < ci ? 'done' : ''; });
+    document.getElementById('railClock').textContent = fmt(t);
+    // D
+    document.getElementById('tickFill').style.width = pct + '%';
+    const lab = document.getElementById('tickLab'); lab.style.left = Math.max(6, Math.min(94, pct)) + '%'; lab.innerHTML = `<small>${ci + 1}/${CH.length}</small>${c.name}`;
+  }
+  v.addEventListener('timeupdate', render);
+  v.addEventListener('seeked', render);
+  requestAnimationFrame(function loop() { if (!v.paused) render(); requestAnimationFrame(loop); });
+
+  // tabs
+  function show(opt) {
+    document.querySelectorAll('.tabs [data-opt]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.opt === opt)));
+    document.querySelectorAll('.ov').forEach((o) => o.classList.remove('on'));
+    document.getElementById('ov' + opt).classList.add('on');
+    if (opt === 'C') document.getElementById('ovCbar').classList.add('on');
+    document.getElementById('hero').classList.toggle('with-rail', opt === 'C');
+    try { localStorage.setItem('hero-chapters-opt', opt); } catch (_) {}
+  }
+  document.querySelectorAll('[data-opt]').forEach((b) => b.addEventListener('click', () => { show(b.dataset.opt); if (b.classList.contains('pick')) document.querySelector('.stage').scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
+  let opt = 'B'; try { opt = localStorage.getItem('hero-chapters-opt') || 'B'; } catch (_) {}
+  show(opt);
+  build();
+  document.getElementById('segRow').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; v.currentTime = CH[+b.dataset.i].start + 0.05; v.play(); });
+  const frame = document.querySelector('.frame'), below = document.getElementById('ovA').parentElement;
+  function place(where) {
+    ['ovA', 'ovB'].forEach((id) => { const el = document.getElementById(id); el.classList.toggle('over', where === 'over'); (where === 'over' ? frame : below).appendChild(el); });
+    document.querySelectorAll('[data-place]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.place === where)));
+  }
+  document.querySelectorAll('[data-place]').forEach((b) => b.addEventListener('click', () => place(b.dataset.place)));
+  function style(st) { const el = document.getElementById('ovB'); el.classList.remove('pills', 'cards', 'rail'); el.classList.add(st); document.querySelectorAll('[data-style]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.style === st))); }
+  document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => { style(b.dataset.style); show('B'); place('over'); }));
+  document.querySelectorAll('[data-ask]').forEach((b) => b.addEventListener('click', () => { document.getElementById('ovB').classList.toggle('ask-on', b.dataset.ask === 'on'); document.querySelectorAll('[data-ask]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); }));
+  place('over'); style('cards');
+  document.getElementById('restart').onclick = () => { v.currentTime = 0; v.play(); };
+  const pp = document.getElementById('playpause');
+  pp.onclick = () => { if (segsEl.classList.contains('ended')) { segsEl.classList.remove('ended', 'answered'); v.currentTime = 0; v.play(); } else if (v.paused) v.play(); else v.pause(); };
+  const segsEl = document.getElementById('ovB');
+  function holdAtEnd() {
+    if (!v.paused) v.pause();
+    v.currentTime = HOLD;
+    segsEl.classList.add('ended', 'answered');
+    pp.textContent = 'Play again';
+    render();
+  }
+  v.addEventListener('timeupdate', () => { if (!v.paused && v.currentTime >= HOLD) holdAtEnd(); });
+  v.addEventListener('ended', holdAtEnd);
+  v.addEventListener('play', () => { segsEl.classList.remove('ended'); });
+  document.getElementById('again').onclick = () => { segsEl.classList.remove('ended', 'answered'); v.currentTime = 0; v.play(); };
+  document.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => { segsEl.classList.remove('ended', 'answered'); document.querySelector(`[data-trade="${b.dataset.next}"]`).click(); v.currentTime = 0; v.play(); }));
+  v.addEventListener('play', () => { pp.textContent = 'Pause'; });
+  v.addEventListener('pause', () => { pp.textContent = 'Play'; });
+})();
+</script>

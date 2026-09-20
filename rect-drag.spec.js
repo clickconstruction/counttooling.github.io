@@ -150,10 +150,10 @@ test.describe('Rect-tool drag gesture (T2-10)', () => {
       s.tool = window.App.TOOL.DELETE_ZONE;
     });
     await drag(page, await pagePt(page, 0.35, 0.35), await pagePt(page, 0.55, 0.55));
-    await expect(page.locator('#deleteZoneModal')).toHaveClass(/visible/);
-    await expect(page.locator('#deleteZonePreview')).toContainText('2 counter(s)');
-    await page.locator('#deleteZoneCancel').click();
-    await expect(page.locator('#deleteZoneModal')).not.toHaveClass(/visible/);
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmBody')).toContainText('2 counter(s)');
+    await page.locator('#confirmCancel').click();
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => window.App.ensureActiveCanvas(window.state.pages[window.state.currentPage]).annotations.counterMarkers.c1.length)).toBe(3);
     expect(errors).toEqual([]);
   });

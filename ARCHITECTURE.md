@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,472 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 8,470 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,074 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,897 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,591 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [app/index.html](app/index.html) | 3,571 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 2,564 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 732 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 925 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 160 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 902 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (87 files) | 25,669 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (87 files) | 25,654 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -179,10 +179,10 @@ modules. Candidates in priority order:
 | [share-links.spec.js](share-links.spec.js) | Playwright regression for pilot #27 — always-run registry-contract smoke (the full flow is Supabase-gated): `App.openShareProjectModal` + `App.onViewLinkRevoked` are functions; opening with no cloud project/session is a safe no-op (modal stays hidden); the view-links collapse toggle round-trips; the close binding hides a force-shown modal. Asserts no console / page errors; `npx playwright test share-links.spec.js` |
 | [features/import-clear.js](features/import-clear.js) | Twenty-eighth feature-file split (`window.App` registry pilot #28) — the **canvas JSON import** (`#importInput` change handler + the `#importBtn`/`#importBtnSidebar` openers + the import-canvas-after-PDF prompt modal `#importCanvasAfterPdfModal`) and the **Clear Page confirm flow** (`showClearPageModal` + the `#clearPage`/`#clearPageSidebar` openers + the `#clearPageCancel`/`#clearPageConfirm` handlers, consolidated from the zone & page-action handler block). Registers `App.showClearPageModal` (the Project Settings row stays in app.js as a deferred `App.*` call); the other bindings move with their DOM elements. Two new publish-only deps `applyPageAnnotationsFromData` (the shared per-page deserialize funnel — also used by cloud load / view mode / load-annotations) and `getActiveCanvas`; reuses `state`/`ensureGroupColors`/`saveUserCustomIcons`/`reconcileOrphanedCountersAndLineTypes`/`clearUndoStacks`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`/`pushUndoSnapshot`/`makeAnnotations`. The shared **custom-icon upload handler** that shared the old section stays in app.js under the renamed marker `// SECTION: Custom icon upload handler` (icon-domain infrastructure feeding four icon grids across app.js + three feature files). **Tier-3 B2** import feedback: a bad file toasts in-app (naming Export Canvas as the source of a valid .json) instead of the old native `alert('Invalid import file')`, and a page-count-mismatch import toasts "Applied marks to N of M pages — the plan has fewer pages than the export" instead of dropping the extra entries silently |
 | [import-clear.spec.js](import-clear.spec.js) | Playwright regression for pilot #28 — Clear Page: the sidebar button opens the confirm naming the active canvas, Cancel preserves the markers, Confirm empties only the current page's active canvas, `App.showClearPageModal` is registered; Import: a JSON file through `#importInput` replaces the palette and `reconcileOrphanedCountersAndLineTypes` re-creates a counter for still-present orphaned markers, a bad file gets the in-app Export-Canvas-pointer toast (no native dialog), a 2-page export onto a 1-page plan gets the "Applied marks to 1 of 2 pages" mismatch toast (and a matching count stays quiet); Visibility: `#clearPageSidebar` hidden before a PDF loads (`body:not(.has-pdf)` gate), visible + live via a real click at desktop width once one is loaded, hidden for viewers (`state.isViewer`), and present inside the mobile hamburger drawer at 375px. Asserts no console / page errors; `npx playwright test import-clear.spec.js` |
-| [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` — keeping Multiply Zone armed with an armed-hint toast, Tier-3 B8 / J6 — or commits a `state.pendingMultiplyZoneEdit`), the Delete Zone confirm (`#deleteZoneModal` cancel/confirm → `App.performDeleteZone`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
+| [features/zone-modals.js](features/zone-modals.js) | Twenty-ninth feature-file split (`window.App` registry pilot #29) — the **zone & page-action modal handlers**: the Multiply Zone value modal (`#multiplyZoneModal` cancel + multiplier-input sync + the deferred Apply that creates a zone from `state.pendingMultiplyZone` — keeping Multiply Zone armed with an armed-hint toast, Tier-3 B8 / J6 — or commits a `state.pendingMultiplyZoneEdit`), and the Delete Page confirm (`#deletePageConfirmModal` cancel/confirm → the pending `onDelete`). Like [features/output.js](features/output.js) it registers **no entry points** — every handler is element-bound and all the pending state lives on `state` (the Grid-split pattern: no callbacks needed; the canvas click handlers and page rows that seed the state stay in app.js). One new publish-only dep `performDeleteZone` (the heavy deletion mutation stays in app.js); reuses `state`/`showModal`/`hideModal`/`getActiveAnnotations`/`ensureActiveCanvas`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`uid`/`TOOL`. The `#hamburger`/`#sidebarBackdrop` toggles that shared the old section stay under the renamed marker `// SECTION: Sidebar drawer toggles` |
 | [features/summary-detail.js](features/summary-detail.js) | The **Summary count-detail modal** (`#summaryCountDetailModal`, Tier-2 split out of the UI-render region) — `openSummaryCountDetailModal(type, id)`: per-page breakdown of one counter (multiply-zone-adjusted counts) or line type (runs + feet), each row with an async pdf.js-rendered thumbnail composited through `renderAnnotationsToContext` at the export marker/line scales. The four `renderSummary` row bindings in app.js call it via deferred `App.*` arrows. New publish-only deps: `getMultiplyZoneForPoint`, `getLineLengthFeetForTotals`, `formatFeet`. Regression: [summary-detail.spec.js](summary-detail.spec.js) |
 | [features/restore-last-session.js](features/restore-last-session.js) | The **last-session restore flow** (Tier-2 split) — `doRestoreLastProject` (full session rebuild from a cloud project row or IDB takeoff backup; PDF ladder: IDB blob → cached blob → signed-URL render → storage download with background re-cache), the `#lastSessionRestoreModal` Keep/Discard handlers (Keep defers the Supabase fetch to click time; offline falls back to the IDB backup; inaccessible projects are cleaned up), and the private `pendingRestore`. Boot (app.js init) detects the candidate and hands it over via `App.openLastSessionRestorePrompt({proj,cachedBlob} | {cloudLast})`; `resetLocalSessionState` clears the flag via the defensive `App.onLastSessionRestoreReset`. **The offer waits its turn** (2026-09-10): with a tour running (`App.isTutorialActive()`) or another `.modal-overlay.visible` up, `openLastSessionRestorePrompt` DEFERS (private `deferredRestore`, returns false; NOT `pendingRestore`, so the T1-01 write hold is not engaged — the candidate is safe on the held key) and `App.retryDeferredRestorePrompt()` re-evaluates on a macrotask when the tour stops (features/tutorial.js `stopTutorial`) or any modal hides (app.js `hideModal`), plus a 1 s safety poll; `App.isRestorePromptDeferred()` for specs; a reset drops it (nothing consumed — returns next boot). Boot's silent palette/page pre-apply is skipped when the session is busy (pages loaded, dirty, or a tour active) — restoring over work takes a click on Keep; the feature logs `restore_prompt_shown` / `restore_prompt_deferred` itself. `App.bootSettled` (app.js) flips in init's `finally` so specs that reload can settle the async boot. idb primitives + `pdfjsLib` are classic-script globals; everything else via `App.*` at call time. Regression: [restore-last-session.spec.js](restore-last-session.spec.js) |
-| [features/room-sizer.js](features/room-sizer.js) | The **Room Sizer** feature — draw room boxes on the plan, assign each a ceiling height + a Room, get per-room volumetric totals. Owns the Room Box modal (`#roomBoxModal` create/edit: height input parsed via `parseRealWorldLength`, recent-height chips persisted in `recentRoomHeights` localStorage, room choose/create with palette colors cycled from `COLORS`), the Room edit modal (`#roomEditModal` rename/recolor via `App.showLineColorModal` + delete cascade through `#roomDeleteConfirmModal`), the Rooms sidebar section (`#roomsSection`, hidden until the first box exists; box rows jump pages / delete), and `getRoomVolumeTotals({pageIndices?, getAnnotations?})` — consumed by report.js (guarded `window.App` lookup) for the report table + email summary. Registers `openRoomBoxModal` / `openRoomBoxModalForEdit` (called from the app.js `TOOL.ROOM` click/touch/drag branches + `#ctxEditRoomBox`; `openRoomBoxModal` **refuses a ~zero-size rect** — both dims under 6 logical px at the current zoom — so a same-spot click-click/tap-tap mis-click can't open a 0'-0"×0'-0" dialog, T2-10), `renderRoomsList` (called from `updateUI`, deferred), `getRoomVolumeTotals`. New publishes it consumes: `roomBoxDimsFeet` (pure, geometry.js), `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`. The tool itself (TOOL.ROOM two-corner click path + press-drag-release completion, rubber-band preview with live W×L readout, committed-box rendering via the shared `drawRoomBoxesToContext`, hit testing, delete-zone/rotation participation, legend room-volume rows, hotkey V) stays in app.js. Data: `state.rooms[]` `{id,name,color}` + per-canvas `annotations.roomBoxes[]` `{x1,y1,x2,y2,heightFt,roomId,id}`; both ride save/load/export/import/IDB-backup/undo. D7 (DUCT-PLAN §7/§3): rooms may also carry `roomType` (a `ROOM_TYPE_CFM_PER_SQFT` key, set via the Edit Room dialog's dropdown + Target CFM override input — both fields DELETED when unset so typeless rooms keep their old shape) and the Rooms rows grow the air-balance badge ("needs 450 · served 300 ⚠", ⚠ only past the ~10% tolerance) from the new `App.getRoomAirBalance()` (duct-model `roomTargetCfm`/`roomServedCfm` over `App.collectDuctDevices`; also feeds duct-tool's equipment-first line). D15 closes D7's deferral: `App.getRoomBalanceForPage(pageIdx)` — per-sheet rows `{ id, name, color, targetCfm, servedCfm, under }` (the project-derived target, served = that page's point-in-rect sum, devices collected once per call) — is the `getRoomBalanceForPage` dep app.js hands canvas-draw's `computeLegendRows`, so the legend's `⚠ Office 101 needs 450 · served 300` line is computed here and the draw core stays pure. Regression: [room-sizer.spec.js](room-sizer.spec.js), [duct-balance.spec.js](duct-balance.spec.js), [duct-deferred.spec.js](duct-deferred.spec.js) S2: `App.roomHeightAtPoint(pt, pageIdx)` — the ceiling at a point (smallest containing room box across the page's canvases), the Chain tool's override of the project ceiling. D17 (J19 #2): the Room Size dialog carries the PROJECT deck height (`#roomBoxDeckGroup` / `#roomBoxDeck` — `ductSettings.deckHeightFt`, not per room), shown only on an HVAC-shaped project (trade hvac, any duct run, any room type, or a deck already set — `deckFieldApplies`), prefilled on open and written on Apply through `App.setDuctDeckHeight` (retroactive risers). D19 (J19 Friction #6): the **room type on the Room Size dialog** (`#roomBoxTypeGroup` / `#roomBoxType` / `#roomBoxTypeDerived`) — D7 put it on Edit Room only, costing three actions per room on the design-build front door. Same HVAC-shaped gate as D17's deck row; options built from `ROOM_TYPE_CFM_PER_SQFT` exactly as Edit Room builds them; the select follows the picked room and re-syncs on selection change; the derived target counts the box ABOUT to be added and names a per-room override rather than contradicting it. Written to the room on Apply (`applyRoomBoxTypeField`); the override itself stays on Edit Room. D24 (X4 option D): **room names from the plan** — `openRoomBoxModal` reads the printed text inside the box through the D10 primitive (`App.pageTextItems`, the one place that may FETCH the layer) and duct-model's `parseRoomNameCallout`; the largest print wins, ties to the nearest the center. A name that matches an existing room selects that room; otherwise the new-room name is prefilled with a "from the plan" note (`#roomBoxNameNote`), never overwriting a typed name — a text layer still loading lands through `App.pageTextLoadedListeners` (the list lives on App so load order between feature files cannot matter). Apply stamps `room.nameFromPlan = true` when the created room still carries the plan's name; rooms serialize wholesale, so it rides save/load. Regression: [room-labels.spec.js](room-labels.spec.js). |
+| [features/room-sizer.js](features/room-sizer.js) | The **Room Sizer** feature — draw room boxes on the plan, assign each a ceiling height + a Room, get per-room volumetric totals. Owns the Room Box modal (`#roomBoxModal` create/edit: height input parsed via `parseRealWorldLength`, recent-height chips persisted in `recentRoomHeights` localStorage, room choose/create with palette colors cycled from `COLORS`), the Room edit modal (`#roomEditModal` rename/recolor via `App.showLineColorModal` + delete cascade behind `App.confirmDialog`, CONFIRM-ROUTE 2026-09-19), the Rooms sidebar section (`#roomsSection`, hidden until the first box exists; box rows jump pages / delete), and `getRoomVolumeTotals({pageIndices?, getAnnotations?})` — consumed by report.js (guarded `window.App` lookup) for the report table + email summary. Registers `openRoomBoxModal` / `openRoomBoxModalForEdit` (called from the app.js `TOOL.ROOM` click/touch/drag branches + `#ctxEditRoomBox`; `openRoomBoxModal` **refuses a ~zero-size rect** — both dims under 6 logical px at the current zoom — so a same-spot click-click/tap-tap mis-click can't open a 0'-0"×0'-0" dialog, T2-10), `renderRoomsList` (called from `updateUI`, deferred), `getRoomVolumeTotals`. New publishes it consumes: `roomBoxDimsFeet` (pure, geometry.js), `getEffectiveScaleForLine`, `getMergedAnnotationsForPage`. The tool itself (TOOL.ROOM two-corner click path + press-drag-release completion, rubber-band preview with live W×L readout, committed-box rendering via the shared `drawRoomBoxesToContext`, hit testing, delete-zone/rotation participation, legend room-volume rows, hotkey V) stays in app.js. Data: `state.rooms[]` `{id,name,color}` + per-canvas `annotations.roomBoxes[]` `{x1,y1,x2,y2,heightFt,roomId,id}`; both ride save/load/export/import/IDB-backup/undo. D7 (DUCT-PLAN §7/§3): rooms may also carry `roomType` (a `ROOM_TYPE_CFM_PER_SQFT` key, set via the Edit Room dialog's dropdown + Target CFM override input — both fields DELETED when unset so typeless rooms keep their old shape) and the Rooms rows grow the air-balance badge ("needs 450 · served 300 ⚠", ⚠ only past the ~10% tolerance) from the new `App.getRoomAirBalance()` (duct-model `roomTargetCfm`/`roomServedCfm` over `App.collectDuctDevices`; also feeds duct-tool's equipment-first line). D15 closes D7's deferral: `App.getRoomBalanceForPage(pageIdx)` — per-sheet rows `{ id, name, color, targetCfm, servedCfm, under }` (the project-derived target, served = that page's point-in-rect sum, devices collected once per call) — is the `getRoomBalanceForPage` dep app.js hands canvas-draw's `computeLegendRows`, so the legend's `⚠ Office 101 needs 450 · served 300` line is computed here and the draw core stays pure. Regression: [room-sizer.spec.js](room-sizer.spec.js), [duct-balance.spec.js](duct-balance.spec.js), [duct-deferred.spec.js](duct-deferred.spec.js) S2: `App.roomHeightAtPoint(pt, pageIdx)` — the ceiling at a point (smallest containing room box across the page's canvases), the Chain tool's override of the project ceiling. D17 (J19 #2): the Room Size dialog carries the PROJECT deck height (`#roomBoxDeckGroup` / `#roomBoxDeck` — `ductSettings.deckHeightFt`, not per room), shown only on an HVAC-shaped project (trade hvac, any duct run, any room type, or a deck already set — `deckFieldApplies`), prefilled on open and written on Apply through `App.setDuctDeckHeight` (retroactive risers). D19 (J19 Friction #6): the **room type on the Room Size dialog** (`#roomBoxTypeGroup` / `#roomBoxType` / `#roomBoxTypeDerived`) — D7 put it on Edit Room only, costing three actions per room on the design-build front door. Same HVAC-shaped gate as D17's deck row; options built from `ROOM_TYPE_CFM_PER_SQFT` exactly as Edit Room builds them; the select follows the picked room and re-syncs on selection change; the derived target counts the box ABOUT to be added and names a per-room override rather than contradicting it. Written to the room on Apply (`applyRoomBoxTypeField`); the override itself stays on Edit Room. D24 (X4 option D): **room names from the plan** — `openRoomBoxModal` reads the printed text inside the box through the D10 primitive (`App.pageTextItems`, the one place that may FETCH the layer) and duct-model's `parseRoomNameCallout`; the largest print wins, ties to the nearest the center. A name that matches an existing room selects that room; otherwise the new-room name is prefilled with a "from the plan" note (`#roomBoxNameNote`), never overwriting a typed name — a text layer still loading lands through `App.pageTextLoadedListeners` (the list lives on App so load order between feature files cannot matter). Apply stamps `room.nameFromPlan = true` when the created room still carries the plan's name; rooms serialize wholesale, so it rides save/load. Regression: [room-labels.spec.js](room-labels.spec.js). |
 | [zone-modals.spec.js](zone-modals.spec.js) | Playwright regression for pilot #29 — the Multiply Zone Apply creates a zone with the typed multiplier from a pending rect, the edit path updates an existing zone's multiplier, Cancel clears all pending multiply-zone state, and the Delete Zone cancel/confirm bindings behave (cancel clears pending; confirm with nothing pending is a no-op). Delete Page confirm is exercised by [delete-page.spec.js](delete-page.spec.js). Asserts no console / page errors; `npx playwright test zone-modals.spec.js` |
 | [rect-drag.spec.js](rect-drag.spec.js) | Playwright regression for the **rect-tool drag gesture** (JOURNEY-MAP Tier-2 #14, T2-10) — on all five rectangle tools (Highlight, Multiply Zone, Scale Zone, Room Sizer, Delete Area) a press-drag-release past the 6px threshold arms corner 1 at the press point and completes the rectangle at the release point through the tool's normal corner-2 click path (dialogs, overlap checks, undo identical to two-click); a sub-threshold press stays a plain click (two-click path unchanged); the aim-loupe coexistence contract holds (hold still 280ms → loupe wins, commits ONE corner, drag machinery inert); a release outside the page completes clamped to the page edge; leaving the canvas mid-drag cancels the whole gesture (no phantom corner). D14 (2026-09-12) closed the bake-in — the TEMP `rect_drag_complete` Save-Status probe is gone from app.js and a static guard here keeps it gone. Asserts no console / page errors; `npx playwright test rect-drag.spec.js` |
 | [features/burger-menu.js](features/burger-menu.js) | Thirtieth feature-file split (`window.App` registry pilot #30) — the **mobile right-side burger drawer** (`closeBurgerMenu`/`updateBurgerMenu` + the `#headerBurger`/`#rightMenuBackdrop` bindings) and the **desktop header-overflow compact mode** (`updateHeaderCollapsed`/`scheduleHeaderCollapseCheck` + the resize listener + the load-time initial check), moved together because they are one consolidation feature sharing `closeBurgerMenu`. Registers `App.updateBurgerMenu` + `App.scheduleHeaderCollapseCheck`, which `updateUI` invokes **defensively** (`App.fn && App.fn()`) at its tail — a boot-time updateUI before this file loads is a harmless no-op (the load-time check + on-open rebuild cover it). Drawer rows dispatch the click of their CSS-hidden source control and clone its `<svg>`, so no deeper app.js functions are referenced; deps are just `state` + `SUPABASE_ENABLED` (both pre-published — zero new deps). Regressions: the pre-existing [mobile-burger-menu.spec.js](mobile-burger-menu.spec.js) + [header-overflow.spec.js](header-overflow.spec.js), which were written for this exact feature |
@@ -592,61 +592,61 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L780 - Undo/redo stacks
 - L976 - [sync] Checkout probe, hashing & PDF cache
 - L1038 - Math & Format Helpers
-- L1582 - Coordinate Helpers
-- L1590 - PDF render bitmap cache
-- L1644 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1655 - PDF Rendering
-- L2489 - UI Render Functions
-- L2490 - Recent bids
-- L3200 - Inline rename & polyline edit mode
-- L3316 - Modal primitives (showModal / hideModal)
-- L3457 - Toasts & line color picker
-- L3525 - Airboard cloud sync
-- L3570 - Supabase RPC & presence heartbeat
-- L3610 - User activity / event telemetry
-- L3669 - Supabase auth & dev auth
-- L3855 - [sync] Checkout subscription & permission refresh
-- L3865 - Modals & Handlers
-- L3933 - PDF intake (upload, test PDF, hashing)
-- L3941 - Toolbar tool buttons
-- L4153 - Tool sidebar buttons & legend overlay
-- L4244 - Add Line Type modal
-- L4412 - Line color & sidebar handlers
-- L4621 - Polyline modal & drawing
-- L4676 - Zoom bar & page navigation
-- L4702 - Export canvas JSON
-- L4726 - PDF download helpers
-- L4735 - View-link URL helpers & show-highlights/notes
-- L4807 - Custom icon upload handler
-- L4817 - Export & report dropdown menus
-- L4910 - Sidebar drawer toggles
-- L4941 - Mobile actions burger menu pointer & header logo
-- L4953 - User Activity pointer (format.js + features/user-activity.js)
-- L4965 - My Settings pointer (features/my-settings.js)
-- L4990 - Auth & settings entry buttons
-  - L5063 - Project Settings checkout & Save Status bell
-  - L5169 - [sync] Checkout expired recovery
-  - L5225 - [sync] Turn In
-  - L5334 - Share modal pointer & copy-project openers
-  - L5365 - Settings menu actions
-  - L5403 - Auth sign-in form
-  - L5428 - Save Project modal
-  - L5440 - Checkout expired recovery modal wiring
-  - L5545 - Last-session restore prompt
-  - L5552 - Canvas Repair modal wiring
-- L5739 - Canvas Event Handlers
-- L6268 - Event Binding
-- L6278 - Aim loupe (mobile press-hold precise placement)
-- L6430 - Zoom transform preview & commit
-- L6509 - Canvas mouse, wheel & touch handlers
-- L7303 - Global dropdown dismissal & keyboard hotkeys
+- L1584 - Coordinate Helpers
+- L1592 - PDF render bitmap cache
+- L1646 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1657 - PDF Rendering
+- L2491 - UI Render Functions
+- L2492 - Recent bids
+- L3202 - Inline rename & polyline edit mode
+- L3318 - Modal primitives (showModal / hideModal)
+- L3459 - Toasts & line color picker
+- L3527 - Airboard cloud sync
+- L3572 - Supabase RPC & presence heartbeat
+- L3612 - User activity / event telemetry
+- L3671 - Supabase auth & dev auth
+- L3857 - [sync] Checkout subscription & permission refresh
+- L3867 - Modals & Handlers
+- L3935 - PDF intake (upload, test PDF, hashing)
+- L3943 - Toolbar tool buttons
+- L4155 - Tool sidebar buttons & legend overlay
+- L4246 - Add Line Type modal
+- L4414 - Line color & sidebar handlers
+- L4623 - Polyline modal & drawing
+- L4678 - Zoom bar & page navigation
+- L4704 - Export canvas JSON
+- L4728 - PDF download helpers
+- L4737 - View-link URL helpers & show-highlights/notes
+- L4809 - Custom icon upload handler
+- L4819 - Export & report dropdown menus
+- L4912 - Sidebar drawer toggles
+- L4943 - Mobile actions burger menu pointer & header logo
+- L4955 - User Activity pointer (format.js + features/user-activity.js)
+- L4967 - My Settings pointer (features/my-settings.js)
+- L4992 - Auth & settings entry buttons
+  - L5065 - Project Settings checkout & Save Status bell
+  - L5171 - [sync] Checkout expired recovery
+  - L5227 - [sync] Turn In
+  - L5336 - Share modal pointer & copy-project openers
+  - L5367 - Settings menu actions
+  - L5405 - Auth sign-in form
+  - L5430 - Save Project modal
+  - L5442 - Checkout expired recovery modal wiring
+  - L5547 - Last-session restore prompt
+  - L5554 - Canvas Repair modal wiring
+- L5741 - Canvas Event Handlers
+- L6270 - Event Binding
+- L6280 - Aim loupe (mobile press-hold precise placement)
+- L6432 - Zoom transform preview & commit
+- L6511 - Canvas mouse, wheel & touch handlers
+- L7305 - Global dropdown dismissal & keyboard hotkeys
 - L7696 - [sync] Manual save to cloud
 - L7706 - [sync] Auto-save
 - L7713 - [sync] Local backup (IndexedDB takeoff state)
 - L7846 - [sync] Checkout keep-alive
 - L7860 - App feature registry
-- L8225 - View-only mode
-- L8231 - Init / boot
+- L8223 - View-only mode
+- L8229 - Init / boot
 
 <!-- END SECTION TOC -->
 

@@ -21,23 +21,94 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
   });
 
   for (const trade of trades) {
-    test(`?trade=${trade} lands on that film, pinned, with its proof rows`, async ({ page }) => {
+    test(`?trade=${trade} lands on that film, with its proof rows, and the film holds at its end`, async ({ page }) => {
       await page.goto('/?trade=' + trade);
       await expect(page.locator('.trade-chips .chip[data-trade="' + trade + '"]')).toHaveAttribute('aria-pressed', 'true');
       expect(await page.evaluate(() => window.__heroFilm())).toBe(trade);
       expect(await page.evaluate(() => document.querySelector('#heroMedia video source').getAttribute('src'))).toBe('/img/hero-' + trade + '.mp4');
       await expect(page.locator('.bidcheck-rows[data-trade="' + trade + '"]')).toBeVisible();
-      // pinned: the film loops instead of advancing to the next trade
+      // HERO-CHAPTERS: the film plays once and holds; it neither loops nor hands over to the next trade
       await page.evaluate(() => document.querySelector('#heroMedia video').dispatchEvent(new Event('ended')));
       expect(await page.evaluate(() => window.__heroFilm())).toBe(trade);
+      await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/);
     });
   }
 
-  test('an unknown ?trade= falls back to plumbing, unpinned', async ({ page }) => {
+  test('an unknown ?trade= falls back to plumbing, and the ended film stays on plumbing', async ({ page }) => {
     await page.goto('/?trade=roofing');
     expect(await page.evaluate(() => window.__heroFilm())).toBe('plumbing');
     await page.evaluate(() => document.querySelector('#heroMedia video').dispatchEvent(new Event('ended')));
+    expect(await page.evaluate(() => window.__heroFilm())).toBe('plumbing');
+  });
+
+  // HERO-CHAPTERS (LANDING-REFRESH.md "The hero chapters"): the bar under the film.
+  for (const [trade, second, third] of [['plumbing', 'Fixtures', 'Pipe'], ['electrical', 'Devices', 'Wire'], ['hvac', 'Rooms', 'Duct']]) {
+    test(`the ${trade} chapters file has four ascending chapters ending at the film's length, and the strip shows them`, async ({ page, request }) => {
+      const j = await (await request.get('/img/hero-' + trade + '.chapters.json')).json();
+      expect(j.chapters.map((c) => c.name)).toEqual(['Scale', second, third, 'Pricing']);
+      expect(j.chapters[0].start).toBe(0);
+      j.chapters.forEach((c, i) => { expect(c.end).toBeGreaterThan(c.start); if (i) expect(c.start).toBe(j.chapters[i - 1].end); });
+      expect(j.chapters[3].end).toBe(j.duration);
+      await page.goto('/?trade=' + trade);
+      await expect(page.locator('#heroChapters .hc-card')).toHaveCount(4);
+      await expect(page.locator('#heroChapters .hc-card .hc-name > span')).toHaveText(['Scale', second, third, 'Pricing']);
+      // each section names its own length, and the four add up to the film's stated length
+      const secs = (await page.locator('#heroChapters .hc-card .hc-name small').allTextContents()).map((x) => { expect(x).toMatch(/^\d+s$/); return parseInt(x, 10); });
+      expect(secs.reduce((a, b) => a + b, 0)).toBe(Math.round(j.duration));
+      const dur = await page.evaluate(() => new Promise((r) => { const v = document.querySelector('#heroMedia video'); if (v.duration) r(v.duration); else { v.addEventListener('loadedmetadata', () => r(v.duration), { once: true }); v.preload = 'auto'; v.load(); } }));
+      expect(Math.abs(dur - j.duration)).toBeLessThan(0.1);   // the file is the footage's, not a guess
+    });
+  }
+
+  test('the strip follows the film: a card seeks, the clock answers, the film holds, Play again and Next takeoff work', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#heroMedia').scrollIntoViewIfNeeded();
+    await expect(page.locator('#heroChapters')).toBeVisible();
+    await expect(page.locator('#hcQ')).toHaveText('How long does it take to count a restaurant?');
+    // under the film, never over it: the bar starts where the frame ends, and the film keeps its own box
+    const boxes = await page.evaluate(() => { const f = document.querySelector('#heroMedia .hero-frame').getBoundingClientRect(), s = document.getElementById('heroChapters').getBoundingClientRect(), v = document.querySelector('#heroMedia video').getBoundingClientRect(); return { gap: Math.round(s.top - f.bottom), videoInFrame: Math.abs(v.bottom - f.bottom) < 1 }; });
+    expect(boxes).toEqual({ gap: 0, videoInFrame: true });
+    await page.waitForFunction(() => !document.querySelector('#heroMedia video').paused);
+    // a card is a seek
+    await page.locator('#heroChapters .hc-card').nth(2).click();
+    await page.waitForFunction(() => document.querySelector('#heroMedia video').currentTime >= 14);
+    await expect(page.locator('#heroChapters .hc-card').nth(2)).toHaveClass(/is-now/);
+    await expect(page.locator('#heroChapters .hc-card').nth(0)).toHaveClass(/is-done/);
+    await expect(page.locator('#hcEnd')).toBeHidden();
+    // the end: the answer, the hold on the still, the end row
+    await page.evaluate(() => { document.querySelector('#heroMedia video').currentTime = 41.5; });
+    await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
+    await expect(page.locator('#hcA')).toHaveText('Forty-three seconds, from start to sent for pricing.');
+    await expect(page.locator('#hcA')).toBeVisible();
+    await expect(page.locator('#hcTime')).toHaveText('0:43.0');
+    await expect(page.locator('#heroMedia')).not.toHaveClass(/is-playing/);   // the still (the last frame) shows, never the fade to black
+    await expect(page.locator('#hcEnd')).toBeVisible();   // over the held frame; the bar keeps its height
+    await expect(page.locator('#hcEnd .hc-next')).toHaveText([/^Electrical, \d+ s$/, /^HVAC, \d+ s$/]);
+    expect(await page.evaluate(() => window.__heroFilm())).toBe('plumbing');
+    // Play again
+    await page.locator('#hcAgain').click();
+    await expect(page.locator('#heroChapters')).not.toHaveClass(/is-ended/);
+    await expect(page.locator('#hcEnd')).toBeHidden();
+    await page.waitForFunction(() => { const v = document.querySelector('#heroMedia video'); return !v.paused && v.currentTime < 5; });
+    await expect(page.locator('#heroMedia')).toHaveClass(/is-playing/);
+    // Next takeoff is the chips by another name
+    await page.evaluate(() => { document.querySelector('#heroMedia video').currentTime = 41.5; });
+    await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
+    await page.locator('#hcEnd .hc-next').first().click();
     expect(await page.evaluate(() => window.__heroFilm())).toBe('electrical');
+    await expect(page.locator('.trade-chips .chip[data-trade="electrical"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#hcQ')).toHaveText('How long does it take to wire an office suite?');
+    await expect(page.locator('#heroChapters')).not.toHaveClass(/is-ended/);
+  });
+
+  test('reduced motion keeps the still and gets the four names as a static row', async ({ browser }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    await page.goto('/');
+    await expect(page.locator('#heroChapters')).toHaveClass(/is-static/);
+    await expect(page.locator('#heroChapters .hc-card')).toHaveCount(4);
+    await expect(page.locator('#heroChapters .hc-ask')).toBeHidden();
+    await context.close();
   });
 
   test('the spotlight shows the selected trade\'s six frames, loads them lazily, and swaps with the chips', async ({ page }) => {

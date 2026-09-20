@@ -1,6 +1,6 @@
 # Entry-point & modal surface inventory — Phase 1 (2026-08-02)
 
-**71 modals** in app/index.html at Phase 1 (**77 `.modal-overlay` ids on 2026-09-13** after the electrical S1–S5 and duct D1–D16 builds; 78 on 2026-09-18 when the Modal Gallery first counted them, 77 again on 2026-09-19 after `#settingsAdvancedModal` folded into Project Settings as a disclosure, #136 — the duct additions are listed in the addendum at the end). Doc-derived; Phase 2 verifies.
+**71 modals** in app/index.html at Phase 1 (**77 `.modal-overlay` ids on 2026-09-13** after the electrical S1–S5 and duct D1–D16 builds; 78 on 2026-09-18 when the Modal Gallery first counted them, 77 again on 2026-09-19 after `#settingsAdvancedModal` folded into Project Settings as a disclosure, #136, and 75 the same day once Delete zone and Delete room became `App.confirmDialog` calls, CONFIRM-ROUTE — the duct additions are listed in the addendum at the end). Doc-derived; Phase 2 verifies.
 
 ## Desktop header (shared DOM with mobile; visibility flipped by CSS classes replaced-by-status-bar / consolidated-mobile / supabase-only)
 
@@ -184,10 +184,8 @@
 | `chooseLineTypeModal` | Choose/Create Line Type tabbed picker (Quick Line/Polyline) | features/choose-create-line-type.js |
 | `noteModal` | Add/edit note | features/note.js |
 | `multiplyZoneModal` | Multiply zone multiplier value entry | features/zone-modals.js |
-| `deleteZoneModal` | Delete-area confirm with item preview | features/zone-modals.js |
 | `roomBoxModal` | Room box create/edit (height + room assignment) | features/room-sizer.js |
 | `roomEditModal` | Room rename/edit | features/room-sizer.js |
-| `roomDeleteConfirmModal` | Room delete confirm | features/room-sizer.js |
 | `linePropertiesModal` | Line properties (color, name, drops) | features/item-details.js |
 | `clearPageConfirmModal` | Clear Page confirm | features/import-clear.js |
 | `deletePageConfirmModal` | Delete page confirm | features/zone-modals.js |

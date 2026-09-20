@@ -54,3 +54,21 @@ test('each trade has its six frames, in order', () => {
     mine.forEach((r, i) => assert.ok(r.startsWith(trade + '-' + (i + 1) + '-'), trade + ' frame ' + (i + 1) + ' is ' + r));
   }
 });
+
+// The hero chapters: the bar under each film reads img/hero-<film>.chapters.json, written by
+// scripts/build-hero-video.js (--chapters-only re-times a film without rendering it).
+test('every hero film has a well-formed chapters file beside it', () => {
+  for (const film of ['plumbing', 'electrical', 'hvac']) {
+    assert.ok(fs.existsSync(path.join(ROOT, 'img', 'hero-' + film + '.mp4')), 'missing img/hero-' + film + '.mp4');
+    const file = path.join(ROOT, 'img', 'hero-' + film + '.chapters.json');
+    assert.ok(fs.existsSync(file), 'missing img/hero-' + film + '.chapters.json: run build:hero-video -- --film ' + film + ' --chapters-only');
+    const j = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.strictEqual(j.film, film);
+    assert.strictEqual(j.chapters.length, 4, film + ': four chapters');
+    assert.strictEqual(j.chapters[0].name, 'Scale'); assert.strictEqual(j.chapters[3].name, 'Pricing');
+    assert.strictEqual(j.chapters[0].start, 0);
+    j.chapters.forEach((c, i) => { assert.ok(c.end > c.start, film + ': ' + c.name + ' has no length'); if (i) assert.strictEqual(c.start, j.chapters[i - 1].end); });
+    assert.strictEqual(j.chapters[3].end, j.duration);
+    assert.ok(j.beats.length > 4 && j.beats[0].t === 0, film + ': beats');
+  }
+});

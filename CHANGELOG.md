@@ -26,6 +26,70 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## feat(landing): the hero chapters, a bar under the film (2026-09-19)
+
+Punch row HERO-CHAPTERS closed. Under each hero film sits a two-line bar on the page's own
+surface: a question in the site's serif ("How long does it take to count a restaurant?") with
+the film's own clock counting beside it in real time, and four chapters as a rail, each its own
+track filling in turn, each a button that seeks the film, each naming its length: Scale 7s,
+Fixtures 7s, Pipe 23s, Pricing 6s (Devices and Wire on the electrical film, Rooms and Duct on
+HVAC). Over the last two seconds the question resolves into the answer, "Forty-three seconds,
+from start to sent for pricing.", and the clock turns green with "real time · no cuts". The
+film no longer loops or hands over to the next trade: it plays once and holds on its finished
+takeoff (the still beneath the video is the film's last frame, so the hold is a cross-fade to
+it and never the encode's fade to black), with Play again and the other two films, lengths
+included, over the held frame. The chips work as before. Reduced-motion readers keep the still
+and get the four names as a static row. Decided on the real page with Will, which moved it off
+the plan of record in five places (under the film rather than over it, two lines, Pricing for
+Bid, the trade's own counting word, seconds per chapter); journeys/plans/LANDING-REFRESH.md
+records each. "Pricing" is the honest word: the films end at the hand-off, counts sent on for
+someone else to price. The times are the footage's, not copy: the film generator gains
+`--chapters-only` and writes `img/hero-<film>.chapters.json` (it re-times a film in about a
+minute without rendering), and the landing reads the answer's number, the chapter boundaries
+and the pills' lengths from it, so a re-render cannot leave "fifty seconds" on a 52.6 s film.
+No film was re-rendered for this. landing-trade.spec.js plays the films for real (seek, answer,
+hold, Play again, Next takeoff, the bar's geometry, the seconds adding up, each file against
+its mp4); landing-assets.test.js requires a well-formed chapters file beside each film.
+Found on the way, punch row FILM-FIXTURES: the plumbing film misses two lavatories and two
+floor sinks under a caption that says "Nothing missed."
+
+## chore(punchlist): the five agent rows, worked in one sitting (2026-09-19)
+
+**CONFIRM-ROUTE.** Delete zone and Delete room were the last two confirms with dialogs of their
+own. Both are `App.confirmDialog` calls now: app.js's `openDeleteZoneForRect` builds the same
+title, preview line and "Delete N marks" button and awaits the answer (it returns the promise;
+`state.pendingDeleteZone`, the zone-modals.js handlers, the `App.performDeleteZone` publish and
+two Esc-ladder rungs are gone), and features/room-sizer.js's Delete button asks with the room's
+name and its box count, then deletes. `#deleteZoneModal` and `#roomDeleteConfirmModal` left the
+shell (75 modals). Esc and Cancel keep the marks; one undo still brings a delete back. Specs
+drive `#confirmOk` / `#confirmCancel` / `#confirmBody` (zone-modals, rect-drag, duct-b19b,
+room-sizer); build-screenshots' `delete-area` shot clips `#confirmModal`.
+
+**SPEC-TURNIN.** turn-in-self-release.spec.js filled `#preparePdfProjectName`, an id that never
+existed; the field is `#preparePdfName`. Not run green here: the dev-auth test credentials on
+this machine are rejected by Supabase (punch row DEV-AUTH), so the spec self-skips.
+
+**SPEC-DUPES.** The cloud specs' setup saved twice: signed in, Prepare PDF's Save & open already
+creates the cloud project, and the helper then ran Save Project half a second later. The save
+engine picks insert or update on `state.currentProjectId`, which is null until the first insert
+lands, so the second save could insert again: two rows per setup, the first under the PDF's
+default name, identical on every run. `createNamedCloudProject` (cloud-test-helpers.js) names
+the project in Prepare PDF, saves once, and waits on the project id and the green dot;
+indexeddb-backup.spec.js uses it too. Found on the way: the helper still waited for
+`#settingsAdvancedModal`, which the modal pass removed the same day, so on an empty test
+account every cloud spec would have skipped with "Setup failed". It opens the Advanced
+disclosure now. Same caveat as above: not run against the cloud here.
+
+**TELEM-D7.** The day-7 `duct_run` read, recorded in journeys/plans/_INDEX-DUCT.md: 723 events
+from 4 signed-in users since 2026-09-12, zero `duct_run`, zero `bend_fittings_toggle`, zero
+client errors; prod's allowlist carries both events. Nothing to fix forward.
+
+**FILM-HOMERUN.** Verified on the shipped film first: at 0:42 the caption read "The checks,
+computed." over a voltage-drop row saying "Needs a circuit with a panel mark or a homerun".
+The electrical film gains beat 8b: a right-click on the home run, Line Properties, the Homerun
+toggle, Done (the recorder gains `rightClick()`), so the row computes on camera.
+`img/hero-electrical.{mp4,png}` re-rendered.
+
 ## feat(brand): the C-reticle mark and a real tab favicon (2026-09-18)
 
 The tab favicon was an inline data-URI yellow square with nothing on it, repeated in every

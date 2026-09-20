@@ -67,6 +67,33 @@ const VIEWPORT = { width: 1280, height: 800 };   // the app is captured whole at
 const OUT_W = 1920;                              // encoded width (1920×1200: 2x of the 980 px hero)
 const KEEP_FRAMES = process.argv.includes('--keep-frames');
 const FRAMES_ONLY = process.argv.includes('--frames-only');
+// HERO-CHAPTERS: walk the film's script without shooting a frame and write only
+// img/hero-<film>.chapters.json (the frame count is the script's, so the times are exact).
+const CHAPTERS_ONLY = process.argv.includes('--chapters-only');
+// The landing's chapter strip reads these: four chapters per film, each starting at the first
+// caption of its beat (LANDING-REFRESH.md, "The hero chapters"). The second and third words are the
+// trade's: what it counts (fixtures, devices, rooms) and what it runs (pipe, wire, duct).
+// The last is Pricing, not Bid: the film ends at the hand-off, counts sent on for someone to price.
+const CHAPTER_STARTS = {
+  plumbing: [['Scale', '30 sheets.'], ['Fixtures', 'Count.'], ['Pipe', 'Cold in.'], ['Pricing', 'Nothing missed.']],
+  electrical: [['Scale', '30 sheets.'], ['Devices', 'Count.'], ['Wire', 'Name the conduit.'], ['Pricing', 'The wire, derived. The checks, computed.']],
+  hvac: [['Scale', '30 sheets.'], ['Rooms', 'Box the rooms; the plan names them.'], ['Duct', 'Trace the main at 24×12.'], ['Pricing', 'Pounds, not feet.']],
+};
+const BEATS = [];   // every caption with the film time it appears at, in order
+function writeChapters(frames) {
+  const round = (t) => Math.round(t * 100) / 100;
+  const duration = round(frames / FPS);
+  const starts = (CHAPTER_STARTS[FILM] || []).map(([name, text]) => {
+    const b = BEATS.find((x) => x.text === text);
+    if (!b) throw new Error('chapters: no caption "' + text + '" in the ' + FILM + ' film');
+    return { name, start: round(b.t) };
+  });
+  starts[0].start = 0;
+  const chapters = starts.map((c, i) => ({ name: c.name, start: c.start, end: i + 1 < starts.length ? starts[i + 1].start : duration }));
+  const out = { film: FILM, duration, chapters, beats: BEATS.map((b) => ({ t: round(b.t), text: b.text })) };
+  fs.writeFileSync(path.join(OUT_DIR, OUT_NAME + '.chapters.json'), JSON.stringify(out, null, 2) + '\n');
+  console.log('  wrote img/' + OUT_NAME + '.chapters.json (' + chapters.map((c) => c.name + ' ' + c.start).join(' · ') + ' · end ' + duration + ')');
+}
 
 // --- tiny static file server (zero deps; same as build-screenshots) ---------------
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.pdf': 'application/pdf', '.woff2': 'font/woff2', '.ico': 'image/x-icon' };
@@ -149,6 +176,7 @@ class Recorder {
   }
   secs(s) { return Math.max(1, Math.round(s * FPS)); }
   async frame() {
+    if (CHAPTERS_ONLY) { this.n++; if (this.n % 4 === 0) await this.page.waitForTimeout(12); return; }   // no shot, but let the app settle as it would between frames
     await this.page.evaluate(({ cur, clicks, cap, n, fps, keycap }) => window.__hero.update(cur, clicks, cap, n, fps, keycap), { cur: this.cur, clicks: this.clicks, cap: this.cap, n: this.n, fps: FPS, keycap: this.keycap });
     await this.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await this.page.screenshot({ path: path.join(this.dir, 'f_' + String(this.n).padStart(5, '0') + '.jpg'), clip: this.clip, type: 'jpeg', quality: 92 });
@@ -159,6 +187,7 @@ class Recorder {
   caption(trade, text, pos) {
     if (trade && (!this.cap || this.cap.trade !== trade)) this.acts.push({ trade, at: this.n / FPS });
     this.cap = { trade, text, since: this.n, pos: pos || 'bottom' };
+    BEATS.push({ t: this.n / FPS, text });
   }
   async jump(x, y) { this.cur = { x, y }; await this.page.mouse.move(x, y); }
   // A real key press (the app's hotkey handler runs) with a keycap drawn by the cursor.
@@ -190,6 +219,14 @@ class Recorder {
     this.clicks.push({ n: this.n, x: this.cur.x, y: this.cur.y });
     await this.frame();
     await this.page.mouse.up();
+    await this.frame();
+  }
+  // A real right-click (the app's own context menu opens), ringed like a click.
+  async rightClick() {
+    await this.page.mouse.down({ button: 'right' });
+    this.clicks.push({ n: this.n, x: this.cur.x, y: this.cur.y });
+    await this.frame();
+    await this.page.mouse.up({ button: 'right' });
     await this.frame();
   }
   // PDF point → viewport point (the annotation canvas covers the whole sheet from 0,0)
@@ -712,7 +749,22 @@ async function recordElectrical(page, dir, setPdf) {
   await R.moveToPt(CHAIN_SPOTS_E[2], 0.3); await R.click();
   await R.moveToPt(LP1, 0.55); await R.click();
   await page.evaluate(endTool);
-  await R.hold(0.5);
+  await R.hold(0.3);
+
+  // 8b · Flag it (punch row FILM-HOMERUN): right-click the run, Line Properties, Homerun. A
+  //      circuit needs a panel mark or a homerun to know where its panel is, so without this
+  //      the voltage-drop row in beat 9 reads "needs a panel mark or a homerun" on camera.
+  R.caption('', 'Flag it the homerun: the circuit knows its panel.');
+  await R.moveToPt({ x: (CHAIN_SPOTS_E[2].x + LP1.x) / 2, y: (CHAIN_SPOTS_E[2].y + LP1.y) / 2 }, 0.4);
+  await R.rightClick();
+  await page.waitForSelector('#contextMenu.visible', { timeout: 5000 });
+  await R.moveToEl('#ctxLineProperties', 0.35); await R.click();
+  await page.waitForSelector('#linePropertiesModal.visible', { timeout: 5000 });
+  R.cap = null;   // the strip would sit on the dialog's Done button; the toggle's own hint says what it does
+  await R.moveToEl('#linePropertiesHomerunBtn', 0.45); await R.click();
+  await R.hold(0.6);
+  await R.moveToEl('#linePropertiesClose', 0.35); await R.click();
+  await R.hold(0.4);
 
   // 9 · What the drawing knows: the derived wire and the two checks nobody typed.
   R.caption('', 'The wire, derived. The checks, computed.');
@@ -992,7 +1044,7 @@ function ffmpeg(args) {
 
 (async () => {
   if (!fs.existsSync(PLAN)) { console.error('Missing samples/sample-plan.pdf: run `npm run build:sample-plan` first.'); process.exit(1); }
-  if (!FRAMES_ONLY && spawnSync('ffmpeg', ['-version']).status !== 0) { console.error('ffmpeg is needed to encode (brew install ffmpeg), or pass --frames-only.'); process.exit(1); }
+  if (!FRAMES_ONLY && !CHAPTERS_ONLY && spawnSync('ffmpeg', ['-version']).status !== 0) { console.error('ffmpeg is needed to encode (brew install ffmpeg), or pass --frames-only.'); process.exit(1); }
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hero-frames-'));
   const { server, port } = await startServer();
@@ -1037,6 +1089,8 @@ function ffmpeg(args) {
     await browser.close();
     server.close();
   }
+  writeChapters(frames);
+  if (CHAPTERS_ONLY) { fs.rmSync(dir, { recursive: true, force: true }); return; }
   if (FRAMES_ONLY) return;
   const dur = frames / FPS;
   const input = ['-framerate', String(FPS), '-i', path.join(dir, 'f_%05d.jpg')];

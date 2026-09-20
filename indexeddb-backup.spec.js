@@ -4,7 +4,7 @@
  * Requires Supabase + dev auth; run with: npm run test:indexeddb-backup
  */
 const { test, expect } = require('@playwright/test');
-const { ensureSignedInWithProject } = require('./cloud-test-helpers');
+const { ensureSignedInWithProject, createNamedCloudProject } = require('./cloud-test-helpers');
 
 let cloudSetup = { ok: false, skipReason: '' };
 
@@ -16,19 +16,8 @@ async function loadProjectWithPdfAndAddCounter(page) {
   await page.locator('#settingsAdvancedBtn').click();
   await page.waitForSelector('#advancedLoadTestPdf', { state: 'visible', timeout: 5000 });   // Advanced is a disclosure in Project Settings now
   await page.locator('#advancedLoadTestPdf').click();
-  await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
-  await page.locator('#preparePdfSaveAndOpen').click();
-  await page.waitForSelector('body.has-pdf', { timeout: 15000 });
-  await page.waitForTimeout(500);
-
-  await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());
-  await page.waitForSelector('#settingsModal.visible', { timeout: 3000 });
-  await page.locator('#settingsSaveProject').click();
-  await page.waitForSelector('#saveProjectModal.visible', { timeout: 5000 });
-  await page.locator('#saveProjectName').fill('IndexedDB Test ' + Date.now());
-  await page.locator('#saveProjectDo').click();
-  await expect(page.locator('#saveProjectModal')).not.toHaveClass(/visible/, { timeout: 5000 });
-  await page.waitForSelector('#statusBarDot.dot-green', { timeout: 30000 });
+  // SPEC-DUPES: one save, named in Prepare PDF (see cloud-test-helpers.js).
+  await createNamedCloudProject(page, 'IndexedDB Test ' + Date.now());
 
   await page.waitForTimeout(500);
 

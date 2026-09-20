@@ -49,14 +49,21 @@
   estimator would do) and encodes `img/hero-<film>.{mp4,png}` with ffmpeg (the PNG is the
   poster; plumbing's is the SEO spec's `img.hero-shot`). Manual, like `build:screenshots`.
   `index.html`'s trade chips are the selector: the pressed chip is the film selected, the lit
-  one is playing, a click swaps the film in place, and with no click the three play in turn.
+  one is playing, a click swaps the film in place. A film plays ONCE and holds on its finished
+  takeoff (the still under the video is its last frame). **The hero chapters** are a two-line bar
+  under the film: a question the film's own clock answers, and four chapters (Scale, what the
+  trade counts, what it runs, Pricing) as a rail that fills in turn and seeks on click, each
+  naming its seconds. It reads `img/hero-<film>.chapters.json`, which the generator writes
+  (`--chapters-only` re-times a film in about a minute without rendering it; `CHAPTER_STARTS`
+  names the chapters). Change a film's captions or beats and re-run it, or the bar drifts from
+  the footage (landing-trade.spec.js compares each file to its mp4's length).
   Gotchas for the generator (the toast timers, the stroke key, the real dialog selectors) are
   in [journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md).
 - **The Modal Gallery (developer view)**: `/app/?gallery=1` lays every modal in the shell out on
   one page in the app's own markup and CSS (features/modal-gallery.js, injected by the boot only on
   that param, never a shell script tag, never precached), with Populate (the real openers), Open
   live (the fixed backdrop), Load sample, Reload CSS (cache-busted past the service worker) and a
-  375px Mobile embed. Use it to judge a styles.css change across all ~78 dialogs at once.
+  375px Mobile embed. Use it to judge a styles.css change across all ~75 dialogs at once.
   `npm run build:modal-gallery` (scripts/build-modal-gallery.js) shoots the contact sheet, one PNG
   per tile at both widths, into `contact-sheet/`; `--baseline <dir>` makes a
   before/after. Manual, like `build:screenshots`. Detail: ARCHITECTURE.md Files table.

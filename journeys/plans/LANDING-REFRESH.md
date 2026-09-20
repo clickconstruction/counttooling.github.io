@@ -187,6 +187,15 @@ and the "Opened TakeoffTooling with N rows" toast is pinned for the last frame. 
 camera: the scale preset, the trade, the 10 ft ceiling and 1 ft make-up (project settings), and
 the Groups gate; the switch and troffer colours are set after the Quick tab adds them.
 
+**Electrical, second cut, 2026-09-19, 52.6 s (punch row FILM-HOMERUN, closed).** The first cut
+drew the home run but never flagged it, so at 0:42 the caption said "The checks, computed."
+over a voltage-drop row reading "Needs a circuit with a panel mark or a homerun". Beat 8b now
+does what an estimator does: a right-click on the home run, Line Properties, the Homerun
+toggle, Done (the recorder gained `rightClick()`; the caption strip is cleared while the dialog
+is up, because it sat on the Done button). The run draws its arrow into LP-1 and the row reads
+"LP-1/7 · 57 ft · 12 A · #12 2.3% ✓ (at 120 V)". The film is 2.7 s longer, which the hero
+chapters' "Fifty seconds" answer has to follow (see "Still open" there).
+
 **HVAC, first cut, 2026-09-17, "Pounds, not feet" on A-101, 49.8 s, 3.4 MB, `img/hero-hvac.{mp4,png}`
 (`npm run build:hero-video -- --film hvac`).** Same spine, on camera. Prepare keeps A-101, M-101
 and M-201; the scale is proved on the 24'-0" bay. `V` arms the Room Sizer and three drags box
@@ -601,15 +610,58 @@ change to the three trade cards.
 
 ## The hero chapters (plan of record, 2026-09-19)
 
+> **BUILT 2026-09-19 (punch row HERO-CHAPTERS, closed), and it differs from the plan below in
+> five places, all Will's calls on the real page.** Read this block first; the sections under
+> it are the record of how the idea got here.
+>
+> 1. **Under the film, not over it.** A bar attached beneath the frame on its own surface
+>    (`.hero-frame` holds the still and the video; `#heroChapters` follows it). Over the film the
+>    strip covered about 30% of the frame on desktop and two thirds on a phone, and sat on the
+>    app's footer and the hand-off toast. Below it nothing is covered, so the films need no
+>    footer beats moved.
+> 2. **Two lines.** The question with the clock, then the rail. The live beat line went: it
+>    repeated the film's own caption pill. **So the films keep their baked captions, and no
+>    re-render is owed for this feature.** The fade-out needs none either: the page keeps the
+>    still (the film's unfaded last frame) under the video and cross-fades the video out at
+>    `duration - 0.5`, so the hold is the finished takeoff, never black.
+> 3. **The words are Scale, then what the trade counts, then what it runs, then Pricing.**
+>    Fixtures · Pipe, Devices · Wire, Rooms · Duct. "Bid" overclaimed: the film ends at the
+>    hand-off, counts sent on for someone else to price. The answer reads "Forty-three seconds,
+>    from start to sent for pricing." and the number is `Math.round(duration)` from the chapters
+>    file, never copy (electrical is fifty-three since FILM-HOMERUN).
+> 4. **Each chapter names its own length** ("Fixtures 7s"), centred under its track, rounded by
+>    largest remainder so the four add up to the stated length. The running stamps went; the
+>    clock carries the running time.
+> 5. **The end row sits over the held frame** (Play again, the other two films with their
+>    lengths), the usual end-of-video idiom, so the bar never changes height (the phone reserves
+>    two question lines for the same reason).
+>
+> **The data.** `npm run build:hero-video -- --film <f> --chapters-only` walks the film's script
+> without shooting a frame and writes `img/hero-<film>.chapters.json` (`duration`, four
+> `chapters`, every caption as `beats`); a normal render writes it too. `CHAPTER_STARTS` in the
+> generator names each chapter and the caption it starts at. The landing fetches the file; if it
+> cannot, the bar stays hidden and the film plays as before. Pinned by landing-trade.spec.js
+> (real playback: seek, answer, hold, Play again, Next takeoff, the under-the-film geometry, the
+> seconds adding up, each file matching its mp4's length) and landing-assets.test.js.
+>
+> **Open, found on the way (punch row FILM-FIXTURES).** The plumbing film says "Nothing missed."
+> and misses four fixtures the sheet draws: the lavatory in MEN 102 and in WOMEN 103, and the two
+> floor sinks (in front of PREP, and by the clean table in DISH). Fixing it is new counters in
+> `recordPlumbing` and a plumbing re-render; the bar follows the new length by itself.
+
 **Where this came from.** Robert and Claude, 2026-09-19, after the modal polish and the
 asset refresh. The three hero films carry their beats as a caption pill baked into the
 frames ("Hangers, from the rulebook."). The idea: replace the pill with a strip the page
 draws over the film, so a visitor can follow along, and use it to make the app's value
 plain: ask how long the takeoff takes, and let a clock answer.
 
-**The mock, on the real plumbing film:** https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup
-(private; ask Robert to share it). Every decision below is a toggle on that page, so the
-next person can see each one against the footage rather than read about it.
+**The mock, on the real plumbing film:** [hero-chapters.html](hero-chapters.html), in this
+folder, committed so anyone can run it: `npx serve -l 3456` at the repo root, then open
+`http://localhost:3456/journeys/plans/hero-chapters.html`. It plays `/img/hero-plumbing.mp4`.
+Every decision below is a toggle on that page (Words, trade chips, the last word, placement,
+the three looks, the question on/off), so the next person can see each one against the
+footage rather than read about it. The same page is also published privately at
+https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup (ask Robert to share it).
 
 ### Decided
 
@@ -641,11 +693,24 @@ next person can see each one against the footage rather than read about it.
    seconds, start to bid."; electrical "…to wire an office suite?" → "Fifty seconds…";
    HVAC "…to duct an office suite?" → "Fifty seconds…". Wording still open, see below.
 5. **The film holds on its end screen.** No loop, no auto-advance to the next trade
-   (today the three films play in turn unprompted). The last frame stays (the finished
-   takeoff with the hand-off toast); the strip holds the answer and the four stamped
+   (today the three films play in turn unprompted). The finished takeoff stays on screen
+   (the hand-off toast, the tallies); the strip holds the answer and the four stamped
    times; the live-beat line becomes an end row: a yellow **Play again** and two pills,
    "Electrical, 50 s" and "HVAC, 50 s", which are the chips by another name. The chips
    themselves keep working as they do now. Reduced-motion readers keep the still.
+
+**The fade-out, found while building the prototype (2026-09-19).** The encode fades every
+film to black over its last 0.45 s (`scripts/build-hero-video.js`, the `vf` chain:
+`fade=t=out:st=${dur - 0.45}:d=0.45`). That exists to make the old loop seamless. Now that
+the film HOLDS at the end, stopping on the true last frame holds on **black**, which is the
+one thing the end screen must not do. Two ways out, do the second:
+
+1. The prototype pauses at `duration - 0.5`, just before the fade starts, and shows the
+   clock as the film's full length (the half second skipped is a fade, not work). This
+   works against today's mp4s with no re-render.
+2. **When the films are next rendered for this feature, drop the fade-out** (keep the
+   fade-in). Then the hold is simply the last frame and `HOLD` becomes `DUR`. The films
+   are being re-rendered anyway to remove the caption pill, so this is the same pass.
 
 ### Still open
 
@@ -659,6 +724,10 @@ next person can see each one against the footage rather than read about it.
   three sheets kept from thirty, the scale proved, twelve fixtures, two runs with
   hangers and a riser, the check, the hand-off. "How long does it take to count these
   plans?" is the safer question. The answer must stay as specific as the film.
+- **The electrical answer's number.** The electrical film is 52.6 s since the FILM-HOMERUN
+  beat (2026-09-19), not ~50. "Fifty seconds, start to bid." and the "Electrical, 50 s" pill
+  are no longer as specific as the film; take the number from the chapters array's last
+  `end` rather than from copy, so the next re-render cannot make it wrong again.
 - **Where the question lives.** In the strip (as mocked, so the answer lands where the
   clock stops), or as the page headline above the film with only the clock in the strip
   (readable before the film scrolls into view, at the cost of repetition).

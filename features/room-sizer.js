@@ -5,7 +5,7 @@
  *
  * Owns: the Room Box modal (#roomBoxModal: create + edit, recent-height chips,
  * room choose/create), the Room edit modal (#roomEditModal: rename/recolor +
- * delete via #roomDeleteConfirmModal), the Rooms sidebar section
+ * delete via App.confirmDialog), the Rooms sidebar section
  * (#roomsSection), and the totals computation (getRoomVolumeTotals) consumed
  * by report.js. The drawing tool itself (TOOL.ROOM two-corner click path,
  * rubber-band preview, committed-box rendering, hit testing) stays in app.js
@@ -649,28 +649,26 @@
     App.renderAnnotations();
     App.updateUI();
   };
-  document.getElementById('roomEditDelete').onclick = () => {
+  // CONFIRM-ROUTE (2026-09-19): the app's one confirm; Esc and Cancel resolve
+  // false and leave the room alone.
+  document.getElementById('roomEditDelete').onclick = async () => {
     if (!editingRoom) return;
+    const room = editingRoom;
     let count = 0;
     (App.state.pages || []).forEach(p => App.getPageCanvases(p).forEach(c => {
-      count += (c.annotations?.roomBoxes || []).filter(b => b.roomId === editingRoom.id).length;
+      count += (c.annotations?.roomBoxes || []).filter(b => b.roomId === room.id).length;
     }));
-    document.getElementById('roomDeleteName').textContent = editingRoom.name || 'this room';
-    document.getElementById('roomDeleteConfirmText').textContent = count
-      ? 'Its ' + count + (count === 1 ? ' box' : ' boxes') + ' on the plan go with it. The counters and lines inside stay. Undo brings it back.'
-      : 'It has no boxes on the plan yet. Undo brings it back.';
+    editingRoom = null;
     App.hideModal('roomEditModal');
-    App.showModal('roomDeleteConfirmModal');
-  };
-  document.getElementById('roomDeleteCancel').onclick = () => {
-    editingRoom = null;
-    App.hideModal('roomDeleteConfirmModal');
-  };
-  document.getElementById('roomDeleteConfirm').onclick = () => {
-    const room = editingRoom;
-    editingRoom = null;
-    App.hideModal('roomDeleteConfirmModal');
-    if (!room) return;
+    const ok = await App.confirmDialog({
+      title: 'Delete ' + (room.name || 'this room') + '?',
+      body: count
+        ? 'Its ' + count + (count === 1 ? ' box' : ' boxes') + ' on the plan go with it. The counters and lines inside stay. Undo brings it back.'
+        : 'It has no boxes on the plan yet. Undo brings it back.',
+      confirmLabel: 'Delete room',
+      danger: true,
+    });
+    if (!ok) return;
     App.pushUndoSnapshot();
     (App.state.pages || []).forEach(p => App.getPageCanvases(p).forEach(c => {
       const arr = c.annotations?.roomBoxes;

@@ -56,33 +56,16 @@ async function ensureSignedInWithProject(page) {
   await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());
   await page.waitForSelector('#settingsModal.visible', { timeout: 3000 });
 
-  // Open the Advanced modal and click Load test PDF
+  // Advanced is a disclosure in Project Settings (2026-09-19; #settingsAdvancedModal is gone).
   await page.locator('#settingsAdvancedBtn').click();
-  await page.waitForSelector('#settingsAdvancedModal.visible', { timeout: 5000 });
+  await page.waitForSelector('#advancedLoadTestPdf', { state: 'visible', timeout: 5000 });
   await page.locator('#advancedLoadTestPdf').click();
 
-  // Wait for Prepare PDF modal and click Save and Open
-  await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
-  await page.locator('#preparePdfSaveAndOpen').click();
-
-  // Wait for PDF to load (pages in sidebar)
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
-  await page.waitForTimeout(500);
-
-  // Open settings and Save Project to Cloud
-  await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());
-  await page.waitForSelector('#settingsModal.visible', { timeout: 3000 });
-  await page.locator('#settingsSaveProject').click();
-
-  // Save Project modal
-  await page.waitForSelector('#saveProjectModal.visible', { timeout: 5000 });
-  const projectName = 'Test Project ' + Date.now();
-  await page.locator('#saveProjectName').fill(projectName);
-  await page.locator('#saveProjectDo').click();
-
-  // Wait for save to complete (modal closes, then status bar shows synced)
-  await page.waitForSelector('#saveProjectModal:not(.visible)', { timeout: 3000 });
-  await page.waitForSelector('#statusBarDot.dot-green', { timeout: 30000 });
+  // SPEC-DUPES: ONE save. Signed in, Prepare PDF's Save & open already creates the cloud
+  // project, so the name goes in here; a second Save Project raced that insert (it keys on
+  // state.currentProjectId, which is null until the first save lands) and left two rows per
+  // setup, the first under the PDF's default name, identical on every run.
+  await createNamedCloudProject(page, 'Test Project ' + Date.now());
 
   return { ok: true };
   } catch (e) {
@@ -90,4 +73,19 @@ async function ensureSignedInWithProject(page) {
   }
 }
 
-module.exports = { ensureSignedInWithProject };
+/**
+ * From the open Prepare PDF modal: name the project, Save & open, and wait for
+ * the one cloud row to exist and sync (the project id, then the green dot).
+ * @param {import('@playwright/test').Page} page
+ * @param {string} name
+ */
+async function createNamedCloudProject(page, name) {
+  await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
+  await page.locator('#preparePdfName').fill(name);
+  await page.locator('#preparePdfSaveAndOpen').click();
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+  await page.waitForFunction(() => !!window.state.currentProjectId, null, { timeout: 30000 });
+  await page.waitForSelector('#statusBarDot.dot-green', { timeout: 30000 });
+}
+
+module.exports = { ensureSignedInWithProject, createNamedCloudProject };

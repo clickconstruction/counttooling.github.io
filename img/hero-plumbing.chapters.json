@@ -1,0 +1,72 @@
+{
+  "film": "plumbing",
+  "duration": 43,
+  "chapters": [
+    {
+      "name": "Scale",
+      "start": 0,
+      "end": 7.25
+    },
+    {
+      "name": "Fixtures",
+      "start": 7.25,
+      "end": 14.08
+    },
+    {
+      "name": "Pipe",
+      "start": 14.08,
+      "end": 36.96
+    },
+    {
+      "name": "Pricing",
+      "start": 36.96,
+      "end": 43
+    }
+  ],
+  "beats": [
+    {
+      "t": 0,
+      "text": "30 sheets."
+    },
+    {
+      "t": 1.17,
+      "text": "30 sheets. Keep 3."
+    },
+    {
+      "t": 2.71,
+      "text": "Main St Restaurant, P-101"
+    },
+    {
+      "t": 3.92,
+      "text": "Prove the scale."
+    },
+    {
+      "t": 7.25,
+      "text": "Count."
+    },
+    {
+      "t": 14.08,
+      "text": "Cold in."
+    },
+    {
+      "t": 20.71,
+      "text": "Hangers, from the rulebook."
+    },
+    {
+      "t": 23.71,
+      "text": "Hot back."
+    },
+    {
+      "t": 34.33,
+      "text": "Rise."
+    },
+    {
+      "t": 36.96,
+      "text": "Nothing missed."
+    },
+    {
+      "t": 42,
+      "text": "Done."
+    }
+  ]
+}

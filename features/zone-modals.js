@@ -1,12 +1,13 @@
 /*
  * features/zone-modals.js - the zone & page-action modal handlers, extracted
  * from the app.js IIFE as the twenty-ninth feature-file split under the
- * window.App registry pattern. Three confirm/value modals' handlers move
+ * window.App registry pattern. Two confirm/value modals' handlers move
  * together: the Multiply Zone value modal (`#multiplyZoneModal`: cancel +
  * multiplier input sync + the deferred Apply that creates a zone or commits a
- * context-menu edit), the Delete Zone confirm (`#deleteZoneModal`: cancel +
- * confirm -> App.performDeleteZone), and the Delete Page confirm
+ * context-menu edit) and the Delete Page confirm
  * (`#deletePageConfirmModal`: cancel + confirm -> the pending onDelete).
+ * The Delete Zone confirm lived here until CONFIRM-ROUTE (2026-09-19); it is
+ * App.confirmDialog now, awaited by app.js's openDeleteZoneForRect.
  *
  * Loaded as a classic <script src="/features/zone-modals.js"> AFTER app.js.
  * Its own IIFE: it reaches the cross-cutting state + helpers through the
@@ -14,11 +15,10 @@
  * features/output.js it registers NO entry points, because every handler
  * moves with its DOM element and all the pending state
  * (state.pendingMultiplyZone / pendingMultiplyZoneEdit /
- * pendingMultiplyZoneValue / pendingDeleteZone / pendingDeletePage) lives on
+ * pendingMultiplyZoneValue / pendingDeletePage) lives on
  * the shared `state` object, written by the canvas click handlers and page
  * rows that stay in app.js (the Grid-split pattern: state flags need no
- * callbacks). One new publish-only dep: App.performDeleteZone (the heavy
- * zone-deletion mutation stays in app.js).
+ * callbacks).
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -31,19 +31,6 @@
     state.multiplyZoneStart = null;
     state.pendingMultiplyZone = null;
     state.pendingMultiplyZoneEdit = null;
-  };
-  document.getElementById('deleteZoneCancel').onclick = () => {
-    App.hideModal('deleteZoneModal');
-    App.state.pendingDeleteZone = null;
-  };
-  document.getElementById('deleteZoneConfirm').onclick = () => {
-    const state = App.state;
-    const pending = state.pendingDeleteZone;
-    App.hideModal('deleteZoneModal');
-    state.pendingDeleteZone = null;
-    if (pending?.ann && pending?.collected) {
-      App.performDeleteZone(pending.ann, pending.collected);
-    }
   };
   (() => {
     const inputEl = document.getElementById('multiplyZoneMultiplier');

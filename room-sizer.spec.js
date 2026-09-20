@@ -172,9 +172,10 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     });
     await expect(page.locator('#roomEditModal')).toHaveClass(/visible/);
     await page.evaluate(() => document.getElementById('roomEditDelete').click());
-    await expect(page.locator('#roomDeleteConfirmModal')).toHaveClass(/visible/);
-    await expect(page.locator('#roomDeleteConfirmText')).toContainText('2 boxes');   // 2026-09-19: the confirm names the room in its title and counts the boxes
-    await page.evaluate(() => document.getElementById('roomDeleteConfirm').click());
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmBody')).toContainText('2 boxes');   // 2026-09-19: the confirm names the room in its title and counts the boxes
+    await expect(page.locator('#confirmTitle')).toContainText('Delete ');
+    await page.locator('#confirmOk').click();
     await page.waitForFunction(() =>
       window.state.rooms.length === 0
       && (window.App.getActiveAnnotations(window.state.pages[0]).roomBoxes || []).length === 0);

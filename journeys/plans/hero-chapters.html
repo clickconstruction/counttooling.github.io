@@ -8,8 +8,12 @@
       npx serve -l 3456
       http://localhost:3456/journeys/plans/hero-chapters.html
 
-  Nothing here ships. The landing build lifts the chosen pieces (chapter cards, over the
-  film, the question and clock, hold at the end) into index.html's hero block. Kept as
+  Nothing here ships. BUILT 2026-09-19: index.html's hero block now carries the feature, and
+  it moved on from this page on the real one (a two-line bar UNDER the film, Pricing for Bid,
+  the trade's own counting word, seconds per chapter; LANDING-REFRESH.md's BUILT block lists
+  each). This page stays as the record of the looks that were weighed. Since the build it
+  plays all THREE real films and reads each one's measured chapters and beats from
+  /img/hero-<film>.chapters.json, so the trade chips swap the footage, not just the words. Kept as
   one self-contained HTML file on purpose: no build, no dependencies beyond Google Fonts.
 -->
 <title>Hero Chapters</title>
@@ -238,7 +242,7 @@
   <section class="intro">
     <div class="eyebrow">Landing hero · Scale → Count → Pipe → Bid · over the film · the question and the clock</div>
     <h1>How long does it take to count a restaurant?</h1>
-    <p>The segments now answer a question. A line over the film asks it, a stopwatch counts up beside it in real time, each chapter stamps the clock as it finishes, and when the film ends the question resolves into the answer: forty-three seconds, start to bid. <b>The Question toggle turns the line and the clock on and off; the Style row still swaps the three looks; the trade chips change the question and the third word.</b> The film is untouched; everything drawn is an HTML layer on the video's clock, which is how it would ship.</p>
+    <p>The segments now answer a question. A line over the film asks it, a stopwatch counts up beside it in real time, each chapter stamps the clock as it finishes, and when the film ends the question resolves into the answer: forty-three seconds, start to bid. <b>The Question toggle turns the line and the clock on and off; the Style row still swaps the three looks; the trade chips swap the film itself, with its question, its third word and its measured chapters (img/hero-&lt;film&gt;.chapters.json, written by the generator).</b> The film is untouched; everything drawn is an HTML layer on the video's clock, which is how it would ship.</p>
   </section>
 
   <div class="stage">
@@ -388,14 +392,24 @@
 
 <script>
 (function () {
-  const BEATS = [[0, '30 sheets.'], [1.6, '30 sheets. Keep 3.'], [4.4, 'Main St Restaurant, P-101'], [7.2, 'Prove the scale.'], [10, 'Count.'], [12.5, 'Quick Count with the number row.'], [16, 'Cold in.'], [21, 'Hangers, from the rulebook.'], [24, 'Hot back.'], [29, 'Rise.'], [32, 'Nothing missed.'], [37, 'Copy to PipeTooling.'], [41, 'Done.']];
+  // Fallback only: the real beats, boundaries and lengths load from /img/hero-<film>.chapters.json
+  // (npm run build:hero-video -- --film <f> --chapters-only), so the mock cannot drift from the footage.
+  let BEATS = [[0, '30 sheets.'], [1.6, '30 sheets. Keep 3.'], [4.4, 'Main St Restaurant, P-101'], [7.2, 'Prove the scale.'], [10, 'Count.'], [12.5, 'Quick Count with the number row.'], [16, 'Cold in.'], [21, 'Hangers, from the rulebook.'], [24, 'Hot back.'], [29, 'Rise.'], [32, 'Nothing missed.'], [37, 'Copy to PipeTooling.'], [41, 'Done.']];
   const THIRD = { plumbing: 'Pipe', electrical: 'Wire', hvac: 'Duct' };
   const ASK = { plumbing: ['How long does it take to count a restaurant?', 'Forty-three seconds, start to bid.'], electrical: ['How long does it take to wire an office suite?', 'Fifty seconds, start to bid.'], hvac: ['How long does it take to duct an office suite?', 'Fifty seconds, start to bid.'] };
+  const LABEL = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
+  const SHEET = { plumbing: 'Kitchen, Tuesday · P-101', electrical: 'Circuit 7 · A-101', hvac: 'Pounds, not feet · A-101' };
+  const FILMS = {};   // trade -> the generator's { duration, chapters, beats }
+  const ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], TENS = { 3: 'Thirty', 4: 'Forty', 5: 'Fifty', 6: 'Sixty' };
+  const spell = (n) => { const t = Math.floor(n / 10), o = n % 10; return TENS[t] ? TENS[t] + (o ? '-' + ONES[o] : '') : String(n); };
+  // The four boundaries of the film on screen: the generator's when loaded, the eyeballed plumbing ones until then.
+  const cuts = () => { const f = FILMS[trade]; return f ? f.chapters.map((c) => c.start).concat(f.duration) : [0, 10, 16, 32, 43]; };
+  const sheetsEnd = () => { const f = FILMS[trade], b = f && f.beats.find((x) => x.text === 'Prove the scale.'); return b ? b.t : 4.4; };
   let trade = 'plumbing', last = 'Bid', setId = '2';
   const SETS = {
-    '2': () => [{ name: 'Scale', start: 0, end: 10 }, { name: 'Count', start: 10, end: 16 }, { name: THIRD[trade], start: 16, end: 32 }, { name: last, start: 32, end: 43 }],
-    '3': () => [{ name: 'Set up', start: 0, end: 10 }, { name: 'Mark', start: 10, end: 16 }, { name: 'Run', start: 16, end: 32 }, { name: 'Prove', start: 32, end: 43 }],
-    '4': () => [{ name: 'Sheets', start: 0, end: 4.4 }, { name: 'Scale', start: 4.4, end: 10 }, { name: 'Marks', start: 10, end: 16 }, { name: 'Lines', start: 16, end: 32 }, { name: 'Proof', start: 32, end: 43 }],
+    '2': () => { const k = cuts(); return ['Scale', 'Count', THIRD[trade], last].map((name, i) => ({ name, start: k[i], end: k[i + 1] })); },
+    '3': () => { const k = cuts(); return ['Set up', 'Mark', 'Run', 'Prove'].map((name, i) => ({ name, start: k[i], end: k[i + 1] })); },
+    '4': () => { const k = cuts(), s = sheetsEnd(); return [{ name: 'Sheets', start: 0, end: s }, { name: 'Scale', start: s, end: k[1] }, { name: 'Marks', start: k[1], end: k[2] }, { name: 'Lines', start: k[2], end: k[3] }, { name: 'Proof', start: k[3], end: k[4] }]; },
   };
   // the app's own tool glyphs, one per chapter (stroke icons, 24-box)
   const G = (d) => `<svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
@@ -418,7 +432,7 @@
     _: G('<circle cx="12" cy="12" r="8"/>'),
   };
   let CH = SETS[setId]();
-  const DUR = 43;
+  let DUR = 43;
   // The encode fades every film to black over its last 0.45 s
   // (scripts/build-hero-video.js: fade=t=out:st=dur-0.45:d=0.45), which exists to make
   // the old loop seamless. Since the film now HOLDS at the end, stopping on the true
@@ -426,7 +440,7 @@
   // the finished takeoff; the clock still reads the film's full length, because the
   // half second we skip is a fade, not work. If the films are re-rendered without the
   // fade-out (recommended, see LANDING-REFRESH.md), HOLD can simply become DUR.
-  const HOLD = DUR - 0.5;
+  let HOLD = DUR - 0.5;
   const v = document.getElementById('film');
   const fmt = (t) => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
   const chapterAt = (t) => CH.findIndex((c) => t >= c.start && t < c.end) === -1 ? CH.length - 1 : CH.findIndex((c) => t >= c.start && t < c.end);
@@ -441,13 +455,30 @@
     ['#ovA .track', '#ovCbar .track', '#ovD'].forEach((sel) => { const el = document.querySelector(sel); el.querySelectorAll('b').forEach((b) => b.remove()); CH.slice(1).forEach((c) => { const b = document.createElement('b'); b.style.left = (c.start / DUR * 100) + '%'; el.appendChild(b); }); });
     document.getElementById('segRow').innerHTML = CH.map((c, i) => `<button type="button" data-i="${i}" aria-label="Jump to ${c.name}"><div class="tr"><i></i></div><div class="nm" data-n="${i + 1}">${GLYPH[c.name] || GLYPH._}<span>${c.name}</span><small>${Math.round(c.end - c.start)}s</small></div></button>`).join('');
     document.getElementById('railList').innerHTML = CH.map((c) => `<div class="ch"><i></i><div><div class="nm">${c.name}</div><div class="bt"></div></div></div>`).join('');
-    document.getElementById('tradeChips').classList.toggle('off', setId !== '2');
-    document.getElementById('askQ').textContent = ASK[trade][0]; document.getElementById('askA').textContent = ASK[trade][1];
+    document.getElementById('askQ').textContent = ASK[trade][0];
+    document.getElementById('askA').textContent = FILMS[trade] ? spell(Math.round(DUR)) + ' seconds, start to bid.' : ASK[trade][1];
+    document.querySelector('[data-set="2"]').textContent = '2 · Scale → Count → ' + THIRD[trade] + ' → ' + last;
+    document.querySelector('#ovC .h').textContent = SHEET[trade];
+    document.querySelector('#ovC .foot span:last-child').textContent = fmt(DUR);
+    const others = Object.keys(LABEL).filter((k) => k !== trade);
+    document.querySelectorAll('#segEnd .nxt').forEach((b, i) => { const k = others[i]; b.dataset.next = k; b.textContent = LABEL[k] + ', ' + (FILMS[k] ? Math.round(FILMS[k].duration) : 50) + ' s'; });
     document.getElementById('lastWord').classList.toggle('off', setId !== '2');
     render();
   }
   document.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => { setId = b.dataset.set; document.querySelectorAll('[data-set]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); build(); }));
-  document.querySelectorAll('[data-trade]').forEach((b) => b.addEventListener('click', () => { trade = b.dataset.trade; document.querySelectorAll('[data-trade]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); build(); }));
+  // The chips swap the FILM, not just the words: its mp4, its poster, its measured chapters and beats.
+  function setFilm(k, play) {
+    trade = k;
+    document.querySelectorAll('[data-trade]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.trade === k)));
+    const f = FILMS[k];
+    if (f) { DUR = f.duration; HOLD = DUR - 0.5; BEATS = f.beats.map((b) => [b.t, b.text]); }
+    const src = '/img/hero-' + k + '.mp4';
+    if (!v.src.endsWith(src)) { v.poster = '/img/hero-' + k + '.png'; v.src = src; }
+    const segs = document.getElementById('ovB'); segs.classList.remove('ended', 'answered');
+    build();
+    if (play) { v.currentTime = 0; v.play().catch(() => {}); }
+  }
+  document.querySelectorAll('[data-trade]').forEach((b) => b.addEventListener('click', () => setFilm(b.dataset.trade, true)));
   document.querySelectorAll('[data-last]').forEach((b) => b.addEventListener('click', () => { last = b.dataset.last; document.querySelectorAll('[data-last]').forEach((x) => x.setAttribute('aria-pressed', String(x === b))); build(); }));
 
   function render() {
@@ -496,6 +527,8 @@
   let opt = 'B'; try { opt = localStorage.getItem('hero-chapters-opt') || 'B'; } catch (_) {}
   show(opt);
   build();
+  Promise.all(Object.keys(LABEL).map((k) => fetch('/img/hero-' + k + '.chapters.json').then((r) => r.json()).then((j) => { FILMS[k] = j; }).catch(() => {})))
+    .then(() => { const q = new URLSearchParams(location.search).get('trade'); setFilm(LABEL[q] ? q : trade, false); });
   document.getElementById('segRow').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; v.currentTime = CH[+b.dataset.i].start + 0.05; v.play(); });
   const frame = document.querySelector('.frame'), below = document.getElementById('ovA').parentElement;
   function place(where) {
@@ -522,7 +555,7 @@
   v.addEventListener('ended', holdAtEnd);
   v.addEventListener('play', () => { segsEl.classList.remove('ended'); });
   document.getElementById('again').onclick = () => { segsEl.classList.remove('ended', 'answered'); v.currentTime = 0; v.play(); };
-  document.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => { segsEl.classList.remove('ended', 'answered'); document.querySelector(`[data-trade="${b.dataset.next}"]`).click(); v.currentTime = 0; v.play(); }));
+  document.querySelectorAll('#segEnd .nxt').forEach((b) => b.addEventListener('click', () => setFilm(b.dataset.next, true)));
   v.addEventListener('play', () => { pp.textContent = 'Pause'; });
   v.addEventListener('pause', () => { pp.textContent = 'Play'; });
 })();

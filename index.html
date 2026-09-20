@@ -102,26 +102,50 @@
         </div>
         <p class="hero-phone">New here? Call <a href="tel:+15123600599">(512) 360-0599</a> to get set up.</p>
         <!-- The chips pick which trade's film plays in the hero right under them: the lit one is playing,
-             a click swaps the film in place, and with no click the three play in turn. -->
+             a click swaps the film in place. The film plays once and holds on its finished takeoff. -->
         <div class="trade-chips" role="group" aria-label="Which trade's takeoff plays below">
           <button type="button" class="chip" data-trade="plumbing" data-film="/img/hero-plumbing" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5C8.2 7.6 5 11.4 5 15a7 7 0 0 0 14 0c0-3.6-3.2-7.4-7-12.5z"/></svg>Plumbing</button>
           <button type="button" class="chip" data-trade="electrical" data-film="/img/hero-electrical" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>Electrical</button>
           <button type="button" class="chip" data-trade="hvac" data-film="/img/hero-hvac" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path class="stroke" d="M3 8h9.5a2.5 2.5 0 1 0-2.5-2.5M3 12h13.5a2.5 2.5 0 1 1-2.5 2.5M3 16h7.5a2 2 0 1 1-2 2"/></svg>HVAC</button>
         </div>
         <div class="hero-media" id="heroMedia">
+          <div class="hero-frame">
           <img class="hero-shot" src="/img/hero-plumbing.png" width="1920" height="1200" alt="CountTooling in use: a plumbing takeoff on a restaurant plan, the fixtures counted and the cold and hot water traced over the sheet's own lines, with the tallies and hanger rows in the sidebar.">
           <video class="hero-video" muted playsinline preload="none" poster="/img/hero-plumbing.png" aria-hidden="true" tabindex="-1">
             <source src="/img/hero-plumbing.mp4" type="video/mp4">
           </video>
+          <!-- The end screen: over the held frame once the film has played, the usual end-of-video
+               idiom, so the bar below never changes height. -->
+          <div class="hc-end" id="hcEnd" hidden>
+            <button type="button" class="hc-again" id="hcAgain"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Play again</button>
+            <span class="hc-next-label">Next takeoff</span>
+            <button type="button" class="hc-next"></button>
+            <button type="button" class="hc-next"></button>
+          </div>
+          </div>
+          <!-- The hero chapters (LANDING-REFRESH.md): a bar under the film, two lines. A question the
+               film's own clock answers, and the four chapters as a rail that fills in turn and seeks on
+               click. The beats stay in the film's own caption. Filled by the script below from /img/hero-<film>.chapters.json,
+               which the film generator writes; it stays hidden if that file cannot be read. -->
+          <div class="hero-chapters" id="heroChapters" hidden>
+            <div class="hc-ask">
+              <p class="hc-q"><span class="hc-ask-q" id="hcQ"></span><span class="hc-a" id="hcA"></span></p>
+              <div class="hc-clock" aria-hidden="true"><span class="hc-time" id="hcTime">0:00<small>.0</small></span><span class="hc-clock-label">real time</span></div>
+            </div>
+            <div class="hc-row" id="hcRow" role="group" aria-label="Jump to a chapter of the takeoff"></div>
+          </div>
         </div>
       </div>
     </section>
     <script>
       // Three films, one per trade (scripts/build-hero-video.js), each a real takeoff done
-      // on camera. The chips above the headline are the selector: the lit chip is the film
-      // playing, a click swaps the film and its poster in place, and with no click the three
-      // play in turn. Playback starts once the hero scrolls into view, fading in over the
-      // poster; reduced-motion readers keep the still, which the chips still switch.
+      // on camera. The chips above the film are the selector: the lit chip is the film
+      // playing, a click swaps the film and its poster in place. Playback starts once the
+      // hero scrolls into view, fading in over the poster; the film plays ONCE and holds on
+      // its finished takeoff (the still underneath is the film's last frame, so the hold is a
+      // cross-fade back to it). The chapter bar under the film reads the video's own clock
+      // and /img/hero-<film>.chapters.json. Reduced-motion readers keep the still, which the
+      // chips still switch, with the four chapter names as a static row.
       (function () {
         var media = document.getElementById('heroMedia');
         var v = media && media.querySelector('video');
@@ -144,11 +168,14 @@
         function light() { chips.forEach(function (c) { c.classList.toggle('is-live', !!v && !v.paused && c.getAttribute('data-trade') === current); }); }
         function start() { if (!v || reduced) return; v.preload = 'auto'; var p = v.play(); if (p && p.catch) p.catch(function (err) { window.__heroPlayError = String(err); }); }
         function select(trade, byUser) {
-          current = trade;
+          current = trade; ended = false;
+          if (endRow) endRow.hidden = true;
+          if (strip) strip.classList.remove('is-ended', 'is-answered');
           document.documentElement.setAttribute('data-hero-trade', trade);
           var base = chipFor(trade).getAttribute('data-film');
           chips.forEach(function (c) { c.setAttribute('aria-pressed', String(c.getAttribute('data-trade') === trade)); });
           if (shot) { shot.src = base + '.png'; shot.alt = alts[trade] || shot.alt; }
+          loadFilm(trade);
           if (!v || reduced) { light(); return; }
           var wasPlaying = !v.paused;
           media.classList.remove('is-playing');
@@ -159,16 +186,102 @@
           if (wasPlaying || byUser || inView) start();
           light();
         }
+
+        // --- the hero chapters -----------------------------------------------------------
+        var strip = document.getElementById('heroChapters');
+        var endRow = document.getElementById('hcEnd');
+        var films = {}, cards = [], ended = false;
+        var ASK = {
+          plumbing: 'How long does it take to count a restaurant?',
+          electrical: 'How long does it take to wire an office suite?',
+          hvac: 'How long does it take to duct an office suite?'
+        };
+        var LABEL = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
+        var ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], TENS = { 2: 'Twenty', 3: 'Thirty', 4: 'Forty', 5: 'Fifty', 6: 'Sixty' };
+        function spell(n) { var t = Math.floor(n / 10), o = n % 10; return TENS[t] ? TENS[t] + (o ? '-' + ONES[o] : '') : String(n); }
+        // Each chapter's length in whole seconds, rounded so the four add up to the film's stated
+        // length (largest remainder): 7 + 7 + 23 + 6 = 43, never a sum that contradicts the answer.
+        function chapterSeconds(f) {
+          var raw = f.chapters.map(function (c) { return c.end - c.start; });
+          var out = raw.map(Math.floor), need = Math.round(f.duration) - out.reduce(function (a, b) { return a + b; }, 0);
+          raw.map(function (r, i) { return [r - Math.floor(r), i]; }).sort(function (a, b) { return b[0] - a[0]; })
+            .slice(0, Math.max(0, need)).forEach(function (x) { out[x[1]]++; });
+          return out;
+        }
+        function mmss(t) { return Math.floor(t / 60) + ':' + ('0' + Math.floor(t % 60)).slice(-2); }
+        function buildStrip() {
+          var f = films[current];
+          if (!strip || !f) { if (strip) strip.hidden = true; media.classList.remove('has-chapters'); return; }
+          strip.hidden = false; media.classList.add('has-chapters');
+          strip.classList.toggle('is-static', !v || reduced);
+          document.getElementById('hcQ').textContent = ASK[current];
+          document.getElementById('hcA').textContent = spell(Math.round(f.duration)) + ' seconds, from start to sent for pricing.';
+          var secs = chapterSeconds(f);
+          document.getElementById('hcRow').innerHTML = f.chapters.map(function (c, i) {
+            return '<button type="button" class="hc-card" data-i="' + i + '" aria-label="' + c.name + ', ' + secs[i] + ' seconds, jump to ' + mmss(c.start) + '">' +
+              '<span class="hc-track"><i></i></span><span class="hc-name"><span>' + c.name + '</span><small>' + secs[i] + 's</small></span></button>';
+          }).join('');
+          cards = [].slice.call(strip.querySelectorAll('.hc-card'));
+          var others = order.filter(function (k) { return k !== current; });
+          [].forEach.call(media.querySelectorAll('.hc-next'), function (b, i) {
+            var k = others[i]; b.setAttribute('data-next', k);
+            b.textContent = LABEL[k] + (films[k] ? ', ' + Math.round(films[k].duration) + ' s' : '');
+          });
+          renderStrip();
+        }
+        function renderStrip() {
+          var f = films[current];
+          if (!strip || !f || strip.hidden || !v || reduced) return;
+          var t = ended ? f.duration : Math.min(v.currentTime || 0, f.duration);
+          var ci = f.chapters.length - 1;
+          f.chapters.forEach(function (c, i) { if (t >= c.start && t < c.end) ci = i; });
+          cards.forEach(function (el, i) {
+            var c = f.chapters[i], done = ended || i < ci, now = !ended && i === ci;
+            el.classList.toggle('is-done', done); el.classList.toggle('is-now', now);
+            el.querySelector('.hc-track i').style.width = (done ? 100 : now ? (t - c.start) / (c.end - c.start) * 100 : 0).toFixed(1) + '%';
+          });
+          document.getElementById('hcTime').innerHTML = mmss(t) + '<small>.' + Math.floor((t % 1) * 10) + '</small>';
+          strip.classList.toggle('is-answered', ended || t >= f.duration - 2);
+        }
+        // The film holds: cross-fade the video out over the still (its own last frame) just as
+        // the encode's fade-out would start, so the end screen is the finished takeoff, never black.
+        function hold() {
+          if (ended) return;
+          ended = true;
+          media.classList.remove('is-playing');
+          if (strip) strip.classList.add('is-ended');
+          if (endRow && films[current]) endRow.hidden = false;
+          renderStrip(); light();
+        }
+        function replay() { ended = false; if (endRow) endRow.hidden = true; if (strip) strip.classList.remove('is-ended', 'is-answered'); if (v) { v.currentTime = 0; start(); } }
+        function loadFilm(trade) {
+          if (films[trade] || !window.fetch) { buildStrip(); return; }
+          fetch(chipFor(trade).getAttribute('data-film') + '.chapters.json').then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (j) { if (j && j.chapters && j.chapters.length === 4) films[trade] = j; buildStrip(); })
+            .catch(function () { buildStrip(); });
+        }
+        if (strip) {
+          media.addEventListener('click', function (e) {
+            var card = e.target.closest && e.target.closest('.hc-card'), next = e.target.closest && e.target.closest('.hc-next');
+            if (card && v && !reduced && films[current]) {
+              ended = false; if (endRow) endRow.hidden = true; strip.classList.remove('is-ended', 'is-answered');
+              v.currentTime = films[current].chapters[+card.getAttribute('data-i')].start + 0.05; start();
+            } else if (next) { pinned = true; select(next.getAttribute('data-next'), true); }
+            else if (e.target.closest && e.target.closest('.hc-again')) replay();
+          });
+          // the other two films' lengths, for the Next takeoff pills (after the ?trade= select has run)
+          window.setTimeout(function () { order.forEach(function (k) { if (!films[k] && k !== current && window.fetch) fetch(chipFor(k).getAttribute('data-film') + '.chapters.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.chapters) { films[k] = j; buildStrip(); } }).catch(function () {}); }); }, 0);
+        }
         chips.forEach(function (c) { c.addEventListener('click', function () { pinned = true; select(c.getAttribute('data-trade'), true); }); });
-        if (order.indexOf(asked) >= 0) { pinned = true; select(asked, false); } else document.documentElement.setAttribute('data-hero-trade', current);
+        if (order.indexOf(asked) >= 0) { pinned = true; select(asked, false); } else { document.documentElement.setAttribute('data-hero-trade', current); loadFilm(current); }
         if (v && !reduced) {
           v.addEventListener('pause', light);
-          v.addEventListener('playing', function () { media.classList.add('is-playing'); light(); });
-          // With no click the films take turns; a chip click pins that trade and it loops.
-          v.addEventListener('ended', function () {
-            if (pinned) { v.currentTime = 0; start(); return; }
-            select(order[(order.indexOf(current) + 1) % order.length], false);
-          });
+          v.addEventListener('playing', function () { if (!ended) media.classList.add('is-playing'); light(); });
+          // The film plays once and holds (no loop, no turn-taking): see hold().
+          v.addEventListener('ended', hold);
+          v.addEventListener('timeupdate', function () { var f = films[current]; if (f && !v.paused && v.currentTime >= f.duration - 0.5) hold(); renderStrip(); });
+          v.addEventListener('seeked', renderStrip);
+          (function loop() { if (!v.paused) renderStrip(); window.requestAnimationFrame(loop); })();
           if ('IntersectionObserver' in window) {
             // Start once a fifth of the hero is on screen; pause only when it has left
             // entirely, so a font swap or a scroll nudge near the line never flaps it.

@@ -630,9 +630,11 @@ change to the three trade cards.
 >    strip covered about 30% of the frame on desktop and two thirds on a phone, and sat on the
 >    app's footer and the hand-off toast. Below it nothing is covered, so the films need no
 >    footer beats moved.
-> 2. **Two lines.** The question with the clock, then the rail. The live beat line went: it
->    repeated the film's own caption pill. **So the films keep their baked captions, and no
->    re-render is owed for this feature.** The fade-out needs none either: the page keeps the
+> 2. **Three parts: the question with the clock, the caption scroller, the rail.** (2026-09-20,
+>    superseding the first build's two lines, which dropped the beat line because it repeated the
+>    film's baked pill.) The pill read too fast and in shorthand, so the films now carry NO baked
+>    caption and the bar draws the captions as a three-row scroller in plain sentences: the beat
+>    on screen beside a caret, the one before it and the one coming dimmed around it. The fade-out needs none either: the page keeps the
 >    still (the film's unfaded last frame) under the video and cross-fades the video out at
 >    `duration - 0.5`, so the hold is the finished takeoff, never black.
 > 3. **The words are Scale, then what the trade counts, then what it runs, then Pricing.**

@@ -1,72 +1,72 @@
 {
   "film": "plumbing",
-  "duration": 44.25,
+  "duration": 47,
   "chapters": [
     {
       "name": "Scale",
       "start": 0,
-      "end": 7.25
+      "end": 10
     },
     {
       "name": "Fixtures",
-      "start": 7.25,
-      "end": 15.33
+      "start": 10,
+      "end": 18.08
     },
     {
       "name": "Pipe",
-      "start": 15.33,
-      "end": 38.21
+      "start": 18.08,
+      "end": 40.96
     },
     {
       "name": "Pricing",
-      "start": 38.21,
-      "end": 44.25
+      "start": 40.96,
+      "end": 47
     }
   ],
   "beats": [
     {
       "t": 0,
-      "text": "30 sheets."
+      "text": "A thirty-sheet bid set arrives. Keep only the three plumbing sheets."
     },
     {
-      "t": 1.17,
-      "text": "30 sheets. Keep 3."
+      "t": 2.25,
+      "text": "Name the working sheet: P-101 · Plumbing Plan."
     },
     {
-      "t": 2.71,
-      "text": "Main St Restaurant, P-101"
+      "t": 5.46,
+      "text": "Open sheet P-101, the restaurant's plumbing plan."
     },
     {
-      "t": 3.92,
-      "text": "Prove the scale."
+      "t": 6.67,
+      "text": "Check the scale against a printed dimension before counting anything."
     },
     {
-      "t": 7.25,
-      "text": "Count."
+      "t": 10,
+      "text": "Count every fixture: floor drains, sinks, water closets, lavatories."
     },
     {
-      "t": 15.33,
-      "text": "Cold in."
+      "t": 18.08,
+      "text": "Trace the cold water piping, from the meter out to the fixtures."
     },
     {
-      "t": 21.96,
-      "text": "Hangers, from the rulebook."
+      "t": 24.71,
+      "text": "The app adds the pipe hangers at the spacing the plumbing code requires."
     },
     {
-      "t": 24.96,
-      "text": "Hot back."
+      "t": 27.71,
+      "text": "Trace the hot water piping, and its return line back to the water heater."
     },
     {
-      "t": 35.58,
-      "text": "Rise."
+      "t": 38.33,
+      "text": "Add the 3 ft vertical riser where the water service comes up at the meter."
     },
     {
-      "t": 38.21,
-      "text": "Nothing missed."
+      "t": 40.96,
+      "text": "Hide the marks, then show them again, to check the sheet for anything missed."
     },
     {
-      "t": 43.25,
-      "text": "Done."
+      "t": 46,
+      "text": "Copy the finished takeoff into the pricing app."
     }
   ]
 }

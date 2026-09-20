@@ -1,104 +1,104 @@
 {
   "film": "electrical",
-  "duration": 76.08,
+  "duration": 79.08,
   "chapters": [
     {
       "name": "Scale",
       "start": 0,
-      "end": 7.38
+      "end": 10.38
     },
     {
       "name": "Devices",
-      "start": 7.38,
-      "end": 22.42
+      "start": 10.38,
+      "end": 25.42
     },
     {
       "name": "Wire",
-      "start": 22.42,
-      "end": 64.5
+      "start": 25.42,
+      "end": 67.5
     },
     {
       "name": "Pricing",
-      "start": 64.5,
-      "end": 76.08
+      "start": 67.5,
+      "end": 79.08
     }
   ],
   "beats": [
     {
       "t": 0,
-      "text": "30 sheets."
+      "text": "A thirty-sheet bid set arrives. Keep the floor plan and the two electrical sheets."
     },
     {
-      "t": 1.17,
-      "text": "30 sheets. Keep 3."
+      "t": 2.38,
+      "text": "Name the working sheet: A-101 · First Floor Plan."
     },
     {
-      "t": 2.83,
-      "text": "Suite 200, A-101"
+      "t": 5.83,
+      "text": "Open sheet A-101, the office suite's floor plan."
     },
     {
-      "t": 4.04,
-      "text": "Prove the scale."
+      "t": 7.04,
+      "text": "Check the scale against a printed dimension before counting anything."
     },
     {
-      "t": 7.38,
-      "text": "Count."
+      "t": 10.38,
+      "text": "Set up the devices to count, starting with the receptacles."
     },
     {
-      "t": 11.29,
-      "text": "Receptacles, 18 in AFF by default."
+      "t": 14.29,
+      "text": "Duplex receptacles arrive set at 18 inches above the floor."
     },
     {
-      "t": 14.04,
-      "text": "The switch, 48 in."
+      "t": 17.04,
+      "text": "A single-pole light switch, set at 48 inches."
     },
     {
-      "t": 16.79,
-      "text": "Fixtures, at the ceiling."
+      "t": 19.79,
+      "text": "2x4 troffer light fixtures, at the ceiling."
     },
     {
-      "t": 19.54,
-      "text": "The panel, LP-1."
+      "t": 22.54,
+      "text": "Place the electrical panel and name it LP-1."
     },
     {
-      "t": 22.42,
-      "text": "Name the conduit."
+      "t": 25.42,
+      "text": "Create the conduit type: 3/4 inch EMT."
     },
     {
-      "t": 25.5,
-      "text": "List the wire inside it."
+      "t": 28.5,
+      "text": "List the wires it carries: three #12 conductors and a ground."
     },
     {
-      "t": 30.88,
-      "text": "Circuit 7: the north wall, 6 A."
+      "t": 33.88,
+      "text": "Circuit 7 on panel LP-1: the north wall receptacles, 6 amps."
     },
     {
-      "t": 35.21,
-      "text": "Chain: each click writes its 9.5 ft drop."
+      "t": 38.21,
+      "text": "Chain from device to device. Each click adds the conduit and its 9.5 ft vertical drop."
     },
     {
-      "t": 38.63,
-      "text": "Home run, square to the panel."
+      "t": 41.63,
+      "text": "Draw the home run back to the panel, square to the walls, and flag it."
     },
     {
-      "t": 41.96,
-      "text": "Circuit 9: south and west."
+      "t": 44.96,
+      "text": "Circuit 9: the south wall receptacles, wired the same way."
     },
     {
-      "t": 52.29,
-      "text": "Circuit 11: the lights and their switch."
+      "t": 55.29,
+      "text": "Circuit 11: the light fixtures and their switch."
     },
     {
-      "t": 64.5,
-      "text": "The wire, derived. The checks, computed."
+      "t": 67.5,
+      "text": "The app totals the wire from the conduit, and checks conduit fill and voltage drop."
     },
     {
-      "t": 70.04,
-      "text": "Nothing missed."
+      "t": 73.04,
+      "text": "Hide the marks, then show them again, to check the room for anything missed."
     },
     {
-      "t": 75.08,
-      "text": "Done."
+      "t": 78.08,
+      "text": "Send the finished takeoff to the estimating app for pricing."
     }
   ]
 }

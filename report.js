@@ -3,6 +3,20 @@
  * Uses globals: state, makeAnnotations, ptDist, polylineDistance, formatDist, renderIconHtml, getLineLengthPdfPts, getLineLengthFeetForTotals (per-line tally lengths in feet), getLineLengthSplitForTotals (ft/px split rollups — px never summed under a ft label), getLineRealWorldLength, getMultiplyZoneForPoint, getMultiplyZoneForLine
  */
 (function() {
+  // "Main St Restaurant Takeoff Report"; a project nobody named is just "Takeoff Report".
+  function reportTitleFor(projectName) {
+    const n = String(projectName || '').trim();
+    return n && !/^untitled$/i.test(n) ? n + ' Takeoff Report' : 'Takeoff Report';
+  }
+  // A sheet someone named stands on its own ("P-101 · Plumbing Plan"); a default label (the
+  // file name and page number the intake writes, or none) keeps its "Page N:" so it still says
+  // where it sits in the set.
+  function pageHeadingFor(label, i) {
+    const l = String(label || '').trim();
+    if (!l) return 'Page ' + (i + 1);
+    if (/^Page \d+$/i.test(l)) return l;
+    return /, p\d+$/i.test(l) ? 'Page ' + (i + 1) + ': ' + l : l;
+  }
   function escapeHtml(s) {
     if (s == null) return '';
     const t = String(s);
@@ -203,12 +217,17 @@
       .report-type-cell .report-type-swatch { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       @media print { .report-type-swatch { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
       section { margin-bottom: 2em; }
+      .report-date { margin: -0.4em 0 0.9em 0; font-size: 0.85rem; color: #535353; }
       .report-totals { margin-bottom: 1.5em; padding-bottom: 1em; border-bottom: 1px solid #e0e0e0; font-size: 0.9rem; color: #535353; }
       .report-group-totals { margin: 0.25em 0 0.5em 0; font-size: 0.85rem; color: #535353; }
     `;
 
-    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Takeoff Report</title><style>' + styles + '</style></head><body>';
-    html += '<h1 class="report-title">Takeoff Report</h1>';
+    // The report says whose takeoff it is and when: "Main St Restaurant Takeoff Report" over a
+    // date line. An unnamed project keeps the plain title.
+    const title = escapeHtml(reportTitleFor(state.currentProjectName));
+    let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title><style>' + styles + '</style></head><body>';
+    html += '<h1 class="report-title">' + title + '</h1>';
+    html += '<p class="report-date">' + escapeHtml(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })) + '</p>';
 
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
@@ -244,9 +263,8 @@
       const page = state.pages[idx];
       const i = idx;
       const ann = getAnn(page, i);
-      const label = escapeHtml(page.label || 'Page ' + (i + 1));
       html += '<section>';
-      html += '<h2 class="page-header">Page ' + (i + 1) + ': ' + label + '</h2>';
+      html += '<h2 class="page-header">' + escapeHtml(pageHeadingFor(page.label, i)) + '</h2>';
 
       const counterRows = [];
       (state.counters || []).forEach(c => {
@@ -897,6 +915,6 @@
 
   // Node test harness only: inert in the browser (where `module` is undefined).
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary };
+    module.exports = { escapeHtml, pickScaleForLineType, reportTitleFor, pageHeadingFor, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary };
   }
 })();

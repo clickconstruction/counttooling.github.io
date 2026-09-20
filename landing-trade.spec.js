@@ -80,6 +80,14 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await page.waitForFunction((t) => document.querySelector('#heroMedia video').currentTime >= t, film.chapters[2].start);
     await expect(page.locator('#heroChapters .hc-card').nth(2)).toHaveClass(/is-now/);
     await expect(page.locator('#heroChapters .hc-card').nth(0)).toHaveClass(/is-done/);
+    // the caption scroller: one row per beat, and the row beside the caret is the beat on screen
+    await expect(page.locator('#hcCapsList li')).toHaveCount(film.beats.length);
+    const onScreen = await page.evaluate(() => document.querySelector('#heroMedia video').currentTime);
+    const beatAt = (t) => film.beats.filter((b) => b.t <= t).pop().text;
+    await expect(page.locator('#hcCapsList li.is-now')).toHaveText(new RegExp('^(' + [beatAt(onScreen), beatAt(onScreen + 1.5)].map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')$'));
+    expect(film.beats.every((b) => b.text.length <= 100 && /[.?]$/.test(b.text))).toBe(true);
+    // and that row sits ON the caret's row (the list once drifted: it measured a scaled row)
+    await expect.poll(() => page.evaluate(() => { const c = document.querySelector('.hc-caps-caret').getBoundingClientRect(), r = document.querySelector('#hcCapsList li.is-now').getBoundingClientRect(); return Math.abs((c.top + c.height / 2) - (r.top + r.height / 2)); }), { timeout: 4000 }).toBeLessThan(3);   // polled: the list takes half a second to slide   // sentences, and short enough for two phone lines
     await expect(page.locator('#hcEnd')).toBeHidden();
     // the end: the answer, the hold on the still, the end row
     await page.evaluate((t) => { document.querySelector('#heroMedia video').currentTime = t; }, nearEnd);

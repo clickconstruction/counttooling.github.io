@@ -53,7 +53,10 @@
   takeoff (the still under the video is its last frame). **The hero chapters** are a two-line bar
   under the film: a question the film's own clock answers, and four chapters (Scale, what the
   trade counts, what it runs, Pricing) as a rail that fills in turn and seeks on click, each
-  naming its seconds. It reads `img/hero-<film>.chapters.json`, which the generator writes
+  naming its seconds, over a three-row **caption scroller** (the beat on screen beside a caret, the
+  one before and the one coming dimmed around it). The films carry NO baked caption: the wording
+  lives in the chapters file's `beats`, in plain sentences of at most 100 characters, and a film
+  marks its chapters with `R.chapter(name)`. It all reads `img/hero-<film>.chapters.json`, which the generator writes
   (`--chapters-only` re-times a film in about a minute without rendering it; `CHAPTER_STARTS`
   names the chapters). Change a film's captions or beats and re-run it, or the bar drifts from
   the footage (landing-trade.spec.js compares each file to its mp4's length). The same pass writes

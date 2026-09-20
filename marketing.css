@@ -81,6 +81,19 @@ a { color: inherit; }
 .hc-clock-label { font: 500 0.62rem 'DM Mono', ui-monospace, monospace; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); }
 .hero-chapters.is-answered .hc-time, .hero-chapters.is-answered .hc-time small { color: #47c88e; }
 .hero-chapters.is-answered .hc-clock-label::after { content: ' \00b7 no cuts'; }
+/* The caption scroller: three rows, the current beat in the middle beside the caret, its
+   neighbours dimmed and a touch smaller, the list sliding up a row at each beat. */
+.hc-caps { --row: 30px; position: relative; height: calc(var(--row) * 3); margin: 2px 0 10px; overflow: hidden; text-align: left;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,0.35) 0, #000 30%, #000 70%, rgba(0,0,0,0.35) 100%); mask-image: linear-gradient(180deg, rgba(0,0,0,0.35) 0, #000 30%, #000 70%, rgba(0,0,0,0.35) 100%); }
+.hc-caps-list { margin: 0; padding: 0 0 0 22px; list-style: none; transform: translateY(var(--row)); transition: transform 0.5s cubic-bezier(0.22, 0.8, 0.24, 1); will-change: transform; }
+.hc-caps-list li { display: flex; align-items: center; height: var(--row); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; color: var(--text2); opacity: 0.8; transform: scale(0.94); transform-origin: left center; transition: color 0.45s ease, transform 0.45s ease, opacity 0.45s ease; }
+.hc-caps-list li.is-now { color: var(--text); font-weight: 500; opacity: 1; transform: scale(1); }
+.hc-caps-list li.is-done { opacity: 0.6; }
+.hc-caps-caret { position: absolute; left: 2px; top: var(--row); height: var(--row); display: flex; align-items: center; color: var(--accent); font-weight: 700; font-size: 1.05rem; }
+.hc-caps-caret.is-bump { animation: hc-caret-bump 0.5s ease; }
+@keyframes hc-caret-bump { 0% { transform: translateX(0); } 35% { transform: translateX(4px); } 100% { transform: translateX(0); } }
+.hero-chapters.is-static .hc-caps { display: none; }
+@media (prefers-reduced-motion: reduce) { .hc-caps-list, .hc-caps-list li { transition: none; } .hc-caps-caret.is-bump { animation: none; } }
 .hc-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .hc-card { all: unset; box-sizing: border-box; cursor: pointer; display: block; min-width: 0; padding-bottom: 2px; }
 .hc-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
@@ -119,6 +132,9 @@ a { color: inherit; }
   .hero .hc-q { min-height: 2.4em; }   /* the question wraps to two lines here; the one-line answer keeps the bar's height */
   .hc-time { font-size: 1.05rem; }
   .hc-clock-label { display: none; }
+  .hc-caps { --row: 36px; margin-bottom: 8px; }   /* two lines a row: a sentence does not fit 300 px on one */
+  .hc-caps-list { padding-left: 16px; }
+  .hc-caps-list li { white-space: normal; font-size: 0.78rem; }
   .hc-row { gap: 4px; }
   .hc-name { font-size: 0.75rem; padding-top: 6px; }
   .hc-name { gap: 5px; }

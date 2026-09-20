@@ -79,23 +79,23 @@
   .segs.answered .ask .clock span:first-child { color: var(--green); }
   .segs.answered .ask .clock .lbl::after { content: ' · no cuts'; }
   .segs.ask-on .nm small { display: inline; font: 500 11px var(--mono); color: rgba(240,237,232,.4); opacity: 0; transition: opacity .3s; }
-  .segs.ask-on button.done .nm small { opacity: 1; color: var(--green); }
-  .segs.ask-on button.now .nm small { opacity: 1; color: rgba(240,237,232,.6); }
+  .segs.ask-on .row button.done .nm small { opacity: 1; color: var(--green); }
+  .segs.ask-on .row button.now .nm small { opacity: 1; color: rgba(240,237,232,.6); }
   .frame .over.segs.ask-on { padding-top: 44px; background: linear-gradient(180deg, rgba(15,15,17,0) 0%, rgba(15,15,17,.6) 22%, rgba(15,15,17,.94) 100%); }
   .frame .over.segs.pills .nm small, .frame .over.segs.cards .nm small, .frame .over.segs.rail .nm small { margin-left: auto; }
   .frame .over.segs.rail .nm small { margin-left: 4px; }
-  .frame .over.segs.cards button .nm small { margin-left: auto; }
+  .frame .over.segs.cards .row button .nm small { margin-left: auto; }
   @media (max-width: 720px) { .segs .ask { margin-bottom: 10px; } .frame .over.segs.ask-on { padding-top: 26px; } }
 
   /* the end screen: the film holds on its last frame; the strip holds on the answer until Play again */
   .segs .end { display: none; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   .segs.ended .live { display: none; }
   .segs.ended .end { display: flex; }
-  .segs .end .again { display: inline-flex; align-items: center; gap: 8px; font: 600 14px 'DM Sans', sans-serif; color: var(--bg); background: var(--accent); border: none; border-radius: 999px; padding: 8px 16px 8px 12px; cursor: pointer; }
+  .segs .end .again { display: inline-flex; align-items: center; gap: 8px; flex: none; white-space: nowrap; font: 600 14px 'DM Sans', sans-serif; color: var(--bg); background: var(--accent); border: none; border-radius: 999px; padding: 8px 16px 8px 12px; cursor: pointer; }
   .segs .end .again:hover { background: #f0d060; }
   .segs .end .again svg { width: 16px; height: 16px; fill: currentColor; }
   .segs .end .next { font: 500 11px var(--mono); letter-spacing: .1em; text-transform: uppercase; color: rgba(240,237,232,.5); margin-left: 6px; }
-  .segs .end .nxt { font: 500 13px 'DM Sans', sans-serif; color: rgba(240,237,232,.85); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+  .segs .end .nxt { flex: none; white-space: nowrap; font: 500 13px 'DM Sans', sans-serif; color: rgba(240,237,232,.85); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
   .segs .end .nxt:hover { border-color: var(--accent); color: #fff; }
   .segs.ended .ask .clock .lbl::after { content: ' · no cuts'; }
   @media (max-width: 720px) { .segs .end .next { display: none; } }
@@ -114,37 +114,37 @@
 
   /* style 2 · chapter cards: translucent cards with the app's tool glyphs, the track along each card's foot */
   .frame .over.segs.cards .row { gap: 8px; }
-  .frame .over.segs.cards button { display: flex; flex-direction: column; padding: 10px 12px 0; border-radius: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(8px); overflow: hidden; transition: background .3s, border-color .3s; }
-  .frame .over.segs.cards button .nm { order: 1; margin: 0; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: rgba(240,237,232,.55); }
-  .frame .over.segs.cards button .nm svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-  .frame .over.segs.cards button .tr { order: 2; height: 3px; border-radius: 0; margin: 0 -12px; background: rgba(255,255,255,.1); }
-  .frame .over.segs.cards button.done { border-color: rgba(71,200,142,.35); }
-  .frame .over.segs.cards button.done .nm { color: var(--green); }
-  .frame .over.segs.cards button.now { background: rgba(232,197,71,.12); border-color: rgba(232,197,71,.55); }
-  .frame .over.segs.cards button.now .nm { color: #fff; }
-  .frame .over.segs.cards button.now .nm svg { color: var(--accent); }
+  .frame .over.segs.cards .row button { display: flex; flex-direction: column; padding: 10px 12px 0; border-radius: 10px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); backdrop-filter: blur(8px); overflow: hidden; transition: background .3s, border-color .3s; }
+  .frame .over.segs.cards .row button .nm { order: 1; margin: 0; padding-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: rgba(240,237,232,.55); }
+  .frame .over.segs.cards .row button .nm svg { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .frame .over.segs.cards .row button .tr { order: 2; height: 3px; border-radius: 0; margin: 0 -12px; background: rgba(255,255,255,.1); }
+  .frame .over.segs.cards .row button.done { border-color: rgba(71,200,142,.35); }
+  .frame .over.segs.cards .row button.done .nm { color: var(--green); }
+  .frame .over.segs.cards .row button.now { background: rgba(232,197,71,.12); border-color: rgba(232,197,71,.55); }
+  .frame .over.segs.cards .row button.now .nm { color: #fff; }
+  .frame .over.segs.cards .row button.now .nm svg { color: var(--accent); }
   .frame .over.segs.cards .live { margin-top: 12px; font-size: 15px; color: rgba(240,237,232,.9); }
   .frame .over.segs.cards .live b { color: var(--accent); }
 
   /* style 3 · the travelling rail: one line, the names as stations, the fill travelling station to station */
   .frame .over.segs.rail .row { display: flex; align-items: center; gap: 0; }
-  .frame .over.segs.rail button { flex: 1; display: flex; align-items: center; gap: 0; }
-  .frame .over.segs.rail button .nm { order: 1; margin: 0; flex: none; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: rgba(240,237,232,.45); }
-  .frame .over.segs.rail button .nm::before { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: transparent; transition: all .3s; }
-  .frame .over.segs.rail button .tr { order: 2; flex: 1; height: 2px; margin: 0 12px; background: rgba(255,255,255,.14); }
-  .frame .over.segs.rail button:last-child .tr { display: none; }
-  .frame .over.segs.rail button.done .nm { color: var(--green); }
-  .frame .over.segs.rail button.done .nm::before { background: var(--green); border-color: var(--green); }
-  .frame .over.segs.rail button.now .nm { color: #fff; }
-  .frame .over.segs.rail button.now .nm::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(232,197,71,.25); }
+  .frame .over.segs.rail .row button { flex: 1; display: flex; align-items: center; gap: 0; }
+  .frame .over.segs.rail .row button .nm { order: 1; margin: 0; flex: none; display: inline-flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: rgba(240,237,232,.45); }
+  .frame .over.segs.rail .row button .nm::before { content: ''; width: 10px; height: 10px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); background: transparent; transition: all .3s; }
+  .frame .over.segs.rail .row button .tr { order: 2; flex: 1; height: 2px; margin: 0 12px; background: rgba(255,255,255,.14); }
+  .frame .over.segs.rail .row button:last-child .tr { display: none; }
+  .frame .over.segs.rail .row button.done .nm { color: var(--green); }
+  .frame .over.segs.rail .row button.done .nm::before { background: var(--green); border-color: var(--green); }
+  .frame .over.segs.rail .row button.now .nm { color: #fff; }
+  .frame .over.segs.rail .row button.now .nm::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(232,197,71,.25); }
   .frame .over.segs.rail .live { margin-top: 14px; font-size: 16px; color: #fff; justify-content: center; }
   .frame .over.segs.rail .live b { color: var(--accent); }
   @media (max-width: 720px) {
     .frame .over.segs { padding: 22px 12px 10px; }
-    .frame .over.segs.pills .nm, .frame .over.segs.cards button .nm, .frame .over.segs.rail button .nm { font-size: 12px; }
+    .frame .over.segs.pills .nm, .frame .over.segs.cards .row button .nm, .frame .over.segs.rail .row button .nm { font-size: 12px; }
     .frame .over.segs .live { font-size: 13px; }
-    .frame .over.segs.rail button .tr { margin: 0 6px; }
-    .frame .over.segs.cards button { padding: 7px 8px 0; }
+    .frame .over.segs.rail .row button .tr { margin: 0 6px; }
+    .frame .over.segs.cards .row button { padding: 7px 8px 0; }
   }
   @media (max-width: 720px) { .hero.with-rail { grid-template-columns: 1fr; } }
 
@@ -171,17 +171,17 @@
   /* ---- B · story segments: one segment per chapter, the live beat under the active one, click to jump ---- */
   .segs { margin-top: 10px; }
   .segs .row { display: grid; grid-template-columns: repeat(var(--n, 4), 1fr); gap: 6px; }
-  .segs button { all: unset; cursor: pointer; display: block; padding: 6px 0 0; }
-  .segs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
+  .segs .row button { all: unset; cursor: pointer; display: block; padding: 6px 0 0; }
+  .segs .row button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
   .segs .tr { height: 4px; border-radius: 2px; background: var(--surface3); overflow: hidden; }
   .segs .tr i { display: block; height: 100%; width: 0; background: var(--green); }
   .segs .nm { display: flex; justify-content: space-between; align-items: baseline; margin-top: 7px; font-size: 13px; font-weight: 500; color: var(--text3); }
   .segs .nm small { font: 11px var(--mono); color: var(--text3); }
   .segs .nm svg { display: none; }
   .frame .over.segs.cards .nm svg { display: inline-block; }
-  .segs button.done .nm { color: var(--green); }
-  .segs button.now .nm { color: var(--text); }
-  .segs button.now .tr i { background: linear-gradient(90deg, var(--green), var(--accent)); }
+  .segs .row button.done .nm { color: var(--green); }
+  .segs .row button.now .nm { color: var(--text); }
+  .segs .row button.now .tr i { background: linear-gradient(90deg, var(--green), var(--accent)); }
   .segs .live { margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--text2); min-height: 22px; }
   .segs .live .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; animation: pulse 1.6s ease-in-out infinite; }
   .segs .live b { color: var(--text); font-weight: 500; }
@@ -419,6 +419,14 @@
   };
   let CH = SETS[setId]();
   const DUR = 43;
+  // The encode fades every film to black over its last 0.45 s
+  // (scripts/build-hero-video.js: fade=t=out:st=dur-0.45:d=0.45), which exists to make
+  // the old loop seamless. Since the film now HOLDS at the end, stopping on the true
+  // last frame would hold on black. Pause just before the fade so the end screen keeps
+  // the finished takeoff; the clock still reads the film's full length, because the
+  // half second we skip is a fade, not work. If the films are re-rendered without the
+  // fade-out (recommended, see LANDING-REFRESH.md), HOLD can simply become DUR.
+  const HOLD = DUR - 0.5;
   const v = document.getElementById('film');
   const fmt = (t) => Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0');
   const chapterAt = (t) => CH.findIndex((c) => t >= c.start && t < c.end) === -1 ? CH.length - 1 : CH.findIndex((c) => t >= c.start && t < c.end);
@@ -460,7 +468,8 @@
       const sm = b.querySelector('.nm small'); if (sm) sm.textContent = i < ci ? fmt(ch.end) : i === ci ? fmt(t) : '';
     });
     const segs = document.getElementById('ovB');
-    document.getElementById('askTime').innerHTML = fmt(t) + '<small>.' + Math.floor((t % 1) * 10) + '</small>';
+        const shown = segs.classList.contains('ended') ? DUR : t;   // held: the film's full length, not the pre-fade hold
+    document.getElementById('askTime').innerHTML = fmt(shown) + '<small>.' + Math.floor((shown % 1) * 10) + '</small>';
     segs.classList.toggle('answered', t >= DUR - 2);
     document.getElementById('segLive').innerHTML = `<b>${c.name}</b> · ${beat}`;
     // C
@@ -500,12 +509,20 @@
   place('over'); style('cards');
   document.getElementById('restart').onclick = () => { v.currentTime = 0; v.play(); };
   const pp = document.getElementById('playpause');
-  pp.onclick = () => { if (v.ended) { v.currentTime = 0; v.play(); } else if (v.paused) v.play(); else v.pause(); };
+  pp.onclick = () => { if (segsEl.classList.contains('ended')) { segsEl.classList.remove('ended', 'answered'); v.currentTime = 0; v.play(); } else if (v.paused) v.play(); else v.pause(); };
   const segsEl = document.getElementById('ovB');
-  v.addEventListener('ended', () => { segsEl.classList.add('ended', 'answered'); pp.textContent = 'Play again'; render(); });
+  function holdAtEnd() {
+    if (!v.paused) v.pause();
+    v.currentTime = HOLD;
+    segsEl.classList.add('ended', 'answered');
+    pp.textContent = 'Play again';
+    render();
+  }
+  v.addEventListener('timeupdate', () => { if (!v.paused && v.currentTime >= HOLD) holdAtEnd(); });
+  v.addEventListener('ended', holdAtEnd);
   v.addEventListener('play', () => { segsEl.classList.remove('ended'); });
-  document.getElementById('again').onclick = () => { v.currentTime = 0; v.play(); };
-  document.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => { document.querySelector(`[data-trade="${b.dataset.next}"]`).click(); v.currentTime = 0; v.play(); }));
+  document.getElementById('again').onclick = () => { segsEl.classList.remove('ended', 'answered'); v.currentTime = 0; v.play(); };
+  document.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => { segsEl.classList.remove('ended', 'answered'); document.querySelector(`[data-trade="${b.dataset.next}"]`).click(); v.currentTime = 0; v.play(); }));
   v.addEventListener('play', () => { pp.textContent = 'Pause'; });
   v.addEventListener('pause', () => { pp.textContent = 'Play'; });
 })();

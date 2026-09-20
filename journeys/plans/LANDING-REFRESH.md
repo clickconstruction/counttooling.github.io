@@ -607,9 +607,13 @@ frames ("Hangers, from the rulebook."). The idea: replace the pill with a strip 
 draws over the film, so a visitor can follow along, and use it to make the app's value
 plain: ask how long the takeoff takes, and let a clock answer.
 
-**The mock, on the real plumbing film:** https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup
-(private; ask Robert to share it). Every decision below is a toggle on that page, so the
-next person can see each one against the footage rather than read about it.
+**The mock, on the real plumbing film:** [hero-chapters.html](hero-chapters.html), in this
+folder, committed so anyone can run it: `npx serve -l 3456` at the repo root, then open
+`http://localhost:3456/journeys/plans/hero-chapters.html`. It plays `/img/hero-plumbing.mp4`.
+Every decision below is a toggle on that page (Words, trade chips, the last word, placement,
+the three looks, the question on/off), so the next person can see each one against the
+footage rather than read about it. The same page is also published privately at
+https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup (ask Robert to share it).
 
 ### Decided
 

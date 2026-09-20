@@ -598,3 +598,100 @@ About a day and a half in total. HVAC first because that is the visitor being pr
 
 Photographs of physical tools (the app is the tool), per-trade pricing, testimonials, and any
 change to the three trade cards.
+
+## The hero chapters (plan of record, 2026-09-19)
+
+**Where this came from.** Robert and Claude, 2026-09-19, after the modal polish and the
+asset refresh. The three hero films carry their beats as a caption pill baked into the
+frames ("Hangers, from the rulebook."). The idea: replace the pill with a strip the page
+draws over the film, so a visitor can follow along, and use it to make the app's value
+plain: ask how long the takeoff takes, and let a clock answer.
+
+**The mock, on the real plumbing film:** https://claude.ai/artifact/PK7ec92sDPZr1B4VgDGiup
+(private; ask Robert to share it). Every decision below is a toggle on that page, so the
+next person can see each one against the footage rather than read about it.
+
+### Decided
+
+1. **The words: Scale → Count → Pipe → Bid.** The third word follows the trade chip:
+   Pipe, Wire, Duct. Scale, Count and Bid are all the app's own names for things; the
+   trade word makes the strip say "three trades, one takeoff" without a sentence.
+   Considered and dropped: Measure → Count → Connect → Check (Measure is the ruler tool;
+   Connect says nothing an estimator says), Set up → Mark → Run → Prove (plain, flat
+   opener, could sit on any takeoff tool), Sheets → Scale → Marks → Lines → Proof (five
+   nouns, tight at 375px, describes what appears rather than what someone does). The
+   hybrid Scale → Count → Pipe → Prove was liked but not chosen; it is a one-word change.
+2. **Over the film, not under it.** The strip sits inside the frame's bottom edge on a
+   dark gradient scrim. It saves ~70px of hero height on a phone. It covers the app's
+   footer row and the baked caption pill, so the films' next render drops the pill and
+   keeps the footer beats clear of the bottom ~90px of the frame.
+3. **Story segments, one per chapter,** each its own track filling in turn (the phone
+   story idiom), every segment a button that seeks the film to that chapter. Of the three
+   looks mocked (numbered pills, chapter cards, travelling rail) the **chapter cards**
+   were chosen: four translucent cards with the app's tool glyph (the scale ruler, the
+   counter, the pipe, the bid check), the track along the card's foot, the current card
+   lit accent, passed cards green. Robert: "It could look a little cleaner." That polish
+   is the open item below.
+4. **The question and the clock.** A line over the strip in the site's serif asks the
+   question; a stopwatch in mono digits with tenths counts up beside it, labelled
+   "real time"; each card stamps the clock when its chapter completes (Scale 0:10,
+   Count 0:16, Pipe 0:32); in the last two seconds the question resolves into the
+   answer and the clock turns green with "real time · no cuts".
+   Per trade: plumbing "How long does it take to count a restaurant?" → "Forty-three
+   seconds, start to bid."; electrical "…to wire an office suite?" → "Fifty seconds…";
+   HVAC "…to duct an office suite?" → "Fifty seconds…". Wording still open, see below.
+5. **The film holds on its end screen.** No loop, no auto-advance to the next trade
+   (today the three films play in turn unprompted). The last frame stays (the finished
+   takeoff with the hand-off toast); the strip holds the answer and the four stamped
+   times; the live-beat line becomes an end row: a yellow **Play again** and two pills,
+   "Electrical, 50 s" and "HVAC, 50 s", which are the chips by another name. The chips
+   themselves keep working as they do now. Reduced-motion readers keep the still.
+
+### Still open
+
+- **Make the strip cleaner.** Robert's last note on the chapter cards. Candidates from
+  the mock: fewer competing weights in the strip (the question, the clock, four card
+  names, the live beat and the stamped times are six type sizes in ~140px), drop the
+  per-card glyphs or the stamped times on a phone, a lighter scrim so more of the app
+  shows, the end row on one line with the question. Decide by looking at the mock's
+  three looks side by side, not by adding a fourth.
+- **The question's wording.** "Count a restaurant" reads as a whole set; the film is
+  three sheets kept from thirty, the scale proved, twelve fixtures, two runs with
+  hangers and a riser, the check, the hand-off. "How long does it take to count these
+  plans?" is the safer question. The answer must stay as specific as the film.
+- **Where the question lives.** In the strip (as mocked, so the answer lands where the
+  clock stops), or as the page headline above the film with only the clock in the strip
+  (readable before the film scrolls into view, at the cost of repetition).
+
+### Building it
+
+- **An HTML layer on the video's clock, not a re-render.** The strip listens to the
+  `<video>`'s `timeupdate` and reads one chapter array per film: `{ name, start, end }`
+  ×4 plus the beat captions with their seconds. The plumbing boundaries, measured off the
+  film: Scale 0–10, Count 10–16, Pipe 16–32, Bid 32–43. Electrical and HVAC (both ~50 s)
+  are unmeasured; take them from the generator rather than the montage.
+- **The generator writes the arrays.** `scripts/build-hero-video.js` already stamps every
+  caption with its frame time (`caption()` records `since`, and the `acts` list exists
+  for exactly this). Have it emit `img/hero-<film>.chapters.json` (or a block in
+  index.html) next to the mp4 so the timings cannot drift from the footage; the landing
+  reads it. Chapter boundaries are the first caption of each chapter: "30 sheets." /
+  "Count." / "Cold in." / "Nothing missed." for plumbing.
+- **The films' next render** drops the caption pill (the strip carries the beat) and
+  keeps the footer beats above the scrim. Do it once for all three; then run
+  `build:screenshots --set spotlight` too, since the spotlight frames are cut from the
+  same setups.
+- **The landing script** (index.html, the hero block): keep `select(trade)` and the
+  chips; remove the play-in-turn; on `ended` add the end row; `Play again` seeks 0 and
+  plays; the next-takeoff pills call `select()`; a segment click seeks its chapter start.
+  Cache `--n` from the array length; the strip's CSS is in the mock and mirrors
+  marketing.css tokens.
+- **Honesty.** The clock reads the video's own time and resets on chip change. The
+  "real time · no cuts" label is true because the generator walks real interactions at
+  real speed (mouse moves, typing at ~12 cps, the app's own dialogs) and the encode does
+  not accelerate; if a future film ever skips or speeds a beat, the label goes with it.
+- **Specs.** seo.spec.js pins the hero's markup and chips; add one assertion per film
+  that the chapter array has four entries whose ends are ascending and whose last end
+  equals the film's duration, and one that the strip's first card name matches the
+  array. `landing-assets.test.js` should require the chapters file beside each mp4.
+- **Phone.** At 375px the mock drops the "Next takeoff" label, shrinks the card names to
+  12px and the scrim's top padding; check the end row wraps to two lines cleanly.

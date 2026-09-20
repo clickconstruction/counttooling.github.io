@@ -14,7 +14,7 @@ async function loadProjectWithPdfAndAddCounter(page) {
   await page.waitForSelector('#settingsModal.visible', { timeout: 5000 });
 
   await page.locator('#settingsAdvancedBtn').click();
-  await page.waitForSelector('#settingsAdvancedModal.visible', { timeout: 5000 });
+  await page.waitForSelector('#advancedLoadTestPdf', { state: 'visible', timeout: 5000 });   // Advanced is a disclosure in Project Settings now
   await page.locator('#advancedLoadTestPdf').click();
   await page.waitForSelector('#preparePdfModal.visible', { timeout: 15000 });
   await page.locator('#preparePdfSaveAndOpen').click();

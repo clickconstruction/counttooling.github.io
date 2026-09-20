@@ -273,6 +273,8 @@
     if (matches && matches.length > 0) {
       const listEl = document.getElementById('loadAnnotationsList');
       listEl.innerHTML = '';
+      const intro = document.getElementById('loadAnnotationsIntro');
+      if (intro) intro.textContent = (matches.length === 1 ? 'One project in your cloud was saved from this PDF. ' : matches.length + ' projects in your cloud were saved from this PDF. ') + 'Load one, or start fresh.';
       const esc = (s) => App.escapeHtml(s);
       matches.forEach(proj => {
         const div = document.createElement('div');

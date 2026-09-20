@@ -968,8 +968,9 @@
     #preparePdfModal .actions.prepare-pdf-actions { justify-content: space-between; }
     #preparePdfModal .prepare-pdf-actions-left { display: flex; gap: 12px; }
     #preparePdfModal .prepare-pdf-actions-right { display: flex; gap: 12px; }
-    #preparePdfModal .actions #preparePdfDownload { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
-    #preparePdfModal .actions #preparePdfDownload:hover { background: var(--surface3); }
+    /* Modal polish (2026-09-18): Download trimmed PDF is a link beside the three actions. */
+    #preparePdfModal .actions #preparePdfDownload { background: none; color: var(--accent); border: none; padding: 0 6px; }
+    #preparePdfModal .actions #preparePdfDownload:hover { background: none; text-decoration: underline; }
     .prepare-pdf-name-tabs { display: flex; gap: 16px; margin-bottom: 8px; }
     .prepare-pdf-name-tab { font-size: 0.9rem; color: var(--text2); cursor: pointer; user-select: none; padding: 2px 0; }
     .prepare-pdf-name-tab:hover { color: var(--text); }
@@ -2393,3 +2394,171 @@ body.tour-active .canvas-empty-hint { display: none; }
 .bid-menu .bm-row.bm-action { color: var(--accent); }
 .bid-menu .bm-sep { height: 1px; background: var(--border); margin: 5px 4px; }
 
+
+    /* ===== Modal polish (2026-09-18): the seven primitives behind the Modal Review.
+       Sliders and colour inputs are the app's own controls, not the browser's;
+       action buttons carry a ROLE class (ghost / primary / danger / danger-ghost /
+       link) so a Delete on the left or a third button in the middle never falls
+       through to a white default (the position rules above stay as the fallback);
+       every dismissible dialog has a × (data-modal-close, app.js dismisses it the
+       way Esc does); one setting-row grammar; one section rule; one empty state. */
+    .modal-card input[type="range"] { -webkit-appearance: none; appearance: none; height: 24px; padding: 0; margin: 0; border: none; background: transparent; --fill: 0%; }
+    .modal-card input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(var(--accent), var(--accent)) 0 0 / var(--fill) 100% no-repeat var(--surface3); }
+    .modal-card input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -6px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: pointer; }
+    .modal-card input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: var(--surface3); }
+    .modal-card input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--accent); }
+    .modal-card input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+    .modal-card input[type="range"]:focus-visible { outline: none; }
+    .modal-card input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(232,197,71,0.3); }
+    .modal-card label.range-label { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+    .range-label .range-val { color: var(--text); font-variant-numeric: tabular-nums; }
+    .color-field { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .modal-card .color-field input[type="color"] { width: 38px; height: 38px; flex: 0 0 auto; padding: 2px; border: 1px solid var(--border2); border-radius: 6px; background: var(--surface2); cursor: pointer; }
+    .modal-card input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .modal-card input[type="color"]::-webkit-color-swatch { border: none; border-radius: 4px; }
+    .modal-card input[type="color"]::-moz-color-swatch { border: none; border-radius: 4px; }
+    .color-field .color-hex { flex: 1; min-width: 0; min-height: 38px; display: flex; align-items: center; padding: 0 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; font-family: 'DM Mono', ui-monospace, monospace; font-size: 0.9rem; color: var(--text); }
+    .modal-card .actions button:not(:first-child):not(:last-child) { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+    .modal-card .actions button:not(:first-child):not(:last-child):hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .modal-card .actions button.ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+    .modal-card .actions button.ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .modal-card .actions button.primary { background: var(--accent); color: var(--bg); border: none; font-weight: 600; }
+    .modal-card .actions button.primary:hover:not(:disabled) { background: var(--accent2); }
+    .modal-card .actions button.danger { background: var(--red); color: #fff; border: none; }
+    .modal-card .actions button.danger-ghost { background: transparent; color: var(--red); border: 1px solid rgba(232,84,71,0.45); }
+    .modal-card .actions button.danger-ghost:hover:not(:disabled) { background: rgba(232,84,71,0.12); border-color: var(--red); color: var(--red); }
+    .modal-card .actions button.link { background: none; border: none; color: var(--accent); padding: 0 6px; min-height: 32px; font-weight: 500; }
+    .modal-card .actions button.link:hover:not(:disabled) { background: none; text-decoration: underline; color: var(--accent); }
+    .modal-card .actions button.link.danger-link, .modal-card .actions button.link.danger-link:hover:not(:disabled) { color: var(--red); }
+    .modal-card .actions button:disabled { background: var(--surface3); color: var(--text3); border-color: transparent; }
+    .modal-card-header .modal-title-block { min-width: 0; flex: 1; }
+    .modal-card-sub { font-size: 0.85rem; color: var(--text2); margin-top: 2px; }
+    .modal-card-sub .settings-menu-link { padding: 0; font-size: 0.85rem; }
+    .modal-card-header .modal-close-btn { flex: 0 0 auto; align-self: flex-start; }
+    .modal-lead { margin: 0 0 20px; color: var(--text2); font-size: 0.95rem; line-height: 1.45; }
+    .modal-callout { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 6px; background: rgba(232,197,71,0.08); border: 1px solid rgba(232,197,71,0.3); font-size: 0.9rem; color: var(--text); margin: 0 0 16px; line-height: 1.4; }
+    .modal-callout.info { background: rgba(74,158,255,0.08); border-color: rgba(74,158,255,0.3); }
+    .modal-callout.danger { background: rgba(232,84,71,0.08); border-color: rgba(232,84,71,0.35); }
+    .setting-row { display: flex; align-items: center; gap: 12px; }
+    .setting-row .setting-label { flex: 1; min-width: 0; }
+    .setting-row .setting-label small { display: block; color: var(--text2); font-size: 0.8rem; margin-top: 1px; }
+    .setting-row > .toggle-switch, .setting-row > .filter-scope-segment, .setting-row > .radio-seg { flex: 0 0 auto; }
+    .setting-row.setting-row-stack { flex-direction: column; align-items: stretch; gap: 8px; }
+    .setting-row.setting-row-stack .filter-scope-segment { display: flex; }
+    .setting-row.setting-row-stack .filter-scope-segment button { flex: 1; text-align: center; }
+    .section-rule { display: flex; align-items: center; gap: 10px; margin: 20px 0 12px; }
+    .section-rule b { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text2); white-space: nowrap; }
+    .section-rule::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .section-rule .settings-menu-link { padding: 0; font-size: 0.85rem; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    .form-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 12px; }
+    .field-unit { position: relative; }
+    .modal-card .field-unit input { padding-right: 48px; width: 100%; }
+    .field-unit > span { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text2); font-size: 0.85rem; pointer-events: none; white-space: nowrap; }
+    .empty-state { text-align: center; padding: 22px 16px; border: 1px dashed var(--border2); border-radius: 8px; color: var(--text2); font-size: 0.9rem; margin: 8px 0; line-height: 1.45; }
+    .empty-state b { display: block; color: var(--text); font-weight: 500; margin-bottom: 4px; }
+    .modal-card select { -webkit-appearance: none; appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239e9b96' stroke-width='1.5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 10px 6px; }
+    .modal-card select[multiple], .modal-card select[size] { background-image: none; padding-right: 12px; }
+    .radio-seg { position: relative; display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .radio-seg label { display: flex; align-items: center; margin: 0; padding: 6px 12px; font-size: 0.9rem; color: var(--text2); cursor: pointer; }
+    .radio-seg label:hover { color: var(--text); }
+    .radio-seg label:has(input:checked) { background: var(--accent); color: var(--bg); font-weight: 600; }
+    .radio-seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+    .modal-card .radio-seg input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; margin: 0; pointer-events: none; }
+    .turn-in-progress { display: flex; align-items: center; gap: 12px; justify-content: center; }
+    .turn-in-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border2); border-top-color: var(--accent); flex: 0 0 auto; animation: turn-in-spin 0.9s linear infinite; }
+    @keyframes turn-in-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .turn-in-spinner { animation: none; } }
+    .choice-cards { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .choice-cards label { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; margin: 0; font-size: 0.95rem; color: var(--text); }
+    .choice-cards label small { display: block; color: var(--text2); font-size: 0.8rem; margin-top: 2px; }
+    .choice-cards label:has(input:checked) { border-color: var(--accent); background: rgba(232,197,71,0.06); }
+    .modal-card .choice-cards input[type="radio"] { width: auto; padding: 0; margin: 3px 0 0; accent-color: var(--accent); flex: 0 0 auto; }
+    /* Modal polish: per-dialog pieces on top of the primitives. */
+    .chip-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .modal-card .chip { padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-size: 0.8rem; font-family: inherit; cursor: pointer; }
+    .modal-card .chip:hover { color: var(--text); border-color: var(--border2); }
+    .settings-menu-btn.settings-menu-btn-inline { width: auto; padding: 8px 14px; font-size: 0.9rem; text-align: center; flex: 0 0 auto; }
+    .group-assign-buttons-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .group-assign-buttons-wrap .group-assign-buttons { display: contents; }
+    .group-assign-btn.group-assign-add { background: transparent; color: var(--accent); border: 1px dashed var(--border2); }
+    .group-assign-btn.group-assign-add:hover { border-color: var(--accent); }
+    .form-grid-2 > .form-group, .form-grid-3 > .form-group { margin-bottom: 16px; min-width: 0; }
+    .duct-schedule-knobs .form-group { margin-bottom: 4px; }
+    .duct-schedule-knobs .setting-row { align-self: end; min-height: 38px; margin-bottom: 4px; }
+    .settings-advanced-header { text-transform: none; letter-spacing: 0; font-size: 0.95rem; font-weight: 500; color: var(--text); padding: 10px 12px; margin: 0 0 8px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+    .settings-advanced-header .collapse-icon { color: var(--text2); }
+    .modal-card .line-drop-adj-btn { background: var(--surface2); border-color: var(--border); color: var(--text2); font-weight: 500; }
+    .modal-card .line-drop-adj-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--border2); }
+    .modal-card .line-drop-adj-btn--plus:hover { color: var(--green); border-color: var(--green); }
+    .modal-card .line-drop-adj-btn--minus:hover { color: var(--red); border-color: var(--red); }
+    .counter-icon-tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+    .counter-icon-tab { flex: 0 0 auto; padding: 5px 14px; border-bottom: none; font-size: 0.85rem; }
+    .counter-icon-tab.active { background: var(--accent); color: var(--bg); border-bottom-color: transparent; font-weight: 600; }
+    .modal-card .settings-menu-links-row { justify-content: flex-end; padding: 2px 0 0; }
+    .modal-card .settings-menu-links-row .settings-menu-link { padding: 4px 6px; font-size: 0.85rem; }
+    .scale-presets-list { max-height: none; overflow: visible; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .scale-presets-list button { width: auto; padding: 8px 4px; text-align: center; font-size: 0.9rem; font-variant-numeric: tabular-nums; border-radius: 6px; }
+    .scale-presets-list button.selected { background: rgba(232,197,71,0.08); font-weight: 600; }
+    .scale-presets-list button.selected::after { content: none; }
+    .scale-presets-list .section-rule { grid-column: 1 / -1; margin: 10px 0 4px; }
+    .scale-presets-list .section-rule:first-child { margin-top: 0; }
+    .scale-verify-advisory { flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+    .scale-verify-advisory-title { flex: 0 0 100%; }
+    .scale-verify-advisory-body { flex: 1; min-width: 180px; }
+    .scale-verify-advisory button { width: auto; padding: 6px 12px; font-size: 0.85rem; }
+    .scale-custom-row { display: flex; flex-direction: column; gap: 6px; }
+    .settings-project-label { display: flex; align-items: center; gap: 10px; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--text2); }
+    .settings-project-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .modal-card .icon-grid.icon-grid-drop { display: inline-flex; gap: 4px; max-height: none; margin-top: 4px; }
+    .modal-card .icon-grid.icon-grid-drop .icon-cell { border: 1px solid var(--border); }
+    .modal-card .icon-grid.icon-grid-drop .icon-cell.selected { border-color: var(--accent); }
+    .modal-card details.modal-section { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
+    .modal-card details.modal-section > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 10px 12px; font-size: 0.95rem; }
+    .modal-card details.modal-section > summary::-webkit-details-marker { display: none; }
+    .modal-card details.modal-section > summary::after { content: ''; width: 7px; height: 7px; border-right: 1.5px solid var(--text2); border-bottom: 1.5px solid var(--text2); transform: rotate(-45deg); margin-left: auto; flex: 0 0 auto; transition: transform 0.15s; }
+    .modal-card details.modal-section[open] > summary::after { transform: rotate(45deg); }
+    .modal-card details.modal-section > summary small { color: var(--text2); font-size: 0.82rem; }
+    .modal-card details.modal-section > .modal-section-body { padding: 4px 12px 8px; border-top: 1px solid var(--border); }
+    .modal-card details.modal-section > .modal-section-body > .form-group:last-child { margin-bottom: 8px; }
+    @media (max-width: 480px) { .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; } .scale-presets-list { grid-template-columns: repeat(3, 1fr); } }
+    .settings-actions { position: sticky; bottom: -18px; background: var(--surface); padding: 12px 0 0; margin: 8px -2px 0; }
+    .settings-actions button.primary { width: 100%; }
+    .settings-project-row-control .settings-menu-btn-inline { padding: 6px 12px; font-size: 0.85rem; }
+    .duct-schedule-knobs { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; margin-bottom: 4px; }
+    .duct-knob { display: inline-flex; align-items: center; gap: 6px; color: var(--text2); font-size: 0.85rem; white-space: nowrap; }
+    .duct-knob span { color: var(--text3); font-size: 0.8rem; }
+    .modal-card .duct-schedule-pct { padding: 6px 6px; font-size: 0.85rem; margin: 0; }
+    .keyboard-map-card .kb-board { overflow-x: auto; max-width: 100%; }
+    @media (max-width: 560px) {
+      #preparePdfModal .actions.prepare-pdf-actions { flex-wrap: wrap; }
+      #preparePdfModal .prepare-pdf-actions-right { flex-wrap: wrap; justify-content: flex-end; width: 100%; }
+    }
+    @media (max-width: 900px) {
+      #checkoutExpiredRecoveryModal .actions button.link { flex-basis: 100%; order: 2; text-align: left; padding-left: 0; }
+    }
+    @media (max-width: 560px) {
+      .modal-card .actions { gap: 8px; }
+      .modal-card .actions button { padding: 10px 14px; }
+    }
+    /* Modal polish follow-ups (2026-09-19): the last of the review's per-dialog asks. */
+    .select-segment { display: flex; width: 100%; }
+    .select-segment button { flex: 1; text-align: center; padding: 7px 4px; font-size: 0.85rem; }
+    .field-stepper { display: flex; align-items: stretch; gap: 6px; }
+    .modal-card .field-stepper input { flex: 1; min-width: 0; }
+    .modal-card .field-stepper select { width: auto; flex: 0 0 auto; padding: 8px 32px 8px 10px; }
+    .stepper-btns { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; flex: 0 0 auto; }
+    .modal-card .stepper-btns .line-drop-adj-btn { border: none; border-left: 1px solid var(--border); border-radius: 0; padding: 0 9px; min-width: 40px; font-size: 0.8rem; background: var(--surface2); }
+    .modal-card .stepper-btns .line-drop-adj-btn:first-child { border-left: none; }
+    .drop-recent-line { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-height: 22px; }
+    .drop-recent-line .drop-recent-row { flex: 1; min-width: 0; }
+    .modal-card .line-drop-clear { margin-left: auto; background: none; border: none; color: var(--text2); font-size: 0.8rem; font-family: inherit; cursor: pointer; padding: 2px 4px; }
+    .modal-card .line-drop-clear:hover { color: var(--text); text-decoration: underline; }
+    .form-facts { margin: -8px 0 16px; font-size: 0.85rem; color: var(--text2); }
+    .form-facts:empty { display: none; }
+    .bid-board-filter-label { font-size: 0.8rem; color: var(--text2); margin-right: 6px; }
+    .bid-board-owner-wrap { display: inline-flex; align-items: center; }
+    .settings-footer .settings-advanced-section { margin: 6px 0 2px; }
+    .settings-footer .settings-advanced-section .settings-menu { padding: 8px 0 4px; }
+    .polyline-type-color { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; font-size: 0.85rem; color: var(--text2); }
+    .polyline-type-color .color-swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border2); cursor: default; }

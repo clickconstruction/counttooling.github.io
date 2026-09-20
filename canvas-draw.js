@@ -1335,7 +1335,7 @@ function createCanvasDraw(deps) {
       const markers = ann.counterMarkers?.[c.id] || [];
       let effectiveCount = 0;
       markers.forEach(m => { effectiveCount += getMultiplyZoneForPoint(ann, m); });
-      if (effectiveCount > 0) counterRows.push({ name: c.name || 'Counter', icon: c.icon || CIRCLE_PATH, color: c.color || '#e8c547', count: effectiveCount });
+      if (effectiveCount > 0) counterRows.push({ name: c.name || 'Counter', icon: c.icon || CIRCLE_PATH, color: c.color || '#e8c547', count: effectiveCount, mountHeightIn: c.mountHeightIn, cfm: c.cfm });
     });
     const lineRows = [];
     (state.lineTypes || []).forEach(lt => {
@@ -1352,7 +1352,7 @@ function createCanvasDraw(deps) {
         const s = deps.getLineLengthSplitForTotals(poly, pi, true, ann);
         lenFt += s.feet; lenPx += s.px;
       });
-      if (lenFt > 0 || lenPx > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatFeetPx(lenFt, lenPx) });
+      if (lenFt > 0 || lenPx > 0) lineRows.push({ name: lt.name || 'Line', color: lt.color || '#4a9eff', lengthStr: formatFeetPx(lenFt, lenPx), feet: lenFt, spec: typeof deps.lineTypeSpecText === 'function' ? (deps.lineTypeSpecText(lt) || '') : '' });
     });
     // Room Sizer rows: per-room volume for this page's boxes (always cubic feet).
     // Toggleable in Legend Settings; on by default — only projects that use the
@@ -1361,12 +1361,12 @@ function createCanvasDraw(deps) {
     if (state.legendSettings?.showRooms !== false) {
       const pi = pageIdx >= 0 ? pageIdx : 0;
       (state.rooms || []).forEach(rm => {
-        let vol = 0, any = false;
+        let vol = 0, area = 0, any = false;
         (ann.roomBoxes || []).filter(b => b.roomId === rm.id).forEach(b => {
           const dims = roomBoxDimsFeet(b, deps.getEffectiveScaleForLine(ann, b, false, pi));
-          if (dims) { vol += dims.volumeCuFt; any = true; }
+          if (dims) { vol += dims.volumeCuFt; area += dims.areaSqFt || 0; any = true; }
         });
-        if (any) roomRows.push({ name: rm.name || 'Room', color: rm.color || '#47c88e', volStr: Math.round(vol) + ' ft³' });
+        if (any) roomRows.push({ name: rm.name || 'Room', color: rm.color || '#47c88e', volStr: Math.round(vol) + ' ft³', areaStr: Math.round(area) + ' ft²' });
       });
     }
     // Room air lines (DUCT unit D15 — closing D7's deferral) behind the SAME
@@ -1448,17 +1448,220 @@ function createCanvasDraw(deps) {
   const LEGEND_HEADER_TEXT = 'This sheet';
   const LEGEND_HEADER_H_PDF = 12;
 
-  function drawLegend(ctx, page, pageIdx, ann, scale, tc) {
+  // The sheet legend (2026-09-19): the on-plan legend drawn the way an E-sheet
+  // or M-sheet draws its own — a ruled block with a title, the symbol in its
+  // own column, the description in caps, and the column the trade reads (mount
+  // height for devices, neck · CFM for air). `compact`, the standard for
+  // electrical and HVAC projects: one title line, no column header, a spec line
+  // only where no column carries the fact (a conduit's conductors, a unit's
+  // capacity, a room's area), a footer only when it names a panel or a unit.
+  // `full`: the column header, every spec line, the totals footer. `tally`: the
+  // original icon · name · [count] list, still the default for plumbing, whose
+  // icons are pictures rather than symbols. legendSettings.style is explicit
+  // (per project in save/load like the other legend knobs); null = by trade.
+  function resolveLegendStyle(state) {
+    const s = state.legendSettings && state.legendSettings.style;
+    if (s === 'tally' || s === 'compact' || s === 'full') return s;
+    return (state.trade === 'electrical' || state.trade === 'hvac') ? 'compact' : 'tally';
+  }
+  // The legend follows the sheet: an ANSI B sheet (1224 pt on the long side)
+  // draws at 1×, a D sheet at about 2×, so a plot reduced to B still reads.
+  // Letter-size test pages and the sample sheets stay at 1×.
+  const LEGEND_REFERENCE_SHEET_PT = 1224;
+  function legendSheetFactor(pageW, pageH) {
+    return Math.max(1, Math.min(3, Math.max(pageW || 0, pageH || 0) / LEGEND_REFERENCE_SHEET_PT));
+  }
+  function legendMountText(inches) {
+    return inches > 0 ? Math.round(inches) + '" AFF' : '';
+  }
+  // The column a row reads: neck · CFM for an air device, the mount height
+  // for a mounted one, nothing otherwise.
+  function legendMidText(r) {
+    if (r.cfm > 0) {
+      const neck = typeof deps.suggestNeckSize === 'function' ? deps.suggestNeckSize(r.cfm) : null;
+      const cfm = Math.round(r.cfm).toLocaleString();
+      return neck && !neck.overCapacity ? neck.neckDIn + '"Ø · ' + cfm : cfm + ' CFM';
+    }
+    return legendMountText(r.mountHeightIn);
+  }
+  const LEGEND_INK = '#1a1a1a';
+  const LEGEND_HAIRLINE = '#d6d3cb';
+
+  function drawSheetLegend(ctx, page, pageIdx, ann, scale, tc, style, ink, rows) {
+    const state = deps.getState();
+    const leg = ann.legend;
+    const { counterRows, lineRows, roomRows, airRows, ductRows } = rows;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    const pageW = vp.width, pageH = vp.height;
+    const legendScale = (state.legendSettings?.legendScale ?? 1) * legendSheetFactor(pageW, pageH);
+    const es = scale * legendScale;   // canvas px per legend unit
+    const full = style === 'full';
+    const F = {
+      title: '700 ' + (7 * es) + 'px "DM Sans", sans-serif',
+      head: '600 ' + (5.5 * es) + 'px "DM Sans", sans-serif',
+      desc: '500 ' + (7 * es) + 'px "DM Sans", sans-serif',
+      spec: '400 ' + (5.5 * es) + 'px "DM Sans", sans-serif',
+      mid: '400 ' + (6.5 * es) + 'px "DM Sans", sans-serif',
+      qty: '700 ' + (7.5 * es) + 'px "DM Sans", sans-serif',
+      foot: '500 ' + (5.5 * es) + 'px "DM Sans", sans-serif',
+    };
+    const trade = typeof deps.getTrade === 'function' ? deps.getTrade() : (state.trade || null);
+    const tradeWord = trade === 'electrical' ? 'ELECTRICAL' : trade === 'hvac' ? 'MECHANICAL' : trade === 'plumbing' ? 'PLUMBING' : 'SYMBOL';
+    // The scope on the block (B10 / J18): the sheet's own name when it has one, else THIS SHEET.
+    const sheetName = page.label && !/\.pdf$/i.test(page.label) ? String(page.label).toUpperCase() : 'THIS SHEET';   // a custom sheet name, never the file name
+    const title = tradeWord + ' LEGEND · ' + sheetName;
+    // One row per entry: symbol kind, description, optional spec line (compact keeps only the
+    // ones no column carries), the mid column, the right-hand figure.
+    const entries = [];
+    counterRows.forEach(r => entries.push({ kind: 'icon', icon: r.icon, color: r.color, desc: (r.name || '').toUpperCase(), spec: '', mid: legendMidText(r), qty: String(r.count), count: r.count }));
+    // Feet read as linear feet on a sheet (34 LF); a mixed ft + px row keeps the tally's split.
+    lineRows.forEach(r => entries.push({ kind: 'line', color: r.color, desc: (r.name || '').toUpperCase(), spec: r.spec || '', mid: '', qty: (r.feet > 0 && !/px/.test(r.lengthStr)) ? Math.round(r.feet).toLocaleString() + ' LF' : r.lengthStr, feet: r.feet || 0 }));
+    roomRows.forEach(r => entries.push({ kind: 'swatch', color: r.color, desc: (r.name || '').toUpperCase(), spec: '', mid: r.areaStr || '', qty: r.volStr }));   // area in the column, volume on the right: one line per room
+    airRows.forEach(r => entries.push({ kind: 'swatch', color: r.color, desc: r.text, spec: '', mid: '', qty: '' }));
+    ductRows.forEach(r => entries.push({ kind: 'line', color: r.color, desc: (r.name || '').toUpperCase(), spec: '', mid: '', qty: r.lenStr }));
+    const anyMid = entries.some(e => e.mid);
+    const anyCfm = counterRows.some(r => r.cfm > 0), anyMount = counterRows.some(r => r.mountHeightIn > 0);
+    const midHead = anyCfm && anyMount ? 'MOUNT / CFM' : anyCfm ? 'NECK · CFM' : 'MOUNT';
+    // The footer: totals, and the panel or unit the marks belong to.
+    const devices = counterRows.reduce((n, r) => n + r.count, 0);
+    const feet = lineRows.reduce((n, r) => n + (r.feet || 0), 0);
+    const tags = (state.groups || []).filter(g => g.panel || g.equipmentTag).slice(0, 2).map(g => g.panel
+      ? 'PANEL ' + g.panel + (g.circuit ? ' · CKT ' + g.circuit : '')
+      : String(g.equipmentTag).toUpperCase() + (g.capacityCfm > 0 ? ' · ' + Math.round(g.capacityCfm).toLocaleString() + ' CFM' : ''));
+    const footLeft = devices ? devices + (devices === 1 ? ' DEVICE' : ' DEVICES') + (feet > 0 ? ' · ' + Math.round(feet).toLocaleString() + ' LF' : '') : (feet > 0 ? Math.round(feet).toLocaleString() + ' LF' : '');
+    const footRight = tags.join(' · ');
+    const showFoot = full ? !!(footLeft || footRight) : !!footRight;
+    const showHead = full;
+    // Layout in legend units (PDF pt at 1×).
+    const PAD = 4, SYM_W = 15, GAP = 5, TITLE_H = 11, HEAD_H = 8, ROW_H = 10, SPEC_H = 5, FOOT_H = 9;
+    const m = (font, text) => { ctx.font = font; return ctx.measureText(text).width / es; };
+    let descW = 0, midW = 0, qtyW = 14;
+    entries.forEach(e => {
+      descW = Math.max(descW, m(F.desc, e.desc));
+      if (e.spec && (full || e.kind !== 'icon')) descW = Math.max(descW, m(F.spec, e.spec));
+      if (e.mid) midW = Math.max(midW, m(F.mid, e.mid));
+      if (e.qty) qtyW = Math.max(qtyW, m(F.qty, e.qty));
+    });
+    if (showHead && anyMid) midW = Math.max(midW, m(F.head, midHead));
+    const rowH = (e) => ROW_H + ((e.spec && (full || e.kind !== 'icon')) ? SPEC_H : 0);
+    const bodyH = entries.reduce((h, e) => h + rowH(e), 0);
+    const idealW = Math.max(2 * PAD + m(F.title, title), 2 * PAD + SYM_W + GAP + descW + (anyMid ? GAP + midW : 0) + GAP + qtyW);
+    const idealH = PAD + TITLE_H + (showHead ? HEAD_H : 0) + bodyH + (showFoot ? FOOT_H : 0) + PAD;
+    // The same anchor walk and clamps as the tally (B10 / J18), in PDF units.
+    const idealWidthPdf = idealW * legendScale, idealHeightPdf = idealH * legendScale;
+    const minW = 60 * legendScale, minH = 30 * legendScale;
+    const wantW = Math.max(minW, idealWidthPdf, leg.userResized ? leg.w : 0);
+    const wantH = Math.max(minH, idealHeightPdf, leg.userResized ? leg.h : 0);
+    leg.x = Math.max(0, Math.min(leg.x, pageW - wantW - 10));
+    leg.y = Math.max(0, Math.min(leg.y, pageH - wantH - 10));
+    if (!leg.userResized) {
+      leg.w = Math.max(minW, Math.min(idealWidthPdf, pageW - leg.x - 10));
+      leg.h = Math.max(minH, Math.min(idealHeightPdf, pageH - leg.y - 10));
+    } else {
+      leg.w = Math.max(leg.w, Math.min(idealWidthPdf, pageW - leg.x - 10));
+      leg.h = Math.max(leg.h, Math.min(idealHeightPdf, pageH - leg.y - 10));
+    }
+    leg.w = Math.max(minW, Math.min(leg.w, pageW - leg.x - 10));
+    leg.h = Math.max(minH, Math.min(leg.h, pageH - leg.y - 10));
+    const tl = tc({ x: leg.x, y: leg.y });
+    const width = leg.w * scale, height = leg.h * scale;
+    const [rr, gg, bb] = hexToRgb(state.legendSettings?.bgColor || '#ffffff');
+    ctx.fillStyle = 'rgba(' + rr + ',' + gg + ',' + bb + ',' + (state.legendSettings?.bgOpacity ?? 1) + ')';
+    ctx.fillRect(tl.x, tl.y, width, height);
+    ctx.save();
+    ctx.globalAlpha = state.legendSettings?.textOpacity ?? 1;
+    if (state.legendSettings?.showBorder !== false) {
+      ctx.strokeStyle = LEGEND_INK;
+      ctx.lineWidth = Math.max(1, 1.2 * es);
+      ctx.strokeRect(tl.x, tl.y, width, height);
+    }
+    // The resize grip, as the tally draws it.
+    const GRIP_SIZE = 16;
+    const brX = tl.x + width - GRIP_SIZE - 4, brY = tl.y + height - GRIP_SIZE - 4;
+    ctx.strokeStyle = '#999'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 3; i++) { const o = 2 + i * 3; ctx.beginPath(); ctx.moveTo(brX + o, brY + GRIP_SIZE); ctx.lineTo(brX + GRIP_SIZE, brY + o); ctx.stroke(); }
+    if (state.legendSettings?.showResizeHighlight) {
+      const hit = 16 * scale;
+      ctx.fillStyle = 'rgba(255, 200, 0, 0.4)'; ctx.fillRect(tl.x + width - hit, tl.y + height - hit, hit, hit);
+      ctx.strokeStyle = 'rgba(255, 200, 0, 0.8)'; ctx.lineWidth = 1; ctx.strokeRect(tl.x + width - hit, tl.y + height - hit, hit, hit);
+    }
+    const X = (u) => tl.x + u * es, Y = (u) => tl.y + u * es;
+    const rule = (yU, color, w) => { ctx.strokeStyle = color; ctx.lineWidth = Math.max(0.5, w * es); ctx.beginPath(); ctx.moveTo(X(PAD), Y(yU)); ctx.lineTo(tl.x + width - PAD * es, Y(yU)); ctx.stroke(); };
+    ctx.textBaseline = 'top'; ctx.textAlign = 'left'; ctx.fillStyle = LEGEND_INK;
+    let y = PAD;
+    // Title
+    ctx.font = F.title; ctx.fillText(title, X(PAD), Y(y + 1.5));
+    y += TITLE_H; rule(y, LEGEND_INK, 1);
+    const descX = PAD + SYM_W + GAP;
+    const qtyRight = leg.w / legendScale - PAD;
+    const midRight = qtyRight - qtyW - GAP;
+    if (showHead) {
+      ctx.font = F.head; ctx.fillStyle = '#555';
+      ctx.fillText('SYM', X(PAD), Y(y + 1.5)); ctx.fillText('DESCRIPTION', X(descX), Y(y + 1.5));
+      ctx.textAlign = 'right';
+      if (anyMid) ctx.fillText(midHead, X(midRight), Y(y + 1.5));
+      ctx.fillText('QTY', X(qtyRight), Y(y + 1.5));
+      ctx.textAlign = 'left';
+      y += HEAD_H; rule(y, LEGEND_INK, 0.6);
+    }
+    entries.forEach((e, i) => {
+      const h = rowH(e);
+      // symbol column: the icon in its colour on the plan, ink with a colour tab in print
+      if (ink) { ctx.fillStyle = e.color; ctx.fillRect(X(PAD), Y(y + 1.5), 1.5 * es, (h - 3) * es); }
+      if (e.kind === 'icon') {
+        const size = 8.5 * es, vb = deps.iconRenderVb(e.icon), center = deps.iconRenderCenter(e.icon);
+        ctx.save();
+        ctx.translate(X(PAD + (ink ? 3 : 0) + (SYM_W - (ink ? 3 : 0)) / 2), Y(y + ROW_H / 2));
+        ctx.scale(size / vb, size / vb);
+        ctx.translate(-center.x, -center.y);
+        ctx.fillStyle = ink ? LEGEND_INK : e.color;
+        ctx.fill(new Path2D(e.icon));
+        ctx.restore();
+      } else if (e.kind === 'line') {
+        ctx.fillStyle = ink ? LEGEND_INK : e.color;
+        ctx.fillRect(X(PAD + (ink ? 3 : 1)), Y(y + ROW_H / 2 - 0.75), (SYM_W - (ink ? 5 : 2)) * es, 1.5 * es);
+      } else {
+        ctx.fillStyle = ink ? '#ffffff' : e.color;
+        ctx.fillRect(X(PAD + (ink ? 4 : 2)), Y(y + 2), (SYM_W - (ink ? 8 : 4)) * es, (ROW_H - 4) * es);
+        ctx.strokeStyle = LEGEND_INK; ctx.lineWidth = Math.max(0.5, 0.6 * es);
+        ctx.strokeRect(X(PAD + (ink ? 4 : 2)), Y(y + 2), (SYM_W - (ink ? 8 : 4)) * es, (ROW_H - 4) * es);
+      }
+      ctx.fillStyle = LEGEND_INK; ctx.font = F.desc; ctx.textAlign = 'left';
+      ctx.fillText(e.desc, X(descX), Y(y + 1.75));
+      if (e.spec && (full || e.kind !== 'icon')) { ctx.font = F.spec; ctx.fillStyle = '#555'; ctx.fillText(e.spec, X(descX), Y(y + ROW_H - 0.5)); ctx.fillStyle = LEGEND_INK; }
+      ctx.textAlign = 'right';
+      if (e.mid) { ctx.font = F.mid; ctx.fillStyle = '#333'; ctx.fillText(e.mid, X(midRight), Y(y + 2)); ctx.fillStyle = LEGEND_INK; }
+      if (e.qty) { ctx.font = F.qty; ctx.fillText(e.qty, X(qtyRight), Y(y + 1.5)); }
+      ctx.textAlign = 'left';
+      y += h;
+      if (i < entries.length - 1) rule(y, LEGEND_HAIRLINE, 0.5);
+    });
+    if (showFoot) {
+      rule(y, LEGEND_INK, 1);
+      ctx.font = F.foot; ctx.fillStyle = '#444';
+      if (footLeft) ctx.fillText(footLeft, X(PAD), Y(y + 2));
+      if (footRight) { ctx.textAlign = 'right'; ctx.fillText(footRight, X(qtyRight), Y(y + 2)); ctx.textAlign = 'left'; }
+    }
+    ctx.restore();
+  }
+
+  // `opts.ink` (the PDF export path): symbols and line samples in ink with a
+  // thin colour tab, so the block survives a monochrome plot.
+  function drawLegend(ctx, page, pageIdx, ann, scale, tc, opts) {
     const state = deps.getState();
     if (!state.showLegendOverlay || !ann.legend) return;
     const leg = ann.legend;
-    const legendScale = state.legendSettings?.legendScale ?? 1;
-    const effectiveScale = scale * legendScale;
-    const { counterRows, lineRows, roomRows, airRows, ductRows, hasRows } = computeLegendRows(ann, pageIdx);
+    const rows = computeLegendRows(ann, pageIdx);
+    const { counterRows, lineRows, roomRows, airRows, ductRows, hasRows } = rows;
     // B10 (J8): a zero-mark sheet used to grow a mystery white "No items" box
     // top-right (the overlay defaults on). An empty legend paints nothing at
     // all now; hitTest mirrors the gate via legendHasRows.
     if (!hasRows) return;
+    const style = resolveLegendStyle(state);
+    if (style !== 'tally') { drawSheetLegend(ctx, page, pageIdx, ann, scale, tc, style, !!(opts && opts.ink), rows); return; }
+    const vp0 = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    const legendScale = (state.legendSettings?.legendScale ?? 1) * legendSheetFactor(vp0.width, vp0.height);
+    const effectiveScale = scale * legendScale;
     ctx.font = (10 * effectiveScale) + 'px sans-serif';
     let maxTextWidthCanvas = 0;
     counterRows.forEach(r => {
@@ -1681,6 +1884,7 @@ function createCanvasDraw(deps) {
     drawGhosts,
     drawLegend,
     legendHasRows, planRoomLabels,
+    resolveLegendStyle, legendSheetFactor,
     computeLegendRows,   // D17 spec seam (App.legendRowsFor) — the rows the legend paints
     drawGrid,
   };

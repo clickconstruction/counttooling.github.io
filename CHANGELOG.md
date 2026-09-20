@@ -26,6 +26,115 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## feat(brand): the C-reticle mark and a real tab favicon (2026-09-18)
+
+The tab favicon was an inline data-URI yellow square with nothing on it, repeated in every
+page head, and it didn't match the header logo or the home-screen icons (a yellow tile with a
+thin-stroked takeoff reticle that smeared at 16px). The mark is now a C-reticle: the ring is
+opened on the right so it reads as a C for CountTooling, with three ticks and a center dot,
+strokes weighted for tab sizes. One source, [scripts/lib/brand-mark.js](scripts/lib/brand-mark.js),
+feeds the header logo (index.html, 404.html, the guides/rules template in
+[scripts/lib/site.js](scripts/lib/site.js)), the PWA + apple-touch icons, the share card
+([scripts/build-og-image.js](scripts/build-og-image.js)), and the new favicon files:
+`icons/favicon.svg` plus a root `favicon.ico` (16/32/48 PNG-in-ICO, written by
+[scripts/build-pwa-icons.js](scripts/build-pwa-icons.js) with no new deps). Every head links
+both (ICO first for Safari, SVG for the rest); sw.js precaches them; pwa.spec.js asserts the
+links resolve. Regenerated: guides, rules, og-image.png, the SW stamp.
+
+## feat(legend): the sheet legend, compact by default for electrical and HVAC (2026-09-19)
+
+The on-plan legend can draw the way an E-sheet or M-sheet draws its own: a ruled block with
+a title ("ELECTRICAL LEGEND · THIS SHEET", the custom sheet name when there is one), the
+symbol in its own column, the description in caps, the column the trade reads (mount height
+for devices from `mountHeightIn`, neck · CFM for air devices from `cfm` and duct-model's
+neck table), the count on the right; a conduit row draws its line sample with the conductor
+spec beneath and reads linear feet; a room row carries floor area in the column and volume
+on the right; the footer names the panel (or the unit) with the device and LF totals.
+Three styles, `legendSettings.style` (per project like the other legend knobs, a segment on
+the Summary Legend dialog): `compact`, the standard for electrical and HVAC projects (one
+title line, no column header, a spec line only where no column carries the fact, a footer
+only when it names a panel or a unit); `full` (the column header, every spec line, the
+totals footer); `tally`, the original icon · name · [count] list, still the default for
+plumbing, whose icons are pictures rather than symbols. Resolution is the setting, else the
+trade (`App.resolveLegendStyle`). Two things reach the tally too: the legend follows the
+sheet size (canvas-draw `legendSheetFactor`: an ANSI B sheet draws at 1×, a D sheet at
+about 2×, capped at 3×, so a plot reduced to B still reads; letter test pages and the
+sample sheets are unchanged at 1×), and the PDF export path draws the block in ink with a
+thin colour tab per row (`drawLegend(..., { ink: true })`), so it survives a monochrome
+plot. The hit test and the resize grip are unchanged. canvas-draw.test.js pins the
+resolution, the sheet factor, the compact and full texts and the byte-identical tally;
+[legend-sheet.spec.js](legend-sheet.spec.js) drives the app.
+
+## style(modals): the review's last fifteen asks (2026-09-19)
+
+The Modal Review's per-dialog suggestions that the polish pass left short. Copy and counts:
+Delete zone names the mark count in its title and button (`countCanvasMarks`, published on
+`App`, is the one counter the confirms share), Delete room names the room and says its boxes
+go while the marks inside stay, Clear page says how many marks it removes and puts the number
+on the button, Load annotations says how many cloud projects match the PDF, Edit layer shows
+a facts line (marks, sheet, layer). Controls: the zone dialogs' label position is a segment
+that mirrors its select (`.select-segment[data-for]`, built by app.js from the options and
+written back on click, so the features keep reading the select), Line Properties attaches
+its ±1 / ±10 steppers to the drop field with Clear as a small link, New polyline shows the
+chosen type's swatch above the override presets, the bid board's estimator filter has a
+label, Load project's search sits under the title, the admin lists have empty states.
+Project Settings: Advanced is a disclosure inside the footer (the same five buttons, the
+same ids; `#settingsAdvancedModal` is gone, 77 modals), Edit session expired lost its Cancel
+(the × is the way out). Two asks stayed deliberately: Room Size keeps its room list (six
+specs and the HVAC tour drive `.room-picker-item`), and the activity overview already had a
+stat-tile row.
+
+## style(modals): the polish pass, seven primitives and fifty-two dialogs (2026-09-18)
+
+The Modal Review (the old-versus-new page built off the Modal Gallery contact sheet) found
+that most of the 78 dialogs shared seven problems, so this pass fixes the primitives in
+styles.css once and then touches the dialogs the review marked Tune or Rework. The
+primitives: (1) `input[type=range]` is the app's own slider, an accent track and thumb
+with the fill driven by a `--fill` custom property that app.js syncs on `showModal` and on
+input, and the value pinned to the label's right edge (`label.range-label` / `.range-val`);
+(2) `input[type=color]` is a 38px swatch beside a hex read-out (`.color-field` /
+`.color-hex`, synced the same way); (3) action buttons carry a ROLE class (`ghost`,
+`primary`, `danger`, `danger-ghost`, `link`) and a middle button is ghost by default, so a
+Delete on the left or a third button never falls through to a white default (Room Size,
+Edit Room, Add Group, Unsaved Changes, Edit session expired, Project turned in, Prepare
+PDF); (4) every dismissible dialog has a × (`data-modal-close`; app.js dismisses it by
+dispatching Escape so the ladder's per-modal cleanup runs, then hides the overlay if no
+rung took it) and a title-block + `.modal-card-sub` for the dialogs that carried a link in
+the title row; (5) the confirms read as one template: a question title, a `.modal-lead`
+consequence line, a verb on the danger button (Delete sheet, Clear page, Delete user with
+`.choice-cards`), and the warnings that were accent-coloured body text are `.modal-callout`s;
+(6) `.setting-row` / `.setting-label` for label-left control-right rows (the wrapping
+"Show only counters used", "Snap counters to grid", "Verbose mode"), `.section-rule` for
+the uppercase group headings, `.form-grid-2/3` and `.field-unit` (the unit inside the
+field: the Duct Schedule knobs no longer truncate "0.08"), `.radio-seg` for the Straight /
+Curved radios, and a styled `select` chevron; (7) `.empty-state` for the cloud lists and the
+palette pickers. The reworks: Set Scale's 22 full-width preset rows are two chip grids under
+Architectural / Engineering rules (features/scale.js); the Counter details modal folds the
+icon grids and the air fields into `<details class="modal-section">` disclosures; Project
+Settings keeps one primary (Save, in a footer `.actions`), moves Add pages / Download PDF
+into a Sheets row and Close project into the footer links; Line Type Settings pairs its
+sliders under Drops / Lengths rules; Edit session expired reads as two actions plus a quiet
+discard link. Import canvas and Counters-from-schedule lost their redundant Cancel (the ×
+stays); My Standards' primary moved from the header to the footer; Assign to group's
+"+ Add group" is the last chip. Ids are unchanged throughout, so the specs and the tours
+drive the same controls. Verified across all 78 in the Modal Gallery.
+
+## feat(dev): the Modal Gallery, every modal on one page (2026-09-18)
+
+A developer view for styling passes. `/app/?gallery=1` reparents every `.modal-overlay` in the
+shell (78 on this date) into a grid, overriding only the overlay's fixed positioning and the card's
+width under `body.modal-gallery`, so the markup, the handlers and styles.css are the app's own:
+edit the stylesheet, Reload CSS, and all of them update together. Toasts and the fixed popovers
+get sections of their own. Per tile: `app/index.html:<line>` and the owning feature file (found
+by fetching the shell and the loaded feature files), Populate through the registered opener
+(variants get a button each), Open live on the real backdrop with the app's Esc ladder closing
+it. Load sample opens the sample plan through the intake and lays build-screenshots' takeoff plus a room and a group;
+Mobile embeds the `&narrow=1` page in a 375px iframe because the media queries key off the
+viewport. The file is injected by the boot only on the param, never a shell script tag, never
+precached. Phase 2: `npm run build:modal-gallery` shoots one PNG per tile at both widths into a
+contact sheet, with `--baseline <dir>` for a before/after. The spec doubles as the assertion
+that every overlay in the shell renders with a real height.
+
 ## fix(edit): undo while editing a run no longer loses the run (2026-09-18)
 
 Found by the BEND-OVERRIDE test round. A run in Edit Polyline is spliced out of its page into

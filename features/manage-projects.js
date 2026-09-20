@@ -51,7 +51,7 @@
           return;
         }
         if (!Array.isArray(data) || data.length === 0) {
-          listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>';
+          listEl.innerHTML = '<p class="empty-state"><b>No projects in the cloud</b>Save a takeoff from Project Settings and it shows up here.</p>';
           return;
         }
         const esc = (s) => App.escapeHtml(s);
@@ -141,7 +141,7 @@
         const row = btnEl.closest('.settings-user-row');
         row.remove();
         if (!document.getElementById('manageProjectsList').querySelector('.settings-user-row')) {
-          document.getElementById('manageProjectsList').innerHTML = '<p style="color:var(--text3);">No projects</p>';
+          document.getElementById('manageProjectsList').innerHTML = '<p class="empty-state"><b>No projects in the cloud</b>Save a takeoff from Project Settings and it shows up here.</p>';
         }
       } else {
         App.showToast(data.error || 'Delete failed', 5000);

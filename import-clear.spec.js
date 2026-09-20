@@ -62,7 +62,9 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     // words, not "current canvas".
     await page.evaluate(() => document.getElementById('clearPage').click());
     await page.waitForSelector('#clearPageConfirmModal.visible', { timeout: 5000 });
-    await expect(page.locator('#clearPageConfirmMessage')).toHaveText('Remove all marks from this page\'s Main layer?');
+    // 2026-09-19: the confirm counts what it removes; the layer qualifier stays.
+    await expect(page.locator('#clearPageConfirmMessage')).toContainText('from this page\'s Main layer');
+    await expect(page.locator('#clearPageConfirmMessage')).toContainText('Removes');
 
     // Cancel leaves the markers alone.
     await page.evaluate(() => document.getElementById('clearPageCancel').click());

@@ -159,7 +159,7 @@
     function renderList(users) {
       lastUsers = users || [];
       if (!users || users.length === 0) {
-        listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
+        listEl.innerHTML = '<p class="empty-state"><b>No users yet</b>Add one from User Settings and they show up here.</p>';
         return;
       }
       const esc = (s) => App.escapeHtml(s);
@@ -259,7 +259,7 @@
     App.showModal('allUsersModal');
     function renderUsers(list) {
       if (!list || list.length === 0) {
-        listEl.innerHTML = '<p style="color:var(--text3);">No users</p>';
+        listEl.innerHTML = '<p class="empty-state"><b>No users yet</b>Add one from User Settings and they show up here.</p>';
         return;
       }
       const headerHtml = userListHeaderHtml('<span class="settings-user-activity-head"></span>');
@@ -365,7 +365,7 @@
       const mine = data.filter((p) => p.user_id === userId)
         .sort((a, b) => new Date(b.updated_at || 0) - new Date(a.updated_at || 0));
       document.getElementById('userProjectsSubtitle').textContent = (email || userId || '') + ': ' + mine.length + ' project' + (mine.length === 1 ? '' : 's');
-      if (!mine.length) { listEl.innerHTML = '<p style="color:var(--text3);">No projects</p>'; return; }
+      if (!mine.length) { listEl.innerHTML = '<p class="empty-state"><b>No projects</b>Nothing saved to the cloud under this account yet.</p>'; return; }
       listEl.innerHTML = mine.map((p) =>
         '<div class="settings-user-row settings-project-row">' +
         '<div class="settings-project-info">' +
@@ -402,7 +402,7 @@
         lastUsers = (lastUsers || []).filter((x) => x.id !== pendingDeleteUserId);
         const lst = document.getElementById('manageUserList');
         if (lst && !lst.querySelector('.settings-user-row:not(.settings-user-header)')) {
-          lst.innerHTML = '<p style="color:var(--text3);">No users</p>';
+          lst.innerHTML = '<p class="empty-state"><b>No users yet</b>Add one from User Settings and they show up here.</p>';
         }
       },
     });

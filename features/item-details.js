@@ -91,6 +91,8 @@
     const cfmGroup = document.getElementById('counterLineTypeDetailsCfmGroup');
     const cfmEl = document.getElementById('counterLineTypeDetailsCfm');
     if (cfmGroup) cfmGroup.style.display = kind === 'counter' ? '' : 'none';
+    const airSection = document.getElementById('counterLineTypeDetailsAirSection');
+    if (airSection) airSection.style.display = kind === 'counter' ? '' : 'none';
     // D8: the neck-size prefill line under the CFM ("150 CFM → 8"Ø neck",
     // duct-model's D1 table via App.getDuctNeckSuggestionText — shown only
     // when the counter carries a CFM and its name has no explicit size).

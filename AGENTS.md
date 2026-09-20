@@ -52,6 +52,14 @@
   one is playing, a click swaps the film in place, and with no click the three play in turn.
   Gotchas for the generator (the toast timers, the stroke key, the real dialog selectors) are
   in [journeys/plans/LANDING-REFRESH.md](journeys/plans/LANDING-REFRESH.md).
+- **The Modal Gallery (developer view)**: `/app/?gallery=1` lays every modal in the shell out on
+  one page in the app's own markup and CSS (features/modal-gallery.js, injected by the boot only on
+  that param, never a shell script tag, never precached), with Populate (the real openers), Open
+  live (the fixed backdrop), Load sample, Reload CSS (cache-busted past the service worker) and a
+  375px Mobile embed. Use it to judge a styles.css change across all ~78 dialogs at once.
+  `npm run build:modal-gallery` (scripts/build-modal-gallery.js) shoots the contact sheet, one PNG
+  per tile at both widths, into `contact-sheet/`; `--baseline <dir>` makes a
+  before/after. Manual, like `build:screenshots`. Detail: ARCHITECTURE.md Files table.
 - **The rulebook (/rules/)**: the PUBLIC trade rules the app applies (NEC fill limits,
   the voltage-drop recommendation, SMACNA-style gauge, mount heights, hanger spacing…),
   written as the app applies them and cited by section — never the code text reprinted,
@@ -153,7 +161,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->86<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->87<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -314,6 +322,17 @@
   so the calling function becomes `async`. In specs, drive it by clicking `#confirmOk` /
   `#confirmCancel` (or filling `#confirmInput`) — a `page.on('dialog')` hook is a
   failure signal, never a driver.
+- **Modal primitives (2026-09-18 polish pass).** A dialog is a `.modal-card` with a
+  `.modal-card-header` (title, optional `.modal-card-sub`, and a × carrying `data-modal-close`,
+  which app.js dismisses the way Esc does). Action buttons in `.actions` carry a role class
+  (`ghost` / `primary` / `danger` / `danger-ghost` / `link`), never rely on first/last position;
+  a destructive button sits left with `margin-right:auto`. Sliders are plain
+  `input[type=range]` under a `label.range-label` (value in `.range-val`), colour pickers are
+  `.color-field` (the input plus a `.color-hex`), a label-left / control-right row is
+  `.setting-row` + `.setting-label`, a group heading is `<div class="section-rule"><b>…</b></div>`,
+  a numeric field with a unit is `.field-unit`, Straight/Curved-style radios are `.radio-seg`,
+  a nothing-here list is `.empty-state`. Check a change across every dialog at once in the
+  Modal Gallery (`/app/?gallery=1`).
 - Copy style (2026-09-14 pass): no em dashes in user-facing text — a comma, colon,
   period or the house ` · ` separator instead (a lone `—` as an empty-value cell is
   fine). In a tour step body, name a control the way it looks on screen with
@@ -426,7 +445,7 @@ which are kept in sync (`true` only for `'page'`) so the settings shape is
 unchanged; the scope ALSO persists per device via the localStorage keys
 `counterSidebarFilterScope` / `lineTypeSidebarFilterScope` — written by the
 `set*ListFilterScope` setters, read at boot, wiped by the sign-out key list),
-`legendSettings`, `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
+`legendSettings` (includes `style`: `'tally' | 'compact' | 'full'`, the on-plan legend's drawing; absent = by trade, compact for electrical and HVAC, tally for plumbing; the block also scales with the sheet's long side, canvas-draw `legendSheetFactor`), `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
 label: show/size/position, default top-left; per-project in save/load +
 export/import like `multiplyZoneSettings`), `gridSettings`, `showGridOverlay`,
 `exportSettings` (includes `bundleHighlightsToPdf`, `bundleNotesToPdf`),

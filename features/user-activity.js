@@ -59,7 +59,7 @@
       return;
     }
     if (filtered.length === 0) {
-      listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
+      listEl.innerHTML = '<p class="empty-state">No activity recorded.</p>';
       return;
     }
     listEl.innerHTML = App.renderUserActivityAllUsersTableHtml(filtered);
@@ -144,7 +144,7 @@
         }
         const rows = Array.isArray(data) ? data : [];
         if (rows.length === 0) {
-          if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No users.</p>';
+          if (listEl) listEl.innerHTML = '<p class="empty-state">No users.</p>';
           return;
         }
         if (listEl) listEl.innerHTML = renderUserActivitySummaryTableHtml(rows);
@@ -184,7 +184,7 @@
       const data = Array.isArray(actData) ? actData : [];
       state.userActivityAllRowsCache = data;
       if (data.length === 0) {
-        if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
+        if (listEl) listEl.innerHTML = '<p class="empty-state">No activity recorded.</p>';
         return;
       }
       if (listEl) listEl.innerHTML = App.renderUserActivityAllUsersTableHtml(App.filterUserActivityRows(data, filterInp ? filterInp.value : ''));
@@ -240,7 +240,7 @@
           return;
         }
         if (!Array.isArray(data) || data.length === 0) {
-          if (listEl) listEl.innerHTML = '<p style="color:var(--text3);">No activity recorded.</p>';
+          if (listEl) listEl.innerHTML = '<p class="empty-state">No activity recorded.</p>';
           return;
         }
         const esc = (s) => App.escapeHtml(s);

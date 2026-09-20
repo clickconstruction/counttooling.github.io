@@ -391,6 +391,17 @@ professional), no partner or pricing language. Pinned by `landing-trade.spec.js`
 
 ### Gotchas worth not rediscovering
 
+- **A room drag can miss in a full render (seen 2026-09-20, not diagnosed).** On the HVAC film,
+  two of three full renders stopped at `boxRoom`'s wait for `#roomBoxModal` (once at the Lobby,
+  once at the Conference room), on the system Chrome and on Playwright's Chromium alike; the
+  third ran clean, and every `--chapters-only` pass, which takes no screenshots, ran clean. So it
+  is timing under the frame capture, not the script's logic. It fails within half a minute, so
+  re-run it; `--frames-only` keeps the frames, and the script's own two ffmpeg commands encode
+  them (that is how the 2026-09-20 HVAC film was made).
+- **A caption costs no frames, a hold does.** The films carry no baked caption, so rewording,
+  merging or moving a caption is the `--chapters-only` pass and the footage stands; only a
+  changed `R.hold` (or any new move) needs a render. CAPTION-DWELL re-timed plumbing and
+  electrical that way and rendered HVAC alone.
 - **The size popover offers round and rectangular.** `.duct-suggest-chip` rows carry both
   (12"Ø and 16×8 for the same air); a rectangular main stays rectangular, so pick the chip whose
   text has the ×. Bid Check's manual "Fits the roof" upgrades itself to an auto row once the deck

@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(punchlist): DEV-AUTH closed, the cloud specs run green (2026-09-20)
+
+The test account signs in again: `config.local.js` carries new dev-auth credentials, and
+`/app/?devAuth=1` on localhost lands signed in with a clean console. With that, the five
+cloud-gated spec files ran against the cloud for the first time since the 2026-09-19 sitting:
+turn-in-self-release, indexeddb-backup, load-project, load-project-delete and
+load-project-empty-pdf, 10 of 10 green. That confirms **SPEC-TURNIN** (the `#preparePdfName`
+fill) and **SPEC-DUPES** (`createNamedCloudProject` saves once), both landed unrun.
+
+One fix on the way: turn-in-self-release.spec.js runs 29 to 30 s (a cloud upload, two turn-ins
+and a checkout) against Playwright's default 30 s, so its first run here timed out at 30.1 s
+with every step passing. It sets `test.setTimeout(120000)` now, like the other long cloud cases.
+
+Seen once and not reproduced: in one of three parallel runs of the five files (4 workers, all
+on the one test account) the flag-on Turn In never showed "Project turned in." inside the
+spec's 15 s wait. Four serial runs and the other two parallel runs were green. Not diagnosed.
+
+Run with the system Chrome (`channel: 'chrome'`), since Playwright's own browsers are not
+downloaded on this machine. `config.local.js` is gitignored, so it lives in the checkout that
+made it: a second worktree or the main checkout needs its own copy.
+
 ## feat(landing): the captions are a three-line scroller the page draws, in plain sentences (2026-09-20)
 
 Will: the films' captions read too fast the way they were shown (one pill baked into the frame,

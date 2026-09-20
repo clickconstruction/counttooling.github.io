@@ -28,6 +28,7 @@ const PROJECT_NAME = 'spec-turn-in-self-release';
 
 test.describe('Turn In is not a force turn-in', () => {
   test('flag off: [Turn In] still trips the notice; flag on: turned-in toast, no notice, Check out to Edit works again', async ({ page }) => {
+    test.setTimeout(120000);   // a cloud upload, two turn-ins and a checkout: 30.3 s green against the default 30 s
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });

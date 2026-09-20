@@ -26,6 +26,52 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## feat(landing): the captions are a three-line scroller the page draws, in plain sentences (2026-09-20)
+
+Will: the films' captions read too fast the way they were shown (one pill baked into the frame,
+gone in a second or two), and they were estimator shorthand ("Cold in.", "Hot back.", "Rise.")
+that a first-time visitor has to decode. Decided on a mock (`--no-captions` footage):
+
+- **The scroller.** The bar under the film carries the captions as three rows: the beat on
+  screen in the middle beside a gold caret, the one before it above and the one COMING below,
+  both dimmed and a touch smaller; the list slides up a row at each beat and the caret nudges.
+  A reader sees what is about to happen and has the whole beat, plus the row before it, to read
+  it. Two lines a row on a phone. Reduced-motion readers, who keep the still, do not get it.
+- **The films carry no baked caption now.** `build:hero-video` renders without the pill by
+  default (`--baked-captions` restores it); every caption and its time still goes to
+  `img/hero-<film>.chapters.json` as `beats`, which is what the scroller reads. So rewording a
+  caption is the one-minute `--chapters-only` pass, not a render.
+- **Plain sentences.** All fifty-odd captions rewritten to say what is happening and why:
+  "Trace the cold water piping, from the meter out to the fixtures.", "The app adds the pipe
+  hangers at the spacing the plumbing code requires.", "Chain from device to device. Each click
+  adds the conduit and its 9.5 ft vertical drop.", "It checks the unit's fan can push air down
+  the longest duct path." The one-second "30 sheets." and "30 sheets. Keep 3." merged into one
+  sentence. "Nothing missed." became what the estimator DOES ("Hide the marks, then show them
+  again, to check the sheet for anything missed."), which is also true where the old claim was
+  not (the plumbing sheet's mop sink, prep sink, dishwasher, water heater and interceptor are
+  still uncounted). The spec holds every caption to a sentence of at most 100 characters.
+- **Chapters are marks, not caption text.** A film calls `R.chapter('Pipe')` where a chapter
+  starts; the old table matched chapters to caption wording and would have broken on this
+  rewrite. A film that does not mark exactly four fails the pass.
+
+The three films re-rendered for this and for the sheet-naming beat below: plumbing 47.0 s,
+electrical 79.1 s, HVAC 124.9 s.
+
+## feat(report): the report names its project and its sheets (2026-09-20)
+
+Will, reading the takeoff report the landing now shows: "Takeoff Report" over "Page 1:
+sample-set.pdf, p24" looks unfinished, and it was the same title on every report from every
+project. The title is the project's name now, "Main St Restaurant Takeoff Report" (plain
+"Takeoff Report" when nobody named the project), over a date line. A sheet someone NAMED stands
+as its own heading, "P-101 · Plumbing Plan"; only the intake's default label (the file name and
+page number) keeps its "Page N:" prefix, since there it is the only thing saying where the sheet
+sits in the set. `reportTitleFor` and `pageHeadingFor` are pure, in report.js, unit-tested. The
+hero films name their working sheet on camera (Prepare PDF, the Page Name tab:
+`nameWorkingSheet` in scripts/build-hero-video.js), so the report picture at the end of each
+film reads properly and so does every place the app names a sheet ("P-101 · Plumbing Plan: 2
+runs" in a line type's details). Punch row SHEET-TITLE: read the sheet number and title off the
+title block's text layer, the way D24 reads room names, so nobody has to type it.
+
 ## feat(landing): the HVAC film takes off the whole floor (2026-09-20)
 
 Will, on the three-room cut: incomplete, on all four counts offered (rooms left unserved, no

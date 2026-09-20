@@ -140,6 +140,11 @@
               <p class="hc-q"><span class="hc-ask-q" id="hcQ"></span><span class="hc-a" id="hcA"></span></p>
               <div class="hc-clock" aria-hidden="true"><span class="hc-time" id="hcTime">0:00<small>.0</small></span><span class="hc-clock-label">real time</span></div>
             </div>
+            <!-- The captions: three lines the page draws, the beat on screen in the middle beside the
+                 caret, the one before it and the one coming dimmed above and below; the list slides up a
+                 row at each beat. The films carry no baked caption, so the wording lives in the
+                 chapters file and a reader can see what is coming. -->
+            <div class="hc-caps" id="hcCaps" aria-hidden="true"><ul class="hc-caps-list" id="hcCapsList"></ul><span class="hc-caps-caret">&rsaquo;</span></div>
             <div class="hc-row" id="hcRow" role="group" aria-label="Jump to a chapter of the takeoff"></div>
           </div>
         </div>
@@ -204,7 +209,7 @@
         // --- the hero chapters -----------------------------------------------------------
         var strip = document.getElementById('heroChapters');
         var endRow = document.getElementById('hcEnd');
-        var films = {}, cards = [], ended = false;
+        var films = {}, cards = [], capRows = [], capNow = -1, ended = false;
         var ASK = {
           plumbing: 'How long does it take to count a restaurant?',
           electrical: 'How long does it take to wire an open office?',
@@ -243,6 +248,8 @@
               '<span class="hc-track"><i></i></span><span class="hc-name"><span>' + c.name + '</span><small>' + secs[i] + 's</small></span></button>';
           }).join('');
           cards = [].slice.call(strip.querySelectorAll('.hc-card'));
+          document.getElementById('hcCapsList').innerHTML = f.beats.map(function (b) { return '<li>' + String(b.text).replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</li>'; }).join('');
+          capRows = [].slice.call(document.querySelectorAll('#hcCapsList li')); capNow = -1;
           var others = order.filter(function (k) { return k !== current; });
           [].forEach.call(media.querySelectorAll('.hc-next'), function (b, i) {
             var k = others[i]; b.setAttribute('data-next', k);
@@ -262,6 +269,15 @@
             el.querySelector('.hc-track i').style.width = (done ? 100 : now ? (t - c.start) / (c.end - c.start) * 100 : 0).toFixed(1) + '%';
           });
           document.getElementById('hcTime').innerHTML = mmss(t) + '<small>.' + Math.floor((t % 1) * 10) + '</small>';
+          // the caption scroller: the beat at t sits on the middle row
+          var bi = 0; f.beats.forEach(function (b, i) { if (t >= b.t) bi = i; });
+          if (bi !== capNow && capRows.length) {
+            capNow = bi;
+            var list = document.getElementById('hcCapsList'), rowH = parseFloat(window.getComputedStyle(document.getElementById('hcCaps')).getPropertyValue('--row')) || 30;   // the variable, never a measured row: dimmed rows are scaled and the error compounds per beat
+            list.style.transform = 'translateY(' + (-(bi - 1) * rowH) + 'px)';
+            capRows.forEach(function (li, i) { li.classList.toggle('is-now', i === bi); li.classList.toggle('is-done', i < bi); });
+            var caret = strip.querySelector('.hc-caps-caret'); if (caret) { caret.classList.remove('is-bump'); void caret.offsetWidth; caret.classList.add('is-bump'); }
+          }
           strip.classList.toggle('is-answered', ended || t >= f.duration - 2);
         }
         // The film holds: cross-fade the video out over the still (its own last frame) just as

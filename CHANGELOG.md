@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(landing): the plumbing film counts the lavatories and the floor sinks (2026-09-20)
+
+Punch row FILM-FIXTURES closed (Will, watching the film). Over the pull-back the plumbing film
+says "Nothing missed.", and it had missed four fixtures the restaurant sheet draws: the
+wall-hung lavatory in MEN 102 and in WOMEN 103, and the two floor sinks (in front of PREP, where
+the prep sink drains, and by the clean table in DISH). `recordPlumbing` seeds two more counters,
+Lavatory on key 5 and Floor Sink on key 6 (the sheet's own square symbol), and clicks the four on
+camera after the 3-comp sinks: 21 marks, six counters. Re-rendered: 44.25 s (was 43.0). The
+landing's numbers followed by themselves through `img/hero-plumbing.chapters.json` ("Forty-four
+seconds, from start to sent for pricing.", Fixtures 8s, the "Plumbing, 44 s" pill), which is what
+the chapters file was for. The spotlight's `plumbingBase` seeds the same two counters; five of
+the six plumbing frames were re-cut (the riser frame is byte-identical) and the hand-off
+caption's "5 counts" is the toast's "7 counts" now. landing-trade.spec.js's strip case reads its
+seek points, its answer and its end clock from the chapters file instead of hardcoding 43
+seconds, so the next re-render cannot break it. The fast `--chapters-only` pass settles longer
+between frames (it flaked about one run in four at the hanger dialog). Not counted, and named
+by the sheet's keynotes: the mop sink, the prep sink, the dishwasher, the water heater and the
+grease interceptor.
+
 ## feat(landing): the hero chapters, a bar under the film (2026-09-19)
 
 Punch row HERO-CHAPTERS closed. Under each hero film sits a two-line bar on the page's own

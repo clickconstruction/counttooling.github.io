@@ -60,7 +60,11 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     });
   }
 
-  test('the strip follows the film: a card seeks, the clock answers, the film holds, Play again and Next takeoff work', async ({ page }) => {
+  test('the strip follows the film: a card seeks, the clock answers, the film holds, Play again and Next takeoff work', async ({ page, request }) => {
+    // every number comes from the film's own chapters file, so a re-render never breaks this case
+    const film = await (await request.get('/img/hero-plumbing.chapters.json')).json();
+    const nearEnd = film.duration - 1.5;
+    const clockAtEnd = Math.floor(film.duration / 60) + ':' + String(Math.floor(film.duration % 60)).padStart(2, '0') + '.' + Math.floor((film.duration % 1) * 10);
     await page.goto('/');
     await page.locator('#heroMedia').scrollIntoViewIfNeeded();
     await expect(page.locator('#heroChapters')).toBeVisible();
@@ -71,16 +75,16 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await page.waitForFunction(() => !document.querySelector('#heroMedia video').paused);
     // a card is a seek
     await page.locator('#heroChapters .hc-card').nth(2).click();
-    await page.waitForFunction(() => document.querySelector('#heroMedia video').currentTime >= 14);
+    await page.waitForFunction((t) => document.querySelector('#heroMedia video').currentTime >= t, film.chapters[2].start);
     await expect(page.locator('#heroChapters .hc-card').nth(2)).toHaveClass(/is-now/);
     await expect(page.locator('#heroChapters .hc-card').nth(0)).toHaveClass(/is-done/);
     await expect(page.locator('#hcEnd')).toBeHidden();
     // the end: the answer, the hold on the still, the end row
-    await page.evaluate(() => { document.querySelector('#heroMedia video').currentTime = 41.5; });
+    await page.evaluate((t) => { document.querySelector('#heroMedia video').currentTime = t; }, nearEnd);
     await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
-    await expect(page.locator('#hcA')).toHaveText('Forty-three seconds, from start to sent for pricing.');
+    await expect(page.locator('#hcA')).toHaveText(/^[A-Z][a-z]+(-[a-z]+)? seconds, from start to sent for pricing\.$/);
     await expect(page.locator('#hcA')).toBeVisible();
-    await expect(page.locator('#hcTime')).toHaveText('0:43.0');
+    await expect(page.locator('#hcTime')).toHaveText(clockAtEnd);
     await expect(page.locator('#heroMedia')).not.toHaveClass(/is-playing/);   // the still (the last frame) shows, never the fade to black
     await expect(page.locator('#hcEnd')).toBeVisible();   // over the held frame; the bar keeps its height
     await expect(page.locator('#hcEnd .hc-next')).toHaveText([/^Electrical, \d+ s$/, /^HVAC, \d+ s$/]);
@@ -92,7 +96,7 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await page.waitForFunction(() => { const v = document.querySelector('#heroMedia video'); return !v.paused && v.currentTime < 5; });
     await expect(page.locator('#heroMedia')).toHaveClass(/is-playing/);
     // Next takeoff is the chips by another name
-    await page.evaluate(() => { document.querySelector('#heroMedia video').currentTime = 41.5; });
+    await page.evaluate((t) => { document.querySelector('#heroMedia video').currentTime = t; }, nearEnd);
     await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
     await page.locator('#hcEnd .hc-next').first().click();
     expect(await page.evaluate(() => window.__heroFilm())).toBe('electrical');

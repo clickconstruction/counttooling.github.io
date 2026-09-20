@@ -176,7 +176,7 @@ class Recorder {
   }
   secs(s) { return Math.max(1, Math.round(s * FPS)); }
   async frame() {
-    if (CHAPTERS_ONLY) { this.n++; if (this.n % 4 === 0) await this.page.waitForTimeout(12); return; }   // no shot, but let the app settle as it would between frames
+    if (CHAPTERS_ONLY) { this.n++; if (this.n % 2 === 0) await this.page.waitForTimeout(16); return; }   // no shot, but let the app settle as it would between frames
     await this.page.evaluate(({ cur, clicks, cap, n, fps, keycap }) => window.__hero.update(cur, clicks, cap, n, fps, keycap), { cur: this.cur, clicks: this.clicks, cap: this.cap, n: this.n, fps: FPS, keycap: this.keycap });
     await this.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await this.page.screenshot({ path: path.join(this.dir, 'f_' + String(this.n).padStart(5, '0') + '.jpg'), clip: this.clip, type: 'jpeg', quality: 92 });
@@ -273,6 +273,11 @@ const FLOOR_DRAINS = [B(610, 432), B(740, 430), B(860, 440), B(648, 536), B(740,
 const HAND_SINKS = [B(600, 308), B(928, 392), B(330, 578)];
 const WATER_CLOSETS = [B(596, 118), B(732, 118)];
 const THREE_COMP = [B(578, 476), B(170, 560)];
+// FILM-FIXTURES (2026-09-20): the sheet draws these and the first cuts never counted them, under
+// a caption that says "Nothing missed.": the wall-hung lav in MEN 102 and WOMEN 103, and the two
+// floor sinks (in front of PREP; by the clean table in DISH).
+const LAVATORIES = [B(584, 180), B(712, 180)];
+const FLOOR_SINKS = [B(640, 346), B(668, 550)];
 // The sheet's own domestic water, traced over the lines it already draws (LANDING-REFRESH.md,
 // "trace the sheet's own hot and cold water"); the pipeLabels beside them name the sizes.
 const COLD_SERVICE = [B(883, 614), B(883, 594), B(192, 594), B(192, 580)];              // 2" CW at the meter, 1" CW at the bar
@@ -365,12 +370,14 @@ const seedRestaurant = () => {
   const hs = { id: uid(), name: 'Hand Sink', icon: ci('Mounted Sink') || bi('Sink') || first, color: '#e8c547' };
   const wc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || bi('Water Closet') || first, color: '#47c88e' };
   const cs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#a47fff' };   // purple, so red stays the hot water's
-  s.counters.push(fd, hs, wc, cs);
+  const lav = { id: uid(), name: 'Lavatory', icon: bi('Sink') || first, color: '#f07fc0' };          // pink: clear of the hot water's red
+  const fs = { id: uid(), name: 'Floor Sink', icon: bi('Square Empty') || first, color: '#ff9a4d' };   // the sheet's own square symbol
+  s.counters.push(fd, hs, wc, cs, lav, fs);
   // No line types here: the film makes them on camera (+ Add, the name typed, the swatch),
   // and accepts the hanger row the rulebook writes from each name.
-  s.numberKeyBindings = { 1: { kind: 'counter', id: fd.id }, 2: { kind: 'counter', id: hs.id }, 3: { kind: 'counter', id: wc.id }, 4: { kind: 'counter', id: cs.id } };
+  s.numberKeyBindings = { 1: { kind: 'counter', id: fd.id }, 2: { kind: 'counter', id: hs.id }, 3: { kind: 'counter', id: wc.id }, 4: { kind: 'counter', id: cs.id }, 5: { kind: 'counter', id: lav.id }, 6: { kind: 'counter', id: fs.id } };
   App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
-  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id };
+  window.__ids = { fd: fd.id, hs: hs.id, wc: wc.id, cs: cs.id, lav: lav.id, fs: fs.id };
   App.updateUI(); App.renderAnnotations();
 };
 const armScaleCheck = () => {
@@ -474,6 +481,10 @@ async function recordPlumbing(page, dir, setPdf) {
   for (const p of WATER_CLOSETS) { await R.moveToPt(p, 0.2); await R.click(); }
   await R.key('4');
   for (const p of THREE_COMP) { await R.moveToPt(p, 0.22); await R.click(); }
+  await R.key('5');
+  for (const p of LAVATORIES) { await R.moveToPt(p, 0.22); await R.click(); }
+  await R.key('6');
+  for (const p of FLOOR_SINKS) { await R.moveToPt(p, 0.22); await R.click(); }
   await page.evaluate(endTool);
   await R.hold(0.5);
 

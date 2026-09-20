@@ -644,10 +644,16 @@ change to the three trade cards.
 > (real playback: seek, answer, hold, Play again, Next takeoff, the under-the-film geometry, the
 > seconds adding up, each file matching its mp4's length) and landing-assets.test.js.
 >
-> **Open, found on the way (punch row FILM-FIXTURES).** The plumbing film says "Nothing missed."
-> and misses four fixtures the sheet draws: the lavatory in MEN 102 and in WOMEN 103, and the two
-> floor sinks (in front of PREP, and by the clean table in DISH). Fixing it is new counters in
-> `recordPlumbing` and a plumbing re-render; the bar follows the new length by itself.
+> **FILM-FIXTURES, closed 2026-09-20.** The plumbing film said "Nothing missed." and missed four
+> fixtures the sheet draws: the lavatory in MEN 102 and in WOMEN 103, and the two floor sinks (in
+> front of PREP, and by the clean table in DISH). The film now counts them on keys 5 (Lavatory,
+> pink) and 6 (Floor Sink, orange, the sheet's own square symbol): 21 marks, six counters,
+> 44.25 s (was 43.0), so the bar reads "Forty-four seconds" and Fixtures 8s by itself. The
+> spotlight's `plumbingBase` seeds the same two, five of its six frames were re-cut (the riser
+> frame came out byte-identical), and the hand-off caption's "5 counts" became the toast's "7
+> counts". Still uncounted on the sheet, by choice so far: the mop sink (MS), the prep sink, the
+> dishwasher, the water heater and the grease interceptor, which the keynotes name too. If
+> "Nothing missed." is to be literally true, those are the next counters.
 
 **Where this came from.** Robert and Claude, 2026-09-19, after the modal polish and the
 asset refresh. The three hero films carry their beats as a caption pill baked into the

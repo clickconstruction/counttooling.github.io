@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the HVAC film takes off the whole floor (2026-09-20)
+
+Will, on the three-room cut: incomplete, on all four counts offered (rooms left unserved, no
+return or exhaust, no controls, an ending that flashed the result). Third cut, **121.9 s** (was
+65.8), and the bar's question, "duct an office suite", is finally literal.
+
+- **Every occupied room** is boxed and served: Open Office, Lobby, Office 101, Office 102,
+  Conference, Break. The two offices get their numbers typed in the Room dialog, because the
+  plan calls both "OFFICE" and the app would otherwise keep them as one room with two boxes.
+- **One system, one main.** RTU-1 is 3,000 CFM with 0.8 in. w.g. of external static (the ESP
+  arms the static-path check), its unit over the corridor's east end. One supply main starts ON
+  the unit (the deck height writes its riser), runs the corridor west and turns into the Lobby,
+  stepping 26x16, 22x16, 20x14, 16x14, 16x8, 12x8 past each takeoff: the app's ductulator sizes
+  for the air left on each leg, typed in the S popover's Custom row. A branch taps off into
+  each room; the last one traced is sized BY S, which by then reads exactly its own room's 600
+  CFM. Sixteen 150 CFM diffusers, a foot off their duct, each on a flex leader.
+  *Found while building it:* two trunks leaving one point do not work. A run that starts on
+  another run is its branch, so two mains sharing the unit's point (and a return main ending
+  there) are each other's children, the system has no root, and its designed air reads 0. The
+  guard did not catch that (0 of 3,000 is "within capacity"), the audit line did.
+- **The return:** two 24x24 return grilles in the corridor on a 24x14 return main to the unit's
+  side, kept 17 pt off the supply main so it is not read as a branch of it.
+- **Controls:** one thermostat, and the ending ticks Bid Check's "Controls / stat locations
+  set", the one manual row the film has earned. Fire dampers, OA and curb power stay unticked
+  and travel with the hand-off as open items, which is the honest state of this takeoff.
+- **Exhaust:** EF-1, its own system (300 CFM), a 75 CFM grille in each restroom and the
+  janitor's closet on a 12x6 exhaust run that starts on the fan.
+- **The ending reads the result out:** the Duct Schedule by size and gauge, the fittings that
+  counted themselves, the flex by the drop, the one bid weight (1,422 lb); then Bid Check row
+  by row: 6 rooms served, RTU-1 2,400 of 3,000 and EF-1 225 of 300, and "Will it blow?": the
+  static path, 0.21 in. of 0.80 in. over a 141 equivalent-foot critical path.
+
+Marks draw at 44 rather than the hero 72 in this film (twenty-four devices bury the duct
+otherwise). Counters named on the Create tab take their colour and M-sheet symbol off camera,
+as the other films' recolours do; without it a named counter keeps the palette's default icon,
+which was a water closet on an RTU. The landing speaks past 99 seconds in minutes ("Two minutes
+and two seconds, from start to sent for pricing."), with the teens spelled too.
+
 ## feat(landing): the films end on what they made: the marked-up sheet and the takeoff report (2026-09-20)
 
 Will: present the result of the work at the end, the takeoff sheet, tastefully; perhaps two

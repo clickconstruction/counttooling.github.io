@@ -58,7 +58,7 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
       const dur = await page.evaluate(() => new Promise((r) => { const v = document.querySelector('#heroMedia video'); if (v.duration) r(v.duration); else { v.addEventListener('loadedmetadata', () => r(v.duration), { once: true }); v.preload = 'auto'; v.load(); } }));
       expect(Math.abs(dur - j.duration)).toBeLessThan(0.1);   // the file is the footage's, not a guess
       // the answer is always spelled, never digits (a 76 s film once read "76 seconds")
-      expect(await page.locator('#hcA').textContent()).toMatch(/^[A-Z][a-z]+(-[a-z]+)? seconds, from start to sent for pricing\.$/);
+      expect(await page.locator('#hcA').textContent()).toMatch(/^[A-Z][a-z]+(-[a-z]+)? (seconds|minutes?( and [a-z]+(-[a-z]+)? seconds?)?), from start to sent for pricing\.$/);
     });
   }
 
@@ -84,7 +84,7 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     // the end: the answer, the hold on the still, the end row
     await page.evaluate((t) => { document.querySelector('#heroMedia video').currentTime = t; }, nearEnd);
     await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
-    await expect(page.locator('#hcA')).toHaveText(/^[A-Z][a-z]+(-[a-z]+)? seconds, from start to sent for pricing\.$/);
+    await expect(page.locator('#hcA')).toHaveText(/^[A-Z][a-z]+(-[a-z]+)? (seconds|minutes?( and [a-z]+(-[a-z]+)? seconds?)?), from start to sent for pricing\.$/);
     await expect(page.locator('#hcA')).toBeVisible();
     await expect(page.locator('#hcTime')).toHaveText(clockAtEnd);
     await expect(page.locator('#heroMedia')).not.toHaveClass(/is-playing/);   // the still (the last frame) shows, never the fade to black

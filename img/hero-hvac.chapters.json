@@ -1,6 +1,6 @@
 {
   "film": "hvac",
-  "duration": 65.75,
+  "duration": 121.88,
   "chapters": [
     {
       "name": "Scale",
@@ -10,17 +10,17 @@
     {
       "name": "Rooms",
       "start": 7.38,
-      "end": 35.96
+      "end": 46.67
     },
     {
       "name": "Duct",
-      "start": 35.96,
-      "end": 53.46
+      "start": 46.67,
+      "end": 101.42
     },
     {
       "name": "Pricing",
-      "start": 53.46,
-      "end": 65.75
+      "start": 101.42,
+      "end": 121.88
     }
   ],
   "beats": [
@@ -45,59 +45,87 @@
       "text": "Box the rooms; the plan names them."
     },
     {
-      "t": 17.83,
-      "text": "RTU-1, 2,000 CFM."
+      "t": 28.13,
+      "text": "RTU-1: 3,000 CFM, 0.8 in. of static."
     },
     {
-      "t": 24.38,
+      "t": 34.96,
       "text": "The unit, on the roof over the corridor."
     },
     {
-      "t": 25.75,
+      "t": 35.79,
       "text": "A diffuser, 150 CFM."
     },
     {
-      "t": 29.83,
+      "t": 39.71,
       "text": "Three leave the room short."
     },
     {
-      "t": 31.92,
+      "t": 41.58,
       "text": "The fourth turns it green."
     },
     {
-      "t": 32.83,
-      "text": "Conference takes three, the office two."
+      "t": 42.46,
+      "text": "Then the rest of the floor."
     },
     {
-      "t": 35.96,
+      "t": 46.67,
       "text": "Trace the main from the unit."
     },
     {
-      "t": 39.13,
-      "text": "S: the trunk steps down where a branch leaves."
+      "t": 49.42,
+      "text": "S: the main steps down where a branch leaves."
     },
     {
-      "t": 45.33,
+      "t": 62.17,
       "text": "A branch to each room; the tap counts itself."
     },
     {
-      "t": 53.46,
-      "text": "Pounds, not feet."
+      "t": 72.33,
+      "text": "The last branch: S sizes it from the air its room needs."
     },
     {
-      "t": 56.38,
-      "text": "Bid Check: every room served."
+      "t": 76.38,
+      "text": "The return: two grilles and a main back to the unit."
     },
     {
-      "t": 57.96,
-      "text": "Fits the roof: computed, green."
+      "t": 83.33,
+      "text": "One thermostat."
     },
     {
-      "t": 59.33,
+      "t": 86.88,
+      "text": "EF-1: the restrooms exhaust on their own fan."
+    },
+    {
+      "t": 101.42,
+      "text": "Pounds, not feet: every size, its gauge, its weight."
+    },
+    {
+      "t": 104.79,
+      "text": "The fittings counted themselves; the flex is by the drop."
+    },
+    {
+      "t": 107.63,
+      "text": "One bid weight."
+    },
+    {
+      "t": 109.83,
+      "text": "Bid Check: every room served, inside the unit."
+    },
+    {
+      "t": 112.58,
+      "text": "Will it blow? The static path, computed."
+    },
+    {
+      "t": 114.33,
+      "text": "The stat is set: one tick the estimator signs."
+    },
+    {
+      "t": 115.46,
       "text": "Nothing missed."
     },
     {
-      "t": 64.75,
+      "t": 120.88,
       "text": "Done."
     }
   ]

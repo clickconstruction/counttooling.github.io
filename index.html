@@ -164,7 +164,7 @@
         var alts = {
           plumbing: 'CountTooling in use: a plumbing takeoff on a restaurant plan, the fixtures counted and the cold and hot water traced over the sheet\'s own lines, with the tallies and hanger rows in the sidebar.',
           electrical: 'CountTooling in use: an electrical takeoff on an office plan, an open office wired as three circuits, receptacles and lights chained device to device in 3/4 inch EMT with their drops, square home runs to panel LP-1, and the derived wire and voltage-drop checks in the sidebar.',
-          hvac: 'CountTooling in use: an HVAC takeoff on an office plan, three rooms boxed with their airflow and served by nine diffusers off RTU-1, a trunk down the corridor stepping down where a branch leaves for each room, with the duct schedule\'s bid weight in the sidebar.'
+          hvac: 'CountTooling in use: an HVAC takeoff on an office plan, every room boxed with its airflow and served by sixteen diffusers off RTU-1, a supply main down the corridor stepping down where a branch leaves for each room, a return main and a restroom exhaust system, with the duct schedule\'s bid weight in the sidebar.'
         };
         var order = chips.map(function (c) { return c.getAttribute('data-trade'); });
         var current = 'plumbing', pinned = false, inView = false;
@@ -212,7 +212,14 @@
         };
         var LABEL = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
         var ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], TENS = { 2: 'Twenty', 3: 'Thirty', 4: 'Forty', 5: 'Fifty', 6: 'Sixty', 7: 'Seventy', 8: 'Eighty', 9: 'Ninety' };
-        function spell(n) { var t = Math.floor(n / 10), o = n % 10; return TENS[t] ? TENS[t] + (o ? '-' + ONES[o] : '') : String(n); }
+        var TEENS = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+        function spell(n) { var t = Math.floor(n / 10), o = n % 10; if (n < 10) return ONES[n].charAt(0).toUpperCase() + ONES[n].slice(1); if (n < 20) return TEENS[n - 10]; return TENS[t] ? TENS[t] + (o ? '-' + ONES[o] : '') : String(n); }
+        // "Forty-four seconds" up to 99; past that a film is told in minutes: "Two minutes and two seconds".
+        function spoken(n) {
+          if (n < 100) return spell(n) + ' seconds';
+          var m = Math.floor(n / 60), sec = n % 60;
+          return spell(m) + (m === 1 ? ' minute' : ' minutes') + (sec ? ' and ' + spell(sec).toLowerCase() + (sec === 1 ? ' second' : ' seconds') : '');
+        }
         // Each chapter's length in whole seconds, rounded so the four add up to the film's stated
         // length (largest remainder): 7 + 7 + 23 + 6 = 43, never a sum that contradicts the answer.
         function chapterSeconds(f) {
@@ -229,7 +236,7 @@
           strip.hidden = false; media.classList.add('has-chapters');
           strip.classList.toggle('is-static', !v || reduced);
           document.getElementById('hcQ').textContent = ASK[current];
-          document.getElementById('hcA').textContent = spell(Math.round(f.duration)) + ' seconds, from start to sent for pricing.';
+          document.getElementById('hcA').textContent = spoken(Math.round(f.duration)) + ', from start to sent for pricing.';
           var secs = chapterSeconds(f);
           document.getElementById('hcRow').innerHTML = f.chapters.map(function (c, i) {
             return '<button type="button" class="hc-card" data-i="' + i + '" aria-label="' + c.name + ', ' + secs[i] + ' seconds, jump to ' + mmss(c.start) + '">' +

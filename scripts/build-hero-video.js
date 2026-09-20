@@ -77,7 +77,7 @@ const CHAPTERS_ONLY = process.argv.includes('--chapters-only');
 const CHAPTER_STARTS = {
   plumbing: [['Scale', '30 sheets.'], ['Fixtures', 'Count.'], ['Pipe', 'Cold in.'], ['Pricing', 'Nothing missed.']],
   electrical: [['Scale', '30 sheets.'], ['Devices', 'Count.'], ['Wire', 'Name the conduit.'], ['Pricing', 'The wire, derived. The checks, computed.']],
-  hvac: [['Scale', '30 sheets.'], ['Rooms', 'Box the rooms; the plan names them.'], ['Duct', 'Trace the main from the unit.'], ['Pricing', 'Pounds, not feet.']],
+  hvac: [['Scale', '30 sheets.'], ['Rooms', 'Box the rooms; the plan names them.'], ['Duct', 'Trace the main from the unit.'], ['Pricing', 'Pounds, not feet: every size, its gauge, its weight.']],
 };
 const BEATS = [];   // every caption with the film time it appears at, in order
 function writeChapters(frames) {
@@ -360,20 +360,42 @@ const CAM_A_PULL = { x1: 100, y1: 80, x2: 820, y2: 740 };                // the 
 const ROOM_OPEN_OFFICE = { x1: B(132, 384).x, y1: B(132, 384).y, x2: B(470, 600).x, y2: B(470, 600).y };   // OPEN OFFICE 105, 508 ft²
 const ROOM_CONFERENCE = { x1: B(640, 100).x, y1: B(640, 100).y, x2: B(790, 340).x, y2: B(790, 340).y };    // CONFERENCE 103
 const ROOM_OFFICE_101 = { x1: B(300, 100).x, y1: B(300, 100).y, x2: B(470, 340).x, y2: B(470, 340).y };    // OFFICE 101
-// "Complete the room" (2026-09-20): the three boxed rooms are all served, off one system that
-// starts at its unit. RTU-1 sits on the roof over the corridor's east end; the trunk leaves it
-// (so the deck height writes its riser), runs the corridor ceiling west, steps down as the
-// branches leave it, and turns north into Office 101; a branch taps off into Conference 103 and
-// another into the Open Office. Diffusers sit a foot off their duct, inside the 8 in (12 pt)
-// reach, so each hangs off its run by a flex leader. 4 + 3 + 2 at 150 CFM = 1,350 of 2,000.
-const RTU_SPOT = B(770, 362);
-const TRUNK_H = [RTU_SPOT, B(715, 362), B(440, 362), B(385, 362), B(385, 186)];   // unit, the two takeoffs, the turn, the end of Office 101
-const BRANCH_CONF_H = [B(715, 362), B(715, 150)];                                  // north into Conference 103
-const BRANCH_OPEN_H = [B(440, 362), B(440, 490), B(176, 490)];                     // south into the Open Office, then west along it
-const DIFF_OPEN_H = [B(420, 502), B(340, 502), B(260, 502), B(180, 502)];          // the fourth is the one that turns the room green
-const DIFF_CONF_H = [B(727, 300), B(727, 228), B(727, 156)];
-const DIFF_101_H = [B(397, 292), B(397, 192)];
-const CAM_H_ROOMS = { x1: 140, y1: 132, x2: 672, y2: 530 };                        // the three rooms and the corridor between them
+// "Complete the floor" (2026-09-20, Will: the three-room cut read as incomplete). Every occupied
+// room is boxed and served off ONE unit, with its return, its stat, and the restroom exhaust:
+//   RTU-1 (3,000 CFM, 0.8 in. w.g.) sits on the roof over the corridor's east end. ONE supply main
+//   leaves it (it starts ON the unit, so the deck height writes its riser), runs the corridor
+//   ceiling west past every room and turns north into the Lobby; a branch taps off into each
+//   room it passes. (Two trunks off one point do not work: a run that starts on another run is
+//   its branch, so two mains sharing the unit's point are each other's child and the system has
+//   no root; its designed air read 0.) Sizes are the app's ductulator at 0.08 in./100 ft for the
+//   air left on each leg (2,400 26x16 · 1,950 22x16 · 1,500 20x14 · 1,200 16x14 · 600 16x8 ·
+//   450 12x10 · 300 12x8), typed, because mid-design the S suggestion reads the whole system;
+//   the LAST branch is sized by S, which by then reads exactly its own room. Sixteen 150 CFM
+//   diffusers, each a foot off its duct so it hangs by a flex leader. Two 24x24 return grilles
+//   in the corridor on a return main to the unit's side (clear of the supply main's snap
+//   distance, or it would be read as a branch of it); one thermostat; EF-1 with a 75 CFM grille
+//   in each restroom and the janitor's closet.
+const Y_SUP = 356, Y_RET = 379;                                        // the supply main and the return main, side by side in the corridor
+const RTU_SPOT = B(905, Y_SUP);
+const TRUNK_H = [RTU_SPOT, B(865, Y_SUP), B(715, Y_SUP), B(555, Y_SUP), B(440, Y_SUP), B(385, Y_SUP), B(216, Y_SUP), B(216, 170)];   // unit, five takeoffs, the turn, the end of the Lobby
+const TRUNK_STEPS_H = [null, [22, 16], [20, 14], [16, 14], [16, 8], [12, 8]];                                                         // the size past each takeoff (index = the vertex it follows)
+const BRANCH_BREAK_H = [B(865, Y_SUP), B(865, 150)];
+const BRANCH_102_H = [B(555, Y_SUP), B(555, 186)];
+const BRANCH_101_H = [B(385, Y_SUP), B(385, 186)];
+const BRANCH_CONF_H = [B(715, Y_SUP), B(715, 150)];
+const BRANCH_OPEN_H = [B(440, Y_SUP), B(440, 490), B(176, 490)];       // the last one traced: S reads exactly this room's 600 CFM
+const DIFF_OPEN_H = [B(420, 502), B(340, 502), B(260, 502), B(180, 502)];   // the fourth is the one that turns the room green
+const DIFF_REST_H = [B(228, 292), B(228, 192), B(397, 292), B(397, 192), B(567, 292), B(567, 192), B(727, 300), B(727, 228), B(727, 156), B(877, 300), B(877, 228), B(877, 162)];   // Lobby, 101, 102, Conference, Break
+const RETURNS_H = [B(690, Y_RET), B(780, Y_RET)];
+const RETURN_MAIN_H = [B(678, Y_RET), B(905, Y_RET)];                   // to the unit's return side, 17 pt off the supply main
+const STAT_SPOT_H = B(300, 392);                                        // inside the open office's corridor wall
+const EF_SPOT = B(905, 508);
+const EXH_GRILLES_H = [B(850, 520), B(670, 520), B(525, 520)];          // Women, Men, the janitor's closet
+const EXH_RUN_H = [EF_SPOT, B(513, 508)];
+const ROOM_LOBBY = { x1: B(132, 100).x, y1: B(132, 100).y, x2: B(300, 340).x, y2: B(300, 340).y };
+const ROOM_OFFICE_102 = { x1: B(470, 100).x, y1: B(470, 100).y, x2: B(640, 340).x, y2: B(640, 340).y };
+const ROOM_BREAK = { x1: B(790, 100).x, y1: B(790, 100).y, x2: B(940, 340).x, y2: B(940, 340).y };
+const CAM_H_ROOMS = { x1: 146, y1: 132, x2: 778, y2: 530 };             // the whole floor
 const SET_KEEP_H = [2, 12, 13];   // A-101, M-101, M-201
 
 // The thirty-sheet set: one sheet per discipline, each stamped with a sheet number and name
@@ -1005,6 +1027,8 @@ async function recordHvac(page, dir, setPdf) {
   await page.waitForFunction(() => (window.App.peekPageTextItems(0) || []).length > 0, { timeout: 15000 });   // the room names come off the plan's text
   await page.evaluate(seedOfficeHvac);
   await page.evaluate(bigMarks);
+  // Twenty-four devices on one floor: at the hero size the marks bury the duct they hang off.
+  await page.evaluate(() => { const s = window.state; s.counterSettings = Object.assign({}, s.counterSettings, { size: 44, ringSize: 150, outlineSize: 2, numberSize: 16 }); window.App.renderAnnotations(); window.App.updateUI(); });
 
   // 2 · A-101 opens. Push in from the sheet to the plan.
   R.caption('', 'Suite 200, A-101');
@@ -1033,13 +1057,17 @@ async function recordHvac(page, dir, setPdf) {
   // 4 · Rooms. V arms the Room Sizer; a drag over each room opens Room Size with the name
   //     already read off the plan; ceiling 9, the deck 12 (once), the type, Apply. Each
   //     room answers with ft², ft³ and the air it needs.
-  const boxRoom = async (r, type, deck) => {
-    await R.moveToPt({ x: r.x1, y: r.y1 }, 0.5);
+  const boxRoom = async (r, type, deck, name) => {
+    await R.moveToPt({ x: r.x1, y: r.y1 }, 0.4);
     await page.mouse.down(); R.clicks.push({ n: R.n, x: R.cur.x, y: R.cur.y }); await R.frame();
-    await R.moveToPt({ x: r.x2, y: r.y2 }, 0.7);
+    await R.moveToPt({ x: r.x2, y: r.y2 }, 0.5);
     await page.mouse.up();
     await page.waitForSelector('#roomBoxModal.visible', { timeout: 5000 });
     await R.hold(0.35);
+    if (name) {   // two rooms the plan both calls OFFICE: the number keeps them two rooms
+      if (await page.evaluate(() => document.getElementById('roomBoxNewRoomNameGroup').style.display === 'none')) { await R.moveToEl('#roomBoxNewRoomBtn', 0.3); await R.click(); await R.hold(0.1); }
+      await R.moveToEl('#roomBoxNewRoomName', 0.3); await R.click(); await page.keyboard.press('Meta+A'); await R.type(name, 14);
+    }
     const h = await page.evaluate(() => document.getElementById('roomBoxHeight').value);
     if (!h) { await R.moveToEl('#roomBoxHeight', 0.3); await R.click(); await R.type('9', 12); }
     if (deck) { await R.moveToEl('#roomBoxDeck', 0.3); await R.click(); await R.type(String(deck), 12); }
@@ -1053,179 +1081,241 @@ async function recordHvac(page, dir, setPdf) {
   R.caption('', 'Box the rooms; the plan names them.');
   await R.keyAs('V', 'v');
   await boxRoom(ROOM_OPEN_OFFICE, 'office', 12);
+  await R.camera(CAM_H_ROOMS, 0.5);
+  await page.waitForTimeout(300);
+  await boxRoom(ROOM_LOBBY, 'office', 0);
+  await boxRoom(ROOM_OFFICE_101, 'office', 0, 'OFFICE 101');
+  await boxRoom(ROOM_OFFICE_102, 'office', 0, 'OFFICE 102');
   await boxRoom(ROOM_CONFERENCE, 'conference', 0);
-  await boxRoom(ROOM_OFFICE_101, 'office', 0);
+  await boxRoom(ROOM_BREAK, 'break', 0);
   await page.evaluate(endTool);
   await R.hold(0.3);
 
-  // 5 · The system first, then its unit. A group with an equipment tag and a capacity; made
-  //     first so everything after it (the unit, the diffusers, the duct) lands in it. The unit
-  //     is a counter with no CFM placed in that group, which is how the system knows where its
-  //     equipment is, and what arms the riser when a run starts on it.
-  R.caption('', 'RTU-1, 2,000 CFM.');
-  if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.45); await R.click(); await R.hold(0.15); }
-  await R.moveToEl('#addGroup', 0.3); await R.click();
-  await page.waitForSelector('#groupModal.visible', { timeout: 5000 });
-  await R.moveToEl('#groupModalName', 0.3); await R.click();
-  await R.type('RTU-1', 12);
-  await R.moveToEl('#groupModalEquipTag', 0.3); await R.click();
-  await R.type('RTU-1', 12);
-  await R.moveToEl('#groupModalCapacityCfm', 0.3); await R.click();
-  await R.type('2000', 12);
-  await R.hold(0.15);
-  await R.moveToEl('#groupModalDone', 0.35); await R.click();
-  await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
-  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-  await R.hold(0.2);
+  // Helpers for the systems: a group with its tag, capacity and (the supply unit) its ESP; a
+  // counter named on the Create tab; a counter from the Quick tab.
+  const makeSystem = async (name, cfm, esp) => {
+    if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.4); await R.click(); await R.hold(0.12); }
+    await R.moveToEl('#addGroup', 0.3); await R.click();
+    await page.waitForSelector('#groupModal.visible', { timeout: 5000 });
+    await R.moveToEl('#groupModalName', 0.28); await R.click();
+    await R.type(name, 14);
+    await R.moveToEl('#groupModalEquipTag', 0.26); await R.click();
+    await R.type(name, 14);
+    await R.moveToEl('#groupModalCapacityCfm', 0.26); await R.click();
+    await R.type(cfm, 14);
+    if (esp) { await R.moveToEl('#groupModalEspInWg', 0.26); await R.click(); await R.type(esp, 14); }
+    await R.hold(0.12);
+    await R.moveToEl('#groupModalDone', 0.3); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    await R.hold(0.2);
+  };
+  const createNamed = async (name, color, symbol) => {
+    await R.moveToEl('#addCounter', 0.4); await R.click();
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await R.moveToEl('#counterModal .counter-tab[data-tab="create"]', 0.28); await R.click();
+    await R.hold(0.12);
+    await R.moveToEl('#counterName', 0.3); await R.click();
+    await page.keyboard.press('Meta+A');   // the field can arrive carrying the last name typed
+    await R.type(name, 14);
+    await R.hold(0.12);
+    await R.moveToEl('#counterCreate', 0.32); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    // Its colour and its M-sheet symbol are set here, off camera (the Create tab's icon grid is a
+    // beat the film does not spend; without this a named counter keeps the default icon, which on
+    // a plumbing-first palette is a water closet).
+    await page.evaluate(([n, c, sym]) => { const k = window.state.counters.find((x) => x.name === n); if (!k) return; k.color = c; const ic = sym && window.App.tradeIconForType && window.App.tradeIconForType('hvac', sym); if (ic) k.icon = ic; window.App.renderAnnotations(); window.App.updateUI(); }, [name, color, symbol || '']);
+  };
   const quickAddH = async (size, type, cfm, pickTrade) => {
     await R.moveToEl('#addCounter', 0.4); await R.click();
     await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
     await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.28); await R.click();
     await R.hold(0.12);
     if (pickTrade) { await R.moveToEl('#counterQuickCountTradeSegment [data-trade="hvac"]', 0.32); await R.click(); await R.hold(0.15); }
-    if (size) { await R.moveToEl('#counterQuickCountSize', 0.28); await R.click(); await page.selectOption('#counterQuickCountSize', size); await R.hold(0.15); }
+    await R.moveToEl('#counterQuickCountSize', 0.28); await R.click(); await page.selectOption('#counterQuickCountSize', size); await R.hold(0.12);
     await R.moveToEl('#counterQuickCountType', 0.28); await R.click();
-    await page.selectOption('#counterQuickCountType', type); await R.hold(0.2);
-    if (cfm) { await R.moveToEl('#counterQuickCountCfm', 0.28); await R.click(); await R.type(cfm, 10); await R.hold(0.15); }
+    await page.selectOption('#counterQuickCountType', type); await R.hold(0.18);
+    if (cfm) { await R.moveToEl('#counterQuickCountCfm', 0.28); await R.click(); await page.keyboard.press('Meta+A'); await R.type(cfm, 10); await R.hold(0.12); }
     await R.moveToEl('#counterQuickCountAdd', 0.32); await R.click();
     await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
     await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-    await R.hold(0.15);
+    await R.hold(0.12);
   };
-  // The unit is made on the Create tab, named for its tag (the Quick tab would prefix a size).
-  await R.moveToEl('#addCounter', 0.4); await R.click();
-  await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
-  await R.moveToEl('#counterModal .counter-tab[data-tab="create"]', 0.28); await R.click();
-  await R.hold(0.12);
-  await R.moveToEl('#counterName', 0.3); await R.click();
-  await page.keyboard.press('Meta+A');   // the field can arrive carrying the last name typed
-  await R.type('RTU-1', 12);
-  await R.hold(0.15);
-  await R.moveToEl('#counterCreate', 0.35); await R.click();
-  await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
-  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-  await page.evaluate(() => { const k = window.state.counters.find((x) => x.name === 'RTU-1'); if (k) { k.color = '#e8c547'; window.App.renderAnnotations(); window.App.updateUI(); } });
+  const recolorH = (re, color) => page.evaluate(([r, c]) => { const k = window.state.counters.find((x) => new RegExp(r).test(x.name)); if (k) { k.color = c; window.App.renderAnnotations(); window.App.updateUI(); } }, [re, color]);
+
+  // 5 · The system first, then its unit. Everything after it lands in the group; the unit is a
+  //     counter named for the tag, which is how the system knows where its equipment is and
+  //     what arms the riser when a run starts on it. The ESP arms the static-path check.
+  R.caption('', 'RTU-1: 3,000 CFM, 0.8 in. of static.');
+  await makeSystem('RTU-1', '3000', '0.8');
+  await createNamed('RTU-1', '#e8c547', 'RTU');
   R.caption('', 'The unit, on the roof over the corridor.');
-  await R.camera(CAM_H_ROOMS, 0.6);
-  await page.waitForTimeout(300);
-  await R.moveToPt(RTU_SPOT, 0.4); await R.click();
+  await R.moveToPt(RTU_SPOT, 0.45); await R.click();
   await page.evaluate(endTool);
   await R.hold(0.3);
 
   // 6 · The diffuser, made on the Quick tab with its 150 CFM. Four in the open office: three
-  //     leave the room's tag short, the fourth turns it green. Then the other two rooms.
+  //     leave the room's tag short, the fourth turns it green. Then the rest of the floor.
   R.caption('', 'A diffuser, 150 CFM.');
   await quickAddH('12x12', 'Supply Diffuser', '150', true);
   R.caption('', 'Three leave the room short.');
-  for (const [i, p] of DIFF_OPEN_H.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.3 : 0.45); await R.click(); await R.hold(0.12); }
-  await R.hold(0.4);
+  for (const [i, p] of DIFF_OPEN_H.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.28 : 0.45); await R.click(); await R.hold(0.1); }
+  await R.hold(0.35);
   R.caption('', 'The fourth turns it green.');
-  await R.moveToPt(DIFF_OPEN_H[3], 0.35); await R.click();
-  await R.hold(0.5);
-  R.caption('', 'Conference takes three, the office two.');
-  for (const [i, p] of DIFF_CONF_H.entries()) { await R.moveToPt(p, i ? 0.26 : 0.55); await R.click(); await R.hold(0.1); }
-  for (const [i, p] of DIFF_101_H.entries()) { await R.moveToPt(p, i ? 0.26 : 0.5); await R.click(); await R.hold(0.1); }
+  await R.moveToPt(DIFF_OPEN_H[3], 0.32); await R.click();
+  await R.hold(0.45);
+  R.caption('', 'Then the rest of the floor.');
+  for (const [i, p] of DIFF_REST_H.entries()) { await R.moveToPt(p, i ? 0.2 : 0.5); await R.click(); }
   await page.evaluate(endTool);
-  await R.hold(0.5);
+  await R.hold(0.4);
 
-  // 7 · The duct. U opens New Duct Run, Start Tracing. The trunk starts ON the unit, so the
-  //     deck height writes its riser; S right there takes the ductulator's size for the whole
-  //     system's air, and S again steps it down where each branch leaves. Then the two
-  //     branches, each started on the trunk (the tap counts itself) and sized by S from the air
-  //     its own room still needs. Enter commits; elbows, taps and transitions count themselves.
-  const typeInto = async (sel, text) => { await R.moveToEl(sel, 0.28); await R.click(); await page.keyboard.press('Meta+A'); await R.type(text, 10); };
-  const startRun = async (w, h) => {
+  // 7 · The duct. U opens New Duct Run; the size and the airside are set there. A trunk starts
+  //     ON the unit, so the deck height writes its riser, and S steps it down where each branch
+  //     leaves. A branch starts on its trunk (the tap counts itself). Enter commits; elbows,
+  //     taps and transitions count themselves.
+  const typeInto = async (sel, text) => { await R.moveToEl(sel, 0.26); await R.click(); await page.keyboard.press('Meta+A'); await R.type(text, 12); };
+  const startRun = async (w, h, airside) => {
     await R.keyAs('U', 'u');
     await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
-    await R.hold(0.3);
-    if (w) { await typeInto('#ductCreateW', String(w)); await typeInto('#ductCreateH', String(h)); await R.hold(0.15); }
-    await R.moveToEl('#ductCreateStart', 0.35); await R.click();
+    await R.hold(0.25);
+    if (airside) { await R.moveToEl('#ductCreateAirside [data-airside="' + airside + '"]', 0.28); await R.click(); }
+    if (w) { await typeInto('#ductCreateW', String(w)); await typeInto('#ductCreateH', String(h)); await R.hold(0.1); }
+    await R.moveToEl('#ductCreateStart', 0.32); await R.click();
     await page.waitForFunction(() => !!window.state.drawingDuct, { timeout: 5000 });
   };
-  // S opens the popover. `suggest` taps the ductulator's rectangular chip; otherwise the first
-  // common step-down from the current size.
-  const stepAtS = async (suggest) => {
+  const stepAtS = async () => {   // S, then the ductulator's rectangular chip
     await R.keyAs('S', 's');
     await page.waitForSelector('#ductSizePopover', { state: 'visible', timeout: 5000 });
     await R.hold(0.4);
-    const info = await page.evaluate(() => ({ suggest: [...document.querySelectorAll('#ductSizePopover .duct-suggest-chip')].map((c) => c.textContent.trim()), steps: [...document.querySelectorAll('#ductSizePopover .duct-step-chip')].map((c) => c.textContent.trim()) }));
-    console.log('\n  S: suggests [' + info.suggest.join(' | ') + '] steps [' + info.steps.join(' | ') + ']');
-    const si = info.suggest.findIndex((t) => /×/.test(t));
-    const sel = suggest && info.suggest.length ? '#ductSizePopover .duct-suggest-chip:nth-of-type(' + ((si >= 0 ? si : 0) + 1) + ')' : '#ductSizePopover .duct-step-chip';
-    await R.moveToEl(sel, 0.38); await R.click();
+    const info = await page.evaluate(() => [...document.querySelectorAll('#ductSizePopover .duct-suggest-chip')].map((c) => c.textContent.trim()));
+    console.log('\n  S suggests [' + info.join(' | ') + ']');
+    const si = info.findIndex((t) => /×/.test(t));
+    await R.moveToEl('#ductSizePopover .duct-suggest-chip:nth-of-type(' + ((si >= 0 ? si : 0) + 1) + ')', 0.35); await R.click();
     await R.hold(0.2);
   };
-  // S, then the Custom row: the size a master would give the air that is left past this takeoff.
-  const stepTo = async (w, h) => {
+  const stepTo = async (w, h) => {   // S, then the Custom row
     await R.keyAs('S', 's');
     await page.waitForSelector('#ductSizePopover', { state: 'visible', timeout: 5000 });
-    await R.hold(0.3);
+    await R.hold(0.25);
     const row = '#ductSizePopover .duct-size-inputs:has(input[aria-label="Width (inches)"])';
     await typeInto(row + ' input[aria-label="Width (inches)"]', String(w));
     await typeInto(row + ' input[aria-label="Depth (inches)"]', String(h));
-    await R.moveToEl(row + ' .duct-custom-apply', 0.3); await R.click();
-    await R.hold(0.2);
+    await R.moveToEl(row + ' .duct-custom-apply', 0.28); await R.click();
+    await R.hold(0.15);
   };
   const finishRun = async () => {
     await R.key('Enter');
     await page.waitForFunction(() => !window.state.drawingDuct, { timeout: 5000 });
-    await R.hold(0.3);
+    await R.hold(0.22);
   };
+  const straight = async (pts, first, step) => { for (const [i, p] of pts.entries()) { await R.moveToPt(p, i ? step : first); await R.click(); } };
+
   R.caption('', 'Trace the main from the unit.', 'top');   // the duct hint card holds the bottom
-  await startRun();
+  await startRun(26, 16);                                   // the whole floor: 2,400 CFM
   await R.moveToPt(TRUNK_H[0], 0.45); await R.click();
-  await R.hold(0.2);
-  await stepAtS(true);
-  await R.moveToPt(TRUNK_H[1], 0.45); await R.click();
-  R.caption('', 'S: the trunk steps down where a branch leaves.', 'top');
-  await stepTo(14, 12);   // 900 CFM left past the conference takeoff
-  await R.moveToPt(TRUNK_H[2], 0.8); await R.click();
-  await stepTo(12, 8);    // 300 CFM left past the open office takeoff
-  await R.moveToPt(TRUNK_H[3], 0.35); await R.click();
-  await R.moveToPt(TRUNK_H[4], 0.6); await R.click();
+  for (let k = 1; k < TRUNK_H.length; k++) {
+    await R.moveToPt(TRUNK_H[k], k === 1 ? 0.35 : 0.5); await R.click();
+    if (k === 1) R.caption('', 'S: the main steps down where a branch leaves.', 'top');
+    if (TRUNK_STEPS_H[k]) await stepTo(TRUNK_STEPS_H[k][0], TRUNK_STEPS_H[k][1]);
+  }
   await finishRun();
   R.caption('', 'A branch to each room; the tap counts itself.', 'top');
-  await startRun(16, 8);   // 450 CFM: the dialog takes the branch's size (the ductulator says 12"Ø or 16×8)
-  await R.moveToPt(BRANCH_CONF_H[0], 0.5); await R.click();
-  await R.moveToPt(BRANCH_CONF_H[1], 0.6); await R.click();
+  await startRun(12, 10);
+  await straight(BRANCH_BREAK_H, 0.45, 0.45);
   await finishRun();
-  await startRun();        // 600 CFM, the last air unserved, so S reads exactly this room's
-  await R.moveToPt(BRANCH_OPEN_H[0], 0.5); await R.click();
-  await stepAtS(true);
-  await R.moveToPt(BRANCH_OPEN_H[1], 0.45); await R.click();
-  await R.moveToPt(BRANCH_OPEN_H[2], 0.7); await R.click();
+  await startRun();                                         // the dialog keeps 12x10
+  await straight(BRANCH_CONF_H, 0.45, 0.45);
+  await finishRun();
+  await startRun(12, 8);
+  await straight(BRANCH_102_H, 0.45, 0.4);
+  await finishRun();
+  await startRun();
+  await straight(BRANCH_101_H, 0.45, 0.4);
+  await finishRun();
+  R.caption('', 'The last branch: S sizes it from the air its room needs.', 'top');
+  await startRun();
+  await R.moveToPt(BRANCH_OPEN_H[0], 0.45); await R.click();
+  await stepAtS();
+  await straight(BRANCH_OPEN_H.slice(1), 0.4, 0.6);
   await finishRun();
   await page.evaluate(endTool);
-  await R.hold(0.5);
+  await R.hold(0.3);
 
-  // The film only says the rooms are served if they are: no auto row of the app's own Bid
-  // Check may warn, every diffuser must hang off a run, and the system must carry its air.
+  // 7b · The air has to come back: two return grilles in the corridor ceiling and a return main
+  //      to the unit. Then the stat.
+  R.caption('', 'The return: two grilles and a main back to the unit.');
+  await quickAddH('24x24', 'Return Grille', '', false);
+  await recolorH('Return', '#4a9eff');
+  await straight(RETURNS_H, 0.45, 0.3);
+  await page.evaluate(endTool);
+  await startRun(24, 14, 'return');
+  await straight(RETURN_MAIN_H, 0.45, 0.4);
+  await finishRun();
+  await page.evaluate(endTool);
+  R.caption('', 'One thermostat.');
+  await createNamed('Thermostat', '#47c88e', 'Thermostat');
+  await R.moveToPt(STAT_SPOT_H, 0.45); await R.click();
+  await page.evaluate(endTool);
+  await R.hold(0.25);
+
+  // 7c · The restrooms exhaust on their own fan: a second system, its fan, a grille in each
+  //      room, and the exhaust run that starts on the fan.
+  R.caption('', 'EF-1: the restrooms exhaust on their own fan.');
+  await makeSystem('EF-1', '300', '');
+  await createNamed('EF-1', '#a47fff', 'RTU');
+  await R.moveToPt(EF_SPOT, 0.5); await R.click();
+  await page.evaluate(endTool);
+  await quickAddH('8"', 'Exhaust Grille', '75', false);
+  await recolorH('Exhaust Grille', '#a47fff');
+  await straight(EXH_GRILLES_H, 0.4, 0.35);
+  await page.evaluate(endTool);
+  await startRun(12, 6, 'exhaust');
+  await straight(EXH_RUN_H, 0.45, 0.7);
+  await finishRun();
+  await page.evaluate(endTool);
+  await R.hold(0.4);
+
+  // The film only says the floor is served if it is: no auto row of the app's own Bid Check
+  // may warn. The audit prints what the app computed, for the record and for iteration.
   const audit = await page.evaluate(() => {
     const App = window.App, s = window.state;
-    const rows = App.getBidCheck().auto.map((r) => ({ id: r.id, verdict: r.verdict, detail: r.detail }));
+    const bc = App.getBidCheck();
     const ann = App.getActiveAnnotations(s.pages[0]);
-    return { rows, runs: (ann.ductRuns || []).length, fittings: (ann.ductFittings || []).length, counters: s.counters.map((c) => c.name + ' x' + ((ann.counterMarkers[c.id] || []).length)), groups: s.groups.map((g) => g.name) };
+    return { rows: bc.auto.map((r) => ({ id: r.id, verdict: r.verdict, detail: r.detail })), manual: bc.manual.map((r) => r.id + (r.done ? '=done' : '')), runs: (ann.ductRuns || []).map((r) => (r.name || '?') + ':' + r.airside + ':' + ((s.groups.find((g) => g.id === r.systemGroupId) || {}).name || 'NO GROUP')), rooms: (s.rooms || []).map((r) => r.name + ':' + (r.roomType || 'no type')), boxes: (ann.roomBoxes || []).length, markerGroups: s.counters.map((c) => c.name + ':' + [...new Set((ann.counterMarkers[c.id] || []).map((m) => (s.groups.find((g) => g.id === m.group) || {}).name || 'none'))].join('/')), fittings: (ann.ductFittings || []).length, counters: s.counters.map((c) => c.name + ' x' + ((ann.counterMarkers[c.id] || []).length)) };
   });
   console.log('\n  hvac audit: ' + JSON.stringify(audit));
   const badH = audit.rows.filter((r) => r.verdict === 'warn');
   if (badH.length) throw new Error('hvac film: Bid Check warns on camera: ' + JSON.stringify(badH));
 
-  // 8 · Pounds, not feet: the Duct Schedule, gauge and bid weight; sign off in Bid Check.
-  R.caption('', 'Pounds, not feet.');
+  // 8 · Pounds, not feet. The ending READS the result out instead of flashing it: the schedule
+  //     by size and gauge, the fittings nobody clicked, the flex by the drop, the one bid weight;
+  //     then Bid Check row by row, and the one tick the estimator has earned (the stat is set).
+  R.caption('', 'Pounds, not feet: every size, its gauge, its weight.');
   await R.moveToEl('#ductScheduleBtn', 0.5); await R.click();
   await page.waitForSelector('#ductScheduleModal.visible', { timeout: 5000 });
-  await R.hold(0.4);
-  await R.moveToEl('#ductScheduleModal .duct-schedule-bid-row', 0.5);
-  await R.hold(1.0);
+  await R.hold(0.5);
+  const sched = '#ductScheduleModal';
+  const hoverRow = async (sel, hold) => { const n = await page.locator(sel).count(); if (!n) return false; await R.moveToEl(sel, 0.5); await R.hold(hold); return true; };
+  await hoverRow(sched + ' .duct-schedule-table tbody tr:nth-child(1)', 0.7);
+  await hoverRow(sched + ' .duct-schedule-table tbody tr:nth-child(4)', 0.6);
+  R.caption('', 'The fittings counted themselves; the flex is by the drop.');
+  await hoverRow(sched + ' .duct-schedule-fittings-head', 0.9);
+  await hoverRow(sched + ' .duct-schedule-rollup', 0.9);
+  R.caption('', 'One bid weight.');
+  await R.moveToEl(sched + ' .duct-schedule-bid-row', 0.5);
+  await R.hold(1.3);
   await R.moveToEl('#ductScheduleClose', 0.35); await R.click();
   await page.waitForFunction(() => !document.querySelector('#ductScheduleModal.visible'), { timeout: 5000 });
-  // Bid Check: three rooms boxed, three served, the system inside its capacity. "Fits the
-  // roof" computes itself once the deck height is known (12 ft), so it is green without a tick.
-  R.caption('', 'Bid Check: every room served.');
+  R.caption('', 'Bid Check: every room served, inside the unit.');
   await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
-  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-rooms-served"]', 0.6); await R.hold(1.0);
-  R.caption('', 'Fits the roof: computed, green.');
-  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-fits-roof"]', 0.45); await R.hold(0.9);
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-rooms-served"]', 0.6); await R.hold(0.9);
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-systems-capacity"]', 0.35); await R.hold(0.9);
+  R.caption('', 'Will it blow? The static path, computed.');
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-static-path"]', 0.45); await R.hold(1.3);
+  R.caption('', 'The stat is set: one tick the estimator signs.');
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-controls"] .bid-check-box', 0.45); await R.click();
+  await R.hold(0.6);
 
   // 9 · Nothing missed: the plan, marks off, marks on.
   R.caption('', 'Nothing missed.');

@@ -92,9 +92,19 @@ a { color: inherit; }
 .hc-card.is-done .hc-name { color: #47c88e; }
 .hc-card.is-now .hc-name { color: var(--text); }
 .hc-card.is-now .hc-track i { background: var(--accent); }
-.hc-end { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; max-width: calc(100% - 24px); padding: 8px 10px; border-radius: 999px; background: rgba(15, 15, 17, 0.9); border: 1px solid var(--border2); box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55); animation: hc-end-in 0.45s ease both; }
+.hc-end { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: max-content; /* a centred absolute box otherwise shrinks to half the frame and wraps early */ max-width: calc(100% - 24px); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 14px; border-radius: 16px; background: rgba(15, 15, 17, 0.92); border: 1px solid var(--border2); box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55); animation: hc-end-in 0.45s ease both; }
 .hc-end[hidden] { display: none; }
 @keyframes hc-end-in { from { opacity: 0; transform: translate(-50%, -46%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+/* The results: the film's marked-up sheet and its report, two thumbnails that open in the lightbox. */
+.hc-results { display: flex; gap: 12px; }
+.hc-end .hc-result { margin: 0; width: 232px; background: none; border: 0; border-radius: 0; overflow: visible; }
+.hc-end .hc-result .spot-open { display: block; width: 100%; padding: 0; border: 1px solid var(--border2); border-radius: 8px; overflow: hidden; background: #fff; cursor: zoom-in; }
+.hc-end .hc-result .spot-open:hover, .hc-result .spot-open:focus-visible { border-color: var(--accent); outline: none; }
+.hc-end .hc-result img { display: block; width: 100%; height: 150px; aspect-ratio: auto; object-fit: cover; object-position: top center; border-bottom: 0; background: #fff; }
+.hc-end .hc-result figcaption { margin-top: 7px; padding: 0; text-align: center; line-height: 1.3; }
+.hc-end .hc-result figcaption b { display: block; margin: 0; font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.hc-end .hc-result figcaption span { display: none; }   /* the lightbox reads it */
+.hc-end-row { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
 .hc-again { display: inline-flex; align-items: center; gap: 8px; flex: none; white-space: nowrap; font: 600 0.88rem 'DM Sans', system-ui, sans-serif; color: var(--bg); background: var(--accent); border: none; border-radius: 999px; padding: 7px 16px 7px 12px; cursor: pointer; }
 .hc-again:hover { background: #f0d060; }
 .hc-again svg { width: 15px; height: 15px; fill: currentColor; }
@@ -114,7 +124,15 @@ a { color: inherit; }
   .hc-name { gap: 5px; }
   .hc-name small { font-size: 0.64rem; }
   .hc-next-label { display: none; }
-  .hc-end { gap: 6px; padding: 7px; border-radius: 18px; width: max-content; }
+  /* A phone's frame is too small to carry the results over it: they sit in the flow between the
+     film and the bar instead (the page grows once, when the film has stopped). */
+  .hc-end { position: static; transform: none; width: auto; max-width: none; animation: none; gap: 10px; padding: 12px; border-radius: 0; border: 1px solid var(--border); border-top: 0; border-bottom: 0; background: var(--surface); box-shadow: none; }
+  .hc-results { gap: 8px; width: 100%; }
+  .hc-end .hc-result { width: auto; flex: 1 1 0; min-width: 0; }
+  .hc-end .hc-result img { height: 96px; }
+  .hc-end .hc-result figcaption { margin-top: 4px; }
+  .hc-end .hc-result figcaption b { font-size: 0.7rem; }
+  .hc-end-row { gap: 6px; }
   .hc-again { padding: 6px 12px 6px 9px; font-size: 0.8rem; }
   .hc-next { padding: 4px 10px; font-size: 0.76rem; }
 }
@@ -180,9 +198,9 @@ html[data-hero-trade="hvac"] .spotlight-set[data-trade="hvac"] { display: block;
 .lb-bar button { font: inherit; font-size: 0.95rem; line-height: 1; padding: 8px 14px; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
 .lb-bar button:hover { background: var(--surface2); }
 .lb-bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.lb-stage { position: relative; overflow: hidden; display: grid; place-items: center; touch-action: none; cursor: zoom-out; }
+.lb-stage { position: relative; overflow: hidden; display: grid; place-items: center; grid-template-rows: minmax(0, 1fr); min-height: 0; touch-action: none; cursor: zoom-out; }   /* min-height 0 + a bounded row: a TALL image (the takeoff report) fits the stage instead of overflowing it */
 .lb-stage.zoomed { cursor: grab; }
-.lb-img { max-width: 100%; max-height: 100%; border-radius: 8px; border: 1px solid var(--border); transform-origin: center center; user-select: none; -webkit-user-drag: none; cursor: zoom-in; }
+.lb-img { max-width: 100%; max-height: 100%; width: auto; height: auto; min-height: 0; object-fit: contain; border-radius: 8px; border: 1px solid var(--border); transform-origin: center center; user-select: none; -webkit-user-drag: none; cursor: zoom-in; }
 .lb-stage.zoomed .lb-img { cursor: grab; }
 .lb-cap { margin: 0 auto; max-width: 68ch; text-align: center; line-height: 1.5; }
 .lb-cap b { display: block; font-size: 1.05rem; font-weight: 600; margin-bottom: 2px; text-wrap: balance; }

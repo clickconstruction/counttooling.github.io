@@ -1,6 +1,6 @@
 {
   "film": "plumbing",
-  "duration": 43,
+  "duration": 44.25,
   "chapters": [
     {
       "name": "Scale",
@@ -10,17 +10,17 @@
     {
       "name": "Fixtures",
       "start": 7.25,
-      "end": 14.08
+      "end": 15.33
     },
     {
       "name": "Pipe",
-      "start": 14.08,
-      "end": 36.96
+      "start": 15.33,
+      "end": 38.21
     },
     {
       "name": "Pricing",
-      "start": 36.96,
-      "end": 43
+      "start": 38.21,
+      "end": 44.25
     }
   ],
   "beats": [
@@ -45,27 +45,27 @@
       "text": "Count."
     },
     {
-      "t": 14.08,
+      "t": 15.33,
       "text": "Cold in."
     },
     {
-      "t": 20.71,
+      "t": 21.96,
       "text": "Hangers, from the rulebook."
     },
     {
-      "t": 23.71,
+      "t": 24.96,
       "text": "Hot back."
     },
     {
-      "t": 34.33,
+      "t": 35.58,
       "text": "Rise."
     },
     {
-      "t": 36.96,
+      "t": 38.21,
       "text": "Nothing missed."
     },
     {
-      "t": 42,
+      "t": 43.25,
       "text": "Done."
     }
   ]

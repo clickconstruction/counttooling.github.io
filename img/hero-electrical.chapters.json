@@ -1,6 +1,6 @@
 {
   "film": "electrical",
-  "duration": 52.58,
+  "duration": 76.08,
   "chapters": [
     {
       "name": "Scale",
@@ -10,17 +10,17 @@
     {
       "name": "Devices",
       "start": 7.38,
-      "end": 21.25
+      "end": 22.42
     },
     {
       "name": "Wire",
-      "start": 21.25,
-      "end": 42.13
+      "start": 22.42,
+      "end": 64.5
     },
     {
       "name": "Pricing",
-      "start": 42.13,
-      "end": 52.58
+      "start": 64.5,
+      "end": 76.08
     }
   ],
   "beats": [
@@ -45,51 +45,59 @@
       "text": "Count."
     },
     {
-      "t": 11.54,
+      "t": 11.29,
       "text": "Receptacles, 18 in AFF by default."
     },
     {
-      "t": 16.17,
+      "t": 14.04,
       "text": "The switch, 48 in."
     },
     {
-      "t": 19.54,
+      "t": 16.79,
       "text": "Fixtures, at the ceiling."
     },
     {
-      "t": 21.25,
+      "t": 19.54,
+      "text": "The panel, LP-1."
+    },
+    {
+      "t": 22.42,
       "text": "Name the conduit."
     },
     {
-      "t": 24.33,
+      "t": 25.5,
       "text": "List the wire inside it."
     },
     {
-      "t": 29.71,
-      "text": "Circuit 7, on LP-1."
+      "t": 30.88,
+      "text": "Circuit 7: the north wall, 6 A."
     },
     {
-      "t": 33.92,
+      "t": 35.21,
       "text": "Chain: each click writes its 9.5 ft drop."
     },
     {
-      "t": 37.92,
-      "text": "Home to LP-1."
+      "t": 38.63,
+      "text": "Home run, square to the panel."
     },
     {
-      "t": 39.25,
-      "text": "Flag it the homerun: the circuit knows its panel."
+      "t": 41.96,
+      "text": "Circuit 9: south and west."
     },
     {
-      "t": 42.13,
+      "t": 52.29,
+      "text": "Circuit 11: the lights and their switch."
+    },
+    {
+      "t": 64.5,
       "text": "The wire, derived. The checks, computed."
     },
     {
-      "t": 46.54,
+      "t": 70.04,
       "text": "Nothing missed."
     },
     {
-      "t": 51.58,
+      "t": 75.08,
       "text": "Done."
     }
   ]

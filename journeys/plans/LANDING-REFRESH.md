@@ -603,6 +603,28 @@ the rest are new setups.
    trade's six, wheel / pinch / + − / double-click zoom to 5× about the pointer, drag pans, Escape
    or the backdrop closes and focus returns to the opener. Inline script beside the hero's, no
    library. Spec case in `landing-trade.spec.js`.
+7. **SPOT-7 · the frames follow the films again.** The films grew on 2026-09-20 ("complete the
+   room", "complete the floor") and the electrical and HVAC frames were still cut from their own
+   small takeoffs, so six captions quoted numbers the films no longer show. **DONE 2026-09-20**
+   (branch `claude/punch-spotlight-sync`, punch row SPOTLIGHT-SYNC closed): `electricalBase` seeds
+   the film's three circuits off LP-1 point for point (7 and 9 on the receptacle walls, 11 on the
+   switch and the troffers, each chained through `App.commitChainPoint` with a square polyline
+   home run flagged `homerun`, the panel a counter named LP-1), and `hvacBase` seeds the film's
+   floor (six rooms boxed, RTU-1 at 3,000 CFM and 0.8 in. w.g., EF-1, sixteen diffusers, the
+   returns, the stat, the exhaust grilles) while `hvacRun` traces the film's duct with real
+   clicks: the main stepping down past each takeoff, five branches (the last sized by S), the
+   return main, the exhaust run. A `PB()` helper quotes the films' plan coordinates as they
+   stand. The frames now read the films' numbers: 13 runs and 202 ft of EMT, voltage drop 1.3% /
+   1.5% / 0.3%, 14 rows to TakeoffTooling; 2,400 of 3,000 CFM, 19 flex drops, 244 ft of straight
+   duct. Hundredths differ from the films' reports (59.49 ft against 59.46), because the film
+   clicks at a different zoom; the captions quote the frames. Three gotchas for the next re-cut:
+   a full floor's legend grows down over the Break room and takes the clicks that trace its
+   branch, so the HVAC seed turns the legend off; the header's Duct button toggles the tool off
+   once it is armed, so a second run is started with the film's `U` key; and the trace frame
+   shows the first leg only, because until a branch is drawn every leg reads the whole 2,400 CFM
+   and a stepped-down chip beside that suggestion looks wrong. The trace frame is 880×660 now
+   (the unit and the hint card both in frame). The proof panel's Bid Check rows further down the
+   landing are marked illustrative and were left alone.
 
 About a day and a half in total. HVAC first because that is the visitor being prepared for.
 

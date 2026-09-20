@@ -979,7 +979,7 @@ async function overseerBoardSetup(page) {
 // the real app per trade, JPEG, a fixed 1200×750 window centred on the surface so the six
 // share one aspect on the page. `--set spotlight` builds them into img/spotlight/. The
 // setups seed what each trade's hero film makes on camera, same names and colours, so the
-// frames match the film above them. HVAC first (the film "Pounds, not feet").
+// frames match the film above them (SPOT-7: point for point, so the captions' numbers are the films').
 // ============================================================================
 // Each spotlight frame is a 4:3 window sized to its surface: `crop: { sel, w, h, ax, ay, ox, oy }`
 // aligns the window's (ax, ay) fraction point to the anchor element's (ax, ay) fraction point
@@ -989,11 +989,42 @@ const CROP_QUICK = { sel: '#counterModal .modal-card', w: 520, h: 390, ax: 0.5, 
 const CROP_BID = { sel: '#bidCheckSection', w: 560, h: 420, ax: 0, ay: 0, ox: -6, oy: -8 };                  // the checklist column, a sliver of plan beside it
 const CSS_BID = '.sidebar{width:420px}';                                                                     // wide enough that a check reads on one line
 
-// The office sheet's rooms and the HVAC main, in PDF points (the film's MAIN_H / rooms).
-const OPEN_OFFICE_105 = { x1: 159, y1: 358, x2: 412.5, y2: 520 };
-const CONFERENCE_103 = { x1: 540, y1: 145, x2: 652.5, y2: 325 };
-const DIFFUSERS = [[200, 457], [268, 457], [336, 457], [404, 457]];
-const MAIN_PTS = [[164, 452], [240, 452], [320, 452], [406, 452]];
+// The office plan is drawn at 12 px/ft and placed at (60, 70) × 0.75 on its sheet: the hero
+// films' B(), so a film's plan coordinates can be quoted here as they stand.
+const PB = (x, y) => [60 + 0.75 * x, 70 + 0.75 * y];
+// The HVAC film's "complete the floor" layout, point for point (SPOTLIGHT-SYNC, 2026-09-20), so
+// the frames quote the film's numbers: six rooms boxed, sixteen 150 CFM diffusers, ONE supply
+// main off RTU-1 (3,000 CFM, 0.8 in. w.g.) down the corridor with a branch into each room, the
+// return main, the stat, and EF-1 on the restrooms.
+const roomRect = (x1, y1, x2, y2) => ({ x1: PB(x1, y1)[0], y1: PB(x1, y1)[1], x2: PB(x2, y2)[0], y2: PB(x2, y2)[1] });
+const CONFERENCE_103 = roomRect(640, 100, 790, 340);
+const ROOMS_H = [
+  { name: 'OPEN OFFICE', type: 'office', color: '#e85447', r: roomRect(132, 384, 470, 600) },
+  { name: 'LOBBY', type: 'office', color: '#4a9eff', r: roomRect(132, 100, 300, 340) },
+  { name: 'OFFICE 101', type: 'office', color: '#e8c547', r: roomRect(300, 100, 470, 340) },
+  { name: 'OFFICE 102', type: 'office', color: '#47c88e', r: roomRect(470, 100, 640, 340) },
+  { name: 'CONFERENCE', type: 'conference', color: '#a47fff', r: CONFERENCE_103 },
+  { name: 'BREAK', type: 'break', color: '#ff7f50', r: roomRect(790, 100, 940, 340) },
+];
+const Y_SUP = 356, Y_RET = 379;   // the supply main and the return main, side by side in the corridor
+const RTU_SPOT = PB(905, Y_SUP);
+const DIFFUSERS = [[420, 502], [340, 502], [260, 502], [180, 502], [228, 292], [228, 192], [397, 292], [397, 192], [567, 292], [567, 192], [727, 300], [727, 228], [727, 156], [877, 300], [877, 228], [877, 162]].map((p) => PB(...p));
+const TRUNK_H = [[905, Y_SUP], [865, Y_SUP], [715, Y_SUP], [555, Y_SUP], [440, Y_SUP], [385, Y_SUP], [216, Y_SUP], [216, 170]].map((p) => PB(...p));
+const TRUNK_STEPS_H = [null, [22, 16], [20, 14], [16, 14], [16, 8], [12, 8]];   // the size past each takeoff (index = the vertex it follows)
+const BRANCHES_H = [
+  { size: [12, 10], pts: [[865, Y_SUP], [865, 150]] },    // Break
+  { size: [12, 10], pts: [[715, Y_SUP], [715, 150]] },    // Conference
+  { size: [12, 8], pts: [[555, Y_SUP], [555, 186]] },     // Office 102
+  { size: [12, 8], pts: [[385, Y_SUP], [385, 186]] },     // Office 101
+  { size: [12, 8], suggest: true, pts: [[440, Y_SUP], [440, 490], [176, 490]] },   // the open office: sized by S, which reads this room's 600 CFM
+].map((b) => ({ ...b, pts: b.pts.map((p) => PB(...p)) }));
+const RETURNS_H = [[690, Y_RET], [780, Y_RET]].map((p) => PB(...p));
+const RETURN_MAIN_H = [[678, Y_RET], [905, Y_RET]].map((p) => PB(...p));
+const STAT_SPOT_H = PB(300, 392);
+const EF_SPOT = PB(905, 508);
+const EXH_GRILLES_H = [[850, 520], [670, 520], [525, 520]].map((p) => PB(...p));
+const EXH_RUN_H = [[905, 508], [513, 508]].map((p) => PB(...p));
+const CAM_FLOOR_H = { x1: 146, y1: 132, x2: 778, y2: 530 };   // the whole floor, the film's rooms camera
 
 // Frame a region of the sheet (PDF points) in the canvas wrapper: the film's camera, so the
 // two trace frames show the open office at the size the hero film shows it.
@@ -1021,71 +1052,124 @@ async function movePlanPt(page, x, y) {
   await page.waitForTimeout(220);
 }
 
-// Trade hvac on the office sheet; OPEN OFFICE 105 boxed (office, 9 ft, deck 12); a 150 CFM
-// diffuser four times on the main's line; the system RTU-1 at 2,000 CFM, active.
-async function hvacBase(page) {
+// Trade hvac on the office sheet, as the film leaves it before the first duct: the rooms boxed
+// (9 ft ceilings, the deck at 12), the systems RTU-1 and EF-1 with their units placed, every
+// diffuser, return, exhaust grille and the stat in its group. `opts.skipRoom` leaves one room
+// unboxed (the Room Size frame drags it for real).
+async function hvacBase(page, opts = {}) {
   await page.evaluate(() => { window.App.pageTextItems && window.App.pageTextItems(0); });
   await page.waitForFunction(() => (window.App.peekPageTextItems(0) || []).length > 0, { timeout: 15000 }).catch(() => {});
-  await page.evaluate(({ pw, room, dif }) => {
+  await page.evaluate(({ pw, o, rooms, rtuAt, dif, rets, stat, efAt, exh }) => {
     const s = window.state, App = window.App, uid = () => App.uid();
     s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
     App.setProjectTrade && App.setProjectTrade('hvac', { remember: false, route: 'tour' });
     s.groupsEnabled = true;
     const ann = s.pages[0].canvases[0].annotations;
-    const open = uid();
-    s.rooms.push({ id: open, name: 'OPEN OFFICE 105', color: '#e85447', roomType: 'office', nameFromPlan: true });
-    ann.roomBoxes.push({ id: uid(), x1: room.x1, y1: room.y1, x2: room.x2, y2: room.y2, heightFt: 9, roomId: open });
+    rooms.filter((rm) => rm.name !== o.skipRoom).forEach((rm) => {
+      const id = uid();
+      s.rooms.push({ id, name: rm.name, color: rm.color, roomType: rm.type, nameFromPlan: true });
+      ann.roomBoxes.push({ id: uid(), x1: rm.r.x1, y1: rm.r.y1, x2: rm.r.x2, y2: rm.r.y2, heightFt: 9, roomId: id });
+    });
     const ci = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
-    const d = { id: uid(), name: '12x12 Supply Diffuser', icon: (App.cfmDefaultIcon && App.cfmDefaultIcon()) || ci('Supply Diffuser') || App.getOrderedIcons()[0].value, color: '#e8c547', cfm: 150 };
-    s.counters.push(d);
-    ann.counterMarkers[d.id] = dif.map(([x, y]) => ({ x, y, id: uid(), group: null }));
-    const rtu = { id: uid(), name: 'RTU-1', color: '#2e86de', equipmentTag: 'RTU-1', capacityCfm: 2000 };
-    s.groups.push(rtu); s.activeGroupId = rtu.id;
-    ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
+    const icon = (sym, fallback) => (App.tradeIconForType && App.tradeIconForType('hvac', sym)) || ci(fallback || sym) || App.getOrderedIcons()[0].value;
+    const rtu = { id: uid(), name: 'RTU-1', color: '#2e86de', equipmentTag: 'RTU-1', capacityCfm: 3000, espInWg: 0.8 };
+    const ef = { id: uid(), name: 'EF-1', color: '#a47fff', equipmentTag: 'EF-1', capacityCfm: 300 };
+    s.groups.push(rtu, ef); s.activeGroupId = rtu.id;
+    const unit = { id: uid(), name: 'RTU-1', icon: icon('RTU'), color: '#e8c547' };
+    const d = { id: uid(), name: '12x12 Supply Diffuser', icon: (App.cfmDefaultIcon && App.cfmDefaultIcon()) || icon('Supply Diffuser'), color: '#e85447', cfm: 150 };
+    const ret = { id: uid(), name: '24x24 Return Grille', icon: icon('Return Grille'), color: '#4a9eff' };
+    const tstat = { id: uid(), name: 'Thermostat', icon: icon('Thermostat'), color: '#47c88e' };
+    const fan = { id: uid(), name: 'EF-1', icon: icon('RTU'), color: '#a47fff' };
+    const eg = { id: uid(), name: '8" Exhaust Grille', icon: icon('Exhaust Grille'), color: '#a47fff', cfm: 75 };
+    s.counters.push(unit, d, ret, tstat, fan, eg);
+    const marks = (pts, g) => pts.map(([x, y]) => ({ x, y, id: uid(), group: g.id }));
+    ann.counterMarkers[unit.id] = marks([rtuAt], rtu);
+    ann.counterMarkers[d.id] = marks(dif, rtu);
+    ann.counterMarkers[ret.id] = marks(rets, rtu);
+    ann.counterMarkers[tstat.id] = marks([stat], rtu);
+    ann.counterMarkers[fan.id] = marks([efAt], ef);
+    ann.counterMarkers[eg.id] = marks(exh, ef);
+    s.counterSettings = Object.assign({}, s.counterSettings, { size: 40, outlineSize: 2 });
+    // A full floor's legend (devices, rooms, every duct size) grows down over the Break room and
+    // takes the clicks that trace its branch; no HVAC frame is about the legend, so it is off.
+    s.showLegendOverlay = false;
     if (App.setDuctDeckHeight) App.setDuctDeckHeight(12);
+    window.__spot = { rtu: rtu.id, ef: ef.id };
     App.renderPdf(); App.updateUI(); App.renderAnnotations();
-  }, { pw: PLAN_W, room: OPEN_OFFICE_105, dif: DIFFUSERS });
+  }, { pw: PLAN_W, o: opts, rooms: ROOMS_H, rtuAt: RTU_SPOT, dif: DIFFUSERS, rets: RETURNS_H, stat: STAT_SPOT_H, efAt: EF_SPOT, exh: EXH_GRILLES_H });
   await fitPlan(page);
   await page.waitForTimeout(350);
 }
-async function armDuctRun(page) {
-  await page.evaluate(() => document.getElementById('ductBtn').click());
+// U's dialog, the way the film fills it: the size typed, the airside picked, Start Tracing.
+async function armDuctRun(page, size, airside) {
+  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+  await page.keyboard.press('u');   // the film's key; the header button toggles the tool off once it is armed
   await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
+  if (airside) await page.locator('#ductCreateAirside [data-airside="' + airside + '"]').click();
+  if (size) { await page.locator('#ductCreateW').fill(String(size[0])); await page.locator('#ductCreateH').fill(String(size[1])); }
   await page.evaluate(() => document.getElementById('ductCreateStart').click());
   await page.waitForFunction(() => !!window.state.drawingDuct, { timeout: 5000 });
 }
 const stepRect = (page) => page.evaluate(() => { const App = window.App; const sug = App.getDuctDraftSuggestion && App.getDuctDraftSuggestion(); const next = sug && (sug.rectSize || sug.size); if (next && App.applyDuctSizeStep) App.applyDuctSizeStep(next); App.renderAnnotations(); });
-// Two vertices placed and the cursor on the third: the chip at the cursor, the hint card above the footer.
+const stepTo = (page, [w, h]) => page.evaluate(([w, h]) => { window.App.applyDuctSizeStep({ kind: 'rect', w, h }); window.App.renderAnnotations(); }, [w, h]);
+const finishRun = async (page) => {
+  await page.evaluate(() => { const App = window.App; App.finishDuctRun && App.finishDuctRun(); window.state.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations(); });
+  await page.waitForTimeout(200);
+};
+const setSystem = (page, key) => page.evaluate((k) => { window.state.activeGroupId = window.__spot[k]; window.App.updateUI(); }, key);
+// The main leaving the unit at 26×16, its first leg placed and the cursor on the next takeoff:
+// the chip at the cursor, and the hint card above the footer reading the whole floor's 2,400 CFM
+// (no branch has taken its air yet) and the size the friction rate suggests for it.
 async function hvacDraft(page) {
   await hvacBase(page);
-  await frameRegion(page, CAM_OPEN_OFFICE);
-  await armDuctRun(page);
-  await clickPlanPt(page, ...MAIN_PTS[0]);
-  await clickPlanPt(page, ...MAIN_PTS[1]);
-  await movePlanPt(page, ...MAIN_PTS[2]);
+  await frameRegion(page, CAM_FLOOR_H);
+  await armDuctRun(page, [26, 16]);
+  await clickPlanPt(page, ...TRUNK_H[0]);
+  await clickPlanPt(page, ...TRUNK_H[1]);
+  await movePlanPt(page, ...TRUNK_H[2]);
 }
-// The main committed: 24×12 → 16×8 → 12×8 with two transitions, the diffusers attached.
+// The floor's duct, as the film traces it: the main stepping down past each takeoff, a branch
+// into each room (the last sized by S), the return main, the exhaust run off EF-1.
 async function hvacRun(page) {
   await hvacBase(page);
-  await armDuctRun(page);
-  await clickPlanPt(page, ...MAIN_PTS[0]);
-  await clickPlanPt(page, ...MAIN_PTS[1]);
-  await stepRect(page);
-  await clickPlanPt(page, ...MAIN_PTS[2]);
-  await stepRect(page);
-  await clickPlanPt(page, ...MAIN_PTS[3]);
-  await page.evaluate(() => { const App = window.App; App.finishDuctRun && App.finishDuctRun(); window.state.tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations(); });
+  await armDuctRun(page, [26, 16], 'supply');
+  for (let k = 0; k < TRUNK_H.length; k++) {
+    await clickPlanPt(page, ...TRUNK_H[k]);
+    if (TRUNK_STEPS_H[k]) await stepTo(page, TRUNK_STEPS_H[k]);
+  }
+  await finishRun(page);
+  for (const b of BRANCHES_H) {
+    await armDuctRun(page, b.size);
+    await clickPlanPt(page, ...b.pts[0]);
+    if (b.suggest) await stepRect(page);
+    for (const p of b.pts.slice(1)) await clickPlanPt(page, ...p);
+    await finishRun(page);
+  }
+  await armDuctRun(page, [24, 14], 'return');
+  for (const p of RETURN_MAIN_H) await clickPlanPt(page, ...p);
+  await finishRun(page);
+  await setSystem(page, 'ef');
+  await armDuctRun(page, [12, 6], 'exhaust');
+  for (const p of EXH_RUN_H) await clickPlanPt(page, ...p);
+  await finishRun(page);
+  await setSystem(page, 'rtu');
   await page.waitForTimeout(300);
 }
 
 // --- electrical, "Circuit 7": what the film makes on camera, seeded -------------------
-const RECEPT_E = [[238.5, 371.5], [288.75, 371.5], [339, 371.5], [389.25, 371.5], [172.5, 437.5]];   // north wall east of the door, then the west wall
-const SWITCH_E = [234, 370];
-const LIGHTS_E = [[247.5, 411.25], [352.5, 411.25], [247.5, 463.75], [352.5, 463.75]];
-const CHAIN_E = [[247.5, 506.5], [300, 506.5], [352.5, 506.5]];   // along the south wall
-const LP1_E = [492, 442];                                          // panel LP-1 on the janitor's east wall
+// SPOTLIGHT-SYNC (2026-09-20): the film's "complete the room" layout, point for point (its
+// C7_RECEPTS / C9_RECEPTS / LIGHT_SPOTS_E / HOME_*), so the frames quote the film's numbers:
+// three circuits off LP-1, each chained device to device with a square, flagged home run.
+const C7_RECEPTS_E = [[450, 402], [395, 402], [340, 402], [285, 402]].map((p) => PB(...p));   // circuit 7: the north wall, from the panel end west
+const C9_RECEPTS_E = [[400, 582], [320, 582], [240, 582], [160, 582]].map((p) => PB(...p));   // circuit 9: the south wall
+const SWITCH_E = PB(232, 400);
+const LIGHTS_E = [[250, 455], [390, 455], [390, 525], [250, 525]].map((p) => PB(...p));       // a 2 × 2 troffer grid, in chain order from the switch
+const HOME_7_E = [[450, 402], [576, 402], [576, 462]].map((p) => PB(...p));
+const HOME_9_E = [[400, 582], [552, 582], [552, 541], [570, 541]].map((p) => PB(...p));
+const HOME_11_E = [[390, 455], [540, 455], [540, 497], [570, 497]].map((p) => PB(...p));
+const LP1_E = PB(576, 496);                                                                   // panel LP-1 on the janitor's east wall
 async function electricalBase(page) {
-  await page.evaluate(({ pw, rec, sw, lights, chain, lp1 }) => {
+  await page.evaluate(({ pw, c7, c9, sw, lights, h7, h9, h11, lp1 }) => {
     const s = window.state, App = window.App, uid = () => App.uid();
     s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
     App.setProjectTrade && App.setProjectTrade('electrical', { remember: false, route: 'tour' });
@@ -1096,26 +1180,32 @@ async function electricalBase(page) {
     const r = { id: uid(), name: 'Duplex Receptacle', icon: icon('Duplex', 'Duplex Receptacle'), color: '#e85447', mountHeightIn: 18 };
     const w = { id: uid(), name: 'Single Pole Switch', icon: icon('Single Pole', 'Single Pole Switch'), color: '#e8c547', mountHeightIn: 48 };
     const l = { id: uid(), name: '2x4 Troffer Fixture', icon: icon('2x4 Troffer', '2x4 Troffer'), color: '#4a9eff' };
-    s.counters.push(r, w, l);
+    const pnl = { id: uid(), name: 'Panelboard Panel', icon: icon('Panelboard', 'Panelboard'), color: '#47c88e', panelName: 'LP-1' };   // a counter with a panel name IS the panel mark
+    s.counters.push(r, w, l, pnl);
+    ann.counterMarkers[pnl.id] = [{ x: lp1[0], y: lp1[1], id: uid(), group: null }];
     const cm = window.ConductorModel;
     const emt = { id: uid(), name: '3/4in EMT', color: '#a47fff', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors: cm ? cm.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [] };
     s.lineTypes.push(emt);
-    const g = { id: uid(), name: 'Circuit 7', color: '#c8963a', panel: 'LP-1', circuit: '7', loadAmps: 12 };
-    s.groups.push(g); s.activeGroupId = g.id;
-    ann.counterMarkers[r.id] = rec.map(([x, y]) => ({ x, y, id: uid(), group: g.id }));
-    ann.counterMarkers[w.id] = [{ x: sw[0], y: sw[1], id: uid(), group: g.id }];
-    ann.counterMarkers[l.id] = lights.map(([x, y]) => ({ x, y, id: uid(), group: g.id }));
     s.counterSettings = Object.assign({}, s.counterSettings, { size: 40, outlineSize: 2 });
-    // the chain, device to device, each click writing its drop (ceiling 10 − mount 1.5 + make-up 1)
-    s.activeCounterType = r.id; s.activeLineTypeId = emt.id; s.tool = App.TOOL.CHAIN; s.chainStart = null;
-    chain.forEach(([x, y]) => App.commitChainPoint({ x, y }));
-    s.chainStart = null; s.tool = App.TOOL.NONE;
-    // the home run to LP-1 on the same conduit
-    ann.quickLines.push({ id: uid(), x1: chain[2][0], y1: chain[2][1], x2: lp1[0], y2: lp1[1], lineTypeId: emt.id, color: emt.color, group: g.id, homerun: true });
+    // One circuit: the group with its panel, number and load; the chain, device to device, each
+    // click writing its drop (ceiling 10 − mount + make-up 1); the home run square to LP-1, flagged.
+    const circuit = (name, number, amps, legs, home) => {
+      const g = { id: uid(), name, color: '#c8963a', panel: 'LP-1', circuit: number, loadAmps: amps };
+      s.groups.push(g); s.activeGroupId = g.id;
+      s.activeLineTypeId = emt.id; s.tool = App.TOOL.CHAIN; s.chainStart = null;
+      legs.forEach(([counter, pts]) => { s.activeCounterType = counter.id; pts.forEach(([x, y]) => App.commitChainPoint({ x, y })); });   // a second device keeps the chain's anchor
+      s.chainStart = null; s.tool = App.TOOL.NONE;
+      ann.polylines.push({ id: uid(), name: name + ' home run', color: emt.color, points: home.map(([x, y]) => ({ x, y })), closed: false, lineTypeId: emt.id, group: g.id, homerun: true });
+      return g;
+    };
+    const g7 = circuit('Circuit 7', '7', 6, [[r, c7]], h7);
+    circuit('Circuit 9', '9', 6, [[r, c9]], h9);
+    circuit('Circuit 11', '11', 2, [[w, [sw]], [l, lights]], h11);
+    s.activeGroupId = g7.id;
     ann.legend = { x: pw - 210, y: 16, w: 195, h: 60, userResized: false };
     window.__spot = { r: r.id, emt: emt.id };
     App.markProjectDirty(); App.renderPdf(); App.updateUI(); App.renderAnnotations();
-  }, { pw: PLAN_W, rec: RECEPT_E, sw: SWITCH_E, lights: LIGHTS_E, chain: CHAIN_E, lp1: LP1_E });
+  }, { pw: PLAN_W, c7: C7_RECEPTS_E, c9: C9_RECEPTS_E, sw: SWITCH_E, lights: LIGHTS_E, h7: HOME_7_E, h9: HOME_9_E, h11: HOME_11_E, lp1: LP1_E });
   await fitPlan(page);
   await page.waitForTimeout(350);
 }
@@ -1342,7 +1432,7 @@ const SPOTLIGHT = [
   {
     name: 'hvac-2-room-size', dir: 'img/spotlight', format: 'jpeg', crop: { w: 747, h: 560, ax: 0.5, ay: 0, oy: 22 }, clip: '#roomBoxModal .modal-card',
     async setup(page) {
-      await hvacBase(page);
+      await hvacBase(page, { skipRoom: 'CONFERENCE' });
       await page.evaluate(() => { const s = window.state, App = window.App; s.tool = App.TOOL.ROOM; s.roomBoxStart = null; App.updateUI(); });
       const a = await planPoint(page, CONFERENCE_103.x1 / PLAN_W, CONFERENCE_103.y1 / PLAN_H);
       const b = await planPoint(page, CONFERENCE_103.x2 / PLAN_W, CONFERENCE_103.y2 / PLAN_H);
@@ -1357,7 +1447,7 @@ const SPOTLIGHT = [
       await page.waitForTimeout(250);
     },
   },
-  { name: 'hvac-3-trace', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#ductHintCard', w: 800, h: 600, ax: 0.5, ay: 1, ox: -100, oy: 16 }, clip: '#canvasWrapper', setup: hvacDraft },
+  { name: 'hvac-3-trace', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#ductHintCard', w: 880, h: 660, ax: 0.5, ay: 1, ox: 140, oy: 16 }, clip: '#canvasWrapper', setup: hvacDraft },
   {
     name: 'hvac-4-size-popover', dir: 'img/spotlight', format: 'jpeg', crop: { sel: '#ductSizePopover', w: 693, h: 520, ax: 1, ay: 0.5, ox: 16 }, clip: '#canvasWrapper',
     async setup(page) {

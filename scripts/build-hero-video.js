@@ -312,9 +312,9 @@ const DIFFUSERS_H = [{ x: 200, y: 457 }, { x: 268, y: 457 }, { x: 336, y: 457 },
 const MAIN_H = [{ x: 164, y: 452 }, { x: 240, y: 452 }, { x: 320, y: 452 }, { x: 406, y: 452 }];             // the main, corridor side to the far wall, two size steps on the way
 const SET_KEEP_H = [2, 12, 13];   // A-101, M-101, M-201
 
-// The thirty-sheet set: the restaurant sheet copied per discipline, each copy stamped
-// with a sheet number and name in a band across the top so the Prepare PDF grid reads
-// as a real submission. The three plumbing sheets are what the film keeps; P-101 itself
+// The thirty-sheet set: one sheet per discipline, each stamped with a sheet number and name
+// in a band across the top so the Prepare PDF grid reads as a real submission. Only the
+// sheets a film keeps carry the drawing; the other twenty-seven are blank drawing sheets. The three plumbing sheets are what the film keeps; P-101 itself
 // is left unstamped, since it is the sheet the takeoff happens on.
 const SET_SHEETS = [
   ['G-001', 'COVER SHEET'], ['G-002', 'GENERAL NOTES'], ['A-101', 'FIRST FLOOR PLAN'], ['A-102', 'REFLECTED CEILING PLAN'],
@@ -328,19 +328,37 @@ const SET_SHEETS = [
 ];
 const SET_KEEP = [23, 24, 25];   // P-101, P-201, P-301
 const SET_KEEP_E = [2, 17, 18];   // A-101, E-101, E-201 (the takeoff happens on A-101, left unstamped)
-async function buildSampleSet(outPath, srcPath = PLAN_B, unstamped = 'P-101') {
+// Only the sheets a film KEEPS carry the drawing; the rest of the set are blank drawing sheets
+// (banner, border, title block, no plan), so the Prepare grid reads as thirty different sheets
+// with the trade's three standing out, not thirty copies of one plan (Will, 2026-09-20).
+async function buildSampleSet(outPath, srcPath = PLAN_B, unstamped = 'P-101', keep = SET_KEEP) {
   const { PDFDocument, StandardFonts, rgb } = require(path.join(ROOT, 'vendor', 'pdf-lib-1.17.1.min.js'));
   const src = await PDFDocument.load(fs.readFileSync(srcPath));
   const out = await PDFDocument.create();
   const font = await out.embedFont(StandardFonts.HelveticaBold);
+  const plain = await out.embedFont(StandardFonts.Helvetica);
+  const { width, height } = src.getPage(0).getSize();
+  const ink = rgb(0.1, 0.1, 0.1);
   for (let i = 0; i < SET_SHEETS.length; i++) {
-    const [pg] = await out.copyPages(src, [0]);
-    out.addPage(pg);
-    if (SET_SHEETS[i][0] === unstamped) continue;
-    const { width, height } = pg.getSize();
+    const [num, title] = SET_SHEETS[i];
+    let pg;
+    if (keep.includes(i)) { [pg] = await out.copyPages(src, [0]); out.addPage(pg); }
+    else {
+      pg = out.addPage([width, height]);
+      pg.drawRectangle({ x: 0, y: 0, width, height, color: rgb(1, 1, 1) });
+      pg.drawRectangle({ x: 24, y: 24, width: width - 48, height: height - 48, borderColor: ink, borderWidth: 1.5 });
+      const tb = { x: width - 24 - 300, y: 24, w: 300, h: 78 };
+      pg.drawRectangle({ x: tb.x, y: tb.y, width: tb.w, height: tb.h, borderColor: ink, borderWidth: 1.2 });
+      pg.drawLine({ start: { x: tb.x + 196, y: tb.y }, end: { x: tb.x + 196, y: tb.y + tb.h }, color: ink, thickness: 0.8 });
+      pg.drawText(srcPath === PLAN_B ? 'MAIN ST RESTAURANT' : 'SUITE 200 OFFICE TI', { x: tb.x + 10, y: tb.y + 54, size: 11, font, color: ink });
+      pg.drawText(title, { x: tb.x + 10, y: tb.y + 34, size: 8.5, font: plain, color: ink });
+      pg.drawText('SHEET', { x: tb.x + 206, y: tb.y + 58, size: 7, font: plain, color: rgb(0.45, 0.45, 0.45) });
+      pg.drawText(num, { x: tb.x + 206, y: tb.y + 28, size: 22, font, color: ink });
+    }
+    if (num === unstamped) continue;
     pg.drawRectangle({ x: 0, y: height - 92, width, height: 92, color: rgb(0.11, 0.11, 0.13) });
-    pg.drawText(SET_SHEETS[i][0], { x: 40, y: height - 66, size: 44, font, color: rgb(0.91, 0.77, 0.28) });
-    pg.drawText(SET_SHEETS[i][1], { x: 260, y: height - 62, size: 30, font, color: rgb(0.94, 0.93, 0.91) });
+    pg.drawText(num, { x: 40, y: height - 66, size: 44, font, color: rgb(0.91, 0.77, 0.28) });
+    pg.drawText(title, { x: 260, y: height - 62, size: 30, font, color: rgb(0.94, 0.93, 0.91) });
   }
   fs.writeFileSync(outPath, await out.save());
 }
@@ -1078,14 +1096,14 @@ function ffmpeg(args) {
       frames = await recordPlumbing(page, dir, setPdf);
     } else if (FILM === 'electrical') {
       const setPdf = path.join(dir, 'sample-set.pdf');
-      await buildSampleSet(setPdf, PLAN, 'A-101');
+      await buildSampleSet(setPdf, PLAN, 'A-101', SET_KEEP_E);
       await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); localStorage.setItem('showScaleRefLine', 'false'); } catch (_) { /* private mode */ } });
       await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));
       frames = await recordElectrical(page, dir, setPdf);
     } else if (FILM === 'hvac') {
       const setPdf = path.join(dir, 'sample-set.pdf');
-      await buildSampleSet(setPdf, PLAN, 'A-101');
+      await buildSampleSet(setPdf, PLAN, 'A-101', SET_KEEP_H);
       await page.addInitScript(() => { try { localStorage.setItem('clickcount-show-drop-sizes', '1'); localStorage.setItem('showScaleRefLine', 'false'); } catch (_) { /* private mode */ } });
       await page.goto(`http://127.0.0.1:${port}/app/`, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.querySelectorAll('.modal-overlay.visible').forEach((m) => m.classList.remove('visible')));

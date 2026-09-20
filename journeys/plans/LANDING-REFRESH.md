@@ -651,7 +651,10 @@ change to the three trade cards.
 > 44.25 s (was 43.0), so the bar reads "Forty-four seconds" and Fixtures 8s by itself. The
 > spotlight's `plumbingBase` seeds the same two, five of its six frames were re-cut (the riser
 > frame came out byte-identical), and the hand-off caption's "5 counts" became the toast's "7
-> counts". Still uncounted on the sheet, by choice so far: the mop sink (MS), the prep sink, the
+> counts". The same render made the thirty-sheet set realistic: `buildSampleSet` takes the film's
+> keep list, only those three sheets carry the drawing and the other twenty-seven are blank
+> drawing sheets (banner, border, title block); electrical and HVAC pick it up at their next
+> render. Still uncounted on the sheet, by choice so far: the mop sink (MS), the prep sink, the
 > dishwasher, the water heater and the grease interceptor, which the keynotes name too. If
 > "Nothing missed." is to be literally true, those are the next counters.
 

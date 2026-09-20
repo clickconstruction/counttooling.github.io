@@ -28,7 +28,12 @@ the six plumbing frames were re-cut (the riser frame is byte-identical) and the 
 caption's "5 counts" is the toast's "7 counts" now. landing-trade.spec.js's strip case reads its
 seek points, its answer and its end clock from the chapters file instead of hardcoding 43
 seconds, so the next re-render cannot break it. The fast `--chapters-only` pass settles longer
-between frames (it flaked about one run in four at the hanger dialog). Not counted, and named
+between frames (it flaked about one run in four at the hanger dialog). The thirty-sheet set is
+realistic now too (Will): `buildSampleSet` takes the film's keep list and only those three
+sheets carry the drawing; the other twenty-seven are blank drawing sheets (the banner, a border,
+a title block), so Trim your set shows thirty different sheets with the trade's three standing
+out instead of thirty copies of one plan. Same clicks, same 44.25 s. The electrical and HVAC
+films pick this up at their next render. Not counted, and named
 by the sheet's keynotes: the mop sink, the prep sink, the dishwasher, the water heater and the
 grease interceptor.
 

@@ -2,7 +2,7 @@
 // Run with: npm run test:unit  (uses the built-in node:test runner; no deps)
 const test = require('node:test');
 const assert = require('node:assert');
-const { escapeHtml, pickScaleForLineType, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary } = require('./report.js');
+const { escapeHtml, pickScaleForLineType, reportTitleFor, pageHeadingFor, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary } = require('./report.js');
 
 test('escapeHtml returns empty string for null/undefined', () => {
   assert.strictEqual(escapeHtml(null), '');
@@ -175,4 +175,19 @@ test('formatToolingExportSummary mirrors the PipeTooling import toast wording', 
   assert.strictEqual(formatToolingExportSummary(s), '2 counts (1,126 ea) · 1 line type (444.74 ft)');
   assert.strictEqual(formatToolingExportSummary(summarizeToolingExport('px of y\t367\t1')), '1 unscaled run (367 px)');
   assert.strictEqual(formatToolingExportSummary(summarizeToolingExport('')), '');
+});
+
+test('reportTitleFor: the project names its report; an unnamed project keeps the plain title', () => {
+  assert.strictEqual(reportTitleFor('Main St Restaurant'), 'Main St Restaurant Takeoff Report');
+  assert.strictEqual(reportTitleFor('  Suite 200 Office TI '), 'Suite 200 Office TI Takeoff Report');
+  for (const n of [undefined, null, '', '   ', 'Untitled', 'untitled']) assert.strictEqual(reportTitleFor(n), 'Takeoff Report');
+});
+
+test('pageHeadingFor: a named sheet stands alone; a default label keeps its "Page N:"', () => {
+  assert.strictEqual(pageHeadingFor('P-101 · Plumbing Plan', 0), 'P-101 · Plumbing Plan');
+  assert.strictEqual(pageHeadingFor('A-101 · First Floor Plan', 2), 'A-101 · First Floor Plan');
+  assert.strictEqual(pageHeadingFor('sample-set.pdf, p24', 0), 'Page 1: sample-set.pdf, p24');   // the intake's default
+  assert.strictEqual(pageHeadingFor('Page 3', 2), 'Page 3');
+  assert.strictEqual(pageHeadingFor('', 4), 'Page 5');
+  assert.strictEqual(pageHeadingFor(undefined, 0), 'Page 1');
 });

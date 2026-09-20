@@ -57,10 +57,16 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
       expect(secs.reduce((a, b) => a + b, 0)).toBe(Math.round(j.duration));
       const dur = await page.evaluate(() => new Promise((r) => { const v = document.querySelector('#heroMedia video'); if (v.duration) r(v.duration); else { v.addEventListener('loadedmetadata', () => r(v.duration), { once: true }); v.preload = 'auto'; v.load(); } }));
       expect(Math.abs(dur - j.duration)).toBeLessThan(0.1);   // the file is the footage's, not a guess
+      // the answer is always spelled, never digits (a 76 s film once read "76 seconds")
+      expect(await page.locator('#hcA').textContent()).toMatch(/^[A-Z][a-z]+(-[a-z]+)? (seconds|minutes?( and [a-z]+(-[a-z]+)? seconds?)?), from start to sent for pricing\.$/);
     });
   }
 
-  test('the strip follows the film: a card seeks, the clock answers, the film holds, Play again and Next takeoff work', async ({ page }) => {
+  test('the strip follows the film: a card seeks, the clock answers, the film holds, Play again and Next takeoff work', async ({ page, request }) => {
+    // every number comes from the film's own chapters file, so a re-render never breaks this case
+    const film = await (await request.get('/img/hero-plumbing.chapters.json')).json();
+    const nearEnd = film.duration - 1.5;
+    const clockAtEnd = Math.floor(film.duration / 60) + ':' + String(Math.floor(film.duration % 60)).padStart(2, '0') + '.' + Math.floor((film.duration % 1) * 10);
     await page.goto('/');
     await page.locator('#heroMedia').scrollIntoViewIfNeeded();
     await expect(page.locator('#heroChapters')).toBeVisible();
@@ -71,18 +77,31 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await page.waitForFunction(() => !document.querySelector('#heroMedia video').paused);
     // a card is a seek
     await page.locator('#heroChapters .hc-card').nth(2).click();
-    await page.waitForFunction(() => document.querySelector('#heroMedia video').currentTime >= 14);
+    await page.waitForFunction((t) => document.querySelector('#heroMedia video').currentTime >= t, film.chapters[2].start);
     await expect(page.locator('#heroChapters .hc-card').nth(2)).toHaveClass(/is-now/);
     await expect(page.locator('#heroChapters .hc-card').nth(0)).toHaveClass(/is-done/);
     await expect(page.locator('#hcEnd')).toBeHidden();
     // the end: the answer, the hold on the still, the end row
-    await page.evaluate(() => { document.querySelector('#heroMedia video').currentTime = 41.5; });
+    await page.evaluate((t) => { document.querySelector('#heroMedia video').currentTime = t; }, nearEnd);
     await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
-    await expect(page.locator('#hcA')).toHaveText('Forty-three seconds, from start to sent for pricing.');
+    await expect(page.locator('#hcA')).toHaveText(/^[A-Z][a-z]+(-[a-z]+)? (seconds|minutes?( and [a-z]+(-[a-z]+)? seconds?)?), from start to sent for pricing\.$/);
     await expect(page.locator('#hcA')).toBeVisible();
-    await expect(page.locator('#hcTime')).toHaveText('0:43.0');
+    await expect(page.locator('#hcTime')).toHaveText(clockAtEnd);
     await expect(page.locator('#heroMedia')).not.toHaveClass(/is-playing/);   // the still (the last frame) shows, never the fade to black
     await expect(page.locator('#hcEnd')).toBeVisible();   // over the held frame; the bar keeps its height
+    // the results: the film's own marked-up sheet and its report, both real files, opening in the lightbox
+    await expect(page.locator('#hcResults .spot-open')).toHaveCount(2);
+    for (const id of ['#hcSheetImg', '#hcReportImg']) {
+      const src = await page.locator(id).getAttribute('src');
+      expect(src).toMatch(/^\/img\/hero-plumbing-(sheet|report)\.jpg$/);
+      expect((await request.get(src)).status()).toBe(200);
+    }
+    await page.locator('#hcResults .spot-open').nth(1).click();
+    await expect(page.locator('#spotLightbox')).toHaveAttribute('open', '');
+    await expect(page.locator('#spotLightbox .lb-title')).toHaveText('The takeoff report');
+    await expect(page.locator('#spotLightbox .lb-count')).toHaveText('2 / 2');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#spotLightbox')).not.toHaveAttribute('open', '');
     await expect(page.locator('#hcEnd .hc-next')).toHaveText([/^Electrical, \d+ s$/, /^HVAC, \d+ s$/]);
     expect(await page.evaluate(() => window.__heroFilm())).toBe('plumbing');
     // Play again
@@ -92,12 +111,12 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await page.waitForFunction(() => { const v = document.querySelector('#heroMedia video'); return !v.paused && v.currentTime < 5; });
     await expect(page.locator('#heroMedia')).toHaveClass(/is-playing/);
     // Next takeoff is the chips by another name
-    await page.evaluate(() => { document.querySelector('#heroMedia video').currentTime = 41.5; });
+    await page.evaluate((t) => { document.querySelector('#heroMedia video').currentTime = t; }, nearEnd);
     await expect(page.locator('#heroChapters')).toHaveClass(/is-ended/, { timeout: 8000 });
     await page.locator('#hcEnd .hc-next').first().click();
     expect(await page.evaluate(() => window.__heroFilm())).toBe('electrical');
     await expect(page.locator('.trade-chips .chip[data-trade="electrical"]')).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('#hcQ')).toHaveText('How long does it take to wire an office suite?');
+    await expect(page.locator('#hcQ')).toHaveText('How long does it take to wire an open office?');
     await expect(page.locator('#heroChapters')).not.toHaveClass(/is-ended/);
   });
 

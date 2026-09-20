@@ -60,6 +60,7 @@ test('each trade has its six frames, in order', () => {
 test('every hero film has a well-formed chapters file beside it', () => {
   for (const film of ['plumbing', 'electrical', 'hvac']) {
     assert.ok(fs.existsSync(path.join(ROOT, 'img', 'hero-' + film + '.mp4')), 'missing img/hero-' + film + '.mp4');
+    for (const r of ['sheet', 'report']) assert.ok(fs.existsSync(path.join(ROOT, 'img', 'hero-' + film + '-' + r + '.jpg')), 'missing img/hero-' + film + '-' + r + '.jpg (the end screen\'s results): run build:hero-video -- --film ' + film + ' --chapters-only');
     const file = path.join(ROOT, 'img', 'hero-' + film + '.chapters.json');
     assert.ok(fs.existsSync(file), 'missing img/hero-' + film + '.chapters.json: run build:hero-video -- --film ' + film + ' --chapters-only');
     const j = JSON.parse(fs.readFileSync(file, 'utf8'));

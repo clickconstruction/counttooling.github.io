@@ -1129,6 +1129,9 @@ const FLOOR_DRAINS_P = [[610, 432], [740, 430], [860, 440], [648, 536], [740, 52
 const HAND_SINKS_P = [[600, 308], [928, 392], [330, 578]].map((p) => RB(...p));
 const WATER_CLOSETS_P = [[596, 118], [732, 118]].map((p) => RB(...p));
 const THREE_COMP_P = [[578, 476], [170, 560]].map((p) => RB(...p));
+// FILM-FIXTURES (2026-09-20): the restroom lavs and the two floor sinks, as the film counts them.
+const LAVATORIES_P = [[584, 180], [712, 180]].map((p) => RB(...p));
+const FLOOR_SINKS_P = [[640, 346], [668, 550]].map((p) => RB(...p));
 const COLD_SERVICE_P = [[883, 614], [883, 594], [192, 594], [192, 580]].map((p) => RB(...p));
 const COLD_TRUNK_P = [[564, 594], [564, 110], [930, 110], [930, 384]].map((p) => RB(...p));
 const HOT_SUPPLY_P = [[796, 572], [786, 572], [786, 590], [188, 590], [188, 580]].map((p) => RB(...p));
@@ -1143,7 +1146,7 @@ async function pdfPoint(page, x, y) {
   return { x: box.x + x * zoom, y: box.y + y * zoom };
 }
 async function plumbingBase(page, opts = {}) {
-  await page.evaluate(({ o, fd, hs, wc, cs, cold1, cold2, hot1, hot2 }) => {
+  await page.evaluate(({ o, fd, hs, wc, cs, lav, fsk, cold1, cold2, hot1, hot2 }) => {
     const s = window.state, App = window.App, uid = () => App.uid();
     s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1\'' };
     App.setProjectTrade && App.setProjectTrade('plumbing', { remember: false, route: 'tour' });
@@ -1155,10 +1158,12 @@ async function plumbingBase(page, opts = {}) {
     const cHs = { id: uid(), name: 'Hand Sink', icon: ci('Mounted Sink') || bi('Sink') || first, color: '#e8c547' };
     const cWc = { id: uid(), name: 'Water Closet', icon: ci('Toilet') || bi('Water Closet') || first, color: '#47c88e' };
     const cCs = { id: uid(), name: '3-Comp Sink', icon: bi('Sink') || first, color: '#a47fff' };
-    s.counters.push(cFd, cHs, cWc, cCs);
+    const cLav = { id: uid(), name: 'Lavatory', icon: bi('Sink') || first, color: '#f07fc0' };
+    const cFs = { id: uid(), name: 'Floor Sink', icon: bi('Square Empty') || first, color: '#ff9a4d' };
+    s.counters.push(cFd, cHs, cWc, cCs, cLav, cFs);
     const ann = s.pages[0].canvases[0].annotations;
     const marks = (pts) => pts.map(([x, y]) => ({ x, y, id: uid(), group: null }));
-    ann.counterMarkers[cFd.id] = marks(fd); ann.counterMarkers[cHs.id] = marks(hs); ann.counterMarkers[cWc.id] = marks(wc); ann.counterMarkers[cCs.id] = marks(cs);
+    ann.counterMarkers[cFd.id] = marks(fd); ann.counterMarkers[cHs.id] = marks(hs); ann.counterMarkers[cWc.id] = marks(wc); ann.counterMarkers[cCs.id] = marks(cs); ann.counterMarkers[cLav.id] = marks(lav); ann.counterMarkers[cFs.id] = marks(fsk);
     const sm = window.SupportModel;
     const withHangers = (lt) => { const sg = sm && sm.hangerSuggestionsFor(lt.name)[0]; if (sg) lt.childCounts = [{ name: sg.name, qty: sg.qty, per: sg.per, intervalIn: sg.intervalIn, ruleId: sg.ruleId }]; return lt; };
     const cu = { id: uid(), name: '2in Cu cold', color: '#4a9eff', curveStyle: 'straight' };
@@ -1178,7 +1183,7 @@ async function plumbingBase(page, opts = {}) {
     ann.legend = { x: 1224 - 230, y: 16, w: 210, h: 60, userResized: false };
     window.__spot = { cu: cu.id, hw: hw.id };
     App.markProjectDirty(); App.renderPdf(); App.updateUI(); App.renderAnnotations();
-  }, { o: opts, fd: FLOOR_DRAINS_P, hs: HAND_SINKS_P, wc: WATER_CLOSETS_P, cs: THREE_COMP_P, cold1: COLD_SERVICE_P, cold2: COLD_TRUNK_P, hot1: HOT_SUPPLY_P, hot2: HOT_RETURN_P });
+  }, { o: opts, fd: FLOOR_DRAINS_P, hs: HAND_SINKS_P, wc: WATER_CLOSETS_P, cs: THREE_COMP_P, lav: LAVATORIES_P, fsk: FLOOR_SINKS_P, cold1: COLD_SERVICE_P, cold2: COLD_TRUNK_P, hot1: HOT_SUPPLY_P, hot2: HOT_RETURN_P });
   await frameRegion(page, CAM_PLAN_P);
 }
 

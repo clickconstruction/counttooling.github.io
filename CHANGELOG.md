@@ -26,6 +26,135 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## feat(landing): the HVAC film takes off the whole floor (2026-09-20)
+
+Will, on the three-room cut: incomplete, on all four counts offered (rooms left unserved, no
+return or exhaust, no controls, an ending that flashed the result). Third cut, **121.9 s** (was
+65.8), and the bar's question, "duct an office suite", is finally literal.
+
+- **Every occupied room** is boxed and served: Open Office, Lobby, Office 101, Office 102,
+  Conference, Break. The two offices get their numbers typed in the Room dialog, because the
+  plan calls both "OFFICE" and the app would otherwise keep them as one room with two boxes.
+- **One system, one main.** RTU-1 is 3,000 CFM with 0.8 in. w.g. of external static (the ESP
+  arms the static-path check), its unit over the corridor's east end. One supply main starts ON
+  the unit (the deck height writes its riser), runs the corridor west and turns into the Lobby,
+  stepping 26x16, 22x16, 20x14, 16x14, 16x8, 12x8 past each takeoff: the app's ductulator sizes
+  for the air left on each leg, typed in the S popover's Custom row. A branch taps off into
+  each room; the last one traced is sized BY S, which by then reads exactly its own room's 600
+  CFM. Sixteen 150 CFM diffusers, a foot off their duct, each on a flex leader.
+  *Found while building it:* two trunks leaving one point do not work. A run that starts on
+  another run is its branch, so two mains sharing the unit's point (and a return main ending
+  there) are each other's children, the system has no root, and its designed air reads 0. The
+  guard did not catch that (0 of 3,000 is "within capacity"), the audit line did.
+- **The return:** two 24x24 return grilles in the corridor on a 24x14 return main to the unit's
+  side, kept 17 pt off the supply main so it is not read as a branch of it.
+- **Controls:** one thermostat, and the ending ticks Bid Check's "Controls / stat locations
+  set", the one manual row the film has earned. Fire dampers, OA and curb power stay unticked
+  and travel with the hand-off as open items, which is the honest state of this takeoff.
+- **Exhaust:** EF-1, its own system (300 CFM), a 75 CFM grille in each restroom and the
+  janitor's closet on a 12x6 exhaust run that starts on the fan.
+- **The ending reads the result out:** the Duct Schedule by size and gauge, the fittings that
+  counted themselves, the flex by the drop, the one bid weight (1,422 lb); then Bid Check row
+  by row: 6 rooms served, RTU-1 2,400 of 3,000 and EF-1 225 of 300, and "Will it blow?": the
+  static path, 0.21 in. of 0.80 in. over a 141 equivalent-foot critical path.
+
+Marks draw at 44 rather than the hero 72 in this film (twenty-four devices bury the duct
+otherwise). Counters named on the Create tab take their colour and M-sheet symbol off camera,
+as the other films' recolours do; without it a named counter keeps the palette's default icon,
+which was a water closet on an RTU. The landing speaks past 99 seconds in minutes ("Two minutes
+and two seconds, from start to sent for pricing."), with the teens spelled too.
+
+## feat(landing): the films end on what they made: the marked-up sheet and the takeoff report (2026-09-20)
+
+Will: present the result of the work at the end, the takeoff sheet, tastefully; perhaps two
+images to click. (In the app "Ledger" is the Notes ledger; the takeoff sheet is Show Report.)
+When a film holds, the end card over the frame now carries two thumbnails above Play again and
+the other two films: **The sheet, marked up** and **The takeoff report**. A click opens either in
+the spotlight's lightbox, which zooms and pans; the arrows go between the two. Both pictures are
+the film's OWN result, not a seeded look-alike: `captureResults` in scripts/build-hero-video.js
+runs at the end of every film's script (on a render and on the one-minute `--chapters-only`
+pass alike), turns the film's chrome, cursor and toasts off, frames the whole sheet and shoots
+it (`img/hero-<film>-sheet.jpg`), then renders `buildReportHtml` for that sheet in its own page,
+the way the app prints it, and shoots the whole report (`img/hero-<film>-report.jpg`: counts,
+footage, hangers or derived wire, notes, and the Bid Check table). The chips swap the pair with
+the film. On a phone the frame is too small to carry them, so the results and the buttons sit in
+the flow between the film and the bar. The lightbox opens any `[data-lb-set]` now, and fits a
+TALL image to its stage (it only bounded width, which the 4:3 spotlight frames never tested).
+Pinned by landing-trade.spec.js (both files served, the lightbox opens on "The takeoff report",
+2 / 2, Escape closes) and landing-assets.test.js (both files beside each film). Known rough
+edge: the report titles its page "sample-set.pdf, p24"; naming the sheet P-101 is a Prepare PDF
+step the films do not take.
+
+## feat(landing): the electrical and HVAC films finish the room (2026-09-20)
+
+Will: both bids should be more realistic. An audit of the two films against what an estimator
+expects, then a rewrite of each film's middle ("complete the room": finish the bid on screen,
+no warning left, about 65 to 75 s). Both scripts now END WITH A GUARD: the render reads the
+app's own `getBidCheck()` and throws if any auto row warns, so a film cannot ship a warning
+under a caption that says "computed".
+
+**Electrical, third cut, 76.1 s (was 52.6).** The second cut wired 3 of 8 receptacles, left the
+switch and four troffers on no circuit (Bid Check warned "10 devices on no circuit" at the
+end), ran its home run as a diagonal through the janitor's wall, and never placed the panel.
+Now every device in the open office is on a circuit. Devices are made on the Quick tab
+(receptacle 18 in, switch 48 in, troffer, panelboard); the panel is placed at LP-1 and NAMED in
+its details, which is what makes a counter the panel mark. Three circuits, each the same three
+moves: a group with panel, number and load; T chains device to device, every click writing its
+drop; P draws the home run square to the panel and Line Properties flags it the homerun.
+Circuit 7 is the north wall's four receptacles at 6 A (4 x 180 VA), circuit 9 the south wall's
+four at 6 A, circuit 11 the switch and the four troffers at 2 A (the chain keeps its anchor when
+the device type changes mid-run). Three, because one cannot carry it: prototyped first against
+the app, eight receptacles on one run is 145 ft at 12 A, 5.7% on #12, and the app's
+voltage-drop row says so. On camera: fill 10%, voltage drop 1.4% / 1.6% / 0.3%, all devices
+reached. The panel-schedule row stays neutral on purpose: it compares circuits on plan with the
+panel's pole count, and one room cannot honestly match a whole panel. The bar's question reads
+"wire an open office" (it was "an office suite"; the film wires one room).
+
+**HVAC, second cut, 65.8 s (was 49.8).** The first cut boxed three rooms and served one (the
+bid ended on "2 of 3 rooms under-served"), traced a 27 ft main that started at a wall with no
+unit, and ran the trunk straight over its diffusers. Now RTU-1 is made as a system (2,000 CFM)
+and its unit placed over the corridor's east end (a counter with no CFM in the group, named on
+the Create tab: the Quick tab would prefix a size). Nine 150 CFM diffusers: four in the open
+office (the "fourth turns it green" beat kept), three in the conference room, two in Office
+101, each a foot off its duct so it hangs by a flex leader. The trunk starts ON the unit, so
+the deck height writes its riser; S takes the ductulator's 20x14 for the system's 1,350 CFM,
+and the Custom row steps it to 14x12 and 12x8 where the branches leave (the app's own sizes for
+900 and 300 CFM: mid-trunk the suggestion still reads the whole system, because a branch only
+takes its air once it is committed); it turns north into Office 101. Two branches start on the
+trunk (the taps count themselves): Conference at 16x8 typed in the dialog, the Open Office
+sized by S, which reads exactly that room's 600 CFM because it is the last air unserved. On
+camera: 3 rooms served, RTU-1 1,350 of 2,000, 9 flex drops within 6 ft, 694 lb. "Fits the
+roof" names the 12x8 because only duct inside a boxed room with a ceiling is judged, and the
+corridor is not boxed.
+
+Both films use the blank-sheet set. Their chapters files carry the new lengths, so the landing
+reads "Seventy-six seconds" and "Sixty-six seconds" without a copy edit. The spotlight frames
+keep their own smaller seeded takeoffs and the numbers their captions quote.
+
+## fix(landing): the plumbing film counts the lavatories and the floor sinks (2026-09-20)
+
+Punch row FILM-FIXTURES closed (Will, watching the film). Over the pull-back the plumbing film
+says "Nothing missed.", and it had missed four fixtures the restaurant sheet draws: the
+wall-hung lavatory in MEN 102 and in WOMEN 103, and the two floor sinks (in front of PREP, where
+the prep sink drains, and by the clean table in DISH). `recordPlumbing` seeds two more counters,
+Lavatory on key 5 and Floor Sink on key 6 (the sheet's own square symbol), and clicks the four on
+camera after the 3-comp sinks: 21 marks, six counters. Re-rendered: 44.25 s (was 43.0). The
+landing's numbers followed by themselves through `img/hero-plumbing.chapters.json` ("Forty-four
+seconds, from start to sent for pricing.", Fixtures 8s, the "Plumbing, 44 s" pill), which is what
+the chapters file was for. The spotlight's `plumbingBase` seeds the same two counters; five of
+the six plumbing frames were re-cut (the riser frame is byte-identical) and the hand-off
+caption's "5 counts" is the toast's "7 counts" now. landing-trade.spec.js's strip case reads its
+seek points, its answer and its end clock from the chapters file instead of hardcoding 43
+seconds, so the next re-render cannot break it. The fast `--chapters-only` pass settles longer
+between frames (it flaked about one run in four at the hanger dialog). The thirty-sheet set is
+realistic now too (Will): `buildSampleSet` takes the film's keep list and only those three
+sheets carry the drawing; the other twenty-seven are blank drawing sheets (the banner, a border,
+a title block), so Trim your set shows thirty different sheets with the trade's three standing
+out instead of thirty copies of one plan. Same clicks, same 44.25 s. The electrical and HVAC
+films pick this up at their next render. Not counted, and named
+by the sheet's keynotes: the mop sink, the prep sink, the dishwasher, the water heater and the
+grease interceptor.
+
 ## feat(landing): the hero chapters, a bar under the film (2026-09-19)
 
 Punch row HERO-CHAPTERS closed. Under each hero film sits a two-line bar on the page's own

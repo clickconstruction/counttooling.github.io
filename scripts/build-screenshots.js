@@ -429,14 +429,14 @@ const SHOTS = [
   // (fixing-mistakes guide). Drives the real two-click tool path over the takeoff.
   {
     name: 'delete-area',
-    clip: '#deleteZoneModal',
+    clip: '#confirmModal',
     async setup(page) {
       await takeoffSetup(page);
       await page.evaluate(() => { window.state.tool = window.App.TOOL.DELETE_ZONE; window.App.updateUI(); });
       { const pt = await planPoint(page, 0.5964, 0.5303); await page.mouse.click(pt.x, pt.y); }
       await page.waitForTimeout(150);
       { const pt = await planPoint(page, 0.9277, 0.7955); await page.mouse.click(pt.x, pt.y); }
-      await page.waitForSelector('#deleteZoneModal.visible', { timeout: 5000 });
+      await page.waitForSelector('#confirmModal.visible', { timeout: 5000 });
       await page.waitForTimeout(150);
     },
   },

@@ -174,8 +174,8 @@ test.describe('B19 part 2 (D19)', () => {
       const ann = window.App.getActiveAnnotations(window.state.pages[0]);
       window.App.openDeleteZoneForRect(ann, 0, 0, 0, 1000, 1000);
     });
-    await expect(page.locator('#deleteZoneModal')).toHaveClass(/visible/);
-    const preview = await page.locator('#deleteZonePreview').textContent();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    const preview = await page.locator('#confirmBody').textContent();
     expect(preview).toContain('1 duct run');
     expect(preview).toMatch(/\d+' · [\d,]+ lb/);        // the sidebar's own ft/lb
     expect(preview).toContain(before.fittings === 1 ? '1 fitting' : before.fittings + ' fittings');
@@ -187,7 +187,7 @@ test.describe('B19 part 2 (D19)', () => {
     });
     expect(preview).toContain(tally.ft + "' · " + tally.lb.toLocaleString() + ' lb');
     // Confirm deletes the run AND its fittings.
-    await page.locator('#deleteZoneConfirm').click();
+    await page.locator('#confirmOk').click();
     expect(await page.evaluate(() => {
       const ann = window.App.getActiveAnnotations(window.state.pages[0]);
       return { runs: ann.ductRuns.length, fittings: ann.ductFittings.length };
@@ -206,10 +206,10 @@ test.describe('B19 part 2 (D19)', () => {
       (ann.notes = ann.notes || []).push({ x: 100, y: 100, text: 'n', id: 'n-1' });
       window.App.openDeleteZoneForRect(ann, 0, 0, 0, 1000, 1000);
     });
-    const preview = await page.locator('#deleteZonePreview').textContent();
+    const preview = await page.locator('#confirmBody').textContent();
     expect(preview).toContain('note');
     expect(preview).not.toContain('duct');
-    await page.locator('#deleteZoneCancel').click();
+    await page.locator('#confirmCancel').click();
   });
 
   // --- 3. the email Bid Check block ------------------------------------------

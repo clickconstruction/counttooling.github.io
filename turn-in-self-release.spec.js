@@ -56,7 +56,7 @@ test.describe('Turn In is not a force turn-in', () => {
       loadAnn.waitFor({ state: 'visible', timeout: 20000 }),
     ]);
     if (await prepare.isVisible()) {
-      await page.locator('#preparePdfProjectName').fill(PROJECT_NAME);
+      await page.locator('#preparePdfName').fill(PROJECT_NAME);
       await page.locator('#preparePdfSaveAndOpen').click();
     } else {
       await page.locator('#loadAnnotationsSkip').click();

@@ -56,7 +56,7 @@
   one page in the app's own markup and CSS (features/modal-gallery.js, injected by the boot only on
   that param, never a shell script tag, never precached), with Populate (the real openers), Open
   live (the fixed backdrop), Load sample, Reload CSS (cache-busted past the service worker) and a
-  375px Mobile embed. Use it to judge a styles.css change across all ~78 dialogs at once.
+  375px Mobile embed. Use it to judge a styles.css change across all ~75 dialogs at once.
   `npm run build:modal-gallery` (scripts/build-modal-gallery.js) shoots the contact sheet, one PNG
   per tile at both widths, into `contact-sheet/`; `--baseline <dir>` makes a
   before/after. Manual, like `build:screenshots`. Detail: ARCHITECTURE.md Files table.

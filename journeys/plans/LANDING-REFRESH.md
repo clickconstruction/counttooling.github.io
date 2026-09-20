@@ -187,6 +187,15 @@ and the "Opened TakeoffTooling with N rows" toast is pinned for the last frame. 
 camera: the scale preset, the trade, the 10 ft ceiling and 1 ft make-up (project settings), and
 the Groups gate; the switch and troffer colours are set after the Quick tab adds them.
 
+**Electrical, second cut, 2026-09-19, 52.6 s (punch row FILM-HOMERUN, closed).** The first cut
+drew the home run but never flagged it, so at 0:42 the caption said "The checks, computed."
+over a voltage-drop row reading "Needs a circuit with a panel mark or a homerun". Beat 8b now
+does what an estimator does: a right-click on the home run, Line Properties, the Homerun
+toggle, Done (the recorder gained `rightClick()`; the caption strip is cleared while the dialog
+is up, because it sat on the Done button). The run draws its arrow into LP-1 and the row reads
+"LP-1/7 · 57 ft · 12 A · #12 2.3% ✓ (at 120 V)". The film is 2.7 s longer, which the hero
+chapters' "Fifty seconds" answer has to follow (see "Still open" there).
+
 **HVAC, first cut, 2026-09-17, "Pounds, not feet" on A-101, 49.8 s, 3.4 MB, `img/hero-hvac.{mp4,png}`
 (`npm run build:hero-video -- --film hvac`).** Same spine, on camera. Prepare keeps A-101, M-101
 and M-201; the scale is proved on the 24'-0" bay. `V` arms the Room Sizer and three drags box
@@ -659,6 +668,10 @@ next person can see each one against the footage rather than read about it.
   three sheets kept from thirty, the scale proved, twelve fixtures, two runs with
   hangers and a riser, the check, the hand-off. "How long does it take to count these
   plans?" is the safer question. The answer must stay as specific as the film.
+- **The electrical answer's number.** The electrical film is 52.6 s since the FILM-HOMERUN
+  beat (2026-09-19), not ~50. "Fifty seconds, start to bid." and the "Electrical, 50 s" pill
+  are no longer as specific as the film; take the number from the chapters array's last
+  `end` rather than from copy, so the next re-render cannot make it wrong again.
 - **Where the question lives.** In the strip (as mocked, so the answer lands where the
   clock stops), or as the page headline above the film with only the clock in the strip
   (readable before the film scrolls into view, at the cost of repetition).

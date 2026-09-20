@@ -294,7 +294,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingDeleteZone: null, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, stripPins: {}, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
     iconNames: {},
@@ -1153,12 +1153,14 @@
     if (collected.multiplyZoneCount) parts.push(collected.multiplyZoneCount + ' multiply zone(s)');
     if (collected.scaleZoneCount) parts.push(collected.scaleZoneCount + ' scale zone(s)');
     if (collected.roomBoxCount) parts.push(collected.roomBoxCount + ' room box(es)');
-    state.pendingDeleteZone = { ann, collected };
-    document.getElementById('deleteZonePreview').textContent = 'In this area: ' + parts.join(', ');
     const marks = total + (total === 1 ? ' mark' : ' marks');
-    document.getElementById('deleteZoneCount').textContent = marks;
-    document.getElementById('deleteZoneConfirm').textContent = 'Delete ' + marks;
-    showModal('deleteZoneModal');
+    // CONFIRM-ROUTE: the app's one confirm (Esc and Cancel resolve false).
+    return confirmDialog({
+      title: 'Delete ' + marks + ' in this area?',
+      body: 'In this area: ' + parts.join(', '),
+      confirmLabel: 'Delete ' + marks,
+      danger: true,
+    }).then((ok) => { if (ok) performDeleteZone(ann, collected); return ok; });
   }
   function performDeleteZone(ann, collected) {
     pushUndoSnapshot();
@@ -7496,10 +7498,8 @@
       else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
       else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
       else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
-      else if (document.getElementById('deleteZoneModal').classList.contains('visible')) { hideModal('deleteZoneModal'); state.pendingDeleteZone = null; }
       else if (document.getElementById('roomBoxModal')?.classList.contains('visible')) { hideModal('roomBoxModal'); state.pendingRoomBox = null; state.pendingRoomBoxEdit = null; }
       else if (document.getElementById('roomEditModal')?.classList.contains('visible')) { hideModal('roomEditModal'); }
-      else if (document.getElementById('roomDeleteConfirmModal')?.classList.contains('visible')) { hideModal('roomDeleteConfirmModal'); }
       else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
       else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
@@ -8042,8 +8042,6 @@
   App.applyPageAnnotationsFromData = applyPageAnnotationsFromData;
   App.hydrateStateFromProjectData = hydrateStateFromProjectData;
   App.getActiveCanvas = getActiveCanvas;
-  // Zone/page-action modal dep (features/zone-modals.js).
-  App.performDeleteZone = performDeleteZone;
   // Canvas layers dep (features/canvas-layers.js).
   App.deepCopyAnnotations = deepCopyAnnotations;
   // Ghosts (features/ghost.js) — the model half stays pure in

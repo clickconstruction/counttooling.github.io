@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * features/zone-modals.js (feature-file split #29): the Multiply Zone value
- * modal, Delete Zone confirm, and Delete Page confirm handlers, extracted
+ * modal and Delete Page confirm handlers, extracted
  * from app.js onto the window.App registry (no registered entry points — all
  * handlers are element-bound and the pending state lives on `state`).
  *
@@ -9,8 +9,8 @@
  * typed multiplier from a pending rect (the create path the canvas click
  * seeds) and keeps the tool armed with a visible hint (Tier-3 B8 / J6),
  * the context-menu edit path updates an existing zone's multiplier,
- * Cancel clears the pending state, and the Delete Zone cancel/confirm
- * bindings behave (cancel clears; confirm with nothing pending is a no-op).
+ * Cancel clears the pending state, and Delete Zone asks through the app's one
+ * confirm (CONFIRM-ROUTE: Cancel and Esc keep the marks, the button deletes).
  * The Delete Page confirm handlers are exercised by delete-page.spec.js.
  */
 const { test, expect } = require('@playwright/test');
@@ -77,19 +77,31 @@ test.describe('Zone & page-action modals (features/zone-modals.js)', () => {
     expect(afterCancel.start).toBeNull();
     expect(afterCancel.visible).toBe(false);
 
-    // --- Delete Zone: cancel clears pending; confirm with none is a no-op ---
-    const dz = await page.evaluate(() => {
-      const s = window.state;
-      s.pendingDeleteZone = { ann: null, collected: null };
-      window.App.showModal('deleteZoneModal');
-      document.getElementById('deleteZoneCancel').click();
-      const cleared = s.pendingDeleteZone === null;
-      window.App.showModal('deleteZoneModal');
-      document.getElementById('deleteZoneConfirm').click();   // nothing pending
-      return { cleared, visible: document.getElementById('deleteZoneModal').classList.contains('visible') };
+    // --- Delete Zone (CONFIRM-ROUTE): the app's one confirm. Cancel and Esc
+    // keep the marks, the danger button names the count and deletes them. ---
+    const zones = () => page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).multiplyZones || []).length);
+    const openDeleteZone = () => page.evaluate(() => {
+      const ann = window.App.getActiveAnnotations(window.state.pages[0]);
+      window.App.openDeleteZoneForRect(ann, 0, 0, 0, 1000, 1000);
     });
-    expect(dz.cleared).toBe(true);
-    expect(dz.visible).toBe(false);
+    const before = await zones();
+    expect(before).toBeGreaterThan(0);
+    await openDeleteZone();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await expect(page.locator('#confirmTitle')).toContainText('in this area?');
+    await expect(page.locator('#confirmBody')).toContainText('multiply zone(s)');
+    await expect(page.locator('#confirmOk')).toHaveClass(/danger/);
+    await page.locator('#confirmCancel').click();
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
+    expect(await zones()).toBe(before);
+    await openDeleteZone();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
+    expect(await zones()).toBe(before);
+    await openDeleteZone();
+    await expect(page.locator('#confirmOk')).toHaveText(/^Delete \d+ marks?$/);
+    await page.locator('#confirmOk').click();
+    await page.waitForFunction(() => (window.App.getActiveAnnotations(window.state.pages[0]).multiplyZones || []).length === 0);
 
     expect(errors).toEqual([]);
   });

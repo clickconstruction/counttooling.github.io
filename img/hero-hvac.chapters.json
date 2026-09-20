@@ -1,6 +1,6 @@
 {
   "film": "hvac",
-  "duration": 49.83,
+  "duration": 65.75,
   "chapters": [
     {
       "name": "Scale",
@@ -10,17 +10,17 @@
     {
       "name": "Rooms",
       "start": 7.38,
-      "end": 30.08
+      "end": 35.96
     },
     {
       "name": "Duct",
-      "start": 30.08,
-      "end": 37.54
+      "start": 35.96,
+      "end": 53.46
     },
     {
       "name": "Pricing",
-      "start": 37.54,
-      "end": 49.83
+      "start": 53.46,
+      "end": 65.75
     }
   ],
   "beats": [
@@ -46,46 +46,58 @@
     },
     {
       "t": 17.83,
-      "text": "A diffuser, 150 CFM."
-    },
-    {
-      "t": 22.5,
-      "text": "Three leave the room short."
-    },
-    {
-      "t": 24.75,
-      "text": "The fourth turns it green."
-    },
-    {
-      "t": 25.88,
       "text": "RTU-1, 2,000 CFM."
     },
     {
-      "t": 30.08,
-      "text": "Trace the main at 24×12."
+      "t": 24.38,
+      "text": "The unit, on the roof over the corridor."
     },
     {
-      "t": 32.63,
-      "text": "S: the size steps down with the air."
+      "t": 25.75,
+      "text": "A diffuser, 150 CFM."
     },
     {
-      "t": 37.54,
+      "t": 29.83,
+      "text": "Three leave the room short."
+    },
+    {
+      "t": 31.92,
+      "text": "The fourth turns it green."
+    },
+    {
+      "t": 32.83,
+      "text": "Conference takes three, the office two."
+    },
+    {
+      "t": 35.96,
+      "text": "Trace the main from the unit."
+    },
+    {
+      "t": 39.13,
+      "text": "S: the trunk steps down where a branch leaves."
+    },
+    {
+      "t": 45.33,
+      "text": "A branch to each room; the tap counts itself."
+    },
+    {
+      "t": 53.46,
       "text": "Pounds, not feet."
     },
     {
-      "t": 40.46,
-      "text": "Bid Check: two rooms still short."
+      "t": 56.38,
+      "text": "Bid Check: every room served."
     },
     {
-      "t": 42.04,
+      "t": 57.96,
       "text": "Fits the roof: computed, green."
     },
     {
-      "t": 43.42,
+      "t": 59.33,
       "text": "Nothing missed."
     },
     {
-      "t": 48.83,
+      "t": 64.75,
       "text": "Done."
     }
   ]

@@ -155,8 +155,8 @@
         var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         var alts = {
           plumbing: 'CountTooling in use: a plumbing takeoff on a restaurant plan, the fixtures counted and the cold and hot water traced over the sheet\'s own lines, with the tallies and hanger rows in the sidebar.',
-          electrical: 'CountTooling in use: an electrical takeoff on an office plan, receptacles and lights counted, a 3/4 inch EMT run chained device to device with its drops, the derived wire and the voltage-drop check in the sidebar.',
-          hvac: 'CountTooling in use: an HVAC takeoff on an office plan, rooms boxed with their airflow, four diffusers serving the open office, and the main sized down along its run, with the duct schedule\'s bid weight in the sidebar.'
+          electrical: 'CountTooling in use: an electrical takeoff on an office plan, an open office wired as three circuits, receptacles and lights chained device to device in 3/4 inch EMT with their drops, square home runs to panel LP-1, and the derived wire and voltage-drop checks in the sidebar.',
+          hvac: 'CountTooling in use: an HVAC takeoff on an office plan, three rooms boxed with their airflow and served by nine diffusers off RTU-1, a trunk down the corridor stepping down where a branch leaves for each room, with the duct schedule\'s bid weight in the sidebar.'
         };
         var order = chips.map(function (c) { return c.getAttribute('data-trade'); });
         var current = 'plumbing', pinned = false, inView = false;
@@ -193,11 +193,11 @@
         var films = {}, cards = [], ended = false;
         var ASK = {
           plumbing: 'How long does it take to count a restaurant?',
-          electrical: 'How long does it take to wire an office suite?',
+          electrical: 'How long does it take to wire an open office?',
           hvac: 'How long does it take to duct an office suite?'
         };
         var LABEL = { plumbing: 'Plumbing', electrical: 'Electrical', hvac: 'HVAC' };
-        var ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], TENS = { 2: 'Twenty', 3: 'Thirty', 4: 'Forty', 5: 'Fifty', 6: 'Sixty' };
+        var ONES = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'], TENS = { 2: 'Twenty', 3: 'Thirty', 4: 'Forty', 5: 'Fifty', 6: 'Sixty', 7: 'Seventy', 8: 'Eighty', 9: 'Ninety' };
         function spell(n) { var t = Math.floor(n / 10), o = n % 10; return TENS[t] ? TENS[t] + (o ? '-' + ONES[o] : '') : String(n); }
         // Each chapter's length in whole seconds, rounded so the four add up to the film's stated
         // length (largest remainder): 7 + 7 + 23 + 6 = 43, never a sum that contradicts the answer.

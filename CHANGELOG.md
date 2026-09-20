@@ -13,6 +13,52 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(landing): the electrical and HVAC films finish the room (2026-09-20)
+
+Will: both bids should be more realistic. An audit of the two films against what an estimator
+expects, then a rewrite of each film's middle ("complete the room": finish the bid on screen,
+no warning left, about 65 to 75 s). Both scripts now END WITH A GUARD: the render reads the
+app's own `getBidCheck()` and throws if any auto row warns, so a film cannot ship a warning
+under a caption that says "computed".
+
+**Electrical, third cut, 76.1 s (was 52.6).** The second cut wired 3 of 8 receptacles, left the
+switch and four troffers on no circuit (Bid Check warned "10 devices on no circuit" at the
+end), ran its home run as a diagonal through the janitor's wall, and never placed the panel.
+Now every device in the open office is on a circuit. Devices are made on the Quick tab
+(receptacle 18 in, switch 48 in, troffer, panelboard); the panel is placed at LP-1 and NAMED in
+its details, which is what makes a counter the panel mark. Three circuits, each the same three
+moves: a group with panel, number and load; T chains device to device, every click writing its
+drop; P draws the home run square to the panel and Line Properties flags it the homerun.
+Circuit 7 is the north wall's four receptacles at 6 A (4 x 180 VA), circuit 9 the south wall's
+four at 6 A, circuit 11 the switch and the four troffers at 2 A (the chain keeps its anchor when
+the device type changes mid-run). Three, because one cannot carry it: prototyped first against
+the app, eight receptacles on one run is 145 ft at 12 A, 5.7% on #12, and the app's
+voltage-drop row says so. On camera: fill 10%, voltage drop 1.4% / 1.6% / 0.3%, all devices
+reached. The panel-schedule row stays neutral on purpose: it compares circuits on plan with the
+panel's pole count, and one room cannot honestly match a whole panel. The bar's question reads
+"wire an open office" (it was "an office suite"; the film wires one room).
+
+**HVAC, second cut, 65.8 s (was 49.8).** The first cut boxed three rooms and served one (the
+bid ended on "2 of 3 rooms under-served"), traced a 27 ft main that started at a wall with no
+unit, and ran the trunk straight over its diffusers. Now RTU-1 is made as a system (2,000 CFM)
+and its unit placed over the corridor's east end (a counter with no CFM in the group, named on
+the Create tab: the Quick tab would prefix a size). Nine 150 CFM diffusers: four in the open
+office (the "fourth turns it green" beat kept), three in the conference room, two in Office
+101, each a foot off its duct so it hangs by a flex leader. The trunk starts ON the unit, so
+the deck height writes its riser; S takes the ductulator's 20x14 for the system's 1,350 CFM,
+and the Custom row steps it to 14x12 and 12x8 where the branches leave (the app's own sizes for
+900 and 300 CFM: mid-trunk the suggestion still reads the whole system, because a branch only
+takes its air once it is committed); it turns north into Office 101. Two branches start on the
+trunk (the taps count themselves): Conference at 16x8 typed in the dialog, the Open Office
+sized by S, which reads exactly that room's 600 CFM because it is the last air unserved. On
+camera: 3 rooms served, RTU-1 1,350 of 2,000, 9 flex drops within 6 ft, 694 lb. "Fits the
+roof" names the 12x8 because only duct inside a boxed room with a ceiling is judged, and the
+corridor is not boxed.
+
+Both films use the blank-sheet set. Their chapters files carry the new lengths, so the landing
+reads "Seventy-six seconds" and "Sixty-six seconds" without a copy edit. The spotlight frames
+keep their own smaller seeded takeoffs and the numbers their captions quote.
+
 ## fix(landing): the plumbing film counts the lavatories and the floor sinks (2026-09-20)
 
 Punch row FILM-FIXTURES closed (Will, watching the film). Over the pull-back the plumbing film

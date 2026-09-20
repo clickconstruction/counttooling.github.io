@@ -196,6 +196,17 @@ is up, because it sat on the Done button). The run draws its arrow into LP-1 and
 "LP-1/7 · 57 ft · 12 A · #12 2.3% ✓ (at 120 V)". The film is 2.7 s longer, which the hero
 chapters' "Fifty seconds" answer has to follow (see "Still open" there).
 
+**Both films, "complete the room", 2026-09-20 (Will: the bids should be more realistic).**
+Electrical third cut, 76.1 s; HVAC second cut, 65.8 s. The descriptions around this note are
+the earlier cuts, kept for the record; CHANGELOG "the electrical and HVAC films finish the room"
+is the account of what each film does now and why (three circuits because one fails the app's
+voltage drop; the trunk from the unit with typed step-downs because the mid-trunk suggestion
+reads the whole system). Two things for whoever touches them next: (1) each script ends with a
+GUARD that throws if the app's own Bid Check warns, so iterate with `--chapters-only` (about a
+minute, prints the verdicts, the popover's chips and an audit) before spending a render; (2)
+geometry lives in the constants above each script (`C7_RECEPTS`, `HOME_*`, `TRUNK_H`,
+`BRANCH_*`, `DIFF_*`), in plan pixels through `B()`.
+
 **HVAC, first cut, 2026-09-17, "Pounds, not feet" on A-101, 49.8 s, 3.4 MB, `img/hero-hvac.{mp4,png}`
 (`npm run build:hero-video -- --film hvac`).** Same spine, on camera. Prepare keeps A-101, M-101
 and M-201; the scale is proved on the 24'-0" bay. `V` arms the Room Sizer and three drags box

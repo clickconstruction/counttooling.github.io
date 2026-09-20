@@ -57,6 +57,8 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
       expect(secs.reduce((a, b) => a + b, 0)).toBe(Math.round(j.duration));
       const dur = await page.evaluate(() => new Promise((r) => { const v = document.querySelector('#heroMedia video'); if (v.duration) r(v.duration); else { v.addEventListener('loadedmetadata', () => r(v.duration), { once: true }); v.preload = 'auto'; v.load(); } }));
       expect(Math.abs(dur - j.duration)).toBeLessThan(0.1);   // the file is the footage's, not a guess
+      // the answer is always spelled, never digits (a 76 s film once read "76 seconds")
+      expect(await page.locator('#hcA').textContent()).toMatch(/^[A-Z][a-z]+(-[a-z]+)? seconds, from start to sent for pricing\.$/);
     });
   }
 
@@ -101,7 +103,7 @@ test.describe('Landing · trade chips, ?trade= link, proof panel', () => {
     await page.locator('#hcEnd .hc-next').first().click();
     expect(await page.evaluate(() => window.__heroFilm())).toBe('electrical');
     await expect(page.locator('.trade-chips .chip[data-trade="electrical"]')).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('#hcQ')).toHaveText('How long does it take to wire an office suite?');
+    await expect(page.locator('#hcQ')).toHaveText('How long does it take to wire an open office?');
     await expect(page.locator('#heroChapters')).not.toHaveClass(/is-ended/);
   });
 

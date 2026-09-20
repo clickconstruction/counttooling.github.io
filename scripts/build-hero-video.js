@@ -77,7 +77,7 @@ const CHAPTERS_ONLY = process.argv.includes('--chapters-only');
 const CHAPTER_STARTS = {
   plumbing: [['Scale', '30 sheets.'], ['Fixtures', 'Count.'], ['Pipe', 'Cold in.'], ['Pricing', 'Nothing missed.']],
   electrical: [['Scale', '30 sheets.'], ['Devices', 'Count.'], ['Wire', 'Name the conduit.'], ['Pricing', 'The wire, derived. The checks, computed.']],
-  hvac: [['Scale', '30 sheets.'], ['Rooms', 'Box the rooms; the plan names them.'], ['Duct', 'Trace the main at 24×12.'], ['Pricing', 'Pounds, not feet.']],
+  hvac: [['Scale', '30 sheets.'], ['Rooms', 'Box the rooms; the plan names them.'], ['Duct', 'Trace the main from the unit.'], ['Pricing', 'Pounds, not feet.']],
 };
 const BEATS = [];   // every caption with the film time it appears at, in order
 function writeChapters(frames) {
@@ -295,21 +295,40 @@ const CAM_KITCHEN = { x1: 455, y1: 255, x2: 790, y2: 465 };
 // candidateAPlan() draws at 12 px/ft on the same 918 pt sheet, placed at (60, 70) × 0.75,
 // so B() converts its plan coordinates too. Open Office 105 is SVG (132..470, 384..600).
 const DIM_24 = [B(132, 84), B(420, 84)];                                 // the 24'-0" bay string, grid 1 to 2 (exact since the two-pixel fix)
-const RECEPT_SPOTS_E = [B(238, 402), B(305, 402), B(372, 402), B(439, 402), B(150, 490)];   // north wall east of the door, then the west wall
+// "Complete the room" (2026-09-20): every device in the open office lands on a circuit, chained
+// device to device, each circuit with a square home run to LP-1. Three circuits because one
+// cannot carry it: eight receptacles on one run is 145 ft at 12 A, 5.7% on #12, and the app's own
+// voltage-drop row says so. Loads are the NEC 180 VA per receptacle (4 x 180 = 720 VA = 6 A).
+const C7_RECEPTS = [B(450, 402), B(395, 402), B(340, 402), B(285, 402)];   // circuit 7: the north wall, from the panel end west (clear of the switch and its drop label at the door)
+const C9_RECEPTS = [B(400, 582), B(320, 582), B(240, 582), B(160, 582)];   // circuit 9: the south wall, from the panel end west (one wall, so no run cuts the corner)
+const HOME_7 = [C7_RECEPTS[0], B(576, 402), B(576, 462)];                  // square to the panel, down the janitor's east wall (the three land apart so their LP-1 tags do not pile up)
+const HOME_9 = [C9_RECEPTS[0], B(552, 582), B(552, 541), B(570, 541)];     // square to the panel, into its face below circuit 11 (an upward arrow floats its tag onto 11's)
 const SWITCH_SPOT_E = B(232, 400);                                       // inside the door at (210, 384)
-const LIGHT_SPOTS_E = [B(250, 455), B(390, 455), B(250, 525), B(390, 525)];   // a 2 × 2 troffer grid
-const CHAIN_SPOTS_E = [B(250, 582), B(320, 582), B(390, 582)];           // along the south wall, the chain
+const LIGHT_SPOTS_E = [B(250, 455), B(390, 455), B(390, 525), B(250, 525)];   // a 2 × 2 troffer grid, in chain order from the switch
+const HOME_11 = [B(390, 455), B(540, 455), B(540, 497), B(570, 497)];           // circuit 11: from the troffer nearest the panel, into the panel's face
 const LP1 = B(576, 496);                                                 // panel LP-1 on the janitor's east wall
 const CAM_A_PLAN = { x1: 120, y1: 95, x2: 800, y2: 560 };
-const CAM_A_OFFICE = { x1: 118, y1: 322, x2: 520, y2: 548 };             // the open office with LP-1 just in frame
+const CAM_A_OFFICE = { x1: 118, y1: 318, x2: 560, y2: 552 };             // the open office with LP-1 and its home-run tags in frame
 const CAM_A_PULL = { x1: 100, y1: 80, x2: 820, y2: 740 };                // the plan (not the whole sheet: one room's marks stay legible) with the band beneath
 
 // --- the HVAC film, "Pounds, not feet", on the office sheet A-101 -----------------------
 const ROOM_OPEN_OFFICE = { x1: B(132, 384).x, y1: B(132, 384).y, x2: B(470, 600).x, y2: B(470, 600).y };   // OPEN OFFICE 105, 508 ft²
 const ROOM_CONFERENCE = { x1: B(640, 100).x, y1: B(640, 100).y, x2: B(790, 340).x, y2: B(790, 340).y };    // CONFERENCE 103
 const ROOM_OFFICE_101 = { x1: B(300, 100).x, y1: B(300, 100).y, x2: B(470, 340).x, y2: B(470, 340).y };    // OFFICE 101
-const DIFFUSERS_H = [{ x: 200, y: 457 }, { x: 268, y: 457 }, { x: 336, y: 457 }, { x: 404, y: 457 }];      // four across the open office, on the main's line
-const MAIN_H = [{ x: 164, y: 452 }, { x: 240, y: 452 }, { x: 320, y: 452 }, { x: 406, y: 452 }];             // the main, corridor side to the far wall, two size steps on the way
+// "Complete the room" (2026-09-20): the three boxed rooms are all served, off one system that
+// starts at its unit. RTU-1 sits on the roof over the corridor's east end; the trunk leaves it
+// (so the deck height writes its riser), runs the corridor ceiling west, steps down as the
+// branches leave it, and turns north into Office 101; a branch taps off into Conference 103 and
+// another into the Open Office. Diffusers sit a foot off their duct, inside the 8 in (12 pt)
+// reach, so each hangs off its run by a flex leader. 4 + 3 + 2 at 150 CFM = 1,350 of 2,000.
+const RTU_SPOT = B(770, 362);
+const TRUNK_H = [RTU_SPOT, B(715, 362), B(440, 362), B(385, 362), B(385, 186)];   // unit, the two takeoffs, the turn, the end of Office 101
+const BRANCH_CONF_H = [B(715, 362), B(715, 150)];                                  // north into Conference 103
+const BRANCH_OPEN_H = [B(440, 362), B(440, 490), B(176, 490)];                     // south into the Open Office, then west along it
+const DIFF_OPEN_H = [B(420, 502), B(340, 502), B(260, 502), B(180, 502)];          // the fourth is the one that turns the room green
+const DIFF_CONF_H = [B(727, 300), B(727, 228), B(727, 156)];
+const DIFF_101_H = [B(397, 292), B(397, 192)];
+const CAM_H_ROOMS = { x1: 140, y1: 132, x2: 672, y2: 530 };                        // the three rooms and the corridor between them
 const SET_KEEP_H = [2, 12, 13];   // A-101, M-101, M-201
 
 // The thirty-sheet set: one sheet per discipline, each stamped with a sheet number and name
@@ -674,40 +693,58 @@ async function recordElectrical(page, dir, setPdf) {
   await page.waitForFunction(() => !document.querySelector('#scaleModal.visible'), { timeout: 5000 });
   await R.hold(0.15);
 
-  // 4 · Count. Each device is made on the Quick tab (Category / Variant), arrives with its
-  //     mount height, and the tool is armed the moment it is added.
+  // 4 · Devices. Each is made on the Quick tab (Category / Variant) and arrives with its mount
+  //     height. Nothing is placed by hand except the panel: the Chain tool places every device
+  //     WITH its conduit and its drop, which is how the room is wired below.
   const quickAdd = async (category, variant, pickTrade) => {
-    await R.moveToEl('#addCounter', 0.45); await R.click();
+    await R.moveToEl('#addCounter', 0.4); await R.click();
     await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
-    await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.3); await R.click();
-    await R.hold(0.15);
-    if (pickTrade) { await R.moveToEl('#counterQuickCountTradeSegment [data-trade="electrical"]', 0.35); await R.click(); await R.hold(0.2); }
-    await R.moveToEl('#counterQuickCountSize', 0.3); await R.click();
-    await page.selectOption('#counterQuickCountSize', category); await R.hold(0.2);
-    await R.moveToEl('#counterQuickCountType', 0.3); await R.click();
-    await page.selectOption('#counterQuickCountType', variant); await R.hold(0.3);
-    await R.moveToEl('#counterQuickCountAdd', 0.35); await R.click();
+    await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.28); await R.click();
+    await R.hold(0.12);
+    if (pickTrade) { await R.moveToEl('#counterQuickCountTradeSegment [data-trade="electrical"]', 0.32); await R.click(); await R.hold(0.15); }
+    await R.moveToEl('#counterQuickCountSize', 0.28); await R.click();
+    await page.selectOption('#counterQuickCountSize', category); await R.hold(0.15);
+    await R.moveToEl('#counterQuickCountType', 0.28); await R.click();
+    await page.selectOption('#counterQuickCountType', variant); await R.hold(0.25);
+    await R.moveToEl('#counterQuickCountAdd', 0.32); await R.click();
     await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
     await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-    await R.hold(0.2);
+    await R.hold(0.15);
   };
+  const recolor = (re, color) => page.evaluate(([r, c]) => { const k = window.state.counters.find((x) => new RegExp(r).test(x.name)); if (k) { k.color = c; window.App.renderAnnotations(); window.App.updateUI(); } }, [re, color]);
+  const counterId = (re) => page.evaluate((r) => window.state.counters.find((c) => new RegExp(r).test(c.name)).id, re);
   R.caption('', 'Count.');
   await R.camera(CAM_A_OFFICE, 0.6);
   await page.waitForTimeout(300);
-  const recolor = (name, color) => page.evaluate(([n, c]) => { const k = window.state.counters.find((x) => x.name === n); if (k) { k.color = c; window.App.renderAnnotations(); window.App.updateUI(); } }, [name, color]);
   await quickAdd('Receptacle', 'Duplex', true);
   R.caption('', 'Receptacles, 18 in AFF by default.');
-  for (const [i, p] of RECEPT_SPOTS_E.entries()) { await R.moveToPt(p, i ? 0.22 : 0.4); await R.click(); }
-  await quickAdd('Switch', 'Single Pole', false);
-  await recolor('Single Pole Switch', '#e8c547');
-  R.caption('', 'The switch, 48 in.');
-  await R.moveToPt(SWITCH_SPOT_E, 0.35); await R.click();
-  await quickAdd('Fixture', '2x4 Troffer', false);
-  await recolor('2x4 Troffer Fixture', '#4a9eff');
-  R.caption('', 'Fixtures, at the ceiling.');
-  for (const [i, p] of LIGHT_SPOTS_E.entries()) { await R.moveToPt(p, i ? 0.2 : 0.35); await R.click(); }
   await page.evaluate(endTool);
-  await R.hold(0.4);
+  await quickAdd('Switch', 'Single Pole', false);
+  await recolor('Switch', '#e8c547');
+  R.caption('', 'The switch, 48 in.');
+  await page.evaluate(endTool);
+  await quickAdd('Fixture', '2x4 Troffer', false);
+  await recolor('Troffer', '#4a9eff');
+  R.caption('', 'Fixtures, at the ceiling.');
+  await page.evaluate(endTool);
+  await quickAdd('Panel', 'Panelboard', false);
+  await recolor('Panel', '#47c88e');
+  R.caption('', 'The panel, LP-1.');
+  await R.moveToPt(LP1, 0.45); await R.click();   // the Quick tab left the tool armed
+  await page.evaluate(endTool);
+  // Name it in its details: a counter with a panel name IS the panel mark, which is what keeps
+  // it out of "devices on no circuit" and lets the groups' LP-1 find it.
+  const panelId = await counterId('Panel');
+  await R.moveToEl('#countersList [data-counter-id="' + panelId + '"] .edit-btn', 0.4); await R.click();
+  await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
+  await R.moveToEl('#panelName', 0.4); await R.click();
+  await R.type('LP-1', 12);
+  await page.keyboard.press('Enter');
+  await R.hold(0.35);
+  await R.moveToEl('#counterLineTypeDetailsClose', 0.3); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#counterLineTypeDetailsModal.visible'), { timeout: 5000 });
+  if (await page.evaluate((id) => ((window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers || {})[id] || []).length, panelId) !== 1) throw new Error('electrical film: the panel mark was not placed');
+  await R.hold(0.3);
 
   // 5 · The conduit: a line type made on camera, then its raceway and conductors in the
   //     details dialog. From here every run of it carries 3 #12 THHN + 1 #12 G.
@@ -740,67 +777,106 @@ async function recordElectrical(page, dir, setPdf) {
   await page.waitForFunction(() => !document.querySelector('#counterLineTypeDetailsModal.visible'), { timeout: 5000 });
   await R.hold(0.25);
 
-  // 6 · The circuit: a group with a panel mark. Made first, so the chain that follows lands in it.
-  R.caption('', 'Circuit 7, on LP-1.');
-  // The Groups section opens collapsed (its + Add is hidden until the title is clicked).
-  if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.45); await R.click(); await R.hold(0.15); }
-  await R.moveToEl('#addGroup', 0.3); await R.click();
-  await page.waitForSelector('#groupModal.visible', { timeout: 5000 });
-  await R.moveToEl('#groupModalName', 0.3); await R.click();
-  await R.type('Circuit 7', 12);
-  await R.moveToEl('#groupModalPanel', 0.3); await R.click();
-  await R.type('LP-1', 12);
-  await R.moveToEl('#groupModalCircuit', 0.3); await R.click();
-  await R.type('7', 12);
-  await R.hold(0.15);
-  await R.moveToEl('#groupModalDone', 0.35); await R.click();
-  await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
-  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-  await R.hold(0.25);
+  // 6-8 · Three circuits, each the same three moves. The circuit is a group with its panel,
+  //       number and load, made first so what follows lands in it. T chains device to device,
+  //       every click writing its drop into the run. P draws the home run square to the panel,
+  //       and Line Properties flags it the homerun, which is how the circuit knows its panel.
+  const makeCircuit = async (name, number, amps) => {
+    if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.4); await R.click(); await R.hold(0.12); }
+    await R.moveToEl('#addGroup', 0.3); await R.click();
+    await page.waitForSelector('#groupModal.visible', { timeout: 5000 });
+    await R.moveToEl('#groupModalName', 0.28); await R.click();
+    await R.type(name, 14);
+    await R.moveToEl('#groupModalPanel', 0.26); await R.click();
+    await R.type('LP-1', 14);
+    await R.moveToEl('#groupModalCircuit', 0.26); await R.click();
+    await R.type(number, 14);
+    await R.moveToEl('#groupModalLoadAmps', 0.26); await R.click();
+    await R.type(amps, 14);
+    await R.hold(0.12);
+    await R.moveToEl('#groupModalDone', 0.3); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    await R.hold(0.2);
+  };
+  // Open the Chain panel (T the first time, its header chip after), pick the device, close it.
+  const chainPick = async (id, pickConduit) => {
+    if (await page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)) { await R.moveToEl('#headerChainPair', 0.35); await R.click(); }
+    else await R.keyAs('T', 't');
+    await page.waitForSelector('#chainPanel', { state: 'visible', timeout: 5000 });
+    await R.moveToEl('#chainCounterList .chain-row[data-id="' + id + '"] .chain-row-name', 0.35); await R.click();
+    if (pickConduit) { await R.moveToEl('#chainLineTypeList .chain-row[data-id="' + emtId + '"] .chain-row-name', 0.3); await R.click(); }
+    await R.hold(0.12);
+    await R.moveToEl('#chainPanelClose', 0.26); await R.click();
+  };
+  const chain = async (pts, first, step) => { for (const [i, p] of pts.entries()) { await R.moveToPt(p, i ? step : first); await R.click(); await R.hold(0.1); } };
+  const homeRun = async (pts) => {
+    await page.evaluate(endTool);
+    await R.keyAs('P', 'p');
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.POLYLINE && !!window.state.drawingPolyline, { timeout: 3000 });
+    for (const [i, p] of pts.entries()) { await R.moveToPt(p, i ? 0.32 : 0.3); await R.click(); }
+    await R.key('Enter');
+    await page.waitForFunction(() => !window.state.drawingPolyline, { timeout: 3000 });
+    await page.evaluate(endTool);
+    // flag it: right-click the run, Line Properties, Homerun
+    await R.moveToPt({ x: (pts[0].x + pts[1].x) / 2, y: pts[0].y }, 0.3);
+    await R.rightClick();
+    await page.waitForSelector('#contextMenu.visible', { timeout: 5000 });
+    await R.moveToEl('#ctxLineProperties', 0.28); await R.click();
+    await page.waitForSelector('#linePropertiesModal.visible', { timeout: 5000 });
+    const held = R.cap; R.cap = null;   // the strip would sit on the dialog's Done button
+    await R.moveToEl('#linePropertiesHomerunBtn', 0.35); await R.click();
+    await R.hold(0.3);
+    await R.moveToEl('#linePropertiesClose', 0.28); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#linePropertiesModal.visible'), { timeout: 5000 });
+    R.cap = held && { ...held, since: R.n };
+    await R.hold(0.2);
+  };
+  const recId = await counterId('Receptacle'), swId = await counterId('Switch'), ltId = await counterId('Troffer');
 
-  // 7 · Chain. T opens the panel: the receptacle and the conduit, then device to device along
-  //     the south wall, every click writing its 9.5 ft drop into the run.
+  R.caption('', 'Circuit 7: the north wall, 6 A.');
+  await makeCircuit('Circuit 7', '7', '6');
   R.caption('', 'Chain: each click writes its 9.5 ft drop.');
+  await chainPick(recId, true);
+  await chain(C7_RECEPTS, 0.45, 0.32);
+  R.caption('', 'Home run, square to the panel.');
+  await homeRun(HOME_7);
+
+  R.caption('', 'Circuit 9: south and west.');
+  await makeCircuit('Circuit 9', '9', '6');
   await R.keyAs('T', 't');
   await page.waitForSelector('#chainPanel', { state: 'visible', timeout: 5000 });
-  const recId = await page.evaluate(() => window.state.counters.find((c) => /Receptacle/.test(c.name)).id);
-  await R.moveToEl('#chainCounterList .chain-row[data-id="' + recId + '"] .chain-row-name', 0.4); await R.click();
-  await R.moveToEl('#chainLineTypeList .chain-row[data-id="' + emtId + '"] .chain-row-name', 0.35); await R.click();
-  await R.hold(0.2);
-  await R.moveToEl('#chainPanelClose', 0.3); await R.click();
-  for (const [i, p] of CHAIN_SPOTS_E.entries()) { await R.moveToPt(p, i ? 0.4 : 0.45); await R.click(); await R.hold(0.2); }
-  await page.evaluate(endTool);
-  await R.hold(0.3);
+  await R.moveToEl('#chainCounterList .chain-row[data-id="' + recId + '"] .chain-row-name', 0.3); await R.click();
+  await R.moveToEl('#chainPanelClose', 0.26); await R.click();
+  await chain(C9_RECEPTS, 0.45, 0.32);
+  await homeRun(HOME_9);
 
-  // 8 · Home to the panel: a Quick Line from the last device to LP-1, on the same conduit.
-  R.caption('', 'Home to LP-1.');
-  await R.keyAs('L', 'l');
-  await R.moveToPt(CHAIN_SPOTS_E[2], 0.3); await R.click();
-  await R.moveToPt(LP1, 0.55); await R.click();
-  await page.evaluate(endTool);
-  await R.hold(0.3);
+  R.caption('', 'Circuit 11: the lights and their switch.');
+  await makeCircuit('Circuit 11', '11', '2');
+  await R.keyAs('T', 't');
+  await page.waitForSelector('#chainPanel', { state: 'visible', timeout: 5000 });
+  await R.moveToEl('#chainCounterList .chain-row[data-id="' + swId + '"] .chain-row-name', 0.3); await R.click();
+  await R.moveToEl('#chainPanelClose', 0.26); await R.click();
+  await chain([SWITCH_SPOT_E], 0.4, 0.3);
+  await chainPick(ltId, false);   // the same run, the next device: the chain keeps its anchor
+  await chain(LIGHT_SPOTS_E, 0.4, 0.3);
+  await homeRun(HOME_11);
 
-  // 8b · Flag it (punch row FILM-HOMERUN): right-click the run, Line Properties, Homerun. A
-  //      circuit needs a panel mark or a homerun to know where its panel is, so without this
-  //      the voltage-drop row in beat 9 reads "needs a panel mark or a homerun" on camera.
-  R.caption('', 'Flag it the homerun: the circuit knows its panel.');
-  await R.moveToPt({ x: (CHAIN_SPOTS_E[2].x + LP1.x) / 2, y: (CHAIN_SPOTS_E[2].y + LP1.y) / 2 }, 0.4);
-  await R.rightClick();
-  await page.waitForSelector('#contextMenu.visible', { timeout: 5000 });
-  await R.moveToEl('#ctxLineProperties', 0.35); await R.click();
-  await page.waitForSelector('#linePropertiesModal.visible', { timeout: 5000 });
-  R.cap = null;   // the strip would sit on the dialog's Done button; the toggle's own hint says what it does
-  await R.moveToEl('#linePropertiesHomerunBtn', 0.45); await R.click();
-  await R.hold(0.6);
-  await R.moveToEl('#linePropertiesClose', 0.35); await R.click();
-  await R.hold(0.4);
+  // The film only says "computed" if it is: every auto row of the app's own Bid Check must pass
+  // or be neutral. A layout that trips one (a run too long for #12, a device off its run) fails
+  // the render here instead of shipping a warning on camera.
+  const verdicts = await page.evaluate(() => window.App.getBidCheck().auto.map((r) => ({ id: r.id, verdict: r.verdict, detail: r.detail })));
+  const bad = verdicts.filter((r) => r.verdict === 'warn');
+  if (bad.length) throw new Error('electrical film: Bid Check warns on camera: ' + JSON.stringify(bad));
+  console.log('\n  bid check: ' + verdicts.map((r) => r.id + '=' + r.verdict).join(', '));
 
   // 9 · What the drawing knows: the derived wire and the two checks nobody typed.
   R.caption('', 'The wire, derived. The checks, computed.');
   await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
   try { await R.moveToEl('.summary-derived-item', 0.6); await R.hold(0.8); } catch (_) { /* summary collapsed */ }
   await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="voltage-drop"]', 0.6); await R.hold(1.2);
-  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="conduit-fill"]', 0.35); await R.hold(0.9);
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="conduit-fill"]', 0.35); await R.hold(0.8);
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="devices-on-circuits"]', 0.35); await R.hold(0.9);   // all thirteen devices on a circuit and reached by a run
 
   // 10 · Nothing missed: the whole sheet, marks off, marks on.
   R.caption('', 'Nothing missed.');
@@ -935,35 +1011,10 @@ async function recordHvac(page, dir, setPdf) {
   await page.evaluate(endTool);
   await R.hold(0.3);
 
-  // 5 · The diffuser, made on the Quick tab with its 150 CFM, then four in the open office:
-  //     three leave the room's tag short, the fourth turns it green.
-  R.caption('', 'A diffuser, 150 CFM.');
-  await R.moveToEl('#addCounter', 0.45); await R.click();
-  await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
-  await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.3); await R.click();
-  await R.hold(0.15);
-  await R.moveToEl('#counterQuickCountTradeSegment [data-trade="hvac"]', 0.35); await R.click(); await R.hold(0.2);
-  await R.moveToEl('#counterQuickCountSize', 0.3); await R.click();
-  await page.selectOption('#counterQuickCountSize', '12x12'); await R.hold(0.15);
-  await R.moveToEl('#counterQuickCountType', 0.3); await R.click();
-  await page.selectOption('#counterQuickCountType', 'Supply Diffuser'); await R.hold(0.2);
-  await R.moveToEl('#counterQuickCountCfm', 0.3); await R.click();
-  await R.type('150', 10);
-  await R.hold(0.2);
-  await R.moveToEl('#counterQuickCountAdd', 0.35); await R.click();
-  await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
-  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-  await R.camera(CAM_A_OFFICE, 0.6);
-  await page.waitForTimeout(300);
-  R.caption('', 'Three leave the room short.');
-  for (const [i, p] of DIFFUSERS_H.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.3 : 0.4); await R.click(); await R.hold(0.15); }
-  await R.hold(0.5);
-  R.caption('', 'The fourth turns it green.');
-  await R.moveToPt(DIFFUSERS_H[3], 0.35); await R.click();
-  await page.evaluate(endTool);
-  await R.hold(0.7);
-
-  // 6 · The system: a group with an equipment tag and a capacity. Made first, so the main lands in it.
+  // 5 · The system first, then its unit. A group with an equipment tag and a capacity; made
+  //     first so everything after it (the unit, the diffusers, the duct) lands in it. The unit
+  //     is a counter with no CFM placed in that group, which is how the system knows where its
+  //     equipment is, and what arms the riser when a run starts on it.
   R.caption('', 'RTU-1, 2,000 CFM.');
   if (await page.evaluate(() => document.getElementById('groupsSection').classList.contains('collapsed'))) { await R.moveToEl('#groupsSectionTitle', 0.45); await R.click(); await R.hold(0.15); }
   await R.moveToEl('#addGroup', 0.3); await R.click();
@@ -978,41 +1029,139 @@ async function recordHvac(page, dir, setPdf) {
   await R.moveToEl('#groupModalDone', 0.35); await R.click();
   await page.waitForFunction(() => !document.querySelector('#groupModal.visible'), { timeout: 5000 });
   await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
-  await R.hold(0.25);
-
-  // 7 · The main. U opens New Duct Run (24×12), Start Tracing; the chip under the cursor
-  //     reads the air still to serve; S opens the size popover and the suggested size is
-  //     tapped; Enter commits, and the elbows and taps count themselves.
-  R.caption('', 'Trace the main at 24×12.', 'top');   // the duct hint card holds the bottom
-  await R.keyAs('U', 'u');
-  await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
-  await R.hold(0.4);
-  await R.moveToEl('#ductCreateStart', 0.4); await R.click();
-  await page.waitForFunction(() => !!window.state.drawingDuct, { timeout: 5000 });
-  await R.moveToPt(MAIN_H[0], 0.4); await R.click();
-  await R.moveToPt(MAIN_H[1], 0.7); await R.click();
+  await R.hold(0.2);
+  const quickAddH = async (size, type, cfm, pickTrade) => {
+    await R.moveToEl('#addCounter', 0.4); await R.click();
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await R.moveToEl('#counterModal .counter-tab[data-tab="quickcount"]', 0.28); await R.click();
+    await R.hold(0.12);
+    if (pickTrade) { await R.moveToEl('#counterQuickCountTradeSegment [data-trade="hvac"]', 0.32); await R.click(); await R.hold(0.15); }
+    if (size) { await R.moveToEl('#counterQuickCountSize', 0.28); await R.click(); await page.selectOption('#counterQuickCountSize', size); await R.hold(0.15); }
+    await R.moveToEl('#counterQuickCountType', 0.28); await R.click();
+    await page.selectOption('#counterQuickCountType', type); await R.hold(0.2);
+    if (cfm) { await R.moveToEl('#counterQuickCountCfm', 0.28); await R.click(); await R.type(cfm, 10); await R.hold(0.15); }
+    await R.moveToEl('#counterQuickCountAdd', 0.32); await R.click();
+    await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+    await R.hold(0.15);
+  };
+  // The unit is made on the Create tab, named for its tag (the Quick tab would prefix a size).
+  await R.moveToEl('#addCounter', 0.4); await R.click();
+  await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+  await R.moveToEl('#counterModal .counter-tab[data-tab="create"]', 0.28); await R.click();
+  await R.hold(0.12);
+  await R.moveToEl('#counterName', 0.3); await R.click();
+  await page.keyboard.press('Meta+A');   // the field can arrive carrying the last name typed
+  await R.type('RTU-1', 12);
+  await R.hold(0.15);
+  await R.moveToEl('#counterCreate', 0.35); await R.click();
+  await page.waitForFunction(() => !document.querySelector('#counterModal.visible'), { timeout: 5000 });
+  await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
+  await page.evaluate(() => { const k = window.state.counters.find((x) => x.name === 'RTU-1'); if (k) { k.color = '#e8c547'; window.App.renderAnnotations(); window.App.updateUI(); } });
+  R.caption('', 'The unit, on the roof over the corridor.');
+  await R.camera(CAM_H_ROOMS, 0.6);
+  await page.waitForTimeout(300);
+  await R.moveToPt(RTU_SPOT, 0.4); await R.click();
+  await page.evaluate(endTool);
   await R.hold(0.3);
-  // S opens the popover; the suggestion offers a round and a rectangular size, and a
-  // rectangular main stays rectangular, so the chip with the × is the one tapped.
-  const stepAtS = async () => {
+
+  // 6 · The diffuser, made on the Quick tab with its 150 CFM. Four in the open office: three
+  //     leave the room's tag short, the fourth turns it green. Then the other two rooms.
+  R.caption('', 'A diffuser, 150 CFM.');
+  await quickAddH('12x12', 'Supply Diffuser', '150', true);
+  R.caption('', 'Three leave the room short.');
+  for (const [i, p] of DIFF_OPEN_H.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.3 : 0.45); await R.click(); await R.hold(0.12); }
+  await R.hold(0.4);
+  R.caption('', 'The fourth turns it green.');
+  await R.moveToPt(DIFF_OPEN_H[3], 0.35); await R.click();
+  await R.hold(0.5);
+  R.caption('', 'Conference takes three, the office two.');
+  for (const [i, p] of DIFF_CONF_H.entries()) { await R.moveToPt(p, i ? 0.26 : 0.55); await R.click(); await R.hold(0.1); }
+  for (const [i, p] of DIFF_101_H.entries()) { await R.moveToPt(p, i ? 0.26 : 0.5); await R.click(); await R.hold(0.1); }
+  await page.evaluate(endTool);
+  await R.hold(0.5);
+
+  // 7 · The duct. U opens New Duct Run, Start Tracing. The trunk starts ON the unit, so the
+  //     deck height writes its riser; S right there takes the ductulator's size for the whole
+  //     system's air, and S again steps it down where each branch leaves. Then the two
+  //     branches, each started on the trunk (the tap counts itself) and sized by S from the air
+  //     its own room still needs. Enter commits; elbows, taps and transitions count themselves.
+  const typeInto = async (sel, text) => { await R.moveToEl(sel, 0.28); await R.click(); await page.keyboard.press('Meta+A'); await R.type(text, 10); };
+  const startRun = async (w, h) => {
+    await R.keyAs('U', 'u');
+    await page.waitForSelector('#ductCreateModal.visible', { timeout: 5000 });
+    await R.hold(0.3);
+    if (w) { await typeInto('#ductCreateW', String(w)); await typeInto('#ductCreateH', String(h)); await R.hold(0.15); }
+    await R.moveToEl('#ductCreateStart', 0.35); await R.click();
+    await page.waitForFunction(() => !!window.state.drawingDuct, { timeout: 5000 });
+  };
+  // S opens the popover. `suggest` taps the ductulator's rectangular chip; otherwise the first
+  // common step-down from the current size.
+  const stepAtS = async (suggest) => {
     await R.keyAs('S', 's');
     await page.waitForSelector('#ductSizePopover', { state: 'visible', timeout: 5000 });
-    await R.hold(0.45);
-    const idx = await page.evaluate(() => { const chips = [...document.querySelectorAll('#ductSizePopover .duct-suggest-chip')]; const i = chips.findIndex((c) => /×/.test(c.textContent)); return chips.length ? (i >= 0 ? i : 0) : -1; });
-    const sel = idx >= 0 ? '#ductSizePopover .duct-suggest-chip:nth-of-type(' + (idx + 1) + ')' : '#ductSizePopover .duct-step-chip';
-    await R.moveToEl(sel, 0.4); await R.click();
-    await R.hold(0.25);
+    await R.hold(0.4);
+    const info = await page.evaluate(() => ({ suggest: [...document.querySelectorAll('#ductSizePopover .duct-suggest-chip')].map((c) => c.textContent.trim()), steps: [...document.querySelectorAll('#ductSizePopover .duct-step-chip')].map((c) => c.textContent.trim()) }));
+    console.log('\n  S: suggests [' + info.suggest.join(' | ') + '] steps [' + info.steps.join(' | ') + ']');
+    const si = info.suggest.findIndex((t) => /×/.test(t));
+    const sel = suggest && info.suggest.length ? '#ductSizePopover .duct-suggest-chip:nth-of-type(' + ((si >= 0 ? si : 0) + 1) + ')' : '#ductSizePopover .duct-step-chip';
+    await R.moveToEl(sel, 0.38); await R.click();
+    await R.hold(0.2);
   };
-  R.caption('', 'S: the size steps down with the air.', 'top');
-  await stepAtS();
-  await R.moveToPt(MAIN_H[2], 0.7); await R.click();
+  // S, then the Custom row: the size a master would give the air that is left past this takeoff.
+  const stepTo = async (w, h) => {
+    await R.keyAs('S', 's');
+    await page.waitForSelector('#ductSizePopover', { state: 'visible', timeout: 5000 });
+    await R.hold(0.3);
+    const row = '#ductSizePopover .duct-size-inputs:has(input[aria-label="Width (inches)"])';
+    await typeInto(row + ' input[aria-label="Width (inches)"]', String(w));
+    await typeInto(row + ' input[aria-label="Depth (inches)"]', String(h));
+    await R.moveToEl(row + ' .duct-custom-apply', 0.3); await R.click();
+    await R.hold(0.2);
+  };
+  const finishRun = async () => {
+    await R.key('Enter');
+    await page.waitForFunction(() => !window.state.drawingDuct, { timeout: 5000 });
+    await R.hold(0.3);
+  };
+  R.caption('', 'Trace the main from the unit.', 'top');   // the duct hint card holds the bottom
+  await startRun();
+  await R.moveToPt(TRUNK_H[0], 0.45); await R.click();
   await R.hold(0.2);
-  await stepAtS();
-  await R.moveToPt(MAIN_H[3], 0.7); await R.click();
-  await R.key('Enter');
-  await page.waitForFunction(() => !window.state.drawingDuct, { timeout: 5000 });
+  await stepAtS(true);
+  await R.moveToPt(TRUNK_H[1], 0.45); await R.click();
+  R.caption('', 'S: the trunk steps down where a branch leaves.', 'top');
+  await stepTo(14, 12);   // 900 CFM left past the conference takeoff
+  await R.moveToPt(TRUNK_H[2], 0.8); await R.click();
+  await stepTo(12, 8);    // 300 CFM left past the open office takeoff
+  await R.moveToPt(TRUNK_H[3], 0.35); await R.click();
+  await R.moveToPt(TRUNK_H[4], 0.6); await R.click();
+  await finishRun();
+  R.caption('', 'A branch to each room; the tap counts itself.', 'top');
+  await startRun(16, 8);   // 450 CFM: the dialog takes the branch's size (the ductulator says 12"Ø or 16×8)
+  await R.moveToPt(BRANCH_CONF_H[0], 0.5); await R.click();
+  await R.moveToPt(BRANCH_CONF_H[1], 0.6); await R.click();
+  await finishRun();
+  await startRun();        // 600 CFM, the last air unserved, so S reads exactly this room's
+  await R.moveToPt(BRANCH_OPEN_H[0], 0.5); await R.click();
+  await stepAtS(true);
+  await R.moveToPt(BRANCH_OPEN_H[1], 0.45); await R.click();
+  await R.moveToPt(BRANCH_OPEN_H[2], 0.7); await R.click();
+  await finishRun();
   await page.evaluate(endTool);
-  await R.hold(0.6);
+  await R.hold(0.5);
+
+  // The film only says the rooms are served if they are: no auto row of the app's own Bid
+  // Check may warn, every diffuser must hang off a run, and the system must carry its air.
+  const audit = await page.evaluate(() => {
+    const App = window.App, s = window.state;
+    const rows = App.getBidCheck().auto.map((r) => ({ id: r.id, verdict: r.verdict, detail: r.detail }));
+    const ann = App.getActiveAnnotations(s.pages[0]);
+    return { rows, runs: (ann.ductRuns || []).length, fittings: (ann.ductFittings || []).length, counters: s.counters.map((c) => c.name + ' x' + ((ann.counterMarkers[c.id] || []).length)), groups: s.groups.map((g) => g.name) };
+  });
+  console.log('\n  hvac audit: ' + JSON.stringify(audit));
+  const badH = audit.rows.filter((r) => r.verdict === 'warn');
+  if (badH.length) throw new Error('hvac film: Bid Check warns on camera: ' + JSON.stringify(badH));
 
   // 8 · Pounds, not feet: the Duct Schedule, gauge and bid weight; sign off in Bid Check.
   R.caption('', 'Pounds, not feet.');
@@ -1023,10 +1172,9 @@ async function recordHvac(page, dir, setPdf) {
   await R.hold(1.0);
   await R.moveToEl('#ductScheduleClose', 0.35); await R.click();
   await page.waitForFunction(() => !document.querySelector('#ductScheduleModal.visible'), { timeout: 5000 });
-  // Bid Check, honest: three rooms boxed, one served, and the row says which two are short.
-  // "Fits the roof" computes itself once the deck height is known (12 ft), so it is green
-  // without a tick.
-  R.caption('', 'Bid Check: two rooms still short.');
+  // Bid Check: three rooms boxed, three served, the system inside its capacity. "Fits the
+  // roof" computes itself once the deck height is known (12 ft), so it is green without a tick.
+  R.caption('', 'Bid Check: every room served.');
   await page.evaluate(() => { const s = window.state; s.bidCheckCollapsed = false; window.App.renderBidCheck && window.App.renderBidCheck(); });
   await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-rooms-served"]', 0.6); await R.hold(1.0);
   R.caption('', 'Fits the roof: computed, green.');

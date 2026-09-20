@@ -1,6 +1,6 @@
 {
   "film": "hvac",
-  "duration": 124.88,
+  "duration": 128.58,
   "chapters": [
     {
       "name": "Scale",
@@ -10,17 +10,17 @@
     {
       "name": "Rooms",
       "start": 10.38,
-      "end": 49.67
+      "end": 51.63
     },
     {
       "name": "Duct",
-      "start": 49.67,
-      "end": 104.42
+      "start": 51.63,
+      "end": 106.38
     },
     {
       "name": "Pricing",
-      "start": 104.42,
-      "end": 124.88
+      "start": 106.38,
+      "end": 128.58
     }
   ],
   "beats": [
@@ -30,11 +30,7 @@
     },
     {
       "t": 2.38,
-      "text": "Name the working sheet: A-101 · First Floor Plan."
-    },
-    {
-      "t": 5.83,
-      "text": "Open sheet A-101, the office suite's floor plan."
+      "text": "Name the working sheet A-101 · First Floor Plan, then open it."
     },
     {
       "t": 7.04,
@@ -46,11 +42,7 @@
     },
     {
       "t": 31.13,
-      "text": "Set up the rooftop unit: RTU-1, 3,000 CFM, 0.8 inches of static pressure."
-    },
-    {
-      "t": 37.96,
-      "text": "Place the unit on the roof, over the corridor."
+      "text": "Set up the rooftop unit RTU-1 (3,000 CFM, 0.8 in. static), then place it over the corridor."
     },
     {
       "t": 38.79,
@@ -61,71 +53,71 @@
       "text": "Three diffusers are not enough air for this room."
     },
     {
-      "t": 44.58,
+      "t": 45.21,
       "text": "The fourth meets the room's airflow, and its tag turns green."
     },
     {
-      "t": 45.46,
+      "t": 47.42,
       "text": "Place diffusers in every other room."
     },
     {
-      "t": 49.67,
+      "t": 51.63,
       "text": "Trace the main supply duct, starting at the unit."
     },
     {
-      "t": 52.42,
+      "t": 54.38,
       "text": "Press S to step the duct size down after each branch takes its air."
     },
     {
-      "t": 65.17,
+      "t": 67.13,
       "text": "Run a branch duct into each room. The app counts each tap fitting."
     },
     {
-      "t": 75.33,
+      "t": 77.29,
       "text": "For the last branch, the app suggests the size from the room's airflow."
     },
     {
-      "t": 79.38,
+      "t": 81.33,
       "text": "Add the return air: two grilles and a return duct back to the unit."
     },
     {
-      "t": 86.33,
+      "t": 88.29,
       "text": "Place the thermostat."
     },
     {
-      "t": 89.88,
+      "t": 91.83,
       "text": "Add an exhaust fan, EF-1, with a grille in each restroom."
     },
     {
-      "t": 104.42,
+      "t": 106.38,
       "text": "Open the duct schedule: every duct size with its metal gauge and weight."
     },
     {
-      "t": 107.79,
+      "t": 109.75,
       "text": "Fittings are counted from the drawing. Flexible duct is listed per diffuser."
     },
     {
-      "t": 110.63,
+      "t": 112.58,
       "text": "The total sheet-metal weight to bid."
     },
     {
-      "t": 112.83,
+      "t": 114.79,
       "text": "The bid check confirms every room gets its air and the unit has the capacity."
     },
     {
-      "t": 115.58,
+      "t": 117.54,
       "text": "It checks the unit's fan can push air down the longest duct path."
     },
     {
-      "t": 117.33,
+      "t": 119.92,
       "text": "Tick off the thermostat location as confirmed."
     },
     {
-      "t": 118.46,
+      "t": 122.17,
       "text": "Hide the marks, then show them again, to check the floor for anything missed."
     },
     {
-      "t": 123.88,
+      "t": 124.54,
       "text": "Copy the duct schedule into the pricing app."
     }
   ]

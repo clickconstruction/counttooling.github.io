@@ -30,11 +30,7 @@
     },
     {
       "t": 2.25,
-      "text": "Name the working sheet: P-101 · Plumbing Plan."
-    },
-    {
-      "t": 5.46,
-      "text": "Open sheet P-101, the restaurant's plumbing plan."
+      "text": "Name the working sheet P-101 · Plumbing Plan, then open it."
     },
     {
       "t": 6.67,
@@ -65,7 +61,7 @@
       "text": "Hide the marks, then show them again, to check the sheet for anything missed."
     },
     {
-      "t": 46,
+      "t": 43.33,
       "text": "Copy the finished takeoff into the pricing app."
     }
   ]

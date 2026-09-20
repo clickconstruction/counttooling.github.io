@@ -308,7 +308,8 @@ async function captureResults(page, cam) {
 // label is what the report and the sidebar call the sheet ("P-101 · Plumbing Plan"), instead of
 // the intake's default "sample-set.pdf, p24".
 async function nameWorkingSheet(page, R, label) {
-  R.caption('', 'Name the working sheet: ' + label + '.');
+  // CAPTION-DWELL: this line also covers the sheet opening (its own "Open sheet…" caption sat 1.2 s).
+  R.caption('', 'Name the working sheet ' + label + ', then open it.');
   await R.moveToEl('#preparePdfPageTab', 0.3); await R.click();
   await R.hold(0.1);
   await R.moveToEl('#preparePdfName', 0.25); await R.click();
@@ -560,7 +561,6 @@ async function recordPlumbing(page, dir, setPdf) {
   await page.evaluate(bigMarks);
 
   // 2 · P-101 opens. Push in from the sheet to the plan.
-  R.caption('', 'Open sheet P-101, the restaurant\'s plumbing plan.');
   await R.setCamera(CAM_SHEET);
   await page.waitForTimeout(500);
   await R.hold(0.25);
@@ -693,15 +693,14 @@ async function recordPlumbing(page, dir, setPdf) {
     const App = window.App, hide = App.hideModal;
     App.hideModal = (id) => { if (id === 'pipeToolingCopiedModal') return; return hide(id); };
   });
+  R.caption('', 'Copy the finished takeoff into the pricing app.');   // CAPTION-DWELL: from the first move, so it is read while it happens
   await R.moveToEl('#forPipeTooling', 0.6); await R.click();
   await page.waitForTimeout(150);
   await R.moveToEl('#forPipeToolingMenu .pipe-tooling-option[data-mode="all"]', 0.3); await R.click();
   await page.waitForTimeout(250);
   await R.moveToPt(B(520, 330), 0.35);   // off the sidebar, so no button sits highlighted under "Done."
   await page.evaluate(() => { const m = document.getElementById('pipeToolingCopiedModal'); if (m && !m.classList.contains('visible')) window.App.showModal('pipeToolingCopiedModal'); });
-  await R.hold(1.3);
-  R.caption('', 'Copy the finished takeoff into the pricing app.');
-  await R.hold(1.0);
+  await R.hold(2.3);
   await captureResults(page, CAM_SHEET);
   console.log('\n  ' + R.n + ' frames');
   return R.n;
@@ -756,7 +755,6 @@ async function recordElectrical(page, dir, setPdf) {
   await page.evaluate(bigMarks);
 
   // 2 · A-101 opens. Push in from the sheet to the plan.
-  R.caption('', 'Open sheet A-101, the office suite\'s floor plan.');
   await R.setCamera(CAM_SHEET);
   await page.waitForTimeout(500);
   await R.hold(0.25);
@@ -989,6 +987,7 @@ async function recordElectrical(page, dir, setPdf) {
     let seen = false;
     new MutationObserver(() => { const v = m.classList.contains('visible'); if (v) seen = true; else if (seen) m.classList.add('visible'); }).observe(m, { attributes: true, attributeFilter: ['class'] });
   });
+  R.caption('', 'Send the finished takeoff to the estimating app for pricing.');
   await R.moveToEl('#forTakeoffTooling', 0.6); await R.click();
   await page.waitForTimeout(200);
   const menuOpen = await page.evaluate(() => !!document.querySelector('#forTakeoffToolingMenu.visible'));
@@ -996,9 +995,7 @@ async function recordElectrical(page, dir, setPdf) {
   await page.waitForTimeout(400);
   console.log('\n  hand-off toast: ' + JSON.stringify(await page.evaluate(() => ({ text: document.getElementById('airboardToastText').textContent, visible: document.getElementById('airboardToastModal').classList.contains('visible'), modals: [...document.querySelectorAll('.modal-overlay.visible')].map((x) => x.id) }))));
   await R.moveToPt(B(560, 250), 0.35);
-  await R.hold(1.3);
-  R.caption('', 'Send the finished takeoff to the estimating app for pricing.');
-  await R.hold(1.0);
+  await R.hold(2.3);
   await captureResults(page, CAM_SHEET);
   console.log('\n  ' + R.n + ' frames');
   return R.n;
@@ -1054,7 +1051,6 @@ async function recordHvac(page, dir, setPdf) {
   await page.evaluate(() => { const s = window.state; s.counterSettings = Object.assign({}, s.counterSettings, { size: 44, ringSize: 150, outlineSize: 2, numberSize: 16 }); window.App.renderAnnotations(); window.App.updateUI(); });
 
   // 2 · A-101 opens. Push in from the sheet to the plan.
-  R.caption('', 'Open sheet A-101, the office suite\'s floor plan.');
   await R.setCamera(CAM_SHEET);
   await page.waitForTimeout(500);
   await R.hold(0.25);
@@ -1171,10 +1167,9 @@ async function recordHvac(page, dir, setPdf) {
   // 5 · The system first, then its unit. Everything after it lands in the group; the unit is a
   //     counter named for the tag, which is how the system knows where its equipment is and
   //     what arms the riser when a run starts on it. The ESP arms the static-path check.
-  R.caption('', 'Set up the rooftop unit: RTU-1, 3,000 CFM, 0.8 inches of static pressure.');
+  R.caption('', 'Set up the rooftop unit RTU-1 (3,000 CFM, 0.8 in. static), then place it over the corridor.');
   await makeSystem('RTU-1', '3000', '0.8');
   await createNamed('RTU-1', '#e8c547', 'RTU');
-  R.caption('', 'Place the unit on the roof, over the corridor.');
   await R.moveToPt(RTU_SPOT, 0.45); await R.click();
   await page.evaluate(endTool);
   await R.hold(0.3);
@@ -1185,10 +1180,10 @@ async function recordHvac(page, dir, setPdf) {
   await quickAddH('12x12', 'Supply Diffuser', '150', true);
   R.caption('', 'Three diffusers are not enough air for this room.');
   for (const [i, p] of DIFF_OPEN_H.slice(0, 3).entries()) { await R.moveToPt(p, i ? 0.28 : 0.45); await R.click(); await R.hold(0.1); }
-  await R.hold(0.35);
+  await R.hold(0.95);   // CAPTION-DWELL: each of these two beats holds long enough to read
   R.caption('', 'The fourth meets the room\'s airflow, and its tag turns green.');
   await R.moveToPt(DIFF_OPEN_H[3], 0.32); await R.click();
-  await R.hold(0.45);
+  await R.hold(1.8);
   R.caption('', 'Place diffusers in every other room.');
   for (const [i, p] of DIFF_REST_H.entries()) { await R.moveToPt(p, i ? 0.2 : 0.5); await R.click(); }
   await page.evaluate(endTool);
@@ -1338,10 +1333,10 @@ async function recordHvac(page, dir, setPdf) {
   await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-rooms-served"]', 0.6); await R.hold(0.9);
   await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-systems-capacity"]', 0.35); await R.hold(0.9);
   R.caption('', 'It checks the unit\'s fan can push air down the longest duct path.');
-  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-static-path"]', 0.45); await R.hold(1.3);
+  await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-static-path"]', 0.45); await R.hold(1.9);
   R.caption('', 'Tick off the thermostat location as confirmed.');
   await R.moveToEl('#bidCheckList .bid-check-row[data-row-id="duct-controls"] .bid-check-box', 0.45); await R.click();
-  await R.hold(0.6);
+  await R.hold(1.7);
 
   // 9 · Nothing missed: the plan, marks off, marks on.
   R.caption('', 'Hide the marks, then show them again, to check the floor for anything missed.');
@@ -1362,6 +1357,7 @@ async function recordHvac(page, dir, setPdf) {
     let seen = false;
     new MutationObserver(() => { const v = m.classList.contains('visible'); if (v) seen = true; else if (seen) m.classList.add('visible'); }).observe(m, { attributes: true, attributeFilter: ['class'] });
   });
+  R.caption('', 'Copy the duct schedule into the pricing app.');
   await R.moveToEl('#ductScheduleBtn', 0.5); await R.click();
   await page.waitForSelector('#ductScheduleModal.visible', { timeout: 5000 });
   await R.moveToEl('#ductScheduleCopy', 0.45); await R.click();
@@ -1370,9 +1366,7 @@ async function recordHvac(page, dir, setPdf) {
   await R.moveToEl('#ductScheduleClose', 0.3); await R.click();
   await page.waitForFunction(() => !document.querySelector('#ductScheduleModal.visible'), { timeout: 5000 });
   await R.moveToPt(B(560, 250), 0.35);
-  await R.hold(1.2);
-  R.caption('', 'Copy the duct schedule into the pricing app.');
-  await R.hold(1.0);
+  await R.hold(2.2);
   await captureResults(page, CAM_SHEET);
   console.log('\n  ' + R.n + ' frames');
   return R.n;

@@ -106,7 +106,18 @@ test.describe('Turn In is not a force turn-in', () => {
 
       // --- the release --------------------------------------------------
       await banner.click();
-      await expect(page.locator('#turnedInToastModal')).toHaveClass(/visible/, { timeout: 15000 });
+      // TURNIN-FLAKE: this wait timed out once with nothing to say why. A Turn In that does not
+      // end in the turned-in card ends in a toast or a recovery dialog, and the save-status log
+      // names the stage it stopped at, so a timeout here reports all three.
+      await expect(page.locator('#turnedInToastModal')).toHaveClass(/visible/, { timeout: 15000 }).catch(async (err) => {
+        const why = await page.evaluate((mark) => ({
+          log: (window.App.getSaveStatusLog() || []).slice(mark).map((e) => (e.type || e.kind) + (e.message ? ': ' + e.message : '')),
+          toasts: [...document.querySelectorAll('#toastRegion .toast-card.visible, .toast.visible, #toast.visible')].map((t) => t.textContent.trim()),
+          dialogs: [...document.querySelectorAll('.modal-overlay.visible')].map((m) => m.id),
+          banner: (document.querySelector('#headerEditStatusBanner .header-edit-status-btn') || {}).textContent,
+        }), logMark);
+        throw new Error('flag-on Turn In never showed the turned-in card: ' + JSON.stringify(why, null, 1) + '\n' + err.message);
+      });
       await expect(page.locator('#turnedInToastText')).toHaveText('Project turned in.');
       // Give both refreshes (realtime UPDATE + the handler's own) time to land.
       await page.waitForTimeout(3000);

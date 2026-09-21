@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(turn-in): the flag-on Turn In wait reports why it timed out (2026-09-20)
+
+Punch row **TURNIN-FLAKE**, worked and still open. Once, in about sixteen parallel runs of the
+five cloud spec files, turn-in-self-release.spec.js's flag-on Turn In never showed "Project turned
+in." inside its 15 s wait, and the failure said nothing else. Six more parallel runs were green,
+so it was not reproduced. What changed: that wait now fails with the save-status log since the
+click, the visible toasts, the open dialogs and the banner's text, so the next occurrence names
+its cause instead of timing out mute. The candidates, from reading `doTurnIn` (save-engine.js):
+its refusals end in a plain toast, not the turned-in card: the pre-probe reading the connection
+as offline (likelier with four workers on one account), "Sync in progress, try again in a
+moment", and "Turn In is already running".
+
+Found while stressing it (every Supabase call delayed 2.5 s, test-only): the "Project from Last
+Session" prompt opened over the spec's Save Project dialog. The prompt is deferred while another
+dialog is up and retried every second, but nothing checks that the user has opened a plan in the
+meantime. That is a real hazard on a slow connection, in backup-sensitive code, so it is punch
+row **RESTORE-LATE** rather than a drive-by fix.
 ## fix(film): a room drag no longer misses in a full render (2026-09-20)
 
 Punch row **FILM-DRAG**, closed. Two of three full HVAC renders stopped at `boxRoom`'s wait for

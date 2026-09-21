@@ -95,7 +95,8 @@ rendered live: the reference's feet beside the reader's, and the run a short one
 ## Where it lives
 
 - **features/course-plumbing.js**, a registry feature file: the chapters, their seeds and their
-  do-it-for-me actions, registered on the tour engine as `course:plumbing:<id>`. It reads
+  seam actions (the engine's `App.tutorialDoStep`, since main retired Do it for me for on-sheet
+  targets), registered on the tour engine as `course:plumbing:<id>`. It reads
   `App.lessonKit` (the sheet-opening, seeding and marking helpers features/lessons.js already has,
   now exposed) at call time.
 - **The Learn menu** gains a third section under the lessons: the course, with a lede, a chapter
@@ -105,7 +106,7 @@ rendered live: the reference's feet beside the reader's, and the run a short one
   its plumbing"), Project Settings → Help → "plumbing course", `/app/?course=plumbing` (the menu,
   scrolled to the course), `/app/?chapter=plumbing:<id>`.
 - **Telemetry** rides `tour_step` (`tour: 'course:plumbing:<id>'`). No new event type.
-- **Specs**: course-plumbing.spec.js walks every chapter's do-it-for-me path on real state and
+- **Specs**: course-plumbing.spec.js walks every chapter through the engine's seam on real state and
   pins the takeoff each claims, refuses the wrong click and checks the hint that says why, and
   pins the reference and the compare card; teaching-labels.test.js reads the course file too.
 - **Three small product changes the course needed**: a tag may carry a hyphen or lead with a

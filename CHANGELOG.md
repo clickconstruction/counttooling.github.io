@@ -28,7 +28,10 @@ rework below.
   of a lesson, resumable, ticked on the device: Read the sheet, The fixtures and where they sit,
   Water, Waste and vent, The riser, Gas, The enlarged plan and the typical, The whole sheet, Check
   it and hand it off. It runs on the lesson set and reads `App.lessonKit` (features/lessons.js, now
-  exposed) at call time; chapters stand alone the way lessons do.
+  exposed) at call time; chapters stand alone the way lessons do. Merged onto the on-sheet targets
+  engine the same day: every sheet step declares its circles or boundary and counts only inside
+  them, a QUESTION step deliberately draws none (a circle on the answer would be the answer), and
+  each step's action is the engine's seam, `App.tutorialDoStep`, for the spec and the finish button.
 - **A question is answered with a click.** "Which hand sink serves the cook line?" passes only on
   the sink by the range and tells a wrong click which sink that was. "Put a note on a fixture whose
   waste must never enter the interceptor" passes on a water closet, a lavatory or the mop sink and

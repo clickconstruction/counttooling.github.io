@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(restore): a last-session offer no longer lands on a plan opened meanwhile (2026-09-20)
+
+Punch row **RESTORE-LATE**, closed. The "Project from Last Session" prompt is offered when boot's
+sign-in resolves, and deferred (retried on every dialog close, with a 1 s poll) while a tour or a
+dialog is up. Nothing checked whether the user had opened a plan in the meantime, so on a slow
+connection they could upload a plan, answer Load Annotations, and have "reopen your last
+project?" land on top of their Save dialog.
+
+The rule, decided with the trade-off laid out: **drop the cloud offer, keep the on-device one.**
+
+- A **cloud** offer (`{ cloudLast }`) is only a pointer. Once a plan is open
+  (`state.pages.length > 0`) it is dropped, whether it arrives then or a deferred retry finds it
+  so. Nothing is consumed: `clickcount-last-project` stays, the project is in Load Project, and
+  the offer returns next boot. The drop is a `restore_prompt_dropped` save-status event.
+- A **local** offer (unsaved on-device work) still shows over an open plan, as before. It is the
+  only way back to that work: the open plan's own backup outranks the held record at the next
+  boot (save-utils.js `pickBootRestoreCandidate`), so dropping it would lose unsaved work without
+  the user ever being asked. The offer after a tour ends is unchanged for the same reason.
+
+One check at the top of `openLastSessionRestorePrompt` (features/restore-last-session.js), which
+the deferred retry also goes through. The T1-01 write hold is untouched: a dropped offer never
+became `pendingRestore`. Gates: restore-last-session.spec.js (6, the new case covers the deferred
+retry, the on-the-spot drop, and the local offer still showing), the full local suite,
+`npm run check`.
+
 ## test(turn-in): the flag-on Turn In wait reports why it timed out (2026-09-20)
 
 Punch row **TURNIN-FLAKE**, worked and still open. Once, in about sixteen parallel runs of the

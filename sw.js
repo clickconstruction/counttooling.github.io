@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '43eb96d2d5eb';
+const CACHE_VERSION = 'fef77a843537';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -275,7 +275,7 @@ const PRECACHE_SHA256 = {
   '/features/share-links.js': '4f7fcaf5af80c431064081b1d3d3d7388943b48ef94983cb83fb1f2c3dab33a9',
   '/features/import-clear.js': '2a99d66d53a20c82784efd6574edf1fc4399bdbab45e93911a0c8534c6e5d804',
   '/features/zone-modals.js': 'f722f6af79ef54262e02e0afbf0d2ff4f3f28867f40bccd64fd6911daab344b2',
-  '/features/restore-last-session.js': '18979633e16fab836748b33481238c6d1437ef2c80483180f60b777d123fbf56',
+  '/features/restore-last-session.js': '8b6aaa81ee803f78eca960c6f4f467d559a0468a79297fbe27a1b9075d7e53ad',
   '/features/summary-detail.js': '3ddb0f2ea207bc53a913aede32cfbdc10de8c1af1ea48bdbdd982ccf49bc27b3',
   '/features/room-sizer.js': '4375ad844004bca68c92030868c051fb8f4bfb99e36258ec62ecfbeb34887691',
   '/features/burger-menu.js': 'defc53bc9189dc014ca34f7f6e679881b2f00dbd499592b07faec95edaa3cc9f',

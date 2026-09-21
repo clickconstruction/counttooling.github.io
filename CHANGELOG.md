@@ -26,6 +26,39 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## feat(intake): sheets name themselves from the title block (2026-09-20)
+
+Punch row **SHEET-TITLE**, closed. A page's default label was the file name and a page number,
+"bid-set.pdf, p24", until somebody typed a better one in Prepare PDF. The app now reads the sheet's
+number and title off its own title block, the way D24 reads room names off the plan, and labels
+the page "P-101 · Plumbing Plan". The label already flowed to the sidebar, the report headings,
+the legend title, a line type's "on pages" list and Prepare PDF's tiles and Page Name tab, so this
+is the reader plus one default.
+
+- **The reader** is pure, sheet-title-model.js (`readSheetTitle`, unit-tested). The NUMBER is a
+  whole text item shaped like a sheet number (A-101, M2.01, FP-101, E001) inside the title-block
+  zone (the bottom 28% of the sheet or its right-hand 22%): the tallest wins, a SHEET / DWG NO
+  caption and the bottom-right corner break ties, so a panel tag on the plan ("LP-1") or a
+  referenced sheet in a keynote is not it. The TITLE is the line a TITLE caption points at, or
+  one that names a kind of drawing (PLAN, ELEVATIONS, SCHEDULES…) nearest the number; the value
+  under a PROJECT or CLIENT caption is never it; two or three stacked lines are joined; a shouted
+  title is calmed to "First Floor Plan" (HVAC, RCP and numbers stand). No title: the number alone.
+- **Conservative on purpose.** A label nobody typed must be right or absent: no text layer (a
+  scan), no title block, or no sheet number reads as nothing and "file.pdf, pN" stands.
+- **The intake** (features/pdf-intake.js `applySheetTitles`) reads each NEW page once, on a fresh
+  upload and on Add pages, before Prepare PDF opens, so the trim grid shows the read names. It
+  replaces only the intake's own default (`isDefaultPageLabel`), never a typed name or a saved
+  project's label. A sheet stored sideways is tried in the other three rotations from the same
+  text fetch. Sequential under a 2 s budget: thirty sheets read in about 0.3 s, and a huge set
+  stops reading rather than holding the upload (the rest keep their file names).
+- features/tag-reader.js publishes its pdf.js-content conversion as `App.textItemsFromContent`,
+  which the intake shares; its own read is unchanged.
+
+Both sample sheets read ("A-101 · First Floor Plan", "P-101 · Plumbing Plan"). The project is
+still named for the file. The hero films type the sheet's name on camera as before; the field
+now arrives already filled. Gates: sheet-title-model.test.js (11), sheet-title.spec.js (3, a
+sideways sheet and the Page Name tab among them), the full local suite, `npm run check`.
+
 ## fix(landing): no hero caption sits under two seconds (2026-09-20)
 
 Punch row **CAPTION-DWELL**, closed. A few captions in the hero films were on screen too briefly

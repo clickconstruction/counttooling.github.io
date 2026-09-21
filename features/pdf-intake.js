@@ -20,6 +20,36 @@
     return s || 'Untitled';
   }
 
+  // SHEET-TITLE: a page's default label is what its own title block says, "P-101 · Plumbing
+  // Plan", when the sheet's text layer gives it up; "bid-set.pdf, p24" otherwise (a scan, no
+  // title block, or the read running past its budget). Only the intake's own default is ever
+  // replaced (sheet-title-model.js isDefaultPageLabel), so a name somebody typed is safe. The
+  // reader looks where a title block sits on an upright sheet; a sheet stored sideways is tried
+  // in the other three rotations from the same one text fetch. Sequential with a wall-clock
+  // budget: thirty sheets read in well under a second, and a huge set stops reading rather than
+  // holding the upload. `pages` are intake rows ({ pdfPage, label, rotation }).
+  const SHEET_TITLE_BUDGET_MS = 2000;
+  async function applySheetTitles(pages) {
+    const M = window.SheetTitleModel;
+    if (!M || !App.textItemsFromContent || !Array.isArray(pages)) return 0;
+    const started = Date.now();
+    let named = 0;
+    for (const page of pages) {
+      if (Date.now() - started > SHEET_TITLE_BUDGET_MS) break;
+      if (!page || !page.pdfPage || !M.isDefaultPageLabel(page.label)) continue;
+      try {
+        const tc = await page.pdfPage.getTextContent();
+        const base = page.rotation ?? 0;
+        for (const turn of [0, 90, 180, 270]) {
+          const vp = page.pdfPage.getViewport({ scale: 1, rotation: (base + turn) % 360 });
+          const read = M.readSheetTitle(App.textItemsFromContent(tc, vp), vp.width, vp.height);
+          if (read) { page.label = read.label; named++; break; }
+        }
+      } catch (_) { /* no text layer to read: the file-name label stands */ }
+    }
+    return named;
+  }
+
   async function loadTestPdf() {
     // A2: When a project is already loaded, refuse to clobber its name/buffer.
     // The Advanced "Load test PDF" entry point is a dev fixture and should not
@@ -90,6 +120,7 @@
           newPages.push({ pdfPage, label, rotation: 0 });
         }
       }
+      await applySheetTitles(newPages);
     } catch (err) {
       // B2 / J2 friction #7: non-blocking toast (T2-04 toast region), not
       // alert() — same feedback class as the fresh path's corrupt-PDF catch.
@@ -426,6 +457,7 @@
         }
         if (!App.state.pendingCanvasLoad) App.markProjectDirty();
       }
+      await applySheetTitles(App.state.pages.slice(startPageIdx));
     } catch (err) {
       console.error('[Upload PDF]', err);
       // Roll back everything this upload touched: the pages/canvas-ids pushed

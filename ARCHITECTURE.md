@@ -28,8 +28,8 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,456 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 3,074 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 8,455 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 3,100 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,897 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 3,595 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
@@ -1509,3 +1509,4 @@ embedded in some early filenames, e.g. `20260301171417_001_initial_schema.sql`;
 they are human cross-reference, not a second ordering.) Apply in filename
 order; see [SUPABASE_SETUP.md](SUPABASE_SETUP.md) for per-migration notes. New
 migrations should be applied via the Supabase MCP `apply_migration` tool.
+| [signin-keeps-takeoff.spec.js](signin-keeps-takeoff.spec.js) | Cloud-gated Playwright regression (self-skips without dev auth) for the sign-in wipe: a takeoff made signed out, then a sign-in from inside the app (the Sign In dialog's test-user button), against the real project's `force_reload_after` stamp. Case 1, no `clickcount-last-global-reload` stamp: no reload, the plan and the three marks stay, the stamp is adopted (`global_reload_baseline`). Case 2, a stale stamp: the force reload happens, the takeoff backups survive its cache clear, and Keep on "Project from Last Session" brings the three marks back. Deletes the project autosave creates. `npx playwright test signin-keeps-takeoff.spec.js` |

@@ -226,6 +226,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/hvac/grease-duct/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/hvac/room-airflow/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

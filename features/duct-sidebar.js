@@ -154,6 +154,7 @@
         row.innerHTML = '<span class="duct-airside-swatch" style="background:' + color + '" title="' + AIRSIDE_LABELS[airside] + '"></span>'
           + '<span class="name duct-run-name">' + esc(run.name || 'Duct run') + '</span>'
           + (run.orientation === 'edge' ? '<span class="duct-orientation-tag" title="Hangs on edge, the larger side down; Fits the roof reads it">on edge</span>' : '')
+          + (isGreaseMaterial(run.material) ? '<span class="duct-orientation-tag" title="Welded grease duct: priced at its own fixed gauge and sheet weight, never the gauge table (IMC 506.3.1.1)">' + esc(DUCT_MATERIALS[run.material].short) + '</span>' : '')
           + '<span class="badge"' + (tally.factor !== 1 ? ' title="' + esc(repeatsTitle(tally.placed.totalLengthFt, tally.placed.totalPounds, tally.totalLengthFt, tally.totalPounds)) + '"' : '') + '>' + fmtFt(tally.totalLengthFt) + ' · ' + fmtLb(tally.totalPounds) + ' lb</span>';
         row.onclick = () => {
           if (isSelected) {
@@ -172,7 +173,7 @@
         tally.rows.forEach((r) => {
           const seg = document.createElement('div');
           seg.className = 'duct-seg-row';
-          seg.textContent = r.sizeKey + (r.gauge ? ' ' + r.gauge + ' ga' : '') + ' · ' + fmtFt(r.lengthFt) + ' · ' + fmtLb(r.pounds);
+          seg.textContent = ductRowLabel(r) + (r.gauge ? ' ' + r.gauge + ' ga' : '') + ' · ' + fmtFt(r.lengthFt) + ' · ' + fmtLb(r.pounds);
           wrap.appendChild(seg);
         });
         const fl = fittingsLineFor(entry);

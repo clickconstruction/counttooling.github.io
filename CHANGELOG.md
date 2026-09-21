@@ -13,6 +13,30 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(duct): the grease duct is a real run, and the fire damper is counted (2026-09-21)
+
+The two gaps the HVAC course named on the day it merged. A duct run now has a **material**
+(duct-model.js `DUCT_MATERIALS`, D25): galvanized by default and keyless on the run, or welded
+black steel or welded stainless for a hood's grease duct, from the Duct dialog's Material select or
+the run's right-click menu (which also gained an Airside chip). A grease run prices on its own row
+of the Duct Schedule at the gauge the code fixes (IMC 506.3.1.1: 16 ga carbon steel, 18 ga
+stainless) and that metal's sheet weight, its fittings the same way, and the per-size gauge override
+never reaches it; the sidebar, the schedule, the copy rows, the report and the canvas chip all name
+the metal. New rule page: [grease-duct](content/rules/hvac/grease-duct.md), drift-checked against
+the table. The HVAC Quick tab has a **Fire Damper** type (the Fire/Smoke Damper symbol).
+
+- **The set**: M-101 draws the grease duct darker from the hood collar to a roof curb, sloped with
+  a cleanout at its elbow, and dots the kitchen's hall wall as 1-hr rated with an FD at each of its
+  two duct penetrations (the kitchen branch, and the main above the kitchen door). The legend and
+  keynotes say so, and that nothing goes in the grease duct.
+- **The course**, chapter 7: trace the grease duct with its material (a galvanized trace is sent to
+  the run menu), read what the Schedule did with it, count a fire damper at each penetration (a wall
+  that is not rated is refused with the keynote), and why the grease duct would still get none.
+  Chapter 9 ticks the fire-damper row as a count you can defend. The reference grew to 26 marks and
+  a ninth duct row.
+- Specs: course-hvac.spec.js checks the grease row (16 ga, 11.78 lb/ft, 10.1 ft, its elbow in black
+  steel), the two dampers, both refusals; duct-model.test.js covers the material end to end.
+
 ## feat(course): the HVAC course, nine chapters on how a restaurant gets its air (2026-09-21)
 
 [HVAC-COURSE.md](journeys/plans/HVAC-COURSE.md). The third course, the same way as the two before

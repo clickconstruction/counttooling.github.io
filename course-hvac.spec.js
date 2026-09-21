@@ -42,8 +42,8 @@ async function walk(page) {
 const ann = (page, i) => page.evaluate((idx) => { const a = window.App.getActiveAnnotations(window.state.pages[idx]); return JSON.parse(JSON.stringify(a)); }, i);
 const countOf = (page, tag) => page.evaluate((t) => { const c = window.state.counters.find((x) => String(x.tag || '').toUpperCase() === t || new RegExp('^' + t + '( ·|$)', 'i').test(x.name)); if (!c) return -1; let n = 0; window.state.pages.forEach((p) => (p.canvases || []).forEach((cv) => { n += (((cv.annotations || {}).counterMarkers || {})[c.id] || []).length; })); return n; }, tag);
 const ductRow = (page, id) => page.evaluate((k) => { const bc = window.App.getDuctBidCheck(); const r = bc && (bc.rows || []).find((x) => x.id === k); return r ? { kind: r.kind, verdict: r.verdict, detail: r.detail } : null; }, id);
-const schedule = (page) => page.evaluate(() => { const s = window.App.computeDuctSchedule(); return { rows: s.straightRows.map((r) => [String(r.sizeKey), Math.round(r.lengthFt * 100) / 100, r.gauge]), fittings: s.fittingRows.map((r) => [r.type, r.count]), lb: Math.round(s.bidWeightLb) }; });
-const runs = (page) => page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).map((r) => ({ airside: r.airside, liner: r.linerType, sizes: r.segments.map((s) => (s.size.kind === 'round' ? s.size.d + '"ø' : s.size.w + 'x' + s.size.h)) })));
+const schedule = (page) => page.evaluate(() => { const s = window.App.computeDuctSchedule(); return { rows: s.straightRows.map((r) => [String(r.sizeKey), Math.round(r.lengthFt * 100) / 100, r.gauge, Math.round(r.lbPerFt * 100) / 100, r.material || null]), fittings: s.fittingRows.map((r) => [r.type, r.count, r.material || null]), lb: Math.round(s.bidWeightLb) }; });
+const runs = (page) => page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).map((r) => ({ airside: r.airside, liner: r.linerType, material: r.material || null, sizes: r.segments.map((s) => (s.size.kind === 'round' ? s.size.d + '"ø' : s.size.w + 'x' + s.size.h)) })));
 const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), id);
 const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
@@ -107,25 +107,32 @@ const EXPECT = {
     const r = await runs(page);
     expect(r.find((x) => x.sizes.join() === '8"ø').airside).toBe('exhaust');
     expect(r.some((x) => x.sizes.join() === '20x16')).toBe(true);
-    expect((await ann(page, 0)).notes.some((n) => /welded 16 ga black steel/.test(n.text))).toBe(true);
+    const grease = r.find((x) => x.sizes.join() === '18"ø');
+    expect([grease.airside, grease.material]).toEqual(['exhaust', 'black-steel']);
     expect(await countOf(page, 'MA-1')).toBe(1);
+    expect(await countOf(page, 'Fire Damper')).toBe(2);                                          // the two rated-wall penetrations
     const s = await schedule(page);
     expect(s.rows.some(([k, ft]) => /^8/.test(k) && Math.abs(ft - 27.58) < 0.2)).toBe(true);   // 275 + 56 plan px of round, in ten-foot sticks
+    const gd = s.rows.find(([k]) => /^18/.test(k));
+    expect(gd[2]).toBe(16);                                                                    // the material's fixed gauge, not the table's 24
+    expect(gd[1]).toBeCloseTo(10.08, 1);                                                       // 77 + 44 plan px at 0.75 pt each, 9 pt to the foot
+    expect(gd[3]).toBeCloseTo(11.78, 1);                                                       // π·18/12 × 2.5 lb/ft²
+    expect(s.fittings.some(([t, n, m]) => /elbow/i.test(t) && m === 'black-steel' && n >= 1)).toBe(true);
   },
   whole: async (page) => {
     const ref = await page.evaluate(() => window.App.courseHvacReference());
-    expect(Object.keys(ref.feet)).toEqual(['24x12', '20x12', '16x10', '12x10', '12x8', '10x8', '20x16', '8"ø']);
+    expect(Object.keys(ref.feet)).toEqual(['24x12', '20x12', '16x10', '12x10', '12x8', '10x8', '20x16', '8"ø', '18"ø']);
     const s = await schedule(page);
     const by = Object.fromEntries(s.rows.map(([k, ft]) => [k.replace(/×/g, 'x').replace(/\s/g, ''), ft]));
     for (const k of Object.keys(ref.feet)) { const mine = by[k] != null ? by[k] : by[Object.keys(by).find((x) => x.startsWith(k.replace(/"ø/, ''))) || '']; expect([k, Math.abs((mine || 0) - ref.feet[k]) < 0.1]).toEqual([k, true]); }
-    expect(ref.counts.reduce((t, c) => t + c[1], 0)).toBe(24);
+    expect(ref.counts.reduce((t, c) => t + c[1], 0)).toBe(26);
     expect(await page.locator('#tourBody').innerText().catch(() => '')).not.toContain('Counts short');
   },
   bid: async (page) => {
-    expect(await page.evaluate(() => ['scale-verified', 'duct-oa-code'].map((k) => window.state.bidCheck.manual[k]))).toEqual([true, true]);
+    expect(await page.evaluate(() => ['scale-verified', 'duct-oa-code', 'duct-fire-dampers'].map((k) => window.state.bidCheck.manual[k]))).toEqual([true, true, true]);
   },
 };
-const REVEALS = { sheet: ['what', 'balance'], rooms: ['why', 'deck'], diffusers: ['neck'], system: ['designed'], main: ['why'], plenum: ['static'], exhaust: ['why', 'interlock'], whole: [], bid: ['rows'] };
+const REVEALS = { sheet: ['what', 'balance'], rooms: ['why', 'deck'], diffusers: ['neck'], system: ['designed'], main: ['why'], plenum: ['static'], exhaust: ['why', 'nodamper', 'interlock'], whole: [], bid: ['rows'] };
 
 test.describe('The HVAC course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
@@ -154,7 +161,7 @@ test.describe('The HVAC course: the chapters', () => {
 });
 
 test.describe('The HVAC course: a question is answered with a click', () => {
-  test('the wrong roof key is refused and told why; the wrong duct for the grease note is refused', async ({ page }) => {
+  test('the wrong roof key is refused and told why', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
     await boot(page, '/app/?chapter=hvac:sheet', errors);
@@ -165,6 +172,26 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     await expect(page.locator('#tourStatus')).toHaveText(/EF-1 pulls 2,400 CFM out of the hood/);
     await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => x.name === 'RTU-1'); k.mark(0, c, [k.P(998, 328)]); k.dirty(); });
     await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule', null, { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('a grease run traced galvanized is sent to its material; a fire damper at a wall that is not rated is refused', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:exhaust', errors);
+    await openSheets(page);
+    await gotoStep(page, 'grease');
+    await page.evaluate(() => { const k = window.App.lessonKit; const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.ductRuns.push(window.makeDuctRun({ name: "Hood", airside: "exhaust", vertices: [k.P(836, 323), k.P(836, 400), k.P(880, 400)], segments: [{ startVertexIdx: 0, size: window.makeRoundSize(18) }] })); window.App.reinferDuctFittings(0); k.dirty(); });
+    await page.waitForTimeout(500);
+    await expect(page.locator('#tourStatus')).toHaveText(/galvanized: right-click it and set its Material to Black steel/);
+    await page.evaluate(() => { const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.ductRuns[a.ductRuns.length - 1].material = 'black-steel'; window.App.lessonKit.dirty(); });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'why', null, { timeout: 5000 });
+    await gotoStep(page, 'dampers');
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'Fire Damper', icon: window.App.getOrderedIcons()[0].value, color: '#e85447', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(904, 470)]); k.dirty(); });
+    await page.waitForTimeout(500);
+    await expect(page.locator('#tourStatus')).toHaveText(/That wall is not rated/);
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => x.name === 'Fire Damper'); const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.counterMarkers[c.id] = []; k.mark(0, c, [k.P(572, 296), k.P(904, 296)]); k.dirty(); });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'nodamper', null, { timeout: 5000 });
     expect(errors).toEqual([]);
   });
 

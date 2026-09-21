@@ -75,7 +75,7 @@ const ELECTRICAL_DEFAULTS = {
 };
 const HVAC_DEFAULTS = {
   sizes: ['6"', '8"', '10"', '12"', '14"', '12x12', '24x24'],
-  types: ['Supply Diffuser', 'Return Grille', 'Exhaust Grille', 'Linear Diffuser', 'Thermostat', 'VAV Box', 'Fan Coil', 'RTU', 'Exhaust Fan', 'Damper'],
+  types: ['Supply Diffuser', 'Return Grille', 'Exhaust Grille', 'Linear Diffuser', 'Thermostat', 'VAV Box', 'Fan Coil', 'RTU', 'Exhaust Fan', 'Damper', 'Fire Damper'],
   materials: ['', 'Lay-in', 'Surface', 'Round Neck'],
   // D16: the bundled HVAC symbol (my-counters/hvac/*.svg → CUSTOM_ICONS, set
   // 'hvac') a type starts with — same by-name resolution as electrical. Types
@@ -83,7 +83,7 @@ const HVAC_DEFAULTS = {
   iconNameByType: {
     'Supply Diffuser': 'Supply Diffuser', 'Linear Diffuser': 'Supply Diffuser',
     'Return Grille': 'Return Grille', 'Exhaust Grille': 'Return Grille',
-    'VAV Box': 'VAV Box', RTU: 'RTU', Damper: 'Fire/Smoke Damper',
+    'VAV Box': 'VAV Box', RTU: 'RTU', Damper: 'Fire/Smoke Damper', 'Fire Damper': 'Fire/Smoke Damper',
     Thermostat: 'Thermostat'   // the electrical set's ring-T — the same symbol on an M-sheet
   }
 };

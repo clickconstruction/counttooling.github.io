@@ -176,7 +176,9 @@
         const b = bucket(parent ? parent.pressureClass : '1');
         const factor = ductRepeatFactorForPoint(ductFittingAnchor(f, runs), zones);
         if (factor !== 1) repeated = true;
-        const rf = factor !== 1 ? Object.assign({}, f, { repeat: factor }) : f;
+        // D25: a fitting on a grease run prices as its run's material.
+        const material = parent && isGreaseMaterial(parent.material) ? parent.material : null;
+        const rf = factor !== 1 || material ? Object.assign({}, f, factor !== 1 ? { repeat: factor } : {}, material ? { material } : {}) : f;
         b.fittings.push(rf);
         // D8 §6: one derived Volume damper per live tap (noVd skipped), at
         // the tap's size — same pressure-class bucket as its parent run.
@@ -309,7 +311,7 @@
     const chip = (id) => (App.ruleChipHtml ? ' ' + App.ruleChipHtml(id, { cls: 'rule-chip-th' }) : '');
     html += '<table class="duct-schedule-table"><tr><th>Size</th><th>Gauge' + chip('hvac.duct.gauge-schedule') + '</th><th>LF</th><th>lb/ft' + chip('hvac.duct.sheet-weight') + '</th><th>lb</th></tr>';
     s.straightRows.forEach((r) => {
-      html += '<tr><td class="mono">' + esc(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td class="mono">' + esc(lfLabel(r)) + '</td><td class="mono">' + r.lbPerFt.toFixed(2) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
+      html += '<tr><td class="mono">' + esc(ductRowLabel(r)) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + (r.material ? chip('hvac.duct.grease-duct') : '') + '</td><td class="mono">' + esc(lfLabel(r)) + '</td><td class="mono">' + r.lbPerFt.toFixed(2) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
     });
     html += '<tr class="duct-schedule-total-row"><td>Straight total</td><td></td><td class="mono">' + fmtFt(s.straightTotalFt) + '</td><td></td><td class="mono num">' + fmtLb(s.straightTotalLb) + '</td></tr>';
     html += '</table>';
@@ -326,7 +328,7 @@
         html += '<tr><td colspan="5" class="duct-schedule-empty-cell">No fittings counted. Corners, size steps, and taps count themselves as you trace.</td></tr>';
       }
       s.fittingRows.forEach((r) => {
-        html += '<tr><td>' + esc(FITTING_LABELS[r.type] || r.type) + '</td><td class="mono">' + esc(r.sizeKey) + '</td><td class="mono">' + r.count + '</td><td class="mono">' + r.lbEach.toFixed(1) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
+        html += '<tr><td>' + esc(FITTING_LABELS[r.type] || r.type) + '</td><td class="mono">' + esc(ductRowLabel(r)) + '</td><td class="mono">' + r.count + '</td><td class="mono">' + r.lbEach.toFixed(1) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
       });
       html += '<tr class="duct-schedule-total-row"><td>Fittings total</td><td></td><td></td><td></td><td class="mono num">' + fmtLb(s.fittingsCountedLb) + '</td></tr>';
       html += '</table>';
@@ -445,7 +447,7 @@
     lines.push('');
     lines.push('Straight duct');
     s.straightRows.forEach((r) => {
-      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : 'none'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
+      lines.push([ductRowLabel(r), (r.gauge ? r.gauge + ' ga' : 'none'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
     });
     lines.push(['Straight total', '', fmtFt(s.straightTotalFt), '', fmtLb(s.straightTotalLb) + ' lb'].join('\t'));
     if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));
@@ -453,7 +455,7 @@
     if (s.fittingMode === 'counted') {
       lines.push('Fittings (counted)');
       s.fittingRows.forEach((r) => {
-        lines.push([(FITTING_LABELS[r.type] || r.type), r.sizeKey, String(r.count), r.lbEach.toFixed(1) + ' lb ea', fmtLb(r.pounds) + ' lb'].join('\t'));
+        lines.push([(FITTING_LABELS[r.type] || r.type), ductRowLabel(r), String(r.count), r.lbEach.toFixed(1) + ' lb ea', fmtLb(r.pounds) + ' lb'].join('\t'));
       });
       lines.push(['Fittings total', '', '', '', fmtLb(s.fittingsCountedLb) + ' lb'].join('\t'));
     } else {
@@ -488,7 +490,7 @@
     if (!s) return [];
     const lines = [];
     s.straightRows.forEach((r) => {
-      lines.push([r.sizeKey, (r.gauge ? r.gauge + ' ga' : 'none'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
+      lines.push([ductRowLabel(r), (r.gauge ? r.gauge + ' ga' : 'none'), lfLabel(r), r.lbPerFt.toFixed(2) + ' lb/ft', fmtLb(r.pounds) + ' lb'].join('\t'));
     });
     lines.push(['Straight total', '', fmtFt(s.straightTotalFt), '', fmtLb(s.straightTotalLb) + ' lb'].join('\t'));
     if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));

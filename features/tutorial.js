@@ -7,7 +7,9 @@
  * hangers as child counts, a ×3 typical-floor zone, an RFI note, the proof
  * modal, the PipeTooling hand-off).
  *
- * A step is { id, title, body, kind, target (selector list), check(), action?, hint? }
+ * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold?, cardAt? }
+ * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
+ * whole point is a dialog the reader should get to read)
  * (hint() is the status line while a doing-step's check is failing for a reason
  * worth naming — the prove-the-scale step says what it read).
  * The overlay spotlights the target (a box-shadow cutout that never intercepts
@@ -52,6 +54,7 @@
   const SAMPLE_PLAN = '/samples/sample-plan.pdf';
 
   let active = false;
+  let pending = false;     // a ?tour= start is queued: the boot's restore offer must wait for it
   let tourId = 'electrical';
   let STEPS = [];
   let stepIdx = 0;
@@ -64,7 +67,11 @@
 
   // First visible match of the ladder. While a dialog is open only a control
   // inside it qualifies — the header and sidebar sit under the backdrop.
-  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && (!within || within.contains(el))) return el; } return null; };
+  // A control in the phone's closed sidebar drawer is laid out but parked off the
+  // side of the screen: that is not visible either (a dialog's scrolled-away row,
+  // off the top or bottom, still is: the spotlight scrolls it into view).
+  const onScreenX = (el) => { const r = el.getBoundingClientRect(); return r.right > 0 && r.left < window.innerWidth; };
+  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && onScreenX(el) && (!within || within.contains(el))) return el; } return null; };
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
@@ -173,7 +180,7 @@
     },
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
-      body: '1. In the left sidebar, click BID CHECK to expand it.\nThe app computes conduit fill and voltage drop to the farthest device, compares circuits with the panel schedule, and lists the judgment calls only you can tick. It never blocks an export; it tells you what is open.',
+      body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. It has also caught something: the receptacles you counted first were never wired, so they read as not reached by a run. Voltage drop to the farthest device and the panel cross-check wake up once a run is flagged as the homerun and the panel is on the plan. Below them are the calls only you can tick. It never blocks an export; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
@@ -230,7 +237,7 @@
       action: { label: 'Create it for me', run: addWaterCloset },
     },
     {
-      id: 'place', title: 'Count the Men\'s room', kind: 'do',
+      id: 'place', title: 'Count the water closets', kind: 'do',
       body: 'The counter tool is armed.\n1. Click the first water closet in the stalls on the south wall of Women 108.\n2. Click the second.\n3. Click the third.\nOne click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
       target: ['#annCanvas'],
       check: () => { const c = pCounter(); return !!c && markCount(c.id) >= 3; },
@@ -283,11 +290,12 @@
       body: '1. In the left sidebar, open SUMMARY.\n2. Click the Water Closet total.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
       target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
+      hold: true,   // the step IS the dialog: the reader leaves it with Next, which closes it
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'Under EXPORT OPTIONS in the left sidebar:\n1. [[Copy to PipeTooling]] puts the whole takeoff on the clipboard (counts, feet with the riser inside, hangers under their pipe), ready to paste into the bid.\n2. [[Copy RFI Flags]] puts the questions beside it.\n3. [[Copy Summary]] for an email.\n4. [[Export PDFs]] for a marked-up plan the GC can read.',
+      body: 'Under EXPORT OPTIONS in the left sidebar:\n1. [[Copy to /Tooling]] puts the whole takeoff on the clipboard (counts, feet with the riser inside, hangers under their pipe), ready to paste into the bid.\n2. [[Copy RFI Flags]] puts the questions beside it.\n3. [[Copy Summary]] for an email.\n4. [[Export PDFs]] for a marked-up plan the GC can read.',
       target: ['#forPipeTooling', '#exportOptionsSectionTitle'],
       check: () => true,
     },
@@ -391,7 +399,7 @@
     },
     {
       id: 'legend', title: 'What the sheet says now', kind: 'read',
-      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\'s air line.\n1. Click the SUMMARY heading to open [[Legend Settings]].\nIt gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
+      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\'s air line.\n1. Click the SUMMARY heading to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
       target: ['#legendSettingsBtn', '#legendBtn', '#summarySectionTitle'],
       check: () => true,
     },
@@ -433,7 +441,8 @@
   // and the 1/8" row get picked, the way they will do it on a real sheet — with a
   // direct write as the fallback (specs, a missing modal).
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  async function applyEighthScale() {
+  async function applyEighthScale() { return applyScalePreset('1/8" = 1\'', 72 / 8); }
+  async function applyScalePreset(label, ppu) {
     const p = state().pages[state().currentPage]; if (!p) return;
     try {
       if (App.openScaleModal) {
@@ -441,13 +450,13 @@
         const tab = document.querySelector('#scaleModalTabs .counter-tab[data-tab="presets"]');
         if (tab) tab.click();
         await wait(700);
-        const row = [...document.querySelectorAll('#scalePresetsList button')].find((b) => b.textContent.trim() === '1/8" = 1\'');
+        const row = [...document.querySelectorAll('#scalePresetsList button')].find((b) => b.textContent.trim() === label);
         if (row && document.querySelector('#scaleModal.visible')) { row.click(); await wait(200); }
       }
     } catch (_) { /* fall through to the direct write */ }
     if (App.getPageScale && App.getPageScale(state().currentPage)) return;
     if (App.hideModal) App.hideModal('scaleModal');
-    p.scale = { pixelsPerUnit: 72 / 8, unit: 'ft', label: '1/8" = 1\'' };
+    p.scale = { pixelsPerUnit: ppu, unit: 'ft', label };
     App.markProjectDirty(); App.updateUI(); App.renderAnnotations();
   }
   function pushCounter(c) {
@@ -718,6 +727,7 @@
   }
 
   function el(id) { return document.getElementById(id); }
+  let dragPos = null;      // where the reader dragged the card to, this step
   let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
                              // panel may not have laid out on the first tick); after that the
@@ -725,10 +735,22 @@
   // Step bodies name controls the way they look on screen: [[+ Add]] renders as a
   // button-shaped chip (.tour-ui). Everything else is escaped text.
   const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>');
+  // [Guide name](/guides/slug/) is a link that opens beside the app (site paths only).
+  const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>').replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
   // A body is lines: "1. …" lines are one action each and render as a numbered list;
   // any other line is a short paragraph around them.
-  const bodyHtml = (body) => {
+  // A touch device has no keys and, under 768 px, no sidebar on screen: the
+  // "(or press S)" asides go, and a step that sends the reader to the sidebar
+  // says where a phone keeps it.
+  const isTouch = () => { try { return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768; } catch (_) { return false; } };
+  const isNarrow = () => window.innerWidth < 768;
+  const forTouch = (body) => {
+    let b = String(body).replace(/\s*\((?:or )?press [^)]*\)/gi, '').replace(/^\d+\.\s+Press [^\n]*\n?/gim, '');
+    if (isNarrow() && /left sidebar/i.test(b)) b = b.replace(/[Ii]n the left sidebar/, (m) => (m[0] === 'I' ? 'In the sidebar (tap ☰ at the top left to open it)' : 'in the sidebar (tap ☰ at the top left to open it)'));
+    return b;
+  };
+  const bodyHtml = (rawBody) => {
+    const body = isTouch() ? forTouch(rawBody) : rawBody;
     const out = []; let items = [];
     const flush = () => { if (items.length) { out.push('<ol class="tour-steps">' + items.map((t) => '<li>' + chips(t) + '</li>').join('') + '</ol>'); items = []; } };
     String(body).split('\n').forEach((line) => {
@@ -760,7 +782,10 @@
     // dialog (only a control inside it qualifies there)
     const openModal = document.querySelector('.modal-overlay.visible');
     const modalOpen = !!openModal;
-    const target = step.target.length ? q(step.target, openModal) : null;
+    let target = step.target.length ? q(step.target, openModal) : null;
+    // On a phone the sidebar is a drawer: when the step's control sits in it and
+    // nothing of the ladder is on screen, light the ☰ that opens it.
+    if (!target && !modalOpen && isNarrow() && step.target.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
     const spot = el('tourSpot');
     const card = el('tourCard');
     if (target) {
@@ -774,31 +799,76 @@
       spot.style.display = '';
       spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
       spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
-      // card: right of the target when there is room, else below, clamped to the viewport
+      // card: beside the target, never ON it. Right, below, left, above, in that order;
+      // the first place that fits the viewport wins. When none does (a control in the
+      // corner of a big dialog), the viewport corner farthest from the control, which
+      // cannot cover it unless the control is most of the screen (found 2026-09-21: the
+      // card sat on Trim your set's Open button, the one thing the step asked for).
       const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220;
-      let left = r.right + 16, top = r.top;
-      if (left + cw > window.innerWidth - 12) { left = Math.max(12, Math.min(r.left, window.innerWidth - cw - 12)); top = r.bottom + 14; }
-      if (top + ch > window.innerHeight - 12) top = Math.max(12, window.innerHeight - ch - 12);
+      const vw = window.innerWidth, vh = window.innerHeight, gap = 16, edge = 12;
+      const clampX = (x) => Math.max(edge, Math.min(x, vw - cw - edge)), clampY = (y) => Math.max(edge, Math.min(y, vh - ch - edge));
+      const spots = [
+        { left: r.right + gap, top: clampY(r.top) },
+        { left: clampX(r.left), top: r.bottom + gap },
+        { left: r.left - gap - cw, top: clampY(r.top) },
+        { left: clampX(r.left), top: r.top - gap - ch },
+      ];
+      const fits = (c) => c.left >= edge && c.top >= edge && c.left + cw <= vw - edge && c.top + ch <= vh - edge;
+      let place = spots.find(fits);
+      if (!place) place = { left: (r.left + r.width / 2 > vw / 2) ? edge : vw - cw - edge, top: (r.top + r.height / 2 > vh / 2) ? edge : vh - ch - edge };
+      // The sheet itself is the target (count here, click there): nowhere is off it, so
+      // the card takes the bottom-left corner, over the sidebar's tail, not the drawing.
+      if (r.width * r.height > vw * vh * 0.4) place = { left: edge, top: vh - ch - 40 };
+      // A step whose work is on the sheet says which corner keeps the card off it
+      // (`cardAt`: 'tl' | 'tr' | 'bl' | 'br'); and the reader can always drag the card
+      // by its head, which wins until the step changes.
+      if (step.cardAt) place = { left: step.cardAt[1] === 'l' ? edge : vw - cw - edge, top: step.cardAt[0] === 't' ? 56 : vh - ch - 40 };
+      if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
+      const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
+      // A phone docks the card to an edge (styles.css, max-width 767px): the far
+      // one from the control, so the card never covers what it is pointing at.
+      card.classList.toggle('tour-card-top', isNarrow() && (r.top + r.height / 2) > window.innerHeight / 2);
     } else {
+      card.classList.remove('tour-card-top');
       spot.style.display = 'none';
       if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
       else { card.style.left = '50%'; card.style.top = '50%'; card.style.right = ''; card.style.bottom = ''; card.style.transform = 'translate(-50%, -50%)'; }
     }
     // auto-advance a beat after a doing-step completes — never on a step the
     // reader came Back to (its work is already there; Next is lit instead)
-    if (step.kind === 'do' && done && !heldByBack && stepIdx < STEPS.length - 1) {
+    if (step.kind === 'do' && done && !heldByBack && !step.hold && stepIdx < STEPS.length - 1) {
       if (!doneAt) doneAt = Date.now();
       else if (Date.now() - doneAt > 900) goTo(stepIdx + 1);
     } else doneAt = 0;
   }
   function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
   function safeHint(step) { try { return step.hint() || ''; } catch (_) { return ''; } }
+  // A dialog the last step opened (the proof breakdown, the Duct Schedule) must
+  // not sit over the next step's control: the ladder only lights a target INSIDE
+  // an open dialog, so a stray one leaves the step dark (seen 2026-09-21: the
+  // plumbing Hand it off step under the proof dialog). On entering a step, any
+  // open dialog that holds none of the step's targets is dismissed the way its
+  // × would. A dialog the ladder follows into (Quick tab → Add Counter) stays,
+  // and the app's own questions (the restore offer, a confirm) are never touched.
+  const KEEP_OPEN = ['lastSessionRestoreModal', 'confirmModal'];
+  function closeStrayDialogs(step) {
+    document.querySelectorAll('.modal-overlay.visible').forEach((ov) => {
+      if (KEEP_OPEN.includes(ov.id)) return;
+      const holdsTarget = (step.target || []).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t); });
+      if (holdsTarget) return;
+      const x = ov.querySelector('[data-modal-close]');
+      if (x) x.click();
+      if (ov.classList.contains('visible') && App.hideModal) App.hideModal(ov.id);
+    });
+  }
   function goTo(i) {
+    dragPos = null;
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;
     doneAt = 0;
+    closeStrayDialogs(STEPS[stepIdx]);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     render();
   }
@@ -808,7 +878,7 @@
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
-    stepIdx = 0; doneAt = 0; heldByBack = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; dragPos = null; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
@@ -820,19 +890,21 @@
     active = false;
     if (timer) { clearInterval(timer); timer = null; }
     document.body.classList.remove('tour-active');
-    try { if (finished) localStorage.setItem(TOURS[tourId].doneKey, new Date().toISOString()); } catch (_) {}
+    try { if (finished && TOURS[tourId].doneKey) localStorage.setItem(TOURS[tourId].doneKey, new Date().toISOString()); } catch (_) {}
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: finished ? 'finished' : 'left', index: stepIdx });
     render();
     syncEntryPoints();
     // A "Project from Last Session" offer that arrived mid-tour waited for
     // this moment (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
+    const def = TOURS[tourId];
+    if (def && def.onStop) { try { def.onStop(!!finished); } catch (_) { /* a lesson's own bookkeeping never breaks the stop */ } }
   }
   // The empty-canvas hint offers each tour until THAT tour is finished on this
   // device; the whole offer goes when both are.
   function syncEntryPoints() {
     let allDone = true;
-    Object.keys(TOURS).forEach((id) => {
+    Object.keys(TOURS).filter((id) => TOURS[id].linkId).forEach((id) => {
       let done = false;
       try { done = !!localStorage.getItem(TOURS[id].doneKey); } catch (_) {}
       const link = el(TOURS[id].linkId);
@@ -852,12 +924,31 @@
     if (advSep) advSep.style.display = allDone ? 'none' : '';
   }
 
+  // The card drags by its head (mouse, pen or finger), so it never has to sit on the
+  // part of the sheet the reader is working on.
+  (function wireCardDrag() {
+    const card = el('tourCard'), head = card && card.querySelector('.tour-card-head');
+    if (!head) return;
+    let start = null;
+    head.style.cursor = 'grab';
+    head.style.touchAction = 'none';
+    head.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      const r = card.getBoundingClientRect();
+      start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
+      try { head.setPointerCapture(e.pointerId); } catch (_) { /* older engines */ }
+    });
+    head.addEventListener('pointermove', (e) => { if (!start) return; dragPos = { left: start.left + e.clientX - start.x, top: start.top + e.clientY - start.y }; render(); });
+    const end = () => { start = null; };
+    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  })();
+
   // wiring (static DOM)
   el('tourNext') && (el('tourNext').onclick = () => { if (stepIdx >= STEPS.length - 1) stopTutorial(true); else goTo(stepIdx + 1); });
   el('tourBack') && (el('tourBack').onclick = () => goTo(stepIdx - 1));
   el('tourLeave') && (el('tourLeave').onclick = () => stopTutorial(false));
   el('tourAction') && (el('tourAction').onclick = async () => { const step = STEPS[stepIdx]; if (step.action) { await step.action.run(); render(); } });
-  Object.keys(TOURS).forEach((id) => {
+  Object.keys(TOURS).filter((id) => TOURS[id].linkId).forEach((id) => {
     const link = el(TOURS[id].linkId);
     if (link) link.onclick = (e) => { e.preventDefault(); startTutorial(id); };
   });
@@ -870,12 +961,23 @@
   syncEntryPoints();
   // ?tour=plumbing / ?tour=electrical (or the original ?tour=1) opens that tour on
   // load (after the app has booted its state).
-  try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) setTimeout(() => startTutorial(id), 600); } catch (_) {}
+  // `pending` covers the 600 ms between load and start: the restore offer reads it
+  // (features/restore-last-session.js) and waits, as it does for a running tour.
+  try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) { pending = true; setTimeout(() => { pending = false; startTutorial(id); }, 600); } } catch (_) { pending = false; }
 
+  // Lessons (features/lessons.js) are tours too: they register their steps here and
+  // drive the same engine. A registered tour has no empty-canvas link and no done key
+  // of its own; `onStop(finished)` is where it keeps its books.
+  App.registerTour = (id, def) => { TOURS[id] = def; };
+  App.setTutorialPending = (v) => { pending = !!v; };
+  // What a step needs to read the app and to do a thing for the reader, shared with
+  // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
+  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon };
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;
   App.isTutorialActive = () => active;
+  App.isTutorialPending = () => pending;
   App.onTutorialTick = () => { if (active) render(); };
   App.tutorialStepId = () => (active ? STEPS[stepIdx].id : null);
   App.tutorialId = () => (active ? tourId : null);

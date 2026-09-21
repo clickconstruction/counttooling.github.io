@@ -605,6 +605,82 @@ function candidateB() {
   ${titleBlock({ sheet: 'P-101', sheetName: 'PLUMBING PLAN', project: 'MAIN ST RESTAURANT', scale: '1/8" = 1&#39;-0"', date: '07/31/26' })}`;
 }
 
+// ---------------- The lesson set: P-401 and P-501 (LEARN-PLAN.md, 2026-09-21) --------
+// samples/sample-lessons.pdf is three sheets: P-101 (candidate B, unchanged), and the
+// two below, drawn ON PURPOSE for the tools P-101 cannot teach. Both are drawn straight
+// in sheet points (1 SVG unit = 1 PDF pt), so the figures here ARE the lesson
+// coordinates in features/lessons.js.
+//   P-401: the restrooms enlarged at 1/4" = 1'-0" (18 pt/ft; a second page scale, with
+//   12'-0" strings to prove it) and detail 2 at 1/2" = 1'-0" (36 pt/ft; a scale zone)
+//   that is "TYP. OF 4" (a multiply zone), with a 4'-0" string to prove the zone.
+//   P-501: the fixture schedule, a sheet "scanned sideways": landscape content turned
+//   90° on a portrait page, for Rotate.
+const at = (x, y, k, body) => `<g transform="translate(${x},${y}) scale(${k})">${body}</g>`;
+const LESSON_DETAIL = {
+  ptPerFt: 18, women: { x1: 100, y1: 140, x2: 316, y2: 320 }, men: { x1: 316, y1: 140, x2: 532, y2: 320 },
+  wcs: [[136, 152], [190, 152], [244, 152], [352, 152], [406, 152]], urinals: [[478, 146]],
+  lavs: [[150, 304], [210, 304], [366, 304], [426, 304]], fds: [[208, 262], [424, 262]],
+  prove: [[100, 118], [316, 118]],                       // the 12'-0" string over WOMEN
+  detail: { x1: 640, y1: 130, x2: 1040, y2: 330, ptPerFt: 36, hs: [760, 196], fd: [904, 262], prove: [[760, 300], [904, 300]] },
+};
+function lessonDetailSheet() {
+  const D = LESSON_DETAIL, d = D.detail;
+  const stall = (x) => `<line x1="${x}" y1="140" x2="${x}" y2="212" stroke="${INK}" stroke-width="1"/>`;
+  return `${sheetFrame()}
+  <rect x="100" y="140" width="432" height="180" fill="#fff" stroke="${INK}" stroke-width="5"/>
+  <line x1="316" y1="140" x2="316" y2="320" stroke="${INK}" stroke-width="2.5"/>
+  <line x1="262" y1="320" x2="298" y2="320" stroke="#fff" stroke-width="7"/><line x1="478" y1="320" x2="514" y2="320" stroke="#fff" stroke-width="7"/>
+  ${door(262, 320, 36, 0)}${door(478, 320, 36, 0)}
+  ${[163, 217, 271, 379, 433].map(stall).join('')}
+  ${D.wcs.map(([x, y]) => at(x, y, 1.5, wc(0, 0))).join('')}
+  ${D.urinals.map(([x, y]) => at(x, y, 1.5, urinal(0, 0))).join('')}
+  ${D.lavs.map(([x, y]) => at(x, y, 1.5, lavCtr(0, 0, 180))).join('')}
+  ${D.fds.map(([x, y]) => at(x, y, 1.5, floorDrain(0, 0))).join('')}
+  ${roomTag(208, 222, 'WOMEN', '103')}${roomTag(424, 222, 'MEN', '102')}
+  ${dimH(100, 118, 316, "12'-0\"")}${dimH(316, 118, 532, "12'-0\"")}${dimV(78, 140, 320, "10'-0\"")}
+  <g font-family="${F}" fill="${INK}"><circle cx="112" cy="362" r="12" fill="none" stroke="${INK}" stroke-width="1.2"/><text x="112" y="366" font-size="12" text-anchor="middle" font-weight="bold">1</text>
+    <text x="132" y="360" font-size="13" font-weight="bold">ENLARGED RESTROOM PLAN</text><text x="132" y="375" font-size="10" fill="#444">SCALE: 1/4" = 1'-0"</text></g>
+
+  <rect x="${d.x1}" y="${d.y1}" width="${d.x2 - d.x1}" height="${d.y2 - d.y1}" fill="none" stroke="${INK}" stroke-width="1" stroke-dasharray="8 4"/>
+  <line x1="670" y1="170" x2="1010" y2="170" stroke="${INK}" stroke-width="5"/>
+  ${at(d.hs[0], d.hs[1], 3, handSink(0, 0))}${at(d.fd[0], d.fd[1], 3, floorDrain(0, 0))}
+  ${keyTag(818, 196, 'HS')}${keyTag(944, 262, 'FD')}
+  ${pipe('cw', [[764, 170], [764, 182]])}${pipe('hw', [[756, 170], [756, 182]])}
+  ${dimH(760, 300, 904, "4'-0\"")}
+  <g font-family="${F}" fill="${INK}"><circle cx="652" cy="362" r="12" fill="none" stroke="${INK}" stroke-width="1.2"/><text x="652" y="366" font-size="12" text-anchor="middle" font-weight="bold">2</text>
+    <text x="672" y="360" font-size="13" font-weight="bold">HAND SINK STATION · TYP. OF 4</text><text x="672" y="375" font-size="10" fill="#444">SCALE: 1/2" = 1'-0"</text></g>
+
+  ${notesColumn(100, 440, 'SHEET NOTES', [
+    '1. PLAN 1 IS DRAWN AT 1/4" = 1\'-0". DETAIL 2 IS DRAWN AT 1/2" = 1\'-0".',
+    '2. PROVIDE DETAIL 2 AT EACH OF (4) COOK LINE AND BAR STATIONS.',
+    '3. FLOOR DRAINS W/ TRAP PRIMER, TYP.',
+    '4. ALL DIMENSIONS TO FACE OF FINISH.',
+  ])}
+  ${titleBlock({ sheet: 'P-401', sheetName: 'ENLARGED PLANS', project: 'MAIN ST RESTAURANT', scale: 'AS NOTED', date: '07/31/26' })}`;
+}
+const LESSON_SCHEDULE = [
+  ['WC-1', 'WATER CLOSET, FLOOR MTD, FLUSH VALVE', '1"', '-', '4"', '2"'],
+  ['U-1', 'URINAL, WALL HUNG, FLUSH VALVE', '3/4"', '-', '2"', '1-1/2"'],
+  ['L-1', 'LAVATORY, COUNTER MTD', '1/2"', '1/2"', '1-1/2"', '1-1/4"'],
+  ['HS-1', 'HAND SINK, WALL HUNG', '1/2"', '1/2"', '1-1/2"', '1-1/4"'],
+  ['3CS-1', '3-COMPARTMENT SINK', '3/4"', '3/4"', '2"', '1-1/2"'],
+  ['MS-1', 'MOP SINK, FLOOR MTD', '3/4"', '3/4"', '3"', '2"'],
+  ['FD-1', 'FLOOR DRAIN W/ TRAP PRIMER', '1/2"', '-', '3"', '2"'],
+  ['FS-1', 'FLOOR SINK, 1/2 GRATE', '-', '-', '3"', '2"'],
+];
+function lessonScheduleSheet() {
+  const cols = [120, 210, 560, 640, 720, 800], y0 = 150;
+  const head = ['TAG', 'FIXTURE', 'CW', 'HW', 'W', 'V'].map((t, i) => `<text x="${cols[i]}" y="${y0}" font-size="10" font-weight="bold">${t}</text>`).join('');
+  const rows = LESSON_SCHEDULE.map((r, j) => r.map((t, i) => `<text x="${cols[i]}" y="${y0 + 24 + j * 20}" font-size="10">${t}</text>`).join('')).join('');
+  const land = `${sheetFrame()}
+  <g font-family="${F}" fill="${INK}"><text x="120" y="112" font-size="15" font-weight="bold">PLUMBING FIXTURE SCHEDULE</text>
+  <line x1="112" y1="124" x2="880" y2="124" stroke="${INK}" stroke-width="1.2"/><line x1="112" y1="158" x2="880" y2="158" stroke="${INK}" stroke-width="0.8"/>${head}${rows}
+  <line x1="112" y1="${y0 + 24 + LESSON_SCHEDULE.length * 20 - 8}" x2="880" y2="${y0 + 24 + LESSON_SCHEDULE.length * 20 - 8}" stroke="${INK}" stroke-width="1.2"/></g>
+  ${notesColumn(120, 400, 'SCHEDULE NOTES', ['1. ROUGH-IN SIZES ARE MINIMUMS; SEE PLANS FOR RUN SIZES.', '2. ALL FIXTURES ADA WHERE SHOWN ON THE ARCHITECTURAL PLANS.'])}
+  ${titleBlock({ sheet: 'P-501', sheetName: 'SCHEDULES', project: 'MAIN ST RESTAURANT', scale: 'NONE', date: '07/31/26' })}`;
+  return `<rect width="${H}" height="${W}" fill="#fff"/><g transform="translate(0,${W}) rotate(-90)">${land}</g>`;   // the sheet, scanned sideways: one Rotate 90° right reads it
+}
+
 // ---------------- render ---------------------------------------------------------
 function pageHtml(body) {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${body}</svg>`;
@@ -624,7 +700,7 @@ async function render(name, body) {
 
 // Candidate A ships as the SIMPLE sample plan (scripts/build-sample-plan.js), candidate B
 // as the ADVANCED one (scripts/build-sample-plan-advanced.js).
-module.exports = { W, H, PLAN_AT, candidateA, candidateB, pageHtml };
+module.exports = { W, H, PLAN_AT, candidateA, candidateB, pageHtml, lessonDetailSheet, lessonScheduleSheet, LESSON_DETAIL };
 
 if (require.main === module) {
   (async () => {

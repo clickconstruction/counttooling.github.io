@@ -1,13 +1,15 @@
 ---
 title: Counting fixtures with counters
 description: Place point counts on a plan with custom icons and colors, keep a live tally, and organize them into groups: the heart of any takeoff.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 3
 icon: counter
 category: Counting
 ---
 
 A **counter** [[counter]] is a point symbol you stamp on the plan: a water closet, a light fixture, a sprinkler head. Each click adds one to the tally, so counting a sheet is just clicking each item.
+
+**Try it:** [the Counting lesson](/app/?lesson=counting) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ![Counters placed on each restroom fixture, with the running tally shown in the sidebar. Water Closet and Lavatory totals update as you click.](/guides/img/counting.png)
 

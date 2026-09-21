@@ -1,13 +1,15 @@
 ---
 title: Scale zones and multiply zones
 description: Handle multi-scale sheets and repeated areas: give a region its own scale, or multiply everything inside a boundary so typical floors and units count correctly.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 5
 icon: scale-zone
 category: Working with plans
 ---
 
 Real plan sets aren't always one clean scale per sheet. Two tools handle the awkward cases without making you re-do the whole page.
+
+**Try it:** [the Repeats lesson](/app/?lesson=repeats) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ![A plan with two regions marked: a multiply zone around a set of typical rooms, and a scale zone around a detail that's drawn at a different scale.](/guides/img/zones.png)
 

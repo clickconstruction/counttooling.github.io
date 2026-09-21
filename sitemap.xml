@@ -16,6 +16,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/guides/learning-the-app/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/guides/preparing-a-plan-set/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

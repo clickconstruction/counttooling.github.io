@@ -13,6 +13,114 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): Learn, thirteen short lessons for every part of the app (2026-09-21)
+
+LEARN-LESSONS and LEARN-FLIP, phases 3 to 5 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). The
+owner's ask: "a tutorial where they can go through and use all parts of the app."
+
+- **Learn** is a menu (`#learnModal`) of thirteen lessons, two or three minutes each, beside the
+  three five-minute trade tours: Sheets, Scale, Counting, Measuring, Chain and child counts,
+  Repeats, Organizing, Fixing mistakes, Notes and questions, Check and prove, Deliverables, Working
+  faster, and a guided read of the cloud half (a lesson cannot run on a cloud project). Same engine
+  and the same rules as the tours: every step checks REAL state, every doing-step offers Do it for
+  me through the app's own doors, controls are named as they look on screen.
+- **Doors**: "every tool, one short lesson at a time" on the empty canvas, Project Settings → Help →
+  lessons, `/app/?learn=1`, and `/app/?lesson=<id>`. Thirteen guides gained a **Try it** line that
+  opens their lesson; the plumbing guide links two.
+- **The lesson set**, `samples/sample-lessons.pdf` (`npm run build:sample-lessons`): the engineered
+  sheet could not teach pages, a second scale, a scale zone or a typical, so two sheets were drawn
+  for the purpose. P-401 has the restrooms at 1/4" with 12'-0" strings to prove it, and a hand sink
+  station detail at 1/2" that is TYP. OF 4 with a 4'-0" string inside it; P-501 is the fixture
+  schedule scanned sideways. The engineered sample plan and the hero films are untouched.
+- **A lesson stands alone and costs nobody their work.** Its first step opens the sheets fresh and
+  seeds what it takes for granted; over the reader's own plan that goes through the app's one Close
+  project question, over the last lesson's sheets it just resets; a lesson's palette items are swept
+  before the next, an Artboard palette is left as it was. A finished lesson is ticked on the device
+  (`clickcount-lessons-done`) and hands back to the menu with the next one lit.
+- **Shipped on, not behind a flag.** The plan staged it behind `?ff=learn` with a flip to follow.
+  The owner approved turning it on, the whole path is pinned by spec, and the feature is additive
+  (two links and a dialog), so the dormant stage bought a second 34-minute CI run and nothing else.
+- **Engine** (features/tutorial.js): `App.registerTour`, `App.tourKit`, `onStop`, links in step
+  bodies, and three fixes found by walking the lessons: the card sat ON the button it pointed at
+  (Trim your set's Open), so it now tries right, below, left, above, then the far corner, takes the
+  bottom-left when the sheet itself is the target, honours a step's `cardAt`, and drags by its head;
+  two rasters back to back on a page switch left the sheet blank, so a lesson lands with one.
+- **An app bug found on the way**: a dialog's × re-dispatches Escape on `document`, and the keydown
+  handler called `e.target.matches` on it: a console error on every × of a dialog with no Esc rung
+  (the proof breakdown, Export PDFs). Guarded.
+- Telemetry rides `tour_step` (`tour: 'lesson:<id>'`), so there is no new event type and no migration.
+- Specs: [lessons.spec.js](lessons.spec.js), 16 tests: each lesson's do-it-for-me path end to end with
+  the takeoff it claims (the gas main reads 39.5 ft with two 90s; the zone's 4'-0" reads 4'-0" on a
+  1/4" sheet; one mark reads 4 under a x4 zone), the doors, the reader's plan, the card.
+
+## docs(guides): the plumbing, electrical and HVAC guides follow their tours (2026-09-21)
+
+LEARN-GUIDES, phase 1 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). Every claim was walked in
+the app first; every picture is the takeoff the trade's own tour builds.
+
+- **Plumbing** is rewritten end to end around what its intro always promised: prove the scale,
+  count, Chain a battery, Drop for the risers, hangers from the rulebook with the § IPC 308.5 chip,
+  Fittings from bends and the vertex menu's "No fitting here", multiply and scale zones, RFI notes
+  and Copy RFI Flags, the plumbing Bid Check rows, the proof breakdown, the hand-off.
+- **HVAC** no longer says to trace duct with Line and Polyline. It is rooms and CFM targets, air
+  devices that carry their CFM, a system with a capacity, the Duct tool sizing itself at `S`,
+  strays and Attach to nearest run, fittings that count themselves, the Duct Schedule and Bid
+  weight, Bid Check and the export gate, the compact M-sheet legend, and the Duct block in
+  Copy to /Tooling. The long form stays in duct-takeoff-by-the-pound.
+- **Electrical** gains the tour pointer it never had, Fittings from bends, the § chips and code
+  edition, the compact E-sheet legend (the old sentence said a tally), and a Bid Check picture
+  with the warning the tour really ends on: three counted receptacles on no run. The tour's Bid
+  Check step now says what the reader sees there rather than what the section can do in general.
+- All three link straight into their tour (`/app/?tour=<trade>`).
+- `scripts/build-screenshots.js` gains `tourSetup(tour, stopAt, after)`: a shot that presses
+  "Do it for me" through the tour and frames the result, so a tour change re-shoots its guide.
+  Six new shots. `[[chain]]` and `[[drop]]` join the guide icon shortcodes.
+
+## fix(tutorial): a tour starts clean, leaves no dialog over its next step, and fits a phone (2026-09-21)
+
+LEARN-ENGINE, the engine half of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). All four were seen
+in a live walk, not read off the code.
+
+- **A `?tour=` link no longer gets the restore offer on top of it, or the last tour's marks inside
+  it.** Three holes, one cause: a tour link starts the tour 600 ms after load, and the boot did not
+  know one was coming. `App.isTutorialPending()` covers that gap; the restore offer's blocker and
+  the boot's silent palette pre-apply (`bootSessionBusy`) both read it. And
+  `maybeReapplyLocalBackupMarks` (features/pdf-intake.js) stands down while a tour runs: every tour
+  opens the same sample PDF, so the last tour's backup hash-matched it and its water closets landed
+  in the HVAC tour. The offer still comes when the tour ends, as before.
+- **Entering a step closes the dialogs the last one left open** (`closeStrayDialogs`): the ladder
+  only lights a control inside an open dialog, so the plumbing Hand it off step sat dark under the
+  proof breakdown. A dialog that holds one of the new step's targets stays (the ladder follows the
+  reader into it); the restore offer and the app's confirm are never touched. It dismisses the way
+  the dialog's own × does, so each modal's cleanup runs.
+- **`hold: true`** on a step: done lights Next, nothing advances by itself. The proof step has it;
+  it used to move on 0.9 s after the breakdown opened, before anyone could read it.
+- **On a phone** (under 768 px, or a coarse pointer) the "(or press S)" asides go, a sidebar step
+  says where the sidebar is and lights the ☰ until the drawer is open (the ladder now skips a
+  control parked off the side of the screen, which `offsetParent` alone does not catch), and the
+  card docks full-width to the far edge from its control, capped at 40% of the height with its
+  buttons pinned.
+- Specs: tutorial.spec.js gains the link-after-a-tour case and the phone case, and pins the proof
+  hold and the lit export button.
+
+## docs(learn): the teaching surfaces name the app's real controls; LEARN-PLAN (2026-09-21)
+
+A docs pass plus a live walk of the plumbing and HVAC tours, ahead of the trade-guide rewrite and
+the lessons ([journeys/plans/LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md), the plan of record).
+
+- **"Copy to PipeTooling" is gone from every teaching surface.** The button has read
+  "Copy to /Tooling" since the hand-off grew a second destination; five guides and the plumbing
+  tour's Hand it off step still used the old name.
+- **Two tour steps said the wrong thing.** The plumbing step that counts Women 108 was titled
+  "Count the Men's room" (now "Count the water closets"); the HVAC tour's last reading step named
+  a "Legend Settings" dialog whose title is "Summary Legend".
+- **The guard is a test, not a convention**: [teaching-labels.test.js](teaching-labels.test.js)
+  (Node, in `npm run check`). Every `[[control]]` a tour step names must be text, a title or an
+  aria-label in app/index.html, an action's own label, or a label a feature file renders (proven
+  by a file + literal pointer in `RENDERED_IN_JS`); and no guide or tour may contain a label in
+  `RETIRED`. Rename a control and the test names every surface still teaching the old one. It
+  found the "Legend Settings" miss on its first run.
+- GUIDES-PLAN.md re-stamped (all fifteen articles are published); four LEARN rows on the punch list.
 ## fix(sign-in): signing in no longer wipes the takeoff made signed out (2026-09-20)
 
 Found while checking whether unsaved on-device work survives a sign-in. It did not: a plan opened

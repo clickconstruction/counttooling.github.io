@@ -7378,7 +7378,8 @@
         return;
       }
     }
-    if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
+    // (a dialog's × re-dispatches Escape on `document`, which has no matches())
+    if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     if (e.key === ' ') {
       if (!e.target.closest('button') && window.matchMedia('(min-width: 769px)').matches) {
         document.body.classList.toggle('sidebar-collapsed');
@@ -8384,7 +8385,7 @@
     // prompt "auto-keeping" ~10 s in was this pre-apply, not a Keep). A busy
     // session still gets the offer below; restoring over it takes a click on
     // Keep.
-    const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive());
+    const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive()) || !!(App.isTutorialPending && App.isTutorialPending());
     if (backupToApply && !bootSessionBusy) applyTakeoffBackupToState(backupToApply);
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
       const ok = await devAuthSignIn();

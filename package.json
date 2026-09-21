@@ -8,6 +8,7 @@
     "build:og-image": "node scripts/build-og-image.js",
     "build:sample-plan": "node scripts/build-sample-plan.js",
     "build:sample-plan-advanced": "node scripts/build-sample-plan-advanced.js",
+    "build:sample-lessons": "node scripts/build-sample-lessons.js",
     "build:screenshots": "node scripts/build-screenshots.js",
     "build:modal-gallery": "node scripts/build-modal-gallery.js",
     "build:hero-video": "node scripts/build-hero-video.js",

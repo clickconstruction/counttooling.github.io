@@ -1,13 +1,15 @@
 ---
 title: Canvas layers: alternates and options on one sheet
 description: Every page can hold multiple annotation layers: keep the base bid and alternates side by side, switch with the arrow keys, and compare with one tap.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 5.7
 icon: layers
 category: Working with plans
 ---
 
 A sheet often needs more than one takeoff: a base bid and an alternate, a first pass and a check pass, two options the owner is deciding between. **Canvas layers** let one page carry them all, each layer its own independent set of marks over the same drawing.
+
+**Try it:** [the Organizing lesson](/app/?lesson=organize) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ## Working with layers
 

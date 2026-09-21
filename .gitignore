@@ -2,6 +2,8 @@
 supabase/.temp/
 config.local.js
 node_modules/
+# a symlinked node_modules (a side worktree borrowing another checkout's) is not a directory, so the rule above misses it
+node_modules
 playwright-report/
 test-results/
 .claude/launch.json

@@ -56,4 +56,4 @@ the feeder 12.33 ft with its rise. Computed from the same flat geometry the butt
 - **A trade review** of chapters 2 to 7 and the panel schedule's loads and sizes (EC-REVIEW).
 - **Fire alarm** is deliberately absent from the set; chapter 9 says so. A fire alarm sheet would
   teach the FA row and the rated-corridor question.
-- **The HVAC course** is next, on M-101 and its own set, the same way.
+- **The HVAC course** followed the same day, on its own set: [HVAC-COURSE.md](HVAC-COURSE.md).

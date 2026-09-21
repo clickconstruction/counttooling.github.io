@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(course): the HVAC course, nine chapters on how a restaurant gets its air (2026-09-21)
+
+[HVAC-COURSE.md](journeys/plans/HVAC-COURSE.md). The third course, the same way as the two before
+it: the engineer's drawing is the answer key, a question is answered with a click the check refuses
+when wrong, and this time the app's arithmetic carries most of the teaching, because the HVAC side
+already knows a room's air, a system's capacity, a run's gauge and pounds, and whether it fits the
+roof and the fan.
+
+- **The set** (scripts/sample-hvac.js, `npm run build:sample-hvac`): M-101 the mechanical plan on
+  `restaurantShell` (24 devices tagged by the schedule with their flex dashed, the main drawn at
+  width with its size printed where it steps and a 2" wrap, four branches, the restroom exhaust, the
+  hood's grease duct and its keynote, the roof equipment keyed outside the east wall), M-501 the
+  equipment, diffuser and room air schedules, M-601 a building section at 1/2" = 1'-0" with the
+  wrapped main dimensioned in the plenum.
+- **The course** (features/course-hvac.js): which unit moves the most air (the hood fan, not the
+  RTU), which room breathes hardest and why, rooms boxed with the schedule's type and CFM and the
+  deck height, the palette from the diffuser schedule with a CFM per tag and 24 devices placed by
+  tag, why the kitchen necks are bigger, RTU-1 as a system with its capacity and ESP and why 3,000
+  for 2,650, the main traced at 24×12 stepping at S where the plan prints it, the diffusers hung on
+  the runs and what that changes, the fittings the run counted for itself, the section measured and
+  *Fits the roof* answered by the deck height, *Static path* read as a lesson in ESP, the grease duct
+  noted (NFPA 96) and why it stays out of the gauge table, the restroom exhaust as an exhaust run,
+  make-up air and the interlock, the whole set against a reference by size with the bid weight, the
+  duct rows of Bid Check with the ones the set already answers.
+- **Runs laid through the model.** Seeds lay a run with duct-model's `makeDuctRun` and
+  `App.reinferDuctFittings`, synchronously, because the lesson kit seeds before it switches the page;
+  the reader traces by hand with the tool. Attach is its own step: a diffuser counts toward a
+  system's designed air and the static path only once a run reaches it.
+- The Learn menu holds three sections; the empty-canvas line offers "plumbing or its power or its
+  air"; Project Settings → Help has all three.
+- Specs: [course-hvac.spec.js](course-hvac.spec.js), twelve tests: every chapter through the seam
+  with the numbers its bodies quote (the main 32.5 / 11.67 / 10 ft by size, designed air 0 before
+  the runs and 2,350 after, the plenum's two rows auto and ok, the exhaust 27.58 ft of round), the
+  wrong roof key and the wrong grease duct refused, the main traced at the wrong sizes named, the
+  doors and three courses in one menu.
+- Open: HC-REVIEW, a trade read of chapters 2 to 7 and M-501's numbers. No fire dampers (no rated
+  wall in the set), the grease duct is a note not a run, chapter 9 says so.
+
 ## feat(course): the electrical course, nine chapters on how a restaurant gets its power (2026-09-21)
 
 [ELECTRICAL-COURSE.md](journeys/plans/ELECTRICAL-COURSE.md). The plumbing course's sibling, built the

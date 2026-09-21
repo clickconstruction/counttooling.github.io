@@ -42,7 +42,7 @@
   4:3 `crop` sized to its surface, JPEG; plan in journeys/plans/LANDING-REFRESH.md). Both are manual (browser +
   non-deterministic pixels) and **not** in `npm run check` — like `build:og-image`; the
   link-integrity test fails only if an article references a missing image.
-  **The lesson set** `samples/sample-lessons.pdf` (`npm run build:sample-lessons`) is the four sheets Learn's lessons and the plumbing course run on, and **the electrical set** `samples/sample-electrical.pdf` (`npm run build:sample-electrical`, scripts/sample-electrical.js on P-101's `restaurantShell`) the four the electrical course runs on; its P-401 / P-501 coordinates are the ones in features/lessons.js, so change a sheet and its lesson in the same commit (lessons.spec.js walks every lesson).
+  **The lesson set** `samples/sample-lessons.pdf` (`npm run build:sample-lessons`) is the four sheets Learn's lessons and the plumbing course run on, and **the electrical set** `samples/sample-electrical.pdf` (`npm run build:sample-electrical`, scripts/sample-electrical.js on P-101's `restaurantShell`) the four the electrical course runs on, and **the HVAC set** `samples/sample-hvac.pdf` (`npm run build:sample-hvac`, scripts/sample-hvac.js) the three the HVAC course runs on; its P-401 / P-501 coordinates are the ones in features/lessons.js, so change a sheet and its lesson in the same commit (lessons.spec.js walks every lesson).
   **The landing hero is three films, one per trade**: `npm run build:hero-video -- --film
   plumbing|electrical|hvac` ([scripts/build-hero-video.js](scripts/build-hero-video.js)) drives
   the real app frame by frame on a sample sheet (real mouse, typing and key presses, drawn
@@ -176,7 +176,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->90<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->91<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the

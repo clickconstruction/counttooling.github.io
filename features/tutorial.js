@@ -230,7 +230,7 @@
       action: { label: 'Create it for me', run: addWaterCloset },
     },
     {
-      id: 'place', title: 'Count the Men\'s room', kind: 'do',
+      id: 'place', title: 'Count the water closets', kind: 'do',
       body: 'The counter tool is armed.\n1. Click the first water closet in the stalls on the south wall of Women 108.\n2. Click the second.\n3. Click the third.\nOne click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
       target: ['#annCanvas'],
       check: () => { const c = pCounter(); return !!c && markCount(c.id) >= 3; },
@@ -287,7 +287,7 @@
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'Under EXPORT OPTIONS in the left sidebar:\n1. [[Copy to PipeTooling]] puts the whole takeoff on the clipboard (counts, feet with the riser inside, hangers under their pipe), ready to paste into the bid.\n2. [[Copy RFI Flags]] puts the questions beside it.\n3. [[Copy Summary]] for an email.\n4. [[Export PDFs]] for a marked-up plan the GC can read.',
+      body: 'Under EXPORT OPTIONS in the left sidebar:\n1. [[Copy to /Tooling]] puts the whole takeoff on the clipboard (counts, feet with the riser inside, hangers under their pipe), ready to paste into the bid.\n2. [[Copy RFI Flags]] puts the questions beside it.\n3. [[Copy Summary]] for an email.\n4. [[Export PDFs]] for a marked-up plan the GC can read.',
       target: ['#forPipeTooling', '#exportOptionsSectionTitle'],
       check: () => true,
     },
@@ -391,7 +391,7 @@
     },
     {
       id: 'legend', title: 'What the sheet says now', kind: 'read',
-      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\'s air line.\n1. Click the SUMMARY heading to open [[Legend Settings]].\nIt gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
+      body: 'The main paints at its real width under the stroke, the size chips ride each segment, the room wears its totals tag, and the legend lists duct by size with the room\'s air line.\n1. Click the SUMMARY heading to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed; Show duct true width turns the band off when you want bare linework.',
       target: ['#legendSettingsBtn', '#legendBtn', '#summarySectionTitle'],
       check: () => true,
     },

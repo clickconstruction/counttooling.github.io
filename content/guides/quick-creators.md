@@ -41,7 +41,7 @@ The Size / Type / Material option lists (Category / Variant / Rating for Electri
 
 ## Why this beats typing
 
-- **Consistency**: `2" PVC Waste` is always spelled exactly that way, so tallies, reports, and [Copy to PipeTooling](/guides/reports-and-exports/) group cleanly instead of splitting across three spellings of the same thing.
+- **Consistency**: `2" PVC Waste` is always spelled exactly that way, so tallies, reports, and [Copy to /Tooling](/guides/reports-and-exports/) group cleanly instead of splitting across three spellings of the same thing.
 - **Speed**: a new bid's palette takes a minute, not fifteen.
 - **The number row**: pair this with [Quick Keys](/guides/working-faster-with-the-keyboard/) and your freshly built palette is one keystroke away per item.
 

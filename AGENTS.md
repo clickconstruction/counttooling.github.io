@@ -213,7 +213,9 @@
   [canvas-draw.test.js](canvas-draw.test.js),
   [render-service.test.js](render-service.test.js),
   [save-engine.test.js](save-engine.test.js),
-  [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js)) via
+  [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js),
+  [teaching-labels.test.js](teaching-labels.test.js) (every `[[control]]` a tour or lesson names exists in
+  the shell, and no guide uses a label in its `RETIRED` list: rename a control, add the old name there)) via
   `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency. [format.test.js](format.test.js)
   auto-skips its two en-CA-hyphen-dependent cases on a limited-ICU runtime and

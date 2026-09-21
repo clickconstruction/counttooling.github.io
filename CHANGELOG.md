@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(learn): the teaching surfaces name the app's real controls; LEARN-PLAN (2026-09-21)
+
+A docs pass plus a live walk of the plumbing and HVAC tours, ahead of the trade-guide rewrite and
+the lessons ([journeys/plans/LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md), the plan of record).
+
+- **"Copy to PipeTooling" is gone from every teaching surface.** The button has read
+  "Copy to /Tooling" since the hand-off grew a second destination; five guides and the plumbing
+  tour's Hand it off step still used the old name.
+- **Two tour steps said the wrong thing.** The plumbing step that counts Women 108 was titled
+  "Count the Men's room" (now "Count the water closets"); the HVAC tour's last reading step named
+  a "Legend Settings" dialog whose title is "Summary Legend".
+- **The guard is a test, not a convention**: [teaching-labels.test.js](teaching-labels.test.js)
+  (Node, in `npm run check`). Every `[[control]]` a tour step names must be text, a title or an
+  aria-label in app/index.html, an action's own label, or a label a feature file renders (proven
+  by a file + literal pointer in `RENDERED_IN_JS`); and no guide or tour may contain a label in
+  `RETIRED`. Rename a control and the test names every surface still teaching the old one. It
+  found the "Legend Settings" miss on its first run.
+- GUIDES-PLAN.md re-stamped (all fifteen articles are published); four LEARN rows on the punch list.
+
 ## fix(restore): Keep uses the device's PDF when the cloud has none, and uploads it (2026-09-20)
 
 Asked: when someone continues from a file that is on the device but not in the cloud, is the

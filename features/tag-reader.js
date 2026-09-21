@@ -37,7 +37,8 @@
  * Counter tool's placement), tagCreateFromHint() (Enter), proposeCountersFromBox
  * (TOOL.SCHEDULE corner 2), renderTagField(kind, item) (details modal),
  * renderTagReaderUI() (updateUI: the Create-tab link), pageTextItems(pageIdx),
- * queryPdfTextNear(pageIdx, pdfPt, radiusPt).
+ * queryPdfTextNear(pageIdx, pdfPt, radiusPt), textItemsFromContent(tc, vp) (the
+ * conversion alone: features/pdf-intake.js reads title blocks through it).
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
@@ -70,6 +71,25 @@
   // on every frame for every page and must never be the reason a page's text
   // layer is fetched (D10's laziness: the first fetch happens only when a
   // feature the estimator is using needs it). [] until something else fetched.
+  // pdf.js text content → [{ str, x, y, w, h }] in the viewport's space (the box of each
+  // item's four corners, so rotated text and rotated pages both come out axis-aligned).
+  // Shared with the intake's sheet-title read, which has a pdfPage but no state.pages row yet.
+  function textItemsFromContent(tc, vp) {
+    const items = [];
+    ((tc && tc.items) || []).forEach((it) => {
+      if (!it || typeof it.str !== 'string' || !it.str.trim() || !Array.isArray(it.transform)) return;
+      const [a, b, c, d, e, f] = it.transform;
+      const lenX = Math.hypot(a, b) || 1, lenY = Math.hypot(c, d) || 1;
+      const w = it.width || 0, h = it.height || lenY;
+      const ux = a / lenX, uy = b / lenX, vx = c / lenY, vy = d / lenY;
+      const corners = [[e, f], [e + ux * w, f + uy * w], [e + vx * h, f + vy * h], [e + ux * w + vx * h, f + uy * w + vy * h]]
+        .map(([x, y]) => vp.convertToViewportPoint(x, y));
+      const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
+      const x1 = Math.min(...xs), x2 = Math.max(...xs), y1 = Math.min(...ys), y2 = Math.max(...ys);
+      items.push({ str: it.str, x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
+    });
+    return items;
+  }
   function peekPageTextItems(pageIdx) {
     const state = App.state;
     const page = state && state.pages && state.pages[pageIdx];
@@ -87,20 +107,7 @@
     const entry = { pdfPage: page.pdfPage, rotation: rot, items: null, promise: null };
     textCache.set(pageIdx, entry);
     entry.promise = page.pdfPage.getTextContent().then((tc) => {
-      const vp = page.pdfPage.getViewport({ scale: 1, rotation: rot });
-      const items = [];
-      (tc.items || []).forEach((it) => {
-        if (!it || typeof it.str !== 'string' || !it.str.trim() || !Array.isArray(it.transform)) return;
-        const [a, b, c, d, e, f] = it.transform;
-        const lenX = Math.hypot(a, b) || 1, lenY = Math.hypot(c, d) || 1;
-        const w = it.width || 0, h = it.height || lenY;
-        const ux = a / lenX, uy = b / lenX, vx = c / lenY, vy = d / lenY;
-        const corners = [[e, f], [e + ux * w, f + uy * w], [e + vx * h, f + vy * h], [e + ux * w + vx * h, f + uy * w + vy * h]]
-          .map(([x, y]) => vp.convertToViewportPoint(x, y));
-        const xs = corners.map((p) => p[0]), ys = corners.map((p) => p[1]);
-        const x1 = Math.min(...xs), x2 = Math.max(...xs), y1 = Math.min(...ys), y2 = Math.max(...ys);
-        items.push({ str: it.str, x: x1, y: y1, w: x2 - x1, h: y2 - y1 });
-      });
+      const items = textItemsFromContent(tc, page.pdfPage.getViewport({ scale: 1, rotation: rot }));
       entry.items = items;
       // A stale entry (page replaced / rotated meanwhile) must not repaint or
       // notify — the live entry's own load will.
@@ -311,6 +318,7 @@
   }
 
   App.pageTextItems = pageTextItems;
+  App.textItemsFromContent = textItemsFromContent;             // SHEET-TITLE: the intake reads a title block before a page row exists
   App.addPageTextLoadedListener = addPageTextLoadedListener;   // D24
   App.peekPageTextItems = peekPageTextItems;                   // D24: canvas-draw's non-fetching read
   App.queryPdfTextNear = queryPdfTextNear;

@@ -106,7 +106,7 @@ test.describe('Learn: the lessons', () => {
       expect(skipped).toEqual([]);
       expect(walked[0]).toBe(id === 'plans' ? 'jump' : 'sheets');
       expect(walked[walked.length - 1]).toBe('done');
-      expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.state.trade])).toEqual([3, 'sample-lessons', 'plumbing']);
+      expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.state.trade])).toEqual([4, 'sample-lessons', 'plumbing']);
       await EXPECT[id](page);
       expect(await page.evaluate((k) => !!window.App.lessonsDone()[k], id)).toBe(true);
       await expect(page.locator('#learnModal')).toHaveClass(/visible/);
@@ -169,7 +169,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.click('#tourAction');
     await page.click('#confirmOk');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
-    expect(await page.evaluate(() => [window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual([3, ['My Counter']]);
+    expect(await page.evaluate(() => [window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual([4, ['My Counter']]);
     await page.click('#tourAction');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
     await page.click('#tourLeave');

@@ -5,8 +5,8 @@ const assert = require('node:assert');
 const tm = require('./tag-model.js');
 
 test('isTagToken: fixture tags yes, words / room numbers no', () => {
-  ['A', 'B', 'EM', 'X', 'A1', 'B12', 'WP', 'GFI', 'EX2'].forEach((t) => assert.strictEqual(tm.isTagToken(t), true, t));
-  ['104', 'OFFICE', 'THE', 'TYP', 'a', 'A123', '', ' ', 'ABCD'].forEach((t) => assert.strictEqual(tm.isTagToken(t), false, t));
+  ['A', 'B', 'EM', 'X', 'A1', 'B12', 'WP', 'GFI', 'EX2', 'WC-1', '3CS-1', 'FD1', 'HS-12'].forEach((t) => assert.strictEqual(tm.isTagToken(t), true, t));
+  ['104', 'OFFICE', 'THE', 'TYP', 'a', 'A123', '', ' ', 'ABCD', 'A-', 'WC-123', '33CS'].forEach((t) => assert.strictEqual(tm.isTagToken(t), false, t));
 });
 
 test('tagOfCounter: explicit tag, bare letter, "Type B", "Fixture Type EM — …"', () => {
@@ -51,6 +51,11 @@ test('rowsInBox + parseScheduleRows: a fixture schedule becomes tag + descriptio
     { tag: 'B', description: '2x2 LED troffer' },
     { tag: 'EM', description: 'Emergency wall pack' },
     { tag: 'X', description: 'Exit sign' },
+  ]);
+  // the description stops where the size columns begin
+  assert.deepStrictEqual(tm.parseScheduleRows([{ tokens: ['WC-1', 'WATER', 'CLOSET,', 'FLOOR', 'MTD', '1"', '-', '4"', '2"', '10', '4'] }, { tokens: ['FS-1', 'FLOOR', 'SINK,', '1/2', 'GRATE', '-', '-', '3"'] }]), [
+    { tag: 'WC-1', description: 'WATER CLOSET, FLOOR MTD' },
+    { tag: 'FS-1', description: 'FLOOR SINK, 1/2 GRATE' },
   ]);
   // a repeated tag keeps its first description
   assert.strictEqual(tm.parseScheduleRows([{ tokens: ['A', 'first', 'thing'] }, { tokens: ['A', 'second', 'thing'] }]).length, 1);

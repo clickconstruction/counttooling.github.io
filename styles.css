@@ -2589,3 +2589,11 @@ body.tour-active .canvas-empty-hint { display: none; }
     .settings-footer .settings-advanced-section .settings-menu { padding: 8px 0 4px; }
     .polyline-type-color { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; font-size: 0.85rem; color: var(--text2); }
     .polyline-type-color .color-swatch { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--border2); cursor: default; }
+
+/* A reveal step's answer (features/tutorial.js `reveal`): under a rule, below the question. */
+.tour-reveal { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.learn-course-rule { margin-top: 18px; display: flex; align-items: baseline; gap: 10px; }
+.learn-course-progress { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); font-weight: 400; }
+/* With the course under the lessons, the Learn card scrolls as ONE region (the modal-card's own
+   overflow), not a list inside a card: a list never shrinks into its own scrollbar. */
+.modal-card.learn-card .learn-list { flex: 0 0 auto; overflow-y: visible; min-height: 0; }

@@ -22,7 +22,7 @@ const PLUMBING_DEFAULTS = {
 };
 const LINE_DEFAULTS = {
   sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in', '3in', '4in'],
-  materials: ['PEX', 'Brass', 'BI', 'Galv']
+  materials: ['PEX', 'Copper', 'PVC', 'Brass', 'BI', 'Galv']
 };
 // --- Trades (Electrical, First-Class S1) ---
 // One machine, one Trade switch: `state.trade` ('plumbing' | 'electrical' |

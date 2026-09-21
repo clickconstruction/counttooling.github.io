@@ -13,6 +13,69 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(course): the plumbing course, nine chapters on how a restaurant gets its plumbing (2026-09-21)
+
+[PLUMBING-COURSE.md](journeys/plans/PLUMBING-COURSE.md). The owner's ask: "a short tutorial, and a long
+tutorial where we use the opportunity to coach the user how plumbing, electrical and HVAC work, and
+the rules, and why things are where they are." The short one is the tours and the lessons; this is
+the long one for plumbing, built first because only plumbing has an engineered sheet. Decisions:
+plumbing first, the engineer's drawing is the answer key, the drawing may change to teach better.
+Two rounds the same day: a first cut, an honest "is this the best we can do" (no: the coaching told
+with a delay, the drawing was thin, the app's unique features were mentioned not used), and the
+rework below.
+
+- **The course** (features/course-plumbing.js) is nine chapters on the tour engine, each the length
+  of a lesson, resumable, ticked on the device: Read the sheet, The fixtures and where they sit,
+  Water, Waste and vent, The riser, Gas, The enlarged plan and the typical, The whole sheet, Check
+  it and hand it off. It runs on the lesson set and reads `App.lessonKit` (features/lessons.js, now
+  exposed) at call time; chapters stand alone the way lessons do.
+- **A question is answered with a click.** "Which hand sink serves the cook line?" passes only on
+  the sink by the range and tells a wrong click which sink that was. "Put a note on a fixture whose
+  waste must never enter the interceptor" passes on a water closet, a lavatory or the mop sink and
+  says a hand sink carries grease. "Where must a cleanout be?" counts four and names the missing
+  ones by room. The explanation, with its section (IPC 604, 608, 704, 708, 709, 710, 802, 901, 903,
+  1002, 1003; FDA Food Code 5-202.12 and 5-204.11; IFGC 402 and 409.5; NFPA 96), opens the next
+  card. Where nothing can be clicked, the engine's `reveal` holds the answer behind "Show the
+  engineer's answer". Every count step's hint names what is still missing, by room.
+- **The app's own features do the work**: the schedule reader builds the eight counters from P-501's
+  table (chapter 2), the waste goes on its own layer (chapter 4), the hot water return is traced as
+  its own type, the FD counter carries a Trap primer child count, Summary Legend, Export PDFs and
+  the notes ledger each get a step.
+- **The whole sheet, against a reference** (chapter 8): "Finish the takeoff for me" lays every fixture
+  and every run; the reference is computed from the same flat geometry (seven line types, twelve
+  counts, thirty-four marks) so it cannot drift from the drawing; the compare card is a body that
+  is a FUNCTION, rendered live, with the reader's feet beside the reference's and the run a short
+  one is missing.
+- **The drawing**: P-101 gained its waste side (a 4" sanitary line under the restrooms that joins the
+  sewer DOWNSTREAM of the interceptor, a 3" grease line from every kitchen, dish and bar fixture,
+  four cleanouts, two VTRs, an RPZ, a hose bibb, general notes naming materials and slope) and a
+  hot water return with its own dotted line; P-501 gained WSFU and DFU columns and a note adding
+  the drainage load to 47 DFU against a 4" sewer's 180 and a 3" sewer's 36; **P-601 is new**, the
+  restrooms' waste and vent riser as an elevation at 1/4", to scale, so a trap arm can be measured
+  against Table 1002.2 and the stack traced from the drain to a foot above the roof. Nothing that
+  was on P-101 moved (the tours' and lessons' specs ran unchanged); the one dimension string that
+  lied, 36'-0" over a 35'-10" wall, says what the wall measures. The lesson set is four sheets.
+- **Engine** (features/tutorial.js): `reveal` / `revealLabel`; a body may be a function; `cardAt`
+  places a card with no control.
+- **Three small product changes**: a tag may carry a hyphen or lead with a digit (tag-model.js
+  `TAG_RE`, so WC-1 and 3CS-1 read as tags; the unit test grew); the schedule reader's link is
+  offered on plumbing projects too (features/tag-reader.js); Copper and PVC join the Quick creator's
+  default materials (constants.js `LINE_DEFAULTS`).
+- **Doors**: the Learn menu's third section (progress, ticks, the next chapter lit; the card scrolls
+  as one region now), the empty-canvas "plumbing course" link, Project Settings → Help,
+  `/app/?course=plumbing`, `/app/?chapter=plumbing:<id>`. The learning guide lists the chapters;
+  the plumbing guide points at the course.
+- Telemetry rides `tour_step` (`tour: 'course:plumbing:<id>'`). No new event type.
+- Specs: [course-plumbing.spec.js](course-plumbing.spec.js), fourteen tests: every chapter's path
+  end to end on real state with the numbers its bodies quote (the trunk 99.17 ft with its riser,
+  ten hangers and three 90s; the return 40.42 ft; the sanitary line 66.25 ft and the stack 17 ft;
+  the gas 35.5 ft with one 90 and four drops), the wrong click refused with its hint, the schedule
+  reader's eight tagged counters, the reference and the live compare card, the doors, the reveal.
+  teaching-labels.test.js reads the course file too, which is why its point lists are flat.
+- Open: PC-REVIEW on the punch list, a trade read of chapters 2 to 6 before the course is offered on
+  the landing. The electrical and HVAC courses wait on E-101 and M-101. Fixture-unit sizing in the
+  app (WATER-PLAN) would let chapter 3 confirm the engineer's sizes instead of reading them.
+
 ## fix(turn-in): the edit button holds a beat after it acts (2026-09-21)
 
 Punch row **R1-RECLICK**, decided and closed. `[Check out to Edit]` and `[Turn In]` are one button

@@ -43,7 +43,7 @@ Personas: P T · Status: ● walked 2026-08-02, re-walked + re-verified 2026-08-
 7. Drag the note's handles: right edge = width (ew-resize cursor), left edge = text size (ns-resize; drag down shrinks, floor 8). Handles are invisible — cursor change is the only affordance
 8. Double-click the note → "Edit Note" modal with the text; right-click → Edit / Delete ✓
 9. Drag the legend overlay (anywhere on its body) to a clear spot ✓ — works from any tool (re-verified: dragged it with the Note tool armed; the grab wins, no note is placed) — **unless it overlaps a highlight, then the legend is completely inert** (friction #2, re-confirmed 2026-08-09)
-10. Drag the legend's bottom-right corner (16-pt grip) to resize — works, sets `userResized`; "Highlight resize area" in Legend Settings makes the grip visible
+10. Drag the legend's bottom-right corner (16-pt grip) to resize — works, sets `userResized`; "Highlight resize area" in Legend Settings makes the grip visible. (Since 2026-09-21 the grip scales the whole legend, smaller too: it drives `legendSettings.legendScale`, the size slider's knob.)
 11. Right-click the Legend button → "Legend Settings" ✓ (second entrance: clicking the sidebar "Summary" heading — whose tooltip says "Click to collapse")
 12. Adjust border / background color+opacity / text opacity / legend size (live sliders), Done ✓ — **but Escape does not close this modal** (friction #10): the only exits are Done and the ✕, and an unnoticed still-open modal silently eats the next canvas interaction ![Legend Settings](img/annotate-and-review-03.png)
 13. Click the header eye (Hide marks) — whole takeoff peels off to the bare drawing ✓ — but invisible marks still catch the mouse (friction #3) ![bare sheet](img/annotate-and-review-04.png)
@@ -170,7 +170,7 @@ Load the dense sheet and click the header eye: fourteen fixtures, the waste line
 - Three surfaces claim the "show" verb for marks: the header eye ("Hide marks"), the sidebar "Show Highlights"/"Show Notes" buttons (actually PDF exports — img 08), and the peek eye ("show all canvases") — only the first is a visibility toggle, and the naive walk tripped on exactly that.
 - Legend Settings has two entrances (right-click Legend button; click sidebar "Summary" heading) — the second is mislabeled "Click to collapse".
 - Layer switching has three surfaces: layers-menu rows, Up/Down arrows, and the footer canvas pills — the pills (and the footer "+" add button) are `display:none !important` at **all** widths; the Phase-1 entry-point list and the documented route step 15 pointed at dead DOM.
-- "Legend size" slider (scales contents) vs corner-grip resize (sets box w/h) — two resize mechanisms with different semantics.
+- "Legend size" slider (scales contents) vs corner-grip resize (sets box w/h) — two resize mechanisms with different semantics. Closed 2026-09-21: the grip drives the same scale as the slider.
 - Hide-marks lives as header eye (desktop) and burger row (mobile); the burger row's visible label is "Hide marks"/"Show marks" (dynamic), not the Phase-1 recorded "Show / Hide marks".
 
 **Software-language terminology quoted on screen during the walk:**

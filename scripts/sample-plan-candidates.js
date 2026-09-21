@@ -355,10 +355,19 @@ const gasDrop = (x, y) => `<circle cx="${x}" cy="${y}" r="2.4" fill="${INK}"/>`;
 const equip = (x, y, w, h, label, rot = 0) => `<g font-family="${F}"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <text x="${x + w / 2}" y="${y + h / 2 + 2.5}" font-size="7" fill="#444" text-anchor="middle"${rot ? ` transform="rotate(${rot} ${x + w / 2} ${y + h / 2})"` : ''}>${label}</text></g>`;
 
-function candidateBPlan() {
+// The restaurant's SHELL: walls, rooms, doors, fixtures and equipment, dimensions, the
+// north arrow and the scale bar, with the pendant lights and the plumbing keytags as
+// options. P-101 draws its plumbing over it; the electrical sheets (scripts/
+// sample-electrical.js) draw their devices over the same shell with the lights and the
+// plumbing tags off, so every E-sheet coordinate is a P-101 coordinate.
+function restaurantShell(opts = {}) {
+  const lights = opts.lights !== false;
+  const kt = (x, y, label) => (opts.tags === false ? '' : keyTag(x, y, label));
+  const fd = (x, y) => (opts.drains === false ? '' : floorDrain(x, y));
+  const fsk = (x, y) => (opts.drains === false ? '' : floorSink(x, y));
   const L = 130, R = 940, T = 100, B = 600;
   return `
-  <!-- outer wall (entry opening 480-510 masked out of the top run) -->
+<!-- outer wall (entry opening 480-510 masked out of the top run) -->
   <rect x="${L}" y="${T}" width="${R - L}" height="${B - T}" fill="#fff" stroke="${INK}" stroke-width="6"/>
   <line x1="480" y1="${T}" x2="510" y2="${T}" stroke="#fff" stroke-width="8"/>
   <!-- kitchen service/exit door in the east wall (outswing, per egress) -->
@@ -409,12 +418,12 @@ function candidateBPlan() {
 
   <!-- restrooms: WC tanks against the top wall, lavs hung on the side walls,
        FD at the room center clear of the door swings -->
-  ${wc(596, 118)}${lavCtr(584, 180, 270)}${floorDrain(630, 192)}
-  ${wc(732, 118)}${lavCtr(712, 180, 270)}${floorDrain(766, 196)}
+  ${wc(596, 118)}${lavCtr(584, 180, 270)}${fd(630, 192)}
+  ${wc(732, 118)}${lavCtr(712, 180, 270)}${fd(766, 196)}
   <!-- mop room: sink in the NW corner, FD center-south -->
-  ${mopSink(848, 126)}${floorDrain(902, 206)}
+  ${mopSink(848, 126)}${fd(902, 206)}
 
-  <!-- dining pendant lights: even 3x3 grid over the room + a row over the bar -->
+  ${lights ? `<!-- dining pendant lights: even 3x3 grid over the room + a row over the bar -->
   ${lightFix(200, 160)}${lightFix(345, 160)}${lightFix(490, 160)}
   ${lightFix(200, 285)}${lightFix(345, 285)}${lightFix(490, 285)}
   ${lightFix(200, 410)}${lightFix(345, 410)}${lightFix(490, 410)}
@@ -429,34 +438,32 @@ function candidateBPlan() {
   ${lightFix(720, 548)}${lightFix(860, 520)}
   <text x="150" y="136" font-family="${F}" font-size="8.5" fill="#444">PENDANT, TYP.</text>
 
-  <!-- bar: counter anchored to the left wall, parallel to the rear wall, with a
+  ` : ''}
+<!-- bar: counter anchored to the left wall, parallel to the rear wall, with a
        bartender aisle behind it; the vertical leg stops short of the rear wall
        to leave a pass-through. 3-comp and hand sink in the aisle, tagged. -->
   <path d="M133 520 L370 520 L370 570" fill="none" stroke="${INK}" stroke-width="2"/>
-  ${sink3Comp(170, 560, 54)}${keyTag(238, 570, '3CS')}
-  ${handSink(330, 578)}${keyTag(352, 580, 'HS')}
-  ${floorDrain(238, 542)}${floorDrain(340, 545)}
+  ${sink3Comp(170, 560, 54)}${kt(238, 570, '3CS')}
+  ${handSink(330, 578)}${kt(352, 580, 'HS')}
+  ${fd(238, 542)}${fd(340, 545)}
 
   <!-- kitchen north (hall) wall, west to east: hand sink, prep sink (indirect
        to FS), then the COOK LINE along the wall with the hood over it -->
-  ${handSink(600, 308)}${keyTag(614, 308, 'HS')}
+  ${handSink(600, 308)}${kt(614, 308, 'HS')}
   <rect x="624" y="304" width="60" height="20" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <ellipse cx="654" cy="314" rx="9" ry="6" fill="none" stroke="${INK}" stroke-width="1.1"/>
   <text x="660" y="338" font-family="${F}" font-size="8" fill="#444" text-anchor="middle">PREP</text>
-  ${floorSink(640, 346)}
+  ${fsk(640, 346)}
   <!-- cook line: equipment against the wall, hood outline over it, a gas drop
        on each piece from the 1-1/4" G run behind the line -->
   <rect x="690" y="298" width="172" height="54" fill="none" stroke="${INK}" stroke-width="0.8" stroke-dasharray="6 4"/>
   ${equip(700, 302, 48, 36, 'RANGE')}${equip(750, 302, 48, 36, 'FLAT TOP')}
   ${equip(800, 302, 24, 36, 'FRYER', -90)}${equip(826, 302, 24, 36, 'FRYER', -90)}
   <text x="808" y="362" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">HOOD ABOVE</text>
-  ${pipe('gas', [[840, 632], [840, 346], [700, 346]])}
-  ${gasDrop(724, 346)}${gasDrop(774, 346)}${gasDrop(812, 346)}${gasDrop(838, 346)}
-  ${pipeLabel(834, 420, '1-1/4" G', -90)}${pipeLabel(834, 520, '1-1/2" G', -90)}
 
   <!-- kitchen: a hand sink by the exit (the other is beside the range), floor drains along the work aisle -->
-  ${handSink(928, 392, 270)}${keyTag(904, 412, 'HS')}
-  ${floorDrain(610, 432)}${floorDrain(740, 430)}${floorDrain(860, 440)}
+  ${handSink(928, 392, 270)}${kt(904, 412, 'HS')}
+  ${fd(610, 432)}${fd(740, 430)}${fd(860, 440)}
 
   <!-- dish pit (west back room), one straight line along the south wall, west to
        east: the pass-through drops onto the SOILED landing (pre-rinse), then the
@@ -464,7 +471,7 @@ function candidateBPlan() {
        just short of the door — which swings out. The 3-comp pot sink sits off the
        line on the north wall; fixtures sit up off the south wall so the CW/HW runs
        have a clear strip. -->
-  ${sink3Comp(578, 476, 54)}${keyTag(644, 486, '3CS')}
+  ${sink3Comp(578, 476, 54)}${kt(644, 486, '3CS')}
   <rect x="576" y="566" width="44" height="22" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <rect x="582" y="570" width="14" height="14" rx="2" fill="none" stroke="${INK}" stroke-width="1.1"/>
   <text x="598" y="562" font-family="${F}" font-size="7" fill="#444" text-anchor="middle">SOILED</text>
@@ -472,14 +479,44 @@ function candidateBPlan() {
   <text x="643" y="577" font-family="${F}" font-size="8.5" fill="#444" text-anchor="middle">DW</text>
   <path d="M666 588 L666 566 L676 566 L676 520 L696 520 L696 588 Z" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <text x="686" y="548" font-family="${F}" font-size="7.5" fill="#444" text-anchor="middle" transform="rotate(-90 686 548)">CLEAN</text>
-  ${floorSink(668, 550)}${floorDrain(648, 536)}
+  ${fsk(668, 550)}${fd(648, 536)}
 
   <!-- storage / mechanical (east back room): water heater, FD -->
-  ${waterHeater(812, 572)}${floorDrain(740, 528)}
+  ${waterHeater(812, 572)}${fd(740, 528)}
   <g font-family="${F}"><rect x="856" y="560" width="62" height="24" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <text x="887" y="575" font-size="7" fill="#444" text-anchor="middle">RECIRC PUMP</text></g>
 
-  <!-- grease interceptor (exterior) -->
+  <!-- doors (each hinge sits at a real wall opening) -->
+  ${door(R, 456, 36, 0)}
+  ${door(480, T, 30, 90)}
+  ${doorDouble(560, 460, 22, 270)}
+  ${door(662, 252, 22, 0)}
+  ${door(796, 252, 22, 0)}
+  ${door(862, 252, 20, 0)}
+  ${door(656, 470, 40, 0)}
+  ${door(800, 470, 40, 180)}
+  ${door(324, 470, 24, 180)}
+
+  <!-- dimensions -->
+  ${dimH(L, 84, 560, "35'-10\"")}${dimH(560, 84, R, "31'-8\"")}   <!-- 430 px and 380 px at 12 px/ft: the strings say what the walls measure -->
+  ${dimV(112, T, 470, "30'-8\"")}${dimV(112, 470, B, "10'-10\"")}
+  ${dimV(958, T, 252, "12'-7\"", { labelDx: 8, extFrom: 944 })}${dimV(958, 252, 296, "3'-8\"", { labelDx: 8, extFrom: 944 })}
+
+  ${northArrow(990, 132)}
+  ${scaleBar(130, 648)}
+
+`;
+}
+// P-101's plumbing over the shell: the gas run and its drops, the interceptor, the
+// domestic water and the hot water return, the site utilities, the waste side, the keynote tags.
+function candidateBPlan() {
+  const L = 130, R = 940, T = 100, B = 600;
+  void L; void R; void T; void B;
+  return restaurantShell({ lights: true }) + `
+  ${pipe('gas', [[840, 632], [840, 346], [700, 346]])}
+  ${gasDrop(724, 346)}${gasDrop(774, 346)}${gasDrop(812, 346)}${gasDrop(838, 346)}
+  ${pipeLabel(834, 420, '1-1/4" G', -90)}${pipeLabel(834, 520, '1-1/2" G', -90)}
+<!-- grease interceptor (exterior) -->
   <g font-family="${F}">
     <rect x="965" y="520" width="56" height="34" fill="none" stroke="${INK}" stroke-width="1.5"/>
     <text x="993" y="540" font-size="9.5" fill="${INK}" text-anchor="middle">GI</text>
@@ -577,26 +614,7 @@ function candidateBPlan() {
   ${keyTag(622, 124, 'WC')}${keyTag(758, 124, 'WC')}
   ${keyTag(848, 158, 'MS')}
 
-  <!-- doors (each hinge sits at a real wall opening) -->
-  ${door(R, 456, 36, 0)}
-  ${door(480, T, 30, 90)}
-  ${doorDouble(560, 460, 22, 270)}
-  ${door(662, 252, 22, 0)}
-  ${door(796, 252, 22, 0)}
-  ${door(862, 252, 20, 0)}
-  ${door(656, 470, 40, 0)}
-  ${door(800, 470, 40, 180)}
-  ${door(324, 470, 24, 180)}
-
-  <!-- dimensions -->
-  ${dimH(L, 84, 560, "35'-10\"")}${dimH(560, 84, R, "31'-8\"")}   <!-- 430 px and 380 px at 12 px/ft: the strings say what the walls measure -->
-  ${dimV(112, T, 470, "30'-8\"")}${dimV(112, 470, B, "10'-10\"")}
-  ${dimV(958, T, 252, "12'-7\"", { labelDx: 8, extFrom: 944 })}${dimV(958, 252, 296, "3'-8\"", { labelDx: 8, extFrom: 944 })}
-
-  ${northArrow(990, 132)}
-  ${scaleBar(130, 648)}
-
-`;
+  `;
 }
 function candidateB() {
   return `${sheetFrame()}
@@ -825,7 +843,8 @@ async function render(name, body) {
 
 // Candidate A ships as the SIMPLE sample plan (scripts/build-sample-plan.js), candidate B
 // as the ADVANCED one (scripts/build-sample-plan-advanced.js).
-module.exports = { W, H, PLAN_AT, candidateA, candidateB, pageHtml, lessonDetailSheet, lessonScheduleSheet, lessonRiserSheet, LESSON_DETAIL, RISER };
+module.exports = { W, H, PLAN_AT, F, INK, candidateA, candidateB, candidateBPlan, restaurantShell, pageHtml, lessonDetailSheet, lessonScheduleSheet, lessonRiserSheet, LESSON_DETAIL, RISER,
+  keyTag, roomTag, titleBlock, notesColumn, sheetFrame, dimH, dimV, northArrow, scaleBar, pipe, equip };
 
 if (require.main === module) {
   (async () => {

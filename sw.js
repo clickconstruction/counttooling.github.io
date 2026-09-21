@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '294c42ed6265';
+const CACHE_VERSION = '46baf8dfd221';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -315,7 +315,7 @@ const PRECACHE_SHA256 = {
   '/features/duct-bidcheck.js': '793ca70d74a92aa4c6af035d60d90e87213247260c7e39ec832d61a8cd59c9a6',
   '/features/rules.js': '01e86c4f75ee125c375265b33566364603a9056780716841f487b4a323be8192',
   '/features/tag-reader.js': 'dc4d05e20008d6d39ac837531080d2ccfa4bbc72cafbf940100f77ae5e7986f8',
-  '/features/tutorial.js': 'd7775ab27f0aa0d56fcb91b701aa30f4ed31bc38779652c10baddd80971d39d8',
+  '/features/tutorial.js': '1a55487c74a8e31989e5adfd29a869b448ec221f4d28553d0ca6d09306e8631c',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
   '/report.js': '14b7fc5c9cf4084dde144d94e0bf8f915c81d07576d022261c078e7efac9b8ba',

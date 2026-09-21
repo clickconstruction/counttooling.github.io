@@ -180,7 +180,7 @@
     },
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
-      body: '1. In the left sidebar, click BID CHECK to expand it.\nThe app computes conduit fill and voltage drop to the farthest device, compares circuits with the panel schedule, and lists the judgment calls only you can tick. It never blocks an export; it tells you what is open.',
+      body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. It has also caught something: the receptacles you counted first were never wired, so they read as not reached by a run. Voltage drop to the farthest device and the panel cross-check wake up once a run is flagged as the homerun and the panel is on the plan. Below them are the calls only you can tick. It never blocks an export; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },

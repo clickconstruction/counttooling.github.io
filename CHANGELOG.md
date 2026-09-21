@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(guides): the plumbing, electrical and HVAC guides follow their tours (2026-09-21)
+
+LEARN-GUIDES, phase 1 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). Every claim was walked in
+the app first; every picture is the takeoff the trade's own tour builds.
+
+- **Plumbing** is rewritten end to end around what its intro always promised: prove the scale,
+  count, Chain a battery, Drop for the risers, hangers from the rulebook with the § IPC 308.5 chip,
+  Fittings from bends and the vertex menu's "No fitting here", multiply and scale zones, RFI notes
+  and Copy RFI Flags, the plumbing Bid Check rows, the proof breakdown, the hand-off.
+- **HVAC** no longer says to trace duct with Line and Polyline. It is rooms and CFM targets, air
+  devices that carry their CFM, a system with a capacity, the Duct tool sizing itself at `S`,
+  strays and Attach to nearest run, fittings that count themselves, the Duct Schedule and Bid
+  weight, Bid Check and the export gate, the compact M-sheet legend, and the Duct block in
+  Copy to /Tooling. The long form stays in duct-takeoff-by-the-pound.
+- **Electrical** gains the tour pointer it never had, Fittings from bends, the § chips and code
+  edition, the compact E-sheet legend (the old sentence said a tally), and a Bid Check picture
+  with the warning the tour really ends on: three counted receptacles on no run. The tour's Bid
+  Check step now says what the reader sees there rather than what the section can do in general.
+- All three link straight into their tour (`/app/?tour=<trade>`).
+- `scripts/build-screenshots.js` gains `tourSetup(tour, stopAt, after)`: a shot that presses
+  "Do it for me" through the tour and frames the result, so a tour change re-shoots its guide.
+  Six new shots. `[[chain]]` and `[[drop]]` join the guide icon shortcodes.
+
 ## fix(tutorial): a tour starts clean, leaves no dialog over its next step, and fits a phone (2026-09-21)
 
 LEARN-ENGINE, the engine half of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). All four were seen

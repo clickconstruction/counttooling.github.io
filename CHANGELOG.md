@@ -81,6 +81,41 @@ the lessons ([journeys/plans/LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md), the p
   `RETIRED`. Rename a control and the test names every surface still teaching the old one. It
   found the "Legend Settings" miss on its first run.
 - GUIDES-PLAN.md re-stamped (all fifteen articles are published); four LEARN rows on the punch list.
+## fix(sign-in): signing in no longer wipes the takeoff made signed out (2026-09-20)
+
+Found while checking whether unsaved on-device work survives a sign-in. It did not: a plan opened
+and marked signed out, then a sign-in from inside the app, ended with the page reloading itself
+onto an empty canvas, the marks and the device backup gone and nothing offered back. That is the
+try-it-then-sign-in path, not an edge case.
+
+The cause was the admin force-reload. `checkGlobalForceReload` (save-engine.js) runs at sign-in
+and reloads when the server's `force_reload_after` stamp is newer than the browser's own. A
+browser that had never been through one has NO stamp, which read as 0, older than everything, so
+the first sign-in on any browser always fired it. And `doGlobalReloadNow` cleared the device with
+`indexedDB.deleteDatabase('clickcount-pdf-cache')`, the database that also holds the takeoff
+backups, the one copy of work that is not in the cloud.
+
+- **A browser with no stamp adopts the server's stamp and does not reload** (a
+  `global_reload_baseline` save-status event). It loaded this shell moments ago, so there is no
+  broadcast it can have missed; one made AFTER this still reloads it. The takeoff stays on
+  screen through the sign-in.
+- **A force reload keeps the takeoff backups.** It writes one last backup, then
+  `idbClearCachesKeepTakeoffBackups` (idb.js) empties every other store exactly as before (the
+  PDF cache, view PDFs, zoom rungs, icons, logs, upload-resume) and leaves `takeoff_backup` and
+  its meta alone. The clear is awaited, capped at 2 s each, because a transaction still open at
+  unload is aborted. After the reload the work comes back through "Project from Last Session".
+- **It keeps the `clickcount-last-project` pointer too.** Signed in with unsaved marks, autosave
+  can create the cloud project in the moment before the reload; without the pointer the fresh
+  document would offer nothing, though the work was safe in the cloud. Reasoned from the code,
+  not reproduced. Advanced's "Clear cached data and reload" is the user's own button and is
+  unchanged.
+
+signin-keeps-takeoff.spec.js (cloud-gated, against the real project's stamp): no stamp, no
+reload, the plan and three marks still there, the stamp adopted; a stale stamp, the reload
+happens and Keep brings the three marks back. Engine unit tests: the clear replaces
+`deleteDatabase`, and a browser with no stamp takes the baseline and reloads for a later
+broadcast. idb.test.js pins the selective clear. upload-then-save.spec.js's stamp seeding still
+holds. Gates: the full local suite, `npm run check`.
 
 ## fix(restore): Keep uses the device's PDF when the cloud has none, and uploads it (2026-09-20)
 

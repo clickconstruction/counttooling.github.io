@@ -227,6 +227,24 @@ async function idbTakeoffBackupPut(projectId, data, pdfBlob, pdfHash, lastModifi
   }
 }
 
+// The admin force-reload's cache clear (save-engine.js doGlobalReloadNow). It used to be
+// indexedDB.deleteDatabase, which took the takeoff backups with it: the one copy of work that
+// is not in the cloud. Every other store is emptied exactly as before; the two backup stores
+// are left alone, so the reload is followed by the "Project from Last Session" offer instead
+// of an empty canvas. Resolves true once the clear has committed, false if it could not run.
+async function idbClearCachesKeepTakeoffBackups() {
+  try {
+    const db = await openPdfCacheDb();
+    const names = Array.from(db.objectStoreNames).filter((n) => n !== TAKEOFF_BACKUP_STORE && n !== TAKEOFF_BACKUP_META_STORE);
+    if (!names.length) { db.close(); return true; }
+    const tx = db.transaction(names, 'readwrite');
+    names.forEach((n) => tx.objectStore(n).clear());
+    await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
+    db.close();
+    return true;
+  } catch (_) { return false; }
+}
+
 async function takeoffBackupDelete(projectId) {
   if (!BACKUP_PDF_TO_INDEXEDDB) return;
   try {
@@ -437,7 +455,7 @@ if (typeof module !== 'undefined' && module.exports) {
     openPdfCacheDb,
     viewCacheGet, viewCachePut, viewCacheGetMeta,
     pdfCacheGet, pdfCachePut, pdfCacheDelete,
-    idbTakeoffBackupGetRaw, idbTakeoffBackupPut, takeoffBackupDelete,
+    idbTakeoffBackupGetRaw, idbTakeoffBackupPut, takeoffBackupDelete, idbClearCachesKeepTakeoffBackups,
     idbPutSaveLogsSnapshot, readSaveLogsSnapshots,
     idbCustomIconsGet, idbCustomIconsPut,
     idbPdfUploadResumeGetAll, idbPdfUploadResumeGetByFingerprint,

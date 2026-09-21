@@ -2874,20 +2874,46 @@ function createSaveEngine(ctx) {
       const localTs = parseInt(localStorage.getItem(GLOBAL_RELOAD_STAMP_KEY) || '0', 10);
       state.globalReloadAtServerMs = serverTs;
       state.globalReloadReason = data.value_text || '';
-      if (serverTs > localTs) doGlobalReloadNow('boot');
+      // A browser with NO stamp has never been through a force reload, so there is no broadcast
+      // it can have missed: it loaded this shell moments ago. It used to read as "0, older than
+      // everything", and the first sign-in on any browser wiped the device and reloaded, taking
+      // a takeoff made signed out with it (the try-it-then-sign-in path). Adopt the server's
+      // stamp as the baseline instead; a broadcast made AFTER this still reloads it.
+      if (localStorage.getItem(GLOBAL_RELOAD_STAMP_KEY) == null) {
+        try { localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, String(serverTs)); } catch (_) {}
+        try { pushSaveEvent('global_reload_baseline', 'First sign-in on this browser: adopted the current reload stamp, no reload', String(serverTs)); } catch (_) {}
+        return;
+      }
+      if (serverTs > localTs) await doGlobalReloadNow('boot');
     } catch (_) {}
   }
 
-  function doGlobalReloadNow(trigger) {
+  // How long the reload waits for the cache clear to commit. A transaction still open when the
+  // page unloads is aborted, so the clear is awaited; the cap keeps a stuck store from holding
+  // the reload hostage (the caches it missed are rebuilt or re-fetched anyway).
+  const GLOBAL_RELOAD_CLEAR_WAIT_MS = 2000;
+  async function doGlobalReloadNow(trigger) {
     const state = ctx.getState();
     const stamp = String(state.globalReloadAtServerMs || Date.now());
     try { localStorage.setItem(PENDING_GLOBAL_RELOAD_STAMP_KEY, stamp); } catch (_) {}
     try { pushSaveEvent('global_reload_triggered', 'Admin triggered global reload', JSON.stringify({ trigger, reason: state.globalReloadReason || '' })); } catch (_) {}
-    try { indexedDB.deleteDatabase('clickcount-pdf-cache'); } catch (_) {}
+    // The device's caches go; the takeoff backups (work that is not in the cloud) stay, so the
+    // reload ends in the "Project from Last Session" offer. This was deleteDatabase, which took
+    // the backups too. One last backup write first, so what is on screen now is what is kept.
+    try { await Promise.race([writeTakeoffStateBackup(), new Promise((r) => setTimeout(r, GLOBAL_RELOAD_CLEAR_WAIT_MS))]); } catch (_) {}
+    try {
+      if (typeof idbClearCachesKeepTakeoffBackups === 'function') {
+        await Promise.race([idbClearCachesKeepTakeoffBackups(), new Promise((r) => setTimeout(r, GLOBAL_RELOAD_CLEAR_WAIT_MS))]);
+      }
+    } catch (_) {}
     // PWA: best-effort clear the service-worker caches too, so the offline
     // fallback also refreshes. Fire-and-forget — must NOT block location.reload().
     try { if (window.caches) caches.keys().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {}); } catch (_) {}
-    const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+    // 'clickcount-last-project' is NOT in this list any more: it is the pointer the fresh document
+    // uses to offer the project back. Signed in with unsaved marks, autosave can create the cloud
+    // project in the moment before this reload; without the pointer the reload landed on an empty
+    // canvas with nothing offered, though the work was safe in the cloud.
+    const keysToRemove = ['recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
     for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
     location.reload();
   }

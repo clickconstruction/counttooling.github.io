@@ -441,7 +441,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });   // the app's own ready signal, not a quiet network
     await seedLocalBackup(page);
     // The feature that owns the offer arrives 1.5 s late, so app.js's async boot gets to the
     // offer first. Before 2026-09-21 that threw "App.openLastSessionRestorePrompt is not a

@@ -27,6 +27,11 @@
 const { test, expect } = require('@playwright/test');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
+// "The app is ready" is the app's own signal, not a quiet network: every fresh context
+// installs the service worker (about 155 precached files), and on a slow CI runner
+// waitForLoadState('networkidle') outlived the whole test budget (19 of 19 flaky
+// errors and the one hard failure on PR #161's run were exactly that wait).
+const ready = (page) => page.waitForFunction(() => window.App && window.App.bootSettled === true && typeof window.App.startTutorial === 'function', null, { timeout: 30000 });
 async function waitForStep(page, id) {
   await page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 8000 });
 }
@@ -38,7 +43,7 @@ test.describe('Interactive walkthrough', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await page.evaluate(() => { try { localStorage.removeItem('clickcount-tour-done'); } catch (_) {} });
     expect(await page.evaluate(() => typeof window.App?.startTutorial)).toBe('function');
 
@@ -118,7 +123,7 @@ test.describe('Interactive walkthrough', () => {
 
   test('?tour=1 starts it; a real click satisfies a step; Back and leaving behave; a cloud project refuses', async ({ page }) => {
     await page.goto('/app/?tour=1');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await page.waitForFunction(() => window.App.tutorialStepId() === 'welcome', null, { timeout: 5000 });
     // the spotlight sits on the Upload button
     const spot = await page.evaluate(() => { const r = document.getElementById('tourSpot').getBoundingClientRect(); const b = document.getElementById('uploadPdf').getBoundingClientRect(); return Math.abs(r.left + 6 - b.left) < 2 && Math.abs(r.top + 6 - b.top) < 2; });
@@ -162,7 +167,7 @@ test.describe('Interactive walkthrough', () => {
     expect(css.includes('.canvas-empty-hint-tour a')).toBe(false);
     await page.route('**/styles.css', (route) => route.fulfill({ body: css, contentType: 'text/css' }));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await page.evaluate(() => { try { localStorage.removeItem('clickcount-tour-done'); } catch (_) {} });
     const box = await page.locator('#canvasEmptyHintTour').boundingBox();
     await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
@@ -175,12 +180,12 @@ test.describe('Interactive walkthrough', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await page.evaluate(() => { try { localStorage.removeItem('clickcount-tour-done'); localStorage.removeItem('clickcount-tour-done-plumbing'); } catch (_) {} });
     // a device whose last bid was electrical still gets a plumbing tour
     await page.evaluate(() => { const m = JSON.parse(localStorage.getItem('plumbingModifiers') || '{}'); m.defaultTrade = 'electrical'; localStorage.setItem('plumbingModifiers', JSON.stringify(m)); });
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     expect(await page.locator('#canvasEmptyHintTourPlumbing').isVisible()).toBe(true);
     expect(await page.locator('#canvasEmptyHintTour').isVisible()).toBe(true);
     await page.click('#canvasEmptyHintTourPlumbing');
@@ -298,10 +303,10 @@ test.describe('Interactive walkthrough', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await page.evaluate(() => { try { ['clickcount-tour-done', 'clickcount-tour-done-plumbing', 'clickcount-tour-done-hvac'].forEach((k) => localStorage.removeItem(k)); } catch (_) {} });
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     expect(await page.locator('#canvasEmptyHintTourHvac').isVisible()).toBe(true);
     await page.click('#canvasEmptyHintTourHvac');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['hvac', 'welcome']);
@@ -378,7 +383,7 @@ test.describe('Interactive walkthrough', () => {
 
   test('?tour=plumbing opens the plumbing tour; the Settings link opens it; finishing electrical hides only its link', async ({ page }) => {
     await page.goto('/app/?tour=plumbing');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await page.waitForFunction(() => window.App.tutorialStepId() === 'welcome', null, { timeout: 5000 });
     expect(await page.evaluate(() => window.App.tutorialId())).toBe('plumbing');
     await page.click('#tourLeave');
@@ -413,7 +418,7 @@ test.describe('Interactive walkthrough', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
     // 1. a plumbing tour leaves a real session behind on the device
     await page.goto('/app/?tour=plumbing');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await waitForStep(page, 'welcome');
     for (const next of ['scale', 'measure', 'counter', 'place', 'linetype']) { await page.evaluate(() => window.App.tutorialDoStep()); await waitForStep(page, next); }
     expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toEqual(['Water Closet']);
@@ -423,7 +428,7 @@ test.describe('Interactive walkthrough', () => {
     // pre-applied under it, and the sample plan (the same PDF, so the same hash) got the
     // plumbing marks re-applied: water closets inside an HVAC tour.
     await page.goto('/app/?tour=hvac');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await waitForStep(page, 'welcome');
     await page.waitForTimeout(1500);   // the offer's 1 s poll must not sneak it in either
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
@@ -439,7 +444,7 @@ test.describe('Interactive walkthrough', () => {
   test('on a phone: no key asides, the sidebar step lights the ☰ and then follows into the drawer, the card docks clear of its control', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/app/?tour=plumbing');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await waitForStep(page, 'welcome');
     await page.evaluate(() => window.App.tutorialDoStep());
     await waitForStep(page, 'scale');
@@ -461,7 +466,7 @@ test.describe('Interactive walkthrough', () => {
     const errors = [];
     page.on('pageerror', (err) => { errors.push(err.message); });
     await page.goto('/app/?tour=plumbing');
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     await waitForStep(page, 'welcome');
     await expect(page.locator('#tourShow')).toHaveText('Open the sample plan');   // the one hands-off step keeps a button that does it
     await page.click('#tourShow');

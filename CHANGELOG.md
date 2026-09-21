@@ -31,6 +31,13 @@ can interleave. Spec: restore-last-session.spec.js "BOOT RACE" serves the featur
 and expects the offer; it fails without the fix. The three whole-tour specs also got the 90 s
 budget their siblings have.
 
+It was NOT the main source of the CI flakes, though: the next run still had 16. Every one of
+them, and the run's one hard failure, was `page.waitForLoadState('networkidle')` timing out. A
+fresh context installs the service worker and precaches about 155 files, so a slow runner's
+network does not go quiet inside a test's budget. tutorial.spec.js now waits on the app's own
+signal (`App.bootSettled`) the way lessons.spec.js always has (zero flakes across the runs);
+the rest of the suite is punch row CI-NETWORKIDLE.
+
 ## feat(learn): the reader does every step, inside targets drawn on the sheet (2026-09-21)
 
 The owner, after a morning with Learn: "Instead of being able to click through it, I would like

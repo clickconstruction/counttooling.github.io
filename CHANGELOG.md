@@ -70,6 +70,33 @@ three trade tours).
   off-centre inside does; a half box is refused and a wrapping one passes; a trace ticks its
   circles corner by corner; the plumbing tour's circled water closets and its typical-floor
   boundary (tutorial.spec.js, lessons.spec.js: 35 tests with restore-last-session).
+## fix(turn-in): the edit button holds a beat after it acts (2026-09-21)
+
+Punch row **R1-RECLICK**, decided and closed. `[Check out to Edit]` and `[Turn In]` are one button
+in the same pixels of the header (and its copy in the sidebar), and the label flipped the instant
+the first action landed, so a second click undid the first: checked out, then turned straight
+back in. The field report's pair was 16:36:01 then 16:36:04, a second click by someone who had
+not seen that the first one worked. The decision: a brief hold, no confirm on Turn In (a confirm
+would tax the many deliberate turn-ins a day to stop a mistake that is cheap to undo).
+
+- After a checkout or a turn-in succeeds FROM THE BANNER, it reads **"Checked out ✓"** or
+  **"Turned in ✓"**, disabled and in the quiet colour, for 3 s, then offers the opposite action as
+  before. Three seconds because the reported second click came three seconds later; nobody checks
+  out and turns in on purpose inside that.
+- features/turn-in.js owns it: `holdEditBanner` after a successful action,
+  `App.applyEditBannerHold(bannerEl)` called by updateUI (app.js) just before the sidebar copies
+  the header's markup, so both banners hold alike. updateUI rebuilds the banner on every call, so
+  the hold is re-applied each time and a timer's updateUI ends it.
+- Only the held action is held. A project turned in here and checked out again from the admin
+  notice or Project Settings offers a working `[Turn In]` at once (the first cut swallowed every
+  banner click during a hold; turn-in-self-release.spec.js's new timeout report named it on its
+  first run). Expired, Unsaved / Save and "someone else is editing" are never held. Project
+  Settings' own Check Out and Turn In are separate buttons and are unchanged.
+
+reclick-hold.spec.js (cloud-gated): a double-click on each label acts once and the state stays; a
+click two seconds into the hold does nothing; the sidebar holds too; the hold ends by itself.
+Gates: that spec with turn-in-self-release, close-project, save-status, header-strip-trade and
+view-only, `npm run check`.
 
 ## feat(learn): Learn, thirteen short lessons for every part of the app (2026-09-21)
 

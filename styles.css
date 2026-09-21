@@ -113,6 +113,8 @@
     .header-edit-status.edit-status-editing button.header-edit-status-btn { color: var(--red); }
     .header-edit-status.edit-status-available button.header-edit-status-btn { color: #81c784; }
     .header-edit-status.edit-status-expired button.header-edit-status-btn { color: var(--yellow); font-weight: 700; }
+    /* R1-RECLICK: the beat after a checkout or a turn-in made from this button. It says what just happened, in the quiet colour, and takes no clicks (features/turn-in.js). */
+    .header-edit-status button.header-edit-status-btn.header-edit-status-btn-hold, .sidebar-checkout-banner button.header-edit-status-btn.header-edit-status-btn-hold { color: var(--text2); cursor: default; opacity: 1; }
     .header-edit-status button.header-edit-status-btn-expired { animation: header-edit-status-btn-expired-pulse 2s ease-in-out infinite; }
     @keyframes header-edit-status-btn-expired-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
     .header-edit-status button.header-edit-status-btn-save { background: transparent; color: var(--red); padding: 6px 12px; border-radius: 0; font-weight: 600; }

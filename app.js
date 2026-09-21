@@ -2904,6 +2904,10 @@
           editBanner.appendChild(span);
           editBanner.classList.add('edit-status-viewing');
         }
+        // R1-RECLICK: right after a checkout or a turn-in made from this button, it holds a
+        // "done" label for a beat instead of offering the opposite action in the same pixels
+        // (features/turn-in.js). Before the sidebar copy below, so both banners hold alike.
+        if (App.applyEditBannerHold) App.applyEditBannerHold(editBanner);
         const sidebarBanner = document.getElementById('sidebarCheckoutBanner');
         if (sidebarBanner) {
           sidebarBanner.className = 'sidebar-checkout-banner ' + editBanner.className.replace('header-edit-status', '').trim();

@@ -101,10 +101,46 @@
     App.showToast(msg, 5000);
     return false;
   }
+  // R1-RECLICK: [Check out to Edit] and [Turn In] are one button in the same pixels, and the
+  // label used to flip the instant the first action landed, so a double-click (or an impatient
+  // second click) checked a project out and turned it straight back in, or the reverse
+  // (field report 2026-09-15: a 16:36:01 checkout, a 16:36:04 turn-in). After either action
+  // succeeds FROM THIS BUTTON, the banner holds a "done" label and takes no clicks for a beat,
+  // then offers the opposite action as before. Nobody acting on purpose pays a click for it.
+  // Three seconds, not a double-click's half second: the field report's second click came 3 s
+  // after the first, by someone who had not seen that the first one worked. The label tells them
+  // it did; and nobody checks out and turns in on purpose inside three seconds.
+  const EDIT_BANNER_HOLD_MS = 3000;
+  let editBannerHold = null;   // { until, label, nextAction }
+  let editBannerHoldTimer = null;
+  function holdEditBanner(label, nextAction) {
+    editBannerHold = { until: Date.now() + EDIT_BANNER_HOLD_MS, label, nextAction };
+    if (editBannerHoldTimer) clearTimeout(editBannerHoldTimer);
+    editBannerHoldTimer = setTimeout(() => { editBannerHoldTimer = null; editBannerHold = null; App.updateUI(); }, EDIT_BANNER_HOLD_MS);
+  }
+  const editBannerHoldActive = () => !!(editBannerHold && Date.now() < editBannerHold.until);
+  // updateUI rebuilds the banner on every call: while the hold is live, the button that would
+  // offer the opposite action is drawn disabled under the "done" label instead. Any other state
+  // (expired, Unsaved / Save, someone else editing) is never held.
+  function applyEditBannerHold(bannerEl) {
+    if (!bannerEl || !editBannerHoldActive()) return;
+    const btn = bannerEl.querySelector('.header-edit-status-btn[data-action="' + editBannerHold.nextAction + '"]');
+    if (!btn) return;
+    btn.textContent = editBannerHold.label;
+    btn.disabled = true;
+    btn.dataset.action = 'hold';
+    btn.classList.add('header-edit-status-btn-hold');
+  }
+  App.applyEditBannerHold = applyEditBannerHold;
+
   async function handleEditStatusBannerClick(e) {
     const btn = e.target.closest('.header-edit-status-btn');
     if (!btn) return;
     const action = btn.dataset.action;
+    // The held button only (the sidebar's copy is markup, so this is its guard too). A button the
+    // hold is not about still works: turned in here, checked out again from the admin notice or
+    // Project Settings, and [Turn In] is a fresh, deliberate click.
+    if (editBannerHoldActive() && (action === 'hold' || action === editBannerHold.nextAction)) return;
     if (action === 'save') {
       document.getElementById('saveProjectBtn').click();
       return;
@@ -114,7 +150,7 @@
       btn.disabled = true;
       btn.textContent = 'Checking out...';
       try {
-        await doCheckoutCurrentProject({ debugTrigger: 'header_banner_checkout' });
+        if (await doCheckoutCurrentProject({ debugTrigger: 'header_banner_checkout' })) holdEditBanner('Checked out \u2713', 'checkin');
       } finally {
         btn.disabled = false;
         App.updateUI();
@@ -123,7 +159,8 @@
       btn.disabled = true;
       btn.textContent = 'Turning in...';
       try {
-        await tryTurnIn({});
+        const result = await tryTurnIn({});
+        if (result && result.ok) holdEditBanner('Turned in \u2713', 'checkout');
       } finally {
         btn.disabled = false;
         App.updateUI();

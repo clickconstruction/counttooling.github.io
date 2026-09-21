@@ -52,6 +52,8 @@ globalThis.BACKUP_PDF_TO_INDEXEDDB = true;
 globalThis.idbTakeoffBackupPut = async (...a) => { idbPuts.push(a); return { ok: true }; };
 globalThis.idbTakeoffBackupGetRaw = async () => idbRawEntry;
 globalThis.takeoffBackupDelete = async (id) => { idbDeletes.push(id); };
+let cacheClears = 0;
+globalThis.idbClearCachesKeepTakeoffBackups = async () => { cacheClears++; return true; };
 globalThis.pdfCacheGet = async () => null;
 
 const { createSaveEngine } = require('./save-engine.js');
@@ -61,6 +63,7 @@ beforeEach(() => {
   globalThis.window.CLICKCOUNT_DEBUG_SAVE = false;
   reloads = 0;
   deletedDbs = [];
+  cacheClears = 0;
   idbPuts = [];
   idbRawEntry = null;
   idbDeletes = [];
@@ -476,17 +479,37 @@ test('force reload: disabled or signed-out never queries', async () => {
   assert.strictEqual(queried, 0);
 });
 
-test('force reload: newer server stamp writes the pending stamp, drops the IDB cache, reloads', async () => {
+test('force reload: newer server stamp writes the pending stamp, clears the caches (keeping the takeoff backups), reloads', async () => {
   localStorage.setItem(GLOBAL_RELOAD_STAMP_KEY, '1000');
   const state = { supabaseSession: { user: { id: 'u1' } } };
   const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabaseWithStamp(new Date(5000).toISOString()) });
   const engine = createSaveEngine(ctx);
   await engine.checkGlobalForceReload();
   assert.strictEqual(reloads, 1);
-  assert.deepStrictEqual(deletedDbs, ['clickcount-pdf-cache']);
+  // never deleteDatabase: that took the takeoff backups (work that is not in the cloud) with it
+  assert.deepStrictEqual(deletedDbs, []);
+  assert.strictEqual(cacheClears, 1);
   assert.strictEqual(localStorage.getItem(PENDING_GLOBAL_RELOAD_STAMP_KEY), '5000');
   assert.strictEqual(state.globalReloadReason, 'maintenance');
   assert.ok(logKinds(engine).includes('global_reload_triggered'));
+});
+
+test('force reload: a browser with no stamp adopts the server stamp and does NOT reload (first sign-in keeps the takeoff)', async () => {
+  const state = { supabaseSession: { user: { id: 'u1' } } };
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabaseWithStamp(new Date(5000).toISOString()) });
+  const engine = createSaveEngine(ctx);
+  await engine.checkGlobalForceReload();
+  assert.strictEqual(reloads, 0);
+  assert.strictEqual(cacheClears, 0);
+  assert.deepStrictEqual(deletedDbs, []);
+  assert.strictEqual(localStorage.getItem(GLOBAL_RELOAD_STAMP_KEY), '5000');
+  assert.strictEqual(localStorage.getItem(PENDING_GLOBAL_RELOAD_STAMP_KEY), null);
+  assert.ok(logKinds(engine).includes('global_reload_baseline'));
+  // a broadcast made AFTER the baseline still reloads this browser
+  const later = makeCtx({ getState: () => state, getSupabase: () => supabaseWithStamp(new Date(9000).toISOString()) });
+  await createSaveEngine(later.ctx).checkGlobalForceReload();
+  assert.strictEqual(reloads, 1);
+  assert.strictEqual(cacheClears, 1);
 });
 
 test('force reload: stale server stamp records state but does not reload', async () => {

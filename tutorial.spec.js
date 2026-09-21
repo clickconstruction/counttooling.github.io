@@ -33,6 +33,7 @@ async function waitForStep(page, id) {
 
 test.describe('Interactive walkthrough', () => {
   test('the do-it-for-me path builds a real takeoff and the tour advances on real state', async ({ page }) => {
+    test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
@@ -169,6 +170,7 @@ test.describe('Interactive walkthrough', () => {
   });
 
   test('the plumbing tour: its own link and ?tour=plumbing start it, do-it-for-me builds a plumbing takeoff, its own done key hides only its link', async ({ page }) => {
+    test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
@@ -291,6 +293,7 @@ test.describe('Interactive walkthrough', () => {
   });
 
   test('the HVAC tour: its own link and ?tour=hvac start it, do-it-for-me builds a real design-build duct takeoff, its own done key hides only its link', async ({ page }) => {
+    test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });

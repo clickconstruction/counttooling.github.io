@@ -7,7 +7,7 @@
  * hangers as child counts, a ×3 typical-floor zone, an RFI note, the proof
  * modal, the PipeTooling hand-off).
  *
- * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold? }
+ * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold?, cardAt? }
  * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
  * whole point is a dialog the reader should get to read)
  * (hint() is the status line while a doing-step's check is failing for a reason
@@ -441,7 +441,8 @@
   // and the 1/8" row get picked, the way they will do it on a real sheet — with a
   // direct write as the fallback (specs, a missing modal).
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  async function applyEighthScale() {
+  async function applyEighthScale() { return applyScalePreset('1/8" = 1\'', 72 / 8); }
+  async function applyScalePreset(label, ppu) {
     const p = state().pages[state().currentPage]; if (!p) return;
     try {
       if (App.openScaleModal) {
@@ -449,13 +450,13 @@
         const tab = document.querySelector('#scaleModalTabs .counter-tab[data-tab="presets"]');
         if (tab) tab.click();
         await wait(700);
-        const row = [...document.querySelectorAll('#scalePresetsList button')].find((b) => b.textContent.trim() === '1/8" = 1\'');
+        const row = [...document.querySelectorAll('#scalePresetsList button')].find((b) => b.textContent.trim() === label);
         if (row && document.querySelector('#scaleModal.visible')) { row.click(); await wait(200); }
       }
     } catch (_) { /* fall through to the direct write */ }
     if (App.getPageScale && App.getPageScale(state().currentPage)) return;
     if (App.hideModal) App.hideModal('scaleModal');
-    p.scale = { pixelsPerUnit: 72 / 8, unit: 'ft', label: '1/8" = 1\'' };
+    p.scale = { pixelsPerUnit: ppu, unit: 'ft', label };
     App.markProjectDirty(); App.updateUI(); App.renderAnnotations();
   }
   function pushCounter(c) {
@@ -726,6 +727,7 @@
   }
 
   function el(id) { return document.getElementById(id); }
+  let dragPos = null;      // where the reader dragged the card to, this step
   let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
                              // panel may not have laid out on the first tick); after that the
@@ -733,7 +735,8 @@
   // Step bodies name controls the way they look on screen: [[+ Add]] renders as a
   // button-shaped chip (.tour-ui). Everything else is escaped text.
   const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>');
+  // [Guide name](/guides/slug/) is a link that opens beside the app (site paths only).
+  const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>').replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
   // A body is lines: "1. …" lines are one action each and render as a numbered list;
   // any other line is a short paragraph around them.
   // A touch device has no keys and, under 768 px, no sidebar on screen: the
@@ -796,11 +799,32 @@
       spot.style.display = '';
       spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
       spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
-      // card: right of the target when there is room, else below, clamped to the viewport
+      // card: beside the target, never ON it. Right, below, left, above, in that order;
+      // the first place that fits the viewport wins. When none does (a control in the
+      // corner of a big dialog), the viewport corner farthest from the control, which
+      // cannot cover it unless the control is most of the screen (found 2026-09-21: the
+      // card sat on Trim your set's Open button, the one thing the step asked for).
       const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220;
-      let left = r.right + 16, top = r.top;
-      if (left + cw > window.innerWidth - 12) { left = Math.max(12, Math.min(r.left, window.innerWidth - cw - 12)); top = r.bottom + 14; }
-      if (top + ch > window.innerHeight - 12) top = Math.max(12, window.innerHeight - ch - 12);
+      const vw = window.innerWidth, vh = window.innerHeight, gap = 16, edge = 12;
+      const clampX = (x) => Math.max(edge, Math.min(x, vw - cw - edge)), clampY = (y) => Math.max(edge, Math.min(y, vh - ch - edge));
+      const spots = [
+        { left: r.right + gap, top: clampY(r.top) },
+        { left: clampX(r.left), top: r.bottom + gap },
+        { left: r.left - gap - cw, top: clampY(r.top) },
+        { left: clampX(r.left), top: r.top - gap - ch },
+      ];
+      const fits = (c) => c.left >= edge && c.top >= edge && c.left + cw <= vw - edge && c.top + ch <= vh - edge;
+      let place = spots.find(fits);
+      if (!place) place = { left: (r.left + r.width / 2 > vw / 2) ? edge : vw - cw - edge, top: (r.top + r.height / 2 > vh / 2) ? edge : vh - ch - edge };
+      // The sheet itself is the target (count here, click there): nowhere is off it, so
+      // the card takes the bottom-left corner, over the sidebar's tail, not the drawing.
+      if (r.width * r.height > vw * vh * 0.4) place = { left: edge, top: vh - ch - 40 };
+      // A step whose work is on the sheet says which corner keeps the card off it
+      // (`cardAt`: 'tl' | 'tr' | 'bl' | 'br'); and the reader can always drag the card
+      // by its head, which wins until the step changes.
+      if (step.cardAt) place = { left: step.cardAt[1] === 'l' ? edge : vw - cw - edge, top: step.cardAt[0] === 't' ? 56 : vh - ch - 40 };
+      if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
+      const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
       // A phone docks the card to an edge (styles.css, max-width 767px): the far
       // one from the control, so the card never covers what it is pointing at.
@@ -839,6 +863,7 @@
     });
   }
   function goTo(i) {
+    dragPos = null;
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;
@@ -853,7 +878,7 @@
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
-    stepIdx = 0; doneAt = 0; heldByBack = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; dragPos = null; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
@@ -865,19 +890,21 @@
     active = false;
     if (timer) { clearInterval(timer); timer = null; }
     document.body.classList.remove('tour-active');
-    try { if (finished) localStorage.setItem(TOURS[tourId].doneKey, new Date().toISOString()); } catch (_) {}
+    try { if (finished && TOURS[tourId].doneKey) localStorage.setItem(TOURS[tourId].doneKey, new Date().toISOString()); } catch (_) {}
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: finished ? 'finished' : 'left', index: stepIdx });
     render();
     syncEntryPoints();
     // A "Project from Last Session" offer that arrived mid-tour waited for
     // this moment (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
+    const def = TOURS[tourId];
+    if (def && def.onStop) { try { def.onStop(!!finished); } catch (_) { /* a lesson's own bookkeeping never breaks the stop */ } }
   }
   // The empty-canvas hint offers each tour until THAT tour is finished on this
   // device; the whole offer goes when both are.
   function syncEntryPoints() {
     let allDone = true;
-    Object.keys(TOURS).forEach((id) => {
+    Object.keys(TOURS).filter((id) => TOURS[id].linkId).forEach((id) => {
       let done = false;
       try { done = !!localStorage.getItem(TOURS[id].doneKey); } catch (_) {}
       const link = el(TOURS[id].linkId);
@@ -897,12 +924,31 @@
     if (advSep) advSep.style.display = allDone ? 'none' : '';
   }
 
+  // The card drags by its head (mouse, pen or finger), so it never has to sit on the
+  // part of the sheet the reader is working on.
+  (function wireCardDrag() {
+    const card = el('tourCard'), head = card && card.querySelector('.tour-card-head');
+    if (!head) return;
+    let start = null;
+    head.style.cursor = 'grab';
+    head.style.touchAction = 'none';
+    head.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      const r = card.getBoundingClientRect();
+      start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
+      try { head.setPointerCapture(e.pointerId); } catch (_) { /* older engines */ }
+    });
+    head.addEventListener('pointermove', (e) => { if (!start) return; dragPos = { left: start.left + e.clientX - start.x, top: start.top + e.clientY - start.y }; render(); });
+    const end = () => { start = null; };
+    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+  })();
+
   // wiring (static DOM)
   el('tourNext') && (el('tourNext').onclick = () => { if (stepIdx >= STEPS.length - 1) stopTutorial(true); else goTo(stepIdx + 1); });
   el('tourBack') && (el('tourBack').onclick = () => goTo(stepIdx - 1));
   el('tourLeave') && (el('tourLeave').onclick = () => stopTutorial(false));
   el('tourAction') && (el('tourAction').onclick = async () => { const step = STEPS[stepIdx]; if (step.action) { await step.action.run(); render(); } });
-  Object.keys(TOURS).forEach((id) => {
+  Object.keys(TOURS).filter((id) => TOURS[id].linkId).forEach((id) => {
     const link = el(TOURS[id].linkId);
     if (link) link.onclick = (e) => { e.preventDefault(); startTutorial(id); };
   });
@@ -919,6 +965,14 @@
   // (features/restore-last-session.js) and waits, as it does for a running tour.
   try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) { pending = true; setTimeout(() => { pending = false; startTutorial(id); }, 600); } } catch (_) { pending = false; }
 
+  // Lessons (features/lessons.js) are tours too: they register their steps here and
+  // drive the same engine. A registered tour has no empty-canvas link and no done key
+  // of its own; `onStop(finished)` is where it keeps its books.
+  App.registerTour = (id, def) => { TOURS[id] = def; };
+  App.setTutorialPending = (v) => { pending = !!v; };
+  // What a step needs to read the app and to do a thing for the reader, shared with
+  // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
+  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon };
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;

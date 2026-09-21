@@ -1,13 +1,15 @@
 ---
 title: Preparing a plan set
 description: Get a bid set ready to count: upload PDFs, trim to just your sheets, rotate and rename pages, and add addendum sheets without losing work.
-updated: 2026-08-31
+updated: 2026-09-21
 order: 1.5
 icon: move
 category: Getting started
 ---
 
 Bid sets arrive as one big combined PDF where only some sheets matter to your trade. A few minutes of preparation makes everything after (navigating, counting, exporting) faster and cleaner.
+
+**Try it:** [the Sheets lesson](/app/?lesson=plans) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ## Upload the PDF
 

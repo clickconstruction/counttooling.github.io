@@ -13,6 +13,46 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): Learn, thirteen short lessons for every part of the app (2026-09-21)
+
+LEARN-LESSONS and LEARN-FLIP, phases 3 to 5 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). The
+owner's ask: "a tutorial where they can go through and use all parts of the app."
+
+- **Learn** is a menu (`#learnModal`) of thirteen lessons, two or three minutes each, beside the
+  three five-minute trade tours: Sheets, Scale, Counting, Measuring, Chain and child counts,
+  Repeats, Organizing, Fixing mistakes, Notes and questions, Check and prove, Deliverables, Working
+  faster, and a guided read of the cloud half (a lesson cannot run on a cloud project). Same engine
+  and the same rules as the tours: every step checks REAL state, every doing-step offers Do it for
+  me through the app's own doors, controls are named as they look on screen.
+- **Doors**: "every tool, one short lesson at a time" on the empty canvas, Project Settings → Help →
+  lessons, `/app/?learn=1`, and `/app/?lesson=<id>`. Thirteen guides gained a **Try it** line that
+  opens their lesson; the plumbing guide links two.
+- **The lesson set**, `samples/sample-lessons.pdf` (`npm run build:sample-lessons`): the engineered
+  sheet could not teach pages, a second scale, a scale zone or a typical, so two sheets were drawn
+  for the purpose. P-401 has the restrooms at 1/4" with 12'-0" strings to prove it, and a hand sink
+  station detail at 1/2" that is TYP. OF 4 with a 4'-0" string inside it; P-501 is the fixture
+  schedule scanned sideways. The engineered sample plan and the hero films are untouched.
+- **A lesson stands alone and costs nobody their work.** Its first step opens the sheets fresh and
+  seeds what it takes for granted; over the reader's own plan that goes through the app's one Close
+  project question, over the last lesson's sheets it just resets; a lesson's palette items are swept
+  before the next, an Artboard palette is left as it was. A finished lesson is ticked on the device
+  (`clickcount-lessons-done`) and hands back to the menu with the next one lit.
+- **Shipped on, not behind a flag.** The plan staged it behind `?ff=learn` with a flip to follow.
+  The owner approved turning it on, the whole path is pinned by spec, and the feature is additive
+  (two links and a dialog), so the dormant stage bought a second 34-minute CI run and nothing else.
+- **Engine** (features/tutorial.js): `App.registerTour`, `App.tourKit`, `onStop`, links in step
+  bodies, and three fixes found by walking the lessons: the card sat ON the button it pointed at
+  (Trim your set's Open), so it now tries right, below, left, above, then the far corner, takes the
+  bottom-left when the sheet itself is the target, honours a step's `cardAt`, and drags by its head;
+  two rasters back to back on a page switch left the sheet blank, so a lesson lands with one.
+- **An app bug found on the way**: a dialog's × re-dispatches Escape on `document`, and the keydown
+  handler called `e.target.matches` on it: a console error on every × of a dialog with no Esc rung
+  (the proof breakdown, Export PDFs). Guarded.
+- Telemetry rides `tour_step` (`tour: 'lesson:<id>'`), so there is no new event type and no migration.
+- Specs: [lessons.spec.js](lessons.spec.js), 16 tests: each lesson's do-it-for-me path end to end with
+  the takeoff it claims (the gas main reads 39.5 ft with two 90s; the zone's 4'-0" reads 4'-0" on a
+  1/4" sheet; one mark reads 4 under a x4 zone), the doors, the reader's plan, the card.
+
 ## docs(guides): the plumbing, electrical and HVAC guides follow their tours (2026-09-21)
 
 LEARN-GUIDES, phase 1 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). Every claim was walked in

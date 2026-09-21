@@ -1,13 +1,15 @@
 ---
 title: Setting the scale on a plan
 description: Calibrate a PDF so measurements are accurate: set scale from two points, use architectural/engineering presets, or enter a custom scale.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 2
 icon: set-scale
 category: Getting started
 ---
 
 Scale is what turns pixels on a PDF into real feet and inches. Until you set it, CountTooling can count fixtures but can't measure runs. Scale is **per page**, so each sheet can have its own.
+
+**Try it:** [the Scale lesson](/app/?lesson=scale) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ![The Set Scale dialog showing the three ways to calibrate: ① pick two known points, ② choose an architectural or engineering preset, or ③ type a custom scale.](/guides/img/set-scale.png)
 

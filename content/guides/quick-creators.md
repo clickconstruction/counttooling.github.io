@@ -1,13 +1,15 @@
 ---
 title: Building your palette in two clicks
 description: The Quick Count and Quick Line creators build correctly-named counters and line types from Size, Type, and Material pickers: no typing, consistent names.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 3.9
 icon: line
 category: Counting
 ---
 
 Typing `2" PVC Waste` forty times per bid is data entry, not estimating. The **Quick** creators build palette items from modifier chips instead: two or three clicks, and the name, color, and icon come out right and *consistent* every time.
+
+**Try it:** [the Counting lesson](/app/?lesson=counting) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ## Quick Count: counters from modifiers
 

@@ -7378,7 +7378,8 @@
         return;
       }
     }
-    if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
+    // (a dialog's × re-dispatches Escape on `document`, which has no matches())
+    if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     if (e.key === ' ') {
       if (!e.target.closest('button') && window.matchMedia('(min-width: 769px)').matches) {
         document.body.classList.toggle('sidebar-collapsed');

@@ -1,13 +1,15 @@
 ---
 title: Measuring runs with lines and polylines
 description: Trace pipe, conduit, and other linear runs to get real lengths off the plan: straight lines, multi-segment polylines, arcs, drops, and the Measure tool.
-updated: 2026-08-30
+updated: 2026-09-21
 order: 4
 icon: line
 category: Measuring
 ---
 
 > **Just need to check a distance?** You don't have to draw anything: at any time, pick the **Measure** [[measure]] tool (or press `D`), click two points, and read the distance; nothing is added to your takeoff. See *Quick one-off distances* at the bottom of this guide.
+
+**Try it:** [the Measuring lesson](/app/?lesson=measuring) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 Once the [scale is set](/guides/setting-the-scale/), CountTooling can turn any line you draw into a real-world length. That's your linear takeoff: pipe, conduit, trim, anything that runs. On a sheet with no scale yet, these tools pause and show a "Set Scale first" toast; its **Set Scale** link opens the scale dialog right there.
 

@@ -25,6 +25,8 @@ function shellLabels() {
 // Labels a feature file renders at run time: label -> [file, the literal that proves it].
 const RENDERED_IN_JS = {
   '1/8" = 1\'': ['constants.js', "label: '1/8\" = 1\\''"],
+  '1/4" = 1\'': ['constants.js', "label: '1/4\" = 1\\''"],
+  '1/2" = 1\'': ['constants.js', "label: '1/2\" = 1\\''"],
   '+ New counter': ['features/chain.js', '">+ New '],
   '⋯': ['app/index.html', 'id="headerMoreBtn"'],   // the More tools button is a glyph, named ⋯ in prose
 };

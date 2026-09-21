@@ -267,6 +267,15 @@ function tourSetup(tour, stopAt, after) {
 const openBidCheck = (page) => page.evaluate(() => { window.state.bidCheckCollapsed = false; window.App.renderBidCheck(); window.App.updateUI(); const el = document.getElementById('bidCheckSection'); if (el) el.scrollIntoView({ block: 'start' }); });
 
 const SHOTS = [
+  // Learn: the lesson menu, two lessons ticked.
+  { name: 'learn-menu', clip: '#learnModal .modal-card', noLoad: true,
+    async setup(page, baseUrl) {
+      await page.addInitScript(() => { try { localStorage.setItem('clickcount-lessons-done', JSON.stringify({ plans: '2026-09-21T00:00:00Z', scale: '2026-09-21T00:00:00Z' })); } catch (_) { /* private mode */ } });
+      await page.goto(baseUrl + '/app/?learn=1');
+      await page.waitForSelector('#learnModal.visible', { timeout: 15000 });
+      await page.waitForTimeout(400);
+    } },
+
   // The three trade guides: the takeoff each trade's own five-minute tour builds.
   { name: 'plumbing-tour-takeoff', clip: '.app', noLoad: true, setup: tourSetup('plumbing', 'proof'),
     boxes: [{ sel: '#summaryList', label: 'Fixtures ×3, pipe with its riser, hangers from the rule' }] },

@@ -1,13 +1,15 @@
 ---
 title: Reports, exports, and sending a takeoff onward
 description: Turn your marked-up plan into numbers and deliverables: the on-canvas legend, Show Report, Export PDFs, Copy to /Tooling, and email summaries.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 6
 icon: legend
 category: Output
 ---
 
 A takeoff is only useful once it's numbers someone can price or check. CountTooling gives you several ways to get there, from a quick on-screen tally to a full marked-up PDF.
+
+**Try it:** [the Deliverables lesson](/app/?lesson=deliver) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ## See the totals as you work
 

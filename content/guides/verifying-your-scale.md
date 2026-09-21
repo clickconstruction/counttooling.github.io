@@ -1,13 +1,15 @@
 ---
 title: Is your scale lying to you?
 description: Compressed PDFs silently break preset scales. How CountTooling detects rescaled sheets, corrects presets, and lets you verify a scale before you trust a bid to it.
-updated: 2026-08-10
+updated: 2026-09-21
 order: 2.5
 icon: set-scale
 category: Getting started
 ---
 
 A preset scale like `1/4" = 1'` is an **assumption**: it's only right if the PDF's page is still the true physical sheet size it was drawn at. Plenty of real-world PDFs aren't; they've been "compressed", re-boxed, or re-plotted at a smaller size somewhere along the way. On a half-size page, that preset reports a 10-foot wall as 5 feet, and nothing looks wrong until the bid is.
+
+**Try it:** [the Scale lesson](/app/?lesson=scale) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 CountTooling has three layers of defense. Use them.
 

@@ -42,6 +42,7 @@
   4:3 `crop` sized to its surface, JPEG; plan in journeys/plans/LANDING-REFRESH.md). Both are manual (browser +
   non-deterministic pixels) and **not** in `npm run check` — like `build:og-image`; the
   link-integrity test fails only if an article references a missing image.
+  **The lesson set** `samples/sample-lessons.pdf` (`npm run build:sample-lessons`) is the three sheets Learn's lessons run on; its P-401 / P-501 coordinates are the ones in features/lessons.js, so change a sheet and its lesson in the same commit (lessons.spec.js walks every lesson).
   **The landing hero is three films, one per trade**: `npm run build:hero-video -- --film
   plumbing|electrical|hvac` ([scripts/build-hero-video.js](scripts/build-hero-video.js)) drives
   the real app frame by frame on a sample sheet (real mouse, typing and key presses, drawn
@@ -175,7 +176,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->87<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->88<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -477,6 +478,7 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 `loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
 Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`; since S1 also `profiles[trade]` — the electrical / HVAC Quick profiles, each `sizes`/`types`/`materials`/`iconByType`/`mountByType`/`defaultColor` — and `defaultTrade`, the device's default for new projects; the whole blob rides `user_airboard.plumbing_modifiers`),
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` / `clickcount-tour-done-plumbing` / `clickcount-tour-done-hvac` (the electrical / plumbing / HVAC walkthrough was finished on this device — hides that tour's empty-canvas link; the whole offer goes when all three are set),
+`clickcount-lessons-done` (Learn: `{ <lessonId>: ISO }`, the lessons finished on this device; features/lessons.js),
 `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,

@@ -1,7 +1,7 @@
 ---
 title: Working faster with the keyboard
 description: Tool hotkeys, the visual Keyboard Map, Quick Keys for your counters and line types, and 45° snap: how experienced estimators keep both hands moving.
-updated: 2026-08-10
+updated: 2026-09-21
 order: 6.5
 icon: keys
 category: Working faster
@@ -10,6 +10,8 @@ category: Working faster
 Placing a mark is one click. What slows a takeoff down is everything *between*
 the clicks: switching tools, switching counters, trips to the sidebar. All of
 that has a key.
+
+**Try it:** [the Working faster lesson](/app/?lesson=speed) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ## The shortcut list and the Keyboard Map
 

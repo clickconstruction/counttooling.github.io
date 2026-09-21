@@ -46,7 +46,7 @@
   // on the electrical set). A set the teaching opened is reset, never asked about, when the
   // next lesson opens; the reader's own plan always goes through Close project.
   const LESSON_SET = { url: '/samples/sample-lessons.pdf', name: 'sample-lessons', pages: 4, trade: 'plumbing', word: 'four' };
-  const KNOWN_SETS = ['sample-lessons', 'sample-electrical'];
+  const KNOWN_SETS = ['sample-lessons', 'sample-electrical', 'sample-hvac'];
   const setOf = (lesson) => (lesson && lesson.set) || LESSON_SET;
   const SET_NAME = LESSON_SET.name;
   const DONE_KEY = 'clickcount-lessons-done';

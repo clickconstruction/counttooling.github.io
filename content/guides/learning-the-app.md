@@ -51,7 +51,7 @@ Two or three minutes each, in any order. They run on four sample sheets: a resta
 12. [Working faster](/app/?lesson=speed): the keyboard map, the zoom rail, right-click settings.
 13. [Saving, sharing and your bids](/app/?lesson=cloud): a guided read of the signed-in half.
 
-## Then the trade itself: the plumbing and electrical courses
+## Then the trade itself: the plumbing, electrical and HVAC courses
 
 The tours and the lessons teach the app. The course teaches plumbing through it: nine chapters, about ninety minutes in all, on the engineered sample set, a restaurant with its water, hot water return, gas, waste and grease lines drawn by an engineer, its fixture schedule with the fixture units, and a riser. Each chapter asks why something is where it is on the sheet and takes the answer as a click: which hand sink serves the cook line, which fixture must never drain through the grease interceptor, where a cleanout has to be. A wrong click is refused and told why. Then the tool for counting it. The last chapters finish the whole sheet and set your takeoff beside the reference, run by run. Open it from **plumbing course** on the empty canvas, under **Project Settings** → **Help**, or [directly](/app/?course=plumbing).
 
@@ -77,6 +77,18 @@ The electrical course is the same restaurant's electrical set: the power plan, t
 8. [The whole set](/app/?chapter=electrical:whole): finish the takeoff, compare it to the reference, the circuit schedule in the report.
 9. [Check it, prove it, hand it off](/app/?chapter=electrical:bid): the electrical rows of Bid Check, the proof view, the hand-off to the electrical bid.
 
-The coaching cites the code by section (the IPC, the FDA Food Code, the fuel gas code) and never reprints it; where a reason is practice rather than rule, it says so.
+The HVAC course is the same restaurant's mechanical set: the plan with its tagged diffusers and the main drawn at width, the equipment, diffuser and room air schedules, and a building section drawn to scale. Nine chapters, from **HVAC course** under **Project Settings** → **Help**, the empty canvas, or [directly](/app/?course=hvac).
+
+1. [Read the M-sheets](/app/?chapter=hvac:sheet): what an M-sheet carries, which unit moves the most air, which room breathes hardest and why.
+2. [The rooms and their air](/app/?chapter=hvac:rooms): a room boxed with the schedule's type and CFM, where the number comes from, the deck height and why it matters.
+3. [Diffusers, by the schedule](/app/?chapter=hvac:diffusers): the palette from the diffuser schedule with a CFM per tag, every grille placed by its tag, why the kitchen necks are bigger.
+4. [The system](/app/?chapter=hvac:system): RTU-1 as a system with its capacity and pressure, and why the unit is bigger than its diffusers.
+5. [The main, sized down the hall](/app/?chapter=hvac:main): the main traced at the sizes the plan prints, why it shrinks, the diffusers hung on the runs, the fittings counted for you.
+6. [The plenum, and the pressure](/app/?chapter=hvac:plenum): a section at 1/2", the wrapped main measured, the app saying it fits, and whether the fan can push to the far diffuser.
+7. [Exhaust and make-up](/app/?chapter=hvac:exhaust): the duct that must never be galvanized, the restroom exhaust traced, make-up air and the interlock.
+8. [The whole set](/app/?chapter=hvac:whole): finish the takeoff, compare it to the reference by size, the pounds, the schedule copied.
+9. [Check it, sign it, hand it off](/app/?chapter=hvac:bid): the duct rows of Bid Check, the ones the set already answers, the proof view, the hand-off.
+
+The coaching cites the code by section (the IPC, the FDA Food Code, the fuel gas code, the NEC, the IMC, NFPA 96, the SMACNA tables) and never reprints it; where a reason is practice rather than rule, it says so.
 
 When you are ready for a real plan, [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/) is the same workflow on your own sheet.

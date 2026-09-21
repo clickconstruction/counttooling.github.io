@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(legend): the corner grip sizes the legend, smaller as well as bigger (2026-09-21)
+
+Grace's field report: "you can move it but can't shrink it." The legend's bottom-right grip
+set the box's width and height with a floor at the rows, so dragging inward snapped back and
+dragging outward grew a bare white patch past the rows. The Summary Legend dialog's size
+slider did shrink the block, but nobody looks for a slider when there is a grip, and its
+50% floor on a D sheet (the legend follows the sheet since 2026-09-19, about 2× there) only
+got the block back to where it had been.
+
+- The grip scales the legend as a whole: the pointer's travel along the box's diagonal
+  multiplies `legendSettings.legendScale`, the same knob the size slider sets (the slider
+  reads the drag when the dialog opens next). Inward shrinks, outward grows, and the rows
+  follow; the box always hugs its rows in drawLegend. `userResized` is retired: a box an
+  older save grew past its rows snaps back to them. The range is 25%..400% in both places
+  (`LEGEND_SCALE_MIN` / `LEGEND_SCALE_MAX` in constants.js; the slider's floor came down
+  from 50).
+- Undo puts the size back: the full undo snapshot carries `legendSettings` (the grip pushes
+  one at the press, as it always did, but the box it restored no longer decided the size).
+- Every knob on the Summary Legend dialog marks the project dirty now; only the style
+  segment did, so a size or opacity change alone was never saved. The sliders mark it once,
+  at the release.
+
+canvas-draw.test.js pins the box at half and twice the scale and the snap-back of a legacy
+oversized box; [legend-resize.spec.js](legend-resize.spec.js) drags the real grip both ways,
+undoes, and reads the slider.
+
 ## fix(turn-in): the edit button holds a beat after it acts (2026-09-21)
 
 Punch row **R1-RECLICK**, decided and closed. `[Check out to Edit]` and `[Turn In]` are one button

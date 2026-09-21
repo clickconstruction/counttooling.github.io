@@ -91,6 +91,10 @@
 
   document.getElementById('legendSettingsClose').onclick = () => App.hideModal('legendSettingsModal');
 
+  // Every knob below renders live and marks the project dirty (only the style
+  // segment did until 2026-09-21, so a size or opacity change alone was never
+  // saved). The size slider is the same knob the legend's corner grip drags.
+
   document.getElementById('legendBgOpacity').oninput = () => {
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
@@ -98,6 +102,7 @@
     document.getElementById('legendBgOpacityVal').textContent = Math.round(state.legendSettings.bgOpacity * 100);
     App.renderAnnotations();
   };
+  document.getElementById('legendBgOpacity').onchange = () => { if (App.markProjectDirty) App.markProjectDirty(); };   // once, at the release
   document.getElementById('legendBgColor').oninput = () => {
     const state = App.state;
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
@@ -105,6 +110,7 @@
     state.legendSettings.bgColor = hex;
     document.getElementById('legendBgColorHex').textContent = hex.toLowerCase();
     App.renderAnnotations();
+    if (App.markProjectDirty) App.markProjectDirty();
   };
   document.getElementById('legendShowBorderBtn').onclick = (e) => {
     e.preventDefault();
@@ -118,6 +124,7 @@
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showBorder = document.getElementById('legendShowBorder').checked;
     App.renderAnnotations();
+    if (App.markProjectDirty) App.markProjectDirty();
   };
   document.getElementById('legendScale').oninput = () => {
     const state = App.state;
@@ -126,6 +133,7 @@
     document.getElementById('legendScaleVal').textContent = Math.round(state.legendSettings.legendScale * 100);
     App.renderAnnotations();
   };
+  document.getElementById('legendScale').onchange = () => { if (App.markProjectDirty) App.markProjectDirty(); };   // once, at the release
   document.getElementById('legendShowResizeHighlightBtn').onclick = (e) => {
     e.preventDefault();
     const cb = document.getElementById('legendShowResizeHighlight');
@@ -138,6 +146,7 @@
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showResizeHighlight = document.getElementById('legendShowResizeHighlight').checked;
     App.renderAnnotations();
+    if (App.markProjectDirty) App.markProjectDirty();
   };
   document.getElementById('legendShowRoomsBtn').onclick = (e) => {
     e.preventDefault();
@@ -151,6 +160,7 @@
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showRooms = document.getElementById('legendShowRooms').checked;
     App.renderAnnotations();
+    if (App.markProjectDirty) App.markProjectDirty();
   };
   document.getElementById('legendShowDuctBtn').onclick = (e) => {
     e.preventDefault();
@@ -164,6 +174,7 @@
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showDuct = document.getElementById('legendShowDuct').checked;
     App.renderAnnotations();
+    if (App.markProjectDirty) App.markProjectDirty();
   };
   document.getElementById('legendShowDuctGhostBtn').onclick = (e) => {
     e.preventDefault();
@@ -177,6 +188,7 @@
     if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
     state.legendSettings.showDuctGhost = document.getElementById('legendShowDuctGhost').checked;
     App.renderAnnotations();
+    if (App.markProjectDirty) App.markProjectDirty();
   };
   document.getElementById('legendTextOpacity').oninput = () => {
     const state = App.state;
@@ -185,6 +197,7 @@
     document.getElementById('legendTextOpacityVal').textContent = Math.round(state.legendSettings.textOpacity * 100);
     App.renderAnnotations();
   };
+  document.getElementById('legendTextOpacity').onchange = () => { if (App.markProjectDirty) App.markProjectDirty(); };   // once, at the release
 
   App.openLegendSettingsModal = openLegendSettingsModal;
 })();

@@ -6531,7 +6531,7 @@
       pushUndoSnapshot();
       state.resizingLegend = true;
       const leg = getActiveAnnotations(state.pages[state.currentPage])?.legend;
-      if (leg) state.legendResizeStart = { w: leg.w, h: leg.h, pdfX: state.mousePos.x, pdfY: state.mousePos.y };
+      if (leg) state.legendResizeStart = { w: leg.w, h: leg.h, pdfX: state.mousePos.x, pdfY: state.mousePos.y, scale: state.legendSettings?.legendScale ?? 1 };
     } else if (t && (t.type === 'legendDrag' || t.type === 'legend')) {
       pushUndoSnapshot();
       state.draggingLegend = true;
@@ -6633,12 +6633,19 @@
       state.pan = { x: e.clientX - state.panStart.x, y: e.clientY - state.panStart.y };
       updateContainerTransform();
     } else if (state.resizingLegend && state.legendResizeStart) {
-      const page = state.pages[state.currentPage];
-      const leg = page ? getActiveAnnotations(page)?.legend : null;
-      if (leg) {
-        leg.userResized = true;
-        leg.w = Math.max(60, state.legendResizeStart.w + (pdf.x - state.legendResizeStart.pdfX));
-        leg.h = Math.max(40, state.legendResizeStart.h + (pdf.y - state.legendResizeStart.pdfY));
+      // The corner grip sizes the legend as a whole (2026-09-21): the
+      // pointer's travel along the box's diagonal scales
+      // legendSettings.legendScale, the knob the Summary Legend size slider
+      // sets, so the block shrinks as readily as it grows and its rows follow
+      // (the grip used to grow a bare white patch and could never go below
+      // the rows). The box hugs its content in drawLegend; the slider's
+      // 25%..400% is the range here too.
+      const s0 = state.legendResizeStart;
+      const along = ((pdf.x - s0.pdfX) * s0.w + (pdf.y - s0.pdfY) * s0.h) / (s0.w * s0.w + s0.h * s0.h || 1);
+      const next = Math.round(Math.max(LEGEND_SCALE_MIN, Math.min(LEGEND_SCALE_MAX, s0.scale * (1 + along))) * 100) / 100;
+      if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+      if (state.legendSettings.legendScale !== next) {
+        state.legendSettings.legendScale = next;
         renderAnnotations();
       }
     } else if (state.draggingZone) {

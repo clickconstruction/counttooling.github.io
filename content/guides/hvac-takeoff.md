@@ -11,7 +11,7 @@ HVAC estimating starts from a number most takeoff tools can't produce, **how muc
 
 ![A plan with two room boxes drawn on it, each labeled with its room name and length, width, and height.](/guides/img/room-sizer.png)
 
-**New here?** Open the app with nothing loaded and click **hvac** under *take the five-minute tour*. It walks a design-build duct takeoff on the sample plan (set and prove the scale, box a room the plan already names, give diffusers a CFM, name the system, let the app size the main at `S`, hang the strays, read the pounds, sign off and hand it to the bid), checking each step against what you actually did, with a *Do it for me* button on every step. Open it directly: [the HVAC tour](/app/?tour=hvac).
+**New here?** Open the app with nothing loaded and click **hvac** under *take the five-minute tour*. It walks a design-build duct takeoff on the sample plan (set and prove the scale, box a room the plan already names, give diffusers a CFM, name the system, let the app size the main at `S`, hang the strays, read the pounds, sign off and hand it to the bid). It circles where to click and shades where to drag on the sheet, checks each step against what you actually did, and *Show me where* points at anything you cannot find. Open it directly: [the HVAC tour](/app/?tour=hvac).
 
 ## Room volumes first
 

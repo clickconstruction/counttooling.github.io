@@ -375,18 +375,18 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     // The tour goes on — "do it for me" through the real steps to a real mark
     // on the sample plan (each step auto-advances a beat after its check).
     const waitForStep = (id) => page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 15000 });
-    await page.click('#tourAction');   // welcome → opens the sample plan
+    await page.evaluate(() => window.App.tutorialDoStep());   // welcome → opens the sample plan
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await waitForStep('scale');
-    await page.click('#tourAction');   // scale
+    await page.evaluate(() => window.App.tutorialDoStep());   // scale
     await waitForStep('measure');
-    await page.click('#tourAction');   // prove it
+    await page.evaluate(() => window.App.tutorialDoStep());   // prove it
     await waitForStep('trade');
-    await page.click('#tourAction');   // trade
+    await page.evaluate(() => window.App.tutorialDoStep());   // trade
     await waitForStep('counter');
-    await page.click('#tourAction');   // the receptacle counter
+    await page.evaluate(() => window.App.tutorialDoStep());   // the receptacle counter
     await waitForStep('place');
-    await page.click('#tourAction');   // places the receptacles
+    await page.evaluate(() => window.App.tutorialDoStep());   // places the receptacles
     await page.waitForFunction(() => {
       const a = window.App.getActiveAnnotations(window.state.pages[0]);
       return Object.values((a && a.counterMarkers) || {}).some((arr) => arr && arr.length);
@@ -435,6 +435,21 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(await page.evaluate(() => ({ pages: window.state.pages.length, wc: window.state.counters.some((c) => c.name === 'WC') }))).toEqual({ pages: 0, wc: true });
     await page.evaluate(() => document.getElementById('lastSessionRestoreDiscard').click());
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    expect(errors).toEqual([]);
+  });
+  test('BOOT RACE: the boot outruns the feature scripts (a warm cache, a quick backup read) and the offer still arrives', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });   // the app's own ready signal, not a quiet network
+    await seedLocalBackup(page);
+    // The feature that owns the offer arrives 1.5 s late, so app.js's async boot gets to the
+    // offer first. Before 2026-09-21 that threw "App.openLastSessionRestorePrompt is not a
+    // function": no offer, no updateUI, and a page that never went network-idle in CI.
+    await page.route('**/features/restore-last-session.js', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+    await page.reload();
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    expect(await page.evaluate(() => window.App.bootSettled)).toBe(true);
     expect(errors).toEqual([]);
   });
 });

@@ -247,9 +247,9 @@ function tourSetup(tour, stopAt, after) {
     for (let i = 0; i < 40; i++) {
       const id = await page.evaluate(() => window.App.tutorialStepId());
       if (!id || id === 'done' || id === stopAt) break;
-      const hasAction = await page.evaluate(() => document.getElementById('tourAction').style.display !== 'none');
+      const hasAction = await page.evaluate(() => { const i = window.App.tutorialStepInfo(); return !!i && i.hasAction && !i.done; });
       if (hasAction) {
-        await page.click('#tourAction');
+        await page.evaluate(() => window.App.tutorialDoStep());
         await page.waitForFunction((was) => window.App.tutorialStepId() !== was || document.getElementById('tourNext').classList.contains('tour-next-ready'), id, { timeout: 20000 });
         if (await page.evaluate((was) => window.App.tutorialStepId() === was, id)) await page.click('#tourNext');
       } else await page.click('#tourNext');
@@ -267,6 +267,23 @@ function tourSetup(tour, stopAt, after) {
 const openBidCheck = (page) => page.evaluate(() => { window.state.bidCheckCollapsed = false; window.App.renderBidCheck(); window.App.updateUI(); const el = document.getElementById('bidCheckSection'); if (el) el.scrollIntoView({ block: 'start' }); });
 
 const SHOTS = [
+  // Learn: a sheet step with its targets, one circle done and a miss on the card.
+  { name: 'lesson-targets', clip: '.app', noLoad: true,
+    async setup(page, baseUrl) {
+      await page.goto(baseUrl + '/app/?lesson=counting');
+      await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
+      await page.click('#tourShow');
+      await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+      await page.waitForTimeout(1500);
+      const zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+      await page.mouse.click(zs[0].cx + 8, zs[0].cy - 6);
+      await page.waitForTimeout(300);
+      await page.mouse.click(zs[0].cx - zs[0].r - 70, zs[0].cy + 10);
+      await page.waitForTimeout(1000);
+    } },
+
   // Learn: the lesson menu, two lessons ticked.
   { name: 'learn-menu', clip: '#learnModal .modal-card', noLoad: true,
     async setup(page, baseUrl) {

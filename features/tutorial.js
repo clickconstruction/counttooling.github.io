@@ -15,10 +15,15 @@
  * The overlay spotlights the target (a box-shadow cutout that never intercepts
  * the pointer, so the real control stays clickable) and the card beside it says
  * what to do; `check()` reads the REAL app state and the step advances the
- * moment it is true — no fake widgets, no scripted clicks. Every doing-step
- * also offers "Do it for me", which performs the same change through the same
- * App.* entry points a click would, so a reader who only wants the tour of the
- * ideas still ends with a real takeoff on screen. Reading steps advance on Next.
+ * moment it is true — no fake widgets, no scripted clicks. The reader DOES every
+ * step (2026-09-21, the owner: "instead of being able to click through it"): work
+ * on the sheet is asked for inside TARGETS drawn on the plan (circles for clicks, a
+ * shaded boundary for a drag; see "on-sheet targets" below) and only counts there;
+ * "Show me where" pulses the target or the lit control; Next works only once the
+ * step is done; a quiet "Skip this step" keeps anyone from being stuck. Each step's
+ * `action.run` (the old "Do it for me") survives as a SPEC AND SCREENSHOT SEAM,
+ * App.tutorialDoStep(), and as the button of a `handsOff` step (opening the sample
+ * sheets, which nobody can do by hand). Reading steps advance on Next.
  *
  * `target` is a LADDER, deepest control first: the spotlight follows the reader
  * INTO a dialog (the Quick tab, the Trade segment, Create Counter, the Child
@@ -64,6 +69,7 @@
   let tourCounterId = null;
   let tourLineTypeId = null;
   let tourSecondCounterId = null;
+  let placedOnce = false;   // the HVAC diffusers were placed in their circles (the Attach step moves them afterwards)
 
   // First visible match of the ladder. While a dialog is open only a control
   // inside it qualifies — the header and sidebar sit under the backdrop.
@@ -78,6 +84,58 @@
   const findCounter = (id, re) => (state().counters || []).find((c) => c.id === id) || (state().counters || []).find((c) => re.test(c.name || ''));
   const customIcon = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
   const firstIcon = () => customIcon('Toilet') || App.getOrderedIcons()[0].value;
+
+  // ===== on-sheet targets (2026-09-21) ====================================================
+  // A step that works ON THE SHEET says where, in the sheet's own points: circles for
+  // clicks, a boundary for a drag. They are drawn over the plan (#tourZones, never
+  // intercepting the pointer), follow pan and zoom, turn green when satisfied, and the
+  // step's check only counts work done INSIDE them. They are gracious on purpose: a
+  // circle is a couple of feet of plan wide and never under TARGET_MIN_PX on screen.
+  //   circle: { kind: 'circle', x, y, r, done }        box: { kind: 'box', outer, inner, done, label? }
+  // A step declares `zones: () => [...]` (evaluated live) and `page` (the sheet they are on).
+  const TARGET_MIN_PX = 26;
+  const norm = (r) => ({ x1: Math.min(r.x1, r.x2), y1: Math.min(r.y1, r.y2), x2: Math.max(r.x1, r.x2), y2: Math.max(r.y1, r.y2) });
+  const grow = (r, d) => { const n = norm(r); return { x1: n.x1 - d, y1: n.y1 - d, x2: n.x2 + d, y2: n.y2 + d }; };
+  const holds = (outer, inner) => { const o = norm(outer), i = norm(inner); return o.x1 <= i.x1 && o.y1 <= i.y1 && o.x2 >= i.x2 && o.y2 >= i.y2; };
+  const zoneR = (z) => Math.max(z.r, TARGET_MIN_PX / Math.max(0.05, state().zoom || 1));   // the radius that COUNTS, in sheet points
+  const inCircle = (pt, z) => Math.hypot(pt.x - z.x, pt.y - z.y) <= zoneR(z);
+  const pageAnnOf = (i) => { const p = state().pages && state().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
+  const markersOf = (pageIdx, counterId) => { const a = pageAnnOf(pageIdx); if (!a) return []; const m = a.counterMarkers || {}; return counterId ? (m[counterId] || []) : Object.keys(m).reduce((all, k) => all.concat(m[k] || []), []); };
+  // One circle per spot, each done once a mark of `counterId` (any counter when null) sits
+  // in it. Close spots share a mark to the NEAREST circle only, so two circles never both
+  // light from one click.
+  function markZones(pageIdx, counterId, spots, r, test) {
+    const zs = spots.map((s) => ({ kind: 'circle', x: s.x, y: s.y, r, done: false }));
+    markersOf(pageIdx, counterId).filter((m) => !test || test(m)).forEach((m) => {
+      let best = null, bd = Infinity;
+      zs.forEach((z) => { const d = Math.hypot(m.x - z.x, m.y - z.y); if (d < bd) { bd = d; best = z; } });
+      if (best && inCircle(m, best)) best.done = true;
+    });
+    return zs;
+  }
+  const strayMarks = (pageIdx, counterId, zones) => markersOf(pageIdx, counterId).filter((m) => !zones.some((z) => inCircle(m, z))).length;
+  // A drag: `rects` are the candidates the reader has made; one must hold `inner` and stay in `outer`.
+  function boxZone(rects, inner, outer, label) {
+    const ok = (rects || []).some((r) => holds(r, inner) && holds(outer, r));
+    return { kind: 'box', inner: norm(inner), outer: norm(outer), done: ok, label: label || '' };
+  }
+  function boxMiss(rects, inner, outer) {
+    const last = (rects || [])[(rects || []).length - 1];
+    if (!last || (holds(last, inner) && holds(outer, last))) return '';
+    return !holds(outer, last) ? 'Part of that box is outside the boundary. Undo it and drag inside the shaded area' : 'That box misses part of what it should wrap. Undo it and drag around all of it';
+  }
+  // A traced run: a corner inside each circle, in order (extra corners between are fine).
+  function pathZones(spots, r, runs) {
+    const zs = spots.map((s) => ({ kind: 'circle', x: s.x, y: s.y, r, done: false }));
+    let bestHit = 0;
+    (runs || []).forEach((pts) => {
+      [pts, pts.slice().reverse()].forEach((seq) => { let k = 0; seq.forEach((pt) => { if (k < zs.length && inCircle(pt, zs[k])) k++; }); if (k > bestHit) bestHit = k; });
+    });
+    zs.forEach((z, i) => { z.done = i < bestHit; });
+    return zs;
+  }
+  const allDone = (zs) => zs.length > 0 && zs.every((z) => z.done);
+  const stepZones = (step) => { try { return (step && step.zones && step.zones()) || []; } catch (_) { return []; } };
 
   // ===== steps both tours share ==============================================================
   // Sample-plan geometry in PDF points: the drawing is candidate A's 12 px/ft SVG
@@ -102,8 +160,10 @@
   };
   const PROVE_STEP = {
     id: 'measure', title: 'Prove the scale', kind: 'do',
-    body: '1. In the header, click [[Measure]] (or press D).\n2. Click one end of the 20\'-0" dimension on the left edge, between grid A and the corridor.\n3. Click the other end.\nThe footer should read 20\'-0". If it reads anything else, click [[Back]] and set the scale again. Do this on every real sheet: a PDF printed to a smaller sheet looks right and measures short.',
+    body: '1. In the header, click [[Measure]] (or press D).\n2. Click the tick mark at one end of the 20\'-0" dimension on the left edge: it is circled.\n3. Click the tick mark in the other circle.\nThe footer should read 20\'-0". If it reads anything else, click [[Back]] and set the scale again. Do this on every real sheet: a PDF printed to a smaller sheet looks right and measures short.',
     target: ['#measureBtn', '#measureBtnSidebar'],
+    page: 0,
+    zones: () => { const ft = measuredFeet(); const ok = ft != null && Math.abs(ft - PROVE_FT) <= PROVE_TOL_FT; return DIM_20FT.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: 13, done: ok })); },
     check: () => { const ft = measuredFeet(); return ft != null && Math.abs(ft - PROVE_FT) <= PROVE_TOL_FT; },
     hint: () => { const ft = measuredFeet(); const lm = state().lastMeasure; return ft == null ? '' : 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Go Back and set the scale again'; },
     action: { label: 'Measure the 20\'-0" wall', run: measureTwentyFeet },
@@ -119,6 +179,7 @@
       body: 'A small takeoff on the sample plan: set the scale and prove it, count devices, chain a run, read the wire and the checks. Nothing here touches your projects.\n1. Click [[Open the sample plan]] below.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       check: () => !!(state().pages && state().pages.length),
+      handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
     },
     SCALE_STEP,
@@ -139,9 +200,11 @@
     },
     {
       id: 'place', title: 'Count three receptacles', kind: 'do',
-      body: 'The counter tool is armed.\n1. Click a spot on a wall of Open Office 105.\n2. Click a second spot.\n3. Click a third spot.\nEach click is one tally; the sidebar count moves as you go.',
-      target: ['#annCanvas'],
-      check: () => { const c = eCounter(); return !!c && markCount(c.id) >= 3; },
+      body: 'The counter tool is armed. Three circles sit on the north wall of Open Office 105.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts. Each click is one tally; the sidebar count moves as you go.',
+      target: ['#annCanvas'], page: 0,
+      zones: () => { const c = eCounter(); return markZones(0, c ? c.id : '-', RECEPTACLE_SPOTS, 15); },
+      check: () => allDone(markZones(0, (eCounter() || {}).id || '-', RECEPTACLE_SPOTS, 15)),
+      hint: () => { const c = eCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15)) : 0; return n ? 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' : ''; },
       action: { label: 'Place three for me', run: placeThreeReceptacles },
     },
     {
@@ -160,9 +223,10 @@
     },
     {
       id: 'chain', title: 'Chain a run', kind: 'do',
-      body: '1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose the receptacle and 3/4" EMT.\n3. Click a device spot.\n4. Click a second spot, then a third.\nEvery click places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
-      target: ['#chainPanel', '#chainBtn'],
-      check: () => { const a = ann(); return !!a && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
+      body: '1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall.\n4. Click inside the second, then the third.\nEvery click places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
+      target: ['#chainPanel', '#chainBtn'], page: 0,
+      zones: () => { const c = eCounter(); return markZones(0, c ? c.id : '-', CHAIN_SPOTS, 15); },
+      check: () => { const a = ann(); return !!a && allDone(markZones(0, (eCounter() || {}).id || '-', CHAIN_SPOTS, 15)) && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
       action: { label: 'Chain three for me', run: chainThreeReceptacles },
     },
     {
@@ -207,6 +271,8 @@
   const WC_SPOTS = [{ x: 645, y: 506 }, { x: 675, y: 506 }, { x: 705, y: 506 }];
   const LAV_SPOTS = [{ x: 688.5, y: 369 }, { x: 717, y: 369 }, { x: 745.5, y: 369 }];
   const WOMEN_ROOM = { x1: 628, y1: 356, x2: 767, y2: 522 };
+  const WOMEN_INNER = { x1: 638, y1: 364, x2: 757, y2: 514 };   // the room's fixtures: what a typical-floor box must hold
+  const typicalZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => (z.multiplier || 1) > 1); };
   const RFI_SPOT = { x: 690, y: 425 };
   const RFI_TEXT = 'RFI: ADA clearance at the end stall in Women 108?';
 
@@ -214,6 +280,9 @@
   const pLav = () => findCounter(tourSecondCounterId, /lav|sink/i);
   const pLineType = () => (state().lineTypes || []).find((lt) => lt.id === tourLineTypeId) || (state().lineTypes || [])[0];
   const anyNoteRfi = () => (state().pages || []).some((p) => (p.canvases || []).some((cv) => ((cv.annotations && cv.annotations.notes) || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')))));
+  // a rise or fall written on the run END that sits inside the circle at `spot`
+  const dropAt = (spot, r) => { const a = ann(); if (!a) return false; const z = { x: spot.x, y: spot.y, r }; return (a.quickLines || []).some((l) => ((l.startDrop || 0) > 0 && inCircle({ x: l.x1, y: l.y1 }, z)) || ((l.endDrop || 0) > 0 && inCircle({ x: l.x2, y: l.y2 }, z))); };
+  const rfiAt = (spot, r) => { const a = ann(); return !!a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')) && inCircle({ x: n.x, y: n.y }, { x: spot.x, y: spot.y, r })); };
   const anyDrop = () => { const a = ann(); if (!a) return false; const has = (l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0; return (a.quickLines || []).some(has) || (a.polylines || []).some(has); };
 
   const PLUMBING_STEPS = [
@@ -225,6 +294,7 @@
       // trade; the plumbing tour must speak plumbing, so the project is stamped
       // (never remembered) the moment the plan is open, whichever way it opened.
       check: () => { const ok = !!(state().pages && state().pages.length); if (ok && state().trade !== 'plumbing' && App.setProjectTrade) App.setProjectTrade('plumbing', { remember: false, route: 'tour' }); return ok; },
+      handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
     },
     SCALE_STEP,
@@ -238,9 +308,11 @@
     },
     {
       id: 'place', title: 'Count the water closets', kind: 'do',
-      body: 'The counter tool is armed.\n1. Click the first water closet in the stalls on the south wall of Women 108.\n2. Click the second.\n3. Click the third.\nOne click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
-      target: ['#annCanvas'],
-      check: () => { const c = pCounter(); return !!c && markCount(c.id) >= 3; },
+      body: 'The counter tool is armed, and the three water closets in the stalls of Women 108 are circled.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts. One click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
+      target: ['#annCanvas'], page: 0,
+      zones: () => { const c = pCounter(); return markZones(0, c ? c.id : '-', WC_SPOTS, 13); },
+      check: () => allDone(markZones(0, (pCounter() || {}).id || '-', WC_SPOTS, 13)),
+      hint: () => { const c = pCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13)) : 0; return n ? 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' : ''; },
       action: { label: 'Count three for me', run: placeThreeWcs },
     },
     {
@@ -252,16 +324,19 @@
     },
     {
       id: 'chain', title: 'Chain the lav battery', kind: 'do',
-      body: 'The three lavatories on the north wall of Women 108 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose a Lavatory counter ([[+ New counter]] makes one right there) and 1in PEX.\n3. Click the first lavatory.\n4. Click the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
-      target: ['#counterCreate', '#counterQuickCountAdd', '#chainPanel', '#chainBtn'],
-      check: () => { const a = ann(); return !!a && (a.quickLines || []).length >= 2; },
+      body: 'The three lavatories on the north wall of Women 108 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose a Lavatory counter ([[+ New counter]] makes one right there) and 1in PEX.\n3. Click inside the circle on the first lavatory.\n4. Click inside the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
+      target: ['#counterCreate', '#counterQuickCountAdd', '#chainPanel', '#chainBtn'], page: 0,
+      zones: () => { const c = pLav(); return markZones(0, c ? c.id : '-', LAV_SPOTS, 12); },
+      check: () => { const a = ann(); return !!a && allDone(markZones(0, (pLav() || {}).id || '-', LAV_SPOTS, 12)) && (a.quickLines || []).length >= 2; },
       action: { label: 'Chain the three lavs for me', run: chainThreeLavs },
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the run at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
-      target: ['#dropPanel', '#dropBtn'],
-      check: anyDrop,
+      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the run inside the circle, at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
+      target: ['#dropPanel', '#dropBtn'], page: 0,
+      zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
+      check: () => dropAt(LAV_SPOTS[0], 14),
+      hint: () => (anyDrop() && !dropAt(LAV_SPOTS[0], 14) ? 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' : ''),
       action: { label: 'Add a 3 ft riser for me', run: addRiserDrop },
     },
     {
@@ -273,16 +348,20 @@
     },
     {
       id: 'zone', title: 'A typical floor', kind: 'do',
-      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Women 108.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
-      target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
-      check: () => { const a = ann(); return !!a && (a.multiplyZones || []).some((z) => (z.multiplier || 1) > 1); },
+      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Women 108: start and end anywhere inside the shaded boundary.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
+      target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
+      zones: () => [boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26), 'Drag your box around Women 108, anywhere in here')],
+      check: () => boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)).done,
+      hint: () => boxMiss(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)),
       action: { label: 'Wrap Women 108 in a ×3 zone', run: addTypicalFloorZone },
     },
     {
       id: 'rfi', title: 'Flag a question', kind: 'do',
-      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click the spot.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
-      target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
-      check: anyNoteRfi,
+      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
+      target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
+      zones: () => [{ kind: 'circle', x: RFI_SPOT.x, y: RFI_SPOT.y, r: 42, done: rfiAt(RFI_SPOT, 42) }],
+      check: () => rfiAt(RFI_SPOT, 42),
+      hint: () => (anyNoteRfi() && !rfiAt(RFI_SPOT, 42) ? 'That flag is outside the circle. Drag the note into the circle' : ''),
       action: { label: 'Drop the RFI note for me', run: addRfiNote },
     },
     {
@@ -315,9 +394,13 @@
   const OPEN_OFFICE = { x1: 158, y1: 358, x2: 412, y2: 520 };   // OPEN OFFICE 105's outline (SVG 130,384 340×216), PDF pts
   const DIFFUSER_SPOTS = [{ x: 215, y: 458 }, { x: 340, y: 458 }, { x: 215, y: 512 }, { x: 340, y: 512 }];   // two 6 pt from the main (attached), two 60 pt off (strays, within the 96 pt rescue)
   const MAIN_VERTICES = [{ x: 164, y: 452 }, { x: 285, y: 452 }, { x: 406, y: 452 }];   // below the room's printed name
+  const OFFICE_INNER = { x1: 176, y1: 376, x2: 394, y2: 502 };   // a room box must reach at least this far toward every wall
+  const officeBoxes = () => { const a = ann(); return (a && a.roomBoxes) || []; };
   const hCounter = () => findCounter(tourCounterId, /diffuser/i);
   const hRoom = () => (state().rooms || []).find((r) => /open office/i.test(r.name || ''));
   const ductRuns = () => { const a = ann(); return (a && a.ductRuns) || []; };
+  // committed runs, plus the corners of the trace in progress, so the circles tick as the reader goes
+  const mainPaths = () => { const d = state().drawingDuct; return ductRuns().map((r) => r.vertices || []).concat(d && d.vertices ? [d.vertices] : []); };
   const cfmDevices = () => { const a = ann(); const c = hCounter(); return (a && c && a.counterMarkers && a.counterMarkers[c.id]) || []; };
   const unattachedDevices = () => {
     const devs = cfmDevices().map((m) => ({ x: m.x, y: m.y }));
@@ -331,15 +414,19 @@
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
       check: () => { const ok = !!(state().pages && state().pages.length); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
+      handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
     },
     SCALE_STEP,
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
+      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end inside the shaded boundary.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
       target: ['#roomBoxApply', '#roomBoxType', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'],
-      check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType && a && (a.roomBoxes || []).some((b) => b.roomId === r.id) && ds && ds.deckHeightFt > 0); },
+      page: 0,
+      zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
+      hint: () => boxMiss(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)),
+      check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType && a && boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)).done && ds && ds.deckHeightFt > 0); },
       action: { label: 'Box the open office for me', run: boxOpenOffice },
     },
     {
@@ -351,9 +438,11 @@
     },
     {
       id: 'place', title: 'Place four diffusers', kind: 'do',
-      body: 'The counter tool is armed.\n1. Click two spots in OPEN OFFICE 105, near where the main will run.\n2. Click two more, deeper in the room.\nEach mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
-      target: ['#annCanvas'],
-      check: () => cfmDevices().length >= 4,
+      body: 'The counter tool is armed. Four circles sit in OPEN OFFICE 105: two where the main will run, two deeper in the room.\n1. Click inside each of the four circles.\nEach mark carries its 150 CFM; the Rooms row now reads what the room needs against what is served.',
+      target: ['#annCanvas'], page: 0,
+      zones: () => { const c = hCounter(); return markZones(0, c ? c.id : '-', DIFFUSER_SPOTS, 14); },
+      check: () => cfmDevices().length >= 4 && (placedOnce || (placedOnce = allDone(markZones(0, (hCounter() || {}).id || '-', DIFFUSER_SPOTS, 14)))),
+      hint: () => { const c = hCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, DIFFUSER_SPOTS, 14)) : 0; return n && !placedOnce ? 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' : ''; },
       action: { label: 'Place four for me', run: placeFourDiffusers },
     },
     {
@@ -365,15 +454,17 @@
     },
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
-      body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click along the office from the corridor side. The chip under the cursor reads the air still to serve (600 CFM downstream) and suggests a size for it at 0.08″ per 100′.\n4. Press S and tap the suggestion (spiral first, then the rectangular twin).\n5. Click one more point.\n6. Press Enter.\nThe elbows and the transition count themselves.',
-      target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'],
-      check: () => ductRuns().some((r) => (r.segments || []).length >= 2),
+      body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click inside the first circle, then the second, working across the office. The chip under the cursor reads the air still to serve (600 CFM downstream) and suggests a size for it at 0.08″ per 100′.\n4. Press S and tap the suggestion (spiral first, then the rectangular twin).\n5. Click inside the third circle.\n6. Press Enter.\nThe elbows and the transition count themselves.',
+      target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
+      zones: () => pathZones(MAIN_VERTICES, 16, mainPaths()),
+      check: () => ductRuns().some((r) => (r.segments || []).length >= 2) && allDone(pathZones(MAIN_VERTICES, 16, ductRuns().map((r) => r.vertices || []))),
       action: { label: 'Trace and size it for me', run: traceMain },
     },
     {
       id: 'attach', title: 'Hang the strays', kind: 'do',
       body: 'Two diffusers sit within 8″ of the main and draw a dashed leader to it: attached, their air served. Two draw nothing: strays.\n1. Right-click a bare diffuser.\n2. Click [[Attach to nearest run]].\n3. Do the same for the other one.\nEach moves onto the main and its leader appears.',
-      target: ['#ctxAttachToRun', '#annCanvas'],
+      target: ['#ctxAttachToRun', '#annCanvas'], page: 0,
+      zones: () => unattachedDevices().map((d) => ({ kind: 'circle', x: d.x, y: d.y, r: 14, done: false })),
       check: () => cfmDevices().length >= 4 && unattachedDevices().length === 0,
       hint: () => { const n = unattachedDevices().length; return n ? n + ' diffuser' + (n === 1 ? '' : 's') + ' still hanging off nothing' : ''; },
       action: { label: 'Hang the strays for me', run: rescueStrays },
@@ -769,14 +860,27 @@
     el('tourStepNo').textContent = (stepIdx + 1) + ' / ' + STEPS.length;
     el('tourTitle').textContent = step.title;
     el('tourBody').innerHTML = bodyHtml(step.body);
-    const actionBtn = el('tourAction');
-    if (step.action && !done) { actionBtn.style.display = ''; actionBtn.textContent = step.action.label; }
-    else actionBtn.style.display = 'none';
+    // The card never does the step for the reader. "Show me where" pulses the circle,
+    // the boundary or the lit control; Next works only once the step is really done
+    // (a reading step is done by reading); a quiet Skip keeps anyone from being stuck.
+    // The one exception is a step nobody CAN do by hand, which says so with `handsOff`:
+    // fetching the sample sheets is the app's job, so that step's button does it.
+    const ready = step.kind === 'read' || done;
+    const zones = stepZones(step);
+    const show = el('tourShow');
+    if (step.handsOff && !done) { show.style.display = ''; show.textContent = step.action.label; }
+    else if (step.kind === 'do' && !done) { show.style.display = ''; show.textContent = 'Show me where'; }
+    else show.style.display = 'none';
     const next = el('tourNext');
-    next.textContent = stepIdx === STEPS.length - 1 ? 'Finish' : (step.kind === 'read' || done ? 'Next' : 'Skip step');
-    next.classList.toggle('tour-next-ready', step.kind === 'read' || done);
+    next.textContent = stepIdx === STEPS.length - 1 ? 'Finish' : 'Next';
+    next.disabled = !ready;
+    next.classList.toggle('tour-next-ready', ready);
+    el('tourSkip').style.display = (!ready && stepIdx < STEPS.length - 1) ? '' : 'none';
     el('tourBack').style.visibility = stepIdx === 0 ? 'hidden' : '';
-    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || 'Waiting for you…')) : '';
+    const wrongPage = zones.length && step.page != null && state().currentPage !== step.page;
+    const progress = zones.length > 1 ? zones.filter((z) => z.done).length + ' of ' + zones.length + ' done' : '';
+    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || (wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '') || progress || 'Waiting for you…')) : '';
+    el('tourStatus').classList.toggle('tour-status-miss', step.kind === 'do' && !done && !!(step.hint && safeHint(step)));
     el('tourDots').innerHTML = STEPS.map((s, i) => '<span class="tour-dot' + (i < stepIdx ? ' past' : i === stepIdx ? ' now' : '') + '"></span>').join('');
     // spotlight + card placement: the ladder follows the reader into an open
     // dialog (only a control inside it qualifies there)
@@ -797,6 +901,7 @@
       lastTarget = target;
       const pad = 6;
       spot.style.display = '';
+      spot.classList.toggle('has-zones', !modalOpen && stepZones(step).length > 0 && (step.page == null || state().currentPage === step.page));
       spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
       spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
       // card: beside the target, never ON it. Right, below, left, above, in that order;
@@ -823,6 +928,14 @@
       // (`cardAt`: 'tl' | 'tr' | 'bl' | 'br'); and the reader can always drag the card
       // by its head, which wins until the step changes.
       if (step.cardAt) place = { left: step.cardAt[1] === 'l' ? edge : vw - cw - edge, top: step.cardAt[0] === 't' ? 56 : vh - ch - 40 };
+      // Targets on the sheet outrank everything: the card takes the first corner that
+      // covers none of them (it sat on circle 1 of the prove-the-scale step, 2026-09-21).
+      const zs = (!modalOpen && (step.page == null || state().currentPage === step.page)) ? zoneScreenBoxes(step) : [];
+      if (zs.length) {
+        const corners = [{ left: edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: 56 }, { left: edge, top: 56 }];
+        const clear = (c) => !zs.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
+        place = corners.find(clear) || corners[0];
+      }
       if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
       const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
@@ -841,6 +954,90 @@
       if (!doneAt) doneAt = Date.now();
       else if (Date.now() - doneAt > 900) goTo(stepIdx + 1);
     } else doneAt = 0;
+  }
+  // The targets are drawn every animation frame while a tour runs, from the sheet
+  // canvas's own box, so they ride pan, zoom and a resize without any hook into those.
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  let zoneFrame = 0;
+  function sheetBox() {
+    const page = state().pages && state().pages[state().currentPage];
+    const c = el('annCanvas');
+    if (!page || !page.pdfPage || !c || !c.width) return null;
+    const r = c.getBoundingClientRect();
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    return r.width > 0 ? { left: r.left, top: r.top, k: r.width / vp.width } : null;
+  }
+  function drawZones() {
+    const svg = el('tourZones');
+    if (!svg) return;
+    const step = active ? STEPS[stepIdx] : null;
+    const zones = step && !document.querySelector('.modal-overlay.visible') && (step.page == null || state().currentPage === step.page) ? stepZones(step) : [];
+    const box = zones.length ? sheetBox() : null;
+    if (!box) { if (svg.childNodes.length) svg.textContent = ''; return; }
+    const wrap = document.querySelector('.canvas-wrapper');
+    const w = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    const X = (x) => box.left + x * box.k, Y = (y) => box.top + y * box.k;
+    let html = '<defs><clipPath id="tourZonesClip"><rect x="' + w.left + '" y="' + w.top + '" width="' + w.width + '" height="' + w.height + '"/></clipPath></defs><g clip-path="url(#tourZonesClip)">';
+    let n = 0;
+    zones.forEach((z) => {
+      const d = z.done ? ' is-done' : '';
+      if (z.kind === 'circle') {
+        n++;
+        const cx = X(z.x), cy = Y(z.y), r = zoneR(z) * box.k;
+        html += '<circle class="tour-zone' + d + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>';
+        if (zones.length > 1 || z.done) html += '<circle class="tour-zone-tag-bg' + d + '" cx="' + (cx + r * 0.72) + '" cy="' + (cy - r * 0.72) + '" r="9"/><text class="tour-zone-tag" text-anchor="middle" x="' + (cx + r * 0.72) + '" y="' + (cy - r * 0.72 + 4) + '">' + (z.done ? '✓' : n) + '</text>';
+      } else {
+        const o = z.outer, i = z.inner;
+        html += '<rect class="tour-zone' + d + '" rx="10" x="' + X(o.x1) + '" y="' + Y(o.y1) + '" width="' + (o.x2 - o.x1) * box.k + '" height="' + (o.y2 - o.y1) * box.k + '"/>';
+        if (!z.done) html += '<rect class="tour-zone-inner" x="' + X(i.x1) + '" y="' + Y(i.y1) + '" width="' + (i.x2 - i.x1) * box.k + '" height="' + (i.y2 - i.y1) * box.k + '"/>';
+        if (z.label && !z.done) html += '<text class="tour-zone-label" x="' + (X(o.x1) + 8) + '" y="' + (Y(o.y1) - 7) + '">' + escapeText(z.label) + '</text>';
+      }
+    });
+    html += '</g>';
+    if (svg.__last !== html) { svg.innerHTML = html; svg.__last = html; }
+  }
+  function zoneScreenBoxes(step) {
+    const b = sheetBox(); if (!b) return [];
+    return stepZones(step).map((z) => { const o = z.kind === 'circle' ? { x1: z.x - zoneR(z), y1: z.y - zoneR(z), x2: z.x + zoneR(z), y2: z.y + zoneR(z) } : z.outer; return { x1: b.left + o.x1 * b.k, y1: b.top + o.y1 * b.k, x2: b.left + o.x2 * b.k, y2: b.top + o.y2 * b.k }; });
+  }
+  function zoneLoop() { zoneFrame = 0; if (!active) { drawZones(); return; } drawZones(); zoneFrame = requestAnimationFrame(zoneLoop); }
+  // Bring the step's targets up to a size worth clicking: when they would draw small, or
+  // off the screen, the sheet zooms to them (never past 3x, never under the fit), once,
+  // on entering the step. The reader is free to zoom and pan away afterwards.
+  function focusOnZones(step) {
+    const zones = stepZones(step);
+    if (!zones.length || step.focus === false) return;
+    if (step.page != null && state().currentPage !== step.page) return;
+    const page = state().pages[state().currentPage];
+    const wrap = document.querySelector('.canvas-wrapper');
+    if (!page || !page.pdfPage || !wrap) return;
+    let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity, minR = Infinity;
+    zones.forEach((z) => {
+      const b = z.kind === 'circle' ? { x1: z.x - z.r, y1: z.y - z.r, x2: z.x + z.r, y2: z.y + z.r } : z.outer;
+      x1 = Math.min(x1, b.x1); y1 = Math.min(y1, b.y1); x2 = Math.max(x2, b.x2); y2 = Math.max(y2, b.y2);
+      if (z.kind === 'circle') minR = Math.min(minR, z.r);
+    });
+    const W = wrap.clientWidth, H = wrap.clientHeight;
+    const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+    const fit = Math.min(W / vp.width, H / vp.height);
+    const z0 = state().zoom || fit;
+    const onScreen = (x, y) => { const sx = (state().pan ? state().pan.x : 0) + x * z0, sy = (state().pan ? state().pan.y : 0) + y * z0; return sx > 20 && sy > 20 && sx < W - 20 && sy < H - 20; };
+    const bigEnough = minR === Infinity ? true : minR * z0 >= TARGET_MIN_PX;
+    if (bigEnough && onScreen(x1, y1) && onScreen(x2, y2)) return;
+    const want = Math.min(W / ((x2 - x1) * 1.9 + 1), H / ((y2 - y1) * 1.9 + 1));
+    const need = minR === Infinity ? 0 : (TARGET_MIN_PX + 6) / minR;
+    const max = Math.min(App.getMaxZoom ? App.getMaxZoom() : 3, 3);
+    const z = Math.max(fit, Math.min(max, Math.max(Math.min(want, max), Math.min(need, want))));
+    state().zoom = z;
+    state().pan = { x: W / 2 - ((x1 + x2) / 2) * z, y: H / 2 - ((y1 + y2) / 2) * z };
+    App.renderPdf(); App.updateUI();
+  }
+  function showMeWhere() {
+    const step = STEPS[stepIdx];
+    if (step.handsOff && step.action) { Promise.resolve(step.action.run()).then(render); return; }
+    if (stepZones(step).length && step.page != null && state().currentPage !== step.page && state().pages[step.page]) { state().currentPage = step.page; App.fitZoom(); }
+    focusOnZones(Object.assign({}, step, { focus: true }));
+    [el('tourZones'), el('tourSpot')].forEach((n) => { if (!n) return; n.classList.remove('is-pulsing'); void n.getBoundingClientRect(); n.classList.add('is-pulsing'); });
   }
   function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
   function safeHint(step) { try { return step.hint() || ''; } catch (_) { return ''; } }
@@ -869,6 +1066,7 @@
     stepIdx = next;
     doneAt = 0;
     closeStrayDialogs(STEPS[stepIdx]);
+    setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     render();
   }
@@ -878,10 +1076,11 @@
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
-    stepIdx = 0; doneAt = 0; heldByBack = false; dragPos = null; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
+    if (!zoneFrame) zoneFrame = requestAnimationFrame(zoneLoop);
     App.logUserEvent && App.logUserEvent('tour_step', null, { tour: tourId, step: 'start', index: 0 });
     render();
     return true;
@@ -890,6 +1089,8 @@
     active = false;
     if (timer) { clearInterval(timer); timer = null; }
     document.body.classList.remove('tour-active');
+    if (zoneFrame) { cancelAnimationFrame(zoneFrame); zoneFrame = 0; }
+    drawZones();
     try { if (finished && TOURS[tourId].doneKey) localStorage.setItem(TOURS[tourId].doneKey, new Date().toISOString()); } catch (_) {}
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: finished ? 'finished' : 'left', index: stepIdx });
     render();
@@ -944,10 +1145,12 @@
   })();
 
   // wiring (static DOM)
-  el('tourNext') && (el('tourNext').onclick = () => { if (stepIdx >= STEPS.length - 1) stopTutorial(true); else goTo(stepIdx + 1); });
+  const stepReady = () => { const st = STEPS[stepIdx]; return !!st && (st.kind === 'read' || safeCheck(st)); };
+  el('tourNext') && (el('tourNext').onclick = () => { if (!stepReady()) return; if (stepIdx >= STEPS.length - 1) stopTutorial(true); else goTo(stepIdx + 1); });
+  el('tourSkip') && (el('tourSkip').onclick = () => { if (stepIdx < STEPS.length - 1) { App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx, skipped: true }); goTo(stepIdx + 1); } });
+  el('tourShow') && (el('tourShow').onclick = showMeWhere);
   el('tourBack') && (el('tourBack').onclick = () => goTo(stepIdx - 1));
   el('tourLeave') && (el('tourLeave').onclick = () => stopTutorial(false));
-  el('tourAction') && (el('tourAction').onclick = async () => { const step = STEPS[stepIdx]; if (step.action) { await step.action.run(); render(); } });
   Object.keys(TOURS).filter((id) => TOURS[id].linkId).forEach((id) => {
     const link = el(TOURS[id].linkId);
     if (link) link.onclick = (e) => { e.preventDefault(); startTutorial(id); };
@@ -972,7 +1175,16 @@
   App.setTutorialPending = (v) => { pending = !!v; };
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
-  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon };
+  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
+    markZones, strayMarks, boxZone, boxMiss, pathZones, allDone, grow, norm, inCircle, markersOf };
+  // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
+  // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
+  // without scripting forty clicks and the guide shots can reach a finished tour.
+  App.tutorialDoStep = async () => { const st = active ? STEPS[stepIdx] : null; if (st && st.action) { await st.action.run(); render(); } };
+  App.tutorialZones = () => (active ? stepZones(STEPS[stepIdx]) : []);
+  // the current targets in CLIENT pixels, where a spec (or a person) would click
+  App.tutorialZoneScreen = () => { const b = sheetBox(); if (!active || !b) return []; const X = (x) => b.left + x * b.k, Y = (y) => b.top + y * b.k; const R = (r) => ({ x1: X(r.x1), y1: Y(r.y1), x2: X(r.x2), y2: Y(r.y2) }); return stepZones(STEPS[stepIdx]).map((z) => (z.kind === 'circle' ? { kind: 'circle', cx: X(z.x), cy: Y(z.y), r: zoneR(z) * b.k, done: z.done } : { kind: 'box', outer: R(z.outer), inner: R(z.inner), done: z.done })); };
+  App.tutorialStepInfo = () => { const st = active ? STEPS[stepIdx] : null; return st ? { id: st.id, kind: st.kind, done: st.kind === 'read' || safeCheck(st), hasAction: !!st.action } : null; };
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;

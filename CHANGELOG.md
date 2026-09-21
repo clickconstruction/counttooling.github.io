@@ -13,6 +13,70 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(boot): the boot no longer outruns the feature scripts (2026-09-21)
+
+Found chasing a CI failure on the on-sheet targets PR. app.js's async boot calls into
+features/*.js (`App.openLastSessionRestorePrompt`, `App.initViewOnlyMode`), and those scripts sit
+AFTER app.js in the shell. The boot normally loses that race, but with a warm cache and a quick
+IndexedDB read it can win, and then a reload onto a device holding a saved session threw
+"App.openLastSessionRestorePrompt is not a function": the boot died before `updateUI`, the saved
+session was never offered, and the page never went network-idle. Timing-dependent, so it showed up
+as scattered 30 s `waitForLoadState` timeouts across unrelated specs in CI (5, 13, 19 and 22 flaky
+tests on four runs this day) and, locally, in two of three reloads after a tour.
+
+`shellScriptsReady()` resolves at DOMContentLoaded, by which point every classic script has run;
+the boot awaits it before the view-link path and before the silent pre-apply. It sits BEFORE the
+pre-apply on purpose: the pre-apply-to-offer stretch must stay free of awaits so no backup write
+can interleave. Spec: restore-last-session.spec.js "BOOT RACE" serves the feature file 1.5 s late
+and expects the offer; it fails without the fix. The three whole-tour specs also got the 90 s
+budget their siblings have.
+
+It was NOT the main source of the CI flakes, though: the next run still had 16. Every one of
+them, and the run's one hard failure, was `page.waitForLoadState('networkidle')` timing out. A
+fresh context installs the service worker and precaches about 155 files, so a slow runner's
+network does not go quiet inside a test's budget. tutorial.spec.js now waits on the app's own
+signal (`App.bootSettled`) the way lessons.spec.js always has (zero flakes across the runs);
+the rest of the suite is punch row CI-NETWORKIDLE.
+
+## feat(learn): the reader does every step, inside targets drawn on the sheet (2026-09-21)
+
+The owner, after a morning with Learn: "Instead of being able to click through it, I would like
+circles on the page, or boundaries, where a user has to do those actions within those boundaries.
+The boundaries could be quite gracious, and they also clarify where the user should make those
+actions." Mocked first, then built for all sixteen walkthroughs (the thirteen lessons and the
+three trade tours).
+
+- **Targets on the sheet.** A step that works on the plan declares `zones` in the sheet's own
+  points: a **circle** on each thing to click, a shaded **boundary** around anything to drag a box
+  over (with the thing it must wrap dotted inside). They are drawn over the plan in `#tourZones`
+  (an SVG that never takes the pointer, redrawn every frame from the sheet canvas's own box, so it
+  rides pan, zoom and resize with no hook into either), numbered, and turn green with a tick as
+  each is satisfied.
+- **The check counts only what is inside.** `markZones` gives each mark to its NEAREST circle, so
+  close fixtures never both light from one click; `boxZone` wants a box that holds the inner
+  rectangle and stays inside the outer one; `pathZones` wants a corner in each circle in order and
+  ticks them while the trace is still in progress. Measure steps keep their true test, the
+  reading, with circles on the two tick marks. A miss is named on the card in plain words ("A
+  mark outside the circles does not count. Press Ctrl+Z…", "That box misses part of what it should
+  wrap…", "That drop is on another end…") and nothing is ever deleted for the reader.
+- **Gracious by construction.** A circle is a foot or two of plan and never under 26 px on screen
+  (`zoneR`: the radius that counts is the one drawn). On entering a step whose targets would draw
+  small or off screen, the sheet zooms to them once (`focusOnZones`, never past 3x, never under
+  the fit): the plumbing tour's water closets are 30 pt apart and now arrive at 292%.
+- **The card no longer does steps.** "Do it for me" is gone. **Show me where** pulses the target
+  or the lit control (and turns to the target's sheet). **Next** is disabled until the step is
+  really done; a quiet **Skip this step** link keeps anyone from being stuck and logs
+  `tour_step { skipped: true }`. The one exception is a step nobody can do by hand, `handsOff`
+  (fetching the sample sheets): its button still does it. Each step's `action.run` survives as a
+  spec and screenshot seam, `App.tutorialDoStep()`, with `App.tutorialStepInfo()` and
+  `App.tutorialZoneScreen()` beside it.
+- **The card keeps off the targets**: it takes the first viewport corner that covers none of them
+  (it sat on circle 1 of the prove-the-scale step), and while targets show the spotlight's dim
+  drops to a veil so the drawing under a boundary stays readable. Its buttons are two rows now.
+- Specs: by REAL clicks, a click outside a circle does not advance and says why while one well
+  off-centre inside does; a half box is refused and a wrapping one passes; a trace ticks its
+  circles corner by corner; the plumbing tour's circled water closets and its typical-floor
+  boundary (tutorial.spec.js, lessons.spec.js: 35 tests with restore-last-session).
 ## fix(legend): the corner grip sizes the legend, smaller as well as bigger (2026-09-21)
 
 Grace's field report: "you can move it but can't shrink it." The legend's bottom-right grip

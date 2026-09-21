@@ -59,6 +59,11 @@
 > 3. **The Sheets lesson teaches Trim your set by hand**, because a multi-sheet PDF opens it
 >    anyway; every other lesson presses its Open for the reader.
 
+> **Changed 2026-09-21, the same day, after the owner used it:** no step can be clicked through.
+> Sheet work is asked for inside circles and boundaries drawn on the plan and only counts there;
+> "Do it for me" became "Show me where"; Next waits for the step; a quiet Skip remains. The line
+> below about "Do it for me" describes the first build. Detail: the CHANGELOG entry of that date.
+
 ## The lessons
 
 Each is 4 to 8 steps, two or three minutes, on the engine the tours already use (a step is

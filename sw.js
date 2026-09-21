@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'cdbd799ed0db';
+const CACHE_VERSION = '3b165b225bd9';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -199,7 +199,7 @@ const PRECACHE_SHA256 = {
   '/app/': '7944fc3281718829d0ca12411bd34be24b2e6c6a2e45f7930be513b2055cbbb2',
   '/app/index.html': '7944fc3281718829d0ca12411bd34be24b2e6c6a2e45f7930be513b2055cbbb2',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '1ece53ef69433facd163bee04d44a974b8ec3878c3ade1bef9300ff64d4bb285',
+  '/styles.css': '0c2362d58907ea828a655b362cd4cdfe78125be6c1e019c491168eb649b14229',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '4fad0716f98809c79c9a32bb6c9e3365b737119f8e1f9e3ac5001caa4a6791ab',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -232,7 +232,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': 'd8cf087ca14582810073d684950e5d7b699ee83ada8e9b38af029c608165f958',
   '/save-engine.js': '31100c9114b2f9dd2112d83e33f8e3b191bf55fe0decf9b54038852fe0795128',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '05cd00085fc1fb9c63f06cf2acae2386185cafe9b2bbf69d9f1b9f90a6886187',
+  '/app.js': '41b6d21acaa1a7d40718bb2107526da549b611bf224675a061a1fdaefb46db30',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
@@ -259,7 +259,7 @@ const PRECACHE_SHA256 = {
   '/features/counter.js': 'bd0c976dfc44b3708e4e0b1cb6197733d39a43243fc75663f19157f2684e7e0a',
   '/features/save-status.js': '154fefaaaa277f4912d476f26bd22f49beced717155504d62ac2901060490123',
   '/features/status-bar.js': '1a201810909cca54376247acdf44040eac4016378e895a407b3934539ae0bd56',
-  '/features/turn-in.js': 'f6fd14e72020eddc6234a97953a86f3202a35e4bfcc1699621350c71a4976c8a',
+  '/features/turn-in.js': '1793d17cb9b5dd13082fa7df55d9736b7e2e43e5c82918a22a6115c5395a8667',
   '/features/manage-projects.js': '45d9d7418dd748b6a18089bb1ea9b6daa67a86ad8d3233945cb24a3a762f4a93',
   '/features/user-admin.js': 'f038517632e11bb24f6cc01254611534ead640264baa7fa6152de542791914ec',
   '/features/load-project.js': '7a4f4ef009c7228ba4c555ae413c1eecff2fac5101c46523760ffe1395bc7a21',

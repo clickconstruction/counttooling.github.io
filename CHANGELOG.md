@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(course): the electrical course, nine chapters on how a restaurant gets its power (2026-09-21)
+
+[ELECTRICAL-COURSE.md](journeys/plans/ELECTRICAL-COURSE.md). The plumbing course's sibling, built the
+same afternoon, the same way: the engineer's drawing is the answer key, a question is answered with
+a click the check refuses when wrong, the explanation and its section on the next card, and this
+time the app's own arithmetic teaches too.
+
+- **The set** (scripts/sample-electrical.js, `npm run build:sample-electrical`): the same Main St
+  Restaurant as P-101 on the same shell, which was factored out of P-101's drawing as
+  `restaurantShell(opts)` (lights, plumbing tags and drains as options; P-101 proved unchanged element
+  for element). E-101 the power plan, E-201 the lighting plan with every fixture's letter beside it,
+  E-501 the fixture and panel schedules, E-601 the one-line. Every device sits at a P-101 coordinate.
+- **The course** (features/course-electrical.js): which receptacles must be GFCI (NEC 210.8(B), a
+  duplex clicked as one is told it has no sink within 6 ft), the working clearance measured in front
+  of LP-1 (110.26), the dishwasher's row highlighted and read (240.4(D), 310.16), the palette from the
+  fixture schedule and 36 fixtures placed by the letter, the fixtures with a battery (700.12, IBC
+  1008), occupancy sensors (IECC C405.2.1), a raceway that knows its conductors and the chain that
+  writes the verticals, fill judged against Chapter 9 Table 1, the voltage-drop row warning at the
+  default 12 A and clearing at the 6 A the engineer scheduled (210.19 informational note), the
+  three-phase J-box found, the shunt-trip RFI, the feeder traced with 4 #3/0 + #6 G and judged for
+  fill, the whole set against a reference of 68 marks and three runs, the circuit schedule in the
+  report, the electrical rows of Bid Check.
+- **The lesson kit opens a named set** (`lesson.set` in features/lessons.js: url, name, page count,
+  trade), so the plumbing set stays four sheets. **The Learn menu holds a section per course**
+  (`App.courseSections`; the plumbing section moved to `#learnCourseList-plumbing`). The empty-canvas
+  line offers "plumbing or its power"; Project Settings → Help has both. The plumbing course's
+  ARCHITECTURE row, lost in the targets merge, is back.
+- The schedule reader's descriptions also stop at a bare integer column (volts, watts).
+- Specs: [course-electrical.spec.js](course-electrical.spec.js), twelve tests: every chapter through
+  the seam with the numbers its bodies quote (the chain 60.5 ft with four 9.5 ft verticals, the
+  homerun 84.17 ft, the feeder 12.33 ft, fill on the feeder in the thirties), the wrong GFCI click
+  refused, the voltage-drop row's warn-then-clear, the doors and both courses in one menu.
+- Open: EC-REVIEW, a trade read of chapters 2 to 7 and the panel schedule. Fire alarm is absent from
+  the set on purpose; chapter 9 says so. The HVAC course is next.
+
 ## feat(course): the plumbing course, nine chapters on how a restaurant gets its plumbing (2026-09-21)
 
 [PLUMBING-COURSE.md](journeys/plans/PLUMBING-COURSE.md). The owner's ask: "a short tutorial, and a long

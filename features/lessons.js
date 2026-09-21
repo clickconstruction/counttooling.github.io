@@ -41,8 +41,14 @@
 (function () {
   'use strict';
   const App = (window.App = window.App || {});
-  const SET_URL = '/samples/sample-lessons.pdf';
-  const SET_NAME = 'sample-lessons';
+  // The sample SETS the teaching runs on. The lessons and the plumbing course run on the
+  // lesson set; a course may name another (`lesson.set`, features/course-electrical.js runs
+  // on the electrical set). A set the teaching opened is reset, never asked about, when the
+  // next lesson opens; the reader's own plan always goes through Close project.
+  const LESSON_SET = { url: '/samples/sample-lessons.pdf', name: 'sample-lessons', pages: 4, trade: 'plumbing', word: 'four' };
+  const KNOWN_SETS = ['sample-lessons', 'sample-electrical'];
+  const setOf = (lesson) => (lesson && lesson.set) || LESSON_SET;
+  const SET_NAME = LESSON_SET.name;
   const DONE_KEY = 'clickcount-lessons-done';
   const K = () => App.tourKit;
   const S = () => App.state;
@@ -76,7 +82,7 @@
   // ----- reading the app ----------------------------------------------------------------
   const pageAnn = (i) => { const p = S().pages && S().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
   const onPage = (i) => S().currentPage === i;
-  const isSetOpen = () => !!(S().pages && S().pages.length === 4 && S().currentProjectName === SET_NAME);
+  const isSetOpen = (lesson) => { const set = setOf(lesson); return !!(S().pages && S().pages.length === set.pages && S().currentProjectName === set.name); };
   const counterNamed = (re) => (S().counters || []).find((c) => c.lesson && re.test(c.name || '')) || (S().counters || []).find((c) => re.test(c.name || ''));
   const lineTypeNamed = (re) => (S().lineTypes || []).find((l) => l.lesson && re.test(l.name || '')) || (S().lineTypes || []).find((l) => re.test(l.name || ''));
   const marksOf = (c) => (c ? K().markCount(c.id) : 0);
@@ -172,15 +178,16 @@
     if (modalUp('preparePdfModal')) { el('preparePdfDone').click(); return; }
     const s = S();
     if (s.pages && s.pages.length) {
-      if (s.currentProjectName === SET_NAME) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
+      if (KNOWN_SETS.includes(s.currentProjectName)) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
       else if (!(await App.closeProject({ route: 'lesson' }))) return;   // their own plan: the app's one Close project, which asks first
     }
     sweepLessonPalette();
     seededFor = null;
     openingFor = lesson.id;
-    await K().openPlanFile(SET_URL, SET_NAME + '.pdf');
+    const set = setOf(lesson);
+    await K().openPlanFile(set.url, set.name + '.pdf');
     if (lesson.trimByHand) return;
-    for (let i = 0; i < 150 && !modalUp('preparePdfModal') && !isSetOpen(); i++) await wait(100);
+    for (let i = 0; i < 150 && !modalUp('preparePdfModal') && !isSetOpen(lesson); i++) await wait(100);
     if (modalUp('preparePdfModal')) el('preparePdfDone').click();
   }
   // The seed lands the moment the sheets are open, whoever pressed Open. Marked done
@@ -191,13 +198,14 @@
   // The same first page object, with no Trim dialog up, for half a second, is open.
   let settledPage = null, settledAt = 0;
   function seedIfReady(lesson) {
-    if (!isSetOpen() || openingFor !== lesson.id || seededFor === lesson.id) return;
+    if (!isSetOpen(lesson) || openingFor !== lesson.id || seededFor === lesson.id) return;
     const first = S().pages[0];
     if (modalUp('preparePdfModal') || !first.pdfPage) { settledPage = null; return; }
     if (settledPage !== first) { settledPage = first; settledAt = Date.now(); return; }
     if (Date.now() - settledAt < 500) return;
     seededFor = lesson.id;
-    if (S().trade !== 'plumbing' && App.setProjectTrade) App.setProjectTrade('plumbing', { remember: false, route: 'lesson' });
+    const trade = setOf(lesson).trade || 'plumbing';
+    if (S().trade !== trade && App.setProjectTrade) App.setProjectTrade(trade, { remember: false, route: 'lesson' });
     if (lesson.seed) lesson.seed();
     S().tool = App.TOOL.NONE;
     App.clearUndoStacks();
@@ -207,9 +215,9 @@
   }
   const openStep = (lesson) => ({
     id: 'sheets', title: lesson.title, kind: 'do',
-    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF with more than one sheet: this is where a 120-sheet set becomes the 9 you are bidding. Keep all four and click [[Open]].' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own four sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
+    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF with more than one sheet: this is where a 120-sheet set becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
     target: ['#preparePdfDone', '#uploadPdf', '#uploadPdfSidebar'],
-    check: () => { seedIfReady(lesson); return isSetOpen() && seededFor === lesson.id; },
+    check: () => { seedIfReady(lesson); return isSetOpen(lesson) && seededFor === lesson.id; },
     handsOff: true,   // fetching the sample sheets is the app's job: this step's button does it
     action: { label: 'Open the lesson sheets', run: () => openSheetsFor(lesson) },
   });
@@ -664,13 +672,16 @@
   // courseNext: a course (features/course-plumbing.js) handing back to the menu names the
   // chapter to light; the menu then scrolls to the course. Undefined leaves the course's
   // own suggestion (its first unfinished chapter).
+  // courseNext: a course handing back to the menu names itself and the chapter to light,
+  // { course, chapter }; the menu renders every registered course section
+  // (App.courseSections, each { id, render(nextChapterId) }) and scrolls to that one.
   function openLearnMenu(nextId, courseNext) {
     const done = lessonsDone();
     const suggested = nextId === undefined ? ((LESSONS.find((l) => !done[l.id]) || {}).id || null) : nextId;
     renderLearnList(suggested);
-    if (App.renderCourseList) App.renderCourseList(courseNext);
+    (App.courseSections || []).forEach((sec) => sec.render(courseNext && courseNext.course === sec.id ? courseNext.chapter : undefined));
     App.showModal('learnModal');
-    if (courseNext !== undefined) { const rule = el('learnCourseRule'); if (rule && rule.scrollIntoView) rule.scrollIntoView({ block: 'start' }); }
+    if (courseNext) { const rule = el('learnCourseRule-' + courseNext.course); if (rule && rule.scrollIntoView) rule.scrollIntoView({ block: 'start' }); }
     return true;
   }
 
@@ -699,7 +710,7 @@
   // geometry, the readers, the seeding and marking helpers, the open and done steps, and
   // the device bookkeeping a lesson does around a run. Read at call time, never captured.
   App.lessonKit = {
-    SET_NAME, P101, P401, P501, P601, P, FD, KITCHEN_FDS, BAR, STRAY, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, GI, NOTE_SPOT, RFI_SPOT, DETAIL,
+    SET_NAME, LESSON_SET, P101, P401, P501, P601, P, FD, KITCHEN_FDS, BAR, STRAY, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, GI, NOTE_SPOT, RFI_SPOT, DETAIL,
     pageAnn, onPage, isSetOpen, counterNamed, lineTypeNamed, marksOf, scaleIs, inRect, near, modalUp, measured,
     dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, arm, hangerRuleFor, addNote, openStep, doneStep,
     beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); },

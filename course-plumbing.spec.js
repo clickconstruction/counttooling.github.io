@@ -167,10 +167,10 @@ test.describe('The plumbing course: the chapters', () => {
       await EXPECT[id](page);
       expect(await page.evaluate((k) => !!window.App.courseDone()['plumbing:' + k], id)).toBe(true);
       await expect(page.locator('#learnModal')).toHaveClass(/visible/);
-      await expect(page.locator('#learnCourseList .learn-row[data-chapter="' + id + '"]')).toHaveClass(/learn-row-done/);
+      await expect(page.locator('#learnCourseList-plumbing .learn-row[data-chapter="' + id + '"]')).toHaveClass(/learn-row-done/);
       const ids = await page.evaluate(() => window.App.courseChapterIds());
       const next = ids[ids.indexOf(id) + 1];
-      if (next) await expect(page.locator('#learnCourseList .learn-row[data-chapter="' + next + '"]')).toHaveClass(/learn-row-next/);
+      if (next) await expect(page.locator('#learnCourseList-plumbing .learn-row[data-chapter="' + next + '"]')).toHaveClass(/learn-row-next/);
       expect(errors).toEqual([]);
     });
   }
@@ -240,10 +240,10 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     const errors = [];
     await boot(page, '/app/?course=plumbing', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#learnCourseList .learn-row')).toHaveCount(9);
-    await expect(page.locator('#learnCourseList .learn-row').first()).toHaveClass(/learn-row-next/);
-    await expect(page.locator('#learnCourseProgress')).toHaveText('0 of 9 done');
-    await expect(page.locator('#learnCourseList .learn-row').first().locator('.learn-row-title')).toHaveText('Read the sheet');
+    await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(9);
+    await expect(page.locator('#learnCourseList-plumbing .learn-row').first()).toHaveClass(/learn-row-next/);
+    await expect(page.locator('#learnCourseProgress-plumbing')).toHaveText('0 of 9 done');
+    await expect(page.locator('#learnCourseList-plumbing .learn-row').first().locator('.learn-row-title')).toHaveText('Read the sheet');
     await page.click('#learnModal [data-modal-close]');
     await expect(page.locator('#learnModal')).not.toHaveClass(/visible/);
     await page.click('#canvasEmptyHintCourse');
@@ -256,7 +256,7 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     await expect(page.locator('#settingsModal')).not.toHaveClass(/visible/);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/);
     // a chapter row starts that chapter
-    await page.click('#learnCourseList .learn-row[data-chapter="gas"]');
+    await page.click('#learnCourseList-plumbing .learn-row[data-chapter="gas"]');
     await page.waitForFunction(() => window.App.tutorialId() === 'course:plumbing:gas');
     expect(await stepId(page)).toBe('sheets');
     expect(errors).toEqual([]);

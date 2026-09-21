@@ -38,7 +38,7 @@
  * FUNCTION, rendered live) sets the reader's quantities beside the reference's, run by run.
  *
  * Progress is per device: localStorage `clickcount-course-done`, { 'plumbing:<id>': ISO }.
- * Doors: the Learn menu's course section (#learnCourseList), the empty-canvas
+ * Doors: the Learn menu's course section (#learnCourseList-plumbing), the empty-canvas
  * "plumbing course" link, Project Settings → Help → "plumbing course", /app/?course=plumbing
  * (the menu, at the course) and /app/?chapter=plumbing:<id>.
  *
@@ -264,7 +264,7 @@
   function readerFeet() {
     const out = {};
     String(window.getPipeToolingSummary ? window.getPipeToolingSummary() : '').split('\n').forEach((line) => {
-      const m = /^ft of (.+?)\t([\d.]+)/.exec(line);
+      const m = /^(?:\[.*?\]\s*)?ft of (.+?)\t([\d.]+)/.exec(line);   // a run inside a group is prefixed with the group in brackets
       if (m) out[m[1]] = Number(m[2]);
     });
     return out;
@@ -722,7 +722,7 @@
         K().restoreDevice();
         if (!finished) return;
         markDone(chapter.id);
-        App.openLearnMenu(undefined, next ? next.id : null);   // back to the menu, at the course, the next chapter lit
+        App.openLearnMenu(undefined, { course: COURSE, chapter: next ? next.id : null });   // back to the menu, at the course, the next chapter lit
       },
     });
   });
@@ -734,7 +734,7 @@
     return App.startTutorial(tourId(id));
   }
   function renderCourseList(nextId) {
-    const list = el('learnCourseList');
+    const list = el('learnCourseList-' + COURSE);
     if (!list) return;
     const done = courseDone();
     const lit = nextId === undefined ? suggested() : nextId;
@@ -744,11 +744,11 @@
       + '<span class="learn-row-no">' + (done[key(c.id)] ? '✓' : (i + 1)) + '</span>'
       + '<span class="learn-row-text"><span class="learn-row-title">' + esc(c.title.replace(/^Chapter \d+: /, '')) + '</span><span class="learn-row-sub">' + esc(c.intro) + '</span></span>'
       + '<span class="learn-row-min">' + c.minutes + ' min</span></button>').join('');
-    const prog = el('learnCourseProgress');
+    const prog = el('learnCourseProgress-' + COURSE);
     if (prog) prog.textContent = count === CHAPTERS.length ? 'All ' + CHAPTERS.length + ' chapters done' : count + ' of ' + CHAPTERS.length + ' done';
     list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => startChapter(row.dataset.chapter); });
   }
-  const openAtCourse = () => App.openLearnMenu(undefined, suggested());
+  const openAtCourse = () => App.openLearnMenu(undefined, { course: COURSE, chapter: suggested() });
 
   // wiring (static DOM)
   el('canvasEmptyHintCourse') && (el('canvasEmptyHintCourse').onclick = (e) => { e.preventDefault(); openAtCourse(); });
@@ -767,7 +767,7 @@
     }
   } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
 
-  App.renderCourseList = renderCourseList;
+  (App.courseSections = App.courseSections || []).push({ id: COURSE, render: renderCourseList });
   App.startChapter = startChapter;
   App.courseChapterIds = () => CHAPTERS.map((c) => c.id);
   App.courseDone = courseDone;

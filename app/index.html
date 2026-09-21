@@ -518,7 +518,7 @@
           </div>
           <canvas id="aimLoupe" class="aim-loupe" aria-hidden="true"></canvas>
         </div>
-        <div id="canvasEmptyHint" class="canvas-empty-hint"><span class="canvas-empty-hint-inner"><span>Drop a plan here, or <strong>Upload PDF</strong></span><span class="canvas-empty-hint-tour">&nbsp;· new here? take the five-minute tour: <a href="#" id="canvasEmptyHintTourPlumbing" style="pointer-events:auto">plumbing</a><span id="canvasEmptyHintTourSep" class="canvas-empty-hint-tour-sep">&nbsp;· </span><a href="#" id="canvasEmptyHintTour" style="pointer-events:auto">electrical</a><span class="canvas-empty-hint-tour-sep">&nbsp;· </span><a href="#" id="canvasEmptyHintTourHvac" style="pointer-events:auto">hvac</a></span><span class="canvas-empty-hint-learn">&nbsp;· every tool, one short <a href="#" id="canvasEmptyHintLearn" style="pointer-events:auto" title="Learn: thirteen short lessons, one per part of the app">lesson</a> at a time</span><span class="canvas-empty-hint-learn">&nbsp;· or the <a href="#" id="canvasEmptyHintCourse" style="pointer-events:auto" title="The plumbing course: nine chapters on how a restaurant gets its plumbing, on the engineered sample plan">plumbing course</a>, ninety minutes on how a restaurant gets its plumbing</span><span class="canvas-empty-hint-advanced"><span id="canvasEmptyHintAdvancedSep" class="canvas-empty-hint-tour-sep">&nbsp;· </span>or open the <a href="#" id="canvasEmptyHintAdvancedPlan" style="pointer-events:auto" title="The engineered sample plan: a restaurant plumbing sheet with its piping drawn, the sheet for learning to read what an engineer drew">engineered sample plan</a></span></span></div>
+        <div id="canvasEmptyHint" class="canvas-empty-hint"><span class="canvas-empty-hint-inner"><span>Drop a plan here, or <strong>Upload PDF</strong></span><span class="canvas-empty-hint-tour">&nbsp;· new here? take the five-minute tour: <a href="#" id="canvasEmptyHintTourPlumbing" style="pointer-events:auto">plumbing</a><span id="canvasEmptyHintTourSep" class="canvas-empty-hint-tour-sep">&nbsp;· </span><a href="#" id="canvasEmptyHintTour" style="pointer-events:auto">electrical</a><span class="canvas-empty-hint-tour-sep">&nbsp;· </span><a href="#" id="canvasEmptyHintTourHvac" style="pointer-events:auto">hvac</a></span><span class="canvas-empty-hint-learn">&nbsp;· every tool, one short <a href="#" id="canvasEmptyHintLearn" style="pointer-events:auto" title="Learn: thirteen short lessons, one per part of the app">lesson</a> at a time</span><span class="canvas-empty-hint-learn">&nbsp;· or a course, ninety minutes on how a restaurant gets its <a href="#" id="canvasEmptyHintCourse" style="pointer-events:auto" title="The plumbing course: nine chapters on how a restaurant gets its plumbing, on the engineered sample plan">plumbing</a> or its <a href="#" id="canvasEmptyHintCourseElectrical" style="pointer-events:auto" title="The electrical course: nine chapters on how a restaurant gets its power, on the engineered electrical set">power</a></span><span class="canvas-empty-hint-advanced"><span id="canvasEmptyHintAdvancedSep" class="canvas-empty-hint-tour-sep">&nbsp;· </span>or open the <a href="#" id="canvasEmptyHintAdvancedPlan" style="pointer-events:auto" title="The engineered sample plan: a restaurant plumbing sheet with its piping drawn, the sheet for learning to read what an engineer drew">engineered sample plan</a></span></span></div>
         <div class="page-zoom-row">
           <div class="page-nav">
             <button id="prevMarkedPage" class="page-nav-marked-btn" title="Previous marked page">‹‹</button>
@@ -2412,6 +2412,7 @@
             <span class="settings-menu-link" id="settingsMacros">keyboard shortcuts</span>
             <span class="settings-menu-link" id="settingsLearn" title="Learn: thirteen short lessons, one per part of the app">lessons</span>
             <span class="settings-menu-link" id="settingsCourse" title="The plumbing course: nine chapters on how a restaurant gets its plumbing, on the engineered sample plan">plumbing course</span>
+            <span class="settings-menu-link" id="settingsCourseElectrical" title="The electrical course: nine chapters on how a restaurant gets its power, on the engineered electrical set">electrical course</span>
             <span class="settings-menu-link" id="settingsTourPlumbing" title="A guided plumbing takeoff on the design-build sample plan">plumbing tour</span>
             <span class="settings-menu-link" id="settingsTour" title="A guided electrical takeoff on the design-build sample plan">electrical tour</span>
             <span class="settings-menu-link" id="settingsTourHvac" title="A guided design-build duct takeoff on the design-build sample plan">hvac tour</span>
@@ -3235,11 +3236,15 @@
       </div>
       <div class="section-rule"><b>Every part of the app</b></div>
       <div class="learn-list" id="learnList"></div>
-      <!-- The plumbing course (features/course-plumbing.js): chapters on how a restaurant gets
-           its plumbing, on the engineered sample plan; rows rendered by the feature. -->
-      <div class="section-rule learn-course-rule" id="learnCourseRule"><b>The plumbing course: how a restaurant gets its plumbing</b><span class="learn-course-progress" id="learnCourseProgress"></span></div>
+      <!-- The courses (features/course-plumbing.js, features/course-electrical.js): chapters on
+           how a restaurant gets its plumbing, then its power, on the engineered sample sets;
+           rows rendered by each feature. -->
+      <div class="section-rule learn-course-rule" id="learnCourseRule-plumbing"><b>The plumbing course: how a restaurant gets its plumbing</b><span class="learn-course-progress" id="learnCourseProgress-plumbing"></span></div>
       <p class="learn-lede">Nine chapters, about ninety minutes in all, on the engineered sample plan. Each asks why the engineer put something where it is and takes the answer as a click on the sheet, then the tool for counting it. Take them in order the first time.</p>
-      <div class="learn-list" id="learnCourseList"></div>
+      <div class="learn-list" id="learnCourseList-plumbing"></div>
+      <div class="section-rule learn-course-rule" id="learnCourseRule-electrical"><b>The electrical course: how a restaurant gets its power</b><span class="learn-course-progress" id="learnCourseProgress-electrical"></span></div>
+      <p class="learn-lede">Nine chapters on the same restaurant's electrical set: the power plan, the lighting plan with its lettered fixtures, the panel schedule and the one-line. Which receptacles must be GFCI, where the panel may sit, why the far circuit needs bigger wire, and the app's own checks against the code tables.</p>
+      <div class="learn-list" id="learnCourseList-electrical"></div>
     </div>
   </div>
 
@@ -3554,6 +3559,7 @@
   <script src="/features/tutorial.js"></script>
   <script src="/features/lessons.js"></script>
   <script src="/features/course-plumbing.js"></script>
+  <script src="/features/course-electrical.js"></script>
   <script src="/features/twin-badge.js"></script>
   <script src="/features/auth-magic-link.js"></script>
   <script src="/report.js"></script>

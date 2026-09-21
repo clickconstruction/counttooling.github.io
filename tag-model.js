@@ -94,9 +94,9 @@ function parseScheduleRows(rows) {
     // The description ends where the size columns begin: the first token that is a pipe size
     // with its inch mark (1", 1-1/2") or a lone dash (a plumbing schedule's CW / HW / W / V
     // columns), so a counter is named 'WC-1 · WATER CLOSET, FLOOR MTD', not the whole row.
-    // A bare number stays: '2x4 LED troffer, 4000K' and '1/2 GRATE' are description.
+    // A bare integer is a column too (volts, watts); '4000K' and '1/2 GRATE' stay description.
     const words = tokens.slice(1);
-    const cut = words.findIndex((t) => /^(-|—|[\d][\d./-]*("|″|”))$/.test(String(t).trim()));
+    const cut = words.findIndex((t) => /^(-|—|\d+|[\d][\d./-]*("|″|”))$/.test(String(t).trim()));
     const desc = (cut > 0 ? words.slice(0, cut) : words).join(' ').replace(/\s+/g, ' ').trim();
     if (!/[A-Za-z]{3,}/.test(desc)) return;
     if (/^(TYPE|TAG|MARK|SYMBOL)$/i.test(tag) || /^DESCRIPTION/i.test(desc)) return;

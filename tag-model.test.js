@@ -57,6 +57,7 @@ test('rowsInBox + parseScheduleRows: a fixture schedule becomes tag + descriptio
     { tag: 'WC-1', description: 'WATER CLOSET, FLOOR MTD' },
     { tag: 'FS-1', description: 'FLOOR SINK, 1/2 GRATE' },
   ]);
+  assert.deepStrictEqual(tm.parseScheduleRows([{ tokens: ['A', 'PENDANT,', 'LED', 'LED', '18W', '120', '18', 'SURFACE'] }]), [{ tag: 'A', description: 'PENDANT, LED LED 18W' }]);
   // a repeated tag keeps its first description
   assert.strictEqual(tm.parseScheduleRows([{ tokens: ['A', 'first', 'thing'] }, { tokens: ['A', 'second', 'thing'] }]).length, 1);
 });

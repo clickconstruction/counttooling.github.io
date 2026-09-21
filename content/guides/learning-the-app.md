@@ -51,7 +51,7 @@ Two or three minutes each, in any order. They run on four sample sheets: a resta
 12. [Working faster](/app/?lesson=speed): the keyboard map, the zoom rail, right-click settings.
 13. [Saving, sharing and your bids](/app/?lesson=cloud): a guided read of the signed-in half.
 
-## Then the trade itself: the plumbing course
+## Then the trade itself: the plumbing and electrical courses
 
 The tours and the lessons teach the app. The course teaches plumbing through it: nine chapters, about ninety minutes in all, on the engineered sample set, a restaurant with its water, hot water return, gas, waste and grease lines drawn by an engineer, its fixture schedule with the fixture units, and a riser. Each chapter asks why something is where it is on the sheet and takes the answer as a click: which hand sink serves the cook line, which fixture must never drain through the grease interceptor, where a cleanout has to be. A wrong click is refused and told why. Then the tool for counting it. The last chapters finish the whole sheet and set your takeoff beside the reference, run by run. Open it from **plumbing course** on the empty canvas, under **Project Settings** → **Help**, or [directly](/app/?course=plumbing).
 
@@ -64,6 +64,18 @@ The tours and the lessons teach the app. The course teaches plumbing through it:
 7. [The enlarged plan and the typical](/app/?chapter=plumbing:details): why the restrooms are drawn twice, a scale per sheet, a detail at another scale, TYP. OF 4.
 8. [The whole sheet](/app/?chapter=plumbing:whole): finish the takeoff, compare it to the reference run by run, the legend on the sheet, the marked-up set.
 9. [Check it, prove it, hand it off](/app/?chapter=plumbing:bid): what each Bid Check row means in the trade, the proof view, the notes ledger, the hand-off.
+
+The electrical course is the same restaurant's electrical set: the power plan, the lighting plan with its lettered fixtures, the panel schedule and the one-line. Nine chapters, from **electrical course** under **Project Settings** → **Help**, the empty canvas, or [directly](/app/?course=electrical).
+
+1. [Read the E-sheets](/app/?chapter=electrical:sheet): why two plans, where the panel sits and the space it needs, the panel schedule as the answer key.
+2. [Receptacles, and which must be GFCI](/app/?chapter=electrical:devices): the code's GFCI rooms, mount heights the app knows, every device counted.
+3. [Lighting, by the letter](/app/?chapter=electrical:lighting): the palette from the schedule, the plan saying which type, the fixtures with a battery, the rooms that switch themselves off.
+4. [Conduit, wire and the vertical](/app/?chapter=electrical:conduit): a raceway that knows its conductors, why #12, the ceiling that writes the verticals, fill judged.
+5. [The circuit, the homerun and the drop](/app/?chapter=electrical:circuits): a group as a circuit, the homerun, and the voltage-drop row answered with the load the engineer scheduled.
+6. [The equipment](/app/?chapter=electrical:equipment): three poles, two, one; the breaker the hood trips; one circuit each.
+7. [The service and the one-line](/app/?chapter=electrical:service): why 200 A, 3/0 and #6; the feeder traced and judged for fill.
+8. [The whole set](/app/?chapter=electrical:whole): finish the takeoff, compare it to the reference, the circuit schedule in the report.
+9. [Check it, prove it, hand it off](/app/?chapter=electrical:bid): the electrical rows of Bid Check, the proof view, the hand-off to the electrical bid.
 
 The coaching cites the code by section (the IPC, the FDA Food Code, the fuel gas code) and never reprints it; where a reason is practice rather than rule, it says so.
 

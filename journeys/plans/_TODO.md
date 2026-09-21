@@ -373,6 +373,10 @@ was very likely the same estimator hitting the same button.
   checkout succeeds, so a second click releases the lock. Wendi's 16:36:01 → 16:36:04
   pair is this. Options: hold a "Checked out ✓" state ~2 s before showing `[Turn In]`;
   or a confirm on Turn In. Both change a flow the J13 walk verified. Will's call.
+  **DECIDED and built 2026-09-21 (punch row R1-RECLICK, closed): the hold, no confirm.** After
+  a checkout or a turn-in made from the banner, it reads "Checked out ✓" / "Turned in ✓",
+  disabled, for 3 s (her second click came 3 s after the first, so the ~2 s floated here would
+  have missed it), then offers the opposite action. features/turn-in.js; reclick-hold.spec.js.
 - **Confirming with wendi.** Her Save Status bell → Export logs: the event before each
   `force_turn_in` should be `turn_in_ok`. Closes the loop on the inference that she
   clicked the banner (only user buttons reach `doTurnIn`; WHY she clicked is inferred).

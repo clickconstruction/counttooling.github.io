@@ -39,6 +39,6 @@ Turn on **Show group colors** and marks render in their group's color instead of
 
 ## The legend keeps score on-sheet
 
-The **legend** [[legend]] overlay shows counts and lengths by type right on the plan: drag it wherever it doesn't cover work, resize it, and style it in Legend Settings. It prints and exports with the sheet, so the deliverable carries its own summary.
+The **legend** [[legend]] overlay shows counts and lengths by type right on the plan: drag it wherever it doesn't cover work, drag its bottom-right corner to make it smaller or larger, and style it in Legend Settings. It prints and exports with the sheet, so the deliverable carries its own summary.
 
 Related: [Custom icons](/guides/custom-icons/) for making each type instantly recognizable, and [Fixing mistakes](/guides/fixing-mistakes/) for editing what's already placed.

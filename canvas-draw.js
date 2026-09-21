@@ -1550,19 +1550,12 @@ function createCanvasDraw(deps) {
     // The same anchor walk and clamps as the tally (B10 / J18), in PDF units.
     const idealWidthPdf = idealW * legendScale, idealHeightPdf = idealH * legendScale;
     const minW = 60 * legendScale, minH = 30 * legendScale;
-    const wantW = Math.max(minW, idealWidthPdf, leg.userResized ? leg.w : 0);
-    const wantH = Math.max(minH, idealHeightPdf, leg.userResized ? leg.h : 0);
+    const wantW = Math.max(minW, idealWidthPdf);
+    const wantH = Math.max(minH, idealHeightPdf);
     leg.x = Math.max(0, Math.min(leg.x, pageW - wantW - 10));
     leg.y = Math.max(0, Math.min(leg.y, pageH - wantH - 10));
-    if (!leg.userResized) {
-      leg.w = Math.max(minW, Math.min(idealWidthPdf, pageW - leg.x - 10));
-      leg.h = Math.max(minH, Math.min(idealHeightPdf, pageH - leg.y - 10));
-    } else {
-      leg.w = Math.max(leg.w, Math.min(idealWidthPdf, pageW - leg.x - 10));
-      leg.h = Math.max(leg.h, Math.min(idealHeightPdf, pageH - leg.y - 10));
-    }
-    leg.w = Math.max(minW, Math.min(leg.w, pageW - leg.x - 10));
-    leg.h = Math.max(minH, Math.min(leg.h, pageH - leg.y - 10));
+    leg.w = Math.max(minW, Math.min(wantW, pageW - leg.x - 10));
+    leg.h = Math.max(minH, Math.min(wantH, pageH - leg.y - 10));
     const tl = tc({ x: leg.x, y: leg.y });
     const width = leg.w * scale, height = leg.h * scale;
     const [rr, gg, bb] = hexToRgb(state.legendSettings?.bgColor || '#ffffff');
@@ -1704,19 +1697,18 @@ function createCanvasDraw(deps) {
     // the sheet. Walk the anchor left/up until the wanted size fits inside
     // the same 10pt margin the clamps below use — BEFORE sizing, so the box
     // keeps its ideal width whenever the sheet has room for it.
-    const wantW = Math.max(minW, idealWidthPdf, leg.userResized ? leg.w : 0);
-    const wantH = Math.max(minH, idealHeightPdf, leg.userResized ? leg.h : 0);
+    // The box hugs its rows at the legend's scale (2026-09-21): the corner
+    // grip and the Summary Legend size slider both set
+    // legendSettings.legendScale, so the block shrinks as readily as it
+    // grows and its content follows. A `userResized` box from an older save
+    // (the grip used to grow a bare white patch past the rows) is ignored
+    // and snaps back to its content.
+    const wantW = Math.max(minW, idealWidthPdf);
+    const wantH = Math.max(minH, idealHeightPdf);
     leg.x = Math.max(0, Math.min(leg.x, pageW - wantW - 10));
     leg.y = Math.max(0, Math.min(leg.y, pageH - wantH - 10));
-    if (!leg.userResized) {
-      leg.w = Math.max(minW, Math.min(idealWidthPdf, pageW - leg.x - 10));
-      leg.h = Math.max(minH, Math.min(idealHeightPdf, pageH - leg.y - 10));
-    } else {
-      leg.w = Math.max(leg.w, Math.min(idealWidthPdf, pageW - leg.x - 10));
-      leg.h = Math.max(leg.h, Math.min(idealHeightPdf, pageH - leg.y - 10));
-    }
-    leg.w = Math.max(minW, Math.min(leg.w, pageW - leg.x - 10));
-    leg.h = Math.max(minH, Math.min(leg.h, pageH - leg.y - 10));
+    leg.w = Math.max(minW, Math.min(wantW, pageW - leg.x - 10));
+    leg.h = Math.max(minH, Math.min(wantH, pageH - leg.y - 10));
     const tl = tc({ x: leg.x, y: leg.y });
     const width = leg.w * scale;
     const height = leg.h * scale;

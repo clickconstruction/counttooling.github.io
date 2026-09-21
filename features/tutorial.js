@@ -7,7 +7,9 @@
  * hangers as child counts, a ×3 typical-floor zone, an RFI note, the proof
  * modal, the PipeTooling hand-off).
  *
- * A step is { id, title, body, kind, target (selector list), check(), action?, hint? }
+ * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold? }
+ * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
+ * whole point is a dialog the reader should get to read)
  * (hint() is the status line while a doing-step's check is failing for a reason
  * worth naming — the prove-the-scale step says what it read).
  * The overlay spotlights the target (a box-shadow cutout that never intercepts
@@ -52,6 +54,7 @@
   const SAMPLE_PLAN = '/samples/sample-plan.pdf';
 
   let active = false;
+  let pending = false;     // a ?tour= start is queued: the boot's restore offer must wait for it
   let tourId = 'electrical';
   let STEPS = [];
   let stepIdx = 0;
@@ -64,7 +67,11 @@
 
   // First visible match of the ladder. While a dialog is open only a control
   // inside it qualifies — the header and sidebar sit under the backdrop.
-  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && (!within || within.contains(el))) return el; } return null; };
+  // A control in the phone's closed sidebar drawer is laid out but parked off the
+  // side of the screen: that is not visible either (a dialog's scrolled-away row,
+  // off the top or bottom, still is: the spotlight scrolls it into view).
+  const onScreenX = (el) => { const r = el.getBoundingClientRect(); return r.right > 0 && r.left < window.innerWidth; };
+  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && onScreenX(el) && (!within || within.contains(el))) return el; } return null; };
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
@@ -283,6 +290,7 @@
       body: '1. In the left sidebar, open SUMMARY.\n2. Click the Water Closet total.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
       target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
+      hold: true,   // the step IS the dialog: the reader leaves it with Next, which closes it
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
     },
     {
@@ -728,7 +736,18 @@
   const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>');
   // A body is lines: "1. …" lines are one action each and render as a numbered list;
   // any other line is a short paragraph around them.
-  const bodyHtml = (body) => {
+  // A touch device has no keys and, under 768 px, no sidebar on screen: the
+  // "(or press S)" asides go, and a step that sends the reader to the sidebar
+  // says where a phone keeps it.
+  const isTouch = () => { try { return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768; } catch (_) { return false; } };
+  const isNarrow = () => window.innerWidth < 768;
+  const forTouch = (body) => {
+    let b = String(body).replace(/\s*\((?:or )?press [^)]*\)/gi, '').replace(/^\d+\.\s+Press [^\n]*\n?/gim, '');
+    if (isNarrow() && /left sidebar/i.test(b)) b = b.replace(/[Ii]n the left sidebar/, (m) => (m[0] === 'I' ? 'In the sidebar (tap ☰ at the top left to open it)' : 'in the sidebar (tap ☰ at the top left to open it)'));
+    return b;
+  };
+  const bodyHtml = (rawBody) => {
+    const body = isTouch() ? forTouch(rawBody) : rawBody;
     const out = []; let items = [];
     const flush = () => { if (items.length) { out.push('<ol class="tour-steps">' + items.map((t) => '<li>' + chips(t) + '</li>').join('') + '</ol>'); items = []; } };
     String(body).split('\n').forEach((line) => {
@@ -760,7 +779,10 @@
     // dialog (only a control inside it qualifies there)
     const openModal = document.querySelector('.modal-overlay.visible');
     const modalOpen = !!openModal;
-    const target = step.target.length ? q(step.target, openModal) : null;
+    let target = step.target.length ? q(step.target, openModal) : null;
+    // On a phone the sidebar is a drawer: when the step's control sits in it and
+    // nothing of the ladder is on screen, light the ☰ that opens it.
+    if (!target && !modalOpen && isNarrow() && step.target.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
     const spot = el('tourSpot');
     const card = el('tourCard');
     if (target) {
@@ -780,25 +802,48 @@
       if (left + cw > window.innerWidth - 12) { left = Math.max(12, Math.min(r.left, window.innerWidth - cw - 12)); top = r.bottom + 14; }
       if (top + ch > window.innerHeight - 12) top = Math.max(12, window.innerHeight - ch - 12);
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
+      // A phone docks the card to an edge (styles.css, max-width 767px): the far
+      // one from the control, so the card never covers what it is pointing at.
+      card.classList.toggle('tour-card-top', isNarrow() && (r.top + r.height / 2) > window.innerHeight / 2);
     } else {
+      card.classList.remove('tour-card-top');
       spot.style.display = 'none';
       if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
       else { card.style.left = '50%'; card.style.top = '50%'; card.style.right = ''; card.style.bottom = ''; card.style.transform = 'translate(-50%, -50%)'; }
     }
     // auto-advance a beat after a doing-step completes — never on a step the
     // reader came Back to (its work is already there; Next is lit instead)
-    if (step.kind === 'do' && done && !heldByBack && stepIdx < STEPS.length - 1) {
+    if (step.kind === 'do' && done && !heldByBack && !step.hold && stepIdx < STEPS.length - 1) {
       if (!doneAt) doneAt = Date.now();
       else if (Date.now() - doneAt > 900) goTo(stepIdx + 1);
     } else doneAt = 0;
   }
   function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
   function safeHint(step) { try { return step.hint() || ''; } catch (_) { return ''; } }
+  // A dialog the last step opened (the proof breakdown, the Duct Schedule) must
+  // not sit over the next step's control: the ladder only lights a target INSIDE
+  // an open dialog, so a stray one leaves the step dark (seen 2026-09-21: the
+  // plumbing Hand it off step under the proof dialog). On entering a step, any
+  // open dialog that holds none of the step's targets is dismissed the way its
+  // × would. A dialog the ladder follows into (Quick tab → Add Counter) stays,
+  // and the app's own questions (the restore offer, a confirm) are never touched.
+  const KEEP_OPEN = ['lastSessionRestoreModal', 'confirmModal'];
+  function closeStrayDialogs(step) {
+    document.querySelectorAll('.modal-overlay.visible').forEach((ov) => {
+      if (KEEP_OPEN.includes(ov.id)) return;
+      const holdsTarget = (step.target || []).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t); });
+      if (holdsTarget) return;
+      const x = ov.querySelector('[data-modal-close]');
+      if (x) x.click();
+      if (ov.classList.contains('visible') && App.hideModal) App.hideModal(ov.id);
+    });
+  }
   function goTo(i) {
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;
     doneAt = 0;
+    closeStrayDialogs(STEPS[stepIdx]);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     render();
   }
@@ -870,12 +915,15 @@
   syncEntryPoints();
   // ?tour=plumbing / ?tour=electrical (or the original ?tour=1) opens that tour on
   // load (after the app has booted its state).
-  try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) setTimeout(() => startTutorial(id), 600); } catch (_) {}
+  // `pending` covers the 600 ms between load and start: the restore offer reads it
+  // (features/restore-last-session.js) and waits, as it does for a running tour.
+  try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) { pending = true; setTimeout(() => { pending = false; startTutorial(id); }, 600); } } catch (_) { pending = false; }
 
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;
   App.isTutorialActive = () => active;
+  App.isTutorialPending = () => pending;
   App.onTutorialTick = () => { if (active) render(); };
   App.tutorialStepId = () => (active ? STEPS[stepIdx].id : null);
   App.tutorialId = () => (active ? tourId : null);

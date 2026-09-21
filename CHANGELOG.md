@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tutorial): a tour starts clean, leaves no dialog over its next step, and fits a phone (2026-09-21)
+
+LEARN-ENGINE, the engine half of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). All four were seen
+in a live walk, not read off the code.
+
+- **A `?tour=` link no longer gets the restore offer on top of it, or the last tour's marks inside
+  it.** Three holes, one cause: a tour link starts the tour 600 ms after load, and the boot did not
+  know one was coming. `App.isTutorialPending()` covers that gap; the restore offer's blocker and
+  the boot's silent palette pre-apply (`bootSessionBusy`) both read it. And
+  `maybeReapplyLocalBackupMarks` (features/pdf-intake.js) stands down while a tour runs: every tour
+  opens the same sample PDF, so the last tour's backup hash-matched it and its water closets landed
+  in the HVAC tour. The offer still comes when the tour ends, as before.
+- **Entering a step closes the dialogs the last one left open** (`closeStrayDialogs`): the ladder
+  only lights a control inside an open dialog, so the plumbing Hand it off step sat dark under the
+  proof breakdown. A dialog that holds one of the new step's targets stays (the ladder follows the
+  reader into it); the restore offer and the app's confirm are never touched. It dismisses the way
+  the dialog's own × does, so each modal's cleanup runs.
+- **`hold: true`** on a step: done lights Next, nothing advances by itself. The proof step has it;
+  it used to move on 0.9 s after the breakdown opened, before anyone could read it.
+- **On a phone** (under 768 px, or a coarse pointer) the "(or press S)" asides go, a sidebar step
+  says where the sidebar is and lights the ☰ until the drawer is open (the ladder now skips a
+  control parked off the side of the screen, which `offsetParent` alone does not catch), and the
+  card docks full-width to the far edge from its control, capped at 40% of the height with its
+  buttons pinned.
+- Specs: tutorial.spec.js gains the link-after-a-tour case and the phone case, and pins the proof
+  hold and the lit export button.
+
 ## docs(learn): the teaching surfaces name the app's real controls; LEARN-PLAN (2026-09-21)
 
 A docs pass plus a live walk of the plumbing and HVAC tours, ahead of the trade-guide rewrite and

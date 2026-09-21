@@ -260,8 +260,16 @@ test.describe('Interactive walkthrough', () => {
     // 12. the proof modal opens on the Water Closet
     await page.click('#tourAction');
     await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/);
-    await waitForStep(page, 'handoff');
-    await page.click('#summaryCountDetailClose');
+    // the proof step HOLDS (the dialog is the lesson): done, Next lit, no auto-advance
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('proof');
+    await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('handoff');
+    // entering Hand it off closes the proof dialog it would otherwise sit under, so the
+    // export button is lit (2026-09-21: the step was dark behind the open breakdown)
+    await expect(page.locator('#summaryCountDetailModal')).not.toHaveClass(/visible/);
+    await page.waitForFunction(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.getElementById('forPipeTooling').getBoundingClientRect(); return s.width > 0 && Math.abs(s.left - (b.left - 6)) < 3 && Math.abs(s.top - (b.top - 6)) < 3; }, null, { timeout: 4000 });
     // 13 + 14: reading, then Finish sets ONLY the plumbing key; the electrical link stays
     expect(await page.locator('#tourNext').textContent()).toBe('Next');
     await page.click('#tourNext');
@@ -392,5 +400,55 @@ test.describe('Interactive walkthrough', () => {
     // all three done → the whole offer goes
     await page.evaluate(() => { window.App.startTutorial('hvac'); window.App.stopTutorial(true); });
     expect(await page.locator('.canvas-empty-hint-tour').isVisible()).toBe(false);
+  });
+  test('a ?tour= link on a device that holds the last tour\'s session: the restore offer waits, and the sample plan opens clean', async ({ page }) => {
+    test.setTimeout(90000);
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    // 1. a plumbing tour leaves a real session behind on the device
+    await page.goto('/app/?tour=plumbing');
+    await page.waitForLoadState('networkidle');
+    await waitForStep(page, 'welcome');
+    for (const next of ['scale', 'measure', 'counter', 'place', 'linetype']) { await page.click('#tourAction'); await waitForStep(page, next); }
+    expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toEqual(['Water Closet']);
+    await page.waitForFunction(async () => { const b = await window.App.takeoffBackupGet('local', null); return !!(b && b.data && (b.data.counters || []).length); }, null, { timeout: 15000 });
+    // 2. the next visit arrives by an HVAC tour link. Before 2026-09-21 the boot's restore
+    // offer beat the tour's 600 ms start and sat on top of it, the backup's palette was
+    // pre-applied under it, and the sample plan (the same PDF, so the same hash) got the
+    // plumbing marks re-applied: water closets inside an HVAC tour.
+    await page.goto('/app/?tour=hvac');
+    await page.waitForLoadState('networkidle');
+    await waitForStep(page, 'welcome');
+    await page.waitForTimeout(1500);   // the offer's 1 s poll must not sneak it in either
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.state.counters.length)).toBe(0);
+    await page.click('#tourAction');
+    await waitForStep(page, 'scale');
+    await page.waitForTimeout(800);
+    expect(await page.evaluate(() => [window.state.counters.length, window.App.projectHasAnyCanvasMarkup()])).toEqual([0, false]);
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    expect(errors).toEqual([]);
+  });
+
+  test('on a phone: no key asides, the sidebar step lights the ☰ and then follows into the drawer, the card docks clear of its control', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/app/?tour=plumbing');
+    await page.waitForLoadState('networkidle');
+    await waitForStep(page, 'welcome');
+    await page.click('#tourAction');
+    await waitForStep(page, 'scale');
+    expect(await page.locator('#tourBody').textContent()).not.toMatch(/press/i);
+    await page.evaluate(() => window.App.tutorialGoTo('counter'));
+    expect(await page.locator('#tourBody').textContent()).toContain('tap ☰ at the top left');
+    const over = (sel) => page.waitForFunction((q) => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.querySelector(q).getBoundingClientRect(); return s.width > 0 && Math.abs(s.left - (b.left - 6)) < 3 && Math.abs(s.top - (b.top - 6)) < 3; }, sel, { timeout: 5000 });
+    await over('#hamburger');
+    // the card sits at the far edge from the control and inside the screen
+    const card = await page.evaluate(() => { const r = document.getElementById('tourCard').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: r.height }; });
+    expect(card.top).toBeGreaterThan(812 / 2 - 1);
+    expect(card.bottom).toBeLessThanOrEqual(812);
+    expect(card.h).toBeLessThanOrEqual(812 * 0.4 + 1);
+    await page.click('#hamburger');
+    await over('#addCounter');
   });
 });

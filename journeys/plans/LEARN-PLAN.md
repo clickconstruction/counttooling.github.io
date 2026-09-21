@@ -41,9 +41,9 @@
 
 | Phase | Unit | Done when |
 |---|---|---|
-| 0 | Quick fixes: the stale labels, the two mis-named tour steps, GUIDES-PLAN re-stamped, and `teaching-labels.test.js` (every `[[control]]` a tour names exists in the shell; no guide or tour uses a retired label) | `npm run check` green, merged |
+| 0 ● | Quick fixes: the stale labels, the two mis-named tour steps, GUIDES-PLAN re-stamped, and `teaching-labels.test.js` (every `[[control]]` a tour names exists in the shell; no guide or tour uses a retired label) | `npm run check` green, merged |
 | 1 | The three trade guides rewritten to follow their tours, every claim walked in the app first, screenshots from `build:screenshots` | one PR per trade, `guides.spec.js` green |
-| 2 | Engine hardening: a step closes the dialogs the last one left open; the restore offer never lands on a `?tour=` start and a tour never inherits a device backup's marks; touch wording | each pinned in tutorial.spec.js |
+| 2 ● | Engine hardening: a step closes the dialogs the last one left open; the restore offer never lands on a `?tour=` start and a tour never inherits a device backup's marks; touch wording | each pinned in tutorial.spec.js |
 | 3 | The lesson framework: a Learn menu, lessons seeded from a canned state so each stands alone, a tick per lesson, `?lesson=<id>`; first three lessons; dormant behind `?ff=learn` | spec green, walked live |
 | 4 | The remaining lessons (the table below) | every lesson's do-it-for-me path pinned by spec |
 | 5 | The flip: Learn is on for everyone, the guides carry "Try it" links, `tour_step` names the lesson | flag reads deleted |

@@ -68,7 +68,7 @@
   // they never block; the prompt's own overlay is skipped so a retry while it
   // is already up is a no-op.
   function restorePromptBlocker() {
-    if (App.isTutorialActive && App.isTutorialActive()) return 'tour';
+    if ((App.isTutorialActive && App.isTutorialActive()) || (App.isTutorialPending && App.isTutorialPending())) return 'tour';   // pending: a ?tour= link's start is queued
     const open = Array.from(document.querySelectorAll('.modal-overlay.visible')).find((el) => el.id !== 'lastSessionRestoreModal');
     return open ? 'modal' : null;
   }

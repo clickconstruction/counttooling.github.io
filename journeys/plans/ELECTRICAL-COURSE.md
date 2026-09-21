@@ -28,7 +28,7 @@ is unchanged (proved element for element before the refactor was kept).
 
 | Sheet | Carries | Teaches |
 |---|---|---|
-| **E-101 Power plan** | 10 duplex at 18", 10 GFCI at 44" (the bar, the kitchen, the restrooms, within 6 ft of any sink), a J-box at each of six pieces of equipment with its circuit, panel LP-1 on the storage wall with a dashed 36" × 30" working clearance, the meter and 200 A main outside the south wall, the feeder, homerun arrows with circuit tags | 210.8(B), 110.26, mount heights, the homerun |
+| **E-101 Power plan** | 11 duplex at 18" (one of them the engineer's miss, in the kitchen), 10 GFCI at 44" (the bar, the kitchen, the restrooms, within 6 ft of any sink), a J-box at each of six pieces of equipment with its circuit, panel LP-1 on the storage wall with a dashed 36" × 30" working clearance, the meter and 200 A main outside the south wall, the feeder, homerun arrows with circuit tags | 210.8(B), 110.26, mount heights, the homerun |
 | **E-201 Lighting plan** | 36 fixtures each with its TYPE letter beside it (A pendant ×13, B troffer ×10, C downlight ×8, X exit ×2, EM ×3), switches and three occupancy sensors, homeruns | the tag reader ("Plan says B"), 700.12 / IBC 1008, IECC C405.2.1 |
 | **E-501 Schedules** | the lighting fixture schedule (tag + description rows) and LP-1's panel schedule: 19 circuits with VA, poles, breaker, wire, conduit; the connected load | the schedule reader, 240.4(D) and 310.16, why #10 for the dishwasher |
 | **E-601 One-line** | utility, meter, main, feeder (4 #3/0 + #6 G in 2"), LP-1, the grounding electrode | 310.16, 250.122, 250.66, Article 220, three phase |
@@ -38,7 +38,7 @@ is unchanged (proved element for element before the refactor was kept).
 | # | id | The questions, answered by a click (or a reveal) | Doing (the app) |
 |---|---|---|---|
 | 1 | `sheet` | why two plans (reveal); where the panel is (count it); how deep the space in front of it (measure 36"); which circuit is 208 V two-pole (highlight the row); why #10 (reveal) | scale, prove it, a Quick counter, Measure, Highlight |
-| 2 | `devices` | which receptacles must be GFCI (click all ten, none of the duplexes; a wrong click is told why); where the heights come from (reveal) | Quick counters with mount heights, count 26 devices with circles, Quick Keys |
+| 2 | `devices` | which receptacles must be GFCI (click all ten, none of the duplexes; a wrong click is told why); the one the engineer drew plain in the kitchen (find it, flag it with an RFI); where the heights come from (reveal) | Quick counters with mount heights, count 27 devices with circles, Quick Keys |
 | 3 | `lighting` | which fixtures stay lit when the power fails (a note on an X or EM); which rooms switch themselves off (count the OS); why (reveal) | the schedule reader on E-501, 36 fixtures placed by the letter, tag-aware placement |
 | 4 | `conduit` | why #12 (reveal) | a line type with raceway and conductors, the ceiling and make-up, chain the west wall (verticals written), the fill row, a strap row of your own |
 | 5 | `circuits` | is the engineer wrong about #12 (the voltage-drop row at 12 A, then the scheduled 6 A) | a group as a circuit, the homerun flag and trace, the panel's poles, the cross-check rows |
@@ -47,7 +47,7 @@ is unchanged (proved element for element before the refactor was kept).
 | 8 | `whole` | the whole set by hand or by the button, then the compare card | the reference takeoff, the report's circuit schedule, Summary Legend |
 | 9 | `bid` | which manual rows the set already answers (reveal) | tick three, the proof view, Open in TakeoffTooling |
 
-**The reference** (chapter 8): 68 marks in twelve device types across the two plans; the west-wall
+**The reference** (chapter 8): 69 marks in twelve device types across the two plans; the west-wall
 chain 60.5 ft (22.5 on the plan and four 9.5 ft verticals the chain wrote), the homerun 84.17 ft,
 the feeder 12.33 ft with its rise. Computed from the same flat geometry the button lays.
 

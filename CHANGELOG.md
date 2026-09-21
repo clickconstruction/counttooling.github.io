@@ -26,14 +26,15 @@ time the app's own arithmetic teaches too.
   for element). E-101 the power plan, E-201 the lighting plan with every fixture's letter beside it,
   E-501 the fixture and panel schedules, E-601 the one-line. Every device sits at a P-101 coordinate.
 - **The course** (features/course-electrical.js): which receptacles must be GFCI (NEC 210.8(B), a
-  duplex clicked as one is told it has no sink within 6 ft), the working clearance measured in front
+  duplex clicked as one is told it has no sink within 6 ft, and the one the engineer drew plain in the
+  kitchen has to be found and flagged), the working clearance measured in front
   of LP-1 (110.26), the dishwasher's row highlighted and read (240.4(D), 310.16), the palette from the
   fixture schedule and 36 fixtures placed by the letter, the fixtures with a battery (700.12, IBC
   1008), occupancy sensors (IECC C405.2.1), a raceway that knows its conductors and the chain that
   writes the verticals, fill judged against Chapter 9 Table 1, the voltage-drop row warning at the
   default 12 A and clearing at the 6 A the engineer scheduled (210.19 informational note), the
   three-phase J-box found, the shunt-trip RFI, the feeder traced with 4 #3/0 + #6 G and judged for
-  fill, the whole set against a reference of 68 marks and three runs, the circuit schedule in the
+  fill, the whole set against a reference of 69 marks and three runs, the circuit schedule in the
   report, the electrical rows of Bid Check.
 - **The lesson kit opens a named set** (`lesson.set` in features/lessons.js: url, name, page count,
   trade), so the plumbing set stays four sheets. **The Learn menu holds a section per course**

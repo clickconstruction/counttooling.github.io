@@ -28,9 +28,9 @@ async function walk(page) {
     const id = await stepId(page);
     if (!id) break;
     walked.push(id);
-    const hasAction = await page.evaluate(() => document.getElementById('tourAction').style.display !== 'none');
+    const hasAction = await page.evaluate(() => { const i = window.App.tutorialStepInfo(); return !!i && i.hasAction && !i.done; });
     if (hasAction) {
-      await page.click('#tourAction');
+      await page.evaluate(() => window.App.tutorialDoStep());
       try {
         await page.waitForFunction((was) => window.App.tutorialStepId() !== was || document.getElementById('tourNext').classList.contains('tour-next-ready'), id, { timeout: 20000 });
       } catch (_) { skipped.push(id); }
@@ -96,7 +96,7 @@ test.describe('Learn: the lessons', () => {
       expect(await page.evaluate(() => window.App.tutorialId())).toBe('lesson:' + id);
       if (id === 'plans') {
         // the Sheets lesson leaves Trim your set to the reader: the spotlight follows into it
-        await page.click('#tourAction');
+        await page.evaluate(() => window.App.tutorialDoStep());
         await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 15000 });
         await page.waitForFunction(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.getElementById('preparePdfDone').getBoundingClientRect(); return s.width > 0 && Math.abs(s.left - (b.left - 6)) < 3; }, null, { timeout: 5000 });
         await page.click('#preparePdfDone');
@@ -158,7 +158,8 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
     await page.evaluate(() => { const s = window.state; s.counters.push({ id: 'mine', name: 'My Counter', icon: window.App.getOrderedIcons()[0].value, color: '#fff' }); window.App.ensureActiveCanvas(s.pages[0]).annotations.counterMarkers.mine = [{ x: 50, y: 50, id: 'm1', group: null }]; window.App.markProjectDirty(); window.App.updateUI(); });
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
-    await page.click('#tourAction');
+    await expect(page.locator('#tourShow')).toHaveText('Open the lesson sheets');   // the one step nobody can do by hand keeps a button that does it
+    await page.click('#tourShow');
     // the app's own Close project question; Cancel keeps everything
     await expect(page.locator('#confirmModal')).toHaveClass(/visible/, { timeout: 5000 });
     await expect(page.locator('#confirmTitle')).toHaveText('Close project?');
@@ -166,16 +167,16 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.waitForTimeout(600);
     expect(await page.evaluate(() => [window.state.pages.length, window.App.projectHasAnyCanvasMarkup(), window.App.tutorialStepId()])).toEqual([1, true, 'sheets']);
     // agreeing opens the lesson sheets; the reader's palette rides along untouched
-    await page.click('#tourAction');
+    await page.click('#tourShow');
     await page.click('#confirmOk');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
     expect(await page.evaluate(() => [window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual([4, ['My Counter']]);
-    await page.click('#tourAction');
+    await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
     await page.click('#tourLeave');
     // the next lesson: no question over lesson sheets, the last lesson's counter swept, theirs kept
     expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
-    await page.click('#tourAction');
+    await page.click('#tourShow');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'note', null, { timeout: 30000 });
     await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => [window.state.counters.map((c) => c.name), window.App.projectHasAnyCanvasMarkup()])).toEqual([['My Counter'], false]);
@@ -187,7 +188,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     const errors = [];
     await boot(page, '/app/?lesson=repeats', errors);
     await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
-    await page.click('#tourAction');
+    await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'zone', null, { timeout: 30000 });
     const rects = () => page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(), s = document.getElementById('tourSpot').getBoundingClientRect(); return { c: { l: c.left, t: c.top, r: c.right, b: c.bottom }, s: { l: s.left + 6, t: s.top + 6, r: s.right - 6, b: s.bottom - 6 }, vw: window.innerWidth, vh: window.innerHeight }; });
     await page.waitForTimeout(500);
@@ -213,7 +214,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     const open = async (id, first) => {
       await page.goto('/app/?lesson=' + id);
       await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
-      await page.click('#tourAction');
+      await page.evaluate(() => window.App.tutorialDoStep());
       if (id === 'plans') { await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 15000 }); await page.click('#preparePdfDone'); }
       await page.waitForFunction((want) => window.App.tutorialStepId() === want, first, { timeout: 30000 });
     };
@@ -233,9 +234,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     expect(await page.evaluate(() => window.state.pages[2].label)).toBe('P-501 Fixture Schedule');
     // Counting → the Quick Keys dialog's own dropdown
     await open('counting', 'counter');
-    await page.click('#tourAction');
+    await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'place');
-    await page.click('#tourAction');
+    await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'bind', null, { timeout: 8000 });
     await page.click('#statusBarQuickKeys');
     await expect(page.locator('#quickKeysModal')).toHaveClass(/visible/);
@@ -256,6 +257,109 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await expect(page.locator('#ctxDelete')).toBeVisible();
     await page.click('#ctxDelete');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'details', null, { timeout: 8000 });
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('Learn: on-sheet targets', () => {
+  const zones = (page) => page.evaluate(() => window.App.tutorialZoneScreen());
+  const openLesson = async (page, id, first) => {
+    await page.goto('/app/?lesson=' + id);
+    await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
+    await page.click('#tourShow');
+    await page.waitForFunction((want) => window.App.tutorialStepId() === want, first, { timeout: 30000 });
+  };
+  const settle = (page) => page.waitForTimeout(700);   // the focus zoom and its raster
+
+  test('circles: a click outside does not count and says so; a click anywhere inside each circle does; nothing on the card does the step for you', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await openLesson(page, 'counting', 'counter');
+    await page.evaluate(() => window.App.tutorialDoStep());   // (spec seam) the counter exists and is armed
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await settle(page);
+    // the card: no button does the step, Next is off, Skip is there
+    await expect(page.locator('#tourAction')).toHaveCount(0);
+    await expect(page.locator('#tourShow')).toHaveText('Show me where');
+    await expect(page.locator('#tourNext')).toBeDisabled();
+    await expect(page.locator('#tourSkip')).toBeVisible();
+    // three circles, drawn on the sheet, each big enough to hit and inside the sheet area
+    let zs = await zones(page);
+    expect(zs.length).toBe(3);
+    const wrap = await page.locator('.canvas-wrapper').boundingBox();
+    zs.forEach((z) => { expect(z.r).toBeGreaterThanOrEqual(25); expect(z.cx - z.r).toBeGreaterThan(wrap.x); expect(z.cx + z.r).toBeLessThan(wrap.x + wrap.width); expect(z.cy + z.r).toBeLessThan(wrap.y + wrap.height); });
+    await expect(page.locator('#tourZones circle.tour-zone')).toHaveCount(3);
+    // Show me where pulses them
+    await page.click('#tourShow');
+    await expect(page.locator('#tourZones')).toHaveClass(/is-pulsing/);
+    // outside every circle: a mark lands (the app is the app) but the step does not move, and the card says why
+    const far = { x: zs[0].cx - zs[0].r - 60, y: zs[0].cy - zs[0].r - 40 };
+    await page.mouse.click(far.x, far.y);
+    await page.waitForTimeout(900);
+    expect(await stepId(page)).toBe('place');
+    expect((await zones(page)).filter((z) => z.done).length).toBe(0);
+    await expect(page.locator('#tourStatus')).toContainText('outside the circles');
+    // inside, but well off-centre: gracious
+    for (let i = 0; i < 3; i++) {
+      zs = await zones(page);
+      await page.mouse.click(zs[i].cx + zs[i].r * 0.55, zs[i].cy - zs[i].r * 0.5);
+      await page.waitForTimeout(250);
+      expect((await zones(page))[i].done).toBe(true);
+    }
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'bind', null, { timeout: 8000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('a boundary: a box that misses the detail is refused with a reason; one that wraps it inside the boundary passes', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await openLesson(page, 'repeats', 'zone');
+    await settle(page);
+    const dragBox = async (a, b, mult) => {
+      await page.keyboard.press('x');
+      await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move((a.x + b.x) / 2, (a.y + b.y) / 2, { steps: 4 }); await page.mouse.move(b.x, b.y, { steps: 4 }); await page.mouse.up();
+      await expect(page.locator('#multiplyZoneModal')).toHaveClass(/visible/, { timeout: 5000 });
+      await page.fill('#multiplyZoneMultiplier', String(mult));
+      await page.click('#multiplyZoneApply');
+      await page.waitForTimeout(600);
+    };
+    let z = (await zones(page))[0];
+    expect(z.kind).toBe('box');
+    await expect(page.locator('#tourZones rect.tour-zone')).toHaveCount(1);
+    // 1. a box over only the left half of the detail
+    await dragBox({ x: z.inner.x1 - 6, y: z.inner.y1 - 6 }, { x: (z.inner.x1 + z.inner.x2) / 2, y: z.inner.y2 + 6 }, 4);
+    expect(await stepId(page)).toBe('zone');
+    await expect(page.locator('#tourStatus')).toContainText('misses part');
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.waitForTimeout(400);
+    // 2. around the whole detail, corners anywhere in the boundary
+    z = (await zones(page))[0];
+    await dragBox({ x: (z.outer.x1 + z.inner.x1) / 2, y: (z.outer.y1 + z.inner.y1) / 2 }, { x: (z.outer.x2 + z.inner.x2) / 2, y: (z.outer.y2 + z.inner.y2) / 2 }, 4);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'read', null, { timeout: 8000 });
+    expect(await page.evaluate(() => window.getPipeToolingSummary())).toContain('Hand Sink\t4');
+    expect(errors).toEqual([]);
+  });
+
+  test('a traced run: a corner inside each circle, in order, ticks them as you go', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await openLesson(page, 'measuring', 'snap');
+    await page.click('#tourSkip');                      // snap off: the clicks below land where they are aimed
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'trace');
+    await settle(page);
+    await page.keyboard.press('p');
+    for (let i = 0; i < 3; i++) {
+      const zs = await zones(page);
+      await page.mouse.click(zs[i].cx + 5, zs[i].cy - 4);
+      await page.waitForTimeout(350);
+      expect((await zones(page)).filter((c) => c.done).length).toBe(i + 1);
+    }
+    expect(await stepId(page)).toBe('trace');           // a trace in progress ticks circles but is not a run yet
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'bends', null, { timeout: 8000 });
     expect(errors).toEqual([]);
   });
 });

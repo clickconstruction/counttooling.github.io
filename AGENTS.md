@@ -355,7 +355,10 @@
   fine). In a tour step body, name a control the way it looks on screen with
   `[[+ Add]]`; features/tutorial.js renders it as a `.tour-ui` chip. Write the body as
   lines, one action per `1. …` line (where the control is, what to click, what to
-  type); the renderer numbers them.
+  type); the renderer numbers them. A tour or lesson step that works ON THE SHEET declares `zones`
+  (circles for clicks, a boundary for a drag, in sheet points) and its `check` counts only
+  what is inside them; never add a button that does a step for the reader (the owner's
+  call, 2026-09-21). `action.run` is the spec and screenshot seam `App.tutorialDoStep()`.
 - **Recording a to-do.** When the user asks for something to be noted for later
   ("add a to-do", "someone should…", "make sure we come back to this"), it goes in
   [PUNCHLIST.md](PUNCHLIST.md) — never only in the conversation, never only in a

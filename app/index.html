@@ -1282,7 +1282,7 @@
       </div>
       <div class="form-group">
         <label class="range-label"><span>Legend size</span><span class="range-val"><span id="legendScaleVal">100</span>%</span></label>
-        <input type="range" id="legendScale" min="50" max="400" value="100" step="5">
+        <input type="range" id="legendScale" min="25" max="400" value="100" step="5">
       </div>
       <div class="form-group setting-row">
         <span class="setting-label" title="Show a highlight over the resize grip area">Highlight resize area</span>
@@ -3226,7 +3226,7 @@
         <span class="modal-card-sub" id="learnProgress"></span>
         <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button>
       </div>
-      <p class="learn-lede">Short lessons, two or three minutes each, on sample sheets the lesson opens for you. Every step checks what you actually did, and every step can do it for you. Take them in any order.</p>
+      <p class="learn-lede">Short lessons, two or three minutes each, on sample sheets the lesson opens for you. Each one circles where to click and shades where to drag on the sheet, and checks what you actually did. Take them in any order.</p>
       <div class="section-rule"><b>New here? One trade, start to finish</b></div>
       <div class="learn-tours">
         <button type="button" class="ghost" id="learnTour-plumbing">Plumbing tour</button>
@@ -3247,13 +3247,18 @@
      never intercepts the pointer + a card beside the step's control. -->
 <div id="tourOverlay" style="display:none;" aria-live="polite">
   <div id="tourSpot" class="tour-spot"></div>
+  <svg id="tourZones" class="tour-zones" aria-hidden="true"></svg>
   <div id="tourCard" class="tour-card" role="dialog" aria-labelledby="tourTitle">
     <div class="tour-card-head"><span id="tourStepNo" class="tour-step-no">1 / 13</span><span id="tourDots" class="tour-dots"></span><button type="button" id="tourLeave" class="tour-leave" title="Leave the tour">×</button></div>
     <h3 id="tourTitle"></h3>
     <div id="tourBody" class="tour-body"></div>
     <div class="tour-card-actions">
-      <button type="button" id="tourAction" class="tour-action"></button>
+      <button type="button" id="tourShow" class="tour-action">Show me where</button>
+      <button type="button" id="tourReveal" class="tour-action" style="display:none;">Show the engineer's answer</button>
       <span id="tourStatus" class="tour-status"></span>
+    </div>
+    <div class="tour-card-nav">
+      <button type="button" id="tourSkip" class="tour-skip">Skip this step</button>
       <span class="tour-spacer"></span>
       <button type="button" id="tourBack" class="tour-nav">Back</button>
       <button type="button" id="tourNext" class="tour-nav tour-next">Next</button>

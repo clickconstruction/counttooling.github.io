@@ -886,3 +886,26 @@ test('drawLegend: the tally is byte-for-byte the old list when no trade and no s
   const texts = callsOf(ctx, 'fillText').map(c => String(c[1]));
   assert.deepStrictEqual(texts, ['This sheet', 'WC [3]', 'Waste 12.00 ft', 'Bath 800 ft³']);
 });
+
+test('drawLegend: the box hugs its rows at legendScale; an oversized userResized box from an older save snaps back', () => {
+  // The corner grip and the size slider both set legendSettings.legendScale
+  // (2026-09-21); the box is always the rows' size at that scale.
+  const at = (legendScale, style) => {
+    const state = legendState({ legendSettings: { legendScale, bgColor: '#ffffff', bgOpacity: 1, textOpacity: 1, showBorder: true, style } });
+    const ann = legendAnn();
+    createCanvasDraw(legendDeps(state)).drawLegend(makeCtx(), makePage(1224, 792), 0, ann, 1, tc1);
+    return ann.legend;
+  };
+  for (const style of ['tally', 'compact']) {
+    const one = at(1, style), half = at(0.5, style), twice = at(2, style);
+    assert.ok(half.w < one.w && half.h < one.h, style + ': half the scale, a smaller box (' + half.w + '×' + half.h + ' vs ' + one.w + '×' + one.h + ')');
+    assert.ok(twice.w > one.w && twice.h > one.h, style + ': twice the scale, a bigger box');
+    assert.ok(Math.abs(half.h - one.h / 2) < 0.01, style + ': the height scales linearly (' + half.h + ' vs ' + one.h + ')');
+    // A box a pre-2026-09-21 save grew past its rows with the grip.
+    const state = legendState({ legendSettings: { legendScale: 1, bgColor: '#ffffff', bgOpacity: 1, textOpacity: 1, showBorder: true, style } });
+    const ann = legendAnn();
+    ann.legend = { x: 20, y: 20, w: 500, h: 400, userResized: true };
+    createCanvasDraw(legendDeps(state)).drawLegend(makeCtx(), makePage(1224, 792), 0, ann, 1, tc1);
+    assert.deepStrictEqual([ann.legend.w, ann.legend.h], [one.w, one.h], style + ': the oversized box snaps to its rows');
+  }
+});

@@ -375,7 +375,7 @@
       },
       steps: [
         { id: 'groupson', title: 'Turn on Groups', kind: 'do',
-          body: '1. In the header, click the gear ([[Project Settings]]).\n2. Turn on Groups.\n3. Close the dialog.\nA GROUPS section joins the sidebar. Projects that never use groups never see it.',
+          body: '1. In the header, click the gear ([[Project Settings]]).\n2. Turn on [[Use groups]].\n3. Close the dialog.\nA GROUPS section joins the sidebar. Projects that never use groups never see it.',
           target: ['#settingsUseGroupsBtn', '#settingsGearBtn', '#sidebarLogoGear'], check: () => !!S().groupsEnabled,
           action: { label: 'Turn Groups on', run: () => { if (App.turnOnGroups) App.turnOnGroups(); else S().groupsEnabled = true; App.updateUI(); } } },
         { id: 'group', title: 'Make a Kitchen group', kind: 'do',
@@ -383,12 +383,12 @@
           target: ['#groupModalDone', '#addGroup', '#groupsSectionTitle'], check: () => (S().groups || []).some((g) => /kitchen/i.test(g.name || '')),
           action: { label: 'Make it for me', run: async () => { if ((S().groups || []).some((g) => /kitchen/i.test(g.name || ''))) return; if (!S().groupsEnabled && App.turnOnGroups) App.turnOnGroups(); App.openGroupModal(null); await wait(60); el('groupModalName').value = 'Kitchen'; el('groupModalDone').click(); await wait(80); } } },
         { id: 'assign', title: 'Put the kitchen drains in it', kind: 'do',
-          body: '1. Right-click one of the three floor drains along the kitchen\'s work aisle.\n2. Click Assign to group, then Kitchen.\n3. Do the same for the other two.\nThe group\'s row in the sidebar subtotals what it holds. Tip: click a group first and everything you place after that joins it.',
+          body: '1. Right-click one of the three floor drains along the kitchen\'s work aisle.\n2. Click [[Assign to group]], then Kitchen.\n3. Do the same for the other two.\nThe group\'s row in the sidebar subtotals what it holds. Tip: click a group first and everything you place after that joins it.',
           target: ['#annCanvas'],
           check: () => { const g = (S().groups || []).find((x) => /kitchen/i.test(x.name || '')); const a = pageAnn(P101); if (!g || !a) return false; return Object.keys(a.counterMarkers || {}).some((cid) => (a.counterMarkers[cid] || []).some((m) => m.group === g.id)); },
           action: { label: 'Assign the three for me', run: () => { const g = (S().groups || []).find((x) => /kitchen/i.test(x.name || '')); const c = counterNamed(/floor\s*drain/i); const a = pageAnn(P101); if (!g || !c || !a) return; App.pushUndoSnapshotCurrentPage(); (a.counterMarkers[c.id] || []).forEach((m) => { if (KITCHEN_FDS.some((k) => near(m, k, 4))) m.group = g.id; }); dirty(); } } },
         { id: 'filter', title: 'Show only what this sheet uses', kind: 'do',
-          body: 'The palette has a Urinal counter that only P-401 uses. On a real bid the palette has sixty.\n1. In the left sidebar, beside the COUNTERS search box, click the funnel.\n2. Choose This page.\nThe list drops to the counters with marks on this sheet. Choose Off to get the whole palette back.',
+          body: 'The palette has a Urinal counter that only P-401 uses. On a real bid the palette has sixty.\n1. In the left sidebar, beside the COUNTERS search box, click the funnel once.\nThe list drops to the counters with marks on this sheet. Click it again for the ones used anywhere in the project, and again for the whole palette. The lesson puts it back the way you had it when you leave.',
           target: ['#counterShowOnlyOnPageInlineBtn', '#countersSection'], check: () => (App.getCounterListFilterScope ? App.getCounterListFilterScope() === 'page' : false),
           action: { label: 'Filter to this page', run: () => { App.setCounterListFilterScope('page'); App.updateUI(); } } },
         { id: 'layer', title: 'An alternate on its own layer', kind: 'do',
@@ -415,7 +415,7 @@
           hint: () => (extraSeen ? 'Now click Undo' : ''),
           action: { label: 'Place one and undo it', run: async () => { const c = counterNamed(/floor\s*drain/i); if (!c) return; goPage(P101); App.pushUndoSnapshotCurrentPage(); mark(P101, c, [P(450, 380)]); dirty(); extraSeen = true; await wait(700); el('undoBtn').click(); } } },
         { id: 'context', title: 'Delete one mark', kind: 'do',
-          body: 'There is a floor drain in the middle of the dining room. There is no drain there.\n1. Press M (Move) so no tool is armed.\n2. Right-click that mark.\n3. Click Delete.\nThe same menu moves a mark to another counter or into a group.',
+          body: 'There is a floor drain in the middle of the dining room. There is no drain there.\n1. Press M (Move) so no tool is armed.\n2. Right-click that mark.\n3. Click [[Delete]].\nThe same menu moves a mark to another counter or into a group.',
           target: ['#annCanvas'], check: () => { const c = counterNamed(/floor\s*drain/i); const a = pageAnn(P101); return !!c && !!a && !(a.counterMarkers[c.id] || []).some((m) => near(m, STRAY, 6)); },
           action: { label: 'Delete it for me', run: () => { const c = counterNamed(/floor\s*drain/i); const a = pageAnn(P101); if (!c || !a) return; App.pushUndoSnapshotCurrentPage(); a.counterMarkers[c.id] = (a.counterMarkers[c.id] || []).filter((m) => !near(m, STRAY, 6)); dirty(); } } },
         { id: 'details', title: 'Change a whole type at once', kind: 'do',
@@ -570,6 +570,7 @@
       steps: [openStep(lesson)].concat(lesson.steps, [doneStep(lesson, lesson.done)]),
       doneKey: null,
       onStop(finished) {
+        restoreDevice();
         if (!finished) return;
         markDone(lesson.id);
         openLearnMenu(next ? next.id : null);   // back to the list, the next lesson lit
@@ -577,11 +578,24 @@
     });
   });
 
+  // A lesson teaches two settings that live on the DEVICE, not the project: the sidebar
+  // filter and Snap to 45°. It puts both back the way it found them when it stops, so a
+  // lesson never changes how the reader's own bids behave.
+  let deviceBefore = null;
+  function rememberDevice() { deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) }; }
+  function restoreDevice() {
+    if (!deviceBefore) return;
+    if (App.getCounterListFilterScope && App.getCounterListFilterScope() !== deviceBefore.scope) App.setCounterListFilterScope(deviceBefore.scope);
+    if (!!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) !== deviceBefore.snap && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
+    deviceBefore = null;
+    App.updateUI();
+  }
   function startLesson(id) {
     const lesson = LESSONS.find((l) => l.id === id);
     if (!lesson) return false;
     if (App.hideModal) App.hideModal('learnModal');
     sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null;
+    rememberDevice();
     return App.startTutorial(tourId(id));
   }
   function renderLearnList(nextId) {

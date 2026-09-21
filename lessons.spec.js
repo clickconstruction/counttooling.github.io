@@ -57,6 +57,7 @@ const EXPECT = {
     expect(r).toEqual({ marks: 4, key: true });
   },
   measuring: async (page) => {
+    expect(await page.evaluate(() => !!window.state.lineTypeSettings.snapToHorizontalVertical)).toBe(false);   // Snap is a device setting too: back as it was
     const a = await ann(page, 0);
     expect(a.polylines.length).toBe(1);
     expect(a.polylines[0].points.length).toBe(3);
@@ -72,7 +73,7 @@ const EXPECT = {
   repeats: async (page) => { const s = await page.evaluate(() => window.getPipeToolingSummary()); expect(s).toContain('Hand Sink\t4'); expect(s).toContain('Floor Drain\t4'); },
   organize: async (page) => {
     const r = await page.evaluate(() => { const g = window.state.groups.find((x) => x.name === 'Kitchen'); const a = window.App.getActiveAnnotations(window.state.pages[0]); let n = 0; Object.values(window.state.pages[0].canvases[0].annotations.counterMarkers).forEach((arr) => arr.forEach((m) => { if (m.group === g.id) n++; })); return { n, layers: window.state.pages[0].canvases.length, scope: window.App.getCounterListFilterScope(), hidden: window.state.hideMarks, a: !!a }; });
-    expect(r).toEqual({ n: 3, layers: 2, scope: 'page', hidden: false, a: true });
+    expect(r).toEqual({ n: 3, layers: 2, scope: 'off', hidden: false, a: true });   // the filter is a DEVICE setting: the lesson put it back when it stopped
   },
   fixing: async (page) => {
     const r = await page.evaluate(() => { const c = window.state.counters.find((x) => /FD-1/.test(x.name)); return { name: c.name, marks: window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id].length }; });
@@ -204,6 +205,57 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.waitForTimeout(600);
     r = await rects();
     expect(r.c.l).toBeGreaterThan(250);
+    expect(errors).toEqual([]);
+  });
+  test('by hand: the steps whose wording is easiest to get wrong pass on real clicks (rename, Quick Keys, the funnel, right-click Delete)', async ({ page }) => {
+    test.setTimeout(180000);
+    const errors = [];
+    const open = async (id, first) => {
+      await page.goto('/app/?lesson=' + id);
+      await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
+      await page.click('#tourAction');
+      if (id === 'plans') { await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 15000 }); await page.click('#preparePdfDone'); }
+      await page.waitForFunction((want) => window.App.tutorialStepId() === want, first, { timeout: 30000 });
+    };
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    // Sheets → rename: the number badge, a name, Enter
+    await open('plans', 'jump');
+    await page.click('#pagesList .sidebar-item[data-page-idx="2"] .name');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'rotate');
+    await page.click('#rotatePage');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'rename', null, { timeout: 8000 });
+    await page.click('#pagesList .sidebar-item.active .page-num-badge-editable');
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('P-501 Fixture Schedule');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'marked', null, { timeout: 8000 });
+    expect(await page.evaluate(() => window.state.pages[2].label)).toBe('P-501 Fixture Schedule');
+    // Counting → the Quick Keys dialog's own dropdown
+    await open('counting', 'counter');
+    await page.click('#tourAction');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'place');
+    await page.click('#tourAction');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'bind', null, { timeout: 8000 });
+    await page.click('#statusBarQuickKeys');
+    await expect(page.locator('#quickKeysModal')).toHaveClass(/visible/);
+    await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain' });
+    await page.click('#quickKeysDone');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'usekey', null, { timeout: 8000 });
+    // Organizing → one click on the funnel
+    await open('organize', 'groupson');
+    await page.evaluate(() => window.App.tutorialGoTo('filter'));
+    await page.click('#counterShowOnlyOnPageInlineBtn');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'layer', null, { timeout: 8000 });
+    await expect(page.locator('#countersList')).not.toContainText('Urinal');
+    // Fixing → right-click the stray mark, Delete
+    await open('fixing', 'undo');
+    await page.evaluate(() => window.App.tutorialGoTo('context'));
+    const pt = await page.evaluate(() => { const c = window.App.toCanvas({ x: 60 + 0.75 * 345, y: 70 + 0.75 * 330 }); const r = document.getElementById('annCanvas').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; return { x: r.left + c.x / dpr, y: r.top + c.y / dpr }; });
+    await page.mouse.click(pt.x, pt.y, { button: 'right' });
+    await expect(page.locator('#ctxDelete')).toBeVisible();
+    await page.click('#ctxDelete');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'details', null, { timeout: 8000 });
     expect(errors).toEqual([]);
   });
 });

@@ -55,7 +55,8 @@ const EXPECT = {
     expect((await ann(page, 2)).highlights.length).toBe(1);                                    // the dishwasher's row
   },
   devices: async (page) => {
-    for (const [re, n] of [['Duplex', 10], ['GFCI', 10], ['J-Box', 6]]) expect([re, await countOf(page, re)]).toEqual([re, n]);
+    for (const [re, n] of [['Duplex', 11], ['GFCI', 10], ['J-Box', 6]]) expect([re, await countOf(page, re)]).toEqual([re, n]);
+    expect((await ann(page, 0)).notes.some((n) => /^RFI: Kitchen receptacle drawn as a plain duplex/.test(n.text))).toBe(true);   // the engineer's miss, flagged
     expect(await page.evaluate(() => window.state.counters.filter((c) => /Duplex|GFCI/.test(c.name)).map((c) => c.mountHeightIn).sort())).toEqual([18, 44]);   // the rulebook's heights, from the Quick variants
     expect(await page.evaluate(() => { const b = window.state.numberKeyBindings; const n = (id) => window.state.counters.find((c) => c.id === id).name; return [n(b[1].id), n(b[2].id)]; })).toEqual(['Duplex Receptacle 20A', 'GFCI Receptacle 20A']);
   },
@@ -116,7 +117,7 @@ const EXPECT = {
       expect([name, !!m]).toEqual([name, true]);
       expect(Math.abs(Number(m[1]) - ref.feet[name])).toBeLessThan(0.1);
     }
-    expect(ref.counts.reduce((t, c) => t + c[1], 0)).toBe(68);
+    expect(ref.counts.reduce((t, c) => t + c[1], 0)).toBe(69);
     expect(await countOf(page, '^tag:B$')).toBe(10);
   },
   bid: async (page) => {
@@ -164,6 +165,14 @@ test.describe('The electrical course: a question is answered with a click', () =
     await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => /GFCI/.test(x.name)); const a = window.App.getActiveAnnotations(window.state.pages[0]); a.counterMarkers[c.id] = []; k.mark(0, c, [k.P(200, 594), k.P(300, 594), k.P(640, 106), k.P(776, 106), k.P(900, 106), k.P(575, 302), k.P(930, 360), k.P(720, 358)]); k.dirty(); });
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/2 more: the cook line \(east\), the dish pit/);
+    // the miss: a note on a labelled GFCI is refused, a note on the plain kitchen duplex is the answer
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => /GFCI/.test(x.name)); k.mark(0, c, [k.P(800, 358), k.P(660, 476)]); k.dirty(); });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'missed', null, { timeout: 5000 });
+    await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.P(640, 106), 'RFI: this one?', '#e85447'); });
+    await page.waitForTimeout(500);
+    await expect(page.locator('#tourStatus')).toHaveText(/That one already says GFI/);
+    await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.P(600, 460), 'RFI: a plain duplex in the kitchen', '#e85447'); });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'duplex', null, { timeout: 5000 });
     expect(errors).toEqual([]);
   });
 

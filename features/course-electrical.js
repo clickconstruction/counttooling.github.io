@@ -54,7 +54,8 @@
   const P = (x, y) => K().P(x, y);
   const G = {
     dim318: [560, 84, 940, 84],
-    duplex: [136, 160, 136, 250, 136, 340, 136, 430, 200, 106, 300, 106, 400, 106, 500, 596, 760, 476, 930, 590],          // 10, at 18"
+    duplex: [136, 160, 136, 250, 136, 340, 136, 430, 200, 106, 300, 106, 400, 106, 500, 596, 760, 476, 930, 590, 600, 460],  // 11 drawn as duplex, at 18"; the last is the engineer's miss
+    missed: [600, 460],                                                                                                    // a plain duplex in the kitchen: 210.8(B)(2) wants it GFCI; the reader finds it
     gfci: [200, 594, 300, 594, 640, 106, 776, 106, 900, 106, 575, 302, 930, 360, 720, 358, 800, 358, 660, 476],          // 10, at 44": the bar, the restrooms, the kitchen, the dish pit
     diningW: [136, 160, 136, 250, 136, 340, 136, 430],                                                                    // circuit 1, chained
     jbox: [400, 585, 643, 592, 887, 552, 860, 380, 730, 590, 812, 548],                                                   // ice, DW, RP, EF-1, RTU-1, WH
@@ -99,7 +100,8 @@
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
   const missing = (c, spots, labels, d, pageIdx) => { const ms = marksOf(c, pageIdx); const out = []; spots.forEach((pt, i) => { if (!ms.some((m) => K().near(m, pt, d || 8))) out.push(labels[i]); }); return out.length ? out.length + ' more: ' + out.join(', ') : ''; };
-  const DUPLEX_LABELS = ['the dining west wall (top)', 'the dining west wall', 'the dining west wall', 'the dining west wall (bottom)', 'the dining north wall (west)', 'the dining north wall (middle)', 'the dining north wall (east)', 'the server station', 'storage (north wall)', 'storage (south wall)'];
+  const DUPLEX_LABELS = ['the dining west wall (top)', 'the dining west wall', 'the dining west wall', 'the dining west wall (bottom)', 'the dining north wall (west)', 'the dining north wall (middle)', 'the dining north wall (east)', 'the server station', 'storage (north wall)', 'storage (south wall)', 'the kitchen south wall'];
+  const plainDuplex = () => pts(G.duplex).filter((pt) => !K().near(pt, pts(G.missed)[0], 2));
   const GFCI_LABELS = ['the bar (west)', 'the bar (east)', 'MEN', 'WOMEN', 'the mop room', 'the kitchen hand sink', 'the kitchen exit hand sink', 'the cook line (west)', 'the cook line (east)', 'the dish pit'];
   const JBOX_LABELS = ['the ice machine', 'the dishwasher', 'the recirc pump', 'EF-1 by the exit door', 'RTU-1 in storage', 'the water heater'];
 
@@ -263,7 +265,7 @@
     const lines = ['Reference on the left, from the sheets\' own geometry. Yours on the right, from your Summary.'];
     RUNS.forEach((r) => { const ref = r.feet(), mine = feetFor(r.re, r.exclude); const ok = mine >= ref * 0.95 && mine <= ref * 1.05; lines.push(r.name + ': ' + fmtFt(ref) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref * 0.95 ? ', short: ' + r.label : ', over: check for a doubled run')); });
     const bad = COUNTS().filter((x) => !countOk(x)).map((x) => x[3]);
-    lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: twelve device types, sixty-eight marks across the two plans.');
+    lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: twelve device types, sixty-nine marks across the two plans.');
     lines.push('The wire under the conduit rows is derived from the runs, never marked, so it cannot drift; the report\'s circuit schedule lists circuit 1 with its four devices, its feet and its farthest device.');
     return lines.join('\n');
   }
@@ -322,11 +324,17 @@
         { id: 'gfci', title: 'Which receptacles must be GFCI?', kind: 'do', cardAt: 'tl',
           body: 'The plan shows twenty receptacles. Some of them the code wants ground-fault protected.\n1. Under COUNTERS, click [[+ Add]]. On the [[Quick]] tab set Category to Receptacle, Variant to GFCI, Rating to 20A, and click [[Add Counter]]. It arrives at 44 in, the counter height.\n2. Click every receptacle that must be a GFCI, and none that need not.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
-          check: () => { const c = counter(RE.gfci); return !!c && pts(G.gfci).every((pt) => markNear(c, pt, 10, E101)) && !pts(G.duplex).some((pt) => markNear(c, pt, 10, E101)); },
-          hint: () => { const c = counter(RE.gfci); if (!c) return ''; const wrong = pts(G.duplex).find((pt) => markNear(c, pt, 10, E101)); if (wrong) return 'That one is in the dining room or storage, with no sink within 6 ft: a plain duplex. Press Ctrl+Z'; return missing(c, pts(G.gfci), GFCI_LABELS, 10, E101); },
+          check: () => { const c = counter(RE.gfci); return !!c && pts(G.gfci).every((pt) => markNear(c, pt, 10, E101)) && !plainDuplex().some((pt) => markNear(c, pt, 10, E101)); },
+          hint: () => { const c = counter(RE.gfci); if (!c) return ''; const wrong = plainDuplex().find((pt) => markNear(c, pt, 10, E101)); if (wrong) return 'That one is in the dining room or storage, with no sink within 6 ft: a plain duplex. Press Ctrl+Z'; return missing(c, pts(G.gfci), GFCI_LABELS, 10, E101); },
           action: { label: 'Click the ten for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('gfci'), pts(G.gfci), E101); K().dirty(); } } },
+        { id: 'missed', title: 'The one the engineer missed', kind: 'do', cardAt: 'tl',
+          body: 'Ten with GFI beside them: the bar and the kitchen (a sink and food preparation, NEC 210.8(B)(2)), the restrooms (210.8(B)(1)), the mop room, whose receptacle sits within 6 ft of the mop sink (210.8(B)(5)), the dish pit.\nThe engineer drew one more receptacle in a room the code wants protected, and left the GFI off it.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that receptacle and type RFI: and why it should be a GFCI.',
+          target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
+          check: () => notesNear(pts(G.missed)[0], 26, E101).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
+          hint: () => { const a = pageAnn(E101); if (!a || !(a.notes || []).length) return ''; const rfi = (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))); if (!rfi) return 'Start the note with RFI:'; return pts(G.gfci).some((pt) => notesNear(pt, 26, E101).length) ? 'That one already says GFI. Look for a plain duplex in a room where every receptacle must be protected' : 'Not that room. Where does the code protect every receptacle?'; },
+          action: { label: 'Flag it for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.missed)[0]; if (a.notes.some((n) => K().near(n, spot, 26))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Kitchen receptacle drawn as a plain duplex; every receptacle in a commercial kitchen is GFCI (NEC 210.8(B)(2)). Bid it as GFCI?', id: App.uid(), width: 160, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
         { id: 'duplex', title: 'Count the rest', kind: 'do', cardAt: 'tl', page: E101, zones: () => circlesOn(E101, counter(RE.duplex), pts(G.duplex)),
-          body: 'Ten of them: the bar and the whole kitchen (a sink and food preparation, NEC 210.8(B)(2)), the restrooms (210.8(B)(1)), the mop room, whose receptacle sits within 6 ft of the mop sink (210.8(B)(5)), the dish pit. The dining room and storage have no sink and are not a kitchen: plain duplex receptacles at 18 in.\n1. Make a Duplex 20A counter the same way: Category Receptacle, Variant Duplex.\n2. Click the ten circled receptacles.',
+          body: 'The kitchen\'s south wall, by the dish door: a plain duplex in a commercial kitchen, where 210.8(B)(2) wants every receptacle protected. The engineer\'s miss is now the GC\'s question, and the bid carries it as a GFCI until the answer comes back. The dining room and storage have no sink and are not a kitchen: plain duplex receptacles at 18 in.\n1. Make a Duplex 20A counter the same way: Category Receptacle, Variant Duplex.\n2. Click the eleven circled receptacles, the flagged one among them: count what is drawn, and let the note carry the question.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => allDone(circlesOn(E101, counter(RE.duplex), pts(G.duplex))),
           hint: () => (counter(RE.duplex) ? missing(counter(RE.duplex), pts(G.duplex), DUPLEX_LABELS, 10, E101) : ''),
           action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('duplex'), pts(G.duplex), E101); K().dirty(); } } },
@@ -345,7 +353,7 @@
           check: () => { const c = counter(RE.duplex); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); },
           action: { label: 'Bind 1 and 2 for me', run: () => { if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: pick('duplex').id }; S().numberKeyBindings[2] = { kind: 'counter', id: pick('gfci').id }; K().dirty(); } } },
       ],
-      done: 'Twenty receptacles sorted by what the code wants, six equipment connections, and heights the app already knew.\nNext: [[Learn]] → Chapter 3, the lighting.',
+      done: 'Twenty-one receptacles sorted by what the code wants, one of them the engineer\'s miss flagged, six equipment connections, and heights the app already knew.\nNext: [[Learn]] → Chapter 3, the lighting.',
     },
     // 3 ----------------------------------------------------------------------------------------
     {

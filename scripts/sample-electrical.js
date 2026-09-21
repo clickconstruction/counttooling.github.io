@@ -35,6 +35,7 @@ const POWER = {
   hoodRecep: [[720, 358], [800, 358]],                                      // LP-1-12 under the hood, GFCI (a kitchen), on the shunt trip
   gfciDish: [[660, 476]],                                                   // LP-1-14 beside the dish 3-comp
   duplexStorage: [[760, 476], [930, 590]],                                  // LP-1-16
+  missed: [[600, 460]],                                                     // the engineer's miss: a plain duplex on the kitchen's south wall, in a kitchen (210.8(B)(2)); the course has the reader find it
   rtu: [[730, 590]],                                                        // LP-1-18,20,22 RTU-1 on the roof, 3 phase
   wh: [[812, 548]],                                                         // LP-1-19 the water heater's controls
   panel: [704, 506], meter: [690, 612], mdp: [713, 611],
@@ -72,7 +73,7 @@ function powerPlan() {
   const P = POWER, cl = P.clearance;
   return `${restaurantShell({ lights: false, tags: false, drains: false })}
   <!-- POWER: receptacles by circuit; a J-box at each piece of equipment -->
-  ${at(P.duplexDiningW.concat(P.duplexDiningN, P.duplexStorage), recep, 'duplex')}
+  ${at(P.duplexDiningW.concat(P.duplexDiningN, P.duplexStorage, P.missed), recep, 'duplex')}
   ${at(P.gfciBar.concat(P.gfciRestrooms, P.gfciKitchen, P.hoodRecep, P.gfciDish), recep, 'gfci')}
   ${jbox(...P.ice[0], 'ICE MACHINE · 7', -1)}${jbox(...P.dw[0], 'DW 208V · 2,4')}${jbox(...P.rp[0], 'RP · 6')}
   ${jbox(...P.ef1[0], 'TO EF-1 ON ROOF · 8,10')}${jbox(...P.rtu[0], 'TO RTU-1 ON ROOF, 3Φ · 18,20,22')}${jbox(...P.wh[0], 'WH · 19')}

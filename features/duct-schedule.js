@@ -158,8 +158,17 @@
     // PLACED tally rides beside the multiplied one for the T2-11 "N placed ·
     // M with repeats" honesty wherever they differ.
     let repeated = false;
+    // D26: the grease-duct extras, summed over the scope's pages (cleanouts by
+    // the piece, the listed wrap by the square foot — never in the pounds).
+    let grease = null;
     universe.forEach(({ pageIdx, ann, runs, fittings }) => {
       const distFt = (a, b) => App.getLineRealWorldLengthFeet({ points: [a, b] }, pageIdx, true, ann) || 0;
+      const g = greaseDuctExtras(runs, fittings, distFt);
+      if (g) {
+        if (!grease) grease = { runs: 0, lengthFt: 0, horizontalFt: 0, wrapSqFt: 0, cleanouts: { atBends: 0, alongRuns: 0, total: 0 } };
+        grease.runs += g.runs; grease.lengthFt += g.lengthFt; grease.horizontalFt += g.horizontalFt; grease.wrapSqFt += g.wrapSqFt;
+        grease.cleanouts.atBends += g.cleanouts.atBends; grease.cleanouts.alongRuns += g.cleanouts.alongRuns; grease.cleanouts.total += g.cleanouts.total;
+      }
       const zones = ann.multiplyZones || [];
       runs.forEach((run) => {
         anyRun = true;
@@ -256,6 +265,8 @@
       // D8: per-system flex-drop rows (LF only — never in the pounds above)
       // and the warning cap they were checked against.
       flexRows, maxFlexFt: ds.maxFlexFt,
+      // D26: the grease-duct extras (null when no run carries a grease material).
+      grease,
       // D17: multiply-zone honesty — true when any run/fitting in scope sits
       // in a zone; the placed (before-zones) straight totals for the label.
       repeated, straightPlacedFt, straightPlacedLb,
@@ -349,6 +360,16 @@
       html += '</table>';
     }
 
+    // D26: grease duct — the cleanouts by the piece and the listed wrap by
+    // the square foot, on their own lines, outside the pounds.
+    if (s.grease) {
+      html += '<div class="duct-schedule-section-label">Grease duct <span class="duct-schedule-sublabel">(by the piece and the square foot, not in bid weight)</span>' + chip('hvac.duct.grease-duct') + '</div>';
+      html += '<table class="duct-schedule-table duct-schedule-rollup">';
+      html += '<tr><td>Cleanouts <span class="duct-schedule-sublabel">' + esc(greaseCleanoutNote(s.grease)) + '</span></td><td class="mono num">' + s.grease.cleanouts.total + '</td></tr>';
+      html += '<tr><td>Listed wrap <span class="duct-schedule-sublabel">(' + esc(fmtFt(s.grease.lengthFt)) + ' of duct surface; fittings by the piece)</span></td><td class="mono num">' + fmtSqFt(s.grease.wrapSqFt) + ' sq ft</td></tr>';
+      html += '</table>';
+    }
+
     // Insulation (only when the takeoff carries liner/wrap)
     if (s.linerSqFt > 0 || s.wrapSqFt > 0) {
       html += '<table class="duct-schedule-table duct-schedule-rollup">';
@@ -439,6 +460,12 @@
 
   // Tab-separated plain text — the Copy-to-/Tooling column convention, so a
   // paste lands in columns in PipeTooling/sheets and stays readable in email.
+  // "1 at a change of direction + 0 along 10' of horizontal run (one per 12')"
+  function greaseCleanoutNote(g) {
+    const c = g.cleanouts;
+    return '(' + c.atBends + ' at ' + (c.atBends === 1 ? 'a change' : 'changes') + ' of direction + ' + c.alongRuns + ' along ' + fmtFt(g.horizontalFt) + ' of horizontal run, one per ' + DUCT_GREASE.cleanoutIntervalFt + "')";
+  }
+
   function buildDuctScheduleText(s) {
     if (!s) return '';
     const lines = [];
@@ -471,6 +498,12 @@
       });
       lines.push('');
     }
+    if (s.grease) {
+      lines.push('Grease duct (by the piece and the square foot, not in bid weight)');
+      lines.push(['Cleanouts ' + greaseCleanoutNote(s.grease), String(s.grease.cleanouts.total)].join('\t'));
+      lines.push(['Listed wrap (' + fmtFt(s.grease.lengthFt) + ' of duct surface; fittings by the piece)', fmtSqFt(s.grease.wrapSqFt) + ' sq ft'].join('\t'));
+      lines.push('');
+    }
     if (s.linerSqFt > 0) lines.push(['Liner', fmtSqFt(s.linerSqFt) + ' sq ft'].join('\t'));
     if (s.wrapSqFt > 0) lines.push(['Wrap', fmtSqFt(s.wrapSqFt) + ' sq ft'].join('\t'));
     if (s.linerSqFt > 0 || s.wrapSqFt > 0) lines.push('');
@@ -496,6 +529,10 @@
     if (s.repeated) lines.push(['Placed (before multiply zones)', '', fmtFt(s.straightPlacedFt), '', fmtLb(s.straightPlacedLb) + ' lb'].join('\t'));
     if (s.fittingMode === 'counted') lines.push(['Fittings total', '', '', '', fmtLb(s.fittingsCountedLb) + ' lb'].join('\t'));
     else lines.push(['Fittings (factor ' + s.fittingFactorPct + '% of straight)', '', '', '', fmtLb(s.fittingFactorLb) + ' lb'].join('\t'));
+    if (s.grease) {
+      lines.push(['Grease duct cleanouts', '', String(s.grease.cleanouts.total), '', ''].join('\t'));
+      lines.push(['Grease duct listed wrap', '', fmtSqFt(s.grease.wrapSqFt) + ' sq ft', '', ''].join('\t'));
+    }
     lines.push(['Bid weight', '', '', '', fmtLb(s.bidWeightLb) + ' lb'].join('\t'));
     return lines;
   }

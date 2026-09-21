@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(duct): the grease duct's cleanouts and listed wrap are priced on their own lines (2026-09-21)
+
+The line the grease-duct reveal used to hand to the bid is now on the Duct Schedule. When any run
+carries a grease material, a **Grease duct** block sits under the flex rows, outside the bid weight:
+**cleanouts** by the piece, one at each change of direction (each elbow on a grease run) plus one
+per 12 ft of horizontal run (NFPA 96 7.4; duct-model.js `DUCT_GREASE.cleanoutIntervalFt`,
+drift-checked from the grease-duct rule), and the **listed wrap** by the square foot of duct
+surface, straight duct only, since fittings are wrapped by the piece. The block reads
+"1 at a change of direction + 0 along 10' of horizontal run, one per 12'" so the count explains
+itself. Copy Schedule, the copy rows Summary and /Tooling append, and the report carry both lines.
+`greaseDuctExtras(runs, fittings, distFt)` is the pure seam, null on a galvanized takeoff. The HVAC
+course's chapter 7 reveal now reads the block (one cleanout, 47 sq ft on the sample) and the compare
+card names it; the welding labor stays with pricing.
+
 ## feat(duct): the grease duct is a real run, and the fire damper is counted (2026-09-21)
 
 The two gaps the HVAC course named on the day it merged. A duct run now has a **material**

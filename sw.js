@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '20c06092acae';
+const CACHE_VERSION = '71296d598329';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -204,7 +204,7 @@ const PRECACHE_SHA256 = {
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
   '/styles.css': 'd946383ee1448a456dd40d7f6169f6146e857a9e94e5bf3d44a94b52d5878176',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
-  '/rules/rules.json': 'f462d21d0471085500c29b0ed08c846f1059a6a86fc80361e803b3140dc22e95',
+  '/rules/rules.json': '312ff02cb27f053bac2d89e938abd39e3a3e394e459884ec31eeb1f631a96c30',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
   '/icons-custom.js': 'efe6b960301031a5fb40abc2f54de18798e19f4b7b04e0eccb81b47f1e9cacad',
   '/icon-render.js': 'e4f3807d1ab13f61b3d0f33ec833455defa3b0d6795139ea2e61c94c1e1a9b47',
@@ -217,7 +217,7 @@ const PRECACHE_SHA256 = {
   '/sheet-title-model.js': 'f4af651077942b4b14a4eec23effcbcf6099713125031270a868d3a21a2737cd',
   '/support-model.js': 'a1fba42dfd24cfc5dfd662e6dcb67bced82bb656f7589b828110f5d08088eb69',
   '/fitting-model.js': '60aef6daecbf4ea7205224b2656d3bdaca033fa9ce9f896885f56e5618b6b9b1',
-  '/duct-model.js': 'f28150d4300c5ae4ecc43d6b8f333f19b17f1355b5d5215b3b0f27e8d0d9af31',
+  '/duct-model.js': '44a643436a4aa08d4b61da1e979c4992f844a7e23e47eab91a8b6d54f03ff4b2',
   '/bid-basis-model.js': '825fc0a1cfd1a765dbb3bab5f06eb49c9780253d071def87784939e194a834f0',
   '/canvas-draw.js': '18e29ce094b4382b4347aa6a1a39fa7511e83d56a7676b1905c98df242de47ea',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
@@ -306,7 +306,7 @@ const PRECACHE_SHA256 = {
   '/features/duct-size-popover.js': '7815b986d05160667c6bfafc7c974e6d3787b64f7b9ad2ce287fd2b06dbc3622',
   '/features/duct-fittings.js': '5a735e2eb90cd3f57d41ad33536900ddf02f9212967d09883287353298085c24',
   '/features/duct-sidebar.js': '8f47717c1d43cd229d439563d4cccc17901f94439116cd1b26d5d7174f6ba3a5',
-  '/features/duct-schedule.js': '6c591572a0925fc5788404e29f0131b2b78de24180d65f2be860ec097b9758a7',
+  '/features/duct-schedule.js': '4e8b3057c426c1a4ecb7a11c65db1e663ba9c375dcc17d08a99aaa6cbe9b2b5f',
   '/features/duct-suggest.js': 'e0961d484412ed6684439419752fc6ba9d68eda46575903c290a7bb30103209e',
   '/features/duct-callouts.js': 'db36b2ad7773a3cfe0f1c3d890ad0d24a70a8d058d156d272ec3cd149a2a4eaa',
   '/features/drop-peek.js': '07b8990e4b1cbed96b1b4416b440ac39f5f5b1c9fd5159b34867c34e502263dc',
@@ -323,10 +323,10 @@ const PRECACHE_SHA256 = {
   '/features/lessons.js': '02ae569a33667f654c0162d16574047962425e31af754590cf6c3ca4771bf593',
   '/features/course-plumbing.js': '2aa90dca74cefa9f5cf2df2a0f7def4f16e8c1f349242d8943c077d36efde592',
   '/features/course-electrical.js': '40046380180ed539ce62d7279a9e24a594f7eeb9c3118d1fedf179c6ec152fb5',
-  '/features/course-hvac.js': '9e221f2ac73e5058f0adb3e11d4e5353312d7399356391d8e32468d70e18b1d1',
+  '/features/course-hvac.js': 'eddbe04574fe35474582a673e377a85ca99f86a6a87d7e47346ec8a7b7ed9646',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
-  '/report.js': '54400522dab051d30d1f756b2089f3e3562219f5c1ef7438afbbb53d97856e66',
+  '/report.js': '9afd5359f674ef9051a3cf3d9f4935137021c8338fc8ca287f0d7244fba2e665',
   '/vendor/pdf.min-3.11.174.js': '5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946',
   '/vendor/pdf.worker.min-3.11.174.js': 'feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b',
   '/vendor/pdf-lib-1.17.1.min.js': '0f9a5cad07941f0826586c94e089d89b918c46e5c17cf2d5a3c6f666e3bc694f',

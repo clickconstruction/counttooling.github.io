@@ -1,6 +1,6 @@
 ---
 title: Learn CountTooling by doing
-description: Five-minute tours for plumbing, electrical and HVAC, and thirteen short hands-on lessons that cover every tool in CountTooling, on sample sheets the app opens for you.
+description: Five-minute tours for plumbing, electrical and HVAC, thirteen short hands-on lessons that cover every tool in CountTooling, and a plumbing course that teaches the trade off an engineer's sheet, all on sample sheets the app opens for you.
 updated: 2026-09-21
 order: 1.2
 icon: keys
@@ -11,7 +11,7 @@ The fastest way to learn a takeoff tool is to do a takeoff. CountTooling teaches
 
 ![A lesson step on the sheet: three floor drains circled, the first one counted and ticked green, and the card saying that a click outside the circles does not count.](/guides/img/lesson-targets.png)
 
-![The Learn menu: the three five-minute trade tours at the top, and the list of short lessons, one per part of the app, with a tick beside each one finished.](/guides/img/learn-menu.png)
+![The Learn menu: the three five-minute trade tours at the top, and the list of short lessons, one per part of the app, with a tick beside each one finished, and the plumbing course below them.](/guides/img/learn-menu.png)
 
 ## How a lesson works
 
@@ -35,7 +35,7 @@ Each tour is one small takeoff from scale to hand-off, fourteen steps on the des
 
 ## Then every part of the app: the lessons
 
-Two or three minutes each, in any order. They run on three sample sheets: a restaurant plumbing plan, an enlarged restroom plan with a detail at another scale that is typical of four, and a fixture schedule that was scanned sideways.
+Two or three minutes each, in any order. They run on four sample sheets: a restaurant plumbing plan, an enlarged restroom plan with a detail at another scale that is typical of four, a fixture schedule that was scanned sideways, and the restrooms' waste and vent riser.
 
 1. [Sheets](/app/?lesson=plans): trim a set, find a sheet, turn it, name it, jump between the sheets with marks.
 2. [Scale](/app/?lesson=scale): a scale per sheet, prove it, and a scale zone over a detail drawn at another scale.
@@ -50,5 +50,21 @@ Two or three minutes each, in any order. They run on three sample sheets: a rest
 11. [Deliverables](/app/?lesson=deliver): the report, marked-up PDFs, the hand-off to the bid, an email summary.
 12. [Working faster](/app/?lesson=speed): the keyboard map, the zoom rail, right-click settings.
 13. [Saving, sharing and your bids](/app/?lesson=cloud): a guided read of the signed-in half.
+
+## Then the trade itself: the plumbing course
+
+The tours and the lessons teach the app. The course teaches plumbing through it: nine chapters, about ninety minutes in all, on the engineered sample set, a restaurant with its water, hot water return, gas, waste and grease lines drawn by an engineer, its fixture schedule with the fixture units, and a riser. Each chapter asks why something is where it is on the sheet and takes the answer as a click: which hand sink serves the cook line, which fixture must never drain through the grease interceptor, where a cleanout has to be. A wrong click is refused and told why. Then the tool for counting it. The last chapters finish the whole sheet and set your takeoff beside the reference, run by run. Open it from **plumbing course** on the empty canvas, under **Project Settings** → **Help**, or [directly](/app/?course=plumbing).
+
+1. [Read the sheet](/app/?chapter=plumbing:sheet): the title block, the legend, the fixture the eye skips, the schedule and its fixture units, a scale you proved.
+2. [The fixtures, and where they sit](/app/?chapter=plumbing:fixtures): the wet wall, the hand sink for the cook line, floor sinks and the air gap, trap primers, counters read off the schedule by the app.
+3. [Water, cold and hot](/app/?chapter=plumbing:water): the backflow preventer, the trunk and its sizes, the return line most bids miss, and the pipe, hangers and elbows counted from a trace.
+4. [Waste and vent](/app/?chapter=plumbing:waste): slope measured, the fixture that stays out of the interceptor, cleanouts and vents found, both waste lines traced on their own layer.
+5. [The riser](/app/?chapter=plumbing:riser): a trap arm measured against the table, a stack traced from the drain to above the roof, the cleanout at its base.
+6. [Gas](/app/?chapter=plumbing:gas): sizes that shrink with the load, a shutoff at every appliance, the valve the hood trips placed where it belongs, a hanger row of your own.
+7. [The enlarged plan and the typical](/app/?chapter=plumbing:details): why the restrooms are drawn twice, a scale per sheet, a detail at another scale, TYP. OF 4.
+8. [The whole sheet](/app/?chapter=plumbing:whole): finish the takeoff, compare it to the reference run by run, the legend on the sheet, the marked-up set.
+9. [Check it, prove it, hand it off](/app/?chapter=plumbing:bid): what each Bid Check row means in the trade, the proof view, the notes ledger, the hand-off.
+
+The coaching cites the code by section (the IPC, the FDA Food Code, the fuel gas code) and never reprints it; where a reason is practice rather than rule, it says so.
 
 When you are ready for a real plan, [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/) is the same workflow on your own sheet.

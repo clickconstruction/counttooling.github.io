@@ -18,7 +18,9 @@
 // A fixture tag: 1–3 letters with an optional 1–2 digit suffix ("A", "B1",
 // "EM", "X", "WP2"); a bare letter+digits token like "A1" counts too. Words,
 // numbers alone and room numbers ("104") do not.
-const TAG_RE = /^[A-Z]{1,3}\d{0,2}$/;
+// A tag: up to three letters and up to two digits, a hyphen between them allowed (WC-1),
+// a leading digit allowed (3CS): the electrical letter tags AND a plumbing schedule's.
+const TAG_RE = /^\d?[A-Z]{1,3}(?:-?\d{1,2})?$/;
 function isTagToken(str) {
   const s = String(str || '').trim();
   if (!TAG_RE.test(s)) return false;
@@ -89,7 +91,13 @@ function parseScheduleRows(rows) {
     if (tokens.length < 2) return;
     const tag = String(tokens[0]).trim().toUpperCase();
     if (!isTagToken(tag)) return;
-    const desc = tokens.slice(1).join(' ').replace(/\s+/g, ' ').trim();
+    // The description ends where the size columns begin: the first token that is a pipe size
+    // with its inch mark (1", 1-1/2") or a lone dash (a plumbing schedule's CW / HW / W / V
+    // columns), so a counter is named 'WC-1 · WATER CLOSET, FLOOR MTD', not the whole row.
+    // A bare number stays: '2x4 LED troffer, 4000K' and '1/2 GRATE' are description.
+    const words = tokens.slice(1);
+    const cut = words.findIndex((t) => /^(-|—|[\d][\d./-]*("|″|”))$/.test(String(t).trim()));
+    const desc = (cut > 0 ? words.slice(0, cut) : words).join(' ').replace(/\s+/g, ' ').trim();
     if (!/[A-Za-z]{3,}/.test(desc)) return;
     if (/^(TYPE|TAG|MARK|SYMBOL)$/i.test(tag) || /^DESCRIPTION/i.test(desc)) return;
     if (seen.has(tag)) return;

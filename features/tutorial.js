@@ -7,9 +7,15 @@
  * hangers as child counts, a ×3 typical-floor zone, an RFI note, the proof
  * modal, the PipeTooling hand-off).
  *
- * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold?, cardAt? }
+ * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold?, cardAt?, reveal? }
  * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
  * whole point is a dialog the reader should get to read)
+ * (body may be a FUNCTION: called at every render, for a step whose text reads the takeoff
+ * as it stands, the course's compare-to-the-reference step)
+ * (reveal: a reading step that asks before it tells. The body is the question about the
+ * sheet; the answer waits behind the action button, "Show the engineer's answer" or the
+ * step's own revealLabel, and Next is lit throughout. The plumbing course's teaching mode,
+ * journeys/plans/PLUMBING-COURSE.md)
  * (hint() is the status line while a doing-step's check is failing for a reason
  * worth naming — the prove-the-scale step says what it read).
  * The overlay spotlights the target (a box-shadow cutout that never intercepts
@@ -66,6 +72,7 @@
   let timer = null;
   let doneAt = 0;          // when the current step's check first passed (auto-advance after a beat)
   let heldByBack = false;  // the step was re-entered with Back: never auto-advance, Next lights up
+  let revealed = false;    // a reveal step's answer is showing (reset on every step change)
   let tourCounterId = null;
   let tourLineTypeId = null;
   let tourSecondCounterId = null;
@@ -859,7 +866,8 @@
     const done = safeCheck(step);
     el('tourStepNo').textContent = (stepIdx + 1) + ' / ' + STEPS.length;
     el('tourTitle').textContent = step.title;
-    el('tourBody').innerHTML = bodyHtml(step.body);
+    const text = (b) => (typeof b === 'function' ? b() : b);
+    el('tourBody').innerHTML = bodyHtml(text(step.body)) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal)) + '</div>' : '');
     // The card never does the step for the reader. "Show me where" pulses the circle,
     // the boundary or the lit control; Next works only once the step is really done
     // (a reading step is done by reading); a quiet Skip keeps anyone from being stuck.
@@ -871,6 +879,9 @@
     if (step.handsOff && !done) { show.style.display = ''; show.textContent = step.action.label; }
     else if (step.kind === 'do' && !done) { show.style.display = ''; show.textContent = 'Show me where'; }
     else show.style.display = 'none';
+    // A reveal step's answer waits behind its own button (the course's teaching mode).
+    const revealBtn = el('tourReveal');
+    if (revealBtn) { if (step.reveal && !revealed) { revealBtn.style.display = ''; revealBtn.textContent = step.revealLabel || 'Show the engineer\'s answer'; } else revealBtn.style.display = 'none'; }
     const next = el('tourNext');
     next.textContent = stepIdx === STEPS.length - 1 ? 'Finish' : 'Next';
     next.disabled = !ready;
@@ -945,7 +956,13 @@
     } else {
       card.classList.remove('tour-card-top');
       spot.style.display = 'none';
-      if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
+      // No control to point at (a step about the sheet itself): the corner the step asks
+      // for with cardAt, or where the reader dragged it, keeps the card off the drawing.
+      const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220, edge = 12;
+      const corner = step.cardAt ? { left: step.cardAt[1] === 'l' ? edge : window.innerWidth - cw - edge, top: step.cardAt[0] === 't' ? 56 : window.innerHeight - ch - 40 } : null;
+      const at = dragPos || corner;
+      if (at) { card.style.left = at.left + 'px'; card.style.top = at.top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = ''; }
+      else if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
       else { card.style.left = '50%'; card.style.top = '50%'; card.style.right = ''; card.style.bottom = ''; card.style.transform = 'translate(-50%, -50%)'; }
     }
     // auto-advance a beat after a doing-step completes — never on a step the
@@ -1065,6 +1082,7 @@
     heldByBack = next < stepIdx;
     stepIdx = next;
     doneAt = 0;
+    revealed = false;
     closeStrayDialogs(STEPS[stepIdx]);
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
@@ -1076,7 +1094,7 @@
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
-    stepIdx = 0; doneAt = 0; heldByBack = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
@@ -1151,6 +1169,7 @@
   el('tourShow') && (el('tourShow').onclick = showMeWhere);
   el('tourBack') && (el('tourBack').onclick = () => goTo(stepIdx - 1));
   el('tourLeave') && (el('tourLeave').onclick = () => stopTutorial(false));
+  el('tourReveal') && (el('tourReveal').onclick = () => { revealed = true; render(); });
   Object.keys(TOURS).filter((id) => TOURS[id].linkId).forEach((id) => {
     const link = el(TOURS[id].linkId);
     if (link) link.onclick = (e) => { e.preventDefault(); startTutorial(id); };

@@ -33,6 +33,11 @@ const floorDrain = (x, y) => `<g transform="translate(${x},${y})" fill="none" st
   <circle r="6"/><line x1="-6" y1="0" x2="6" y2="0"/><line x1="0" y1="-6" x2="0" y2="6"/></g>`;
 const floorSink = (x, y) => `<g transform="translate(${x},${y})" fill="none" stroke="${INK}" stroke-width="1.1">
   <rect x="-7" y="-7" width="14" height="14"/><circle r="4"/></g>`;
+// The waste side's marks (the plumbing course's answer key, 2026-09-21): a cleanout, a
+// vent stack through the roof, a hose bibb off the wall.
+const cleanout = (x, y) => `<g transform="translate(${x},${y})" fill="#fff" stroke="${INK}" stroke-width="1.1"><circle r="3.6"/><line x1="-2.5" y1="2.5" x2="2.5" y2="-2.5"/></g>`;
+const vtr = (x, y) => `<g transform="translate(${x},${y})" stroke="${INK}" stroke-width="1.3"><circle r="4.5" fill="#fff"/><circle r="1.6" fill="${INK}" stroke="none"/></g>`;
+const hoseBibb = (x, y) => `<g transform="translate(${x},${y})" stroke="${INK}" stroke-width="1.2"><circle r="2.8" fill="#fff"/><line x1="2.8" y1="0" x2="7" y2="0"/></g>`;
 const waterHeater = (x, y, r = 16) => `<g transform="translate(${x},${y})" fill="none" stroke="${INK}" stroke-width="1.3">
   <circle r="${r}"/><text y="4" text-anchor="middle" font-family="${F}" font-size="10" fill="${INK}" stroke="none">WH</text></g>`;
 const drinkFtn = (x, y, rot = 0) => `<g transform="translate(${x},${y}) rotate(${rot})" fill="none" stroke="${INK}" stroke-width="1.2">
@@ -339,7 +344,10 @@ function candidateA() {
 const PIPE = {
   cw: `stroke="${INK}" stroke-width="1.2"`,
   hw: `stroke="${INK}" stroke-width="1.2" stroke-dasharray="6 3"`,
+  hwr: `stroke="${INK}" stroke-width="1.2" stroke-dasharray="2 3"`,   // the hot water RETURN, its own dash (the course traces it)
   gas: `stroke="${INK}" stroke-width="1.1" stroke-dasharray="10 3 2 3"`,
+  ss: `stroke="${INK}" stroke-width="1.8" stroke-dasharray="8 4"`,    // sanitary, the legend's heavy dash
+  gw: `stroke="${INK}" stroke-width="1.3" stroke-dasharray="8 4"`,    // grease waste, the same dash lighter
 };
 const pipe = (kind, pts) => `<polyline points="${pts.map(([x, y]) => `${x},${y}`).join(' ')}" fill="none" ${PIPE[kind]}/>`;
 const pipeLabel = (x, y, text, rot = 0) => `<text x="${x}" y="${y}" font-family="${F}" font-size="7.5" fill="#444" text-anchor="middle"${rot ? ` transform="rotate(${rot} ${x} ${y})"` : ''}>${text}</text>`;
@@ -456,7 +464,7 @@ function candidateBPlan() {
        just short of the door — which swings out. The 3-comp pot sink sits off the
        line on the north wall; fixtures sit up off the south wall so the CW/HW runs
        have a clear strip. -->
-  ${sink3Comp(578, 476, 54)}${keyTag(600, 508, '3CS')}
+  ${sink3Comp(578, 476, 54)}${keyTag(644, 486, '3CS')}
   <rect x="576" y="566" width="44" height="22" fill="none" stroke="${INK}" stroke-width="1.2"/>
   <rect x="582" y="570" width="14" height="14" rx="2" fill="none" stroke="${INK}" stroke-width="1.1"/>
   <text x="598" y="562" font-family="${F}" font-size="7" fill="#444" text-anchor="middle">SOILED</text>
@@ -491,7 +499,8 @@ function candidateBPlan() {
   ${pipe('cw', [[812, 594], [812, 588]])}
   ${pipe('cw', [[564, 594], [564, 110], [930, 110], [930, 384]])}
   ${pipe('hw', [[796, 572], [786, 572], [786, 590], [188, 590], [188, 580]])}
-  ${pipe('hw', [[570, 590], [570, 105], [936, 105], [936, 572], [918, 572]])}
+  ${pipe('hw', [[570, 590], [570, 105], [936, 105]])}
+  ${pipe('hwr', [[936, 105], [936, 572], [918, 572]])}
   ${pipe('hw', [[856, 572], [828, 572]])}
   <!-- restrooms + mop sink (hot left of cold) -->
   ${pipe('cw', [[596, 110], [596, 114]])}${pipe('cw', [[732, 110], [732, 114]])}
@@ -508,7 +517,7 @@ function candidateBPlan() {
   <!-- bar hand sink -->
   ${pipe('hw', [[326, 590], [326, 584]])}${pipe('cw', [[330, 594], [330, 584]])}
   ${pipeLabel(904, 609, '2" CW')}${pipeLabel(582, 410, '1-1/2" CW · 1-1/4" HW', -90)}
-  ${pipeLabel(900, 124, '3/4" CW')}${pipeLabel(470, 584, '1" CW')}${pipeLabel(944, 330, '3/4" HW', -90)}
+  ${pipeLabel(900, 124, '3/4" CW')}${pipeLabel(470, 584, '1" CW')}${pipeLabel(944, 330, '3/4" HWR', -90)}
   <!-- gas to the water heater -->
   ${pipe('gas', [[840, 582], [822, 582]])}${pipeLabel(846, 545, '3/4" G', -90)}
 
@@ -537,6 +546,32 @@ function candidateBPlan() {
     <text x="1114" y="622" font-size="8.5" fill="#444" transform="rotate(-90 1114 622)">8" CITY SANITARY MAIN</text>
   </g>
 
+  <!-- WASTE (the plumbing course's answer key, 2026-09-21; journeys/plans/PLUMBING-COURSE.md):
+       restroom and mop-room waste is a 4" sanitary line under the restrooms that leaves
+       the east wall and drops the outside to the city main DOWNSTREAM of the interceptor,
+       so sewage never enters it; every kitchen, dish and bar fixture drains to a 3" grease
+       line along the work aisle and the back rooms to the interceptor's inlet, the red
+       note made real. A cleanout at each upstream end and at the outside turn, a vent
+       stack through the roof in the restroom wall and in the dish/storage wall, a
+       backflow preventer where the service enters, a hose bibb by the kitchen exit.
+       Everything here is ADDED: nothing that was on the sheet moved, so the tours' and
+       lessons' coordinates stay true. -->
+  ${pipe('ss', [[592, 210], [940, 210], [1060, 210], [1060, 537]])}
+  ${pipe('gw', [[596, 436], [900, 436], [900, 537], [940, 537]])}
+  ${pipe('gw', [[222, 544], [440, 544], [440, 512], [900, 512]])}
+  ${pipeLabel(1000, 205, '4" SS')}${pipeLabel(1068, 380, '4" SS', -90)}
+  ${pipeLabel(650, 447, '3" GW')}${pipeLabel(300, 556, '3" GW')}${pipeLabel(910, 490, '3" GW', -90)}
+  ${cleanout(592, 210)}${keyTag(592, 226, 'CO')}
+  ${cleanout(596, 436)}${keyTag(596, 452, 'CO')}
+  ${cleanout(222, 544)}${keyTag(206, 544, 'CO')}
+  ${cleanout(1060, 210)}${keyTag(1076, 210, 'CO')}
+  ${vtr(700, 232)}${keyTag(718, 234, 'VTR')}
+  ${vtr(700, 500)}${keyTag(718, 500, 'VTR')}
+  <!-- backflow preventer on the 2" service, just inside the wall -->
+  <g font-family="${F}"><rect x="818" y="586" width="30" height="10" fill="#fff" stroke="${INK}" stroke-width="1.2"/><text x="833" y="593.5" font-size="7" fill="${INK}" text-anchor="middle">RPZ</text></g>
+  <!-- hose bibb outside the kitchen exit, off the east-wall 3/4" CW -->
+  ${pipe('cw', [[930, 402], [930, 490], [946, 490]])}${hoseBibb(949, 490)}${keyTag(964, 490, 'HB')}
+
   <!-- keynote tags, anchored beside their fixtures -->
   ${keyTag(606, 196, 'FD')}${keyTag(788, 196, 'FD')}
   ${keyTag(622, 124, 'WC')}${keyTag(758, 124, 'WC')}
@@ -554,7 +589,7 @@ function candidateBPlan() {
   ${door(324, 470, 24, 180)}
 
   <!-- dimensions -->
-  ${dimH(L, 84, 560, "36'-0\"")}${dimH(560, 84, R, "31'-8\"")}
+  ${dimH(L, 84, 560, "35'-10\"")}${dimH(560, 84, R, "31'-8\"")}   <!-- 430 px and 380 px at 12 px/ft: the strings say what the walls measure -->
   ${dimV(112, T, 470, "30'-8\"")}${dimV(112, 470, B, "10'-10\"")}
   ${dimV(958, T, 252, "12'-7\"", { labelDx: 8, extFrom: 944 })}${dimV(958, 252, 296, "3'-8\"", { labelDx: 8, extFrom: 944 })}
 
@@ -571,12 +606,14 @@ function candidateB() {
   <g font-family="${F}" font-size="9.5" fill="${INK}">
     <text x="430" y="652" font-size="12" font-weight="bold">LEGEND</text>
     <line x1="430" y1="658" x2="630" y2="658" stroke="${INK}" stroke-width="1"/>
-    ${pipe('cw', [[430, 674], [470, 674]])}<text x="480" y="677">CW  DOMESTIC COLD WATER</text>
-    ${pipe('hw', [[430, 690], [470, 690]])}<text x="480" y="693">HW  DOMESTIC HOT WATER</text>
-    ${pipe('gas', [[430, 706], [470, 706]])}<text x="480" y="709">G   GAS</text>
-    <line x1="430" y1="722" x2="470" y2="722" stroke="${INK}" stroke-width="1.8" stroke-dasharray="8 4"/><text x="480" y="725">SS  SANITARY SEWER</text>
-    ${gasDrop(450, 738)}<text x="480" y="741">GAS DROP W/ SHUTOFF, TYP.</text>
-    ${lightFix(450, 754)}<text x="480" y="757">LIGHT FIXTURE, TYP.</text>
+    ${pipe('cw', [[430, 670], [470, 670]])}<text x="480" y="673">CW  DOMESTIC COLD WATER</text>
+    ${pipe('hw', [[430, 683], [470, 683]])}<text x="480" y="686">HW  DOMESTIC HOT WATER</text>
+    ${pipe('hwr', [[430, 696], [470, 696]])}<text x="480" y="699">HWR HOT WATER RETURN</text>
+    ${pipe('gas', [[430, 709], [470, 709]])}<text x="480" y="712">G   GAS</text>
+    ${pipe('ss', [[430, 722], [470, 722]])}<text x="480" y="725">SS  SANITARY SEWER</text>
+    ${pipe('gw', [[430, 735], [470, 735]])}<text x="480" y="738">GW  GREASE WASTE TO GI</text>
+    ${gasDrop(450, 748)}<text x="480" y="751">GAS DROP W/ SHUTOFF, TYP.</text>
+    ${lightFix(450, 761)}<text x="480" y="764">LIGHT FIXTURE, TYP.</text>
   </g>
 
   ${notesColumn(996, 200, 'PLUMBING KEYNOTES', [
@@ -596,11 +633,23 @@ function candidateB() {
     'SS   SANITARY SEWER TO CITY',
     'W    DOMESTIC WATER FROM CITY',
     'G    GAS SERVICE FROM CITY',
+    'RPZ  BACKFLOW PREVENTER, RPZ',
+    'HB   HOSE BIBB, FREEZEPROOF',
+    'CO   CLEANOUT',
+    'VTR  VENT THROUGH ROOF',
   ])}
   <g font-family="${F}" font-size="9" fill="#8a2727">
-    <text x="996" y="480" font-weight="bold">ALL KITCHEN WASTE THROUGH</text>
-    <text x="996" y="494" font-weight="bold">GREASE INTERCEPTOR, TYP.</text>
+    <text x="996" y="536" font-weight="bold">ALL KITCHEN WASTE THROUGH</text>
+    <text x="996" y="550" font-weight="bold">GREASE INTERCEPTOR, TYP.</text>
   </g>
+  ${notesColumn(60, 648, 'GENERAL NOTES', [
+    'WATER: TYPE L COPPER. GAS: SCH 40 BLACK STEEL, THREADED.',
+    'WASTE AND VENT: PVC DWV SCH 40, BELOW SLAB AND IN WALLS.',
+    'SLOPE WASTE 1/4" PER FT TO 2-1/2", 1/8" PER FT AT 3" AND UP.',
+    'CLEANOUTS AT EACH UPSTREAM END, EACH TURN, 100 FT MAX APART.',
+    'EVERY FIXTURE TRAPPED AND VENTED. VENTS THROUGH ROOF AT VTR.',
+    'RESTROOM WASTE DIRECT TO SEWER. KITCHEN AND BAR WASTE VIA GI.',
+  ])}
 
   ${titleBlock({ sheet: 'P-101', sheetName: 'PLUMBING PLAN', project: 'MAIN ST RESTAURANT', scale: '1/8" = 1&#39;-0"', date: '07/31/26' })}`;
 }
@@ -658,25 +707,101 @@ function lessonDetailSheet() {
   ])}
   ${titleBlock({ sheet: 'P-401', sheetName: 'ENLARGED PLANS', project: 'MAIN ST RESTAURANT', scale: 'AS NOTED', date: '07/31/26' })}`;
 }
+// The schedule carries the engineer's fixture units (public occupancy, IPC Appendix E and
+// Table 709.1), so the plumbing course can show where the pipe sizes came from.
 const LESSON_SCHEDULE = [
-  ['WC-1', 'WATER CLOSET, FLOOR MTD, FLUSH VALVE', '1"', '-', '4"', '2"'],
-  ['U-1', 'URINAL, WALL HUNG, FLUSH VALVE', '3/4"', '-', '2"', '1-1/2"'],
-  ['L-1', 'LAVATORY, COUNTER MTD', '1/2"', '1/2"', '1-1/2"', '1-1/4"'],
-  ['HS-1', 'HAND SINK, WALL HUNG', '1/2"', '1/2"', '1-1/2"', '1-1/4"'],
-  ['3CS-1', '3-COMPARTMENT SINK', '3/4"', '3/4"', '2"', '1-1/2"'],
-  ['MS-1', 'MOP SINK, FLOOR MTD', '3/4"', '3/4"', '3"', '2"'],
-  ['FD-1', 'FLOOR DRAIN W/ TRAP PRIMER', '1/2"', '-', '3"', '2"'],
-  ['FS-1', 'FLOOR SINK, 1/2 GRATE', '-', '-', '3"', '2"'],
+  ['WC-1', 'WATER CLOSET, FLOOR MTD, FLUSH VALVE', '1"', '-', '4"', '2"', '10', '4'],
+  ['U-1', 'URINAL, WALL HUNG, FLUSH VALVE', '3/4"', '-', '2"', '1-1/2"', '5', '4'],
+  ['L-1', 'LAVATORY, COUNTER MTD', '1/2"', '1/2"', '1-1/2"', '1-1/4"', '2', '1'],
+  ['HS-1', 'HAND SINK, WALL HUNG', '1/2"', '1/2"', '1-1/2"', '1-1/4"', '2', '1'],
+  ['3CS-1', '3-COMPARTMENT SINK', '3/4"', '3/4"', '2"', '1-1/2"', '4', '3'],
+  ['MS-1', 'MOP SINK, FLOOR MTD', '3/4"', '3/4"', '3"', '2"', '3', '2'],
+  ['FD-1', 'FLOOR DRAIN W/ TRAP PRIMER', '1/2"', '-', '3"', '2"', '-', '2'],
+  ['FS-1', 'FLOOR SINK, 1/2 GRATE', '-', '-', '3"', '2"', '-', '3'],
 ];
+// P-601: the restrooms' waste and vent riser, an elevation drawn to scale (1/4" = 1'-0",
+// 18 pt/ft) so the course can set a scale on it, prove it on the 14'-0" floor-to-roof
+// string, measure a trap arm, and trace the stack the plan shows as one circle. One of
+// each fixture (typical of both restrooms), the stack with its cleanout at the base and
+// its vent through the roof, the building drain under the slab. Straight in sheet points;
+// RISER mirrors the course's coordinates (features/course-plumbing.js).
+const RISER = {
+  floorY: 520, roofY: 268, drainY: 556, stackX: 520, vtrY: 250, ventFromY: 493,
+  wc: { x: 340, armY: 548 }, fd: { x: 448, armY: 536 }, lav: { x: 592, rimY: 469, armY: 493 },
+  co: [534, 540], prove: [[110, 268], [110, 520]], stack: [[520, 556], [520, 250]], lavArm: [[520, 493], [592, 493]],
+};
+function lessonRiserSheet() {
+  const R = RISER, fy = R.floorY, sx = R.stackX;
+  const waste = (x1, y1, x2, y2, w = 2.2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="${w}"/>`;
+  const vent = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="1.6" stroke-dasharray="7 4"/>`;
+  const lbl = (x, y, t, rot = 0, size = 8.5) => `<text x="${x}" y="${y}" font-family="${F}" font-size="${size}" fill="#444"${rot ? ` transform="rotate(${rot} ${x} ${y})"` : ''}>${t}</text>`;
+  return `${sheetFrame()}
+  <!-- the slab and the ground under it -->
+  <rect x="140" y="${fy}" width="780" height="92" fill="#f3f3f3"/>
+  <line x1="140" y1="${fy}" x2="920" y2="${fy}" stroke="${INK}" stroke-width="3"/>
+  ${lbl(926, fy + 4, 'FIN. FLOOR', 0, 9)}
+  <line x1="140" y1="${R.roofY}" x2="920" y2="${R.roofY}" stroke="${INK}" stroke-width="2"/>
+  ${lbl(926, R.roofY + 4, 'ROOF', 0, 9)}
+  ${dimV(R.prove[0][0], R.roofY, fy, "14'-0\"")}
+  <!-- the building drain, under the slab, falling to the sewer at the right -->
+  ${waste(160, R.drainY, 900, R.drainY, 2.4)}
+  <path d="M904 ${R.drainY} L892 ${R.drainY - 4} L892 ${R.drainY + 4} Z" fill="${INK}"/>
+  ${lbl(640, R.drainY + 18, '4" SS TO BUILDING SEWER · SLOPE 1/8" PER FT')}
+  <!-- the stack: waste below the highest fixture, vent above it, through the roof -->
+  ${waste(sx, R.drainY, sx, R.ventFromY, 2.4)}
+  ${vent(sx, R.ventFromY, sx, R.vtrY)}
+  <path d="M${sx - 12} ${R.roofY} L${sx + 12} ${R.roofY} L${sx + 8} ${R.roofY - 7} L${sx - 8} ${R.roofY - 7} Z" fill="#fff" stroke="${INK}" stroke-width="1.2"/>
+  <circle cx="${sx}" cy="${R.vtrY}" r="4" fill="#fff" stroke="${INK}" stroke-width="1.4"/>
+  ${keyTag(sx + 22, R.vtrY, 'VTR')}${lbl(sx + 36, R.vtrY + 3, '4" VENT THRU ROOF, 12" MIN. ABOVE')}
+  ${lbl(sx - 6, 470, '4" WASTE STACK', -90)}${lbl(sx - 6, 380, '4" VENT STACK', -90)}
+  <!-- cleanout at the base of the stack, above the floor -->
+  ${waste(sx, R.co[1], R.co[0] - 4, R.co[1], 1.6)}${cleanout(R.co[0], R.co[1])}${keyTag(R.co[0] + 20, R.co[1], 'CO')}
+  <!-- water closet: 4" arm under the slab to the base of the stack -->
+  <g fill="none" stroke="${INK}" stroke-width="1.2"><rect x="${R.wc.x - 14}" y="474" width="28" height="18"/><path d="M${R.wc.x - 10} 492 h20 v18 a10 8 0 0 1 -20 0 z"/></g>
+  ${keyTag(R.wc.x, 456, 'WC')}
+  ${waste(R.wc.x, fy, R.wc.x, R.wc.armY)}${waste(R.wc.x, R.wc.armY, sx, R.wc.armY)}${lbl(R.wc.x + 60, R.wc.armY + 12, '4"')}
+  ${dimH(R.wc.x, 598, sx, "10'-0\"")}
+  <!-- floor drain: 2" arm under the slab -->
+  <g fill="none" stroke="${INK}" stroke-width="1.2"><rect x="${R.fd.x - 8}" y="${fy - 4}" width="16" height="4"/></g>
+  ${keyTag(R.fd.x, 500, 'FD')}
+  ${waste(R.fd.x, fy, R.fd.x, R.fd.armY, 1.6)}${waste(R.fd.x, R.fd.armY, sx, R.fd.armY, 1.6)}${lbl(R.fd.x + 28, R.fd.armY - 4, '2"')}
+  ${dimH(R.fd.x, 580, sx, "4'-0\"")}
+  <!-- lavatory at 34" rim, its 1-1/2" trap arm in the wall to the stack -->
+  <g fill="none" stroke="${INK}" stroke-width="1.2"><rect x="${R.lav.x - 16}" y="${R.lav.rimY - 6}" width="32" height="8"/><line x1="${R.lav.x}" y1="${R.lav.rimY + 2}" x2="${R.lav.x}" y2="${R.lav.armY}"/></g>
+  ${keyTag(R.lav.x + 30, R.lav.rimY - 2, 'L')}
+  ${waste(R.lav.x, R.lav.armY, sx, R.lav.armY, 1.6)}${lbl(sx + 8, R.lav.armY - 5, '1-1/2" TRAP ARM', 0, 7.5)}
+  ${dimH(sx, 508, R.lav.x, "4'-0\"")}
+  <g font-family="${F}" fill="${INK}"><circle cx="152" cy="650" r="12" fill="none" stroke="${INK}" stroke-width="1.2"/><text x="152" y="654" font-size="12" text-anchor="middle" font-weight="bold">1</text>
+    <text x="172" y="648" font-size="13" font-weight="bold">WASTE &amp; VENT RISER, RESTROOMS 102 / 103, TYP.</text><text x="172" y="663" font-size="10" fill="#444">SCALE: 1/4" = 1'-0"</text></g>
+  ${notesColumn(960, 300, 'RISER NOTES', [
+    '1. ONE OF EACH FIXTURE SHOWN,',
+    '   TYPICAL OF BOTH RESTROOMS.',
+    '2. TRAP ARM LENGTHS PER IPC',
+    '   TABLE 1002.2: 1-1/2" 6\'-0" MAX,',
+    '   2" 8\'-0", 4" 16\'-0".',
+    '3. VENT TERMINAL 12" MIN. ABOVE',
+    '   THE ROOF, 10\'-0" FROM ANY',
+    '   AIR INTAKE.',
+    '4. CLEANOUT AT THE BASE OF',
+    '   EACH STACK.',
+  ])}
+  ${titleBlock({ sheet: 'P-601', sheetName: 'WASTE &amp; VENT RISER', project: 'MAIN ST RESTAURANT', scale: '1/4" = 1&#39;-0"', date: '07/31/26' })}`;
+}
 function lessonScheduleSheet() {
-  const cols = [120, 210, 560, 640, 720, 800], y0 = 150;
-  const head = ['TAG', 'FIXTURE', 'CW', 'HW', 'W', 'V'].map((t, i) => `<text x="${cols[i]}" y="${y0}" font-size="10" font-weight="bold">${t}</text>`).join('');
+  const cols = [120, 200, 500, 570, 640, 710, 790, 860], y0 = 150;
+  const head = ['TAG', 'FIXTURE', 'CW', 'HW', 'W', 'V', 'WSFU', 'DFU'].map((t, i) => `<text x="${cols[i]}" y="${y0}" font-size="10" font-weight="bold">${t}</text>`).join('');
   const rows = LESSON_SCHEDULE.map((r, j) => r.map((t, i) => `<text x="${cols[i]}" y="${y0 + 24 + j * 20}" font-size="10">${t}</text>`).join('')).join('');
   const land = `${sheetFrame()}
   <g font-family="${F}" fill="${INK}"><text x="120" y="112" font-size="15" font-weight="bold">PLUMBING FIXTURE SCHEDULE</text>
-  <line x1="112" y1="124" x2="880" y2="124" stroke="${INK}" stroke-width="1.2"/><line x1="112" y1="158" x2="880" y2="158" stroke="${INK}" stroke-width="0.8"/>${head}${rows}
-  <line x1="112" y1="${y0 + 24 + LESSON_SCHEDULE.length * 20 - 8}" x2="880" y2="${y0 + 24 + LESSON_SCHEDULE.length * 20 - 8}" stroke="${INK}" stroke-width="1.2"/></g>
-  ${notesColumn(120, 400, 'SCHEDULE NOTES', ['1. ROUGH-IN SIZES ARE MINIMUMS; SEE PLANS FOR RUN SIZES.', '2. ALL FIXTURES ADA WHERE SHOWN ON THE ARCHITECTURAL PLANS.'])}
+  <line x1="112" y1="124" x2="920" y2="124" stroke="${INK}" stroke-width="1.2"/><line x1="112" y1="158" x2="920" y2="158" stroke="${INK}" stroke-width="0.8"/>${head}${rows}
+  <line x1="112" y1="${y0 + 24 + LESSON_SCHEDULE.length * 20 - 8}" x2="920" y2="${y0 + 24 + LESSON_SCHEDULE.length * 20 - 8}" stroke="${INK}" stroke-width="1.2"/></g>
+  ${notesColumn(120, 400, 'SCHEDULE NOTES', [
+    '1. ROUGH-IN SIZES ARE MINIMUMS; SEE PLANS FOR RUN SIZES.',
+    '2. ALL FIXTURES ADA WHERE SHOWN ON THE ARCHITECTURAL PLANS.',
+    '3. WSFU AND DFU PER IPC APPENDIX E AND TABLE 709.1, PUBLIC OCCUPANCY.',
+    '4. DRAINAGE LOAD ON P-101: 47 DFU. BUILDING SEWER 4" AT 1/8" PER FT (180 DFU MAX);',
+    '   A 3" SEWER AT 1/8" PER FT WOULD CARRY 36 (TABLE 710.1(1)).',
+  ])}
   ${titleBlock({ sheet: 'P-501', sheetName: 'SCHEDULES', project: 'MAIN ST RESTAURANT', scale: 'NONE', date: '07/31/26' })}`;
   return `<rect width="${H}" height="${W}" fill="#fff"/><g transform="translate(0,${W}) rotate(-90)">${land}</g>`;   // the sheet, scanned sideways: one Rotate 90° right reads it
 }
@@ -700,7 +825,7 @@ async function render(name, body) {
 
 // Candidate A ships as the SIMPLE sample plan (scripts/build-sample-plan.js), candidate B
 // as the ADVANCED one (scripts/build-sample-plan-advanced.js).
-module.exports = { W, H, PLAN_AT, candidateA, candidateB, pageHtml, lessonDetailSheet, lessonScheduleSheet, LESSON_DETAIL };
+module.exports = { W, H, PLAN_AT, candidateA, candidateB, pageHtml, lessonDetailSheet, lessonScheduleSheet, lessonRiserSheet, LESSON_DETAIL, RISER };
 
 if (require.main === module) {
   (async () => {

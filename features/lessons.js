@@ -5,10 +5,11 @@
  * tools, and together they cover every tool in the shell. Plan of record:
  * journeys/plans/LEARN-PLAN.md.
  *
- * Every lesson runs on samples/sample-lessons.pdf, three sheets drawn for the purpose
+ * Every lesson runs on samples/sample-lessons.pdf, four sheets drawn for the purpose
  * (scripts/build-sample-lessons.js): P-101 the restaurant plumbing plan at 1/8", P-401 the
  * restrooms enlarged at 1/4" with a hand sink station detail at 1/2" that is TYP. OF 4,
- * and P-501 the fixture schedule scanned sideways. Coordinates below are PDF points:
+ * P-501 the fixture schedule scanned sideways, and P-601 the restrooms' waste and vent
+ * riser at 1/4" (the plumbing course's; no lesson runs on it). Coordinates below are PDF points:
  * P-101's drawing sits at (60 + 0.75·x, 70 + 0.75·y) of its SVG figures
  * (scripts/sample-plan-candidates.js PLAN_AT); P-401 is drawn straight in points
  * (LESSON_DETAIL there is the same table as DETAIL here).
@@ -49,7 +50,7 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
   // ----- the sheets ---------------------------------------------------------------------
-  const P101 = 0, P401 = 1, P501 = 2;
+  const P101 = 0, P401 = 1, P501 = 2, P601 = 3;
   const P = (x, y) => ({ x: 60 + 0.75 * x, y: 70 + 0.75 * y });   // a P-101 drawing point, in PDF pts
   const FD = {   // P-101's ten floor drains, by where they sit
     men: P(630, 192), women: P(766, 196), mop: P(902, 206), bar1: P(238, 542), bar2: P(340, 545),
@@ -75,7 +76,7 @@
   // ----- reading the app ----------------------------------------------------------------
   const pageAnn = (i) => { const p = S().pages && S().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
   const onPage = (i) => S().currentPage === i;
-  const isSetOpen = () => !!(S().pages && S().pages.length === 3 && S().currentProjectName === SET_NAME);
+  const isSetOpen = () => !!(S().pages && S().pages.length === 4 && S().currentProjectName === SET_NAME);
   const counterNamed = (re) => (S().counters || []).find((c) => c.lesson && re.test(c.name || '')) || (S().counters || []).find((c) => re.test(c.name || ''));
   const lineTypeNamed = (re) => (S().lineTypes || []).find((l) => l.lesson && re.test(l.name || '')) || (S().lineTypes || []).find((l) => re.test(l.name || ''));
   const marksOf = (c) => (c ? K().markCount(c.id) : 0);
@@ -206,7 +207,7 @@
   }
   const openStep = (lesson) => ({
     id: 'sheets', title: lesson.title, kind: 'do',
-    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF with more than one sheet: this is where a 120-sheet set becomes the 9 you are bidding. Keep all three and click [[Open]].' : '') + '\nThe lesson brings its own three sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
+    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF with more than one sheet: this is where a 120-sheet set becomes the 9 you are bidding. Keep all four and click [[Open]].' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own four sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
     target: ['#preparePdfDone', '#uploadPdf', '#uploadPdfSidebar'],
     check: () => { seedIfReady(lesson); return isSetOpen() && seededFor === lesson.id; },
     handsOff: true,   // fetching the sample sheets is the app's job: this step's button does it
@@ -660,11 +661,16 @@
     const lit = list.querySelector('.learn-row-next');
     if (lit && lit.scrollIntoView) lit.scrollIntoView({ block: 'nearest' });
   }
-  function openLearnMenu(nextId) {
+  // courseNext: a course (features/course-plumbing.js) handing back to the menu names the
+  // chapter to light; the menu then scrolls to the course. Undefined leaves the course's
+  // own suggestion (its first unfinished chapter).
+  function openLearnMenu(nextId, courseNext) {
     const done = lessonsDone();
     const suggested = nextId === undefined ? ((LESSONS.find((l) => !done[l.id]) || {}).id || null) : nextId;
     renderLearnList(suggested);
+    if (App.renderCourseList) App.renderCourseList(courseNext);
     App.showModal('learnModal');
+    if (courseNext !== undefined) { const rule = el('learnCourseRule'); if (rule && rule.scrollIntoView) rule.scrollIntoView({ block: 'start' }); }
     return true;
   }
 
@@ -689,4 +695,14 @@
   App.startLesson = startLesson;
   App.lessonIds = () => LESSONS.map((l) => l.id);
   App.lessonsDone = lessonsDone;
+  // What a COURSE needs to run on the lesson set (features/course-plumbing.js): the sheets'
+  // geometry, the readers, the seeding and marking helpers, the open and done steps, and
+  // the device bookkeeping a lesson does around a run. Read at call time, never captured.
+  App.lessonKit = {
+    SET_NAME, P101, P401, P501, P601, P, FD, KITCHEN_FDS, BAR, STRAY, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, GI, NOTE_SPOT, RFI_SPOT, DETAIL,
+    pageAnn, onPage, isSetOpen, counterNamed, lineTypeNamed, marksOf, scaleIs, inRect, near, modalUp, measured,
+    dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, arm, hangerRuleFor, addNote, openStep, doneStep,
+    beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); },
+    restoreDevice,
+  };
 })();

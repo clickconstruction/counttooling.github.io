@@ -28,7 +28,9 @@ test.describe('Engineered (advanced) sample plan', () => {
     await link.click();
     await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
-    expect(await page.evaluate(() => window.state.pages[0].label)).toContain('sample-plan-advanced');
+    // SHEET-TITLE: the page is labelled from its own title block, the project from the file
+    expect(await page.evaluate(() => window.state.pages[0].label)).toBe('P-101 · Plumbing Plan');
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('sample-plan-advanced');
     // a true ANSI B sheet (2026-09-14): Set Scale shows no sheet-size warning on it
     expect(await page.evaluate(() => window.App.getPageSheetAnalysis(0).isStandard)).toBe(true);
     // the sheet's text layer carries the restaurant's room names (a real PDF, not a scan)

@@ -43,6 +43,14 @@ trade, and paging past the rest wastes attention all day.
 *Useful because:* You trim the set to exactly your sheets once, and everything after — sidebar,
 warm-up, exports — stays focused and fast.
 
+**Sheets name themselves from the title block**
+*Problem:* A combined bid set lands as "bid-set.pdf, p24" thirty times over, and the estimator
+either retypes the drawing index or works all day against page numbers that mean nothing.
+*Useful because:* The app reads each sheet's number and title off its own title block ("P-101 ·
+Plumbing Plan") when the PDF carries a text layer, so the sidebar, the trim grid, the report
+headings and the legend already read like the drawing index. It only replaces its own file-name
+default: a scanned sheet keeps the file name, and a name you type always wins.
+
 **Append pages to an existing takeoff**
 *Problem:* Addenda and revised sheets arrive mid-bid, and most tools force a new project or a
 painful re-import that orphans your existing counts.

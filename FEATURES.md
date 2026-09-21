@@ -7,6 +7,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 
 - **PDF upload (multi-file, up to 50 MB)** — Start the takeoff directly on the actual plan set, with no printing, converting, or importing into a desktop tool first.
 - **Prepare PDF (keep/drop from a sheet grid, rotate pages)** — Cut a 200-sheet set down to just the sheets you're bidding before you ever start counting: tap the sheets you don't need, or Keep none and tap the ones you do.
+- **Sheets name themselves** — Each page is labelled from its own title block, "P-101 · Plumbing Plan", instead of "bid-set.pdf, p24", so the sidebar, the trim grid, the report and the legend read like the drawing index without anyone typing a name. A scan or a sheet with no title block keeps the file name, and a name you type always wins.
 - **Append pages** — Add the addendum or a late sheet to an in-progress takeoff without redoing anything.
 - **Page rotation (R)** — Fix a sideways-scanned sheet so the drawing and all your marks read right-side up.
 - **Page renaming + title truncation** — Call sheets what estimators call them ("P-201 Underground") so the sidebar is navigable at a glance.

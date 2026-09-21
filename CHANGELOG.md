@@ -13,6 +13,40 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(restore): Keep uses the device's PDF when the cloud has none, and uploads it (2026-09-20)
+
+Asked: when someone continues from a file that is on the device but not in the cloud, is the
+next step, uploading it, available, and does it still auto-sync? Walked end to end on the test
+account rather than read off the code.
+
+**What already worked.** Signed in, nothing has to be clicked: the moment a plan has a mark, the
+engine's autosave CREATES the cloud project ("Autosave: creating project in cloud"), syncs the
+marks, checks the project out to the user, and then uploads the PDF on its own
+(`uploadLocalPdfToCloudIfNeeded` on the autosave tick). Later edits autosave. Signed out, the
+header's Unsaved / Save is the door, after signing in.
+
+**What was broken.** A reload before that PDF upload lands leaves the cloud row with marks and no
+`pdf_path`, and the file only in the device backup. Keep on "Project from Last Session" then
+failed with "Failed to restore project: No PDF available for this project", over an empty canvas,
+with the PDF sitting on the device. `doRestoreLastProject` only used the backup's PDF when the
+backup's MARKS were newer than the cloud's (`useIdbBackup`), and the marks had already synced.
+
+- **The device's PDF is used when it is the only copy** (`!proj.pdf_path`, and no hash conflict),
+  whichever side has the fresher marks. The cloud's marks still win when they are newer.
+- **Then it goes up by itself.** The restore hands that copy to the engine as `state.pdfBuffer`
+  (it used to null it), so the autosave tick uploads it with no Save click, and the project
+  keeps autosaving.
+- **When the PDF is nowhere** (the reload beat the device backup's first write too), Keep hands
+  the row to `App.loadCloudProjectRow`, whose "this project has annotations but no PDF" dialog
+  asks for the file, lays the saved marks on it, and the engine uploads it. It used to be a
+  dead-end toast. `pendingRestore` is cleared before the hand-off, so no backup write is held
+  behind a hidden prompt.
+
+restore-device-pdf.spec.js (cloud-gated, two cases, storage uploads held with `page.route` so the
+cut-short upload is deterministic). Found on the way, punch row **LOAD-DEVICE-PDF**: Load
+Project's no-PDF branch has the same blind spot. Gates: the new spec, restore-last-session,
+esc-ladder and the load-project specs, `npm run check`.
+
 ## fix(restore): a last-session offer no longer lands on a plan opened meanwhile (2026-09-20)
 
 Punch row **RESTORE-LATE**, closed. The "Project from Last Session" prompt is offered when boot's

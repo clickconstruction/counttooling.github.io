@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(film): a room drag no longer misses in a full render (2026-09-20)
+
+Punch row **FILM-DRAG**, closed. Two of three full HVAC renders stopped at `boxRoom`'s wait for
+the Room Size dialog; the quick `--chapters-only` pass never did. The cause is the app's own
+gesture rule, not the script's logic: on a rect tool a press that sits still for 280 ms becomes
+hold-to-aim (app.js `AIM_PRESS_MS`), and only a move past 6 px first promotes it to a drag
+(`RECT_DRAG_MIN_PX`). A rendered frame costs 100 ms or more and the film's eased move starts
+with sub-pixel steps, so under a render the hold fired before the drag armed and the release
+placed one corner instead of closing the box.
+
+`boxRoom` (scripts/build-hero-video.js) now nudges the real mouse 8 px right after mouse-down,
+before the first frame is shot, so the drag claims the gesture at once; the drawn cursor is
+`R.cur` and does not move. Frame counts are unchanged (3,086), so the committed film and its
+chapters file stand. Three of three full renders ran clean with it. The gotcha in
+journeys/plans/LANDING-REFRESH.md now carries the cause instead of the workaround.
+
 ## feat(intake): sheets name themselves from the title block (2026-09-20)
 
 Punch row **SHEET-TITLE**, closed. A page's default label was the file name and a page number,

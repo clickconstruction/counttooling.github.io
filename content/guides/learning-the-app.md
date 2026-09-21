@@ -9,6 +9,8 @@ category: Getting started
 
 The fastest way to learn a takeoff tool is to do a takeoff. CountTooling teaches itself inside the app, on sample sheets it opens for you, so nothing you try touches a real project.
 
+![A lesson step on the sheet: three floor drains circled, the first one counted and ticked green, and the card saying that a click outside the circles does not count.](/guides/img/lesson-targets.png)
+
 ![The Learn menu: the three five-minute trade tours at the top, and the list of short lessons, one per part of the app, with a tick beside each one finished.](/guides/img/learn-menu.png)
 
 ## How a lesson works
@@ -16,8 +18,9 @@ The fastest way to learn a takeoff tool is to do a takeoff. CountTooling teaches
 Open the app with nothing loaded and click **lesson** on the empty canvas, or open [Learn](/app/?learn=1) directly. It is also under **Project Settings** → **Help** → **lessons**.
 
 - A card beside the screen says what to do, one action per line, naming each control the way it looks on screen, and lights the control it means.
+- When the work is on the sheet, the lesson **draws where**: a circle on each thing to click, a shaded boundary around anything to drag a box over. The targets are generous, and anywhere inside one counts. A click outside them does not count, and the card says so.
 - Every step **checks what you actually did**. The Scale lesson does not move on until the 12'-0" dimension really measures 12'-0".
-- Every step has a **Do it for me** button that does the same thing through the app, so you can watch a step you do not want to work out.
+- Nothing does a step for you: **Next** lights only once you have really done it. **Show me where** pulses the circle, the boundary or the button you are looking for, and a quiet **Skip this step** is there if a step is not for you.
 - **Back** goes back, the card drags out of the way by its top edge, and the × leaves whenever you like. A finished lesson is ticked on your device, and the menu lights the next one.
 
 If your own plan is open, a lesson asks before it closes it. Lessons never run on a project saved to the cloud.

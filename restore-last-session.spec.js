@@ -375,18 +375,18 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     // The tour goes on — "do it for me" through the real steps to a real mark
     // on the sample plan (each step auto-advances a beat after its check).
     const waitForStep = (id) => page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 15000 });
-    await page.click('#tourAction');   // welcome → opens the sample plan
+    await page.evaluate(() => window.App.tutorialDoStep());   // welcome → opens the sample plan
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await waitForStep('scale');
-    await page.click('#tourAction');   // scale
+    await page.evaluate(() => window.App.tutorialDoStep());   // scale
     await waitForStep('measure');
-    await page.click('#tourAction');   // prove it
+    await page.evaluate(() => window.App.tutorialDoStep());   // prove it
     await waitForStep('trade');
-    await page.click('#tourAction');   // trade
+    await page.evaluate(() => window.App.tutorialDoStep());   // trade
     await waitForStep('counter');
-    await page.click('#tourAction');   // the receptacle counter
+    await page.evaluate(() => window.App.tutorialDoStep());   // the receptacle counter
     await waitForStep('place');
-    await page.click('#tourAction');   // places the receptacles
+    await page.evaluate(() => window.App.tutorialDoStep());   // places the receptacles
     await page.waitForFunction(() => {
       const a = window.App.getActiveAnnotations(window.state.pages[0]);
       return Object.values((a && a.counterMarkers) || {}).some((arr) => arr && arr.length);

@@ -13,6 +13,46 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the reader does every step, inside targets drawn on the sheet (2026-09-21)
+
+The owner, after a morning with Learn: "Instead of being able to click through it, I would like
+circles on the page, or boundaries, where a user has to do those actions within those boundaries.
+The boundaries could be quite gracious, and they also clarify where the user should make those
+actions." Mocked first, then built for all sixteen walkthroughs (the thirteen lessons and the
+three trade tours).
+
+- **Targets on the sheet.** A step that works on the plan declares `zones` in the sheet's own
+  points: a **circle** on each thing to click, a shaded **boundary** around anything to drag a box
+  over (with the thing it must wrap dotted inside). They are drawn over the plan in `#tourZones`
+  (an SVG that never takes the pointer, redrawn every frame from the sheet canvas's own box, so it
+  rides pan, zoom and resize with no hook into either), numbered, and turn green with a tick as
+  each is satisfied.
+- **The check counts only what is inside.** `markZones` gives each mark to its NEAREST circle, so
+  close fixtures never both light from one click; `boxZone` wants a box that holds the inner
+  rectangle and stays inside the outer one; `pathZones` wants a corner in each circle in order and
+  ticks them while the trace is still in progress. Measure steps keep their true test, the
+  reading, with circles on the two tick marks. A miss is named on the card in plain words ("A
+  mark outside the circles does not count. Press Ctrl+Z…", "That box misses part of what it should
+  wrap…", "That drop is on another end…") and nothing is ever deleted for the reader.
+- **Gracious by construction.** A circle is a foot or two of plan and never under 26 px on screen
+  (`zoneR`: the radius that counts is the one drawn). On entering a step whose targets would draw
+  small or off screen, the sheet zooms to them once (`focusOnZones`, never past 3x, never under
+  the fit): the plumbing tour's water closets are 30 pt apart and now arrive at 292%.
+- **The card no longer does steps.** "Do it for me" is gone. **Show me where** pulses the target
+  or the lit control (and turns to the target's sheet). **Next** is disabled until the step is
+  really done; a quiet **Skip this step** link keeps anyone from being stuck and logs
+  `tour_step { skipped: true }`. The one exception is a step nobody can do by hand, `handsOff`
+  (fetching the sample sheets): its button still does it. Each step's `action.run` survives as a
+  spec and screenshot seam, `App.tutorialDoStep()`, with `App.tutorialStepInfo()` and
+  `App.tutorialZoneScreen()` beside it.
+- **The card keeps off the targets**: it takes the first viewport corner that covers none of them
+  (it sat on circle 1 of the prove-the-scale step), and while targets show the spotlight's dim
+  drops to a veil so the drawing under a boundary stays readable. Its buttons are two rows now.
+- Specs: by REAL clicks, a click outside a circle does not advance and says why while one well
+  off-centre inside does; a half box is refused and a wrapping one passes; a trace ticks its
+  circles corner by corner; the plumbing tour's circled water closets and its typical-floor
+  boundary (tutorial.spec.js, lessons.spec.js: 35 tests with restore-last-session).
+
 ## feat(learn): Learn, thirteen short lessons for every part of the app (2026-09-21)
 
 LEARN-LESSONS and LEARN-FLIP, phases 3 to 5 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). The

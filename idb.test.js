@@ -185,3 +185,19 @@ test('zoom rungs: key shape, per-page get, per-doc + global-byte eviction (oldes
   assert.strictEqual(d1.length, 0);   // oldest evicted to fit the budget
   assert.strictEqual(d3.length, 1);
 });
+
+test('idbClearCachesKeepTakeoffBackups: the PDF cache goes, the takeoff backups stay', async () => {
+  await idb.pdfCachePut('p1', fakeBlob(100), 'h1');
+  await idb.idbTakeoffBackupPut('local', { counters: [{ id: 'c1' }] }, fakeBlob(50), 'h2', 1000, 'Unsaved takeoff', null);
+  await idb.idbTakeoffBackupPut('local-held', { counters: [] }, fakeBlob(60), 'h3', 900, 'Held', null);
+  assert.strictEqual(await idb.idbClearCachesKeepTakeoffBackups(), true);
+  assert.strictEqual(await idb.pdfCacheGet('p1', 'h1'), null);
+  const kept = await idb.idbTakeoffBackupGetRaw('local');
+  assert.strictEqual(kept.projectName, 'Unsaved takeoff');
+  assert.strictEqual(kept.pdfBlob.size, 50);
+  assert.strictEqual((await idb.idbTakeoffBackupGetRaw('local-held')).projectName, 'Held');
+  // and the backup store still takes writes afterwards (its meta rows were kept with it)
+  const again = await idb.idbTakeoffBackupPut('local', { counters: [] }, fakeBlob(70), 'h4', 2000, 'Next', null);
+  assert.strictEqual(again.ok, true);
+});
+

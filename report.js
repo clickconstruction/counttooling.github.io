@@ -473,6 +473,11 @@
       (ds.flexRows || []).forEach(r => {
         html += '<tr><td>Flex, ' + escapeHtml(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFtR(r.totalFt) + '</td></tr>';
       });
+      // D26: the grease-duct extras, by the piece and the square foot.
+      if (ds.grease) {
+        html += '<tr><td>Grease duct cleanouts</td><td></td><td>' + ds.grease.cleanouts.total + '</td><td></td><td></td></tr>';
+        html += '<tr><td>Grease duct listed wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.grease.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
+      }
       if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + Math.round(ds.linerSqFt).toLocaleString() + ' sq ft</td></tr>';
       if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
       html += '<tr><td>Seam &amp; waste (+' + ds.seamWastePct + '%)</td><td></td><td></td><td></td><td>' + fmtLbR(ds.seamWasteLb) + '</td></tr>';

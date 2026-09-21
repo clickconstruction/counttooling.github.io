@@ -1919,3 +1919,20 @@ test('a grease run tallies on its own row; its items carry the material; the ove
   assert.strictEqual(roll.fittings.rows[0].gauge, 16);
   close(roll.fittings.rows[0].lbEach, 5 * (Math.PI * 18 / 12) * 2.5, 1e-9);
 });
+
+// --- D26. Grease-duct extras: cleanouts by the piece, listed wrap by the square foot
+
+test('greaseDuctExtras: null without a grease run; cleanouts at bends and per 12 ft of horizontal run; wrap by surface', () => {
+  const r18 = dm.makeRoundSize(18);
+  const gal = dm.makeDuctRun({ id: 'g', vertices: [{ x: 0, y: 0 }, { x: 30, y: 0 }], segments: [{ startVertexIdx: 0, size: r18 }] });
+  assert.strictEqual(dm.greaseDuctExtras([gal], [{ runId: 'g', type: 'elbow90' }]), null);
+  // an L of 10 ft + 26 ft (units = feet), one elbow, a 9 ft riser
+  const grease = dm.makeDuctRun({ id: 'h', material: 'black-steel', vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 26 }], segments: [{ startVertexIdx: 0, size: r18 }], verticalFt: [{ vertexIdx: 2, ft: 9 }] });
+  const x = dm.greaseDuctExtras([gal, grease], [{ runId: 'h', type: 'elbow90' }, { runId: 'g', type: 'elbow90' }, { runId: 'h', type: 'tap' }, { runId: 'h', type: 'elbow45', suppressed: true }]);
+  assert.strictEqual(x.runs, 1);
+  close(x.lengthFt, 45, 1e-9);
+  close(x.horizontalFt, 36, 1e-9);
+  assert.deepStrictEqual(x.cleanouts, { atBends: 1, alongRuns: 3, total: 4 });   // the elbow; floor(36 / 12)
+  close(x.wrapSqFt, 45 * Math.PI * 18 / 12, 1e-9);                             // the riser is duct surface too
+  assert.strictEqual(dm.DUCT_GREASE.cleanoutIntervalFt, 12);
+});

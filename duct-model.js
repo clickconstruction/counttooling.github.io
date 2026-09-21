@@ -247,6 +247,14 @@ const DUCT_MATERIALS = {
   stainless: { label: 'Welded stainless (grease)', short: 'welded stainless', gauge: 18, lbPerSqFt: 2.0 },
 };
 const DUCT_MATERIAL_IDS = Object.keys(DUCT_MATERIALS);
+// DATA TABLE — what a grease run carries besides its metal (D26). Cleanouts:
+// NFPA 96 7.4 wants an access opening at every change of direction and, on
+// horizontal duct, at intervals not exceeding 12 ft. The listed wrap (the
+// enclosure that stands in for 18" of clearance, NFPA 96 4.3 / IMC 506.3.11)
+// is priced by the square foot of duct surface, straight duct only; fittings
+// are wrapped by the piece in the field and bid that way.
+// Rulebook: content/rules/hvac/grease-duct.md.
+const DUCT_GREASE = { cleanoutIntervalFt: 12 };
 /** A run's material id: 'galvanized' unless it carries a known other one. */
 function ductMaterialOf(run) {
   const m = run && run.material;
@@ -257,6 +265,33 @@ function isGreaseMaterial(material) { return !!material && material !== 'galvani
 /** The gauge a size takes: the material's fixed gauge, else the SMACNA pick. */
 function selectGaugeFor(pressureClass, size, material) {
   return isGreaseMaterial(material) ? DUCT_MATERIALS[material].gauge : selectGauge(pressureClass, size);
+}
+/**
+ * The grease-duct extras (D26): over the runs with a grease material,
+ *   cleanouts  — one per bend fitting on those runs (elbow90 / elbow45 = a
+ *                change of direction) + one per DUCT_GREASE.cleanoutIntervalFt
+ *                of horizontal straight duct (floor: a 10 ft leg needs none
+ *                between its ends, a 24 ft leg needs two)
+ *   wrapSqFt   — the straight duct's surface, LF × perimeter/12
+ * Pure: runs [{ run, distFt? }] or plain runs (distFt as in runStraightItems),
+ * fittings the page's list ({ runId, type, suppressed? }). Null when no run
+ * carries a grease material, so a galvanized takeoff shows no block.
+ */
+function greaseDuctExtras(runs, fittings, distFt) {
+  const grease = (runs || []).filter((r) => r && isGreaseMaterial(r.material));
+  if (!grease.length) return null;
+  let lengthFt = 0, horizontalFt = 0, wrapSqFt = 0;
+  grease.forEach((run) => {
+    runStraightItems(run, distFt).forEach((it) => {
+      lengthFt += it.lengthFt;
+      if (!it.vertical) horizontalFt += it.lengthFt;
+      wrapSqFt += insulationSqFt(it.size, it.lengthFt);
+    });
+  });
+  const ids = new Set(grease.map((r) => r.id));
+  const atBends = (fittings || []).filter((f) => f && !f.suppressed && ids.has(f.runId) && (f.type === 'elbow90' || f.type === 'elbow45')).reduce((n, f) => n + ductRepeatOf(f), 0);
+  const alongRuns = Math.floor(horizontalFt / DUCT_GREASE.cleanoutIntervalFt);
+  return { runs: grease.length, lengthFt, horizontalFt, wrapSqFt, cleanouts: { atBends, alongRuns, total: atBends + alongRuns } };
 }
 /** A schedule row's label: the size, plus the material when it is not galvanized. */
 function ductRowLabel(row) {
@@ -2290,6 +2325,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ductGoverningDimIn, selectGauge,
     // material (D25)
     DUCT_MATERIALS, DUCT_MATERIAL_IDS, ductMaterialOf, isGreaseMaterial, selectGaugeFor, ductRowLabel,
+    DUCT_GREASE, greaseDuctExtras,
     // weight
     ductPerimeterIn, ductWeightPerFoot, segmentPounds,
     FITTING_EQUIV_LF, fittingEquivalentLF, fittingPounds,

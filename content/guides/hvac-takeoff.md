@@ -59,7 +59,7 @@ Under **DUCT** in the sidebar, **Schedule** opens the Duct Schedule: straight du
 
 ## Bid Check before you send it
 
-A kitchen hood's grease duct is not galvanized and the gauge table must not size it: set **Material** in the Duct dialog (or on the run's right-click menu) to welded black steel or welded stainless, and the run prices on its own row at the fixed gauge the code sets (16 or 18) and that metal's sheet weight ([the grease-duct rule](/rules/hvac/grease-duct/)). A fire damper at a rated-wall penetration is a count: the **Fire Damper** type on the Quick tab.
+A kitchen hood's grease duct is not galvanized and the gauge table must not size it: set **Material** in the Duct dialog (or on the run's right-click menu) to welded black steel or welded stainless, and the run prices on its own row at the fixed gauge the code sets (16 or 18) and that metal's sheet weight ([the grease-duct rule](/rules/hvac/grease-duct/)). Under the schedule a **Grease duct** block then prices what is not metal by the pound, outside the bid weight: cleanouts by the piece, one at each change of direction and one per 12 ft of horizontal run, and the listed wrap by the square foot of duct surface. A fire damper at a rated-wall penetration is a count: the **Fire Damper** type on the Quick tab.
 
 The **Bid Check** section judges what it can on its own (every room served, systems within capacity, flex drops within the max, the scale set on every duct sheet) and lists the calls only you can make, such as *Fits the roof*, as ticks saved with the bid. Hand off with a row still open and the gate asks first; **Export anyway** remembers your answer until something changes.
 

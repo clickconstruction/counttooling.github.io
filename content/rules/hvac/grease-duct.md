@@ -22,6 +22,10 @@ values:
     value: 2.0
     unit: lb/ft²
     code: duct-model.js#DUCT_MATERIALS["stainless"].lbPerSqFt
+  - when: cleanout spacing on horizontal duct, at most
+    value: 12
+    unit: ft
+    code: duct-model.js#DUCT_GREASE.cleanoutIntervalFt
 source:
   code: IMC
   section: 506.3.1.1 Grease duct materials (NFPA 96 7.5.1 says the same)
@@ -36,4 +40,6 @@ A grease duct is a chimney for a fire. The code fixes its metal: carbon steel no
 
 ## What the app does with it
 
-A duct run has a material: galvanized by default, or welded black steel or welded stainless from the Duct dialog or the run's right-click menu. A grease run tallies on its own row of the Duct Schedule at the fixed gauge above and the sheet weight above, with its fittings priced the same way, and the per-size gauge override never touches it. The cleanouts, the listed wrap or enclosure and the welding labor are not sheet metal by the pound; they are a line of their own in the bid.
+A duct run has a material: galvanized by default, or welded black steel or welded stainless from the Duct dialog or the run's right-click menu. A grease run tallies on its own row of the Duct Schedule at the fixed gauge above and the sheet weight above, with its fittings priced the same way, and the per-size gauge override never touches it.
+
+The schedule's Grease duct block then prices what is not sheet metal by the pound, on its own lines outside the bid weight: **cleanouts** by the piece, one at each change of direction (each elbow on a grease run) and one per 12 ft of horizontal run (NFPA 96 7.4), and the **listed wrap** by the square foot of duct surface, straight duct only, since fittings are wrapped by the piece. The welding labor stays with your pricing.

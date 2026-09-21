@@ -42,7 +42,7 @@ async function walk(page) {
 const ann = (page, i) => page.evaluate((idx) => { const a = window.App.getActiveAnnotations(window.state.pages[idx]); return JSON.parse(JSON.stringify(a)); }, i);
 const countOf = (page, tag) => page.evaluate((t) => { const c = window.state.counters.find((x) => String(x.tag || '').toUpperCase() === t || new RegExp('^' + t + '( ·|$)', 'i').test(x.name)); if (!c) return -1; let n = 0; window.state.pages.forEach((p) => (p.canvases || []).forEach((cv) => { n += (((cv.annotations || {}).counterMarkers || {})[c.id] || []).length; })); return n; }, tag);
 const ductRow = (page, id) => page.evaluate((k) => { const bc = window.App.getDuctBidCheck(); const r = bc && (bc.rows || []).find((x) => x.id === k); return r ? { kind: r.kind, verdict: r.verdict, detail: r.detail } : null; }, id);
-const schedule = (page) => page.evaluate(() => { const s = window.App.computeDuctSchedule(); return { rows: s.straightRows.map((r) => [String(r.sizeKey), Math.round(r.lengthFt * 100) / 100, r.gauge, Math.round(r.lbPerFt * 100) / 100, r.material || null]), fittings: s.fittingRows.map((r) => [r.type, r.count, r.material || null]), lb: Math.round(s.bidWeightLb) }; });
+const schedule = (page) => page.evaluate(() => { const s = window.App.computeDuctSchedule(); return { rows: s.straightRows.map((r) => [String(r.sizeKey), Math.round(r.lengthFt * 100) / 100, r.gauge, Math.round(r.lbPerFt * 100) / 100, r.material || null]), fittings: s.fittingRows.map((r) => [r.type, r.count, r.material || null]), lb: Math.round(s.bidWeightLb), grease: s.grease ? { cleanouts: s.grease.cleanouts.total, atBends: s.grease.cleanouts.atBends, wrapSqFt: Math.round(s.grease.wrapSqFt * 10) / 10 } : null }; });
 const runs = (page) => page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).map((r) => ({ airside: r.airside, liner: r.linerType, material: r.material || null, sizes: r.segments.map((s) => (s.size.kind === 'round' ? s.size.d + '"ø' : s.size.w + 'x' + s.size.h)) })));
 const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), id);
 const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
@@ -118,6 +118,7 @@ const EXPECT = {
     expect(gd[1]).toBeCloseTo(10.08, 1);                                                       // 77 + 44 plan px at 0.75 pt each, 9 pt to the foot
     expect(gd[3]).toBeCloseTo(11.78, 1);                                                       // π·18/12 × 2.5 lb/ft²
     expect(s.fittings.some(([t, n, m]) => /elbow/i.test(t) && m === 'black-steel' && n >= 1)).toBe(true);
+    expect(s.grease).toEqual({ cleanouts: 1, atBends: 1, wrapSqFt: 47.5 });                     // one at the elbow, none along 10 ft; 10.08 × π·18/12
   },
   whole: async (page) => {
     const ref = await page.evaluate(() => window.App.courseHvacReference());

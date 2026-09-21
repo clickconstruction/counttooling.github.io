@@ -85,7 +85,7 @@ The HVAC course is the same restaurant's mechanical set: the plan with its tagge
 4. [The system](/app/?chapter=hvac:system): RTU-1 as a system with its capacity and pressure, and why the unit is bigger than its diffusers.
 5. [The main, sized down the hall](/app/?chapter=hvac:main): the main traced at the sizes the plan prints, why it shrinks, the diffusers hung on the runs, the fittings counted for you.
 6. [The plenum, and the pressure](/app/?chapter=hvac:plenum): a section at 1/2", the wrapped main measured, the app saying it fits, and whether the fan can push to the far diffuser.
-7. [Exhaust and make-up](/app/?chapter=hvac:exhaust): the duct that must never be galvanized, the restroom exhaust traced, make-up air and the interlock.
+7. [Exhaust, grease and the rated wall](/app/?chapter=hvac:exhaust): the grease duct traced as welded black steel and priced as such, a fire damper at each rated-wall penetration and none in the grease duct, the restroom exhaust traced, make-up air and the interlock.
 8. [The whole set](/app/?chapter=hvac:whole): finish the takeoff, compare it to the reference by size, the pounds, the schedule copied.
 9. [Check it, sign it, hand it off](/app/?chapter=hvac:bid): the duct rows of Bid Check, the ones the set already answers, the proof view, the hand-off.
 

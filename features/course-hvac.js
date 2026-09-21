@@ -59,6 +59,8 @@
     main: [904, 328, 904, 282, 560, 282, 420, 282, 300, 282, 180, 282],                                                       // 24x12 to the hall, then 20x12, 16x10, 12x10 down the dining room
     kitchen: [572, 282, 572, 440, 900, 440], back: [904, 328, 904, 506, 596, 506], bar: [260, 282, 260, 540], makeup: [904, 372, 640, 372],
     exhaust: [630, 206, 905, 206, 905, 150],
+    grease: [836, 323, 836, 400, 880, 400],                                                                                 // the hood collar, the elbow with its cleanout, the curb up to EF-1
+    fd: [572, 296, 904, 296], notRated: [904, 470, 260, 470],                                                                 // the two rated-wall penetrations; two walls that are not rated
     dining: [130, 100, 560, 470], kitchen_room: [560, 296, 940, 470], hall: [560, 252, 940, 296],
   };
   const SECTION = { prove: [140, 208, 140, 640], plenum: [180, 208, 180, 316], depth: [640, 238, 640, 286] };   // M-601, sheet points at 36 pt/ft
@@ -86,7 +88,7 @@
   const notesNear = (spot, d, pageIdx) => { const a = pageAnn(pageIdx); return a ? (a.notes || []).filter((n) => K().near(n, spot, d)) : []; };
   const ductRow = (id) => { const bc = App.getDuctBidCheck ? App.getDuctBidCheck() : null; return bc ? (bc.rows || []).find((r) => r.id === id) : null; };
   const manual = (id) => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual[id]);
-  const RE = { rtu: /\brtu\b/i, ef1: /\bef-?1\b/i, mau: /\bmau/i, ef2: /\bef-?2\b/i, stat: /thermostat/i };
+  const RE = { rtu: /\brtu\b/i, ef1: /\bef-?1\b/i, mau: /\bmau/i, ef2: /\bef-?2\b/i, stat: /thermostat/i, fd: /fire damper/i };
 
   // ----- on-sheet targets (the engine's) -----------------------------------------------------------------
   const ZR = 14;
@@ -189,8 +191,8 @@
     Object.keys(steps || {}).map(Number).sort((a, b) => a - b).forEach((i) => segments.push({ startVertexIdx: i, size: steps[i] }));
     const g = system();
     const run = typeof makeDuctRun === 'function'
-      ? makeDuctRun({ name: o.name || '', airside: o.airside || 'supply', pressureClass: '1', linerType: o.wrap ? 'wrap' : null, linerThicknessIn: o.wrap ? 2 : 0, systemGroupId: g ? g.id : null, vertices: v, segments })
-      : { id: App.uid(), name: o.name || '', airside: o.airside || 'supply', pressureClass: '1', linerType: o.wrap ? 'wrap' : null, linerThicknessIn: o.wrap ? 2 : 0, systemGroupId: g ? g.id : null, vertices: v, segments };
+      ? makeDuctRun({ name: o.name || '', airside: o.airside || 'supply', pressureClass: '1', linerType: o.wrap ? 'wrap' : null, linerThicknessIn: o.wrap ? 2 : 0, material: o.material || null, systemGroupId: g ? g.id : null, vertices: v, segments })
+      : { id: App.uid(), name: o.name || '', airside: o.airside || 'supply', pressureClass: '1', linerType: o.wrap ? 'wrap' : null, linerThicknessIn: o.wrap ? 2 : 0, material: o.material || null, systemGroupId: g ? g.id : null, vertices: v, segments };
     const a = App.ensureActiveCanvas(S().pages[M101]).annotations;
     if (!a.ductRuns) a.ductRuns = [];
     a.ductRuns.push(run);
@@ -221,6 +223,10 @@
     return moved;
   }
   const strays = () => { const devs = (App.collectDuctDevices ? App.collectDuctDevices(M101) : []).map((d) => ({ x: d.x, y: d.y })); if (!devs.length || typeof attachDuctDevices !== 'function') return 0; return attachDuctDevices(devs, ductRuns(M101)).unattached.length; };
+  // The grease run: 18" round in welded black steel, whatever else it carries.
+  const greaseRun = () => ductRuns(M101).find((r) => runSizes(r).join(' ') === '18"ø' && r.material === 'black-steel');
+  const fdCounter = () => counter(RE.fd);
+  const fdStray = () => { const c = fdCounter(); if (!c) return null; const spots = pts(G.fd); return marksOf(c, M101).find((m) => !spots.some((p) => K().near(m, p, 14))) || null; };
   function seedMain() { if (!mainDone()) traceMain(); if (!runWith(['16x10'])) layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' }); attachAll(); }
   function tick(id) { const s = S(); s.bidCheck = s.bidCheck || { manual: {} }; s.bidCheck.manual = s.bidCheck.manual || {}; if (s.bidCheck.manual[id]) return; App.pushUndoSnapshot(); s.bidCheck.manual[id] = true; s.bidCheckCollapsed = false; K().dirty(); }
   const openBidCheck = () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); };
@@ -232,10 +238,10 @@
   // plan prints at a corner starts there.
   const REF_DUCT = [
     ['24x12', () => planFeet(G.main.slice(0, 6))], ['20x12', () => planFeet(G.main.slice(4, 8))], ['16x10', () => planFeet(G.main.slice(6, 10)) + planFeet(G.kitchen)],
-    ['12x10', () => planFeet(G.main.slice(8, 12))], ['12x8', () => planFeet(G.back)], ['10x8', () => planFeet(G.bar)], ['20x16', () => planFeet(G.makeup)], ['8"ø', () => planFeet(G.exhaust)],
+    ['12x10', () => planFeet(G.main.slice(8, 12))], ['12x8', () => planFeet(G.back)], ['10x8', () => planFeet(G.bar)], ['20x16', () => planFeet(G.makeup)], ['8"ø', () => planFeet(G.exhaust)], ['18"ø', () => planFeet(G.grease)],
   ];
   const row = (tag, spots, labels) => [tag, spots, labels];   // no nested pairs in this source (the labels test)
-  const COUNTS = () => [row('SD-1', pts(G.SD1)), row('SD-2', pts(G.SD2)), row('SD-3', pts(G.SD3)), row('RG-1', pts(G.RG1)), row('EG-1', pts(G.EG1)), row('MA-1', pts(G.MA1))];
+  const COUNTS = () => [row('SD-1', pts(G.SD1)), row('SD-2', pts(G.SD2)), row('SD-3', pts(G.SD3)), row('RG-1', pts(G.RG1)), row('EG-1', pts(G.EG1)), row('MA-1', pts(G.MA1)), row('Fire Damper', pts(G.fd))];
   const scheduleFeet = () => { const out = {}; const sch = App.computeDuctSchedule ? App.computeDuctSchedule() : null; ((sch && sch.straightRows) || []).forEach((r) => { const k = String(r.sizeKey || '').replace(/×/g, 'x').replace(/Ø/g, 'ø').replace(/\s/g, ''); out[k] = (out[k] || 0) + (r.lengthFt || 0); }); return { rows: out, lb: sch ? sch.bidWeightLb : 0 }; };
   const fmtFt = (n) => (Math.round(n * 10) / 10).toFixed(1);
   const countOk = ([tag, spots]) => { const c = byTag(tag); return !!c && marksOf(c, M101).length >= spots.length && spots.every((pt) => markNear(c, pt, 100, M101)); };   // attached, a diffuser sits on its run, up to the attach reach from the printed spot
@@ -252,6 +258,8 @@
     if (!runWith(['10x8'])) layRun(G.bar, RS(10, 8), null, { name: 'Bar' });
     if (!runWith(['20x16'])) layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air' });
     if (!runWith(['8"ø'])) layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust' });
+    if (!greaseRun()) layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust' });
+    markMissing(pickUnit(RE.fd, 'Fire Damper', 'Fire Damper', '#e85447'), pts(G.fd), M101);
     attachAll();
     K().goPage(M101);
     K().dirty();
@@ -269,7 +277,7 @@
     const lines = ['Reference on the left, from the sheet\'s own geometry. Yours on the right, from the Duct Schedule.'];
     REF_DUCT.forEach(([k, ft]) => { const ref = ft(), mine = f.rows[k] || 0; const ok = mine >= ref * 0.95 && mine <= ref * 1.05; lines.push(k + ': ' + fmtFt(ref) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref * 0.95 ? ', short' : ', over: check for a doubled run')); });
     const bad = COUNTS().filter((x) => !countOk(x)).map((x) => x[0]);
-    lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: six device types, twenty-four marks.');
+    lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: seven device types, twenty-six marks.');
     lines.push('Bid weight: ' + Math.round(f.lb).toLocaleString() + ' lb, the straight duct by gauge with its fittings and seam and waste. That number, not the feet, is what a sheet-metal shop prices.');
     return lines.join('\n');
   }
@@ -468,19 +476,28 @@
     },
     // 7 --------------------------------------------------------------------------------------------
     {
-      id: 'exhaust', title: 'Chapter 7: Exhaust and make-up', short: 'the air that leaves', minutes: 8, page: M101, noun: 'chapter', set: MSET,
-      intro: 'The hood\'s grease duct, which the gauge table must not touch, the restroom exhaust traced as an exhaust run, and the make-up air that keeps the doors from slamming.',
+      id: 'exhaust', title: 'Chapter 7: Exhaust, grease and the rated wall', short: 'the air that leaves', minutes: 11, page: M101, noun: 'chapter', set: MSET,
+      intro: 'The hood\'s grease duct traced as what it is, welded black steel the gauge table must not touch, the two fire dampers where duct crosses the rated wall, the restroom exhaust as an exhaust run, and the make-up air that keeps the doors from slamming.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickTag('EG-1'), pts(G.EG1), M101); },
       steps: [
-        { id: 'grease', title: 'Which duct must not be galvanized?', kind: 'do', cardAt: 'bl',
-          body: 'Every supply and return duct on this plan is galvanized sheet at the gauge the SMACNA table gives its size. One duct on the plan cannot be.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that duct and say what it has to be made of.',
-          target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
-          check: () => notesNear(P(836, 323), 40, M101).length > 0,
-          hint: () => { const a = pageAnn(M101); if (!a || !(a.notes || []).length) return ''; return 'Not that one. Which duct carries grease and heat?'; },
-          action: { label: 'Note the hood duct for me', run: () => { K().goPage(M101); const page = S().pages[M101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = P(836, 323); if (a.notes.some((n) => K().near(n, spot, 40))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'Hood exhaust: 18"ø welded 16 ga black steel, not galvanized (NFPA 96). Price by hand.', id: App.uid(), width: 160, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
+        { id: 'grease', title: 'Which duct must not be galvanized?', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.grease), M101),
+          body: 'Every supply and return duct on this plan is galvanized sheet at the gauge the SMACNA table gives its size. One duct on the plan cannot be, and the legend draws it darker.\n1. Click [[Duct]] (or press U). Round, 18, the airside chip Exhaust, and Material: Welded black steel. [[Start Tracing]].\n2. Click the hood collar, the elbow, and the curb where it rises to EF-1. Press Enter.',
+          target: ['#ductCreateStart', '#ductCreateMaterial', '#ductCreateAirside', '#ductBtn', '#annCanvas'], check: () => !!greaseRun(),
+          hint: () => { const r = runWith(['18"ø']); if (r) return r.material === 'black-steel' ? '' : 'The run is there, but galvanized: right-click it and set its Material to Black steel'; const bs = ductRuns(M101).find((x) => x.material === 'black-steel'); return bs ? 'Black steel, but the hood duct is 18 inch round: check the size' : ''; },
+          action: { label: 'Trace it for me', run: () => { if (greaseRun()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust' }); K().dirty(); } } },
         { id: 'why', title: 'Grease duct', kind: 'read', cardAt: 'bl',
-          body: 'The hood exhaust: 18"ø, welded, 16 gauge black steel, 18 inches clear of anything that burns.\nWhy does the app\'s gauge table not apply, and what does that do to the bid?',
-          reveal: 'A grease duct is a chimney for a fire. NFPA 96 wants it liquid-tight, continuously welded, 16 gauge carbon steel or 18 gauge stainless, with cleanouts, and kept 18 inches from combustibles or wrapped in a listed enclosure. The SMACNA schedule the Duct tool carries is for galvanized supply and return duct at low pressure; it would call an 18" round at 1" 24 gauge and weigh it at half what the welded duct weighs.\nSo the grease duct is priced by hand, by the foot with its wrap and its cleanouts, and Bid Check\'s Fire dampers at rated walls row reminds you that a grease duct through a rated wall gets a listed enclosure, never a damper.',
+          body: 'The hood exhaust: 18"ø, welded, 16 gauge black steel, sloped back to the hood, a cleanout at the elbow, 18 inches clear of anything that burns.\nWhy does the gauge table not apply, and what did the Schedule just do with it?',
+          reveal: 'A grease duct is a chimney for a fire. IMC 506.3.1.1 and NFPA 96 want it liquid-tight, continuously welded, carbon steel of at least 16 gauge or stainless of at least 18, with cleanouts at every change of direction, and kept 18 inches from combustibles or wrapped in a listed enclosure. The SMACNA schedule the Duct tool carries is for galvanized duct at low pressure; it would call an 18" round at 1" 24 gauge and weigh it at half what the welded duct weighs.\nSo the run carries a material. Under DUCT the run reads welded black steel; in the Schedule it sits on its own row, 18"Ø at 16 gauge, 11.8 lb a foot, its elbow priced the same way, and the per-size gauge chip cannot touch it. What no row prices is the cleanout, the welding and the listed wrap: those are a line of their own in the bid.',
+          target: [], check: () => true },
+        { id: 'dampers', title: 'Where does a duct cross the rated wall?', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, fdCounter(), pts(G.fd), 16),
+          body: 'The keynote says the kitchen\'s hall wall is one-hour rated, and the plan dots it. IMC 607.5.1 wants a listed fire damper wherever a duct goes through it, and the plan tags each one FD.\n1. Under COUNTERS, click [[+ Add]]. On the [[Quick]] tab set Type to Fire Damper and click [[Add Counter]].\n2. Click each place a duct crosses the rated wall.',
+          target: ['#annCanvas', '#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
+          check: () => { const c = fdCounter(); return !!c && pts(G.fd).every((p) => markNear(c, p, 14, M101)) && !fdStray(); },
+          hint: () => { const c = fdCounter(); if (!c) return ''; const stray = fdStray(); if (!stray) return marksOf(c, M101).length ? 'One more: the main crosses the same wall above the kitchen door' : ''; return pts(G.notRated).some((p) => K().near(stray, p, 16)) ? 'That wall is not rated. The keynote names the one that is, and the plan dots it' : 'No duct crosses the rated wall there'; },
+          action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); const c = pickUnit(RE.fd, 'Fire Damper', 'Fire Damper', '#e85447'); const a = pageAnn(M101); if (a && a.counterMarkers[c.id]) { const spots = pts(G.fd); a.counterMarkers[c.id] = a.counterMarkers[c.id].filter((m) => spots.some((p) => K().near(m, p, 14))); } markMissing(c, pts(G.fd), M101); K().dirty(); } } },
+        { id: 'nodamper', title: 'Two dampers, not three', kind: 'read', cardAt: 'bl',
+          body: 'The kitchen branch and the main cross the rated wall, and each gets a damper. The grease duct crosses no wall here, but suppose it did.\nWhy would it still get no damper?',
+          reveal: 'Nothing goes inside a grease duct that could catch grease or close while the fire burns, so NFPA 96 forbids dampers in it of any kind. Where a grease duct passes a rated wall it gets a listed enclosure or wrap for the rating instead, and that is the wrap the keynote already calls for.\nA fire damper in the supply is a UL 555 frame with a curtain and a fusible link, an access door beside it so the link can be replaced, and a sleeve through the wall. Two of them on this plan, at the two penetrations, and the main\'s sits above the kitchen door because the header is part of the rated wall. Bid Check\'s Fire dampers row is now a count you can defend; chapter 9 ticks it.',
           target: [], check: () => true },
         { id: 'restroom', title: 'Trace the restroom exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.exhaust), M101),
           body: 'The three EG-1 grilles run to EF-2 on 8" round.\n1. Click [[Duct]] (or press U). Set the shape to round, the size to 8, the airside chip to Exhaust, and [[Start Tracing]].\n2. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
@@ -496,7 +513,7 @@
           reveal: 'The hood pulls 2,400 CFM out of a kitchen that RTU-1 feeds 800. Without make-up the room goes negative, the front door pulls hard, smoke rolls out of the hood, and the gas appliances starve for combustion air. The code requires make-up air with a commercial hood (IMC 508), tempered so the cooks are not standing in a January draft.\nThe interlock is controls: the make-up unit starts when the exhaust fan does. Bid Check\'s Controls row is where you say whose wiring that is, and the RFI is the same one the plumber and the electrician wrote about the hood.',
           target: [], check: () => true },
       ],
-      done: 'A grease duct the table cannot size, a round exhaust run with its joints, and the make-up air that balances the kitchen.\nNext: [[Learn]] → Chapter 8, the whole set.',
+      done: 'A grease run priced as the metal it is, two fire dampers where the plan wants them, a round exhaust run with its joints, and the make-up air that balances the kitchen.\nNext: [[Learn]] → Chapter 8, the whole set.',
     },
     // 8 --------------------------------------------------------------------------------------------
     {
@@ -505,7 +522,7 @@
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'The rooms with their air, every diffuser and grille, RTU-1 as a system, the main and its four branches, the restroom exhaust, the make-up duct. Do as much as you like by hand; the button lays whatever is left.\n1. Count and trace until the status line stops naming what is missing.',
+          body: 'The rooms with their air, every diffuser and grille, RTU-1 as a system, the main and its four branches, the restroom exhaust, the make-up duct, the grease duct in black steel, the two fire dampers. Do as much as you like by hand; the button lays whatever is left.\n1. Count and trace until the status line stops naming what is missing.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
@@ -529,12 +546,12 @@
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: openBidCheck } },
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           body: 'Fire dampers at rated walls, OA meets code, Curb & power coordinated, Controls and stat locations set.\nWhich of them did this set already answer?',
-          reveal: 'OA: the room air schedule\'s note says the supply CFM includes the ventilation (IMC 403), so read, and tick. Curb and power: the equipment schedule gives every unit\'s weight and electrical, but who sets the curb and who runs the power is the coordination with the GC and the electrician, and nothing on an M-sheet answers it. Fire dampers: the plan shows no rated walls; a wall the architect rates later is a damper the bid did not carry. Controls: the thermostats are drawn, the interlock is named, the wiring is nobody\'s yet.\nTick what you have read. Write an RFI for the rest.',
+          reveal: 'OA: the room air schedule\'s note says the supply CFM includes the ventilation (IMC 403), so read, and tick. Curb and power: the equipment schedule gives every unit\'s weight and electrical, but who sets the curb and who runs the power is the coordination with the GC and the electrician, and nothing on an M-sheet answers it. Fire dampers: the two you counted at the kitchen\'s rated wall in chapter 7, and none in the grease duct, so the row is a count you can defend. Controls: the thermostats are drawn, the interlock is named, the wiring is nobody\'s yet.\nTick what you have read. Write an RFI for the rest.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => true },
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
-          body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\n2. Click OA meets code.',
-          target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('duct-oa-code'),
-          action: { label: 'Tick both for me', run: () => { tick('scale-verified'); tick('duct-oa-code'); } } },
+          body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\n2. Click OA meets code.\n3. Click Fire dampers at rated walls.',
+          target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('duct-oa-code') && manual('duct-fire-dampers'),
+          action: { label: 'Tick them for me', run: () => { tick('scale-verified'); tick('duct-oa-code'); tick('duct-fire-dampers'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the SD-1 total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits. This is what you open when the GC questions the number.',
           target: ['#summaryCountDetailModal .modal-card', '#summaryList .summary-item-clickable', '#summarySectionTitle'], check: () => K().modalUp('summaryCountDetailModal'),

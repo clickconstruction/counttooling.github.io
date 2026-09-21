@@ -31,7 +31,15 @@ const DEVICES = {
   MA1: [[640, 372]],                                                                                                                               // make-up air register, 2,000 CFM
   T: [[554, 300], [566, 440]],                                                                                                                     // thermostats
   RTU1: [904, 328], EF1: [836, 323], EF2: [905, 150], MAU1: [904, 372],
+  // fire dampers: where a duct crosses the kitchen's 1-hr rated hall wall (y=296): the
+  // kitchen branch at x=572, the main above the kitchen door header at x=904
+  FD: [[572, 296], [904, 296]],
+  // walls a duct crosses that are NOT rated (the wrong answer in the course): the back
+  // run into storage, the bar branch into the bar
+  NOT_RATED: [[904, 470], [260, 470]],
 };
+// The rated wall: the kitchen's hall wall, drawn with the one-dot rating pattern.
+const RATED_WALL = { y: 296, spans: [[560, 870], [910, 940]], label: [600, 291] };
 const DUCT = {
   main: { path: [[904, 328], [904, 282], [560, 282], [180, 282]], sizes: [[904, 328, '24x12'], [560, 282, '20x12'], [420, 282, '16x10'], [300, 282, '12x10']] },
   kitchen: { path: [[572, 282], [572, 440], [900, 440]], size: '16x10' },
@@ -40,6 +48,9 @@ const DUCT = {
   makeup: { path: [[904, 372], [640, 372]], size: '20x16' },
   exhaust: { path: [[630, 206], [905, 206], [905, 150]], size: '8"ø' },
   hoodExhaust: { at: [836, 323], size: '18"ø' },
+  // the grease duct: from the hood collar, sloped back to the hood, an elbow with a cleanout,
+  // to the roof curb where it rises to EF-1
+  grease: { path: [[836, 323], [836, 400], [880, 400]], size: '18"ø', curb: [880, 400] },
   flex: [[190, 210, 190, 282], [300, 210, 300, 282], [410, 210, 410, 282], [520, 210, 520, 282], [190, 350, 190, 282], [300, 350, 300, 282], [410, 350, 410, 282], [520, 350, 520, 282],
     [200, 540, 260, 540], [330, 540, 260, 540]],
   keys: { rtu: [966, 300, 64, 56], mau: [966, 362, 64, 42], ef1: [966, 232, 64, 46], ef2: [972, 170, 44, 24] },
@@ -63,6 +74,16 @@ function ductRun(path, sizes, dashed) {
   return `<polyline points="${p}" fill="none" stroke="${INK}" stroke-width="${w + 1.6}" stroke-linejoin="miter"${dashed ? ' stroke-dasharray="8 4"' : ''}/><polyline points="${p}" fill="none" stroke="#fff" stroke-opacity="0.82" stroke-width="${w}" stroke-linejoin="miter"/>`;
 }
 const callout = (x, y, t, rot = 0) => `<text x="${x}" y="${y}" font-family="${F}" font-size="7" font-weight="bold" fill="${INK}"${rot ? ` transform="rotate(${rot} ${x} ${y})"` : ''}>${t}</text>`;
+// Welded grease duct: a solid band with a grey core, so it reads as a different metal.
+function greaseRun(path, size) {
+  const w = widthOf(size);
+  const p = path.map(([x, y]) => `${x},${y}`).join(' ');
+  return `<polyline points="${p}" fill="none" stroke="${INK}" stroke-width="${w + 1.6}" stroke-linejoin="miter"/><polyline points="${p}" fill="none" stroke="#9a9a9a" stroke-width="${w}" stroke-linejoin="miter"/>`;
+}
+// A fire damper at a duct penetration: the UL 555 box with its diagonal and the FD tag.
+const fireDamper = (x, y) => `<rect x="${x - 6}" y="${y - 6}" width="12" height="12" fill="#fff" stroke="${INK}" stroke-width="1.6"/><line x1="${x - 6}" y1="${y + 6}" x2="${x + 6}" y2="${y - 6}" stroke="${INK}" stroke-width="1.6"/>${tag(x + 9, y - 4, 'FD', 7)}`;
+// The one-dot rating pattern along a wall: a dot every 20 px on the wall line.
+const ratedWall = (y, spans) => spans.map(([a, b]) => { let out = ''; for (let x = a + 10; x < b; x += 20) out += `<circle cx="${x}" cy="${y}" r="2.2" fill="${INK}"/>`; return out; }).join('');
 const flexLine = ([x1, y1, x2, y2]) => (x1 === x2 && y1 === y2 ? '' : `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${INK}" stroke-width="1" stroke-dasharray="3 3"/>`);
 
 // ---------------- M-101 MECHANICAL PLAN ------------------------------------------------------------
@@ -79,7 +100,13 @@ function mechanicalPlan() {
   ${U.flex.map(flexLine).join('')}
   <!-- the exhaust side: restroom grilles to EF-2, the hood to EF-1 -->
   ${ductRun(U.exhaust.path, U.exhaust.size, true)}${callout(760, 218, U.exhaust.size)}
-  <circle cx="${U.hoodExhaust.at[0]}" cy="${U.hoodExhaust.at[1]}" r="9" fill="#fff" stroke="${INK}" stroke-width="1.4" stroke-dasharray="4 2"/>${callout(U.hoodExhaust.at[0] + 12, U.hoodExhaust.at[1] + 3, U.hoodExhaust.size)}
+  ${greaseRun(U.grease.path, U.grease.size)}${callout(824, 392, U.grease.size + ' GD', -90)}
+  <text x="858" y="412" font-family="${F}" font-size="5.5" fill="#444">SLOPE TO HOOD</text><text x="830" y="412" font-family="${F}" font-size="5.5" fill="#444" text-anchor="end">C.O.</text>
+  <rect x="${U.grease.curb[0] - 8}" y="${U.grease.curb[1] - 8}" width="16" height="16" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="3 2"/>
+  <circle cx="${U.hoodExhaust.at[0]}" cy="${U.hoodExhaust.at[1]}" r="9" fill="#fff" stroke="${INK}" stroke-width="1.4" stroke-dasharray="4 2"/>
+  <!-- the rated wall and its dampers -->
+  ${ratedWall(RATED_WALL.y, RATED_WALL.spans)}${sub(RATED_WALL.label[0], RATED_WALL.label[1], '1-HR RATED WALL')}
+  ${D.FD.map(([x, y]) => fireDamper(x, y)).join('')}
   <!-- devices -->
   ${D.SD1.map(([x, y]) => diffuser(x, y, 24, 'SD-1', 150)).join('')}
   ${D.SD2.map(([x, y]) => diffuser(x, y, 12, 'SD-2', 100)).join('')}
@@ -94,20 +121,29 @@ function mechanicalPlan() {
   ${roofKey(U.keys.ef1, ['EF-1 ON ROOF', '2,400 CFM', 'HOOD EXHAUST'])}
   ${roofKey(U.keys.ef2, ['EF-2', '225 CFM'])}
   <text x="400" y="458" font-family="${F}" font-size="6.5" fill="#444" text-anchor="middle">RETURN AIR VIA CEILING PLENUM TO RTU-1</text>
-  <rect x="896" y="320" width="16" height="16" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="3 2"/><line x1="912" y1="328" x2="966" y2="328" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="912" y1="372" x2="966" y2="383" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="845" y1="323" x2="966" y2="255" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="905" y1="150" x2="972" y2="182" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/>
+  <rect x="896" y="320" width="16" height="16" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="3 2"/><line x1="912" y1="328" x2="966" y2="328" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="912" y1="372" x2="966" y2="383" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="888" y1="400" x2="966" y2="278" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="905" y1="150" x2="972" y2="182" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/>
   `;
+}
+// The legend: eight rows in the space left of the title block.
+function legendM101() {
+  const rows = [
+    [`<g transform="translate(444,0)">${diffuser(0, 0, 11, '', '').replace(/<text[\s\S]*$/, '')}</g>`, 'SUPPLY DIFFUSER, TYPE AND CFM AS NOTED'],
+    [`<g transform="translate(444,0)">${grille(0, 0, 11, '').replace(/<text[\s\S]*$/, '')}</g>`, 'RETURN GRILLE, TO CEILING PLENUM'],
+    [`<g transform="translate(444,0) scale(0.85)">${exhaustGrille(0, 0, '').replace(/<text[\s\S]*$/, '')}</g>`, 'EXHAUST GRILLE'],
+    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="7"/><line x1="432" y1="0" x2="456" y2="0" stroke="#fff" stroke-width="5"/>`, 'SUPPLY DUCT, SIZE AS NOTED, 1" W.G.'],
+    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="7" stroke-dasharray="4 2"/><line x1="432" y1="0" x2="456" y2="0" stroke="#fff" stroke-width="5"/>`, 'EXHAUST DUCT'],
+    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="7"/><line x1="432" y1="0" x2="456" y2="0" stroke="#9a9a9a" stroke-width="5"/>`, 'GREASE DUCT (GD), WELDED 16 GA BLACK STEEL'],
+    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="1" stroke-dasharray="3 3"/>`, 'FLEX DUCT, 8"ø, 6\'-0" MAX'],
+    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="2.5"/>${ratedWall(0, [[432, 456]])}<g transform="translate(464,0) scale(0.8)">${fireDamper(0, 0).replace(/<text[\s\S]*$/, '')}</g>`, '1-HR RATED WALL · FD: FIRE DAMPER, UL 555'],
+  ];
+  return `<g font-family="${F}" font-size="9.5" fill="${INK}"><text x="430" y="652" font-size="12" font-weight="bold">LEGEND</text><line x1="430" y1="658" x2="700" y2="658" stroke="${INK}" stroke-width="1"/>
+    ${rows.map(([sym, text], i) => { const y = 673 + i * 13; return `<g transform="translate(0,${y})">${sym}</g><text x="482" y="${y + 3}">${text}</text>`; }).join('')}
+  </g>`;
 }
 function sheetM101() {
   return `${sheetFrame()}
   <g transform="translate(${PLAN_AT.x},${PLAN_AT.y}) scale(${PLAN_AT.k})">${mechanicalPlan()}</g>
-  <g font-family="${F}" font-size="9.5" fill="${INK}"><text x="430" y="652" font-size="12" font-weight="bold">LEGEND</text><line x1="430" y1="658" x2="660" y2="658" stroke="${INK}" stroke-width="1"/>
-    <g transform="translate(444,674)">${diffuser(0, 0, 14, '', '').replace(/<text[\s\S]*$/, '')}</g><text x="470" y="677">SUPPLY DIFFUSER, TYPE AND CFM AS NOTED</text>
-    <g transform="translate(444,690)">${grille(0, 0, 14, '').replace(/<text[\s\S]*$/, '')}</g><text x="470" y="693">RETURN GRILLE, TO CEILING PLENUM</text>
-    <g transform="translate(444,706)">${exhaustGrille(0, 0, '').replace(/<text[\s\S]*$/, '')}</g><text x="470" y="709">EXHAUST GRILLE</text>
-    <line x1="432" y1="722" x2="456" y2="722" stroke="${INK}" stroke-width="7"/><line x1="432" y1="722" x2="456" y2="722" stroke="#fff" stroke-width="5"/><text x="470" y="725">SUPPLY DUCT, SIZE AS NOTED, 1" W.G.</text>
-    <line x1="432" y1="738" x2="456" y2="738" stroke="${INK}" stroke-width="7" stroke-dasharray="4 2"/><line x1="432" y1="738" x2="456" y2="738" stroke="#fff" stroke-width="5"/><text x="470" y="741">EXHAUST DUCT</text>
-    <line x1="432" y1="754" x2="456" y2="754" stroke="${INK}" stroke-width="1" stroke-dasharray="3 3"/><text x="470" y="757">FLEX DUCT, 8"ø, 6'-0" MAX</text>
-  </g>
+  ${legendM101()}
   ${notesColumn(996, 200, 'MECHANICAL KEYNOTES', [
     'SUPPLY DUCT: GALVANIZED, SMACNA',
     '  1" W.G., 2" EXTERNAL WRAP IN THE',
@@ -117,9 +153,14 @@ function sheetM101() {
     'DIFFUSER TYPES AND CFM PER M-501.',
     'FLEX DUCT 8"ø, 6\'-0" MAX, TO EACH',
     '  DIFFUSER FROM A TAP W/ DAMPER.',
-    'HOOD EXHAUST: 18"ø WELDED 16 GA',
-    '  BLACK STEEL, 18" CLEAR OF',
-    '  COMBUSTIBLES (NFPA 96).',
+    'HOOD EXHAUST (GD): 18"ø WELDED 16 GA',
+    '  BLACK STEEL, SLOPE TO HOOD, C.O. AT',
+    '  THE ELBOW, 18" CLEAR OF COMBUSTIBLES,',
+    '  UP TO EF-1 (NFPA 96, IMC 506).',
+    'KITCHEN / HALL WALL IS 1-HR RATED:',
+    '  UL 555 FIRE DAMPER AT EACH DUCT',
+    '  PENETRATION (IMC 607.5.1). NO DAMPER',
+    '  OF ANY KIND IN THE GREASE DUCT.',
     'MAU-1 INTERLOCKED WITH EF-1.',
     'AIR BALANCE: SUPPLY 2,650 + MAKE-UP',
     '  2,000 · EXHAUST 2,400 + 225:',
@@ -227,4 +268,4 @@ function sheetM601() {
   ${titleBlock({ sheet: 'M-601', sheetName: 'SECTIONS', project: 'MAIN ST RESTAURANT', scale: '1/2" = 1&#39;-0"', date: '07/31/26' })}`;
 }
 
-module.exports = { DEVICES, DUCT, AIR, SECTION, EQUIPMENT, DIFFUSERS, ROOMS, sheetM101, sheetM501, sheetM601 };
+module.exports = { DEVICES, DUCT, AIR, SECTION, EQUIPMENT, DIFFUSERS, ROOMS, RATED_WALL, sheetM101, sheetM501, sheetM601 };

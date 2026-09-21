@@ -455,14 +455,14 @@
       html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
       ds.straightRows.forEach(r => {
         const lf = r.joints == null ? fmtFtR(r.lengthFt) : fmtFtR(r.lengthFt) + ' · ' + r.joints + (r.joints === 1 ? ' joint' : ' joints') + " @ 10'";
-        html += '<tr><td>' + escapeHtml(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+        html += '<tr><td>' + escapeHtml(typeof ductRowLabel === 'function' ? ductRowLabel(r) : r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
       });
       html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFtR(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLbR(ds.straightTotalLb) + '</strong></td></tr>';
       // D17: multiply-zone honesty (T2-11) — the placed figure beside the multiplied one.
       if (ds.repeated) html += '<tr><td>Placed (before multiply zones)</td><td></td><td>' + fmtFtR(ds.straightPlacedFt) + '</td><td></td><td>' + fmtLbR(ds.straightPlacedLb) + '</td></tr>';
       if (ds.fittingMode === 'counted') {
         ds.fittingRows.forEach(r => {
-          html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + r.sizeKey) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+          html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + (typeof ductRowLabel === 'function' ? ductRowLabel(r) : r.sizeKey)) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
         });
         html += '<tr><td><strong>Fittings total</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.fittingsCountedLb) + '</strong></td></tr>';
       } else {

@@ -856,7 +856,8 @@ function createCanvasDraw(deps) {
           }
           acc += segLen;
         }
-        chips.push({ label: formatDuctSize(span.size), midPdf, angle });
+        // D25: a grease run's chip names its metal beside the size.
+        chips.push({ label: formatDuctSize(span.size) + (typeof isGreaseMaterial === 'function' && isGreaseMaterial(run.material) ? ' · ' + DUCT_MATERIALS[run.material].short : ''), midPdf, angle });
       });
       // Chips paint after every stroke of the run so a wide next segment can
       // never cover the previous segment's tag.

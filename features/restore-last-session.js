@@ -31,7 +31,11 @@
  * safe anyway, on the held key the engine never writes) — and
  * `App.retryDeferredRestorePrompt` re-evaluates it when the tour stops
  * (features/tutorial.js) or a modal hides (app.js hideModal), with a 1 s
- * safety poll for overlays closed without hideModal. Nothing is ever restored
+ * safety poll for overlays closed without hideModal. A CLOUD offer that finds a
+ * plan already open (2026-09-20, RESTORE-LATE) is dropped instead, at the offer
+ * or at a retry: it is only a pointer, nothing is consumed, and it returns next
+ * boot; a LOCAL offer still shows, being the only way back to unsaved on-device
+ * work. Nothing is ever restored
  * without a click on Keep: boot's silent palette/page pre-apply is skipped
  * when the session already has pages, is dirty, or is running a tour.
  *
@@ -75,6 +79,19 @@
   // Returns true when the prompt is on screen, false when it was deferred.
   function openLastSessionRestorePrompt(pending) {
     if (!pending) return false;
+    // RESTORE-LATE: a CLOUD offer is dropped once a plan is open. Boot is async, so on a slow
+    // connection the user can have uploaded a plan (and be in its Save dialog) by the time the
+    // offer arrives or its blocker goes, and "reopen your last project?" then lands on top of
+    // work in progress. A cloud offer is only a pointer: the project is still in Load Project
+    // and `clickcount-last-project` is untouched, so the offer returns next boot. A LOCAL offer
+    // (unsaved on-device work) still shows: that prompt is the only way back to it, since the
+    // open plan's own backup outranks the held record at the next boot.
+    if (pending.cloudLast && App.state && App.state.pages && App.state.pages.length > 0) {
+      deferredRestore = null;
+      stopDeferredPoll();
+      try { App.pushSaveEvent('restore_prompt_dropped', 'Last-session offer dropped: a plan is already open', JSON.stringify({ projectId: promptProjectId(pending) })); } catch (_) { /* noop */ }
+      return false;
+    }
     const blocker = restorePromptBlocker();
     if (blocker) {
       deferredRestore = pending;

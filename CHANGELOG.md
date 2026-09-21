@@ -13,6 +13,24 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(boot): the boot no longer outruns the feature scripts (2026-09-21)
+
+Found chasing a CI failure on the on-sheet targets PR. app.js's async boot calls into
+features/*.js (`App.openLastSessionRestorePrompt`, `App.initViewOnlyMode`), and those scripts sit
+AFTER app.js in the shell. The boot normally loses that race, but with a warm cache and a quick
+IndexedDB read it can win, and then a reload onto a device holding a saved session threw
+"App.openLastSessionRestorePrompt is not a function": the boot died before `updateUI`, the saved
+session was never offered, and the page never went network-idle. Timing-dependent, so it showed up
+as scattered 30 s `waitForLoadState` timeouts across unrelated specs in CI (5, 13, 19 and 22 flaky
+tests on four runs this day) and, locally, in two of three reloads after a tour.
+
+`shellScriptsReady()` resolves at DOMContentLoaded, by which point every classic script has run;
+the boot awaits it before the view-link path and before the silent pre-apply. It sits BEFORE the
+pre-apply on purpose: the pre-apply-to-offer stretch must stay free of awaits so no backup write
+can interleave. Spec: restore-last-session.spec.js "BOOT RACE" serves the feature file 1.5 s late
+and expects the offer; it fails without the fix. The three whole-tour specs also got the 90 s
+budget their siblings have.
+
 ## feat(learn): the reader does every step, inside targets drawn on the sheet (2026-09-21)
 
 The owner, after a morning with Learn: "Instead of being able to click through it, I would like

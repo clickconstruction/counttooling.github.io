@@ -7853,6 +7853,9 @@
   const App = (window.App = window.App || {});
   // Flipped by init's finally once the async boot has run to completion.
   App.bootSettled = false;
+  // Resolves once every classic <script> in the shell has run (DOMContentLoaded), so the
+  // async boot below never calls into a features/*.js file that has not registered yet.
+  const shellScriptsReady = () => (document.readyState === 'loading' ? new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true })) : Promise.resolve());
   App.state = state;
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
@@ -8266,6 +8269,7 @@
         if (!App.initViewOnlyMode && document.readyState === 'loading') {
           await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
         }
+        await shellScriptsReady();   // the same boot race: features/view-only.js loads after app.js
         await App.initViewOnlyMode(viewToken);
         // Bid basis (features/bid-basis.js): PipeTooling opened this link with
         // `export=bid-basis&ref=<bid>` — open Export PDFs preset to the marked
@@ -8385,6 +8389,16 @@
     // prompt "auto-keeping" ~10 s in was this pre-apply, not a Keep). A busy
     // session still gets the offer below; restoring over it takes a click on
     // Keep.
+    // BOOT RACE (found 2026-09-21): everything below reaches into features/*.js
+    // (App.isTutorialPending, App.openLastSessionRestorePrompt), and those scripts sit
+    // AFTER app.js in the shell. This async boot normally loses the race to them, but
+    // a warm cache plus a quick IndexedDB read can finish first, and the offer then
+    // threw "App.openLastSessionRestorePrompt is not a function": the boot died before
+    // updateUI, the saved session was never offered, and in CI the page never went
+    // network-idle (the scattered 30 s waitForLoadState timeouts). Classic scripts have
+    // all run by DOMContentLoaded. The wait sits BEFORE the pre-apply on purpose: the
+    // pre-apply-to-offer stretch below must stay free of awaits (see the offer's comment).
+    await shellScriptsReady();
     const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive()) || !!(App.isTutorialPending && App.isTutorialPending());
     if (backupToApply && !bootSessionBusy) applyTakeoffBackupToState(backupToApply);
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {

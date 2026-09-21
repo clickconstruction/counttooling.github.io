@@ -437,4 +437,19 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
     expect(errors).toEqual([]);
   });
+  test('BOOT RACE: the boot outruns the feature scripts (a warm cache, a quick backup read) and the offer still arrives', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    await seedLocalBackup(page);
+    // The feature that owns the offer arrives 1.5 s late, so app.js's async boot gets to the
+    // offer first. Before 2026-09-21 that threw "App.openLastSessionRestorePrompt is not a
+    // function": no offer, no updateUI, and a page that never went network-idle in CI.
+    await page.route('**/features/restore-last-session.js', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+    await page.reload();
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    expect(await page.evaluate(() => window.App.bootSettled)).toBe(true);
+    expect(errors).toEqual([]);
+  });
 });

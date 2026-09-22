@@ -18,7 +18,7 @@ async function boot(page, errors) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.waitForFunction(() => window.state.pages.length === 2 && document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });

@@ -22,7 +22,7 @@ test.describe('Per-project Groups gate', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 

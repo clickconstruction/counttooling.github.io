@@ -15,7 +15,7 @@ const path = require('path');
 
 async function bootWithPdf(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 }
@@ -101,7 +101,7 @@ test.describe('Signed-out save signal (B11)', () => {
 
   test('Save Status panel signed-out with no backup yet keeps the old copy', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.evaluate(() => window.App.openSaveStatusModal());
     await page.waitForSelector('#saveStatusModal.visible', { timeout: 5000 });
     await expect(page.locator('#saveStatusSummaryCanvas .save-status-summary-body')).toContainText('Not signed in to cloud');

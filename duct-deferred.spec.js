@@ -46,7 +46,7 @@ test.describe('Duct deferred choices (D15)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     // 10 pt per ft — a 120×90 pt box is 12 ft × 9 ft = 108 ft² (Office 1.0 → 108 CFM).
@@ -314,7 +314,7 @@ test.describe('Duct deferred choices (D15)', () => {
     expect(markers[1].cfmOverride).toBe(300);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.waitForFunction(() => window.App.bootSettled === true);
     if (await page.evaluate(() => document.getElementById('lastSessionRestoreModal').classList.contains('visible'))) {
       await page.locator('#lastSessionRestoreDiscard').click();

@@ -19,7 +19,7 @@ test.describe('robust PDF upload', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const tusInfo = await page.evaluate(() => ({
       defined: typeof window.tus !== 'undefined',
@@ -39,7 +39,7 @@ test.describe('robust PDF upload', () => {
 
   test('pdf_upload_resume IndexedDB store round-trips (real browser)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const result = await page.evaluate(async () => {
       const fp = 'spec-fp-' + Date.now();
@@ -79,10 +79,10 @@ test.describe('robust PDF upload', () => {
 
   test('signed-out same-PDF re-upload re-applies marks (hash-verified, backup consumed)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await seedDataOnlyBackup(page);
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Data-only backup: NO boot prompt (nothing to restore the PDF from)...
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
@@ -113,10 +113,10 @@ test.describe('robust PDF upload', () => {
 
   test('a different PDF never receives the backup marks (no apply, no toast)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await seedDataOnlyBackup(page);
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
@@ -150,7 +150,7 @@ test.describe('corrupt-PDF fresh upload feedback', () => {
     });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles({
       name: 'broken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf'),
     });
@@ -180,7 +180,7 @@ test.describe('append never renames the open project', () => {
   /** Upload test-2pages.pdf into an empty session and wait for its 2 pages. */
   async function freshUploadTwoPages(page) {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
@@ -252,7 +252,7 @@ test.describe('append never renames the open project', () => {
 test.describe('cold start (Tier-3 B16)', () => {
   test('empty canvas shows the quiet hint; it hides once a plan loads', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await expect(page.locator('#canvasEmptyHint')).toBeVisible();
     await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
@@ -265,7 +265,7 @@ test.describe('cold start (Tier-3 B16)', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.evaluate(async () => {
       const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
       const file = new File([buf], 'dropped-plan.pdf', { type: 'application/pdf' });
@@ -282,7 +282,7 @@ test.describe('cold start (Tier-3 B16)', () => {
 
   test('a non-PDF drop is refused with a toast — and never navigates the app away', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     const prevented = await page.evaluate(() => {
       const file = new File(['not a pdf'], 'notes.txt', { type: 'text/plain' });
       const dt = new DataTransfer();
@@ -298,7 +298,7 @@ test.describe('cold start (Tier-3 B16)', () => {
 
   test('a drop while a dialog is open is ignored (no second intake mid-flow)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.evaluate(async () => {
       window.App.showModal('settingsModal');
       const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
@@ -318,7 +318,7 @@ test.describe('signed-out trim step (B15b)', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     // Two files, 3 pages total — over the >=3 gate.
     await page.locator('#pdfInput').setInputFiles([
       path.join(__dirname, 'test-2pages.pdf'),
@@ -338,7 +338,7 @@ test.describe('signed-out trim step (B15b)', () => {
 
   test('a 2-sheet signed-out upload still goes straight in — no modal on the small cold start', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     expect(await page.evaluate(() => window.state.pages.length)).toBe(2);

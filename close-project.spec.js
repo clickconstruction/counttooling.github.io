@@ -33,7 +33,7 @@ test.describe('Close project', () => {
     // B20 (X8): Close project asks through the app's confirm modal, not confirm().
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => typeof window.App.closeProject)).toBe('function');
     const row = page.locator('.export-dropdown-option[data-action="close-project"]');
     // no project: the menu button is the upload shortcut and the row is hidden
@@ -61,7 +61,7 @@ test.describe('Close project', () => {
 
   test('a view-link session never sees the row', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await openLocalPlan(page);
     await page.evaluate(() => { window.state.loadedViaViewLink = true; window.App.updateUI(); });
     expect(await page.locator('.export-dropdown-option[data-action="close-project"]').isVisible()).toBe(false);
@@ -72,7 +72,7 @@ test.describe('Close project', () => {
 
   test('the header [Close] shows only while viewing a project this session edited, and closes it', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await openLocalPlan(page);
     const btn = page.locator('#headerCloseProjectBtn');
     const setView = (isViewer, viewLink) => page.evaluate(([v, l]) => { window.state.currentProjectId = 'p1'; window.state.isViewer = v; window.state.loadedViaViewLink = l; window.state.checkedOutBy = undefined; window.App.updateUI(); }, [isViewer, viewLink]);
@@ -111,7 +111,7 @@ test.describe('Close project', () => {
   test('the "Project turned in." toast and the force-turn-in notice both carry Close project, and it closes', async ({ page }) => {
     const confirmClose = async () => { await expect(page.locator('#confirmModal')).toHaveClass(/visible/); await page.locator('#confirmOk').click(); };
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await openLocalPlan(page);
     // the toast: text rewritten per call, the link is a real button
     await page.evaluate(() => window.App.showTurnedInToast('Project turned in.'));

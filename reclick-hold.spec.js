@@ -32,7 +32,7 @@ test.describe('R1-RECLICK — the edit button holds after it acts', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.addInitScript(() => { try { localStorage.setItem('clickcount-ff-self-release', '1'); } catch (_) { /* private mode */ } });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     const signedIn = await page.waitForFunction(() => !!window.state?.supabaseSession?.user, null, { timeout: 8000 }).catch(() => null);
     if (!signedIn) { test.skip(true, 'Dev auth not configured or failed; set DEV_AUTH_EMAIL and DEV_AUTH_PASSWORD in config.local.js'); return; }
     await page.waitForFunction(() => window.App.bootSettled === true, null, { timeout: 20000 });

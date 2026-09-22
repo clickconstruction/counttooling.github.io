@@ -13,27 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
-## test(ci): a 90-second test budget on the starved runner (2026-09-22)
+## test(ci): the specs wait for the app's own ready signal; Playwright's quiet-network wait loses a request on a slow machine (2026-09-22)
 
-Punch row CI-NETWORKIDLE, closed, after two wrong diagnoses recorded here so they are not
-tried again. The flake: on the two-core CI runner, with two workers rendering PDFs, the boot's
-`page.waitForLoadState('networkidle')` timed out inside the 30 s test budget (on PR #161's five
-runs all 19 flaky errors and the one hard failure; the same four tests twice on PR #169; a job
-of 35 to 43 minutes). Wrong diagnosis one: the service worker's precache of about 155 files kept
-the network busy. A run with the worker blocked timed out on the same wait 27 times. Wrong
-diagnosis two: `npx serve` was slow. A bare Node static server booted eight pages at once no
-faster (6.5 s either way; 2.3 s alone). The runner is not busy on the network, it is starved,
-and a boot that takes 2 s on a laptop takes the whole 30 s there; the two specs that never
-flaked, tutorial and lessons, are exactly the two that set a 90 s budget. So the budget is the
-fix: `timeout` 90 s and `expect.timeout` 15 s on CI (30 s and 5 s locally, unchanged). A retry
-costs a whole test; a longer budget costs nothing when the test is quick, and the 162 quiet-
-network waits stay as they are (waiting on `App.bootSettled` instead settles about half a second
-sooner and was tried across all 311 boot waits; under a 4-worker local run it made ten tests
-flaky that had been clean, so it was not kept). The worker stays blocked in the base config
-(pwa.spec.js and the rulebook precache test opt back in): not the cause, but a spec should not
-install something it does not test. Measured: the full suite locally, 4 workers, 790 passed in
-14.9 minutes with zero flakes; the CI e2e job, 2 workers, MEASURE-CI (before: 39.7 to 43.5
-minutes with 2 to 4 failures).
+Punch row CI-NETWORKIDLE, closed, on the third diagnosis; the first two are recorded so they are
+not tried again. The flake: on CI the boot's `page.waitForLoadState('networkidle')` timed out
+inside the test budget (all 19 flaky errors and the one hard failure on PR #161's five runs; the
+same four tests twice on PR #169; 35 to 48 minutes a job). Wrong diagnosis one: the service
+worker's precache kept the network busy. Blocked, the same wait timed out 27 times. Wrong
+diagnosis two: the two-core runner is starved and the boot takes the whole budget. With a 90 s
+budget the same wait timed out 25 times at 90 s, and the traces of those failures show every
+request finished within seconds and the page fully loaded while the wait sat for 85 s. The cause,
+reproduced on a laptop with the CPU throttled four times: Playwright's quiet-network bookkeeping
+loses a request and never reports idle, on a fresh boot, one time in five (12 throttled boots:
+`networkidle` hung 5, mean 14.4 s; `App.bootSettled` hung 0, mean 6.0 s). Nothing in the app is
+busy; the question itself is unreliable there. So every boot wait in every spec, 311 of them,
+is now `waitForFunction(() => !window.App || window.App.bootSettled === true)`: the app page
+waits for its boot to settle (the signal tutorial.spec.js and lessons.spec.js already used and
+never flaked on), a static page (the landing, a guide) is done at load. The four specs that boot a
+view link wait for `load` instead, since that boot awaits the email gate before it settles. The
+test budget is 90 s on CI, 30 s locally, so a boot that takes 6 s throttled has room on a worse
+runner, and the service worker stays blocked (pwa.spec.js and the rulebook precache test opt
+back in): a spec should not install what it does not test. Measured: the full suite locally, 4
+workers, 787 of 790 passed in 14.5 minutes and the three that failed under that load pass alone; the CI e2e job, 2 workers, MEASURE-CI (before: 39.7 to 47.8 minutes
+with 2 to 4 failures).
 
 ## fix(lines): the run stays painted while it is edited (2026-09-18)
 

@@ -38,7 +38,7 @@ test.describe('Duct tool (D2, live since D5)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -267,7 +267,7 @@ test.describe('Duct tool (D2, live since D5)', () => {
     // and assert the draw path paints the run again.
     const payload = await page.evaluate(() => JSON.parse(JSON.stringify({ canvases: window.state.pages[0].canvases })));
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await page.evaluate((p) => {

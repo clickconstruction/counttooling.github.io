@@ -29,7 +29,7 @@ async function stubAuth(page, otpCalls) {
 
 async function openAuthModal(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.evaluate(() => window.App.showModal('authModal'));
   await expect(page.locator('#authModal')).toHaveClass(/visible/);
 }
@@ -206,7 +206,7 @@ test.describe('App.sendSignInMagicLink (shared with user-admin)', () => {
     const otpCalls = [];
     await stubAuth(page, otpCalls);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const result = await page.evaluate(() => window.App.sendSignInMagicLink(' Wendi@ClickPlumbingSupply.com '));
     expect(result).toBe(null);
@@ -225,7 +225,7 @@ test.describe('App.sendSignInMagicLink (shared with user-admin)', () => {
       body: JSON.stringify({ code: 429, msg: 'Email rate limit exceeded' }),
     }));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const result = await page.evaluate(() => window.App.sendSignInMagicLink('wendi@clickplumbingsupply.com'));
     expect(result).toContain('Email limit reached');

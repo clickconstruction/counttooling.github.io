@@ -11,7 +11,7 @@ const path = require('path');
 test.describe('window.App registry pilot - Prepare PDF modal', () => {
   test('registry wired: App.openPreparePdfModal is a function', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => typeof window.App?.openPreparePdfModal)).toBe('function');
     expect(await page.evaluate(() => typeof window.closePreparePdfModal)).toBe('function');
   });
@@ -26,7 +26,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     page.on('pageerror', (err) => { if (!isBenignRenderRace(err.message)) errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Load a 2-page PDF (the default upload renders pages directly).
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
@@ -92,7 +92,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     page.on('pageerror', (err) => { if (!isBenignRenderRace(err.message)) errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await page.evaluate(() =>
@@ -144,7 +144,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     page.on('pageerror', (err) => { if (!isBenignRenderRace(err.message)) errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
@@ -178,7 +178,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
 
   test('append-mode commit toasts "Added N sheets to <project>" (T1-08 / J2 friction #8)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Open a 2-page project, then stage the append route the way
     // handleAppendPages does: new pages + buffer into the modal in append mode.
@@ -206,7 +206,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
 
   test('append-mode Save & Open commit also toasts "Added N sheets" (Tier-3 B2)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
@@ -240,7 +240,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
   // test-page.pdf merged in the page) so the grid cases can trim a middle sheet.
   async function openThreePageGrid(page, name) {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.evaluate(async (nm) => {
       const a = await (await fetch('/test-2pages.pdf')).arrayBuffer();
       const b = await (await fetch('/test-page.pdf')).arrayBuffer();

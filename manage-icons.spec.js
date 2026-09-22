@@ -21,7 +21,7 @@ test.describe('window.App registry pilot - Manage Icons modal', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // 1. Upload a 2-page PDF.
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
@@ -119,7 +119,7 @@ test.describe('window.App registry pilot - Manage Icons modal', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     expect(await page.locator('#advancedManageIcons').count()).toBe(0);
     expect(await page.evaluate(() => typeof window.App?.openManageIconsModal)).toBe('function');

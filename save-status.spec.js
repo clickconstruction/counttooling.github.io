@@ -20,7 +20,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // 1. Registry contract.
     const wired = await page.evaluate(() => ({
@@ -69,7 +69,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
 
   test('export envelope carries the diagnostic enrichment fields', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const env = await page.evaluate(async () => await window.App.buildSaveLogsEnvelopeWithSnapshots());
 
@@ -102,7 +102,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
 
   test('export project summary counts the real canvases[].annotations shape', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Regression: getProjectSummaryForLogs used to read `p.annotations.counts` /
     // `.lines`, which never exist in the current per-page `canvases[].annotations`
@@ -137,7 +137,7 @@ test.describe('window.App registry pilot - Save Status modal', () => {
 
   test('field errors land in the Save Status log, deduped', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // A real uncaught throw + a real unhandled rejection, twice each (dedupe).
     await page.evaluate(() => {

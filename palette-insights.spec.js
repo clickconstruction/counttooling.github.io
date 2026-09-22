@@ -51,7 +51,7 @@ test.describe('Palette insights (features/palette-insights.js)', () => {
     // @ts-ignore
     page.__errors = errors;
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   });
 
   test('registry wired; signed-out open is a toast, not a crash', async ({ page }) => {

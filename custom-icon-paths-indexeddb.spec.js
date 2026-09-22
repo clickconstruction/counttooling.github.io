@@ -15,7 +15,7 @@ test.describe('customIconPaths IndexedDB', () => {
   test('add and persist to IndexedDB', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Add custom icon via saveUserCustomIcons (exposed on window for localhost)
     await page.evaluate((data) => {
@@ -45,7 +45,7 @@ test.describe('customIconPaths IndexedDB', () => {
 
     // Reload and verify persistence
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const countAfter = await page.evaluate(() => {
       const get = window.getUserCustomIcons || (typeof getUserCustomIcons !== 'undefined' && getUserCustomIcons);
@@ -61,7 +61,7 @@ test.describe('customIconPaths IndexedDB', () => {
 
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Verify icons loaded from migration
     const count = await page.evaluate(() => {
@@ -87,7 +87,7 @@ test.describe('customIconPaths IndexedDB', () => {
   test('delete clears IndexedDB', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Add then remove
     await page.evaluate((data) => {

@@ -26,7 +26,7 @@ test.describe('Save engine smoke (signed-out local backup round-trip)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -73,7 +73,7 @@ test.describe('Save engine smoke (signed-out local backup round-trip)', () => {
     // Fresh load, still signed out: boot restores the PALETTE from the backup
     // (pages/PDF deliberately stay in the backup for the recovery flows).
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.waitForFunction(() => {
       const s = window.state;
       return !!(s && Array.isArray(s.counters) && s.counters.some((c) => c.id === 'smoke1'));

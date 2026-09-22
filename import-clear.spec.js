@@ -39,7 +39,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -119,7 +119,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     page.on('dialog', async (d) => { pageErrors.push('unexpected dialog: ' + d.message()); await d.dismiss(); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -138,7 +138,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     // 1-page plan + a 2-page export: the second entry has no page to land on.
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
@@ -167,7 +167,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
   test('matching page-count import stays quiet (no mismatch toast)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -196,7 +196,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Before any PDF loads, the body:not(.has-pdf) gate hides the section.
     await expect(page.locator('#clearPageSidebar')).toBeHidden();
@@ -234,7 +234,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -261,7 +261,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -324,7 +324,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
 
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
     await seedPage0Marker(page);

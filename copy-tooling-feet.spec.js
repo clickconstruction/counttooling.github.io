@@ -18,7 +18,7 @@ test.describe('Length tallies are always decimal feet and agree across surfaces'
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'samples', 'sample-plan.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
 
@@ -66,7 +66,7 @@ test.describe('Length tallies are always decimal feet and agree across surfaces'
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 

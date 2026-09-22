@@ -28,7 +28,7 @@ async function bootApp(page) {
   });
   page.on('pageerror', (err) => { errors.push(err.message); });
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   return errors;
 }
 

@@ -16,7 +16,7 @@ const path = require('path');
 test.describe('window.App registry pilot - PDF bundling helpers', () => {
   test('registry wired: the 5 bundling helpers are functions on App', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     const types = await page.evaluate(() => ({
       addReportPagesToPdf: typeof window.App?.addReportPagesToPdf,
       addNotesToPdf: typeof window.App?.addNotesToPdf,
@@ -39,7 +39,7 @@ test.describe('window.App registry pilot - PDF bundling helpers', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -66,7 +66,7 @@ test.describe('window.App registry pilot - PDF bundling helpers', () => {
 test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
   test('computeReportSliceBounds: a row straddling the cut lands whole on the next page', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const results = await page.evaluate(() => {
       const f = window.App.computeReportSliceBounds;
@@ -108,7 +108,7 @@ test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -166,7 +166,7 @@ test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 

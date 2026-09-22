@@ -36,7 +36,7 @@ test.describe('Turn In is not a force turn-in', () => {
     page.on('response', (r) => { if (r.status() >= 400) failedRequests.push(r.status() + ' ' + r.url().replace(/^https?:\/\/[^/]+/, '')); });
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const signedIn = await page.waitForFunction(() => !!window.state?.supabaseSession?.user, null, { timeout: 8000 }).catch(() => null);
     if (!signedIn) {

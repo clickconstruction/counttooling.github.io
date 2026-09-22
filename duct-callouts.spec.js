@@ -47,7 +47,7 @@ const unfoldAirMore = (page, which) => page.evaluate((w) => {
 // y ≈ 380..392, x 400..433 — the arm-time fallback's sheet), false = a scan.
 async function bootWithPdf(page, withText) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   const bytes = await page.evaluate(async (withText) => {
     const { PDFDocument, StandardFonts } = window.PDFLib;
     const doc = await PDFDocument.create();

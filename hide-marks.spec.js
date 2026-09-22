@@ -37,7 +37,7 @@ test.describe('Hide-marks header toggle', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // 1. Hidden before a PDF is loaded.
     await expect(page.locator('#hideMarksBtn')).toBeHidden();
@@ -148,7 +148,7 @@ test.describe('Hide-marks header toggle', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 

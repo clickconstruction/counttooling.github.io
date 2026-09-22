@@ -18,7 +18,7 @@ test.describe('Hotkey peek (hold Cmd ~1.5s)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.keyboard.down('Meta');
     // Not yet — the peek waits out the 1.5s hold.
@@ -42,7 +42,7 @@ test.describe('Hotkey peek (hold Cmd ~1.5s)', () => {
 
   test('a second key during the hold cancels the pending peek', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.keyboard.down('Meta');
     await page.waitForTimeout(200);
@@ -56,7 +56,7 @@ test.describe('Hotkey peek (hold Cmd ~1.5s)', () => {
 
   test('blur force-ends an active peek (Cmd+Tab never sends keyup)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.keyboard.down('Meta');
     await expect(page.locator('body')).toHaveClass(/hotkey-peek/, { timeout: 3000 });

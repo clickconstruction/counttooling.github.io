@@ -18,7 +18,7 @@ async function boot(page, errors) {
   // Any native dialog is a failure of the sweep: record it and dismiss.
   page.on('dialog', async (d) => { errors.push('native dialog: ' + d.type() + ' ' + d.message()); await d.dismiss().catch(() => {}); });
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(PDF);
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
   await page.evaluate(() => { window.state.pages[0].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1\'' }; window.App.updateUI(); });

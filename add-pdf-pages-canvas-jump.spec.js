@@ -13,7 +13,7 @@ test.describe('Add additional PDF pages - canvas jump fix', () => {
     const secondPdfPath = path.join(__dirname, 'test-page.pdf');
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // 1. Upload first PDF (2 pages)
     const fileInput = page.locator('#pdfInput');

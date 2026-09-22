@@ -29,7 +29,7 @@ test.describe('My Settings (features/my-settings.js)', () => {
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     expect(await page.evaluate(() => typeof window.App?.openMySettings)).toBe('function');
 
@@ -73,7 +73,7 @@ test.describe('My Settings (features/my-settings.js)', () => {
 
   test('Load from Cloud applies custom icons + Quick Key bindings (stubbed fetch)', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Stub the cloud fetch; drive the REAL #mySettingsLoadAirboard handler so
     // the apply wiring (including the previously-dead customIconPaths branch
@@ -111,7 +111,7 @@ test.describe('My Settings (features/my-settings.js)', () => {
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -141,7 +141,7 @@ test.describe('My Settings (features/my-settings.js)', () => {
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 

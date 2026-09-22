@@ -16,7 +16,7 @@ test.describe('window.App registry pilot - Quick modals', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     expect(await page.evaluate(() => typeof window.App?.populateCounterQuickCountPanel)).toBe('function');
     expect(await page.evaluate(() => typeof window.App?.updateCounterQuickCountNamePreview)).toBe('function');
@@ -46,7 +46,7 @@ test.describe('window.App registry pilot - Quick modals', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // counter.js's showCounterTab('quickcount') calls App.populateCounterQuickCountPanel
     // (registered by features/quick-modals.js) - exercise that registry-mediated
@@ -77,7 +77,7 @@ test.describe('Quick Count no-twin create', () => {
 
   async function openQuickCountWithSeed(page) {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     // Seed an existing counter on the default icon+color pairing (the stock
     // "Water Closet" shape from the dossier).
     await page.evaluate(() => {

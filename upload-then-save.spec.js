@@ -25,7 +25,7 @@ test.describe('Upload PDF then sign in then save', () => {
 
     // 1. Open app WITHOUT devAuth (user not signed in)
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // 2. Upload PDF while not signed in
     const fileInput = page.locator('#pdfInput');

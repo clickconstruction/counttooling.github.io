@@ -15,7 +15,7 @@ const path = require('path');
 
 async function seedElectrical(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.evaluate(() => {
@@ -104,7 +104,7 @@ test.describe('Rulebook precache', () => {
   test.use({ serviceWorkers: 'allow' });
   test('the machine-readable rulebook is precached: a fresh load serves it from the service worker', async ({ page, context }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     // wait for the SW to control the page, then confirm rules.json is in the precache
     await page.waitForFunction(() => navigator.serviceWorker && navigator.serviceWorker.controller, null, { timeout: 15000 }).catch(() => {});
     const cached = await page.evaluate(async () => {

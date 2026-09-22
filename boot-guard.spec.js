@@ -35,7 +35,7 @@ test.describe('Boot sanity guard', () => {
 
   test('healthy boot never shows the banner', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.waitForTimeout(2000);   // past the guard's 1.5s check
     await expect(page.locator('#globalReloadBanner')).toBeHidden();
   });

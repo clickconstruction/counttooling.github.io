@@ -26,7 +26,7 @@ test.describe('Desktop header overflow → compact mode', () => {
 
     await page.setViewportSize({ width: 780, height: 820 }); // desktop (>768px), narrow
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
 
     // Since the ⋯ overflow (features/header-more.js) tucks the 8-tool group,
@@ -68,7 +68,7 @@ test.describe('Desktop header overflow → compact mode', () => {
   test('wide desktop stays normal: no burger, right icons visible', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
     await expect(page.locator('#headerBurger')).toBeHidden();
@@ -79,7 +79,7 @@ test.describe('Desktop header overflow → compact mode', () => {
   test('resizing steps through the layers deterministically and restores', async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
     await expect(page.locator('body')).not.toHaveClass(/header-collapsed/);
     // header-more is unconditional on desktop — on even at wide widths.

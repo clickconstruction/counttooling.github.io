@@ -20,7 +20,7 @@ async function bootApp(page, errors) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 }
 
 test.describe('Copy project & save-before-load gate (features/copy-project.js)', () => {

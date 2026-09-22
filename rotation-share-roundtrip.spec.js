@@ -23,7 +23,7 @@ test.describe('Rotation share round-trip + bake-frame guard', () => {
     page.on('console', (m) => { if (m.text().includes('[bakeFrame]')) bakeWarns.push(m.text()); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Generate a /Rotate-90 PDF in-browser via the vendored PDFLib; keep the bytes.
     const pdfBytes = await page.evaluate(async () => {
@@ -116,7 +116,7 @@ test.describe('Rotation share round-trip + bake-frame guard', () => {
     page.on('console', (m) => { if (m.text().includes('[bakeFrame]')) bakeWarns.push(m.text()); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
 

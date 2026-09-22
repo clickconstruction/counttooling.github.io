@@ -21,7 +21,7 @@ test.describe('Hotkeys as data', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // COVERAGE: runner names exist for every `runner` entry, elements exist for
     // every `btnId` entry — both directions of the executable contract.

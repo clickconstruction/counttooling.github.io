@@ -21,7 +21,7 @@ test.describe('window.App registry pilot - Canvas Repair', () => {
     const pdfPath = path.join(__dirname, 'test-2pages.pdf');
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // 1. Upload a 2-page PDF.
     await page.locator('#pdfInput').setInputFiles(pdfPath);

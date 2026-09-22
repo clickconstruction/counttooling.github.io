@@ -74,7 +74,7 @@ test.describe('Keyboard Map — desktop (inline in Macros)', () => {
   test('board is inline and pre-built; See Keyboard button is retired', async ({ page }) => {
     const errors = collectErrors(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     expect(await page.evaluate(() => typeof window.App?.openKeyboardMapModal)).toBe('function');
 
@@ -127,7 +127,7 @@ test.describe('Keyboard Map — desktop (inline in Macros)', () => {
 
   test('the shortcut table still scrolls under the pinned board', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#statusBarMacros').click();
     await page.waitForSelector('#macrosModal.visible', { timeout: 5000 });
 
@@ -155,7 +155,7 @@ test.describe('Keyboard Map — mobile (behind See Keyboard)', () => {
   test('button opens the modal; Escape closes the board and leaves the list up', async ({ page }) => {
     const errors = collectErrors(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.evaluate(() => document.getElementById('statusBarMacros').click());
     await page.waitForSelector('#macrosModal.visible', { timeout: 5000 });

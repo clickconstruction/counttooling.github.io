@@ -27,7 +27,7 @@ const pageErrors = (page) => {
 
 async function gotoApp(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 }
 
 // A minimal GoTrue password-grant success. supabase-js stores the session and

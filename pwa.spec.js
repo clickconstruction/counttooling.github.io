@@ -24,6 +24,9 @@ async function waitForSW(page) {
 }
 
 test.describe('PWA', () => {
+  // The base config blocks the service worker for every spec (CI-NETWORKIDLE); this file IS
+  // the worker's test.
+  test.use({ serviceWorkers: 'allow' });
   test('manifest is linked, parseable, and has sized + maskable icons', async ({ page }) => {
     await page.goto('/app/');
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
@@ -57,7 +60,7 @@ test.describe('PWA', () => {
 
   test('service worker registers and precaches the app shell', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await waitForSW(page)).toBe(true);
     const cache = await page.evaluate(async () => {
       const names = await caches.keys();
@@ -109,10 +112,10 @@ test.describe('PWA', () => {
     // Warm the SW: load online, wait until active, reload so the page is SW-controlled
     // and the precache is populated.
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await waitForSW(page)).toBe(true);
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await expect(page.locator('.header')).toBeVisible();
 
     // Go offline and reload — the shell must come entirely from cache.

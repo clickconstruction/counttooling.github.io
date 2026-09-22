@@ -67,7 +67,7 @@ test.describe('IndexedDB Backup', () => {
     }
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
     if (!loaded) {
@@ -105,7 +105,7 @@ test.describe('IndexedDB Backup', () => {
     });
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
     if (!loaded) {
@@ -139,7 +139,7 @@ test.describe('IndexedDB Backup', () => {
     }
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
     if (!loaded) {
@@ -150,7 +150,7 @@ test.describe('IndexedDB Backup', () => {
     await page.waitForTimeout(7000);
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const lastSessionModal = page.locator('#lastSessionRestoreModal.visible');
     await expect(lastSessionModal).toBeVisible({ timeout: 10000 });
@@ -174,7 +174,7 @@ test.describe('IndexedDB Backup', () => {
     }
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
     if (!loaded) {
@@ -191,7 +191,7 @@ test.describe('IndexedDB Backup', () => {
     }
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const lastSessionModal = page.locator('#lastSessionRestoreModal.visible');
     await expect(lastSessionModal).toBeVisible({ timeout: 10000 });
@@ -224,7 +224,7 @@ test.describe('IndexedDB Backup', () => {
     }
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const loaded = await loadProjectWithPdfAndAddCounter(page);
     if (!loaded) {
@@ -241,7 +241,7 @@ test.describe('IndexedDB Backup', () => {
     }
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const lastSessionModal = page.locator('#lastSessionRestoreModal.visible');
     await expect(lastSessionModal).toBeVisible({ timeout: 10000 });

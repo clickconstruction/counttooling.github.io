@@ -24,7 +24,7 @@ test.describe('Header ⋯ More tools overflow', () => {
   test('wide header: group still tucked behind ⋯ (unconditional); priority order holds', async ({ page }) => {
     await page.setViewportSize({ width: 1700, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
 
     // Even with room to spare, the low-frequency group stays in the menu.
@@ -47,7 +47,7 @@ test.describe('Header ⋯ More tools overflow', () => {
 
     await page.setViewportSize({ width: 1000, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
 
     // More mode engaged: ⋯ visible, the group hidden, everyday tools inline.
@@ -114,7 +114,7 @@ test.describe('Header ⋯ More tools overflow', () => {
 
     await page.setViewportSize({ width: 1000, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
 
     // D21 (J5-D): D14's arrangement survives as the unstated AND the HVAC case.
@@ -158,7 +158,7 @@ test.describe('Header ⋯ More tools overflow', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });   // B9's mobile-touch.spec viewport
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await loadPdf(page);
 
     await expect(page.locator('body')).not.toHaveClass(/header-more/);

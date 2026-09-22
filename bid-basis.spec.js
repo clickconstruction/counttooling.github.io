@@ -260,7 +260,7 @@ test.describe('Bid basis export (PipeTooling handoff)', () => {
 
   test('the flag on a non-view-link boot is ignored', async ({ page }) => {
     await page.goto('/app/?export=bid-basis&ref=b409');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     expect(await page.evaluate(() => window.App.getBidBasisContext())).toBeNull();
     await expect(page.locator('#specificPagesModal')).not.toHaveClass(/visible/);
   });

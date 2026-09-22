@@ -21,7 +21,7 @@ test.describe('SEO (Tier 1)', () => {
     page.on('pageerror', (err) => errors.push(err.message));
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     expect(await content(page, 'meta[name="description"]')).toMatch(/takeoff/i);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://counttooling.com/');

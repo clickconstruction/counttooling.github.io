@@ -16,7 +16,7 @@ const path = require('path');
 
 async function bootWithScale(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
   // Set a page scale via the Scale modal preset (Line/Measure need one; harmless for poly).

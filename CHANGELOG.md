@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(ci): the specs run without the service worker, so the network goes quiet (2026-09-22)
+
+Punch row CI-NETWORKIDLE, closed. Every fresh Playwright context installed the service worker
+and precached the whole shell, about 155 files, so on a slow CI runner the network never went
+quiet inside a 30 s test: on PR #161's five runs all 19 flaky errors and the one hard failure
+were `page.waitForLoadState('networkidle')` timing out, the job took 35 to 40 minutes, and PR
+#169 hit the same four-test failure twice. The base config now blocks the worker for every spec
+(`use.serviceWorkers: 'block'`); the two that test the worker opt back in with
+`test.use({ serviceWorkers: 'allow' })`: pwa.spec.js, and the rulebook precache test in
+rules-chip.spec.js, now its own describe. The 162 `networkidle` waits stay as they are: without
+the precache they are what they claim to be. Nothing else in the suite reads the worker (the
+"mixed shell" reload test in tutorial.spec.js stubs the stylesheet through `page.route`).
+Measured: the full suite locally, 4 workers, 790 passed in 14.9 minutes with zero flakes; the CI e2e job, 2 workers,
+MEASURE-CI (before: 35.7 and 40.3 minutes on the two PR #169 runs that finished).
+
 ## feat(tour): every button, once, on a blank sheet the tour makes itself (2026-09-21)
 
 [BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the

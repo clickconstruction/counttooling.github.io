@@ -31,6 +31,14 @@ module.exports = defineConfig({
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3456',
     trace: 'on-first-retry',
+    // The service worker is BLOCKED in every spec by default (punch row CI-NETWORKIDLE,
+    // 2026-09-22). Every fresh context used to install it and precache the whole shell,
+    // about 155 files, so on a slow CI runner the network never went quiet inside a 30 s
+    // test: on PR #161's five runs all 19 flaky errors and the one hard failure were
+    // `page.waitForLoadState('networkidle')` timing out, and the job took 35 to 40
+    // minutes. The specs that test the worker itself (pwa.spec.js, the rulebook precache
+    // test in rules-chip.spec.js) opt back in with `test.use({ serviceWorkers: 'allow' })`.
+    serviceWorkers: 'block',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

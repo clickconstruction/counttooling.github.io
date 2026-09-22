@@ -47,6 +47,10 @@ findings into the Tier-2/3 queues.
 > end-to-end (mint → gate → live viewer → scale share-back → access log →
 > revoke → branded dead card: ALL VERIFIED on prod) and J13's
 > single-account lifecycle (save → auto-checkout → turn-in) verified.
+> *(Re-read 2026-09-22: finding (1), the hidden-tab save stall, is FIXED in
+> save-engine.js: its `tick()` races a plain timeout against the animation
+> frame, 0 ms when `document.hidden`, so a backgrounded tab's save settles.
+> Findings (2) and (4) are still open and unrecorded on the punch list.)*
 > Addenda in share-with-an-outsider.md / share-and-collaborate.md /
 > admin-onboards-a-team.md. New findings: (1) **hidden-tab save stall** —
 > save-engine's rAF-based `tick()` never fires in a hidden tab, stalling

@@ -78,7 +78,11 @@
       p.drawRectangle({ x: 36, y: 36, width: W - 72, height: H - 72, borderColor: grey, borderWidth: 1 });
       p.drawRectangle({ x: 900, y: 36, width: 288, height: 56, borderColor: grey, borderWidth: 1 });
       // the title block sits bottom-right, the way a real sheet's does (pdf-lib y is from the bottom)
-      p.drawText('SK-' + n + '  PRACTICE SHEET', { x: 910, y: 72, size: 12, font: bold, color: ink });
+      // laid out the way sheet-title-model.js reads a real one: the number is its own text item,
+      // the tallest in the block, with a SHEET caption above it, so the page names itself "SK-1"
+      p.drawText('SHEET', { x: 1120, y: 78, size: 7, font, color: grey });
+      p.drawText('SK-' + n, { x: 1120, y: 52, size: 18, font: bold, color: ink });
+      p.drawText('PRACTICE SHEET', { x: 910, y: 72, size: 11, font: bold, color: ink });
       p.drawText('SCALE: 1/8" = 1\'-0"    ANSI B, 17 x 11', { x: 910, y: 57, size: 9, font, color: grey });
       p.drawText('CountTooling - a blank sheet for trying every button', { x: 910, y: 45, size: 8, font, color: grey });
       if (n === 1) {
@@ -156,7 +160,7 @@
     const first = S().pages[0];
     if (settled !== first) { settled = first; settledAt = Date.now(); return false; }
     if (Date.now() - settledAt < 500) return false;
-    if (!base) base = { counters: new Set((S().counters || []).map((c) => c.id)), lineTypes: new Set((S().lineTypes || []).map((l) => l.id)), groups: new Set((S().groups || []).map((g) => g.id)) };
+    if (!base) base = { counters: new Set((S().counters || []).map((c) => c.id)), lineTypes: new Set((S().lineTypes || []).map((l) => l.id)), groups: new Set((S().groups || []).map((g) => g.id)), groupsEnabled: !!S().groupsEnabled };
     return true;
   }
 
@@ -376,7 +380,7 @@
       body: 'Move is the tool you rest in. It drags the sheet, and it drags a mark you put in the wrong place.\n1. In the header, click [[Move]] (or press M).\n2. Drag the sheet a little.\nThe mouse wheel zooms where the pointer is, and Esc from any tool brings you back here.',
       target: ['#moveBtn', '#moveBtnSidebar'],
       check: () => { const s = S(); const p = s.pan || { x: 0, y: 0 }; if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; } const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01; return s.tool === App.TOOL.NONE && moved; },
-      hint: () => (S().tool !== App.TOOL.NONE ? '' : 'Now drag the sheet'),
+      progress: () => (S().tool !== App.TOOL.NONE ? '' : 'Now drag the sheet'),
       action: { label: 'Nudge the sheet for me', run: ACT.move },
     },
     {
@@ -401,7 +405,8 @@
       target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'], page: 0,
       zones: () => K().markZones(0, cid(), [KEY], 16),
       check: () => { const c = counter(); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id) && K().allDone(K().markZones(0, c.id, [KEY], 16)); },
-      hint: () => { const c = counter(); if (!c) return 'Make a counter first (go Back one step)'; const bound = Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); return bound ? (K().allDone(K().markZones(0, c.id, [KEY], 16)) ? '' : 'Bound. Now press 1 and click inside the circle') : ''; },
+      hint: () => (counter() ? '' : 'Make a counter first (go Back one step)'),
+      progress: () => { const c = counter(); if (!c) return ''; const bound = Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); return bound ? 'Bound. Now press 1 and click inside the circle' : ''; },
       action: { label: 'Bind 1 and count it', run: ACT.quickkeys },
     },
     {
@@ -410,7 +415,7 @@
       target: ['#createLineTypeCreate', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'], page: 0,
       zones: () => K().pathZones(LINE, 16, quickPaths()),
       check: () => !!lineType() && K().allDone(K().pathZones(LINE, 16, quickPaths())),
-      hint: () => (lineType() ? 'Line type made. Now click inside the first circle, then the second' : ''),
+      progress: () => (lineType() ? 'Line type made. Now click inside the first circle, then the second' : ''),
       action: { label: 'Make Pipe and draw the line', run: ACT.linetype },
     },
     {
@@ -426,7 +431,7 @@
       target: ['#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => K().pathZones(POLY, 16, polyPaths(true)),
       check: () => K().allDone(K().pathZones(POLY, 16, polyPaths(false))),
-      hint: () => (S().drawingPolyline && K().allDone(K().pathZones(POLY, 16, polyPaths(true))) ? 'Now press Enter to finish the run' : ''),
+      progress: () => (S().drawingPolyline && K().allDone(K().pathZones(POLY, 16, polyPaths(true))) ? 'Now press Enter to finish the run' : ''),
       action: { label: 'Trace it for me', run: ACT.polyline },
     },
     {
@@ -443,7 +448,8 @@
       target: ['#dropSizesBtn', '#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: CHAIN[0].x, y: CHAIN[0].y, r: 16, done: dropAt(CHAIN[0], 16) }],
       check: () => dropAt(CHAIN[0], 16) && !!S().showDropSizes,
-      hint: () => (dropAt(CHAIN[0], 16) ? (S().showDropSizes ? '' : 'Drop set. Now click Drop sizes in the header') : (anyDrop() ? 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' : '')),
+      hint: () => (!dropAt(CHAIN[0], 16) && anyDrop() ? 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' : ''),
+      progress: () => (dropAt(CHAIN[0], 16) && !S().showDropSizes ? 'Drop set. Now click Drop sizes in the header' : ''),
       action: { label: 'Add 3 ft and show the sizes', run: ACT.drop },
     },
     {
@@ -452,7 +458,7 @@
       target: ['#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => K().pathZones(DUCT, 18, ductPaths(true)),
       check: () => K().allDone(K().pathZones(DUCT, 18, ductPaths(false))),
-      hint: () => (S().drawingDuct && K().allDone(K().pathZones(DUCT, 18, ductPaths(true))) ? 'Now press Enter to finish the run' : ''),
+      progress: () => (S().drawingDuct && K().allDone(K().pathZones(DUCT, 18, ductPaths(true))) ? 'Now press Enter to finish the run' : ''),
       action: { label: 'Trace it for me', run: ACT.duct },
     },
     {
@@ -497,7 +503,7 @@
       target: ['#ghostBtn', '#headerMoreBtn'], page: 0,
       zones: () => [box(HL_IN, HL_OUT, ghosts().length, 'Box the three marks, corner to corner'), { kind: 'circle', x: GHOST_DROP.x, y: GHOST_DROP.y, r: 50, done: ghosts().length > 0 }],
       check: () => ghosts().length > 0,
-      hint: () => (S().placingGhost ? 'Copied. Click inside the circle to drop it' : ''),
+      progress: () => (S().placingGhost ? 'Copied. Click inside the circle to drop it' : ''),
       action: { label: 'Copy and drop it for me', run: ACT.ghost },
     },
     {
@@ -514,15 +520,15 @@
       target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: NOTE_SPOT.x, y: NOTE_SPOT.y, r: 45, done: noteAt(NOTE_SPOT, 45) }],
       check: () => noteAt(NOTE_SPOT, 45) && latch('ledger', ledgerOpen()) && !ledgerOpen(),
-      hint: () => (noteAt(NOTE_SPOT, 45) ? (!seen.ledger ? 'Note placed. Now click Notes ledger in the header' : (ledgerOpen() ? 'That is the ledger. Close it with its ×' : '')) : ''),
+      progress: () => (noteAt(NOTE_SPOT, 45) ? (!seen.ledger ? 'Note placed. Now click Notes ledger in the header' : (ledgerOpen() ? 'That is the ledger. Close it with its ×' : '')) : ''),
       action: { label: 'Write one and open the ledger', run: ACT.note },
     },
     {
       id: 'toggles', title: 'Header: three ways to see the sheet', kind: 'do',
-      body: 'Three buttons that change what you see, never what you counted.\n1. Click [[Summary legend]] to take the legend off the sheet, and again to bring it back.' + MORE + '\n2. Click [[Grid overlay]]: its settings open, so click [[Apply]] for a 3 ft grid over the sheet. Click [[Grid overlay]] again to clear it.\n3. Click [[Hide marks]], the eye, to read the bare sheet, and again to show the marks.\nRight-click any of the three for its settings.',
+      body: 'Three buttons that change what you see, never what you counted. The first two may sit behind [[⋯]].\n1. Click [[Summary legend]] to take the legend off the sheet, and again to bring it back.\n2. Click [[Grid overlay]]: its settings open, so click [[Apply]] for a 3 ft grid over the sheet. Click [[Grid overlay]] again to clear it.\n3. Click [[Hide marks]], the eye, to read the bare sheet, and again to show the marks.\nRight-click any of the three for its settings.',
       target: ['#gridSettingsApply', '#legendBtn', '#gridBtn', '#hideMarksBtn', '#headerMoreBtn'],
       check: () => { const s = S(); const a = latch('legendOff', !s.showLegendOverlay) && !!s.showLegendOverlay; const b = latch('gridOn', !!s.showGridOverlay) && !s.showGridOverlay; const c = latch('marksHidden', !!s.hideMarks) && !s.hideMarks; return a && b && c; },
-      hint: () => { const s = S(); const left = []; if (!(seen.legendOff && s.showLegendOverlay)) left.push(seen.legendOff ? 'legend back on' : 'legend'); if (!(seen.gridOn && !s.showGridOverlay)) left.push(seen.gridOn ? 'grid off again' : 'grid'); if (!(seen.marksHidden && !s.hideMarks)) left.push(seen.marksHidden ? 'marks back' : 'hide marks'); return left.length && left.length < 3 ? 'Still to do: ' + left.join(', ') : ''; },
+      progress: () => { const s = S(); const left = []; if (!(seen.legendOff && s.showLegendOverlay)) left.push(seen.legendOff ? 'legend back on' : 'legend'); if (!(seen.gridOn && !s.showGridOverlay)) left.push(seen.gridOn ? 'grid off again' : 'grid'); if (!(seen.marksHidden && !s.hideMarks)) left.push(seen.marksHidden ? 'marks back' : 'hide marks'); return left.length && left.length < 3 ? 'Still to do: ' + left.join(', ') : ''; },
       action: { label: 'Press all three for me', run: ACT.toggles },
     },
     {
@@ -530,7 +536,7 @@
       body: '1. In the footer, click [[Undo]] (or press Ctrl+Z). The last thing you did comes off the sheet.\n2. Click [[Redo]] to put it back.\nThe app keeps a long undo stack, per sheet, for everything from one mark to a cleared page.',
       target: ['#undoBtn', '#redoBtn'],
       check: () => { const r = el('redoBtn'); return !!r && latch('redoLit', !r.disabled) && r.disabled; },
-      hint: () => (seen.redoLit ? 'Undone. Now click Redo' : ''),
+      progress: () => (seen.redoLit ? 'Undone. Now click Redo' : ''),
       action: { label: 'Undo and redo for me', run: ACT.undo },
     },
     {
@@ -538,7 +544,7 @@
       body: 'One sheet can carry several layers, an alternate or an addendum kept apart from the base bid, each with its own totals.\n1. In the footer, beside the layer name, click [[Add canvas]], the + button.\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\n5. Press the up or down arrow key until the footer reads Main again.\nThe layers button beside the name lists them, and the one beside it shows every layer at once.',
       target: ['#addCanvasModalCreate', '#addCanvasBtn'],
       check: () => { const p = page0(); return !!p && (p.canvases || []).length >= 2 && activeCanvasIsMain(); },
-      hint: () => { const p = page0(); return p && (p.canvases || []).length >= 2 && !activeCanvasIsMain() ? 'Layer made. Now press the up or down arrow until the footer reads Main' : ''; },
+      progress: () => { const p = page0(); return p && (p.canvases || []).length >= 2 && !activeCanvasIsMain() ? 'Layer made. Now press the up or down arrow until the footer reads Main' : ''; },
       action: { label: 'Add the layer for me', run: ACT.layers },
     },
     {
@@ -546,7 +552,7 @@
       body: 'This set has two sheets.\n1. In the footer, click › to go to SK-2 (or press the right arrow key).\n2. Click [[Rotate 90° right]] (or press R): the sheet turns, and every mark on it would turn with it.\n3. Click ‹ to come back to SK-1.\n[[Previous marked page]] and [[Next marked page]], the double arrows, skip to the sheets that carry marks, and the PAGES list in the sidebar names every sheet.',
       target: ['#nextPage', '#rotatePage', '#prevPage'],
       check: () => { const s = S(); const a = latch('page2', s.currentPage === 1); const b = latch('rotated', (s.pages || []).some((p) => (p.rotation || 0) !== 0)); return a && b && s.currentPage === 0; },
-      hint: () => { const s = S(); if (!seen.page2) return ''; if (!seen.rotated) return 'On SK-2. Now click Rotate 90° right'; return s.currentPage !== 0 ? 'Turned. Now click ‹ to come back to SK-1' : ''; },
+      progress: () => { const s = S(); if (!seen.page2) return ''; if (!seen.rotated) return 'On SK-2. Now click Rotate 90° right'; return s.currentPage !== 0 ? 'Turned. Now click ‹ to come back to SK-1' : ''; },
       action: { label: 'Go, turn and come back', run: ACT.pages },
     },
     {
@@ -556,7 +562,7 @@
       // the zoom the step started at is the app's own fit (the sheet step before it ends on ‹, which fits);
       // Fit from anywhere lands at or under it
       check: () => { const z = S().zoom || 0; if (zoomBase == null) { zoomBase = z; return false; } const inn = latch('zoomedIn', z > zoomBase + 0.05); return inn && z <= zoomBase + 0.02; },
-      hint: () => (seen.zoomedIn ? 'Zoomed in. Now click Fit' : ''),
+      progress: () => (seen.zoomedIn ? 'Zoomed in. Now click Fit' : ''),
       action: { label: 'Zoom in and fit', run: ACT.zoom },
     },
     {
@@ -564,7 +570,7 @@
       body: 'The whole screen for the sheet when you need it.\n1. Click the CountTooling logo at the top left (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.',
       target: ['#headerSidebarToggle', '#headerLogo'],
       check: () => latch('collapsed', document.body.classList.contains('sidebar-collapsed')) && !document.body.classList.contains('sidebar-collapsed'),
-      hint: () => (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the logo again' : ''),
+      progress: () => (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the logo again' : ''),
       action: { label: 'Fold and unfold it', run: ACT.sidebar },
     },
     {
@@ -572,7 +578,7 @@
       body: 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]]. Close the dialog.\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; right-click a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
       target: ['#groupModalDone', '#settingsUseGroupsBtn', '#addGroup', '#groupsSectionTitle', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => !!group(),
-      hint: () => (S().groupsEnabled ? 'Groups are on. Now + Add under GROUPS' : ''),
+      progress: () => (S().groupsEnabled ? 'Groups are on. Now + Add under GROUPS' : ''),
       action: { label: 'Turn Groups on and make one', run: ACT.groups },
     },
     {
@@ -647,9 +653,30 @@
     onStop() {
       if (snapBefore != null && snapNow() !== snapBefore && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
       snapBefore = null;
+      sweepPalette();
       syncDoor();
     },
   });
+  // The palette outlives a closed project (an Artboard rides into the next bid), so the Fixture,
+  // the Pipe, the group and the key binding the tour asked for would follow the reader onto a real
+  // sheet. When the tour stops on its own sheet, or after Close project, everything made since the
+  // sheet opened goes; the reader's own palette (the baseline) is untouched. On a plan of their own
+  // (the tour never opens over one without asking) nothing is swept.
+  function sweepPalette() {
+    const s = S();
+    if (!base || !(!(s.pages || []).length || s.currentProjectName === SHEET_NAME)) return;
+    const gone = new Set();
+    s.counters = (s.counters || []).filter((c) => base.counters.has(c.id) || (gone.add(c.id), false));
+    s.lineTypes = (s.lineTypes || []).filter((l) => base.lineTypes.has(l.id) || (gone.add(l.id), false));
+    s.groups = (s.groups || []).filter((g) => base.groups.has(g.id) || (gone.add(g.id), false));
+    Object.keys(s.numberKeyBindings || {}).forEach((k) => { const b = s.numberKeyBindings[k]; if (b && gone.has(b.id)) delete s.numberKeyBindings[k]; });
+    if (!base.groupsEnabled && s.groupsEnabled && !(s.groups || []).length) s.groupsEnabled = false;
+    if (s.activeCounterType && gone.has(s.activeCounterType)) s.activeCounterType = null;
+    if (s.activeLineTypeId && gone.has(s.activeLineTypeId)) s.activeLineTypeId = null;
+    if (s.activeGroupId && gone.has(s.activeGroupId)) s.activeGroupId = null;
+    base = null;
+    App.updateUI();
+  }
   const isDone = () => { try { return !!localStorage.getItem(DONE_KEY); } catch (_) { return false; } };
   // The empty-canvas offer goes once the tour is finished on this device.
   function syncDoor() { const w = el('canvasEmptyHintBlank'); if (w) w.style.display = isDone() ? 'none' : ''; }

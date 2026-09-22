@@ -17,7 +17,9 @@
  * step's own revealLabel, and Next is lit throughout. The plumbing course's teaching mode,
  * journeys/plans/PLUMBING-COURSE.md)
  * (hint() is the status line while a doing-step's check is failing for a reason
- * worth naming — the prove-the-scale step says what it read).
+ * worth naming — the prove-the-scale step says what it read; it renders as a miss.
+ * progress() is the same line for GUIDANCE on a step with several parts — "Bound.
+ * Now press 1 and click inside the circle" — and renders neutral, like "1 of 3 done".)
  * The overlay spotlights the target (a box-shadow cutout that never intercepts
  * the pointer, so the real control stays clickable) and the card beside it says
  * what to do; `check()` reads the REAL app state and the step advances the
@@ -893,7 +895,7 @@
     el('tourBack').style.visibility = stepIdx === 0 ? 'hidden' : '';
     const wrongPage = zones.length && step.page != null && state().currentPage !== step.page;
     const progress = zones.length > 1 ? zones.filter((z) => z.done).length + ' of ' + zones.length + ' done' : '';
-    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || (wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '') || progress || 'Waiting for you…')) : '';
+    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || (wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '') || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
     el('tourStatus').classList.toggle('tour-status-miss', step.kind === 'do' && !done && !!(step.hint && safeHint(step)));
     el('tourDots').innerHTML = STEPS.map((s, i) => '<span class="tour-dot' + (i < stepIdx ? ' past' : i === stepIdx ? ' now' : '') + '"></span>').join('');
     // spotlight + card placement: the ladder follows the reader into an open
@@ -1061,6 +1063,7 @@
   }
   function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
   function safeHint(step) { try { return step.hint() || ''; } catch (_) { return ''; } }
+  function safeProgress(step) { try { return step.progress() || ''; } catch (_) { return ''; } }
   // A dialog the last step opened (the proof breakdown, the Duct Schedule) must
   // not sit over the next step's control: the ladder only lights a target INSIDE
   // an open dialog, so a stray one leaves the step dark (seen 2026-09-21: the

@@ -532,6 +532,7 @@ test.describe('Every button, on a blank sheet', () => {
     await ready(page);
     expect(await page.locator('#canvasEmptyHintTourBlank').isVisible()).toBe(true);
     const snapBefore = await page.evaluate(() => !!(window.state.lineTypeSettings && window.state.lineTypeSettings.snapToHorizontalVertical));
+    const paletteBefore = await page.evaluate(() => [window.state.counters.length, window.state.lineTypes.length, (window.state.groups || []).length, !!window.state.groupsEnabled]);
     await page.click('#canvasEmptyHintTourBlank');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['blank', 'welcome']);
     expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 36');
@@ -542,6 +543,8 @@ test.describe('Every button, on a blank sheet', () => {
       // two blank ANSI B sheets, made in the browser, through the normal intake
       expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.App.getPageSheetAnalysis(0).isStandard])).toEqual([2, 'blank-sheet', true]);
       expect(await page.evaluate(() => window.state.trade)).toBe(null);   // no trade is stamped
+      // the sheets name themselves off the title block the tour drew, so the card's "SK-2" is the sidebar's
+      expect(await page.evaluate(() => window.state.pages.map((p) => p.label))).toEqual(['SK-1', 'SK-2']);
     });
     await walk(page, 'scale', async () => { expect(await page.evaluate(() => window.state.pages[0].scale.pixelsPerUnit)).toBe(9); });
     await walk(page, 'measure', async () => { expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"'); });
@@ -599,6 +602,9 @@ test.describe('Every button, on a blank sheet', () => {
     expect(await page.evaluate(() => [document.getElementById('canvasEmptyHintBlank').style.display, document.getElementById('canvasEmptyHintTour').style.display])).toEqual(['none', '']);
     // Snap to 45° is the device's: put back
     expect(await page.evaluate(() => !!(window.state.lineTypeSettings && window.state.lineTypeSettings.snapToHorizontalVertical))).toBe(snapBefore);
+    // the Fixture, the Pipe, Area A and the key binding do not follow the reader onto their next bid
+    expect(await page.evaluate(() => [window.state.counters.length, window.state.lineTypes.length, (window.state.groups || []).length, !!window.state.groupsEnabled])).toEqual(paletteBefore);
+    expect(await page.evaluate(() => Object.keys(window.state.numberKeyBindings || {}).length)).toBe(0);
     expect(errors).toEqual([]);
   });
 

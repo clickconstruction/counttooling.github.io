@@ -33,14 +33,17 @@ this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); al
   done only once pressed and pressed back (a latch); a dialog step holds until read. No trade
   is stamped (Fixture, Pipe, Area A), so Duct sits behind ⋯ on a plumbing device and Polyline
   on an HVAC one, exactly as on a real bid. The palette baseline is taken when the sheet opens,
-  because an Artboard's counters ride into every new project. Snap to 45° is the device's and
-  goes back on stop.
+  because an Artboard's counters ride into every new project, and the same baseline is the sweep on
+  stop: the Fixture, the Pipe, Area A and the key binding never follow the reader onto a real bid.
+  Snap to 45° is the device's and goes back on stop. The sheets name themselves SK-1 and SK-2 off the
+  title block, the way a real set does.
 - **Doors**: the empty canvas ("or press every button once on a blank sheet", hidden once the
   tour is done on this device: `clickcount-tour-done-blank`), Learn → Every button, Project
   Settings → Help → every button, `/app/?tour=blank`.
 - **Engine** (features/tutorial.js): `?tour=<id>` resolves when the link fires against every
-  registered tour; a registered tour may carry `onStart()`; the card's step number no longer
-  wraps under a long row of dots.
+  registered tour; a registered tour may carry `onStart()`; a step may carry `progress()`, the
+  neutral status line for guidance on a step with several parts (`hint()` stays red for misses);
+  the card's step number no longer wraps under a long row of dots.
 - Spec: [tutorial.spec.js](tutorial.spec.js) walks all 36 steps through the seam and asserts the
   real state after each; the doors; the reset over a teaching set; snap restored.
 

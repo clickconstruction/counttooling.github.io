@@ -115,7 +115,17 @@ What the audit says about the three surfaces that existed:
    it and leaves with Next). Snap to 45° is a device setting and goes back on stop.
 5. **The palette baseline is taken when the sheet opens.** An Artboard's counters ride into
    every new project, so "make a counter" means one that was not there at open, never
-   "counters exist".
+   "counters exist". The same baseline is the sweep: the palette outlives Close project, so
+   when the tour stops on its own sheet (or after the close) the Fixture, the Pipe, Area A
+   and the key binding go, and the reader's own palette is exactly as it was (found in the
+   review pass: the tour's counters sat in the sidebar after the last step).
+6. **Guidance is not a miss.** A step with several parts says where the reader is ("Bound.
+   Now press 1 and click inside the circle") through the engine's new `progress()`, which
+   renders in the neutral status colour; `hint()` stays for the real misses (a mark outside
+   the circles, a wrong reading) and stays red.
+7. **The sheet names itself.** The title block is laid out the way sheet-title-model.js reads
+   a real one (the number its own, tallest text item under a SHEET caption), so the sidebar
+   reads SK-1 and SK-2, the names the card uses.
 
 ## The route
 
@@ -167,6 +177,8 @@ tutorial.spec.js walks all 36 that way, asserting the real state after each.
   another file registers is reachable; `?tour=1` still means electrical.
 - A registered tour may carry `onStart()` (the blank tour resets its latches and reads the
   snap setting there) beside the `onStop(finished)` the lessons already had.
+- A step may carry `progress()`: the status line for guidance on a step with several parts,
+  neutral, beside `hint()` for misses, which renders red.
 - The card's step number stays on one line and the dots squeeze on a long tour (36 dots
   used to wrap the "1 / 36" onto three lines).
 

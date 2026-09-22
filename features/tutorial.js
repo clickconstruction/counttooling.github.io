@@ -514,7 +514,10 @@
     plumbing: { steps: PLUMBING_STEPS, doneKey: 'clickcount-tour-done-plumbing', linkId: 'canvasEmptyHintTourPlumbing' },
     hvac: { steps: HVAC_STEPS, doneKey: 'clickcount-tour-done-hvac', linkId: 'canvasEmptyHintTourHvac' },
   };
-  const tourFromParam = (v) => (v === 'plumbing' ? 'plumbing' : v === 'hvac' ? 'hvac' : (v === '1' || v === 'electrical') ? 'electrical' : null);
+  // Resolved when the link fires, not when this file loads, so a tour another file
+  // registers (features/tour-blank.js) is reachable by ?tour=<id> too; a lesson's
+  // 'lesson:<id>' has its own ?lesson= door.
+  const tourFromParam = (v) => (v === '1' ? 'electrical' : (v && TOURS[v] && !String(v).includes(':') ? v : null));
 
   // --- "do it for me" actions (the same entry points a click uses) --------------------
   // The two sample plans go through the app's own intake, exactly like a dropped
@@ -1099,6 +1102,8 @@
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
     if (!zoneFrame) zoneFrame = requestAnimationFrame(zoneLoop);
+    const def = TOURS[tourId];
+    if (def.onStart) { try { def.onStart(); } catch (_) { /* a tour's own bookkeeping never breaks the start */ } }
     App.logUserEvent && App.logUserEvent('tour_step', null, { tour: tourId, step: 'start', index: 0 });
     render();
     return true;
@@ -1185,7 +1190,7 @@
   // load (after the app has booted its state).
   // `pending` covers the 600 ms between load and start: the restore offer reads it
   // (features/restore-last-session.js) and waits, as it does for a running tour.
-  try { const id = tourFromParam(new URLSearchParams(location.search).get('tour')); if (id) { pending = true; setTimeout(() => { pending = false; startTutorial(id); }, 600); } } catch (_) { pending = false; }
+  try { const raw = new URLSearchParams(location.search).get('tour'); if (raw) { pending = true; setTimeout(() => { pending = false; const id = tourFromParam(raw); if (id) startTutorial(id); }, 600); } } catch (_) { pending = false; }
 
   // Lessons (features/lessons.js) are tours too: they register their steps here and
   // drive the same engine. A registered tour has no empty-canvas link and no done key

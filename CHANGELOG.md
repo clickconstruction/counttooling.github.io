@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tour): every button, once, on a blank sheet the tour makes itself (2026-09-21)
+
+[BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the
+three trade tours: no plan, no trade, no numbers to get right, and every control in the header,
+on the sheet, in the footer and in the sidebar pressed once, 36 steps in about fifteen minutes.
+It came out of an audit of what the tours, the lessons and the courses actually press (the table
+in the plan file, generated from the code): twelve header and footer controls had never been
+pressed by any step (Move, Ghost, Grid overlay, Drop sizes, Save status, Export project, Close
+this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); all are now.
+
+- **The sheet is made in the browser** ([features/tour-blank.js](features/tour-blank.js)): two
+  ANSI B pages from the vendored pdf-lib, a border, a title block that says 1/8" = 1'-0", and on
+  SK-1 one 20'-0" dimension to prove the scale on, fed to `#pdfInput` like a dropped file so the
+  intake, the sheet-size analysis and the local backup run for real. Project `blank-sheet`;
+  features/lessons.js treats it as a teaching set (reset without asking), and the tour resets the
+  teaching sets the same way; the reader's own plan goes through Close project, which asks.
+- **A step is one button.** Sheet work sits in the engine's circles and boundaries; a toggle is
+  done only once pressed and pressed back (a latch); a dialog step holds until read. No trade
+  is stamped (Fixture, Pipe, Area A), so Duct sits behind ⋯ on a plumbing device and Polyline
+  on an HVAC one, exactly as on a real bid. The palette baseline is taken when the sheet opens,
+  because an Artboard's counters ride into every new project. Snap to 45° is the device's and
+  goes back on stop.
+- **Doors**: the empty canvas ("or press every button once on a blank sheet", hidden once the
+  tour is done on this device: `clickcount-tour-done-blank`), Learn → Every button, Project
+  Settings → Help → every button, `/app/?tour=blank`.
+- **Engine** (features/tutorial.js): `?tour=<id>` resolves when the link fires against every
+  registered tour; a registered tour may carry `onStart()`; the card's step number no longer
+  wraps under a long row of dots.
+- Spec: [tutorial.spec.js](tutorial.spec.js) walks all 36 steps through the seam and asserts the
+  real state after each; the doors; the reset over a teaching set; snap restored.
+
 ## feat(duct): the grease duct's cleanouts and listed wrap are priced on their own lines (2026-09-21)
 
 The line the grease-duct reveal used to hand to the bid is now on the Duct Schedule. When any run

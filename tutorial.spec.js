@@ -504,3 +504,123 @@ test.describe('Interactive walkthrough', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// The fourth tour (features/tour-blank.js): every button, on a blank sheet the tour makes
+// itself. Its do-it-for-me path walks all 36 steps on real state, each one's own check
+// satisfied through the same App.* door a click uses; its doors start it; finishing sets
+// only its own key and hides only its own link; Snap to 45° goes back the way it was.
+test.describe('Every button, on a blank sheet', () => {
+  const walk = async (page, id, assertion) => {
+    await waitForStep(page, id);
+    const info = await page.evaluate(() => window.App.tutorialStepInfo());
+    if (info.kind === 'do' && !info.done) await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction(() => window.App.tutorialStepInfo().done, null, { timeout: 8000 });
+    if (assertion) await assertion();
+    // a doing step advances a beat after it is done; a reading or holding step waits for Next
+    await page.waitForFunction((want) => window.App.tutorialStepId() !== want, id, { timeout: 2500 }).catch(async () => { await page.click('#tourNext'); });
+  };
+
+  test('the do-it-for-me path presses every button on a sheet the tour made, and finishing hides only its own link', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await ready(page);
+    await page.evaluate(() => { try { ['clickcount-tour-done', 'clickcount-tour-done-plumbing', 'clickcount-tour-done-hvac', 'clickcount-tour-done-blank'].forEach((k) => localStorage.removeItem(k)); } catch (_) {} });
+    await page.reload();
+    await ready(page);
+    expect(await page.locator('#canvasEmptyHintTourBlank').isVisible()).toBe(true);
+    const snapBefore = await page.evaluate(() => !!(window.state.lineTypeSettings && window.state.lineTypeSettings.snapToHorizontalVertical));
+    await page.click('#canvasEmptyHintTourBlank');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['blank', 'welcome']);
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 36');
+    const ann = () => page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]));
+    const fixture = () => page.evaluate(() => window.state.counters.find((c) => c.name === 'Fixture'));
+
+    await walk(page, 'welcome', async () => {
+      // two blank ANSI B sheets, made in the browser, through the normal intake
+      expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.App.getPageSheetAnalysis(0).isStandard])).toEqual([2, 'blank-sheet', true]);
+      expect(await page.evaluate(() => window.state.trade)).toBe(null);   // no trade is stamped
+    });
+    await walk(page, 'scale', async () => { expect(await page.evaluate(() => window.state.pages[0].scale.pixelsPerUnit)).toBe(9); });
+    await walk(page, 'measure', async () => { expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"'); });
+    await walk(page, 'move');
+    await walk(page, 'counter', async () => { expect(await fixture()).toBeTruthy(); });
+    await walk(page, 'count', async () => { const c = await fixture(); expect((await ann()).counterMarkers[c.id].length).toBe(3); });
+    await walk(page, 'quickkeys', async () => {
+      const c = await fixture();
+      expect(await page.evaluate(() => window.state.numberKeyBindings[1].id)).toBe(c.id);
+      expect((await ann()).counterMarkers[c.id].length).toBe(4);
+    });
+    await walk(page, 'linetype', async () => {
+      expect(await page.evaluate(() => window.state.lineTypes.some((l) => l.name === 'Pipe'))).toBe(true);
+      expect((await ann()).quickLines.length).toBe(1);
+    });
+    await walk(page, 'snap', async () => { expect(await page.evaluate(() => window.state.lineTypeSettings.snapToHorizontalVertical)).toBe(true); });
+    await walk(page, 'polyline', async () => { expect((await ann()).polylines.map((p) => p.points.length)).toEqual([3]); });
+    await walk(page, 'chain', async () => { const c = await fixture(); const a = await ann(); expect([a.counterMarkers[c.id].length, a.quickLines.length]).toEqual([6, 2]); });
+    await walk(page, 'drop', async () => {
+      expect((await ann()).quickLines.map((q) => [q.startDrop || 0, q.endDrop || 0])).toEqual([[0, 0], [3, 0]]);
+      expect(await page.evaluate(() => window.state.showDropSizes)).toBe(true);
+    });
+    await walk(page, 'duct', async () => { expect((await ann()).ductRuns.length).toBe(1); });
+    await walk(page, 'highlight', async () => { expect((await ann()).highlights.length).toBe(1); });
+    await walk(page, 'multiply', async () => { expect((await ann()).multiplyZones.map((z) => z.multiplier)).toEqual([2]); });
+    await walk(page, 'scalezone', async () => { expect((await ann()).scaleZones.map((z) => z.scale.pixelsPerUnit)).toEqual([18]); });
+    await walk(page, 'room', async () => { expect(await page.evaluate(() => window.state.rooms.map((r) => r.name))).toEqual(['Office']); expect((await ann()).roomBoxes.length).toBe(1); });
+    await walk(page, 'ghost', async () => { expect((await ann()).ghosts.length).toBe(1); });
+    await walk(page, 'deletearea', async () => { const c = await fixture(); expect((await ann()).counterMarkers[c.id].length).toBe(5); });
+    await walk(page, 'note', async () => {
+      expect((await ann()).notes.length).toBe(1);
+      expect(await page.locator('#notesLedgerBtn').getAttribute('aria-expanded')).toBe('false');   // opened, read, closed
+    });
+    await walk(page, 'toggles', async () => { expect(await page.evaluate(() => [window.state.showLegendOverlay, window.state.showGridOverlay, window.state.hideMarks])).toEqual([true, false, false]); });
+    await walk(page, 'undo', async () => { expect((await ann()).notes.length).toBe(1); });   // undone, then redone
+    await walk(page, 'layers', async () => { expect(await page.evaluate(() => { const p = window.state.pages[0]; return [p.canvases.length, window.App.getActiveCanvas(p) === p.canvases[0]]; })).toEqual([2, true]); });
+    await walk(page, 'pages', async () => { expect(await page.evaluate(() => [window.state.currentPage, window.state.pages[1].rotation])).toEqual([0, 90]); });
+    await walk(page, 'zoom');
+    await walk(page, 'sidebar', async () => { expect(await page.evaluate(() => document.body.classList.contains('sidebar-collapsed'))).toBe(false); });
+    await walk(page, 'groups', async () => { expect(await page.evaluate(() => [window.state.groupsEnabled, window.state.groups.map((g) => g.name)])).toEqual([true, ['Area A']]); });
+    await walk(page, 'summary', async () => { await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/); });
+    await walk(page, 'bidcheck', async () => { expect(await page.evaluate(() => window.state.bidCheckCollapsed)).toBe(false); });
+    await walk(page, 'settings', async () => { await expect(page.locator('#settingsModal')).toHaveClass(/visible/); });
+    await walk(page, 'savestatus', async () => { await expect(page.locator('#saveStatusModal')).toHaveClass(/visible/); });
+    await walk(page, 'exportmenu');
+    await walk(page, 'exports');
+    await walk(page, 'clearpage', async () => { expect(await page.evaluate(() => window.App.countCanvasMarks(window.App.getActiveCanvas(window.state.pages[0]).annotations))).toBe(0); });
+    await walk(page, 'close', async () => { expect(await page.evaluate(() => window.state.pages.length)).toBe(0); });
+    await waitForStep(page, 'done');
+    expect(await page.locator('#tourNext').textContent()).toBe('Finish');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe(null);
+    // its own key, its own link; the trade tours' links stay
+    expect(await page.evaluate(() => ['clickcount-tour-done-blank', 'clickcount-tour-done', 'clickcount-tour-done-plumbing', 'clickcount-tour-done-hvac'].map((k) => !!localStorage.getItem(k)))).toEqual([true, false, false, false]);
+    expect(await page.evaluate(() => [document.getElementById('canvasEmptyHintBlank').style.display, document.getElementById('canvasEmptyHintTour').style.display])).toEqual(['none', '']);
+    // Snap to 45° is the device's: put back
+    expect(await page.evaluate(() => !!(window.state.lineTypeSettings && window.state.lineTypeSettings.snapToHorizontalVertical))).toBe(snapBefore);
+    expect(errors).toEqual([]);
+  });
+
+  test('?tour=blank, the Learn button and the Settings link start it; over a teaching set it resets without asking', async ({ page }) => {
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    expect(await page.evaluate(() => window.App.tutorialId())).toBe('blank');
+    await page.click('#tourLeave');
+    await page.evaluate(() => window.App.openLearnMenu());
+    await page.click('#learnTour-blank');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['blank', 'welcome']);
+    // the sheet opens; leaving and starting again from Settings opens it fresh, no question asked
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    await page.click('#tourLeave');
+    await page.evaluate(() => window.App.showModal('settingsModal'));
+    if (await page.getAttribute('#settingsHelpToggle', 'aria-expanded') !== 'true') await page.click('#settingsHelpToggle');
+    await page.click('#settingsTourBlank');
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, document.querySelectorAll('.modal-overlay.visible').length])).toEqual([2, 'blank-sheet', 0]);
+  });
+});

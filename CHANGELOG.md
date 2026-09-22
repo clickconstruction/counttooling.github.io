@@ -13,6 +13,61 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tour): every button, once, on a blank sheet the tour makes itself (2026-09-21)
+
+[BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the
+three trade tours: no plan, no trade, no numbers to get right, and every control in the header,
+on the sheet, in the footer and in the sidebar pressed once, 37 steps in about fifteen minutes.
+It came out of an audit of what the tours, the lessons and the courses actually press (the table
+in the plan file, generated from the code): twelve header and footer controls had never been
+pressed by any step (Move, Ghost, Grid overlay, Drop sizes, Save status, Export project, Close
+this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); all are now.
+
+- **The sheet is made in the browser** ([features/tour-blank.js](features/tour-blank.js)): two
+  ANSI B pages from the vendored pdf-lib, a border, a title block that says 1/8" = 1'-0", and on
+  SK-1 one 20'-0" dimension to prove the scale on, fed to `#pdfInput` like a dropped file so the
+  intake, the sheet-size analysis and the local backup run for real. Project `blank-sheet`;
+  features/lessons.js treats it as a teaching set (reset without asking), and the tour resets the
+  teaching sets the same way; the reader's own plan goes through Close project, which asks.
+- **A step is one button.** Sheet work sits in the engine's circles and boundaries; a toggle is
+  done only once pressed and pressed back (a latch); a dialog step holds until read. No trade
+  is stamped (Fixture, Pipe, Area A), so Duct sits behind ⋯ on a plumbing device and Polyline
+  on an HVAC one, exactly as on a real bid. The palette baseline is taken when the sheet opens,
+  because an Artboard's counters ride into every new project, and the same baseline is the sweep on
+  stop: the Fixture, the Pipe, Area A and the key binding never follow the reader onto a real bid.
+  Snap to 45° is the device's and goes back on stop. The sheets name themselves SK-1 and SK-2 off the
+  title block, the way a real set does.
+- **Doors**: the empty canvas ("or press every button once on a blank sheet", hidden once the
+  tour is done on this device: `clickcount-tour-done-blank`), Learn → Every button, Project
+  Settings → Help → every button, `/app/?tour=blank`.
+- **Pick up where you left off**: the step the reader is on is kept on the device and the next
+  start offers **Pick up where you left off** (the sheet opens fresh with every earlier step laid
+  down through the same doors, then lands on the saved step) beside **Start over**. **Precision
+  where it counts**: the Quick Line step's circles are tight and its check reads the footage,
+  because a run is measured between the two clicks. **Share and Copy view link** have a step of
+  their own that says what they do and how to reach them for real; they stay unpressed, because
+  they do nothing off a cloud project and pressing them would mean saving the practice sheet into
+  the reader's account.
+- **Engine** (features/tutorial.js): `?tour=<id>` resolves when the link fires against every
+  registered tour; a registered tour may carry `onStart()` and `onStep(id, index)`; a step may
+  carry `progress()`, the neutral status line for guidance on a step with several parts (`hint()`
+  stays red for misses), and `alt`, a second action button; the card's step number no longer
+  wraps under a long row of dots.
+- **Walked on a tablet** (768 × 1024, touch), which found engine bugs every tour had there: the
+  "narrow" test was `< 768` while the app's breakpoint is 768 inclusive (an iPad in portrait), so
+  the sidebar-drawer wording and the ☰ fallback never fired; the header strip scrolls sideways
+  and tools past the edge were never lit (they are scrolled in now); with no control to light the
+  card sat on the sheet targets; the docked card covered the targets the engine had centred under
+  it. The blank tour's steps say where each control lives on a tablet (Quick keys under Settings,
+  Snap in Line Type Settings, Polyline in the sidebar, Add canvas under Layers, Hide marks, Drop
+  sizes, Export and Close project under ☰, the sidebar behind ☰, zoom by pinch) and light that
+  door. The walk also found an app gap: the Notes ledger's header button is consolidated away
+  on a tablet and nothing mirrored it, so the ☰ (features/burger-menu.js) gained a Notes ledger
+  row, gated like the button.
+- Spec: [tutorial.spec.js](tutorial.spec.js) walks all 37 steps through the seam and asserts the
+  real state after each; the doors; the reset over a teaching set; snap restored; a tablet
+  viewport walk with touch.
+
 ## feat(duct): the grease duct's cleanouts and listed wrap are priced on their own lines (2026-09-21)
 
 The line the grease-duct reveal used to hand to the bid is now on the Duct Schedule. When any run

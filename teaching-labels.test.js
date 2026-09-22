@@ -35,7 +35,7 @@ const RENDERED_IN_JS = {
 const RETIRED = ['Copy to PipeTooling', 'Legend Settings]]', 'Snap to horizontal/vertical'];
 
 function tourSources() {
-  return ['features/tutorial.js'].concat(['features/lessons.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js'].filter((f) => fs.existsSync(path.join(ROOT, f))));
+  return ['features/tutorial.js'].concat(['features/lessons.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js', 'features/tour-blank.js'].filter((f) => fs.existsSync(path.join(ROOT, f))));
 }
 function chipsOf(src) {
   return [...new Set([...src.matchAll(/\[\[(.+?)\]\]/g)].map((m) => m[1].replace(/\\'/g, "'")))];

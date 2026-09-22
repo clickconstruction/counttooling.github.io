@@ -1,6 +1,6 @@
 ---
 title: Learn CountTooling by doing
-description: Five-minute tours for plumbing, electrical and HVAC, thirteen short hands-on lessons that cover every tool in CountTooling, and a plumbing course that teaches the trade off an engineer's sheet, all on sample sheets the app opens for you.
+description: Five-minute tours for plumbing, electrical and HVAC, a tour that presses every button once on a blank sheet, thirteen short hands-on lessons that cover every tool in CountTooling, and three courses that teach the trade off an engineer's set, all on sample sheets the app opens for you.
 updated: 2026-09-21
 order: 1.2
 icon: keys
@@ -11,7 +11,7 @@ The fastest way to learn a takeoff tool is to do a takeoff. CountTooling teaches
 
 ![A lesson step on the sheet: three floor drains circled, the first one counted and ticked green, and the card saying that a click outside the circles does not count.](/guides/img/lesson-targets.png)
 
-![The Learn menu: the three five-minute trade tours at the top, and the list of short lessons, one per part of the app, with a tick beside each one finished, and the plumbing course below them.](/guides/img/learn-menu.png)
+![The Learn menu: the three five-minute trade tours and the blank-sheet tour at the top, and the list of short lessons, one per part of the app, with a tick beside each one finished, and the courses below them.](/guides/img/learn-menu.png)
 
 ## How a lesson works
 
@@ -32,6 +32,10 @@ Each tour is one small takeoff from scale to hand-off, fourteen steps on the des
 - [Plumbing tour](/app/?tour=plumbing): prove the scale, count a restroom, chain a lav battery with its riser, hangers from the rulebook, a typical floor, an RFI, the proof, the hand-off. Read along in [Doing a plumbing takeoff](/guides/plumbing-takeoff/).
 - [Electrical tour](/app/?tour=electrical): devices with mount heights, conduit with its conductors, chained runs with the vertical, a circuit, Bid Check. Read along in [Doing an electrical takeoff](/guides/electrical-takeoff/).
 - [HVAC tour](/app/?tour=hvac): a room and its CFM target, diffusers, a system, a main that sizes itself, pounds of duct. Read along in [Doing an HVAC takeoff](/guides/hvac-takeoff/).
+
+## Or every button, once: the blank-sheet tour
+
+No plan, no trade, no numbers to get right. The [blank-sheet tour](/app/?tour=blank) makes a blank sheet for you and walks the whole app in 37 short steps, about fifteen minutes: every button in the header from Set Scale to Close this project, the footer's quick keys, layers, sheets, zoom and undo, and the sidebar's counters, line types, groups, Summary, Bid Check, exports and Clear Page. Each step is one button and the smallest thing it does, on the sheet where it counts, so nothing is left to imagine; skip any you already know. Leave part way and the next start offers to pick up where you left off, with the earlier steps laid down for you. It is under **every button** on the empty canvas, in **Learn**, and under **Project Settings** → **Help**.
 
 ## Then every part of the app: the lessons
 

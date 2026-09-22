@@ -13,6 +13,16 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(view-only): the viewer's Hide marks eye, pinned across the matrix (2026-09-22)
+
+Punch row VIEWER-HIDEMARKS, closed with no defect found. The 2026-08-31 cloud walk left the
+view-link recipient's eye "check-later" and the two specs that touched it ran as the owner.
+[view-only.spec.js](view-only.spec.js) now walks it as the viewer: the desktop header eye is
+there (it is not an editing tool, so `viewerHideIds` leaves it), blanks the overlay and flips its
+label and `aria-pressed`; the choice is written under `view:hideMarks:<token>` and survives a
+reload of the same link; on a phone the eye is consolidated into the ☰ whose Hide marks / Show
+marks row toggles the same state. Everything behaved; the row was a check, not a bug.
+
 ## test(ci): the specs wait for the app's own ready signal; Playwright's quiet-network wait loses a request on a slow machine (2026-09-22)
 
 Punch row CI-NETWORKIDLE, closed, on the third diagnosis; the first two are recorded so they are
@@ -34,8 +44,9 @@ view link wait for `load` instead, since that boot awaits the email gate before 
 test budget is 90 s on CI, 30 s locally, so a boot that takes 6 s throttled has room on a worse
 runner, and the service worker stays blocked (pwa.spec.js and the rulebook precache test opt
 back in): a spec should not install what it does not test. Measured: the full suite locally, 4
-workers, 787 of 790 passed in 14.5 minutes and the three that failed under that load pass alone; the CI e2e job, 2 workers, MEASURE-CI (before: 39.7 to 47.8 minutes
-with 2 to 4 failures).
+workers, 787 of 790 passed in 14.5 minutes and the three that failed under that load pass alone; the CI e2e job, 2 workers, five runs on 2026-09-22, every one green: 26.1 to 36.6 minutes, 773 to 777 passed,
+no failures and no flaky tests, the first clean runs since the row was opened (before: 39.7 to
+47.8 minutes with 2 to 4 failures).
 
 ## fix(load): Load Project opens on the device's PDF when the cloud has none (2026-09-22)
 

@@ -27,10 +27,28 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : 4,
+  // A test's budget is 90 s on CI, 30 s locally (punch row CI-NETWORKIDLE, 2026-09-22). The
+  // runner has two cores for two workers rendering PDFs, and a boot that settles in 2 s on a
+  // laptop, 6 s with eight booting at once, took the whole 30 s there: on PR #161's five runs
+  // all 19 flaky errors and the one hard failure were the boot's quiet-network wait timing out,
+  // and the two specs that never flaked, tutorial and lessons, are the two that set 90 s.
+  // The server was not it (a bare Node static server booted no faster than `serve`), and
+  // neither was the service worker (blocked below, the same wait still timed out 27 times).
+  // A retry costs a whole test; a longer budget costs nothing when the test is quick.
+  timeout: process.env.CI ? 90000 : 30000,
+  expect: { timeout: process.env.CI ? 15000 : 5000 },
   reporter: 'list',
   use: {
     baseURL: process.env.BASE_URL || 'http://localhost:3456',
     trace: 'on-first-retry',
+    // The service worker is BLOCKED in every spec by default (2026-09-22). Every fresh
+    // context used to install it and precache the whole shell, about 155 files, in a worker
+    // process beside the test; nothing but pwa.spec.js and the rulebook precache test in
+    // rules-chip.spec.js reads it, and they opt back in with
+    // `test.use({ serviceWorkers: 'allow' })`. This was first tried as THE fix for the CI
+    // flake and was not (see `timeout` above); it stays because a spec should not install
+    // something it does not test, and a starved runner is better off without the work.
+    serviceWorkers: 'block',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

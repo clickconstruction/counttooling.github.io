@@ -346,7 +346,6 @@
         S().tool = App.TOOL.NONE;
         dirty();
       }
-      if (narrow()) return;
       if (!seen.ledger && el('notesLedgerBtn')) { el('notesLedgerBtn').click(); await wait(700); tick(); }
       if (ledgerOpen() && el('notesLedgerBtn')) { el('notesLedgerBtn').click(); await wait(100); tick(); }
     },
@@ -579,13 +578,13 @@
     },
     {
       id: 'note', title: 'Header: Note, and Notes ledger', kind: 'do',
-      body: () => '1. In the header, click [[Note]] (or press N).' + (narrow() ? ' The strip scrolls; it is near the end.' : MORE) + '\n2. Click inside the circle.\n3. Type anything and click [[Done]].\n' + (narrow()
-        ? 'On a desk the header also has [[Notes ledger]], every note on every sheet in one list; a tablet reaches the same list through Note Pages (PDF) under EXPORT OPTIONS.\n'
-        : '4. In the header, click [[Notes ledger]] to see every note on every sheet in one list, then close it with its ×.\n') + 'A note that starts with RFI: is a question for the GC, and Copy RFI Flags collects them.',
+      body: () => '1. In the header, click [[Note]] (or press N).' + (narrow() ? ' The strip scrolls; it is near the end.' : MORE) + '\n2. Click inside the circle.\n3. Type anything and click [[Done]].\n4. ' + (narrow()
+        ? 'Tap the ☰ at the top right ([[More actions]]), then [[Notes ledger]]: every note on every sheet in one list. Close it with its ×.'
+        : 'In the header, click [[Notes ledger]] to see every note on every sheet in one list, then close it with its ×.') + '\nA note that starts with RFI: is a question for the GC, and Copy RFI Flags collects them.',
       target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: NOTE_SPOT.x, y: NOTE_SPOT.y, r: 45, done: noteAt(NOTE_SPOT, 45) }],
-      check: () => noteAt(NOTE_SPOT, 45) && (narrow() || (latch('ledger', ledgerOpen()) && !ledgerOpen())),
-      progress: () => (noteAt(NOTE_SPOT, 45) && !narrow() ? (!seen.ledger ? 'Note placed. Now click Notes ledger in the header' : (ledgerOpen() ? 'That is the ledger. Close it with its ×' : '')) : ''),
+      check: () => noteAt(NOTE_SPOT, 45) && latch('ledger', ledgerOpen()) && !ledgerOpen(),
+      progress: () => (noteAt(NOTE_SPOT, 45) ? (!seen.ledger ? (narrow() ? 'Note placed. Now Notes ledger, under the ☰ at the top right' : 'Note placed. Now click Notes ledger in the header') : (ledgerOpen() ? 'That is the ledger. Close it with its ×' : '')) : ''),
       action: { label: 'Write one and open the ledger', run: ACT.note },
     },
     {

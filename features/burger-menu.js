@@ -73,6 +73,14 @@
         document.getElementById('dropSizesBtn')
       );
     }
+    // 1a′. Notes ledger (mirrors #notesLedgerBtn — .consolidated-mobile hides the header
+    //      button here, and until 2026-09-22 nothing mirrored it, so a tablet had no door to
+    //      the ledger at all; found by the blank-sheet tour's tablet walk). Same gating as
+    //      the header button: only when the project has a note to list. (One label: the
+    //      open ledger sits over the header, so the drawer is never reached while it is open;
+    //      its × closes it.)
+    const ledgerBtn = document.getElementById('notesLedgerBtn');
+    if (ledgerBtn && ledgerBtn.style.display !== 'none') addItem('Notes ledger', () => ledgerBtn.click(), ledgerBtn);
     // 1b. Save status (the bell) — mobile CSS hides #saveStatusBtnHeader
     //     outright, so the drawer is the only mobile surface for it. Gated on
     //     a signed-in session like the header bell (updateSaveStatusIndicator)

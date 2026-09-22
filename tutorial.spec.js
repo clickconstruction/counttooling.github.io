@@ -712,7 +712,7 @@ test.describe('Every button, on a blank sheet', () => {
       expect(seen.polyline.lit).toEqual({ onScreen: true, under: 'hamburger' });
       expect(seen.polyline.body).toContain('Tap ☰ at the top left, then Polyline');
       expect(seen.note.lit).toEqual({ onScreen: true, under: 'noteBtn' });
-      expect(seen.note.body).not.toContain('then close it with its');
+      expect(seen.note.body).toContain('More actions');   // the ledger's tablet door is the ☰
       expect(seen.quickkeys.body).toContain('Beside Quick keys, tap Edit');
       expect(seen.snap.body).toContain('Line Type Settings opens');
       expect(seen.drop.body).toContain('More actions');

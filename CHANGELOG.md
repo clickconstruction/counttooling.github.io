@@ -61,7 +61,9 @@ this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); al
   it. The blank tour's steps say where each control lives on a tablet (Quick keys under Settings,
   Snap in Line Type Settings, Polyline in the sidebar, Add canvas under Layers, Hide marks, Drop
   sizes, Export and Close project under ☰, the sidebar behind ☰, zoom by pinch) and light that
-  door; the Notes ledger has no door there and the note step says so.
+  door. The walk also found an app gap: the Notes ledger's header button is consolidated away
+  on a tablet and nothing mirrored it, so the ☰ (features/burger-menu.js) gained a Notes ledger
+  row, gated like the button.
 - Spec: [tutorial.spec.js](tutorial.spec.js) walks all 37 steps through the seam and asserts the
   real state after each; the doors; the reset over a teaching set; snap restored; a tablet
   viewport walk with touch.

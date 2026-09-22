@@ -234,9 +234,10 @@ control or a target on the sheet. What it found, and what changed:
   More actions), the sidebar itself (the ☰ at the top left; the step's check accepts the
   drawer opening and closing), Project Settings and Save status (the gear at the top of the
   sidebar; Save status is a row in Settings). Zoom in is a pinch.
-- **The Notes ledger has no door on a tablet** (its header button is consolidated away and the
-  ☰ does not carry it), so the note step asks only for the note there and says so. ⚑ Worth a
-  row in the ☰.
+- **The Notes ledger had no door on a tablet**: its header button is consolidated away and,
+  alone among the consolidated buttons, nothing mirrored it in the ☰. Fixed in the app
+  (features/burger-menu.js: a Notes ledger row, gated like the button on a note existing), and
+  the note step asks for the ledger on a tablet too, through the ☰.
 - Step bodies that differ by device are functions (the engine renders them live), so the same
   step reads right on both, and `teaching-labels.test.js` still sees every chip.
 - Pinned by a tablet-viewport test in tutorial.spec.js that walks every step with touch.

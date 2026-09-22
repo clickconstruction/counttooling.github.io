@@ -37,6 +37,24 @@ back in): a spec should not install what it does not test. Measured: the full su
 workers, 787 of 790 passed in 14.5 minutes and the three that failed under that load pass alone; the CI e2e job, 2 workers, MEASURE-CI (before: 39.7 to 47.8 minutes
 with 2 to 4 failures).
 
+## fix(load): Load Project opens on the device's PDF when the cloud has none (2026-09-22)
+
+Punch row LOAD-DEVICE-PDF, closed. A PDF upload cut short by a reload leaves the marks autosaved,
+the row with no `pdf_path` (or an object that is empty or missing) and the device backup holding
+the blob. The restore prompt learned to use that copy on 2026-09-20; Load Project, the door most
+people use, still went straight to "This project has annotations but no PDF" without looking at
+the device. features/load-project.js `loadCloudProjectRow` now asks `devicePdfIfOnlyCopy` in
+both branches (no `pdf_path`; `pdf_path` but the download came back empty or missing), by the
+restore's rule: the backup's blob unless both sides carry a hash and they disagree. It opens the
+sheets on it (`openOnDevicePdf`), hands the copy to the engine (`state.pdfBuffer`, no
+`pdfStoragePath`) so the autosave tick uploads it, takes the backup's hash when the row has none,
+and marks the last save as PDF-less. No device copy, or a disagreeing hash: the canvas-only
+door as before. Spec: [load-device-pdf.spec.js](load-device-pdf.spec.js), signed out against a
+fake row through the registered `App.loadCloudProjectRow` (both branches, the hash conflict,
+no copy). Not changed: copy-project.js's `resolvePdfBufferForCloudProject` keeps its
+marks-side gate for Copy project; a copy of a project whose only PDF is on this device is a
+smaller door and can follow.
+
 ## feat(tour): every button, once, on a blank sheet the tour makes itself (2026-09-21)
 
 [BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the

@@ -13,6 +13,16 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(view-only): the viewer's Hide marks eye, pinned across the matrix (2026-09-22)
+
+Punch row VIEWER-HIDEMARKS, closed with no defect found. The 2026-08-31 cloud walk left the
+view-link recipient's eye "check-later" and the two specs that touched it ran as the owner.
+[view-only.spec.js](view-only.spec.js) now walks it as the viewer: the desktop header eye is
+there (it is not an editing tool, so `viewerHideIds` leaves it), blanks the overlay and flips its
+label and `aria-pressed`; the choice is written under `view:hideMarks:<token>` and survives a
+reload of the same link; on a phone the eye is consolidated into the ☰ whose Hide marks / Show
+marks row toggles the same state. Everything behaved; the row was a check, not a bug.
+
 ## feat(tour): every button, once, on a blank sheet the tour makes itself (2026-09-21)
 
 [BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the

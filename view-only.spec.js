@@ -481,4 +481,52 @@ test.describe('View-only mode (view-link boot)', () => {
     await expectViewerLoaded(page);
     expect(realErrors(errors)).toEqual([]);
   });
+  // VIEWER-HIDEMARKS (punch row, closed 2026-09-22): the recipient's eye across the matrix the
+  // 2026-08-31 cloud walk left check-later. The desktop header eye blanks the overlay, the
+  // choice persists per view token across a reload, and on a phone the eye is consolidated
+  // into the ☰, whose row does the same.
+  test('viewer Hide marks: the desktop eye blanks the overlay and persists per token; the phone ☰ carries it', async ({ page }) => {
+    const errors = [];
+    collectErrors(page, errors);
+    await routeViewProject(page, () => ({ status: 200, body: projectPayload() }));
+    await page.goto('/app/?t=' + TOKEN);
+    await submitEmail(page, 'crew@clickplumbing.com');
+    await expectViewerLoaded(page);
+    const overlayPainted = () => page.evaluate(() => { const c = document.getElementById('annCanvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data; for (let i = 3; i < d.length; i += 4) if (d[i]) return true; return false; });
+    const eye = () => page.evaluate(() => [window.state.hideMarks, document.getElementById('hideMarksBtn').getAttribute('aria-pressed'), document.getElementById('hideMarksBtn').title, localStorage.getItem('view:hideMarks:' + window.state.viewToken)]);
+    // desktop: the eye is there for the viewer (it is not an editing tool), shown, and works
+    await expect(page.locator('#hideMarksBtn')).toBeVisible();
+    expect(await eye()).toEqual([false, 'false', 'Hide marks', null]);
+    expect(await overlayPainted()).toBe(true);
+    await page.locator('#hideMarksBtn').click();
+    expect(await eye()).toEqual([true, 'true', 'Show marks', '1']);
+    expect(await overlayPainted()).toBe(false);
+    // the same link again: the choice is the token's and survives the reload
+    await page.goto('/app/?t=' + TOKEN);
+    if (await page.locator('#viewLinkEmailModal.visible').isVisible().catch(() => false)) await submitEmail(page, 'crew@clickplumbing.com');
+    await expectViewerLoaded(page);
+    expect(await eye()).toEqual([true, 'true', 'Show marks', '1']);
+    expect(await overlayPainted()).toBe(false);
+    await page.locator('#hideMarksBtn').click();
+    expect(await eye()).toEqual([false, 'false', 'Hide marks', '0']);
+    expect(await overlayPainted()).toBe(true);
+    // the phone: the eye is consolidated into the ☰ at the top right, whose row is the eye
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(400);
+    await expect(page.locator('#hideMarksBtn')).toBeHidden();
+    await expect(page.locator('#headerBurger')).toBeVisible();
+    const rows = async () => (await page.locator('#rightMenuList .right-menu-item').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+    await page.locator('#headerBurger').click();
+    expect(await rows()).toContain('Hide marks');
+    await page.locator('#rightMenuList .right-menu-item', { hasText: 'Hide marks' }).click();
+    await expect(page.locator('body')).not.toHaveClass(/right-menu-open/);
+    expect(await page.evaluate(() => [window.state.hideMarks, localStorage.getItem('view:hideMarks:' + window.state.viewToken)])).toEqual([true, '1']);
+    expect(await overlayPainted()).toBe(false);
+    await page.locator('#headerBurger').click();
+    expect(await rows()).toContain('Show marks');
+    await page.locator('#rightMenuList .right-menu-item', { hasText: 'Show marks' }).click();
+    expect(await page.evaluate(() => window.state.hideMarks)).toBe(false);
+    expect(await overlayPainted()).toBe(true);
+    expect(realErrors(errors)).toEqual([]);
+  });
 });

@@ -391,13 +391,16 @@ professional), no partner or pricing language. Pinned by `landing-trade.spec.js`
 
 ### Gotchas worth not rediscovering
 
-- **A room drag can miss in a full render (seen 2026-09-20, not diagnosed).** On the HVAC film,
-  two of three full renders stopped at `boxRoom`'s wait for `#roomBoxModal` (once at the Lobby,
-  once at the Conference room), on the system Chrome and on Playwright's Chromium alike; the
-  third ran clean, and every `--chapters-only` pass, which takes no screenshots, ran clean. So it
-  is timing under the frame capture, not the script's logic. It fails within half a minute, so
-  re-run it; `--frames-only` keeps the frames, and the script's own two ffmpeg commands encode
-  them (that is how the 2026-09-20 HVAC film was made).
+- **A held press is hold-to-aim, not a drag (FILM-DRAG, fixed 2026-09-20).** On a rect tool
+  (Room Sizer, the zones) a press that sits still for 280 ms summons the aim loupe (app.js
+  `AIM_PRESS_MS`), and only a move past 6 px first promotes it to a drag (`RECT_DRAG_MIN_PX`).
+  A rendered frame costs 100 ms or more and an eased move starts with sub-pixel steps, so in a
+  full render the hold fired before the drag armed, the release placed one corner, and
+  `boxRoom`'s wait for `#roomBoxModal` timed out: two of three HVAC renders, never a
+  `--chapters-only` pass (it shoots nothing, so it is fast enough). `boxRoom` now nudges the
+  real mouse 8 px right after mouse-down, before the first frame; the drawn cursor is `R.cur`
+  and does not move. Three of three full renders clean since. Any new film drag on a rect tool
+  needs the same nudge; a plain click does not (a hold's release commits the same point).
 - **A caption costs no frames, a hold does.** The films carry no baked caption, so rewording,
   merging or moving a caption is the `--chapters-only` pass and the footage stands; only a
   changed `R.hold` (or any new move) needs a render. CAPTION-DWELL re-timed plumbing and

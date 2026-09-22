@@ -170,4 +170,24 @@ test.describe('Mobile right-side burger menu', () => {
     await expect(page.locator('#downloadCurrentPageDropdown')).toBeVisible();
     await expect(page.locator('#exportDropdown')).toBeVisible();
   });
+  // The Notes ledger's header button is consolidated away on a phone or tablet; the drawer
+  // mirrors it (gated like the button: a note exists), and the row opens the ledger.
+  test('Notes ledger: no row without a note, a row that opens the ledger with one', async ({ page }) => {
+    await page.setViewportSize(MOBILE);
+    await page.goto('/app/');
+    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    const itemText = async () => (await page.locator('#rightMenuList .right-menu-item').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+    await page.locator('#headerBurger').click();
+    expect(await itemText()).not.toContain('Notes ledger');
+    await page.locator('#headerBurger').click();
+    await page.evaluate(() => { const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.notes.push({ x: 100, y: 100, text: 'RFI: which way is up?', id: window.App.uid(), width: 150, fontSize: 14, placementRotation: 0, color: '#e85447' }); window.App.markProjectDirty(); window.App.updateUI(); window.App.renderAnnotations(); });
+    await page.locator('#headerBurger').click();
+    expect(await itemText()).toContain('Notes ledger');
+    await page.locator('#rightMenuList .right-menu-item', { hasText: 'Notes ledger' }).click();
+    await expect(page.locator('body')).not.toHaveClass(/right-menu-open/);
+    await expect(page.locator('#notesLedgerBtn')).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator('#notesLedgerDrawer')).toBeVisible();
+  });
 });

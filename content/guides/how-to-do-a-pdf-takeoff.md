@@ -1,7 +1,7 @@
 ---
 title: How to do a takeoff from a PDF
 description: Step-by-step: upload a plan PDF, set the scale, count fixtures, measure runs, and export a report, all in your browser with CountTooling.
-updated: 2026-09-09
+updated: 2026-09-21
 order: 1
 icon: measure
 category: Getting started
@@ -9,7 +9,9 @@ category: Getting started
 
 A takeoff is just a structured count and measurement of what's on a drawing. With CountTooling you do it straight on the PDF: no printing, no exporting to another tool first. Here's the whole workflow.
 
-**Prefer to learn by doing?** Open the app with nothing loaded and pick a **five-minute tour** under the canvas, **plumbing**, **electrical** or **hvac** (Project Settings has the same three links under **Help**). Each walks you through a small takeoff of its trade on the sample plan. Want a denser sheet to practise on? The empty canvas also offers the **advanced sample plan**, a restaurant plumbing sheet with a kitchen, a dish room, a bar and a grease interceptor, opened the same way, step by step, checking each step against what you actually did, and every step has a *Do it for me* button if you would rather watch.
+**Learn by doing:** [Learn](/app/?learn=1) in the app lists a five-minute tour for each trade and thirteen short lessons, one per part of the app, on sample sheets it opens for you.
+
+**Prefer to learn by doing?** Open the app with nothing loaded and pick a **five-minute tour** under the canvas, **plumbing**, **electrical** or **hvac** (Project Settings has the same three links under **Help**). Each walks you through a small takeoff of its trade on the sample plan. Want a denser sheet to practise on? The empty canvas also offers the **advanced sample plan**, a restaurant plumbing sheet with a kitchen, a dish room, a bar and a grease interceptor, opened the same way, step by step, checking each step against what you actually did. A tour circles where to click and shades where to drag, and *Show me where* points at anything you cannot find.
 
 ![A finished takeoff in CountTooling, counters on every fixture, a measured waste line, and a live legend tallying the counts and lengths.](/guides/img/plan-takeoff.png)
 
@@ -66,7 +68,7 @@ When you're done:
 ![The Export PDFs dialog: ① set marker and line sizes, ② choose whether to include the report and bundle highlights/notes, then ③ download.](/guides/img/export-pdfs.png)
 
 - **Export PDFs** with your markup, the takeoff report, and any highlights and notes baked in.
-- **Copy to PipeTooling** to drop the counts straight into a bid, or **copy a summary** for email, tab-delimited and ready to paste.
+- **Copy to /Tooling** to drop the counts straight into a bid, or **copy a summary** for email, tab-delimited and ready to paste.
 - Need someone to *see* the live takeoff instead? Send a [view link](/guides/sharing-and-view-links/), no account required on their end.
 
 That's a complete takeoff (counted, measured, reported, and shared) without leaving the browser.

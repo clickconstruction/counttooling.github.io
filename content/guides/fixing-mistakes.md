@@ -1,13 +1,15 @@
 ---
 title: Fixing mistakes and editing marks
 description: Undo 50 steps, clear a whole region with Delete Area, edit any mark from its right-click menu, and rename or recolor an entire type at once.
-updated: 2026-08-10
+updated: 2026-09-21
 order: 4.5
 icon: delete-area
 category: Working with plans
 ---
 
 Fast counting means fast mistakes, and that's fine, because everything in CountTooling is quick to take back or change.
+
+**Try it:** [the Fixing mistakes lesson](/app/?lesson=fixing) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ## Undo and redo
 

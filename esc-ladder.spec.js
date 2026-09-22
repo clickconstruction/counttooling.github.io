@@ -62,6 +62,10 @@ test.describe('Tier-3 B1 — Escape ladder additions', () => {
   });
 
   test('lastSessionRestoreModal: Esc dismisses for now — pending flag clears, nothing is consumed (J12/T1-01)', async ({ page }) => {
+    // RESTORE-LATE: a cloud offer is dropped while a plan is open (the beforeEach opens one), so
+    // this offer is made the way boot makes it, on an empty session.
+    await page.evaluate(() => window.App.resetLocalSessionState());
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
     await page.evaluate(() => {
       localStorage.setItem('clickcount-last-project', JSON.stringify({ projectId: 'p1', projectName: 'Bid A', userId: 'u1' }));
       window.App.openLastSessionRestorePrompt({ cloudLast: { projectId: 'p1', projectName: 'Bid A', userId: 'u1' } });

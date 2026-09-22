@@ -314,7 +314,9 @@
   }
   function renderTagReaderUI() {
     const link = document.getElementById('counterReadSchedule');
-    if (link) link.style.display = active() && App.state.pages && App.state.pages.length ? '' : 'none';
+    // Offered on electrical projects, on any project with a tagged counter, and on plumbing
+    // projects, whose fixture schedules carry tags too (the plumbing course reads P-501 with it).
+    if (link) link.style.display = (active() || App.state.trade === 'plumbing') && App.state.pages && App.state.pages.length ? '' : 'none';
   }
 
   App.pageTextItems = pageTextItems;

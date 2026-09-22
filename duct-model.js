@@ -31,6 +31,8 @@
 // A duct RUN is one continuous trace with size segments (DUCT-PLAN "The model"):
 //   { id, name, airside, pressureClass, linerType, linerThicknessIn,
 //     systemGroupId, vertices: [{x,y}...], segments: [{startVertexIdx, size}] }
+//   + material (D25, 2026-09-21): 'black-steel' | 'stainless' for welded grease
+//     duct, attached only when set — galvanized is the keyless default.
 // - vertices are PDF-space points, exactly like polyline.points — length math
 //   stays out of this shape; callers convert with their scale glue.
 // - segments[i] covers the trace from vertices[segments[i].startVertexIdx] to
@@ -129,6 +131,9 @@ function makeDuctRun(opts) {
     vertices: Array.isArray(o.vertices) ? o.vertices : [],
     segments: Array.isArray(o.segments) ? o.segments : [],
   };
+  // D25 material — attached only for welded grease duct (galvanized stays
+  // keyless, so a galvanized run's shape is byte-identical to pre-D25 saves).
+  if (o.material && o.material !== 'galvanized' && DUCT_MATERIALS[o.material]) run.material = o.material;
   // D12 orientation — attached only when 'edge' (flat is the default and
   // stays keyless, so a flat run's shape is byte-identical to pre-D12 saves).
   if (o.orientation === 'edge') run.orientation = 'edge';
@@ -229,6 +234,71 @@ function validateDuctFitting(f) {
 // weights — the basis of every pounds number below).
 const SHEET_WEIGHT_LB_PER_SQFT = { 26: 0.906, 24: 1.156, 22: 1.406, 20: 1.656, 18: 2.156 };
 
+// DATA TABLE — duct materials (D25). Galvanized is the default and keyless on
+// a run; the gauge table above picks its metal. The other two are welded
+// grease duct, which the gauge table must never touch: IMC 506.3.1.1 (and
+// NFPA 96 7.5.1) fix the metal at carbon steel not less than 16 gauge or
+// stainless not less than 18 gauge, so a grease run prices at that fixed
+// gauge and the material's own sheet weight (uncoated steel sheet, lb/ft²).
+// Rulebook: content/rules/hvac/grease-duct.md.
+const DUCT_MATERIALS = {
+  galvanized: { label: 'Galvanized', short: '', gauge: null, lbPerSqFt: null },
+  'black-steel': { label: 'Welded black steel (grease)', short: 'welded black steel', gauge: 16, lbPerSqFt: 2.5 },
+  stainless: { label: 'Welded stainless (grease)', short: 'welded stainless', gauge: 18, lbPerSqFt: 2.0 },
+};
+const DUCT_MATERIAL_IDS = Object.keys(DUCT_MATERIALS);
+// DATA TABLE — what a grease run carries besides its metal (D26). Cleanouts:
+// NFPA 96 7.4 wants an access opening at every change of direction and, on
+// horizontal duct, at intervals not exceeding 12 ft. The listed wrap (the
+// enclosure that stands in for 18" of clearance, NFPA 96 4.3 / IMC 506.3.11)
+// is priced by the square foot of duct surface, straight duct only; fittings
+// are wrapped by the piece in the field and bid that way.
+// Rulebook: content/rules/hvac/grease-duct.md.
+const DUCT_GREASE = { cleanoutIntervalFt: 12 };
+/** A run's material id: 'galvanized' unless it carries a known other one. */
+function ductMaterialOf(run) {
+  const m = run && run.material;
+  return m && m !== 'galvanized' && DUCT_MATERIALS[m] ? m : 'galvanized';
+}
+/** True for a material the gauge table does not govern (welded grease duct). */
+function isGreaseMaterial(material) { return !!material && material !== 'galvanized' && !!DUCT_MATERIALS[material]; }
+/** The gauge a size takes: the material's fixed gauge, else the SMACNA pick. */
+function selectGaugeFor(pressureClass, size, material) {
+  return isGreaseMaterial(material) ? DUCT_MATERIALS[material].gauge : selectGauge(pressureClass, size);
+}
+/**
+ * The grease-duct extras (D26): over the runs with a grease material,
+ *   cleanouts  — one per bend fitting on those runs (elbow90 / elbow45 = a
+ *                change of direction) + one per DUCT_GREASE.cleanoutIntervalFt
+ *                of horizontal straight duct (floor: a 10 ft leg needs none
+ *                between its ends, a 24 ft leg needs two)
+ *   wrapSqFt   — the straight duct's surface, LF × perimeter/12
+ * Pure: runs [{ run, distFt? }] or plain runs (distFt as in runStraightItems),
+ * fittings the page's list ({ runId, type, suppressed? }). Null when no run
+ * carries a grease material, so a galvanized takeoff shows no block.
+ */
+function greaseDuctExtras(runs, fittings, distFt) {
+  const grease = (runs || []).filter((r) => r && isGreaseMaterial(r.material));
+  if (!grease.length) return null;
+  let lengthFt = 0, horizontalFt = 0, wrapSqFt = 0;
+  grease.forEach((run) => {
+    runStraightItems(run, distFt).forEach((it) => {
+      lengthFt += it.lengthFt;
+      if (!it.vertical) horizontalFt += it.lengthFt;
+      wrapSqFt += insulationSqFt(it.size, it.lengthFt);
+    });
+  });
+  const ids = new Set(grease.map((r) => r.id));
+  const atBends = (fittings || []).filter((f) => f && !f.suppressed && ids.has(f.runId) && (f.type === 'elbow90' || f.type === 'elbow45')).reduce((n, f) => n + ductRepeatOf(f), 0);
+  const alongRuns = Math.floor(horizontalFt / DUCT_GREASE.cleanoutIntervalFt);
+  return { runs: grease.length, lengthFt, horizontalFt, wrapSqFt, cleanouts: { atBends, alongRuns, total: atBends + alongRuns } };
+}
+/** A schedule row's label: the size, plus the material when it is not galvanized. */
+function ductRowLabel(row) {
+  const key = row && row.sizeKey != null ? String(row.sizeKey) : '?';
+  return isGreaseMaterial(row && row.material) ? key + ' · ' + DUCT_MATERIALS[row.material].short : key;
+}
+
 // DATA TABLE — the Duct Schedule's per-project knob defaults (state.ductSettings
 // is seeded from a copy; every intake restores the saved values over it).
 // Rulebook: content/rules/hvac/duct-schedule-factors.md.
@@ -304,15 +374,16 @@ function ductPerimeterIn(size) {
  * the early mockups' 26 ga would read 3.93), 12"Ø @ 26ga = 2.85 (all lb/ft, 2-dp).
  * Returns null for an unknown gauge (callers show the override chip).
  */
-function ductWeightPerFoot(size, gauge) {
-  const w = SHEET_WEIGHT_LB_PER_SQFT[gauge];
+function ductWeightPerFoot(size, gauge, material) {
+  // D25: a grease material weighs by its own sheet, whatever gauge is passed.
+  const w = isGreaseMaterial(material) ? DUCT_MATERIALS[material].lbPerSqFt : SHEET_WEIGHT_LB_PER_SQFT[gauge];
   if (!w || !isDuctSize(size)) return null;
   return (ductPerimeterIn(size) / 12) * w;
 }
 
 /** Straight-duct pounds for a length: lb/ft × ft. Null for unknown gauge. */
-function segmentPounds(size, gauge, lengthFt) {
-  const perFt = ductWeightPerFoot(size, gauge);
+function segmentPounds(size, gauge, lengthFt, material) {
+  const perFt = ductWeightPerFoot(size, gauge, material);
   if (perFt == null || !Number.isFinite(lengthFt)) return null;
   return perFt * lengthFt;
 }
@@ -341,8 +412,8 @@ const FITTING_EQUIV_LF = {
 function fittingEquivalentLF(type) { return FITTING_EQUIV_LF[type] || 0; }
 
 /** One fitting's pounds: equivLF × lb/ft of its size @ gauge. Null on unknown gauge. */
-function fittingPounds(type, size, gauge) {
-  const perFt = ductWeightPerFoot(size, gauge);
+function fittingPounds(type, size, gauge, material) {
+  const perFt = ductWeightPerFoot(size, gauge, material);
   if (perFt == null) return null;
   return fittingEquivalentLF(type) * perFt;
 }
@@ -380,10 +451,15 @@ function runStraightItems(run, distFt) {
   const d = distFt || ductVertexDistDefault;
   const verts = run?.vertices || [];
   const spans = runSegmentSpans(run);
+  // D25: a grease run's items carry its material (galvanized stays keyless,
+  // so the item shape of every other run is unchanged).
+  const material = isGreaseMaterial(run && run.material) ? run.material : null;
   const items = spans.map(span => {
     let len = 0;
     for (let i = span.fromIdx; i < span.toIdx; i++) len += d(verts[i], verts[i + 1]);
-    return { size: span.size, lengthFt: len, liner: run.linerType || null };
+    const it = { size: span.size, lengthFt: len, liner: run.linerType || null };
+    if (material) it.material = material;
+    return it;
   });
   // D8 vertical footage: each verticalFt entry is more straight duct at the
   // size of the segment AT that vertex (the duct that turns vertical), so it
@@ -394,7 +470,9 @@ function runStraightItems(run, distFt) {
       if (!e || !(e.ft > 0) || !Number.isInteger(e.vertexIdx)) return;
       const size = ductSizeAtVertex(run, e.vertexIdx);
       if (!isDuctSize(size)) return;
-      items.push({ size: size, lengthFt: e.ft, liner: run.linerType || null, vertical: true });
+      const it = { size: size, lengthFt: e.ft, liner: run.linerType || null, vertical: true };
+      if (material) it.material = material;
+      items.push(it);
     });
   }
   return items;
@@ -410,11 +488,16 @@ function tallyStraightBySize(items, pressureClass, gaugeBySizeKey) {
   const byKey = new Map();
   (items || []).forEach(it => {
     if (!isDuctSize(it.size) || !(it.lengthFt > 0)) return;
-    const key = formatDuctSize(it.size);
+    const sizeKey = formatDuctSize(it.size);
+    // D25: a grease material tallies on its own row at its fixed gauge — the
+    // override chip (per size key) never reaches it.
+    const material = isGreaseMaterial(it.material) ? it.material : null;
+    const key = material ? sizeKey + '|' + material : sizeKey;
     let row = byKey.get(key);
     if (!row) {
-      const gauge = overrides[key] || selectGauge(pressureClass, it.size);
-      row = { sizeKey: key, size: cloneDuctSize(it.size), gauge: gauge, lengthFt: 0, lbPerFt: ductWeightPerFoot(it.size, gauge) || 0, pounds: 0 };
+      const gauge = material ? DUCT_MATERIALS[material].gauge : (overrides[sizeKey] || selectGauge(pressureClass, it.size));
+      row = { sizeKey: sizeKey, size: cloneDuctSize(it.size), gauge: gauge, lengthFt: 0, lbPerFt: ductWeightPerFoot(it.size, gauge, material) || 0, pounds: 0 };
+      if (material) row.material = material;
       byKey.set(key, row);
     }
     row.lengthFt += it.lengthFt;
@@ -457,12 +540,14 @@ function rollupDuct(opts) {
   (o.fittings || []).forEach(f => {
     if (!isDuctSize(f.size)) return;
     const sizeKey = formatDuctSize(f.size);
-    const key = f.type + '|' + sizeKey;
+    const material = isGreaseMaterial(f.material) ? f.material : null;   // D25: from the parent run
+    const key = f.type + '|' + sizeKey + (material ? '|' + material : '');
     let row = fByKey.get(key);
     if (!row) {
-      const gauge = (o.gaugeBySizeKey || {})[sizeKey] || selectGauge(pressureClass, f.size);
-      const lbEach = fittingPounds(f.type, f.size, gauge) || 0;
+      const gauge = material ? DUCT_MATERIALS[material].gauge : ((o.gaugeBySizeKey || {})[sizeKey] || selectGauge(pressureClass, f.size));
+      const lbEach = fittingPounds(f.type, f.size, gauge, material) || 0;
       row = { type: f.type, sizeKey: sizeKey, size: cloneDuctSize(f.size), gauge: gauge, count: 0, lbEach: lbEach, pounds: 0 };
+      if (material) row.material = material;
       fByKey.set(key, row);
     }
     row.count += ductRepeatOf(f);
@@ -2238,6 +2323,9 @@ if (typeof module !== 'undefined' && module.exports) {
     // gauge
     SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES, DUCT_SETTINGS_DEFAULTS,
     ductGoverningDimIn, selectGauge,
+    // material (D25)
+    DUCT_MATERIALS, DUCT_MATERIAL_IDS, ductMaterialOf, isGreaseMaterial, selectGaugeFor, ductRowLabel,
+    DUCT_GREASE, greaseDuctExtras,
     // weight
     ductPerimeterIn, ductWeightPerFoot, segmentPounds,
     FITTING_EQUIV_LF, fittingEquivalentLF, fittingPounds,

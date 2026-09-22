@@ -22,7 +22,7 @@ const PLUMBING_DEFAULTS = {
 };
 const LINE_DEFAULTS = {
   sizes: ['0.5in', '0.75in', '1in', '1.25in', '1.5in', '2in', '3in', '4in'],
-  materials: ['PEX', 'Brass', 'BI', 'Galv']
+  materials: ['PEX', 'Copper', 'PVC', 'Brass', 'BI', 'Galv']
 };
 // --- Trades (Electrical, First-Class S1) ---
 // One machine, one Trade switch: `state.trade` ('plumbing' | 'electrical' |
@@ -75,7 +75,7 @@ const ELECTRICAL_DEFAULTS = {
 };
 const HVAC_DEFAULTS = {
   sizes: ['6"', '8"', '10"', '12"', '14"', '12x12', '24x24'],
-  types: ['Supply Diffuser', 'Return Grille', 'Exhaust Grille', 'Linear Diffuser', 'Thermostat', 'VAV Box', 'Fan Coil', 'RTU', 'Exhaust Fan', 'Damper'],
+  types: ['Supply Diffuser', 'Return Grille', 'Exhaust Grille', 'Linear Diffuser', 'Thermostat', 'VAV Box', 'Fan Coil', 'RTU', 'Exhaust Fan', 'Damper', 'Fire Damper'],
   materials: ['', 'Lay-in', 'Surface', 'Round Neck'],
   // D16: the bundled HVAC symbol (my-counters/hvac/*.svg → CUSTOM_ICONS, set
   // 'hvac') a type starts with — same by-name resolution as electrical. Types
@@ -83,7 +83,7 @@ const HVAC_DEFAULTS = {
   iconNameByType: {
     'Supply Diffuser': 'Supply Diffuser', 'Linear Diffuser': 'Supply Diffuser',
     'Return Grille': 'Return Grille', 'Exhaust Grille': 'Return Grille',
-    'VAV Box': 'VAV Box', RTU: 'RTU', Damper: 'Fire/Smoke Damper',
+    'VAV Box': 'VAV Box', RTU: 'RTU', Damper: 'Fire/Smoke Damper', 'Fire Damper': 'Fire/Smoke Damper',
     Thermostat: 'Thermostat'   // the electrical set's ring-T — the same symbol on an M-sheet
   }
 };
@@ -146,6 +146,10 @@ const STORAGE_INFO_TIMEOUT_MS = 3000;
 const CLIENT_PROBE_TIMEOUT_MS = 5000;
 const CLIENT_RECYCLE_COOLDOWN_MS = 30000;
 const DIRTY_SNAPSHOT_THRESHOLD_MS = 10 * 60 * 1000;
+// The legend's size range (legendSettings.legendScale): the Summary Legend
+// size slider's 25%..400% and the corner grip's clamp, one place.
+const LEGEND_SCALE_MIN = 0.25;
+const LEGEND_SCALE_MAX = 4;
 const CHECK_IN_TIMEOUT_MS = 10000;
 const LONG_IDLE_PROBE_MS = 5 * 60 * 1000;
 const TURN_IN_STALENESS_MS = 5 * 60 * 1000;
@@ -262,7 +266,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TOOL, SCALE_MODES, PLUMBING_DEFAULTS, LINE_DEFAULTS, COLORS, SCALE_PRESETS,
     TRADES, TRADE_LABELS, TRADE_QUICK_PROFILES, ELECTRICAL_DEFAULTS, HVAC_DEFAULTS, DEFAULT_MAKE_UP_FT, CODE_EDITIONS, CODE_DEFAULTS, normalizeProjectCodes,
     AUTO_SAVE_INTERVAL_MS, AUTOSAVE_TIMEOUT_MS, STORAGE_INFO_TIMEOUT_MS, CLIENT_PROBE_TIMEOUT_MS,
-    CLIENT_RECYCLE_COOLDOWN_MS, DIRTY_SNAPSHOT_THRESHOLD_MS, CHECK_IN_TIMEOUT_MS, LONG_IDLE_PROBE_MS,
+    CLIENT_RECYCLE_COOLDOWN_MS, DIRTY_SNAPSHOT_THRESHOLD_MS, LEGEND_SCALE_MIN, LEGEND_SCALE_MAX, CHECK_IN_TIMEOUT_MS, LONG_IDLE_PROBE_MS,
     TURN_IN_STALENESS_MS, AUTOSAVE_BACKOFF_LEVELS_MS, AUTOSAVE_BANNER_THRESHOLD, AUTOSAVE_RECOVERY_THRESHOLD,
     AUTOSAVE_RECOVERY_TIMEOUT_MS, AUTOSAVE_SLOW_MS, AUTOSAVE_SLOW_WINDOW, AUTOSAVE_SLOW_DEBOUNCE_MS,
     AUTOSAVE_SLOW_MIN_SAMPLES, GLOBAL_RELOAD_STAMP_KEY, CHECKOUT_INACTIVITY_MS, CHECKOUT_REFRESH_DEBOUNCE_MS,

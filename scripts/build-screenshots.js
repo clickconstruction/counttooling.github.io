@@ -235,7 +235,76 @@ async function routeViewProject(page, withDrops) {
 //         navigation, e.g. the view-link boot via /app/?t=…; setup receives baseUrl).
 // callouts: [{ n, sel?, x?, y? }]  (sel → anchored to that element; else x/y are
 //           relative to the clip box). boxes: [{ sel?, rect? }].
+// The trade guides' shots are the takeoff their own tour builds: open the app on the tour
+// link, press "Do it for me" on every doing-step up to `stopAt` (exclusive; the whole tour
+// when omitted), leave the tour, and frame the drawing. The guide then shows exactly what
+// a reader who takes the tour ends up with, and a tour change re-shoots the guide.
+function tourSetup(tour, stopAt, after) {
+  return async (page, baseUrl) => {
+    await page.goto(baseUrl + '/app/?tour=' + tour);
+    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'welcome', null, { timeout: 15000 });
+    for (let i = 0; i < 40; i++) {
+      const id = await page.evaluate(() => window.App.tutorialStepId());
+      if (!id || id === 'done' || id === stopAt) break;
+      const hasAction = await page.evaluate(() => { const i = window.App.tutorialStepInfo(); return !!i && i.hasAction && !i.done; });
+      if (hasAction) {
+        await page.evaluate(() => window.App.tutorialDoStep());
+        await page.waitForFunction((was) => window.App.tutorialStepId() !== was || document.getElementById('tourNext').classList.contains('tour-next-ready'), id, { timeout: 20000 });
+        if (await page.evaluate((was) => window.App.tutorialStepId() === was, id)) await page.click('#tourNext');
+      } else await page.click('#tourNext');
+      await page.waitForTimeout(250);
+    }
+    await page.evaluate(() => { window.App.stopTutorial(false); document.querySelectorAll('.modal-overlay.visible').forEach((m) => window.App.hideModal(m.id)); });
+    await page.addScriptTag({ content: FIT_PLAN_SRC });
+    await page.evaluate(() => window.__fitPlan());
+    await page.waitForTimeout(400);
+    if (after) await after(page);
+    await page.waitForTimeout(300);
+    await page.evaluate(() => document.querySelectorAll('.toast-card').forEach((t) => t.remove()));   // the prove-the-scale reading's 5 s toast
+  };
+}
+const openBidCheck = (page) => page.evaluate(() => { window.state.bidCheckCollapsed = false; window.App.renderBidCheck(); window.App.updateUI(); const el = document.getElementById('bidCheckSection'); if (el) el.scrollIntoView({ block: 'start' }); });
+
 const SHOTS = [
+  // Learn: a sheet step with its targets, one circle done and a miss on the card.
+  { name: 'lesson-targets', clip: '.app', noLoad: true,
+    async setup(page, baseUrl) {
+      await page.goto(baseUrl + '/app/?lesson=counting');
+      await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
+      await page.click('#tourShow');
+      await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+      await page.waitForTimeout(1500);
+      const zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+      await page.mouse.click(zs[0].cx + 8, zs[0].cy - 6);
+      await page.waitForTimeout(300);
+      await page.mouse.click(zs[0].cx - zs[0].r - 70, zs[0].cy + 10);
+      await page.waitForTimeout(1000);
+    } },
+
+  // Learn: the lesson menu, two lessons ticked.
+  { name: 'learn-menu', clip: '#learnModal .modal-card', noLoad: true,
+    async setup(page, baseUrl) {
+      await page.addInitScript(() => { try { localStorage.setItem('clickcount-lessons-done', JSON.stringify({ plans: '2026-09-21T00:00:00Z', scale: '2026-09-21T00:00:00Z' })); } catch (_) { /* private mode */ } });
+      await page.goto(baseUrl + '/app/?learn=1');
+      await page.waitForSelector('#learnModal.visible', { timeout: 15000 });
+      await page.waitForTimeout(400);
+    } },
+
+  // The three trade guides: the takeoff each trade's own five-minute tour builds.
+  { name: 'plumbing-tour-takeoff', clip: '.app', noLoad: true, setup: tourSetup('plumbing', 'proof'),
+    boxes: [{ sel: '#summaryList', label: 'Fixtures ×3, pipe with its riser, hangers from the rule' }] },
+  { name: 'plumbing-bid-check', clip: '.app', noLoad: true, setup: tourSetup('plumbing', 'proof', openBidCheck),
+    boxes: [{ sel: '#bidCheckSection', label: 'Bid Check' }] },
+  { name: 'electrical-tour-takeoff', clip: '.app', noLoad: true, setup: tourSetup('electrical', 'handoff'),
+    boxes: [{ sel: '#summaryList', label: 'Devices, conduit, and wire by gauge' }] },
+  { name: 'electrical-bid-check', clip: '.app', noLoad: true, setup: tourSetup('electrical', 'handoff', openBidCheck),
+    boxes: [{ sel: '#bidCheckSection', label: 'Bid Check' }] },
+  { name: 'hvac-tour-takeoff', clip: '.app', noLoad: true, setup: tourSetup('hvac', 'schedule') },
+  { name: 'hvac-duct-schedule', clip: '.app', noLoad: true, setup: tourSetup('hvac', 'schedule', async (page) => { await page.click('#ductScheduleBtn'); await page.waitForTimeout(500); }) },
+
   // (The marketing landing hero is three films now: scripts/build-hero-video.js writes
   // img/hero-<trade>.{mp4,png}; the PNGs are their posters, not shots from here.)
 

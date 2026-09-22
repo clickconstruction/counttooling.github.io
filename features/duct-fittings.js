@@ -258,6 +258,22 @@
           pick: (v) => setRunOrientation(target.index, v),
         });
       }
+      // D25: what the run is made of — galvanized through the gauge table, or
+      // welded grease duct at its fixed gauge and its own sheet weight.
+      actions.push({
+        segment: true, id: 'ductRunMaterialSegment', label: 'Material',
+        options: [{ value: 'galvanized', label: 'Galvanized' }, { value: 'black-steel', label: 'Black steel' }, { value: 'stainless', label: 'Stainless' }],
+        value: ductMaterialOf(run),
+        pick: (v) => setRunMaterial(target.index, v),
+      });
+      // The airside a run was started with, editable after the fact (the
+      // exhaust chip is easy to miss in the create dialog).
+      actions.push({
+        segment: true, id: 'ductRunAirsideSegment', label: 'Airside',
+        options: [{ value: 'supply', label: 'Supply' }, { value: 'return', label: 'Return' }, { value: 'exhaust', label: 'Exhaust' }],
+        value: DUCT_AIRSIDES.includes(run.airside) ? run.airside : 'supply',
+        pick: (v) => setRunAirside(target.index, v),
+      });
       actions.push({ label: 'Delete run', run: () => deleteRun(target.index) });
       return showMenu(clientX, clientY, heading, actions);
     }
@@ -321,6 +337,30 @@
   // DELETES the key (flat is the default and a flat run's saved shape must
   // stay byte-identical to pre-D12). updateUI re-renders the Bid Check
   // ("Fits the roof" reads the larger side on edge) and the sidebar tag.
+  // D25: the material rides the run; a grease run reprices in every tally
+  // that reads it (sidebar, schedule, report) on the next render.
+  function setRunMaterial(index, material) {
+    const ann = currentAnn();
+    const run = ann?.ductRuns?.[index];
+    if (!run || !DUCT_MATERIALS[material]) return;
+    if (ductMaterialOf(run) === material) return;
+    App.pushUndoSnapshotCurrentPage();
+    if (material === 'galvanized') delete run.material;
+    else run.material = material;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
+  function setRunAirside(index, airside) {
+    const ann = currentAnn();
+    const run = ann?.ductRuns?.[index];
+    if (!run || !DUCT_AIRSIDES.includes(airside) || run.airside === airside) return;
+    App.pushUndoSnapshotCurrentPage();
+    run.airside = airside;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  }
   function setRunOrientation(index, orientation) {
     const ann = currentAnn();
     const run = ann?.ductRuns?.[index];

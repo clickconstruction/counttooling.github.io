@@ -1,13 +1,15 @@
 ---
 title: Highlights, notes, and reading the bare drawing
 description: Flag regions with named highlights that double as jump-to bookmarks, pin questions as notes, style the legend, and peel the takeoff off with one tap.
-updated: 2026-08-27
+updated: 2026-09-21
 order: 5.8
 icon: note
 category: Working with plans
 ---
 
 Not everything on a takeoff is a count. Questions, flags, and review marks belong on the sheet too, where they're impossible to lose.
+
+**Try it:** [the Notes lesson](/app/?lesson=notes) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ![A named highlight flagging a region and a note pinned where the question applies, both right on the sheet, neither touching the counts.](/guides/img/annotate.png)
 

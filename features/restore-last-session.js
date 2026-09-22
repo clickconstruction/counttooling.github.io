@@ -31,7 +31,11 @@
  * safe anyway, on the held key the engine never writes) — and
  * `App.retryDeferredRestorePrompt` re-evaluates it when the tour stops
  * (features/tutorial.js) or a modal hides (app.js hideModal), with a 1 s
- * safety poll for overlays closed without hideModal. Nothing is ever restored
+ * safety poll for overlays closed without hideModal. A CLOUD offer that finds a
+ * plan already open (2026-09-20, RESTORE-LATE) is dropped instead, at the offer
+ * or at a retry: it is only a pointer, nothing is consumed, and it returns next
+ * boot; a LOCAL offer still shows, being the only way back to unsaved on-device
+ * work. Nothing is ever restored
  * without a click on Keep: boot's silent palette/page pre-apply is skipped
  * when the session already has pages, is dirty, or is running a tour.
  *
@@ -64,7 +68,7 @@
   // they never block; the prompt's own overlay is skipped so a retry while it
   // is already up is a no-op.
   function restorePromptBlocker() {
-    if (App.isTutorialActive && App.isTutorialActive()) return 'tour';
+    if ((App.isTutorialActive && App.isTutorialActive()) || (App.isTutorialPending && App.isTutorialPending())) return 'tour';   // pending: a ?tour= link's start is queued
     const open = Array.from(document.querySelectorAll('.modal-overlay.visible')).find((el) => el.id !== 'lastSessionRestoreModal');
     return open ? 'modal' : null;
   }
@@ -75,6 +79,19 @@
   // Returns true when the prompt is on screen, false when it was deferred.
   function openLastSessionRestorePrompt(pending) {
     if (!pending) return false;
+    // RESTORE-LATE: a CLOUD offer is dropped once a plan is open. Boot is async, so on a slow
+    // connection the user can have uploaded a plan (and be in its Save dialog) by the time the
+    // offer arrives or its blocker goes, and "reopen your last project?" then lands on top of
+    // work in progress. A cloud offer is only a pointer: the project is still in Load Project
+    // and `clickcount-last-project` is untouched, so the offer returns next boot. A LOCAL offer
+    // (unsaved on-device work) still shows: that prompt is the only way back to it, since the
+    // open plan's own backup outranks the held record at the next boot.
+    if (pending.cloudLast && App.state && App.state.pages && App.state.pages.length > 0) {
+      deferredRestore = null;
+      stopDeferredPoll();
+      try { App.pushSaveEvent('restore_prompt_dropped', 'Last-session offer dropped: a plan is already open', JSON.stringify({ projectId: promptProjectId(pending) })); } catch (_) { /* noop */ }
+      return false;
+    }
     const blocker = restorePromptBlocker();
     if (blocker) {
       deferredRestore = pending;
@@ -143,12 +160,24 @@
     const idbBackup = heldBackup || await App.takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
     const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
     let pdf;
-    const idbPdfBlob = useIdbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0 ? idbBackup.pdfBlob : null;
+    // The device's PDF is the device's PDF whichever side has the fresher MARKS. `useIdbBackup`
+    // answers "whose data wins"; it used to gate the PDF too, so a project whose marks had
+    // autosaved but whose PDF upload was cut short (a reload mid-upload: the cloud row has no
+    // pdf_path, the backup holds the blob) failed Keep with "No PDF available" while the file
+    // sat on the device. With no PDF in the cloud the backup's blob is the only copy: use it,
+    // unless both sides carry a hash and they disagree.
+    const idbHasPdf = !!(idbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0);
+    const idbPdfIsOnlyCopy = idbHasPdf && !proj.pdf_path && !(proj.pdf_hash && idbBackup.pdfHash && proj.pdf_hash !== idbBackup.pdfHash);
+    const idbPdfBlob = idbHasPdf && (useIdbBackup || idbPdfIsOnlyCopy) ? idbBackup.pdfBlob : null;
+    let devicePdfForUpload = null;
     if (idbPdfBlob) {
       try {
         const buf = await idbPdfBlob.arrayBuffer();
+        // pdf.js detaches the buffer it is given; the copy is what the engine uploads below.
+        if (!proj.pdf_path && proj.id !== 'local') devicePdfForUpload = buf.slice(0);
         pdf = await App.getPdfDocument(buf).promise;
       } catch (e) {
+        devicePdfForUpload = null;
         if (!cachedBlob && !proj.pdf_path) throw e;
       }
     }
@@ -200,8 +229,13 @@
     state.currentProjectName = proj.name || 'Untitled';
     state.pdfStoragePath = proj.pdf_path;
     state.pdfHash = proj.pdf_hash || null;
-    state.pdfBuffer = null;
-    state.pdfBufferSize = 0;
+    // A cloud project with no PDF in the cloud, restored from the device's copy: hand that copy
+    // to the engine, whose autosave tick uploads a local PDF on its own
+    // (save-engine.js uploadLocalPdfToCloudIfNeeded needs pages, no pdfStoragePath, the checkout,
+    // and a usable buffer). Without it the restored project would never get its PDF to the cloud.
+    state.pdfBuffer = devicePdfForUpload;
+    state.pdfBufferSize = devicePdfForUpload ? devicePdfForUpload.byteLength : 0;
+    if (devicePdfForUpload && idbBackup && idbBackup.pdfHash && !proj.pdf_hash) state.pdfHash = idbBackup.pdfHash;
     App.setLastSaveIncludedPdf(!!proj.pdf_path);
     state.lastSavedAt = proj.updated_at || null;
     App.setLastLocalBackupAt(null);
@@ -279,6 +313,22 @@
         const pdfHashForCache = projForRestore.pdf_hash || last.pdfHash;
         const cachedBlob = pdfHashForCache ? await pdfCacheGet(last.projectId, pdfHashForCache) : null;
         const restoreStartedAt = Date.now();
+        // The marks are in the cloud but the PDF is nowhere: not in the cloud (its upload was cut
+        // short, a reload seconds after the first marks), not in the device backup (its first
+        // write had not happened yet), not in the PDF cache. That used to end in "Failed to
+        // restore project: No PDF available", a dead end over an empty canvas. Load Project
+        // already has the door for a project with marks and no PDF: open the project through it,
+        // and its dialog asks for the file, lays the saved marks on it, and the engine uploads it.
+        if (proj && !proj.pdf_path && !(cachedBlob && cachedBlob.size > 0) && App.loadCloudProjectRow) {
+          const dev = await App.takeoffBackupGet(last.projectId, currentUid);
+          if (!(dev && dev.pdfBlob && dev.pdfBlob.size > 0)) {
+            pendingRestore = null;   // the loader's own dialog takes over; never hold backups behind a hidden prompt
+            await App.loadCloudProjectRow(proj, { hostModalId: 'lastSessionRestoreModal', showError: () => App.showToast('Could not open that project.', 5000) });
+            try { App.logUserEvent('restore_keep', last.projectId, { source: 'cloud', markers: 0, ms: Date.now() - restoreStartedAt }); } catch (_) { /* noop */ }
+            App.updateUI();
+            return;
+          }
+        }
         await doRestoreLastProject(projForRestore, cachedBlob);
         try { App.logUserEvent('restore_keep', last.projectId, { source: 'cloud', markers: countRestoredMarkers(), ms: Date.now() - restoreStartedAt }); } catch (_) { /* noop */ }
         App.updateUI();

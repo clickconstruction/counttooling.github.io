@@ -455,14 +455,14 @@
       html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
       ds.straightRows.forEach(r => {
         const lf = r.joints == null ? fmtFtR(r.lengthFt) : fmtFtR(r.lengthFt) + ' · ' + r.joints + (r.joints === 1 ? ' joint' : ' joints') + " @ 10'";
-        html += '<tr><td>' + escapeHtml(r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+        html += '<tr><td>' + escapeHtml(typeof ductRowLabel === 'function' ? ductRowLabel(r) : r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
       });
       html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFtR(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLbR(ds.straightTotalLb) + '</strong></td></tr>';
       // D17: multiply-zone honesty (T2-11) — the placed figure beside the multiplied one.
       if (ds.repeated) html += '<tr><td>Placed (before multiply zones)</td><td></td><td>' + fmtFtR(ds.straightPlacedFt) + '</td><td></td><td>' + fmtLbR(ds.straightPlacedLb) + '</td></tr>';
       if (ds.fittingMode === 'counted') {
         ds.fittingRows.forEach(r => {
-          html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + r.sizeKey) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
+          html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + (typeof ductRowLabel === 'function' ? ductRowLabel(r) : r.sizeKey)) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
         });
         html += '<tr><td><strong>Fittings total</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.fittingsCountedLb) + '</strong></td></tr>';
       } else {
@@ -473,6 +473,11 @@
       (ds.flexRows || []).forEach(r => {
         html += '<tr><td>Flex, ' + escapeHtml(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFtR(r.totalFt) + '</td></tr>';
       });
+      // D26: the grease-duct extras, by the piece and the square foot.
+      if (ds.grease) {
+        html += '<tr><td>Grease duct cleanouts</td><td></td><td>' + ds.grease.cleanouts.total + '</td><td></td><td></td></tr>';
+        html += '<tr><td>Grease duct listed wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.grease.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
+      }
       if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + Math.round(ds.linerSqFt).toLocaleString() + ' sq ft</td></tr>';
       if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
       html += '<tr><td>Seam &amp; waste (+' + ds.seamWastePct + '%)</td><td></td><td></td><td></td><td>' + fmtLbR(ds.seamWasteLb) + '</td></tr>';

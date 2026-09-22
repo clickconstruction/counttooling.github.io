@@ -1872,3 +1872,67 @@ test('ductVerticalMarkerAnchor: the vertex lifted 10 pt; null for a missing vert
   assert.strictEqual(dm.ductVerticalMarkerAnchor(run, null), null);
   assert.strictEqual(dm.ductVerticalMarkerAnchor(null, { vertexIdx: 0, ft: 3 }), null);
 });
+
+// --- D25. Material: welded grease duct outside the gauge table ---------------
+
+test('makeDuctRun: galvanized is keyless; a grease material is attached', () => {
+  assert.ok(!('material' in dm.makeDuctRun({})));
+  assert.ok(!('material' in dm.makeDuctRun({ material: 'galvanized' })));
+  assert.ok(!('material' in dm.makeDuctRun({ material: 'kryptonite' })));
+  assert.strictEqual(dm.makeDuctRun({ material: 'black-steel' }).material, 'black-steel');
+  assert.strictEqual(dm.ductMaterialOf(dm.makeDuctRun({})), 'galvanized');
+  assert.strictEqual(dm.ductMaterialOf({ material: 'stainless' }), 'stainless');
+  assert.strictEqual(dm.ductMaterialOf({ material: 'nope' }), 'galvanized');
+});
+
+test('a grease material fixes the gauge and weighs by its own sheet', () => {
+  const r18 = dm.makeRoundSize(18);
+  assert.strictEqual(dm.selectGaugeFor('1', r18, 'black-steel'), 16);
+  assert.strictEqual(dm.selectGaugeFor('1', r18, 'stainless'), 18);
+  assert.strictEqual(dm.selectGaugeFor('1', r18, null), dm.selectGauge('1', r18));
+  // π·18/12 ft² per foot × 2.5 lb/ft²
+  close(dm.ductWeightPerFoot(r18, 16, 'black-steel'), (Math.PI * 18 / 12) * 2.5, 1e-9);
+  close(dm.ductWeightPerFoot(r18, 16, 'stainless'), (Math.PI * 18 / 12) * 2.0, 1e-9);
+  // the gauge argument is ignored for a grease material, and galvanized still reads the sheet table
+  close(dm.ductWeightPerFoot(r18, 24, 'black-steel'), dm.ductWeightPerFoot(r18, 16, 'black-steel'), 1e-9);
+  close(dm.ductWeightPerFoot(r18, 24), (Math.PI * 18 / 12) * 1.156, 1e-9);
+  assert.strictEqual(dm.ductRowLabel({ sizeKey: '18"Ø', material: 'black-steel' }), '18"Ø · welded black steel');
+  assert.strictEqual(dm.ductRowLabel({ sizeKey: '24×12' }), '24×12');
+});
+
+test('a grease run tallies on its own row; its items carry the material; the override chip cannot reach it', () => {
+  const gal = dm.makeDuctRun({ vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }], segments: [{ startVertexIdx: 0, size: dm.makeRoundSize(18) }] });
+  const grease = dm.makeDuctRun({ material: 'black-steel', vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }], segments: [{ startVertexIdx: 0, size: dm.makeRoundSize(18) }] });
+  const galItems = dm.runStraightItems(gal);
+  assert.ok(!('material' in galItems[0]), 'a galvanized run keeps the pre-D25 item shape');
+  const greaseItems = dm.runStraightItems(grease);
+  assert.strictEqual(greaseItems[0].material, 'black-steel');
+  const t = dm.tallyStraightBySize(galItems.concat(greaseItems), '1', { '18"Ø': 20 });
+  assert.strictEqual(t.rows.length, 2);
+  const g = t.rows.find((r) => r.material === 'black-steel'), n = t.rows.find((r) => !r.material);
+  assert.strictEqual(g.gauge, 16);
+  assert.strictEqual(n.gauge, 20, 'the override reaches the galvanized row only');
+  close(g.lbPerFt, (Math.PI * 18 / 12) * 2.5, 1e-9);
+  close(n.lbPerFt, (Math.PI * 18 / 12) * 1.656, 1e-9);
+  const roll = dm.rollupDuct({ straightItems: greaseItems, fittings: [{ type: 'elbow90', size: dm.makeRoundSize(18), material: 'black-steel' }], pressureClass: '1' });
+  assert.strictEqual(roll.fittings.rows[0].material, 'black-steel');
+  assert.strictEqual(roll.fittings.rows[0].gauge, 16);
+  close(roll.fittings.rows[0].lbEach, 5 * (Math.PI * 18 / 12) * 2.5, 1e-9);
+});
+
+// --- D26. Grease-duct extras: cleanouts by the piece, listed wrap by the square foot
+
+test('greaseDuctExtras: null without a grease run; cleanouts at bends and per 12 ft of horizontal run; wrap by surface', () => {
+  const r18 = dm.makeRoundSize(18);
+  const gal = dm.makeDuctRun({ id: 'g', vertices: [{ x: 0, y: 0 }, { x: 30, y: 0 }], segments: [{ startVertexIdx: 0, size: r18 }] });
+  assert.strictEqual(dm.greaseDuctExtras([gal], [{ runId: 'g', type: 'elbow90' }]), null);
+  // an L of 10 ft + 26 ft (units = feet), one elbow, a 9 ft riser
+  const grease = dm.makeDuctRun({ id: 'h', material: 'black-steel', vertices: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 26 }], segments: [{ startVertexIdx: 0, size: r18 }], verticalFt: [{ vertexIdx: 2, ft: 9 }] });
+  const x = dm.greaseDuctExtras([gal, grease], [{ runId: 'h', type: 'elbow90' }, { runId: 'g', type: 'elbow90' }, { runId: 'h', type: 'tap' }, { runId: 'h', type: 'elbow45', suppressed: true }]);
+  assert.strictEqual(x.runs, 1);
+  close(x.lengthFt, 45, 1e-9);
+  close(x.horizontalFt, 36, 1e-9);
+  assert.deepStrictEqual(x.cleanouts, { atBends: 1, alongRuns: 3, total: 4 });   // the elbow; floor(36 / 12)
+  close(x.wrapSqFt, 45 * Math.PI * 18 / 12, 1e-9);                             // the riser is duct surface too
+  assert.strictEqual(dm.DUCT_GREASE.cleanoutIntervalFt, 12);
+});

@@ -1,7 +1,7 @@
 ---
 title: Duct takeoff by the pound
 description: Trace duct runs with size step-downs, let fittings count themselves, and read one Bid weight off the Duct Schedule: sheet metal priced like a bid.
-updated: 2026-09-14
+updated: 2026-09-21
 order: 9.15
 icon: duct
 category: By trade
@@ -9,7 +9,7 @@ category: By trade
 
 Sheet-metal bids come down to one number: **pounds of duct**. Most takeoff tools stop at linear feet and leave the gauge tables, fitting allowances, and waste factors to a spreadsheet. CountTooling carries the trace all the way to a **Bid weight**: straight duct by size, fittings counted off the geometry, insulation square footage, and seam & waste on their own labeled lines.
 
-**New here?** The **hvac** link under *take the five-minute tour* on the empty canvas walks this article on the sample plan, step by step, with a *Do it for me* on every step.
+**New here?** The **hvac** link under *take the five-minute tour* on the empty canvas walks this article on the sample plan, step by step: it circles where to click on the sheet and checks each step against what you actually did.
 
 ## Trace a run
 

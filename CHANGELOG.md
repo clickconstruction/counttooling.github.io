@@ -26,6 +26,592 @@ dots and chips. Live path only; the export path never sees a run mid-edit. Test:
 in bend-fittings.spec.js reads a pixel on `#annCanvas` at a segment midpoint before, during and
 after editing, and at the closing segment of a closed run while edited.
 
+## feat(tour): every button, once, on a blank sheet the tour makes itself (2026-09-21)
+
+[BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the
+three trade tours: no plan, no trade, no numbers to get right, and every control in the header,
+on the sheet, in the footer and in the sidebar pressed once, 37 steps in about fifteen minutes.
+It came out of an audit of what the tours, the lessons and the courses actually press (the table
+in the plan file, generated from the code): twelve header and footer controls had never been
+pressed by any step (Move, Ghost, Grid overlay, Drop sizes, Save status, Export project, Close
+this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); all are now.
+
+- **The sheet is made in the browser** ([features/tour-blank.js](features/tour-blank.js)): two
+  ANSI B pages from the vendored pdf-lib, a border, a title block that says 1/8" = 1'-0", and on
+  SK-1 one 20'-0" dimension to prove the scale on, fed to `#pdfInput` like a dropped file so the
+  intake, the sheet-size analysis and the local backup run for real. Project `blank-sheet`;
+  features/lessons.js treats it as a teaching set (reset without asking), and the tour resets the
+  teaching sets the same way; the reader's own plan goes through Close project, which asks.
+- **A step is one button.** Sheet work sits in the engine's circles and boundaries; a toggle is
+  done only once pressed and pressed back (a latch); a dialog step holds until read. No trade
+  is stamped (Fixture, Pipe, Area A), so Duct sits behind ⋯ on a plumbing device and Polyline
+  on an HVAC one, exactly as on a real bid. The palette baseline is taken when the sheet opens,
+  because an Artboard's counters ride into every new project, and the same baseline is the sweep on
+  stop: the Fixture, the Pipe, Area A and the key binding never follow the reader onto a real bid.
+  Snap to 45° is the device's and goes back on stop. The sheets name themselves SK-1 and SK-2 off the
+  title block, the way a real set does.
+- **Doors**: the empty canvas ("or press every button once on a blank sheet", hidden once the
+  tour is done on this device: `clickcount-tour-done-blank`), Learn → Every button, Project
+  Settings → Help → every button, `/app/?tour=blank`.
+- **Pick up where you left off**: the step the reader is on is kept on the device and the next
+  start offers **Pick up where you left off** (the sheet opens fresh with every earlier step laid
+  down through the same doors, then lands on the saved step) beside **Start over**. **Precision
+  where it counts**: the Quick Line step's circles are tight and its check reads the footage,
+  because a run is measured between the two clicks. **Share and Copy view link** have a step of
+  their own that says what they do and how to reach them for real; they stay unpressed, because
+  they do nothing off a cloud project and pressing them would mean saving the practice sheet into
+  the reader's account.
+- **Engine** (features/tutorial.js): `?tour=<id>` resolves when the link fires against every
+  registered tour; a registered tour may carry `onStart()` and `onStep(id, index)`; a step may
+  carry `progress()`, the neutral status line for guidance on a step with several parts (`hint()`
+  stays red for misses), and `alt`, a second action button; the card's step number no longer
+  wraps under a long row of dots.
+- **Walked on a tablet** (768 × 1024, touch), which found engine bugs every tour had there: the
+  "narrow" test was `< 768` while the app's breakpoint is 768 inclusive (an iPad in portrait), so
+  the sidebar-drawer wording and the ☰ fallback never fired; the header strip scrolls sideways
+  and tools past the edge were never lit (they are scrolled in now); with no control to light the
+  card sat on the sheet targets; the docked card covered the targets the engine had centred under
+  it. The blank tour's steps say where each control lives on a tablet (Quick keys under Settings,
+  Snap in Line Type Settings, Polyline in the sidebar, Add canvas under Layers, Hide marks, Drop
+  sizes, Export and Close project under ☰, the sidebar behind ☰, zoom by pinch) and light that
+  door. The walk also found an app gap: the Notes ledger's header button is consolidated away
+  on a tablet and nothing mirrored it, so the ☰ (features/burger-menu.js) gained a Notes ledger
+  row, gated like the button.
+- Spec: [tutorial.spec.js](tutorial.spec.js) walks all 37 steps through the seam and asserts the
+  real state after each; the doors; the reset over a teaching set; snap restored; a tablet
+  viewport walk with touch.
+
+## feat(duct): the grease duct's cleanouts and listed wrap are priced on their own lines (2026-09-21)
+
+The line the grease-duct reveal used to hand to the bid is now on the Duct Schedule. When any run
+carries a grease material, a **Grease duct** block sits under the flex rows, outside the bid weight:
+**cleanouts** by the piece, one at each change of direction (each elbow on a grease run) plus one
+per 12 ft of horizontal run (NFPA 96 7.4; duct-model.js `DUCT_GREASE.cleanoutIntervalFt`,
+drift-checked from the grease-duct rule), and the **listed wrap** by the square foot of duct
+surface, straight duct only, since fittings are wrapped by the piece. The block reads
+"1 at a change of direction + 0 along 10' of horizontal run, one per 12'" so the count explains
+itself. Copy Schedule, the copy rows Summary and /Tooling append, and the report carry both lines.
+`greaseDuctExtras(runs, fittings, distFt)` is the pure seam, null on a galvanized takeoff. The HVAC
+course's chapter 7 reveal now reads the block (one cleanout, 47 sq ft on the sample) and the compare
+card names it; the welding labor stays with pricing.
+
+## feat(duct): the grease duct is a real run, and the fire damper is counted (2026-09-21)
+
+The two gaps the HVAC course named on the day it merged. A duct run now has a **material**
+(duct-model.js `DUCT_MATERIALS`, D25): galvanized by default and keyless on the run, or welded
+black steel or welded stainless for a hood's grease duct, from the Duct dialog's Material select or
+the run's right-click menu (which also gained an Airside chip). A grease run prices on its own row
+of the Duct Schedule at the gauge the code fixes (IMC 506.3.1.1: 16 ga carbon steel, 18 ga
+stainless) and that metal's sheet weight, its fittings the same way, and the per-size gauge override
+never reaches it; the sidebar, the schedule, the copy rows, the report and the canvas chip all name
+the metal. New rule page: [grease-duct](content/rules/hvac/grease-duct.md), drift-checked against
+the table. The HVAC Quick tab has a **Fire Damper** type (the Fire/Smoke Damper symbol).
+
+- **The set**: M-101 draws the grease duct darker from the hood collar to a roof curb, sloped with
+  a cleanout at its elbow, and dots the kitchen's hall wall as 1-hr rated with an FD at each of its
+  two duct penetrations (the kitchen branch, and the main above the kitchen door). The legend and
+  keynotes say so, and that nothing goes in the grease duct.
+- **The course**, chapter 7: trace the grease duct with its material (a galvanized trace is sent to
+  the run menu), read what the Schedule did with it, count a fire damper at each penetration (a wall
+  that is not rated is refused with the keynote), and why the grease duct would still get none.
+  Chapter 9 ticks the fire-damper row as a count you can defend. The reference grew to 26 marks and
+  a ninth duct row.
+- Specs: course-hvac.spec.js checks the grease row (16 ga, 11.78 lb/ft, 10.1 ft, its elbow in black
+  steel), the two dampers, both refusals; duct-model.test.js covers the material end to end.
+
+## feat(course): the HVAC course, nine chapters on how a restaurant gets its air (2026-09-21)
+
+[HVAC-COURSE.md](journeys/plans/HVAC-COURSE.md). The third course, the same way as the two before
+it: the engineer's drawing is the answer key, a question is answered with a click the check refuses
+when wrong, and this time the app's arithmetic carries most of the teaching, because the HVAC side
+already knows a room's air, a system's capacity, a run's gauge and pounds, and whether it fits the
+roof and the fan.
+
+- **The set** (scripts/sample-hvac.js, `npm run build:sample-hvac`): M-101 the mechanical plan on
+  `restaurantShell` (24 devices tagged by the schedule with their flex dashed, the main drawn at
+  width with its size printed where it steps and a 2" wrap, four branches, the restroom exhaust, the
+  hood's grease duct and its keynote, the roof equipment keyed outside the east wall), M-501 the
+  equipment, diffuser and room air schedules, M-601 a building section at 1/2" = 1'-0" with the
+  wrapped main dimensioned in the plenum.
+- **The course** (features/course-hvac.js): which unit moves the most air (the hood fan, not the
+  RTU), which room breathes hardest and why, rooms boxed with the schedule's type and CFM and the
+  deck height, the palette from the diffuser schedule with a CFM per tag and 24 devices placed by
+  tag, why the kitchen necks are bigger, RTU-1 as a system with its capacity and ESP and why 3,000
+  for 2,650, the main traced at 24×12 stepping at S where the plan prints it, the diffusers hung on
+  the runs and what that changes, the fittings the run counted for itself, the section measured and
+  *Fits the roof* answered by the deck height, *Static path* read as a lesson in ESP, the grease duct
+  noted (NFPA 96) and why it stays out of the gauge table, the restroom exhaust as an exhaust run,
+  make-up air and the interlock, the whole set against a reference by size with the bid weight, the
+  duct rows of Bid Check with the ones the set already answers.
+- **Runs laid through the model.** Seeds lay a run with duct-model's `makeDuctRun` and
+  `App.reinferDuctFittings`, synchronously, because the lesson kit seeds before it switches the page;
+  the reader traces by hand with the tool. Attach is its own step: a diffuser counts toward a
+  system's designed air and the static path only once a run reaches it.
+- The Learn menu holds three sections; the empty-canvas line offers "plumbing or its power or its
+  air"; Project Settings → Help has all three.
+- Specs: [course-hvac.spec.js](course-hvac.spec.js), twelve tests: every chapter through the seam
+  with the numbers its bodies quote (the main 32.5 / 11.67 / 10 ft by size, designed air 0 before
+  the runs and 2,350 after, the plenum's two rows auto and ok, the exhaust 27.58 ft of round), the
+  wrong roof key and the wrong grease duct refused, the main traced at the wrong sizes named, the
+  doors and three courses in one menu.
+- Open: HC-REVIEW, a trade read of chapters 2 to 7 and M-501's numbers. No fire dampers (no rated
+  wall in the set), the grease duct is a note not a run, chapter 9 says so.
+
+## feat(course): the electrical course, nine chapters on how a restaurant gets its power (2026-09-21)
+
+[ELECTRICAL-COURSE.md](journeys/plans/ELECTRICAL-COURSE.md). The plumbing course's sibling, built the
+same afternoon, the same way: the engineer's drawing is the answer key, a question is answered with
+a click the check refuses when wrong, the explanation and its section on the next card, and this
+time the app's own arithmetic teaches too.
+
+- **The set** (scripts/sample-electrical.js, `npm run build:sample-electrical`): the same Main St
+  Restaurant as P-101 on the same shell, which was factored out of P-101's drawing as
+  `restaurantShell(opts)` (lights, plumbing tags and drains as options; P-101 proved unchanged element
+  for element). E-101 the power plan, E-201 the lighting plan with every fixture's letter beside it,
+  E-501 the fixture and panel schedules, E-601 the one-line. Every device sits at a P-101 coordinate.
+- **The course** (features/course-electrical.js): which receptacles must be GFCI (NEC 210.8(B), a
+  duplex clicked as one is told it has no sink within 6 ft, and the one the engineer drew plain in the
+  kitchen has to be found and flagged), the working clearance measured in front
+  of LP-1 (110.26), the dishwasher's row highlighted and read (240.4(D), 310.16), the palette from the
+  fixture schedule and 36 fixtures placed by the letter, the fixtures with a battery (700.12, IBC
+  1008), occupancy sensors (IECC C405.2.1), a raceway that knows its conductors and the chain that
+  writes the verticals, fill judged against Chapter 9 Table 1, the voltage-drop row warning at the
+  default 12 A and clearing at the 6 A the engineer scheduled (210.19 informational note), the
+  three-phase J-box found, the shunt-trip RFI, the feeder traced with 4 #3/0 + #6 G and judged for
+  fill, the whole set against a reference of 69 marks and three runs, the circuit schedule in the
+  report, the electrical rows of Bid Check.
+- **The lesson kit opens a named set** (`lesson.set` in features/lessons.js: url, name, page count,
+  trade), so the plumbing set stays four sheets. **The Learn menu holds a section per course**
+  (`App.courseSections`; the plumbing section moved to `#learnCourseList-plumbing`). The empty-canvas
+  line offers "plumbing or its power"; Project Settings → Help has both. The plumbing course's
+  ARCHITECTURE row, lost in the targets merge, is back.
+- The schedule reader's descriptions also stop at a bare integer column (volts, watts).
+- Specs: [course-electrical.spec.js](course-electrical.spec.js), twelve tests: every chapter through
+  the seam with the numbers its bodies quote (the chain 60.5 ft with four 9.5 ft verticals, the
+  homerun 84.17 ft, the feeder 12.33 ft, fill on the feeder in the thirties), the wrong GFCI click
+  refused, the voltage-drop row's warn-then-clear, the doors and both courses in one menu.
+- Open: EC-REVIEW, a trade read of chapters 2 to 7 and the panel schedule. Fire alarm is absent from
+  the set on purpose; chapter 9 says so. The HVAC course is next.
+
+## feat(course): the plumbing course, nine chapters on how a restaurant gets its plumbing (2026-09-21)
+
+[PLUMBING-COURSE.md](journeys/plans/PLUMBING-COURSE.md). The owner's ask: "a short tutorial, and a long
+tutorial where we use the opportunity to coach the user how plumbing, electrical and HVAC work, and
+the rules, and why things are where they are." The short one is the tours and the lessons; this is
+the long one for plumbing, built first because only plumbing has an engineered sheet. Decisions:
+plumbing first, the engineer's drawing is the answer key, the drawing may change to teach better.
+Two rounds the same day: a first cut, an honest "is this the best we can do" (no: the coaching told
+with a delay, the drawing was thin, the app's unique features were mentioned not used), and the
+rework below.
+
+- **The course** (features/course-plumbing.js) is nine chapters on the tour engine, each the length
+  of a lesson, resumable, ticked on the device: Read the sheet, The fixtures and where they sit,
+  Water, Waste and vent, The riser, Gas, The enlarged plan and the typical, The whole sheet, Check
+  it and hand it off. It runs on the lesson set and reads `App.lessonKit` (features/lessons.js, now
+  exposed) at call time; chapters stand alone the way lessons do. Merged onto the on-sheet targets
+  engine the same day: every sheet step declares its circles or boundary and counts only inside
+  them, a QUESTION step deliberately draws none (a circle on the answer would be the answer), and
+  each step's action is the engine's seam, `App.tutorialDoStep`, for the spec and the finish button.
+- **A question is answered with a click.** "Which hand sink serves the cook line?" passes only on
+  the sink by the range and tells a wrong click which sink that was. "Put a note on a fixture whose
+  waste must never enter the interceptor" passes on a water closet, a lavatory or the mop sink and
+  says a hand sink carries grease. "Where must a cleanout be?" counts four and names the missing
+  ones by room. The explanation, with its section (IPC 604, 608, 704, 708, 709, 710, 802, 901, 903,
+  1002, 1003; FDA Food Code 5-202.12 and 5-204.11; IFGC 402 and 409.5; NFPA 96), opens the next
+  card. Where nothing can be clicked, the engine's `reveal` holds the answer behind "Show the
+  engineer's answer". Every count step's hint names what is still missing, by room.
+- **The app's own features do the work**: the schedule reader builds the eight counters from P-501's
+  table (chapter 2), the waste goes on its own layer (chapter 4), the hot water return is traced as
+  its own type, the FD counter carries a Trap primer child count, Summary Legend, Export PDFs and
+  the notes ledger each get a step.
+- **The whole sheet, against a reference** (chapter 8): "Finish the takeoff for me" lays every fixture
+  and every run; the reference is computed from the same flat geometry (seven line types, twelve
+  counts, thirty-four marks) so it cannot drift from the drawing; the compare card is a body that
+  is a FUNCTION, rendered live, with the reader's feet beside the reference's and the run a short
+  one is missing.
+- **The drawing**: P-101 gained its waste side (a 4" sanitary line under the restrooms that joins the
+  sewer DOWNSTREAM of the interceptor, a 3" grease line from every kitchen, dish and bar fixture,
+  four cleanouts, two VTRs, an RPZ, a hose bibb, general notes naming materials and slope) and a
+  hot water return with its own dotted line; P-501 gained WSFU and DFU columns and a note adding
+  the drainage load to 47 DFU against a 4" sewer's 180 and a 3" sewer's 36; **P-601 is new**, the
+  restrooms' waste and vent riser as an elevation at 1/4", to scale, so a trap arm can be measured
+  against Table 1002.2 and the stack traced from the drain to a foot above the roof. Nothing that
+  was on P-101 moved (the tours' and lessons' specs ran unchanged); the one dimension string that
+  lied, 36'-0" over a 35'-10" wall, says what the wall measures. The lesson set is four sheets.
+- **Engine** (features/tutorial.js): `reveal` / `revealLabel`; a body may be a function; `cardAt`
+  places a card with no control.
+- **Three small product changes**: a tag may carry a hyphen or lead with a digit (tag-model.js
+  `TAG_RE`, so WC-1 and 3CS-1 read as tags; the unit test grew); the schedule reader's link is
+  offered on plumbing projects too (features/tag-reader.js); Copper and PVC join the Quick creator's
+  default materials (constants.js `LINE_DEFAULTS`).
+- **Doors**: the Learn menu's third section (progress, ticks, the next chapter lit; the card scrolls
+  as one region now), the empty-canvas "plumbing course" link, Project Settings → Help,
+  `/app/?course=plumbing`, `/app/?chapter=plumbing:<id>`. The learning guide lists the chapters;
+  the plumbing guide points at the course.
+- Telemetry rides `tour_step` (`tour: 'course:plumbing:<id>'`). No new event type.
+- Specs: [course-plumbing.spec.js](course-plumbing.spec.js), fourteen tests: every chapter's path
+  end to end on real state with the numbers its bodies quote (the trunk 99.17 ft with its riser,
+  ten hangers and three 90s; the return 40.42 ft; the sanitary line 66.25 ft and the stack 17 ft;
+  the gas 35.5 ft with one 90 and four drops), the wrong click refused with its hint, the schedule
+  reader's eight tagged counters, the reference and the live compare card, the doors, the reveal.
+  teaching-labels.test.js reads the course file too, which is why its point lists are flat.
+- Open: PC-REVIEW on the punch list, a trade read of chapters 2 to 6 before the course is offered on
+  the landing. The electrical and HVAC courses wait on E-101 and M-101. Fixture-unit sizing in the
+  app (WATER-PLAN) would let chapter 3 confirm the engineer's sizes instead of reading them.
+## fix(boot): the boot no longer outruns the feature scripts (2026-09-21)
+
+Found chasing a CI failure on the on-sheet targets PR. app.js's async boot calls into
+features/*.js (`App.openLastSessionRestorePrompt`, `App.initViewOnlyMode`), and those scripts sit
+AFTER app.js in the shell. The boot normally loses that race, but with a warm cache and a quick
+IndexedDB read it can win, and then a reload onto a device holding a saved session threw
+"App.openLastSessionRestorePrompt is not a function": the boot died before `updateUI`, the saved
+session was never offered, and the page never went network-idle. Timing-dependent, so it showed up
+as scattered 30 s `waitForLoadState` timeouts across unrelated specs in CI (5, 13, 19 and 22 flaky
+tests on four runs this day) and, locally, in two of three reloads after a tour.
+
+`shellScriptsReady()` resolves at DOMContentLoaded, by which point every classic script has run;
+the boot awaits it before the view-link path and before the silent pre-apply. It sits BEFORE the
+pre-apply on purpose: the pre-apply-to-offer stretch must stay free of awaits so no backup write
+can interleave. Spec: restore-last-session.spec.js "BOOT RACE" serves the feature file 1.5 s late
+and expects the offer; it fails without the fix. The three whole-tour specs also got the 90 s
+budget their siblings have.
+
+It was NOT the main source of the CI flakes, though: the next run still had 16. Every one of
+them, and the run's one hard failure, was `page.waitForLoadState('networkidle')` timing out. A
+fresh context installs the service worker and precaches about 155 files, so a slow runner's
+network does not go quiet inside a test's budget. tutorial.spec.js now waits on the app's own
+signal (`App.bootSettled`) the way lessons.spec.js always has (zero flakes across the runs);
+the rest of the suite is punch row CI-NETWORKIDLE.
+
+## feat(learn): the reader does every step, inside targets drawn on the sheet (2026-09-21)
+
+The owner, after a morning with Learn: "Instead of being able to click through it, I would like
+circles on the page, or boundaries, where a user has to do those actions within those boundaries.
+The boundaries could be quite gracious, and they also clarify where the user should make those
+actions." Mocked first, then built for all sixteen walkthroughs (the thirteen lessons and the
+three trade tours).
+
+- **Targets on the sheet.** A step that works on the plan declares `zones` in the sheet's own
+  points: a **circle** on each thing to click, a shaded **boundary** around anything to drag a box
+  over (with the thing it must wrap dotted inside). They are drawn over the plan in `#tourZones`
+  (an SVG that never takes the pointer, redrawn every frame from the sheet canvas's own box, so it
+  rides pan, zoom and resize with no hook into either), numbered, and turn green with a tick as
+  each is satisfied.
+- **The check counts only what is inside.** `markZones` gives each mark to its NEAREST circle, so
+  close fixtures never both light from one click; `boxZone` wants a box that holds the inner
+  rectangle and stays inside the outer one; `pathZones` wants a corner in each circle in order and
+  ticks them while the trace is still in progress. Measure steps keep their true test, the
+  reading, with circles on the two tick marks. A miss is named on the card in plain words ("A
+  mark outside the circles does not count. Press Ctrl+Z…", "That box misses part of what it should
+  wrap…", "That drop is on another end…") and nothing is ever deleted for the reader.
+- **Gracious by construction.** A circle is a foot or two of plan and never under 26 px on screen
+  (`zoneR`: the radius that counts is the one drawn). On entering a step whose targets would draw
+  small or off screen, the sheet zooms to them once (`focusOnZones`, never past 3x, never under
+  the fit): the plumbing tour's water closets are 30 pt apart and now arrive at 292%.
+- **The card no longer does steps.** "Do it for me" is gone. **Show me where** pulses the target
+  or the lit control (and turns to the target's sheet). **Next** is disabled until the step is
+  really done; a quiet **Skip this step** link keeps anyone from being stuck and logs
+  `tour_step { skipped: true }`. The one exception is a step nobody can do by hand, `handsOff`
+  (fetching the sample sheets): its button still does it. Each step's `action.run` survives as a
+  spec and screenshot seam, `App.tutorialDoStep()`, with `App.tutorialStepInfo()` and
+  `App.tutorialZoneScreen()` beside it.
+- **The card keeps off the targets**: it takes the first viewport corner that covers none of them
+  (it sat on circle 1 of the prove-the-scale step), and while targets show the spotlight's dim
+  drops to a veil so the drawing under a boundary stays readable. Its buttons are two rows now.
+- Specs: by REAL clicks, a click outside a circle does not advance and says why while one well
+  off-centre inside does; a half box is refused and a wrapping one passes; a trace ticks its
+  circles corner by corner; the plumbing tour's circled water closets and its typical-floor
+  boundary (tutorial.spec.js, lessons.spec.js: 35 tests with restore-last-session).
+## fix(legend): the corner grip sizes the legend, smaller as well as bigger (2026-09-21)
+
+Grace's field report: "you can move it but can't shrink it." The legend's bottom-right grip
+set the box's width and height with a floor at the rows, so dragging inward snapped back and
+dragging outward grew a bare white patch past the rows. The Summary Legend dialog's size
+slider did shrink the block, but nobody looks for a slider when there is a grip, and its
+50% floor on a D sheet (the legend follows the sheet since 2026-09-19, about 2× there) only
+got the block back to where it had been.
+
+- The grip scales the legend as a whole: the pointer's travel along the box's diagonal
+  multiplies `legendSettings.legendScale`, the same knob the size slider sets (the slider
+  reads the drag when the dialog opens next). Inward shrinks, outward grows, and the rows
+  follow; the box always hugs its rows in drawLegend. `userResized` is retired: a box an
+  older save grew past its rows snaps back to them. The range is 25%..400% in both places
+  (`LEGEND_SCALE_MIN` / `LEGEND_SCALE_MAX` in constants.js; the slider's floor came down
+  from 50).
+- Undo puts the size back: the full undo snapshot carries `legendSettings` (the grip pushes
+  one at the press, as it always did, but the box it restored no longer decided the size).
+- Every knob on the Summary Legend dialog marks the project dirty now; only the style
+  segment did, so a size or opacity change alone was never saved. The sliders mark it once,
+  at the release.
+
+canvas-draw.test.js pins the box at half and twice the scale and the snap-back of a legacy
+oversized box; [legend-resize.spec.js](legend-resize.spec.js) drags the real grip both ways,
+undoes, and reads the slider.
+
+## fix(turn-in): the edit button holds a beat after it acts (2026-09-21)
+
+Punch row **R1-RECLICK**, decided and closed. `[Check out to Edit]` and `[Turn In]` are one button
+in the same pixels of the header (and its copy in the sidebar), and the label flipped the instant
+the first action landed, so a second click undid the first: checked out, then turned straight
+back in. The field report's pair was 16:36:01 then 16:36:04, a second click by someone who had
+not seen that the first one worked. The decision: a brief hold, no confirm on Turn In (a confirm
+would tax the many deliberate turn-ins a day to stop a mistake that is cheap to undo).
+
+- After a checkout or a turn-in succeeds FROM THE BANNER, it reads **"Checked out ✓"** or
+  **"Turned in ✓"**, disabled and in the quiet colour, for 3 s, then offers the opposite action as
+  before. Three seconds because the reported second click came three seconds later; nobody checks
+  out and turns in on purpose inside that.
+- features/turn-in.js owns it: `holdEditBanner` after a successful action,
+  `App.applyEditBannerHold(bannerEl)` called by updateUI (app.js) just before the sidebar copies
+  the header's markup, so both banners hold alike. updateUI rebuilds the banner on every call, so
+  the hold is re-applied each time and a timer's updateUI ends it.
+- Only the held action is held. A project turned in here and checked out again from the admin
+  notice or Project Settings offers a working `[Turn In]` at once (the first cut swallowed every
+  banner click during a hold; turn-in-self-release.spec.js's new timeout report named it on its
+  first run). Expired, Unsaved / Save and "someone else is editing" are never held. Project
+  Settings' own Check Out and Turn In are separate buttons and are unchanged.
+
+reclick-hold.spec.js (cloud-gated): a double-click on each label acts once and the state stays; a
+click two seconds into the hold does nothing; the sidebar holds too; the hold ends by itself.
+Gates: that spec with turn-in-self-release, close-project, save-status, header-strip-trade and
+view-only, `npm run check`.
+
+## feat(learn): Learn, thirteen short lessons for every part of the app (2026-09-21)
+
+LEARN-LESSONS and LEARN-FLIP, phases 3 to 5 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). The
+owner's ask: "a tutorial where they can go through and use all parts of the app."
+
+- **Learn** is a menu (`#learnModal`) of thirteen lessons, two or three minutes each, beside the
+  three five-minute trade tours: Sheets, Scale, Counting, Measuring, Chain and child counts,
+  Repeats, Organizing, Fixing mistakes, Notes and questions, Check and prove, Deliverables, Working
+  faster, and a guided read of the cloud half (a lesson cannot run on a cloud project). Same engine
+  and the same rules as the tours: every step checks REAL state, every doing-step offers Do it for
+  me through the app's own doors, controls are named as they look on screen.
+- **Doors**: "every tool, one short lesson at a time" on the empty canvas, Project Settings → Help →
+  lessons, `/app/?learn=1`, and `/app/?lesson=<id>`. Thirteen guides gained a **Try it** line that
+  opens their lesson; the plumbing guide links two.
+- **The lesson set**, `samples/sample-lessons.pdf` (`npm run build:sample-lessons`): the engineered
+  sheet could not teach pages, a second scale, a scale zone or a typical, so two sheets were drawn
+  for the purpose. P-401 has the restrooms at 1/4" with 12'-0" strings to prove it, and a hand sink
+  station detail at 1/2" that is TYP. OF 4 with a 4'-0" string inside it; P-501 is the fixture
+  schedule scanned sideways. The engineered sample plan and the hero films are untouched.
+- **A lesson stands alone and costs nobody their work.** Its first step opens the sheets fresh and
+  seeds what it takes for granted; over the reader's own plan that goes through the app's one Close
+  project question, over the last lesson's sheets it just resets; a lesson's palette items are swept
+  before the next, an Artboard palette is left as it was. A finished lesson is ticked on the device
+  (`clickcount-lessons-done`) and hands back to the menu with the next one lit.
+- **Shipped on, not behind a flag.** The plan staged it behind `?ff=learn` with a flip to follow.
+  The owner approved turning it on, the whole path is pinned by spec, and the feature is additive
+  (two links and a dialog), so the dormant stage bought a second 34-minute CI run and nothing else.
+- **Engine** (features/tutorial.js): `App.registerTour`, `App.tourKit`, `onStop`, links in step
+  bodies, and three fixes found by walking the lessons: the card sat ON the button it pointed at
+  (Trim your set's Open), so it now tries right, below, left, above, then the far corner, takes the
+  bottom-left when the sheet itself is the target, honours a step's `cardAt`, and drags by its head;
+  two rasters back to back on a page switch left the sheet blank, so a lesson lands with one.
+- **An app bug found on the way**: a dialog's × re-dispatches Escape on `document`, and the keydown
+  handler called `e.target.matches` on it: a console error on every × of a dialog with no Esc rung
+  (the proof breakdown, Export PDFs). Guarded.
+- Telemetry rides `tour_step` (`tour: 'lesson:<id>'`), so there is no new event type and no migration.
+- Specs: [lessons.spec.js](lessons.spec.js), 16 tests: each lesson's do-it-for-me path end to end with
+  the takeoff it claims (the gas main reads 39.5 ft with two 90s; the zone's 4'-0" reads 4'-0" on a
+  1/4" sheet; one mark reads 4 under a x4 zone), the doors, the reader's plan, the card.
+
+## docs(guides): the plumbing, electrical and HVAC guides follow their tours (2026-09-21)
+
+LEARN-GUIDES, phase 1 of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). Every claim was walked in
+the app first; every picture is the takeoff the trade's own tour builds.
+
+- **Plumbing** is rewritten end to end around what its intro always promised: prove the scale,
+  count, Chain a battery, Drop for the risers, hangers from the rulebook with the § IPC 308.5 chip,
+  Fittings from bends and the vertex menu's "No fitting here", multiply and scale zones, RFI notes
+  and Copy RFI Flags, the plumbing Bid Check rows, the proof breakdown, the hand-off.
+- **HVAC** no longer says to trace duct with Line and Polyline. It is rooms and CFM targets, air
+  devices that carry their CFM, a system with a capacity, the Duct tool sizing itself at `S`,
+  strays and Attach to nearest run, fittings that count themselves, the Duct Schedule and Bid
+  weight, Bid Check and the export gate, the compact M-sheet legend, and the Duct block in
+  Copy to /Tooling. The long form stays in duct-takeoff-by-the-pound.
+- **Electrical** gains the tour pointer it never had, Fittings from bends, the § chips and code
+  edition, the compact E-sheet legend (the old sentence said a tally), and a Bid Check picture
+  with the warning the tour really ends on: three counted receptacles on no run. The tour's Bid
+  Check step now says what the reader sees there rather than what the section can do in general.
+- All three link straight into their tour (`/app/?tour=<trade>`).
+- `scripts/build-screenshots.js` gains `tourSetup(tour, stopAt, after)`: a shot that presses
+  "Do it for me" through the tour and frames the result, so a tour change re-shoots its guide.
+  Six new shots. `[[chain]]` and `[[drop]]` join the guide icon shortcodes.
+
+## fix(tutorial): a tour starts clean, leaves no dialog over its next step, and fits a phone (2026-09-21)
+
+LEARN-ENGINE, the engine half of [LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md). All four were seen
+in a live walk, not read off the code.
+
+- **A `?tour=` link no longer gets the restore offer on top of it, or the last tour's marks inside
+  it.** Three holes, one cause: a tour link starts the tour 600 ms after load, and the boot did not
+  know one was coming. `App.isTutorialPending()` covers that gap; the restore offer's blocker and
+  the boot's silent palette pre-apply (`bootSessionBusy`) both read it. And
+  `maybeReapplyLocalBackupMarks` (features/pdf-intake.js) stands down while a tour runs: every tour
+  opens the same sample PDF, so the last tour's backup hash-matched it and its water closets landed
+  in the HVAC tour. The offer still comes when the tour ends, as before.
+- **Entering a step closes the dialogs the last one left open** (`closeStrayDialogs`): the ladder
+  only lights a control inside an open dialog, so the plumbing Hand it off step sat dark under the
+  proof breakdown. A dialog that holds one of the new step's targets stays (the ladder follows the
+  reader into it); the restore offer and the app's confirm are never touched. It dismisses the way
+  the dialog's own × does, so each modal's cleanup runs.
+- **`hold: true`** on a step: done lights Next, nothing advances by itself. The proof step has it;
+  it used to move on 0.9 s after the breakdown opened, before anyone could read it.
+- **On a phone** (under 768 px, or a coarse pointer) the "(or press S)" asides go, a sidebar step
+  says where the sidebar is and lights the ☰ until the drawer is open (the ladder now skips a
+  control parked off the side of the screen, which `offsetParent` alone does not catch), and the
+  card docks full-width to the far edge from its control, capped at 40% of the height with its
+  buttons pinned.
+- Specs: tutorial.spec.js gains the link-after-a-tour case and the phone case, and pins the proof
+  hold and the lit export button.
+
+## docs(learn): the teaching surfaces name the app's real controls; LEARN-PLAN (2026-09-21)
+
+A docs pass plus a live walk of the plumbing and HVAC tours, ahead of the trade-guide rewrite and
+the lessons ([journeys/plans/LEARN-PLAN.md](journeys/plans/LEARN-PLAN.md), the plan of record).
+
+- **"Copy to PipeTooling" is gone from every teaching surface.** The button has read
+  "Copy to /Tooling" since the hand-off grew a second destination; five guides and the plumbing
+  tour's Hand it off step still used the old name.
+- **Two tour steps said the wrong thing.** The plumbing step that counts Women 108 was titled
+  "Count the Men's room" (now "Count the water closets"); the HVAC tour's last reading step named
+  a "Legend Settings" dialog whose title is "Summary Legend".
+- **The guard is a test, not a convention**: [teaching-labels.test.js](teaching-labels.test.js)
+  (Node, in `npm run check`). Every `[[control]]` a tour step names must be text, a title or an
+  aria-label in app/index.html, an action's own label, or a label a feature file renders (proven
+  by a file + literal pointer in `RENDERED_IN_JS`); and no guide or tour may contain a label in
+  `RETIRED`. Rename a control and the test names every surface still teaching the old one. It
+  found the "Legend Settings" miss on its first run.
+- GUIDES-PLAN.md re-stamped (all fifteen articles are published); four LEARN rows on the punch list.
+## fix(sign-in): signing in no longer wipes the takeoff made signed out (2026-09-20)
+
+Found while checking whether unsaved on-device work survives a sign-in. It did not: a plan opened
+and marked signed out, then a sign-in from inside the app, ended with the page reloading itself
+onto an empty canvas, the marks and the device backup gone and nothing offered back. That is the
+try-it-then-sign-in path, not an edge case.
+
+The cause was the admin force-reload. `checkGlobalForceReload` (save-engine.js) runs at sign-in
+and reloads when the server's `force_reload_after` stamp is newer than the browser's own. A
+browser that had never been through one has NO stamp, which read as 0, older than everything, so
+the first sign-in on any browser always fired it. And `doGlobalReloadNow` cleared the device with
+`indexedDB.deleteDatabase('clickcount-pdf-cache')`, the database that also holds the takeoff
+backups, the one copy of work that is not in the cloud.
+
+- **A browser with no stamp adopts the server's stamp and does not reload** (a
+  `global_reload_baseline` save-status event). It loaded this shell moments ago, so there is no
+  broadcast it can have missed; one made AFTER this still reloads it. The takeoff stays on
+  screen through the sign-in.
+- **A force reload keeps the takeoff backups.** It writes one last backup, then
+  `idbClearCachesKeepTakeoffBackups` (idb.js) empties every other store exactly as before (the
+  PDF cache, view PDFs, zoom rungs, icons, logs, upload-resume) and leaves `takeoff_backup` and
+  its meta alone. The clear is awaited, capped at 2 s each, because a transaction still open at
+  unload is aborted. After the reload the work comes back through "Project from Last Session".
+- **It keeps the `clickcount-last-project` pointer too.** Signed in with unsaved marks, autosave
+  can create the cloud project in the moment before the reload; without the pointer the fresh
+  document would offer nothing, though the work was safe in the cloud. Reasoned from the code,
+  not reproduced. Advanced's "Clear cached data and reload" is the user's own button and is
+  unchanged.
+
+signin-keeps-takeoff.spec.js (cloud-gated, against the real project's stamp): no stamp, no
+reload, the plan and three marks still there, the stamp adopted; a stale stamp, the reload
+happens and Keep brings the three marks back. Engine unit tests: the clear replaces
+`deleteDatabase`, and a browser with no stamp takes the baseline and reloads for a later
+broadcast. idb.test.js pins the selective clear. upload-then-save.spec.js's stamp seeding still
+holds. Gates: the full local suite, `npm run check`.
+
+## fix(restore): Keep uses the device's PDF when the cloud has none, and uploads it (2026-09-20)
+
+Asked: when someone continues from a file that is on the device but not in the cloud, is the
+next step, uploading it, available, and does it still auto-sync? Walked end to end on the test
+account rather than read off the code.
+
+**What already worked.** Signed in, nothing has to be clicked: the moment a plan has a mark, the
+engine's autosave CREATES the cloud project ("Autosave: creating project in cloud"), syncs the
+marks, checks the project out to the user, and then uploads the PDF on its own
+(`uploadLocalPdfToCloudIfNeeded` on the autosave tick). Later edits autosave. Signed out, the
+header's Unsaved / Save is the door, after signing in.
+
+**What was broken.** A reload before that PDF upload lands leaves the cloud row with marks and no
+`pdf_path`, and the file only in the device backup. Keep on "Project from Last Session" then
+failed with "Failed to restore project: No PDF available for this project", over an empty canvas,
+with the PDF sitting on the device. `doRestoreLastProject` only used the backup's PDF when the
+backup's MARKS were newer than the cloud's (`useIdbBackup`), and the marks had already synced.
+
+- **The device's PDF is used when it is the only copy** (`!proj.pdf_path`, and no hash conflict),
+  whichever side has the fresher marks. The cloud's marks still win when they are newer.
+- **Then it goes up by itself.** The restore hands that copy to the engine as `state.pdfBuffer`
+  (it used to null it), so the autosave tick uploads it with no Save click, and the project
+  keeps autosaving.
+- **When the PDF is nowhere** (the reload beat the device backup's first write too), Keep hands
+  the row to `App.loadCloudProjectRow`, whose "this project has annotations but no PDF" dialog
+  asks for the file, lays the saved marks on it, and the engine uploads it. It used to be a
+  dead-end toast. `pendingRestore` is cleared before the hand-off, so no backup write is held
+  behind a hidden prompt.
+
+restore-device-pdf.spec.js (cloud-gated, two cases, storage uploads held with `page.route` so the
+cut-short upload is deterministic). Found on the way, punch row **LOAD-DEVICE-PDF**: Load
+Project's no-PDF branch has the same blind spot. Gates: the new spec, restore-last-session,
+esc-ladder and the load-project specs, `npm run check`.
+
+## fix(restore): a last-session offer no longer lands on a plan opened meanwhile (2026-09-20)
+
+Punch row **RESTORE-LATE**, closed. The "Project from Last Session" prompt is offered when boot's
+sign-in resolves, and deferred (retried on every dialog close, with a 1 s poll) while a tour or a
+dialog is up. Nothing checked whether the user had opened a plan in the meantime, so on a slow
+connection they could upload a plan, answer Load Annotations, and have "reopen your last
+project?" land on top of their Save dialog.
+
+The rule, decided with the trade-off laid out: **drop the cloud offer, keep the on-device one.**
+
+- A **cloud** offer (`{ cloudLast }`) is only a pointer. Once a plan is open
+  (`state.pages.length > 0`) it is dropped, whether it arrives then or a deferred retry finds it
+  so. Nothing is consumed: `clickcount-last-project` stays, the project is in Load Project, and
+  the offer returns next boot. The drop is a `restore_prompt_dropped` save-status event.
+- A **local** offer (unsaved on-device work) still shows over an open plan, as before. It is the
+  only way back to that work: the open plan's own backup outranks the held record at the next
+  boot (save-utils.js `pickBootRestoreCandidate`), so dropping it would lose unsaved work without
+  the user ever being asked. The offer after a tour ends is unchanged for the same reason.
+
+One check at the top of `openLastSessionRestorePrompt` (features/restore-last-session.js), which
+the deferred retry also goes through. The T1-01 write hold is untouched: a dropped offer never
+became `pendingRestore`. Gates: restore-last-session.spec.js (6, the new case covers the deferred
+retry, the on-the-spot drop, and the local offer still showing), the full local suite,
+`npm run check`.
+
+## test(turn-in): the flag-on Turn In wait reports why it timed out (2026-09-20)
+
+Punch row **TURNIN-FLAKE**, worked and still open. Once, in about sixteen parallel runs of the
+five cloud spec files, turn-in-self-release.spec.js's flag-on Turn In never showed "Project turned
+in." inside its 15 s wait, and the failure said nothing else. Six more parallel runs were green,
+so it was not reproduced. What changed: that wait now fails with the save-status log since the
+click, the visible toasts, the open dialogs and the banner's text, so the next occurrence names
+its cause instead of timing out mute. The candidates, from reading `doTurnIn` (save-engine.js):
+its refusals end in a plain toast, not the turned-in card: the pre-probe reading the connection
+as offline (likelier with four workers on one account), "Sync in progress, try again in a
+moment", and "Turn In is already running".
+
+Found while stressing it (every Supabase call delayed 2.5 s, test-only): the "Project from Last
+Session" prompt opened over the spec's Save Project dialog. The prompt is deferred while another
+dialog is up and retried every second, but nothing checks that the user has opened a plan in the
+meantime. That is a real hazard on a slow connection, in backup-sensitive code, so it is punch
+row **RESTORE-LATE** rather than a drive-by fix.
+## fix(film): a room drag no longer misses in a full render (2026-09-20)
+
+Punch row **FILM-DRAG**, closed. Two of three full HVAC renders stopped at `boxRoom`'s wait for
+the Room Size dialog; the quick `--chapters-only` pass never did. The cause is the app's own
+gesture rule, not the script's logic: on a rect tool a press that sits still for 280 ms becomes
+hold-to-aim (app.js `AIM_PRESS_MS`), and only a move past 6 px first promotes it to a drag
+(`RECT_DRAG_MIN_PX`). A rendered frame costs 100 ms or more and the film's eased move starts
+with sub-pixel steps, so under a render the hold fired before the drag armed and the release
+placed one corner instead of closing the box.
+
+`boxRoom` (scripts/build-hero-video.js) now nudges the real mouse 8 px right after mouse-down,
+before the first frame is shot, so the drag claims the gesture at once; the drawn cursor is
+`R.cur` and does not move. Frame counts are unchanged (3,086), so the committed film and its
+chapters file stand. Three of three full renders ran clean with it. The gotcha in
+journeys/plans/LANDING-REFRESH.md now carries the cause instead of the workaround.
+
 ## feat(intake): sheets name themselves from the title block (2026-09-20)
 
 Punch row **SHEET-TITLE**, closed. A page's default label was the file name and a page number,

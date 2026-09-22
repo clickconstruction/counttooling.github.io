@@ -23,7 +23,7 @@ Takeoff tools come in three shapes, and the shape decides more about your daily 
 - **The field**: desktop tools stay at the desk; always-online cloud tools die where the signal does. An [installable, offline-capable app](/guides/working-offline-and-installing/) goes to the basement mechanical room and syncs when you're back.
 - **Sharing**: file-based sharing forks the truth ("which copy is current?"). CountTooling projects live in one place, with [roles and check-out](/guides/sharing-and-view-links/) so two people can't overwrite each other, and **view links** show a takeoff to a GC or inspector with no account at all.
 - **Speed on big sets**: CountTooling renders through a cached, background-warmed pipeline built specifically so dense multi-sheet sets stay responsive while zooming and flipping pages.
-- **Where the numbers go**: a takeoff that dead-ends in a PDF still has to be retyped into pricing. [Copy to PipeTooling](/guides/reports-and-exports/) moves the whole takeoff into a bid as structured data in one paste.
+- **Where the numbers go**: a takeoff that dead-ends in a PDF still has to be retyped into pricing. [Copy to /Tooling](/guides/reports-and-exports/) moves the whole takeoff into a bid as structured data in one paste.
 
 ## Where desktop tools still win
 

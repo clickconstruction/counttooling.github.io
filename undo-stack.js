@@ -31,7 +31,11 @@ function createUndoStack(ctx) {
       counters: JSON.parse(JSON.stringify(ctx.getState().counters)),
       lineTypes: JSON.parse(JSON.stringify(ctx.getState().lineTypes)),
       groups: JSON.parse(JSON.stringify(ctx.getState().groups || [])),
-      rooms: JSON.parse(JSON.stringify(ctx.getState().rooms || []))
+      rooms: JSON.parse(JSON.stringify(ctx.getState().rooms || [])),
+      // The legend's size rides the full snapshot (2026-09-21): the corner
+      // grip scales legendSettings.legendScale and pushes one at the press,
+      // so Ctrl+Z puts the size back like any other drag.
+      legendSettings: ctx.getState().legendSettings ? JSON.parse(JSON.stringify(ctx.getState().legendSettings)) : null
     };
   }
 
@@ -102,6 +106,7 @@ function createUndoStack(ctx) {
     ctx.getState().lineTypes = snap.lineTypes;
     if (Array.isArray(snap.groups)) ctx.getState().groups = ctx.ensureGroupColors(snap.groups);
     if (Array.isArray(snap.rooms)) ctx.getState().rooms = snap.rooms;
+    if (snap.legendSettings) ctx.getState().legendSettings = snap.legendSettings;
     ctx.getState().quickLineStart = null;
     ctx.getState().highlightStart = null;
     ctx.getState().multiplyZoneStart = null;

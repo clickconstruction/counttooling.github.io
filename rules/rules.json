@@ -303,6 +303,55 @@
       "updated": "2026-09-12"
     },
     {
+      "id": "hvac.duct.grease-duct",
+      "trade": "hvac",
+      "kind": "code",
+      "status": "applied",
+      "title": "Grease duct metal and its weight",
+      "summary": "A commercial kitchen hood's exhaust duct is welded carbon steel of at least 16 gauge or stainless of at least 18 gauge, never the galvanized gauge schedule, so the Duct tool prices a grease run at that fixed gauge and its own sheet weight.",
+      "values": [
+        {
+          "when": "carbon steel (black steel), minimum gauge",
+          "value": 16,
+          "unit": "ga"
+        },
+        {
+          "when": "stainless steel, minimum gauge",
+          "value": 18,
+          "unit": "ga"
+        },
+        {
+          "when": "16 gauge carbon steel sheet",
+          "value": 2.5,
+          "unit": "lb/ft²"
+        },
+        {
+          "when": "18 gauge stainless sheet",
+          "value": 2,
+          "unit": "lb/ft²"
+        },
+        {
+          "when": "cleanout spacing on horizontal duct, at most",
+          "value": 12,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IMC",
+        "section": "506.3.1.1 Grease duct materials (NFPA 96 7.5.1 says the same)",
+        "editions": [
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-5-exhaust-systems"
+      },
+      "amendments": [],
+      "used_by": [
+        "ductSchedule"
+      ],
+      "url": "/rules/hvac/grease-duct/",
+      "updated": "2026-09-21"
+    },
+    {
       "id": "hvac.room.airflow-defaults",
       "trade": "hvac",
       "kind": "convention",

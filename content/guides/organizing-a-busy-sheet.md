@@ -1,13 +1,15 @@
 ---
 title: Keeping a dense takeoff organized
 description: Groups with subtotals, page filters, search, and mark-appearance settings: how a sheet with hundreds of marks stays readable and auditable.
-updated: 2026-08-13
+updated: 2026-09-21
 order: 3.7
 icon: legend
 category: Counting
 ---
 
 A serious sheet ends up with hundreds of marks. These are the tools that keep it readable: for you while counting, and for whoever checks the work later.
+
+**Try it:** [the Organizing lesson](/app/?lesson=organize) opens sample sheets in the app and walks this with you, two or three minutes, checking each step against what you actually did.
 
 ![Counters placed on each restroom fixture, with the running tally shown in the sidebar.](/guides/img/counting.png)
 
@@ -37,6 +39,6 @@ Turn on **Show group colors** and marks render in their group's color instead of
 
 ## The legend keeps score on-sheet
 
-The **legend** [[legend]] overlay shows counts and lengths by type right on the plan: drag it wherever it doesn't cover work, resize it, and style it in Legend Settings. It prints and exports with the sheet, so the deliverable carries its own summary.
+The **legend** [[legend]] overlay shows counts and lengths by type right on the plan: drag it wherever it doesn't cover work, drag its bottom-right corner to make it smaller or larger, and style it in Legend Settings. It prints and exports with the sheet, so the deliverable carries its own summary.
 
 Related: [Custom icons](/guides/custom-icons/) for making each type instantly recognizable, and [Fixing mistakes](/guides/fixing-mistakes/) for editing what's already placed.

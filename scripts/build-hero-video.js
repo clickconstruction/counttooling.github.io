@@ -1078,7 +1078,16 @@ async function recordHvac(page, dir, setPdf) {
   //     room answers with ft², ft³ and the air it needs.
   const boxRoom = async (r, type, deck, name) => {
     await R.moveToPt({ x: r.x1, y: r.y1 }, 0.4);
-    await page.mouse.down(); R.clicks.push({ n: R.n, x: R.cur.x, y: R.cur.y }); await R.frame();
+    await page.mouse.down(); R.clicks.push({ n: R.n, x: R.cur.x, y: R.cur.y });
+    // FILM-DRAG: claim the gesture as a drag before the first frame is shot. A rect tool's
+    // press that sits still for 280 ms becomes hold-to-aim (app.js AIM_PRESS_MS), and only a
+    // move past 6 px promotes it to a drag (RECT_DRAG_MIN_PX). A rendered frame costs 100 ms or
+    // more and the eased move starts with sub-pixel steps, so in a full render the hold could
+    // fire first and the release then placed one corner instead of closing the box; the
+    // --chapters-only pass, which shoots nothing, never saw it. The nudge is off camera: the
+    // drawn cursor is R.cur, which does not move.
+    await page.mouse.move(R.cur.x + 8, R.cur.y + 8);
+    await R.frame();
     await R.moveToPt({ x: r.x2, y: r.y2 }, 0.5);
     await page.mouse.up();
     await page.waitForSelector('#roomBoxModal.visible', { timeout: 5000 });

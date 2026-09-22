@@ -297,6 +297,39 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('RESTORE-LATE: a cloud offer is dropped once a plan is open; an on-device offer still shows', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForLoadState('networkidle');
+    const cloud = { cloudLast: { projectId: 'p1', projectName: 'Bid A', userId: 'u1' } };
+
+    // 1. The offer arrives late behind a dialog, and the user opens a plan meanwhile (the slow
+    //    connection shape): when the dialog goes, nothing lands on the plan.
+    await page.evaluate((c) => { window.App.showModal('keyboardMapModal'); window.App.openLastSessionRestorePrompt(c); }, cloud);
+    expect(await page.evaluate(promptState)).toEqual({ visible: false, pending: false, deferred: true });
+    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
+    await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
+    await page.evaluate(() => window.App.hideModal('keyboardMapModal'));
+    await page.waitForTimeout(1300);   // past the retry's macrotask and the 1 s safety poll
+    expect(await page.evaluate(promptState)).toEqual({ visible: false, pending: false, deferred: false });
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(1);
+
+    // 2. A cloud offer made with the plan already open is dropped on the spot.
+    expect(await page.evaluate((c) => window.App.openLastSessionRestorePrompt(c), cloud)).toBe(false);
+    expect(await page.evaluate(promptState)).toEqual({ visible: false, pending: false, deferred: false });
+
+    // 3. An on-device offer is unsaved work with no other way back: it still shows over the plan.
+    await page.evaluate(() => window.App.openLastSessionRestorePrompt({ proj: { id: 'local', name: 'Unsaved takeoff', data: {} }, cachedBlob: null, heldBackup: null }));
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/);
+    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('Unsaved takeoff');
+    await page.keyboard.press('Escape');   // dismiss: nothing consumed
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
   /** Hold the real boot at its storage-persist await until __releaseBoot(). */
   const holdBoot = (page) => page.addInitScript(() => {
     // app.js init awaits navigator.storage.persist() right after auth and
@@ -342,18 +375,18 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     // The tour goes on — "do it for me" through the real steps to a real mark
     // on the sample plan (each step auto-advances a beat after its check).
     const waitForStep = (id) => page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 15000 });
-    await page.click('#tourAction');   // welcome → opens the sample plan
+    await page.evaluate(() => window.App.tutorialDoStep());   // welcome → opens the sample plan
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await waitForStep('scale');
-    await page.click('#tourAction');   // scale
+    await page.evaluate(() => window.App.tutorialDoStep());   // scale
     await waitForStep('measure');
-    await page.click('#tourAction');   // prove it
+    await page.evaluate(() => window.App.tutorialDoStep());   // prove it
     await waitForStep('trade');
-    await page.click('#tourAction');   // trade
+    await page.evaluate(() => window.App.tutorialDoStep());   // trade
     await waitForStep('counter');
-    await page.click('#tourAction');   // the receptacle counter
+    await page.evaluate(() => window.App.tutorialDoStep());   // the receptacle counter
     await waitForStep('place');
-    await page.click('#tourAction');   // places the receptacles
+    await page.evaluate(() => window.App.tutorialDoStep());   // places the receptacles
     await page.waitForFunction(() => {
       const a = window.App.getActiveAnnotations(window.state.pages[0]);
       return Object.values((a && a.counterMarkers) || {}).some((arr) => arr && arr.length);
@@ -402,6 +435,21 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(await page.evaluate(() => ({ pages: window.state.pages.length, wc: window.state.counters.some((c) => c.name === 'WC') }))).toEqual({ pages: 0, wc: true });
     await page.evaluate(() => document.getElementById('lastSessionRestoreDiscard').click());
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    expect(errors).toEqual([]);
+  });
+  test('BOOT RACE: the boot outruns the feature scripts (a warm cache, a quick backup read) and the offer still arrives', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });   // the app's own ready signal, not a quiet network
+    await seedLocalBackup(page);
+    // The feature that owns the offer arrives 1.5 s late, so app.js's async boot gets to the
+    // offer first. Before 2026-09-21 that threw "App.openLastSessionRestorePrompt is not a
+    // function": no offer, no updateUI, and a page that never went network-idle in CI.
+    await page.route('**/features/restore-last-session.js', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.continue(); });
+    await page.reload();
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    expect(await page.evaluate(() => window.App.bootSettled)).toBe(true);
     expect(errors).toEqual([]);
   });
 });

@@ -349,6 +349,7 @@
     if (App.state.supabaseSession?.user) return;               // signed-in keeps the cloud hash-match flow
     if (App.state.pendingCanvasLoad || App.state.currentProjectId) return;
     if (App.projectHasAnyCanvasMarkup()) return;               // never clobber marks already on the pages
+    if (App.isTutorialActive && App.isTutorialActive()) return; // a tour opens the sample plan CLEAN: the last tour's backup hash-matches it and would land its marks in this one
     for (const key of [TAKEOFF_BACKUP_HELD_ID, 'local']) {
       let candidate = null;
       try { candidate = await App.takeoffBackupGet(key, null); } catch (_) { candidate = null; }

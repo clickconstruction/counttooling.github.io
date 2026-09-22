@@ -2919,6 +2919,10 @@
           editBanner.appendChild(span);
           editBanner.classList.add('edit-status-viewing');
         }
+        // R1-RECLICK: right after a checkout or a turn-in made from this button, it holds a
+        // "done" label for a beat instead of offering the opposite action in the same pixels
+        // (features/turn-in.js). Before the sidebar copy below, so both banners hold alike.
+        if (App.applyEditBannerHold) App.applyEditBannerHold(editBanner);
         const sidebarBanner = document.getElementById('sidebarCheckoutBanner');
         if (sidebarBanner) {
           sidebarBanner.className = 'sidebar-checkout-banner ' + editBanner.className.replace('header-edit-status', '').trim();
@@ -6542,7 +6546,7 @@
       pushUndoSnapshot();
       state.resizingLegend = true;
       const leg = getActiveAnnotations(state.pages[state.currentPage])?.legend;
-      if (leg) state.legendResizeStart = { w: leg.w, h: leg.h, pdfX: state.mousePos.x, pdfY: state.mousePos.y };
+      if (leg) state.legendResizeStart = { w: leg.w, h: leg.h, pdfX: state.mousePos.x, pdfY: state.mousePos.y, scale: state.legendSettings?.legendScale ?? 1 };
     } else if (t && (t.type === 'legendDrag' || t.type === 'legend')) {
       pushUndoSnapshot();
       state.draggingLegend = true;
@@ -6644,12 +6648,19 @@
       state.pan = { x: e.clientX - state.panStart.x, y: e.clientY - state.panStart.y };
       updateContainerTransform();
     } else if (state.resizingLegend && state.legendResizeStart) {
-      const page = state.pages[state.currentPage];
-      const leg = page ? getActiveAnnotations(page)?.legend : null;
-      if (leg) {
-        leg.userResized = true;
-        leg.w = Math.max(60, state.legendResizeStart.w + (pdf.x - state.legendResizeStart.pdfX));
-        leg.h = Math.max(40, state.legendResizeStart.h + (pdf.y - state.legendResizeStart.pdfY));
+      // The corner grip sizes the legend as a whole (2026-09-21): the
+      // pointer's travel along the box's diagonal scales
+      // legendSettings.legendScale, the knob the Summary Legend size slider
+      // sets, so the block shrinks as readily as it grows and its rows follow
+      // (the grip used to grow a bare white patch and could never go below
+      // the rows). The box hugs its content in drawLegend; the slider's
+      // 25%..400% is the range here too.
+      const s0 = state.legendResizeStart;
+      const along = ((pdf.x - s0.pdfX) * s0.w + (pdf.y - s0.pdfY) * s0.h) / (s0.w * s0.w + s0.h * s0.h || 1);
+      const next = Math.round(Math.max(LEGEND_SCALE_MIN, Math.min(LEGEND_SCALE_MAX, s0.scale * (1 + along))) * 100) / 100;
+      if (!state.legendSettings) state.legendSettings = { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false };
+      if (state.legendSettings.legendScale !== next) {
+        state.legendSettings.legendScale = next;
         renderAnnotations();
       }
     } else if (state.draggingZone) {
@@ -7393,7 +7404,8 @@
         return;
       }
     }
-    if (e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
+    // (a dialog's × re-dispatches Escape on `document`, which has no matches())
+    if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     if (e.key === ' ') {
       if (!e.target.closest('button') && window.matchMedia('(min-width: 769px)').matches) {
         document.body.classList.toggle('sidebar-collapsed');
@@ -7867,6 +7879,9 @@
   const App = (window.App = window.App || {});
   // Flipped by init's finally once the async boot has run to completion.
   App.bootSettled = false;
+  // Resolves once every classic <script> in the shell has run (DOMContentLoaded), so the
+  // async boot below never calls into a features/*.js file that has not registered yet.
+  const shellScriptsReady = () => (document.readyState === 'loading' ? new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true })) : Promise.resolve());
   App.state = state;
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
@@ -8280,6 +8295,7 @@
         if (!App.initViewOnlyMode && document.readyState === 'loading') {
           await new Promise(r => document.addEventListener('DOMContentLoaded', r, { once: true }));
         }
+        await shellScriptsReady();   // the same boot race: features/view-only.js loads after app.js
         await App.initViewOnlyMode(viewToken);
         // Bid basis (features/bid-basis.js): PipeTooling opened this link with
         // `export=bid-basis&ref=<bid>` — open Export PDFs preset to the marked
@@ -8399,7 +8415,17 @@
     // prompt "auto-keeping" ~10 s in was this pre-apply, not a Keep). A busy
     // session still gets the offer below; restoring over it takes a click on
     // Keep.
-    const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive());
+    // BOOT RACE (found 2026-09-21): everything below reaches into features/*.js
+    // (App.isTutorialPending, App.openLastSessionRestorePrompt), and those scripts sit
+    // AFTER app.js in the shell. This async boot normally loses the race to them, but
+    // a warm cache plus a quick IndexedDB read can finish first, and the offer then
+    // threw "App.openLastSessionRestorePrompt is not a function": the boot died before
+    // updateUI, the saved session was never offered, and in CI the page never went
+    // network-idle (the scattered 30 s waitForLoadState timeouts). Classic scripts have
+    // all run by DOMContentLoaded. The wait sits BEFORE the pre-apply on purpose: the
+    // pre-apply-to-offer stretch below must stay free of awaits (see the offer's comment).
+    await shellScriptsReady();
+    const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive()) || !!(App.isTutorialPending && App.isTutorialPending());
     if (backupToApply && !bootSessionBusy) applyTakeoffBackupToState(backupToApply);
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
       const ok = await devAuthSignIn();

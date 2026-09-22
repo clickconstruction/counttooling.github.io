@@ -116,7 +116,7 @@ test.describe('Duct orientation chip (D12)', () => {
     await expect(menu.locator('.tool-context-menu-heading')).toContainText('Supply Main · 24×12');
     const seg = menu.locator('#ductRunOrientationSegment');
     await expect(seg).toBeVisible();
-    await expect(menu.locator('.duct-menu-segment-label')).toHaveText('Orientation');
+    await expect(menu.locator('.duct-menu-segment-label')).toHaveText(['Orientation', 'Material', 'Airside']);   // D25 added the material and the airside
     await expect(seg.locator('button')).toHaveText(['Flat', 'On edge']);
     await expect(seg.locator('button[data-value="flat"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(seg.locator('button[data-value="edge"]')).toHaveAttribute('aria-pressed', 'false');

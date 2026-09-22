@@ -137,6 +137,8 @@
     const sel = document.getElementById('ductCreatePressure');
     sel.innerHTML = DUCT_PRESSURE_CLASSES.map((pc) => '<option value="' + pc + '"' + (pc === '1' ? ' selected' : '') + '>' + pc + '"</option>').join('');
     createAirside = 'supply';
+    const matEl = document.getElementById('ductCreateMaterial');
+    if (matEl) matEl.value = '';
     syncCreateShape();
     syncCreateAirside();
     syncEquipFirstLine();
@@ -197,6 +199,8 @@
       pressureClass: document.getElementById('ductCreatePressure').value || '1',
       linerType: document.getElementById('ductCreateLiner').value || null,
       linerThicknessIn: 0,
+      // D25: welded grease duct is a material, not a gauge pick.
+      material: (document.getElementById('ductCreateMaterial') || {}).value || null,
       // D4 (DUCT-PLAN §2): a run drawn while a system group is active inherits
       // it — the same state.activeGroupId convention T2-12 gave polylines.
       systemGroupId: state.activeGroupId || null,
@@ -399,6 +403,7 @@
         pressureClass: draft.pressureClass,
         linerType: draft.linerType,
         linerThicknessIn: draft.linerThicknessIn,
+        material: draft.material,       // D25 — attached only for grease duct
         systemGroupId: draft.systemGroupId,
         vertices: draft.vertices,
         segments: draft.segments,
@@ -694,7 +699,7 @@
     const items = runStraightItems({ vertices: verts, segments: draft.segments, linerType: draft.linerType, verticalFt: draft.verticalFt }, distFt);
     let segLb = 0, runLb = 0;
     items.forEach((it) => {
-      const lb = segmentPounds(it.size, selectGauge(draft.pressureClass, it.size), it.lengthFt) || 0;
+      const lb = segmentPounds(it.size, selectGaugeFor(draft.pressureClass, it.size, draft.material), it.lengthFt, draft.material) || 0;
       runLb += lb;
       if (!it.vertical) segLb = lb;
     });

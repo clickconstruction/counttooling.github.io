@@ -308,4 +308,46 @@ test.describe('Fittings from bends', () => {
     expect(await page.evaluate(() => window.state.lineTypes.find((l) => l.id === 'lt-cu').bendFittings.enabled)).toBe(true);
     expect(errors).toEqual([]);
   });
+
+  test('edit mode: the run keeps its stroke while it is edited (the segments paint under the dots and chips)', async ({ page }) => {
+    await setupProject(page);
+    await page.evaluate(() => window.App.renderAnnotations());   // updateUI alone does not repaint the overlay
+    // The strongest pixel in a 5x5 window around a PDF point on the annotation canvas.
+    const inkAt = (pdf) => page.evaluate((p) => {
+      const c = document.getElementById('annCanvas');
+      const ctx = /** @type {CanvasRenderingContext2D} */ (c.getContext('2d'));
+      const bc = window.App.toCanvas(p);
+      const r = 2, n = 2 * r + 1;
+      const d = ctx.getImageData(Math.round(bc.x) - r, Math.round(bc.y) - r, n, n).data;
+      let best = { r: 0, g: 0, b: 0, a: 0 };
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > best.a) best = { r: d[i], g: d[i + 1], b: d[i + 2], a: d[i + 3] };
+      return best;
+    }, pdf);
+    // lt-cu's #2e86de = rgb(46,134,222)
+    const isCu = (px) => px.a > 200 && Math.abs(px.r - 46) < 24 && Math.abs(px.g - 134) < 24 && Math.abs(px.b - 222) < 24;
+    const mid1 = { x: 160, y: 100 };   // midpoint of p1's first segment, (100,100)->(220,100)
+    const offRun = { x: 160, y: 140 }; // nothing painted here
+    expect(isCu(await inkAt(mid1))).toBe(true);       // committed: the draw core paints it
+    expect((await inkAt(offRun)).a).toBe(0);
+
+    // editing: the run is spliced out of the annotations, so the edit block paints its segments
+    await page.evaluate(() => window.App.enterEditMode('p1', 0));
+    expect(await page.evaluate(() => window.state.editingPolyline?.id)).toBe('p1');
+    expect(isCu(await inkAt(mid1))).toBe(true);
+    expect((await inkAt(offRun)).a).toBe(0);
+    await page.locator('#doneEditing').click();
+    expect(isCu(await inkAt(mid1))).toBe(true);       // back in the annotations, still painted
+
+    // a closed run closes back to its first point while edited: the closing segment paints too
+    await page.evaluate(() => {
+      const ann = window.state.pages[0].canvases[0].annotations;
+      ann.polylines.push({ id: 'p4', lineTypeId: 'lt-cu', color: '#2e86de', closed: true, points: [{ x: 500, y: 100 }, { x: 600, y: 100 }, { x: 600, y: 200 }] });
+      window.App.updateUI();
+      window.App.enterEditMode('p4', 0);   // renders
+    });
+    expect(await page.evaluate(() => window.state.editingPolyline?.id)).toBe('p4');
+    expect(isCu(await inkAt({ x: 550, y: 150 }))).toBe(true);   // midpoint of the closing segment, (600,200)->(500,100)
+    expect(isCu(await inkAt({ x: 600, y: 150 }))).toBe(true);   // midpoint of a drawn segment
+    await page.locator('#doneEditing').click();
+  });
 });

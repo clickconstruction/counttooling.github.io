@@ -22,7 +22,7 @@ async function bootWithCreateCounterOpen(page, errors) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   // Open the Create Counter tab so the paired grids exist and are populated.
   await page.evaluate(() => document.getElementById('addCounter')?.click());
   await page.waitForSelector('#counterModal.visible', { timeout: 5000 });

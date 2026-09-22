@@ -23,7 +23,7 @@ test.describe('User Activity modal (features/user-activity.js)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     expect(await page.evaluate(() => typeof window.App?.openUserActivityModal)).toBe('function');
 

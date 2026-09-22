@@ -50,7 +50,7 @@ async function runPreflight(page, { ageOffsetMs, probeResult, recovered }) {
 test.describe('Save Project (features/save-project.js)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   });
 
   test('registry contract: preflightCheckoutExpiry is a function; no-lock save proceeds', async ({ page }) => {

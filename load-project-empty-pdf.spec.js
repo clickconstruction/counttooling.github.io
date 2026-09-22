@@ -41,7 +41,7 @@ test.describe('Load Project with empty PDF in storage', () => {
     });
 
     await page.goto('/app/?devAuth=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Open Project Settings then Load Project
     await page.evaluate(() => document.getElementById('sidebarLogoGear')?.click());

@@ -26,7 +26,7 @@ test.describe('Page label save/load round trip', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
 
@@ -57,7 +57,7 @@ test.describe('Page label save/load round trip', () => {
     // Reload the app (fresh state), then load through the shared cloud-load
     // path with the saved payload — the rename must come back.
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     const restored = await page.evaluate(async (dd) => {
       const App = window.App, s = window.state;
       const buf = await (await fetch('/test-2pages.pdf')).arrayBuffer();

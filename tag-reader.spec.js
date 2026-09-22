@@ -18,7 +18,7 @@ const { test, expect } = require('@playwright/test');
 // PDF-space is top-down: appY = 792 − y.
 async function bootWithTextPdf(page, trade) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   const bytes = await page.evaluate(async () => {
     const { PDFDocument, StandardFonts } = window.PDFLib;
     const doc = await PDFDocument.create();

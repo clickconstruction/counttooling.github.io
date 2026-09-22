@@ -417,6 +417,28 @@
   // a list_accessible_projects row, hydrates app state, and closes
   // ui.hostModalId when done (the canvas-only flow hands off to its own modal).
   // Load failures render via ui.showError(html) in the host's list area.
+  // LOAD-DEVICE-PDF (2026-09-22). The device's PDF is the only copy when the cloud has none: a
+  // PDF upload cut short by a reload leaves the marks autosaved, the row with no pdf_path (or an
+  // object that is empty or missing) and the backup holding the blob. The restore prompt learned
+  // this on 2026-09-20 (features/restore-last-session.js); Load Project, the door most people
+  // use, still went straight to "annotations but no PDF" without looking at the device. Same
+  // rule as the restore: the backup's blob, unless both sides carry a hash and they disagree.
+  async function devicePdfIfOnlyCopy(proj, idbBackup) {
+    const has = !!(idbBackup && idbBackup.pdfBlob && idbBackup.pdfBlob.size > 0);
+    if (!has) return null;
+    if (proj.pdf_hash && idbBackup.pdfHash && proj.pdf_hash !== idbBackup.pdfHash) return null;
+    try { const buf = await idbBackup.pdfBlob.arrayBuffer(); return buf && buf.byteLength > 0 ? buf : null; } catch (_) { return null; }
+  }
+  // Open the project on the device's copy and hand that copy to the engine, whose autosave tick
+  // uploads a local PDF on its own (save-engine.js uploadLocalPdfToCloudIfNeeded: pages, no
+  // pdfStoragePath, the checkout, a usable buffer), so the cloud gets its PDF without a Save click.
+  async function openOnDevicePdf(proj, d, buf, useIdbBackup, idbBackup) {
+    const { state, buildPagesFromPdfArrayBufferAndProjectData } = App;
+    await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup, proj.name);
+    state.pdfStoragePath = null;
+    state.pdfBuffer = buf.slice(0);
+    state.pdfBufferSize = state.pdfBuffer.byteLength;
+  }
   async function loadCloudProjectRow(proj, ui) {
       const {
         state, hideModal, showToast,
@@ -442,11 +464,18 @@
       const projUpdated = proj.updated_at ? new Date(proj.updated_at).getTime() : 0;
       const idbBackup = await takeoffBackupGet(proj.id, state.supabaseSession?.user?.id || null);
       const useIdbBackup = idbBackup && idbBackup.lastModifiedAt > projUpdated;
+      let devicePdfOpened = false;   // the sheets came from the device's copy, not the cloud
       if (proj.pdf_path) {
         try {
           const buf = await resolvePdfBufferForCloudProject(proj, useIdbBackup, idbBackup);
-          if (!buf) {
-              /* PDF in storage is empty or missing – treat as canvas-only and offer upload */
+          const deviceBuf = buf ? null : await devicePdfIfOnlyCopy(proj, idbBackup);
+          if (!buf && deviceBuf) {
+              // The cloud object is empty or missing but the device holds the file: open on it
+              // and let the engine re-upload (pdfStoragePath cleared, so the tick sees a local PDF).
+              await openOnDevicePdf(proj, d, deviceBuf, useIdbBackup, idbBackup);
+              devicePdfOpened = true;
+          } else if (!buf) {
+              /* PDF in storage is empty or missing, and the device has no copy: canvas-only, offer upload */
               state.pdfStoragePath = null;
               state.pdfBuffer = null;
               state.pdfBufferSize = 0;
@@ -489,11 +518,20 @@
               // dedicated modal so the user has a clear next action.
               openCanvasOnlyNeedsPdfModal({ reason: 'pdf_missing' });
               return;
+          } else {
+            await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup, proj.name);
+            state.pdfStoragePath = proj.pdf_path;
+            state.pdfBuffer = null;
+            state.pdfBufferSize = 0;
           }
-          await buildPagesFromPdfArrayBufferAndProjectData(buf, d, useIdbBackup, idbBackup, proj.name);
-          state.pdfStoragePath = proj.pdf_path;
-          state.pdfBuffer = null;
-          state.pdfBufferSize = 0;
+        } catch (e) {
+          ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>');
+          return;
+        }
+      } else if (await devicePdfIfOnlyCopy(proj, idbBackup)) {
+        try {
+          await openOnDevicePdf(proj, d, await devicePdfIfOnlyCopy(proj, idbBackup), useIdbBackup, idbBackup);
+          devicePdfOpened = true;
         } catch (e) {
           ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>');
           return;
@@ -535,9 +573,16 @@
       const preservedPendingCanvasLoad = state.pendingCanvasLoad;
       hydrateProjectFromCloudRow(proj, { source: 'load_project' });
       if (preservedPendingCanvasLoad) state.pendingCanvasLoad = preservedPendingCanvasLoad;
+      if (devicePdfOpened) {
+        // Opened on the device's copy: the cloud has no usable PDF yet (the engine uploads this
+        // one), and the hash the row lacks is the backup's.
+        setLastSaveIncludedPdf(false);
+        state.pdfStoragePath = null;
+        if (!proj.pdf_hash && idbBackup && idbBackup.pdfHash) state.pdfHash = idbBackup.pdfHash;
+      }
       hideModal(ui.hostModalId);
       state.sidebarReorderModeActive = false;
-      if (!proj.pdf_path) {
+      if (!proj.pdf_path && !devicePdfOpened) {
         // C1: Replaced the toast + auto-pdfInput.click() pair with a
         // dedicated modal so the user has a clear next action.
         openCanvasOnlyNeedsPdfModal({ reason: 'no_pdf_stored' });

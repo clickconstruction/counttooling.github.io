@@ -13,6 +13,28 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(ci): a 90-second test budget on the starved runner (2026-09-22)
+
+Punch row CI-NETWORKIDLE, closed, after two wrong diagnoses recorded here so they are not
+tried again. The flake: on the two-core CI runner, with two workers rendering PDFs, the boot's
+`page.waitForLoadState('networkidle')` timed out inside the 30 s test budget (on PR #161's five
+runs all 19 flaky errors and the one hard failure; the same four tests twice on PR #169; a job
+of 35 to 43 minutes). Wrong diagnosis one: the service worker's precache of about 155 files kept
+the network busy. A run with the worker blocked timed out on the same wait 27 times. Wrong
+diagnosis two: `npx serve` was slow. A bare Node static server booted eight pages at once no
+faster (6.5 s either way; 2.3 s alone). The runner is not busy on the network, it is starved,
+and a boot that takes 2 s on a laptop takes the whole 30 s there; the two specs that never
+flaked, tutorial and lessons, are exactly the two that set a 90 s budget. So the budget is the
+fix: `timeout` 90 s and `expect.timeout` 15 s on CI (30 s and 5 s locally, unchanged). A retry
+costs a whole test; a longer budget costs nothing when the test is quick, and the 162 quiet-
+network waits stay as they are (waiting on `App.bootSettled` instead settles about half a second
+sooner and was tried across all 311 boot waits; under a 4-worker local run it made ten tests
+flaky that had been clean, so it was not kept). The worker stays blocked in the base config
+(pwa.spec.js and the rulebook precache test opt back in): not the cause, but a spec should not
+install something it does not test. Measured: the full suite locally, 4 workers, 790 passed in
+14.9 minutes with zero flakes; the CI e2e job, 2 workers, MEASURE-CI (before: 39.7 to 43.5
+minutes with 2 to 4 failures).
+
 ## fix(lines): the run stays painted while it is edited (2026-09-18)
 
 Edit Polyline splices the run out of the page's annotations into `state.editingPolyline`

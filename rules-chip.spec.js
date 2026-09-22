@@ -96,6 +96,12 @@ test.describe('Rulebook chips and popover', () => {
     await expect(page.locator('#chainPanelFoot .rule-chip[data-rule="elec.vertical.make-up"]')).toBeVisible();
   });
 
+});
+
+// The base config blocks the service worker for every spec (CI-NETWORKIDLE); this test is
+// about the precache, so it opts back in.
+test.describe('Rulebook precache', () => {
+  test.use({ serviceWorkers: 'allow' });
   test('the machine-readable rulebook is precached: a fresh load serves it from the service worker', async ({ page, context }) => {
     await page.goto('/app/');
     await page.waitForLoadState('networkidle');

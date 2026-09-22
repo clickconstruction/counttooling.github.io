@@ -24,6 +24,9 @@ async function waitForSW(page) {
 }
 
 test.describe('PWA', () => {
+  // The base config blocks the service worker for every spec (CI-NETWORKIDLE); this file IS
+  // the worker's test.
+  test.use({ serviceWorkers: 'allow' });
   test('manifest is linked, parseable, and has sized + maskable icons', async ({ page }) => {
     await page.goto('/app/');
     await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');

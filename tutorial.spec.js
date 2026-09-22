@@ -535,7 +535,7 @@ test.describe('Every button, on a blank sheet', () => {
     const paletteBefore = await page.evaluate(() => [window.state.counters.length, window.state.lineTypes.length, (window.state.groups || []).length, !!window.state.groupsEnabled]);
     await page.click('#canvasEmptyHintTourBlank');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['blank', 'welcome']);
-    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 36');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 37');
     const ann = () => page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]));
     const fixture = () => page.evaluate(() => window.state.counters.find((c) => c.name === 'Fixture'));
 
@@ -558,7 +558,8 @@ test.describe('Every button, on a blank sheet', () => {
     });
     await walk(page, 'linetype', async () => {
       expect(await page.evaluate(() => window.state.lineTypes.some((l) => l.name === 'Pipe'))).toBe(true);
-      expect((await ann()).quickLines.length).toBe(1);
+      // the run's footage is what the step reads: 220 pt at 1/8" is 24'-5"
+      expect((await ann()).quickLines.map((l) => Math.round(Math.hypot(l.x2 - l.x1, l.y2 - l.y1) / 9 * 10) / 10)).toEqual([24.4]);
     });
     await walk(page, 'snap', async () => { expect(await page.evaluate(() => window.state.lineTypeSettings.snapToHorizontalVertical)).toBe(true); });
     await walk(page, 'polyline', async () => { expect((await ann()).polylines.map((p) => p.points.length)).toEqual([3]); });
@@ -590,6 +591,7 @@ test.describe('Every button, on a blank sheet', () => {
     await walk(page, 'settings', async () => { await expect(page.locator('#settingsModal')).toHaveClass(/visible/); });
     await walk(page, 'savestatus', async () => { await expect(page.locator('#saveStatusModal')).toHaveClass(/visible/); });
     await walk(page, 'exportmenu');
+    await walk(page, 'share');
     await walk(page, 'exports');
     await walk(page, 'clearpage', async () => { expect(await page.evaluate(() => window.App.countCanvasMarks(window.App.getActiveCanvas(window.state.pages[0]).annotations))).toBe(0); });
     await walk(page, 'close', async () => { expect(await page.evaluate(() => window.state.pages.length)).toBe(0); });
@@ -605,7 +607,51 @@ test.describe('Every button, on a blank sheet', () => {
     // the Fixture, the Pipe, Area A and the key binding do not follow the reader onto their next bid
     expect(await page.evaluate(() => [window.state.counters.length, window.state.lineTypes.length, (window.state.groups || []).length, !!window.state.groupsEnabled])).toEqual(paletteBefore);
     expect(await page.evaluate(() => Object.keys(window.state.numberKeyBindings || {}).length)).toBe(0);
+    // finished: nothing to pick up next time
+    expect(await page.evaluate(() => localStorage.getItem('clickcount-tour-blank-step'))).toBe(null);
     expect(errors).toEqual([]);
+  });
+
+  test('leaving mid-way is remembered: the next start offers to pick up there with the earlier steps laid down, or to start over', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    // a fresh device: the plain welcome, no second button
+    await expect(page.locator('#tourAlt')).toBeHidden();
+    await expect(page.locator('#tourShow')).toHaveText('Open a blank sheet');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    for (const id of ['scale', 'measure', 'move', 'counter', 'count', 'quickkeys', 'linetype', 'snap', 'polyline']) {
+      await waitForStep(page, id);
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await page.waitForFunction((want) => window.App.tutorialStepId() !== want, id, { timeout: 8000 });
+    }
+    await waitForStep(page, 'chain');
+    expect(await page.evaluate(() => localStorage.getItem('clickcount-tour-blank-step'))).toBe('10');
+    await page.click('#tourLeave');
+    // the sheet is still open; the reader comes back later (a reload: the sheet is gone)
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await expect(page.locator('#tourShow')).toHaveText('Pick up where you left off');
+    await expect(page.locator('#tourAlt')).toHaveText('Start over');
+    expect(await page.locator('#tourBody').textContent()).toContain('step 11 of 37, Header: Chain');
+    await page.click('#tourShow');
+    await waitForStep(page, 'chain');
+    // the earlier steps are on the sheet again: the counter with its four marks, the line, the polyline, snap on
+    const laid = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Fixture'); const a = window.App.getActiveAnnotations(window.state.pages[0]); return [window.state.pages.map((p) => p.label), a.counterMarkers[c.id].length, a.quickLines.length, a.polylines.length, !!window.state.numberKeyBindings[1], window.state.lineTypeSettings.snapToHorizontalVertical]; });
+    expect(laid).toEqual([['SK-1', 'SK-2'], 4, 1, 1, true, true]);
+    expect(await page.evaluate(() => window.App.blankTourLatches().restoring)).toBe(false);
+    // Start over is the plain walk: nothing laid down, the saved step gone
+    await page.click('#tourLeave');
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.click('#tourAlt');
+    await waitForStep(page, 'scale');
+    // (a step under 2 is not worth remembering: the key is cleared, not set to 1)
+    expect(await page.evaluate(() => [window.state.counters.filter((c) => c.name === 'Fixture').length, localStorage.getItem('clickcount-tour-blank-step')])).toEqual([0, null]);
   });
 
   test('?tour=blank, the Learn button and the Settings link start it; over a teaching set it resets without asking', async ({ page }) => {

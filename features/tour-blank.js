@@ -29,6 +29,14 @@
  * Doors: the empty canvas (#canvasEmptyHintTourBlank, hidden once the tour is done on this
  * device: localStorage `clickcount-tour-done-blank`), Learn (#learnTour-blank), Project
  * Settings → Help (#settingsTourBlank), /app/?tour=blank.
+ *
+ * Pick up where you left off: thirty-six steps is more than one sitting, so the step the
+ * reader is on is kept (`clickcount-tour-blank-step`, written by the engine's onStep hook,
+ * cleared on Finish). The next start offers "Pick up at step 20" beside "Start over": the
+ * sheet opens fresh and every earlier doing step's action runs through the same App.* doors,
+ * so the work the later steps take for granted is on the sheet again, then the tour lands
+ * on the saved step. Precision where it counts: the Quick Line step's circles are tight and
+ * its check reads the footage, because a run's length is measured between the two clicks.
  * Boundary rule: read shared deps from App.* at call time, never captured at load.
  */
 (function () {
@@ -50,7 +58,13 @@
   const DIM = [{ x: 120, y: 120 }, { x: 300, y: 120 }];                       // 180 pt = 20'-0"
   const FIX = [{ x: 200, y: 240 }, { x: 290, y: 240 }, { x: 380, y: 240 }];   // three marks, far enough apart to stay circles at fit zoom
   const KEY = { x: 490, y: 240 };                                              // the quick-key mark
-  const LINE = [{ x: 200, y: 330 }, { x: 420, y: 330 }];                       // a Quick Line
+  const LINE = [{ x: 200, y: 330 }, { x: 420, y: 330 }];                       // a Quick Line, 220 pt = 24.4 ft
+  const LINE_FT = (LINE[1].x - LINE[0].x) / PPU;                               // the footage the step reads
+  const LINE_R = 8;                                                            // tight: the engine zooms to keep it 26 px, so a click inside is within about a foot
+  // How close is close: whatever the circle is on screen right now (the engine's own rule, 26 px
+  // or the drawn radius), both ends, plus a little, so "anywhere inside the circle" stays true
+  // however far the reader zoomed out; never under two feet.
+  const lineTolFt = () => Math.max(2, (2 * Math.max(LINE_R, 26 / Math.max(0.05, S().zoom || 1))) / PPU + 0.5);
   const POLY = [{ x: 200, y: 430 }, { x: 420, y: 430 }, { x: 420, y: 540 }];  // a polyline with a corner
   const CHAIN = [{ x: 560, y: 240 }, { x: 700, y: 240 }];                      // two chained marks
   const DUCT = [{ x: 560, y: 430 }, { x: 800, y: 430 }];                       // a duct run
@@ -114,6 +128,12 @@
   const group = () => fresh(S().groups, 'groups');
   const cid = () => (counter() ? counter().id : '-');
   const quickPaths = () => { const a = ann(); return ((a && a.quickLines) || []).map((l) => [{ x: l.x1, y: l.y1 }, { x: l.x2, y: l.y2 }]); };
+  // the run between the two line circles, and its footage as the sidebar reads it
+  const lineRun = () => { const a = ann(); return ((a && a.quickLines) || []).find((l) => (near({ x: l.x1, y: l.y1 }, LINE[0], 30) && near({ x: l.x2, y: l.y2 }, LINE[1], 30)) || (near({ x: l.x1, y: l.y1 }, LINE[1], 30) && near({ x: l.x2, y: l.y2 }, LINE[0], 30))); };
+  const lineFeet = (l) => (l ? Math.hypot(l.x2 - l.x1, l.y2 - l.y1) / PPU : null);
+  // once close, close: a zoom after the click must not take a done step back
+  const lineClose = () => { const ft = lineFeet(lineRun()); return latch('lineClose', ft != null && Math.abs(ft - LINE_FT) <= lineTolFt()); };
+  const feetText = (ft) => { const f = Math.floor(ft), i = Math.round((ft - f) * 12); return (i === 12 ? f + 1 : f) + '\'-' + (i === 12 ? 0 : i) + '"'; };
   const polyPaths = (live) => { const a = ann(); const d = S().drawingPolyline; return ((a && a.polylines) || []).map((p) => p.points || []).concat(live && d && d.points ? [d.points] : []); };
   const ductPaths = (live) => { const a = ann(); const d = S().drawingDuct; return ((a && a.ductRuns) || []).map((r) => r.vertices || []).concat(live && d && d.vertices ? [d.vertices] : []); };
   const rects = (key, test) => { const a = ann(); return ((a && a[key]) || []).filter((z) => !test || test(z)); };
@@ -133,6 +153,12 @@
   let seen = {};
   const latch = (key, cond) => { if (cond) seen[key] = true; return !!seen[key]; };
   let moveBase = null, zoomBase = null, snapBefore = null, settled = null, settledAt = 0;
+  // Where the reader left off (see the header): the saved index, read on start, and whether
+  // this run is picking up there (`resumeTo`) or starting over.
+  const STEP_KEY = 'clickcount-tour-blank-step';
+  const savedStep = () => { try { const n = parseInt(localStorage.getItem(STEP_KEY) || '', 10); return n > 1 ? n : null; } catch (_) { return null; } };
+  const saveStep = (n) => { try { if (n > 1) localStorage.setItem(STEP_KEY, String(n)); else localStorage.removeItem(STEP_KEY); } catch (_) { /* private mode: no resume, nothing else lost */ } };
+  let resumeTo = null, restoring = false;
 
   // ----- opening the sheet ------------------------------------------------------------------
   async function openBlankSheet() {
@@ -153,6 +179,25 @@
     for (let i = 0; i < 150 && !modalUp('preparePdfModal') && !sheetOpen(); i++) await wait(100);
     if (modalUp('preparePdfModal')) el('preparePdfDone').click();
   }
+  // Picking up: the earlier doing steps' actions, in order, through the same doors a click
+  // uses (the spec seam), then the saved step. Reading steps have nothing to lay down.
+  async function restoreUpTo(index) {
+    restoring = true;
+    try {
+      for (let i = 1; i < index; i++) {
+        const st = STEPS[i];
+        if (!st || st.kind !== 'do' || !st.action) continue;
+        try { await st.action.run(); } catch (_) { /* a step that cannot be laid down is one the reader can redo */ }
+        await wait(60);
+      }
+      // the doors the earlier steps opened stay closed on the saved step
+      ['settingsModal', 'saveStatusModal', 'summaryCountDetailModal'].forEach((id) => { if (modalUp(id)) App.hideModal(id); });
+      const m = el('exportDropdownMenu'); if (m && m.classList.contains('visible')) el('exportDropdownBtn').click();
+      S().tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations();
+    } finally { restoring = false; }
+    resumeTo = null;
+    if (App.isTutorialActive() && STEPS[index]) App.tutorialGoTo(STEPS[index].id);
+  }
   // "Open" means SETTLED (the lessons' rule): the same first page object, no Trim dialog,
   // for half a second. Then the palette the sheet opened with is the baseline.
   function sheetSettled() {
@@ -161,7 +206,8 @@
     if (settled !== first) { settled = first; settledAt = Date.now(); return false; }
     if (Date.now() - settledAt < 500) return false;
     if (!base) base = { counters: new Set((S().counters || []).map((c) => c.id)), lineTypes: new Set((S().lineTypes || []).map((l) => l.id)), groups: new Set((S().groups || []).map((g) => g.id)), groupsEnabled: !!S().groupsEnabled };
-    return true;
+    if (resumeTo != null && !restoring) { const n = resumeTo; restoreUpTo(n); return false; }   // lands on the saved step itself
+    return !restoring;
   }
 
   // ----- doing things for the reader (the spec seam) ------------------------------------------
@@ -221,7 +267,7 @@
     counter() { makeCounter(); },
     count() { const c = makeCounter(); const have = K().markZones(0, c.id, FIX, 16).filter((z) => z.done).length; K().placeMarkers(c.id, FIX.slice(have)); },
     quickkeys() { const c = makeCounter(); if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: c.id }; if (!K().markZones(0, c.id, [KEY], 16)[0].done) K().placeMarkers(c.id, [KEY]); dirty(); },
-    linetype() { if (!K().allDone(K().pathZones(LINE, 16, quickPaths()))) pushQuickLine(LINE[0], LINE[1]); },
+    linetype() { if (!lineClose()) pushQuickLine(LINE[0], LINE[1]); },
     snap() { const s = S(); if (!(s.lineTypeSettings && s.lineTypeSettings.snapToHorizontalVertical)) el('lineTypeSnapToHVHeaderBtn').click(); },
     polyline() { if (!K().allDone(K().pathZones(POLY, 16, polyPaths(false)))) pushPolyline(POLY); },
     chain() { const c = makeCounter(), lt = makeLineType(); if (!chainedRun()) K().chainPoints(c.id, lt.id, CHAIN); },
@@ -411,11 +457,12 @@
     },
     {
       id: 'linetype', title: 'Header: Quick Line', kind: 'do',
-      body: 'A line type is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Create]] tab. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click inside one circle, then the other.\nThe run\'s length lands in the sidebar at the scale you set.',
+      body: 'A line type is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Create]] tab. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage is measured between your two clicks, so these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
       target: ['#createLineTypeCreate', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'], page: 0,
-      zones: () => K().pathZones(LINE, 16, quickPaths()),
-      check: () => !!lineType() && K().allDone(K().pathZones(LINE, 16, quickPaths())),
-      progress: () => (lineType() ? 'Line type made. Now click inside the first circle, then the second' : ''),
+      zones: () => LINE.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: LINE_R, done: lineClose() })),
+      check: () => !!lineType() && lineClose(),
+      hint: () => { const l = lineRun(); if (!l || lineClose()) return ''; return 'That run reads ' + feetText(lineFeet(l)) + ', not ' + feetText(LINE_FT) + '. Press Ctrl+Z and land closer to the centres'; },
+      progress: () => (lineType() && !lineRun() ? 'Line type made. Now click the centre of the first circle, then the second' : ''),
       action: { label: 'Make Pipe and draw the line', run: ACT.linetype },
     },
     {
@@ -617,8 +664,14 @@
       action: { label: 'Open it for me', run: ACT.exportmenu },
     },
     {
+      id: 'share', title: 'Header: Share, and Copy view link', kind: 'read',
+      body: 'The two buttons this tour cannot press. They work on a project saved to the cloud, and this sheet stays on your device on purpose.\n1. [[Share]] puts a read-only link to the takeoff on the clipboard, making one the first time. A GC opens it in a browser and sees the marked-up sheets and the totals, and can change nothing.\n2. [[Copy view link]] copies that same link again later.\nTo press them for real: [[Sign In]], open any bid, [[Save Project to Cloud]] under the gear, and both appear in the header beside the bell. The walk with a real bid is [Sharing and view links](/guides/sharing-and-view-links/), and the Saving and sharing lesson under [[Learn]] reads the whole signed-in half.',
+      target: ['#headerShareBtn', '#copyViewLinkBtn', '#authBtn', '#sidebarLogoUser'],
+      check: () => true,
+    },
+    {
       id: 'exports', title: 'Sidebar: Export Options', kind: 'read',
-      body: 'Under EXPORT OPTIONS in the left sidebar, the deliverables:\n1. [[Show Report]]: the full breakdown, ready to print.\n2. [[Export PDFs]]: the marked-up sheets, with the report and the legend if you want them.\n3. [[Copy to /Tooling]]: the whole takeoff on the clipboard for the bid.\n4. [[Copy Summary (Email/Text)]], [[Copy RFI Flags]], [[Highlight Pages (PDF)]] and [[Note Pages (PDF)]] for the smaller hand-offs.\n[[Share]] and [[Copy view link]] join the header once a project is saved to the cloud: a link a GC can open, read-only.',
+      body: 'Under EXPORT OPTIONS in the left sidebar, the deliverables:\n1. [[Show Report]]: the full breakdown, ready to print.\n2. [[Export PDFs]]: the marked-up sheets, with the report and the legend if you want them.\n3. [[Copy to /Tooling]]: the whole takeoff on the clipboard for the bid.\n4. [[Copy Summary (Email/Text)]], [[Copy RFI Flags]], [[Highlight Pages (PDF)]] and [[Note Pages (PDF)]] for the smaller hand-offs.',
       target: ['#exportOptionsSectionTitle'],
       check: () => true,
     },
@@ -646,11 +699,24 @@
 
   // ----- registration, the doors, the device -----------------------------------------------------
   const snapNow = () => !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical);
+  // The welcome card is one of two: a fresh start, or the offer to pick up where the reader
+  // left off, with the earlier steps laid down for them, beside a start-over.
+  const WELCOME = STEPS[0];
+  const FRESH = { body: WELCOME.body, action: WELCOME.action };
+  function offerResume(n) {
+    const at = STEPS[n];
+    if (!at) { WELCOME.body = FRESH.body; WELCOME.action = FRESH.action; delete WELCOME.alt; return; }
+    WELCOME.body = 'You left this tour at step ' + (n + 1) + ' of ' + STEPS.length + ', ' + at.title + '. A blank sheet opens either way; nothing here touches your projects.\n1. Click [[Pick up where you left off]] to open the sheet with the earlier steps already done and carry on from step ' + (n + 1) + '.\n2. Or click [[Start over]] for the whole walk.';
+    WELCOME.action = { label: 'Pick up where you left off', run: async () => { resumeTo = n; await openBlankSheet(); } };
+    WELCOME.alt = { label: 'Start over', run: async () => { resumeTo = null; saveStep(0); offerResume(null); await openBlankSheet(); } };
+  }
   App.registerTour(TOUR_ID, {
     steps: STEPS,
     doneKey: DONE_KEY,
-    onStart() { seen = {}; base = null; moveBase = null; zoomBase = null; settled = null; snapBefore = snapNow(); },
-    onStop() {
+    onStart() { seen = {}; base = null; moveBase = null; zoomBase = null; settled = null; resumeTo = null; restoring = false; snapBefore = snapNow(); offerResume(savedStep()); },
+    onStep(id, index) { if (!restoring) saveStep(index); },
+    onStop(finished) {
+      if (finished) saveStep(0);
       if (snapBefore != null && snapNow() !== snapBefore && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
       snapBefore = null;
       sweepPalette();
@@ -687,5 +753,5 @@
   syncDoor();
   App.startBlankTour = start;
   App.blankTourSteps = () => STEPS.map((s) => s.id);   // spec seam
-  App.blankTourLatches = () => ({ seen: Object.assign({}, seen), zoomBase, moveBase, base: !!base });   // spec seam: what the checks remember
+  App.blankTourLatches = () => ({ seen: Object.assign({}, seen), zoomBase, moveBase, base: !!base, resumeTo, restoring, saved: savedStep() });   // spec seam: what the checks remember
 })();

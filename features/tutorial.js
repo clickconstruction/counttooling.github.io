@@ -7,7 +7,9 @@
  * hangers as child counts, a ×3 typical-floor zone, an RFI note, the proof
  * modal, the PipeTooling hand-off).
  *
- * A step is { id, title, body, kind, target (selector list), check(), action?, hint?, hold?, cardAt?, reveal? }
+ * A step is { id, title, body, kind, target (selector list), check(), action?, alt?, hint?, progress?, hold?, cardAt?, reveal? }
+ * (alt: a second button beside a hands-off step's own, { label, run }: the blank-sheet tour's
+ * welcome offers "Pick up at step 20" and "Start over" when the reader left mid-way)
  * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
  * whole point is a dialog the reader should get to read)
  * (body may be a FUNCTION: called at every render, for a step whose text reads the takeoff
@@ -884,6 +886,8 @@
     if (step.handsOff && !done) { show.style.display = ''; show.textContent = step.action.label; }
     else if (step.kind === 'do' && !done) { show.style.display = ''; show.textContent = 'Show me where'; }
     else show.style.display = 'none';
+    const alt = el('tourAlt');
+    if (alt) { if (step.alt && !done) { alt.style.display = ''; alt.textContent = step.alt.label; } else alt.style.display = 'none'; }
     // A reveal step's answer waits behind its own button (the course's teaching mode).
     const revealBtn = el('tourReveal');
     if (revealBtn) { if (step.reveal && !revealed) { revealBtn.style.display = ''; revealBtn.textContent = step.revealLabel || 'Show the engineer\'s answer'; } else revealBtn.style.display = 'none'; }
@@ -1092,6 +1096,8 @@
     closeStrayDialogs(STEPS[stepIdx]);
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
+    const def = TOURS[tourId];
+    if (def && def.onStep) { try { def.onStep(STEPS[stepIdx].id, stepIdx); } catch (_) { /* a tour's own bookkeeping never breaks a move */ } }
     render();
   }
   function startTutorial(id) {
@@ -1175,6 +1181,7 @@
   el('tourNext') && (el('tourNext').onclick = () => { if (!stepReady()) return; if (stepIdx >= STEPS.length - 1) stopTutorial(true); else goTo(stepIdx + 1); });
   el('tourSkip') && (el('tourSkip').onclick = () => { if (stepIdx < STEPS.length - 1) { App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx, skipped: true }); goTo(stepIdx + 1); } });
   el('tourShow') && (el('tourShow').onclick = showMeWhere);
+  el('tourAlt') && (el('tourAlt').onclick = () => { const st = STEPS[stepIdx]; if (st && st.alt) Promise.resolve(st.alt.run()).then(render); });
   el('tourBack') && (el('tourBack').onclick = () => goTo(stepIdx - 1));
   el('tourLeave') && (el('tourLeave').onclick = () => stopTutorial(false));
   el('tourReveal') && (el('tourReveal').onclick = () => { revealed = true; render(); });

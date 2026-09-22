@@ -94,7 +94,7 @@ What the audit says about the three surfaces that existed:
 
 ## Decisions (2026-09-21)
 
-1. **One tour, 36 steps, not a set of lessons.** LEARN-PLAN decided "short lessons, not one
+1. **One tour, 37 steps, not a set of lessons.** LEARN-PLAN decided "short lessons, not one
    long tutorial" for learning the app by doing a takeoff; this is a different thing, a
    walk along the toolbar, and the owner asked for one tutorial. Every step is one button
    and the smallest honest thing it does, so the whole walk is about fifteen minutes; Skip
@@ -126,6 +126,26 @@ What the audit says about the three surfaces that existed:
 7. **The sheet names itself.** The title block is laid out the way sheet-title-model.js reads
    a real one (the number its own, tallest text item under a SHEET caption), so the sidebar
    reads SK-1 and SK-2, the names the card uses.
+8. **Pick up where you left off.** Thirty-seven steps is more than one sitting. The step the
+   reader is on is kept on the device (`clickcount-tour-blank-step`, the engine's new
+   `onStep` hook; cleared on Finish), and the next start's welcome card offers **Pick up
+   where you left off** beside **Start over** (the engine's new second button, `alt`). Picking
+   up opens the sheet fresh and runs every earlier doing step's action through the same
+   App.* doors, so the work the later steps take for granted is on the sheet again, then
+   lands on the saved step. This was chosen over remembering the sheet itself: a reload
+   loses the sheet, and a step whose prerequisites are missing would only be skippable.
+9. **Precision where it counts.** A count is a tally, so its circles stay generous. A run's
+   footage is measured between the two clicks, so the Quick Line step's circles are tight
+   (8 pt; the engine zooms to keep them 26 px, so a click inside is within a foot) and its
+   check reads the footage: the run must read 24'-5" within two feet, and a miss says what it
+   read instead. The tolerance is the circle, not the click.
+10. **Share and Copy view link get their own step, still unpressed.** Both return without
+   doing anything unless the project is saved to the cloud (`copyOrCreateViewLinkToClipboard`
+   needs `currentProjectId`), and pressing them for real would mean saving the practice
+   sheet into the reader's account and deleting it afterwards, a destructive act a tour
+   should not perform. The step says what each does, how to reach them for real (Sign In,
+   Save Project to Cloud) and links the guide and the Saving and sharing lesson, and lights
+   the buttons when a signed-in reader can see them.
 
 ## The route
 
@@ -163,10 +183,11 @@ What the audit says about the three surfaces that existed:
 | 30 | settings | Header | the gear | seen (hold) |
 | 31 | savestatus | Header | the bell | seen (hold) |
 | 32 | exportmenu | Header | the download arrow | menu seen |
-| 33 | exports | Sidebar | read: the seven export buttons, Share on a cloud project | read |
-| 34 | clearpage | Sidebar | Clear Page, confirm | active layer at 0 marks |
-| 35 | close | Header | Close this project, confirm | no pages |
-| 36 | done | | read | read |
+| 33 | share | Header | read: Share and Copy view link, what they do, and how to reach them for real | read |
+| 34 | exports | Sidebar | read: the seven export buttons | read |
+| 35 | clearpage | Sidebar | Clear Page, confirm | active layer at 0 marks |
+| 36 | close | Header | Close this project, confirm | no pages |
+| 37 | done | | read | read |
 
 Every doing step's `action.run` is the engine's spec seam (`App.tutorialDoStep`), and
 tutorial.spec.js walks all 36 that way, asserting the real state after each.
@@ -179,13 +200,14 @@ tutorial.spec.js walks all 36 that way, asserting the real state after each.
   snap setting there) beside the `onStop(finished)` the lessons already had.
 - A step may carry `progress()`: the status line for guidance on a step with several parts,
   neutral, beside `hint()` for misses, which renders red.
+- A step may carry `alt`, a second action button beside a hands-off step's own; a registered
+  tour may carry `onStep(id, index)`, called on every move.
 - The card's step number stays on one line and the dots squeeze on a long tour (36 dots
   used to wrap the "1 / 36" onto three lines).
 
 ## Open (not blocking)
 
-- ⚑ The Learn menu screenshot in the guide (`guides/img/learn-menu.png`) shows three tour
-  buttons; it needs a `build:screenshots` run to show four.
+- The Learn menu screenshot in the guide was rebuilt with the fourth button (2026-09-22).
 - ⚑ On a phone the header is a drawer and several of these buttons live behind ☰; the tour
   is written desktop-first like the lessons (LEARN-PLAN decision 4) and only its wording
   adapts.

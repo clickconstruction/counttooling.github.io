@@ -17,7 +17,7 @@ expired recovery UX" work occupies that slot).
 
 [BLANK-TOUR.md](journeys/plans/BLANK-TOUR.md). The fourth tour, on the other axis from the
 three trade tours: no plan, no trade, no numbers to get right, and every control in the header,
-on the sheet, in the footer and in the sidebar pressed once, 36 steps in about fifteen minutes.
+on the sheet, in the footer and in the sidebar pressed once, 37 steps in about fifteen minutes.
 It came out of an audit of what the tours, the lessons and the courses actually press (the table
 in the plan file, generated from the code): twelve header and footer controls had never been
 pressed by any step (Move, Ghost, Grid overlay, Drop sizes, Save status, Export project, Close
@@ -40,10 +40,19 @@ this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); al
 - **Doors**: the empty canvas ("or press every button once on a blank sheet", hidden once the
   tour is done on this device: `clickcount-tour-done-blank`), Learn → Every button, Project
   Settings → Help → every button, `/app/?tour=blank`.
+- **Pick up where you left off**: the step the reader is on is kept on the device and the next
+  start offers **Pick up where you left off** (the sheet opens fresh with every earlier step laid
+  down through the same doors, then lands on the saved step) beside **Start over**. **Precision
+  where it counts**: the Quick Line step's circles are tight and its check reads the footage,
+  because a run is measured between the two clicks. **Share and Copy view link** have a step of
+  their own that says what they do and how to reach them for real; they stay unpressed, because
+  they do nothing off a cloud project and pressing them would mean saving the practice sheet into
+  the reader's account.
 - **Engine** (features/tutorial.js): `?tour=<id>` resolves when the link fires against every
-  registered tour; a registered tour may carry `onStart()`; a step may carry `progress()`, the
-  neutral status line for guidance on a step with several parts (`hint()` stays red for misses);
-  the card's step number no longer wraps under a long row of dots.
+  registered tour; a registered tour may carry `onStart()` and `onStep(id, index)`; a step may
+  carry `progress()`, the neutral status line for guidance on a step with several parts (`hint()`
+  stays red for misses), and `alt`, a second action button; the card's step number no longer
+  wraps under a long row of dots.
 - Spec: [tutorial.spec.js](tutorial.spec.js) walks all 36 steps through the seam and asserts the
   real state after each; the doors; the reset over a teaching set; snap restored.
 

@@ -50,7 +50,9 @@ findings into the Tier-2/3 queues.
 > *(Re-read 2026-09-22: finding (1), the hidden-tab save stall, is FIXED in
 > save-engine.js: its `tick()` races a plain timeout against the animation
 > frame, 0 ms when `document.hidden`, so a backgrounded tab's save settles.
-> Findings (2) and (4) are still open and unrecorded on the punch list.)*
+> Finding (2) is fixed too: the access log opens in the app's own dialog
+> (features/share-links.js, `App.confirmDialog`) and no native `alert()` is
+> left in the app. Finding (4) is punch row VIEWER-HIDEMARKS, 2026-09-22.)*
 > Addenda in share-with-an-outsider.md / share-and-collaborate.md /
 > admin-onboards-a-team.md. New findings: (1) **hidden-tab save stall** —
 > save-engine's rAF-based `tick()` never fires in a hidden tab, stalling

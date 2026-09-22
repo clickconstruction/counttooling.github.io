@@ -14,7 +14,7 @@ const path = require('path');
 
 async function load(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.evaluate(() => window.App.rulesReady());
@@ -72,7 +72,7 @@ test.describe('Codes & jurisdiction', () => {
     await page.evaluate(() => window.App.hideModal('settingsModal'));
     // the device default survives a fresh project: state.codes null, the resolved codes carry the last choice
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => window.state.codes)).toBe(null);
     expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'UPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: 'Texas · Austin' });
     expect(errors).toEqual([]);

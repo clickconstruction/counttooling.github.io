@@ -15,7 +15,7 @@ const path = require('path');
 
 async function loadTwoPagePdf(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 }
@@ -233,13 +233,13 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     const errors = [];
     collectErrors(page, errors);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.evaluate(() => window.App.setCounterListFilterScope('project'));
     expect(await page.evaluate(() => localStorage.getItem('counterSidebarFilterScope'))).toBe('project');
 
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => window.App.getCounterListFilterScope())).toBe('project');
     // Boot updateUI reflects the restored scope on the inline button.
     await expect(page.locator('#counterShowOnlyOnPageInlineBtn')).toHaveAttribute('data-scope', 'project');
@@ -247,7 +247,7 @@ test.describe('Sidebar usage filter (off / page / project)', () => {
     // An explicit reset to off sticks across reloads too.
     await page.evaluate(() => window.App.setCounterListFilterScope('off'));
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => window.App.getCounterListFilterScope())).toBe('off');
 
     expect(errors).toEqual([]);

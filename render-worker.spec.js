@@ -31,7 +31,7 @@ async function boot(page, errors) {
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
   await page.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });
@@ -203,7 +203,7 @@ test.describe('Render worker', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles({
       name: 'tiling-pattern.pdf', mimeType: 'application/pdf', buffer: buildTilingPatternPdf(),
     });
@@ -241,7 +241,7 @@ test.describe('Render worker', () => {
       p.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
       p.on('pageerror', (e) => errors.push(e.message));
       await p.goto('/app/');
-      await p.waitForLoadState('networkidle');
+      await p.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
       await p.locator('#pdfInput').setInputFiles(samplePlan);
       await p.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
       await p.waitForFunction(() => document.getElementById('pdfCanvas').width > 0, null, { timeout: 15000 });

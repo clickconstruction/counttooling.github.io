@@ -27,7 +27,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // --- Registry contract ---
     const contract = await page.evaluate(() => ({
@@ -158,7 +158,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
   test('signed-out boot offer, clobber guard, keep-after-9s, post-Keep lifecycle', async ({ page }) => {
     test.setTimeout(120000);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await seedLocalBackup(page);
     await page.reload();
 
@@ -225,7 +225,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
 
   test('ignored prompt survives reloads; Discard consumes both records', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await seedLocalBackup(page);
 
     // Ignore the prompt across TWO reloads: still offered, markers intact.
@@ -245,7 +245,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
       return held === null && local === null;
     }, HELD_ID);
     await page.reload();
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.waitForTimeout(1500);
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
   });
@@ -263,7 +263,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     await page.evaluate(() => {
       window.App.showModal('keyboardMapModal');
@@ -302,7 +302,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     const cloud = { cloudLast: { projectId: 'p1', projectName: 'Bid A', userId: 'u1' } };
 
     // 1. The offer arrives late behind a dialog, and the user opens a plan meanwhile (the slow
@@ -356,7 +356,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await seedLocalBackup(page);
     await holdBoot(page);
 

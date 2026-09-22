@@ -58,7 +58,7 @@ test.describe('Full-document warm-up', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles({
       name: 'five-pages.pdf', mimeType: 'application/pdf', buffer: buildMultiPagePdf(5),
     });
@@ -119,7 +119,7 @@ test.describe('Full-document warm-up', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     // Hold the prefetch chain back (each prefetch raster +400ms) so the walk
     // cannot reach the far field before the marker below is seeded — the
     // ordering assertion must not race the walk (flaked on CI without this).
@@ -156,7 +156,7 @@ test.describe('Full-document warm-up', () => {
     page.on('pageerror', (e) => errors.push(e.message));
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     // Slow every raster BEFORE the upload so nothing (page 2 included) can be
     // prefetched or persisted ahead of the flip — the flip is guaranteed cold.
     // (The crafted PDF is used because its pages carry guaranteed ink;

@@ -27,7 +27,7 @@ test.describe('Digital twin visibility', () => {
   test('fleet emails are recognised; real people and near-misses are not', async ({ page }) => {
     const errors = consoleErrors(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const verdicts = await page.evaluate(() => {
       const f = window.App.isTwinEmail;
@@ -54,7 +54,7 @@ test.describe('Digital twin visibility', () => {
 
   test('isTwinUser trusts an explicit flag even when the email is off-pattern', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // PT's manage-user bridge can flag an account whose email does not match the
     // fleet pattern, so the row flag has to win on its own.
@@ -77,7 +77,7 @@ test.describe('Digital twin visibility', () => {
 
   test('badge markup appears only for twins, in both HTML and text form', async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     const out = await page.evaluate(() => ({
       twinHtml: window.App.twinBadgeHtml('twin-estimator-1@twins.counttooling.local'),
@@ -98,7 +98,7 @@ test.describe('Digital twin visibility', () => {
   test('own-session banner shows on a twin, names them, and clears on sign-out', async ({ page }) => {
     const errors = consoleErrors(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Signed out: no banner, and the app keeps the full viewport.
     await expect(page.locator('#twinBanner')).toBeHidden();

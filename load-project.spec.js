@@ -20,7 +20,7 @@ test.describe('window.App registry pilot - Load Project modal', () => {
     page.on('pageerror', (err) => { errors.push(err.message); });
 
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     expect(await page.evaluate(() => typeof window.App?.openLoadProjectModal)).toBe('function');
 
@@ -61,7 +61,7 @@ test.describe('window.App registry pilot - Load Project modal', () => {
 
       await page.setViewportSize({ width: 1280, height: 800 });
       await page.goto('/app/?devAuth=1');
-      await page.waitForLoadState('networkidle');
+      await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
       // Wait for the session to settle so openLoadProjectModal passes its gate.
       await page.waitForFunction(() => !!window.state?.supabaseSession?.access_token, { timeout: 10000 });
 

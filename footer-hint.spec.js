@@ -11,7 +11,7 @@ const path = require('path');
 
 async function bootWithLineTool(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
   await page.evaluate(() => {
@@ -60,7 +60,7 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
 // never re-measures or wraps the bar mid-draw.
 async function bootForReadout(page, { scale = { pixelsPerUnit: 9, unit: 'ft' } } = {}) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
   await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
   await page.evaluate((sc) => {
@@ -161,7 +161,7 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
     await page.setViewportSize({ width: 1600, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 
@@ -229,7 +229,7 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
     page.on('pageerror', (e) => errors.push(e.message));
     await page.setViewportSize({ width: 1600, height: 800 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
 

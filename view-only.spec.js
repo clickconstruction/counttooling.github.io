@@ -107,7 +107,7 @@ test.describe('View-only mode (view-link boot)', () => {
     const errors = [];
     collectErrors(page, errors);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
     const wired = await page.evaluate(() => ({
       init: typeof window.App?.initViewOnlyMode,
       cancel: typeof window.App?.cancelViewLinkEmailPrompt,

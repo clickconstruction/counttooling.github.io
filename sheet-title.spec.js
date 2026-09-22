@@ -51,7 +51,7 @@ test.describe('SHEET-TITLE — the default page label comes off the title block'
   test('the sample sheets read their own title blocks, in the sidebar too', async ({ page }) => {
     const errors = watch(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'samples', 'sample-plan-advanced.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     expect(await page.evaluate(() => window.state.pages.map((p) => p.label))).toEqual(['P-101 · Plumbing Plan']);
@@ -64,7 +64,7 @@ test.describe('SHEET-TITLE — the default page label comes off the title block'
   test('a set: title, number only, no title block, and a sheet stored sideways; Prepare PDF offers the label', async ({ page }) => {
     const errors = watch(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     const bytes = await buildSet(page);
     await page.locator('#pdfInput').setInputFiles({ name: 'bid-set.pdf', mimeType: 'application/pdf', buffer: Buffer.from(bytes) });
     // signed out, three sheets or more: the trim step opens over the loaded pages
@@ -89,7 +89,7 @@ test.describe('SHEET-TITLE — the default page label comes off the title block'
   test('a PDF with no title block keeps its file-name labels', async ({ page }) => {
     const errors = watch(page);
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     expect(await page.evaluate(() => window.state.pages.map((p) => p.label))).toEqual(['test-2pages.pdf, p1', 'test-2pages.pdf, p2']);

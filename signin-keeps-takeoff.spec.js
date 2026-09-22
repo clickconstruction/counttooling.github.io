@@ -31,7 +31,7 @@ const localBackupPdfBytes = (page) => page.evaluate(async () => { for (const k o
 
 async function takeoffSignedOut(page) {
   await page.goto('/app/');
-  await page.waitForLoadState('networkidle');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
   const canDevAuth = await page.evaluate(() => typeof window.DEV_AUTH_EMAIL === 'string' && !!window.DEV_AUTH_EMAIL && !!window.DEV_AUTH_PASSWORD);
   if (!canDevAuth) return false;
   await page.locator('#pdfInput').setInputFiles({ name: FILE_NAME, mimeType: 'application/pdf', buffer: fs.readFileSync(path.join(__dirname, 'test-page.pdf')) });

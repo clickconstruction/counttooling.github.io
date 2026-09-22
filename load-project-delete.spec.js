@@ -20,7 +20,7 @@ test.describe('Load Project delete own projects', () => {
     await page.goto('/app/?devAuth=1');
 
     // Wait for app to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // Open Project Settings - sidebarLogoGear is the mobile-layout door; both gears open the same modal
     await page.evaluate(() => {

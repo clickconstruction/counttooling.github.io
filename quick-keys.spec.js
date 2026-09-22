@@ -48,7 +48,7 @@ const selection = (page) => page.evaluate(() => ({
 test.describe('Quick Keys', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     await seedPalette(page);
   });
 
@@ -280,7 +280,7 @@ test.describe('Quick Keys', () => {
   test('mobile: status-bar entries hide; the settings-modal row is the path in', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto('/app/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 
     // The desktop-only status-bar cluster must actually hide on a phone. This
     // regressed once: .has-icon carried a display that out-cascaded the

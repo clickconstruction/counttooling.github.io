@@ -53,8 +53,18 @@ this project, the sidebar fold, the sheet arrows, + / Fit, Redo, Clear Page); al
   carry `progress()`, the neutral status line for guidance on a step with several parts (`hint()`
   stays red for misses), and `alt`, a second action button; the card's step number no longer
   wraps under a long row of dots.
-- Spec: [tutorial.spec.js](tutorial.spec.js) walks all 36 steps through the seam and asserts the
-  real state after each; the doors; the reset over a teaching set; snap restored.
+- **Walked on a tablet** (768 × 1024, touch), which found engine bugs every tour had there: the
+  "narrow" test was `< 768` while the app's breakpoint is 768 inclusive (an iPad in portrait), so
+  the sidebar-drawer wording and the ☰ fallback never fired; the header strip scrolls sideways
+  and tools past the edge were never lit (they are scrolled in now); with no control to light the
+  card sat on the sheet targets; the docked card covered the targets the engine had centred under
+  it. The blank tour's steps say where each control lives on a tablet (Quick keys under Settings,
+  Snap in Line Type Settings, Polyline in the sidebar, Add canvas under Layers, Hide marks, Drop
+  sizes, Export and Close project under ☰, the sidebar behind ☰, zoom by pinch) and light that
+  door; the Notes ledger has no door there and the note step says so.
+- Spec: [tutorial.spec.js](tutorial.spec.js) walks all 37 steps through the seam and asserts the
+  real state after each; the doors; the reset over a teaching set; snap restored; a tablet
+  viewport walk with touch.
 
 ## feat(duct): the grease duct's cleanouts and listed wrap are priced on their own lines (2026-09-21)
 

@@ -208,6 +208,35 @@ tutorial.spec.js walks all 36 that way, asserting the real state after each.
 ## Open (not blocking)
 
 - The Learn menu screenshot in the guide was rebuilt with the fourth button (2026-09-22).
-- ⚑ On a phone the header is a drawer and several of these buttons live behind ☰; the tour
-  is written desktop-first like the lessons (LEARN-PLAN decision 4) and only its wording
-  adapts.
+- Walked on a tablet (768 × 1024, touch) on 2026-09-22; see "The tablet walk" below.
+
+## The tablet walk (2026-09-22)
+
+An audit script emulated an iPad in portrait and walked all 37 steps, recording per step
+whether a control was lit, whether it was on screen, and whether the card covered the lit
+control or a target on the sheet. What it found, and what changed:
+
+- **The engine's "narrow" test was `< 768`; the app's own breakpoint is `max-width: 768px`.**
+  An iPad in portrait is exactly 768: the sidebar is a drawer behind ☰, the status-bar links
+  are gone, the header strip scrolls, yet every tour still said "in the left sidebar" and never
+  lit the ☰. Now `isNarrow()` is the app's media query, and the card docks at 768 too.
+- **The header strip scrolls sideways on a tablet.** Note, Summary legend and Grid overlay sat
+  past the right edge, and the ladder refused anything off screen, so those steps lit nothing.
+  A tool in the strip now counts and is scrolled into view (centred) when lit.
+- **With no control to light the card was centred, on top of the circles** (quick keys, whose
+  status-bar link is gone). The no-target placement now takes a corner clear of the targets.
+- **The docked card covered the bottom of the sheet, where the engine had centred the targets.**
+  `focusOnZones` now centres them in the part of the sheet above the card.
+- **Six controls are somewhere else on a tablet**, and the steps now say where, lighting the door:
+  Quick keys (Project Settings → Quick keys → Edit), Snap to 45° (the LINE TYPES heading →
+  Line Type Settings), Polyline (the sidebar's tool row), Add canvas (the footer's Layers
+  button → Add), Hide marks, Drop sizes, Export and Close project (the ☰ at the top right,
+  More actions), the sidebar itself (the ☰ at the top left; the step's check accepts the
+  drawer opening and closing), Project Settings and Save status (the gear at the top of the
+  sidebar; Save status is a row in Settings). Zoom in is a pinch.
+- **The Notes ledger has no door on a tablet** (its header button is consolidated away and the
+  ☰ does not carry it), so the note step asks only for the note there and says so. ⚑ Worth a
+  row in the ☰.
+- Step bodies that differ by device are functions (the engine renders them live), so the same
+  step reads right on both, and `teaching-labels.test.js` still sees every chip.
+- Pinned by a tablet-viewport test in tutorial.spec.js that walks every step with touch.

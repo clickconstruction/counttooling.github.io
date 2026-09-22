@@ -675,4 +675,53 @@ test.describe('Every button, on a blank sheet', () => {
     await waitForStep(page, 'scale');
     expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, document.querySelectorAll('.modal-overlay.visible').length])).toEqual([2, 'blank-sheet', 0]);
   });
+  // A tablet in portrait (768 × 1024, touch): the app's own breakpoint, where the sidebar is a
+  // drawer, the status-bar links are gone, the header strip scrolls and several controls live
+  // under the ☰. Every step still has a door, the door is lit on screen, and the walk completes.
+  test.describe('on a tablet', () => {
+    test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true });
+    test('every step lights a door on screen and the whole walk completes', async ({ page }) => {
+      test.setTimeout(150000);
+      const errors = [];
+      page.on('pageerror', (err) => { errors.push(err.message); });
+      await page.goto('/app/');
+      await ready(page);
+      await page.evaluate(() => { try { ['clickcount-tour-done-blank', 'clickcount-tour-blank-step'].forEach((k) => localStorage.removeItem(k)); } catch (_) {} });
+      await page.goto('/app/?tour=blank');
+      await ready(page);
+      await waitForStep(page, 'welcome');
+      expect(await page.evaluate(() => window.innerWidth)).toBe(768);
+      const lit = () => page.evaluate(() => { const s = document.getElementById('tourSpot'); if (getComputedStyle(s).display === 'none') return null; const r = s.getBoundingClientRect(); const cx = r.left + r.width / 2, cy = r.top + r.height / 2; const el = document.elementFromPoint(Math.min(Math.max(cx, 1), innerWidth - 1), Math.min(Math.max(cy, 1), innerHeight - 1)); const c = el && el.closest('button, a, h3, span'); return { onScreen: r.left >= -8 && r.right <= innerWidth + 8 && r.top >= -8, under: c ? c.id : (el ? el.id : null) }; });
+      const body = () => page.locator('#tourBody').textContent();
+      const seen = {};
+      for (let i = 0; i < 40; i++) {
+        const id = await stepId(page);
+        if (!id) break;
+        await page.waitForTimeout(700);
+        seen[id] = { lit: await lit(), body: await body() };
+        const info = await page.evaluate(() => window.App.tutorialStepInfo());
+        if (info.kind === 'do' && !info.done) await page.evaluate(() => window.App.tutorialDoStep());
+        await page.waitForFunction(() => window.App.tutorialStepInfo().done, null, { timeout: 12000 });
+        await page.waitForFunction((want) => window.App.tutorialStepId() !== want, id, { timeout: 2500 }).catch(async () => { await page.evaluate(() => document.getElementById('tourNext').click()); });
+        await page.waitForTimeout(200);
+      }
+      expect(await stepId(page)).toBe(null);
+      // the tablet doors, lit and on screen: the ☰ for the sidebar steps, the strip scrolled for a tool past its edge
+      expect(seen.counter.lit).toEqual({ onScreen: true, under: 'hamburger' });
+      expect(seen.linetype.lit).toEqual({ onScreen: true, under: 'hamburger' });
+      expect(seen.polyline.lit).toEqual({ onScreen: true, under: 'hamburger' });
+      expect(seen.polyline.body).toContain('Tap ☰ at the top left, then Polyline');
+      expect(seen.note.lit).toEqual({ onScreen: true, under: 'noteBtn' });
+      expect(seen.note.body).not.toContain('then close it with its');
+      expect(seen.quickkeys.body).toContain('Beside Quick keys, tap Edit');
+      expect(seen.snap.body).toContain('Line Type Settings opens');
+      expect(seen.drop.body).toContain('More actions');
+      expect(seen.layers.body).toContain('+ Add layer');
+      expect(seen.zoom.body).toContain('Pinch');
+      expect(seen.sidebar.lit).toEqual({ onScreen: true, under: 'hamburger' });
+      expect(seen.exportmenu.lit).toEqual({ onScreen: true, under: 'headerBurger' });
+      expect(seen.close.lit).toEqual({ onScreen: true, under: 'headerBurger' });
+      expect(errors).toEqual([]);
+    });
+  });
 });

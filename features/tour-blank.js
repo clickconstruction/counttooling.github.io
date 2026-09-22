@@ -346,6 +346,7 @@
         S().tool = App.TOOL.NONE;
         dirty();
       }
+      if (narrow()) return;
       if (!seen.ledger && el('notesLedgerBtn')) { el('notesLedgerBtn').click(); await wait(700); tick(); }
       if (ledgerOpen() && el('notesLedgerBtn')) { el('notesLedgerBtn').click(); await wait(100); tick(); }
     },
@@ -373,8 +374,8 @@
     },
     async zoom() { tick(); el('zoomIn').click(); await wait(250); tick(); el('zoomFit').click(); await wait(80); tick(); },
     async sidebar() {
-      if (window.matchMedia('(min-width: 769px)').matches) { await pressTwice('headerLogo', 400); }
-      else { document.body.classList.add('sidebar-collapsed'); await wait(300); tick(); document.body.classList.remove('sidebar-collapsed'); tick(); }
+      if (narrow()) { document.body.classList.add('sidebar-open'); await wait(300); tick(); document.body.classList.remove('sidebar-open'); tick(); }
+      else await pressTwice('headerLogo', 400);
     },
     async groups() {
       if (group()) return;
@@ -389,13 +390,22 @@
     bidcheck() { S().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); },
     settings() { el('settingsGearBtn').click(); },
     savestatus() { el('saveStatusBtnHeader').click(); },
-    async exportmenu() { el('exportDropdownBtn').click(); await wait(250); },
+    async exportmenu() { if (narrow()) { el('headerBurger').click(); await wait(250); tick(); el('headerBurger').click(); } else el('exportDropdownBtn').click(); await wait(250); },
     async clearpage() { if (!activeMarks()) return; if (App.showClearPageModal) App.showClearPageModal(); await wait(80); if (el('clearPageConfirm')) el('clearPageConfirm').click(); await wait(80); },
     async close() { App.closeProject({ route: 'tour' }); await wait(250); if (modalUp('confirmModal') && el('confirmOk')) el('confirmOk').click(); await wait(300); },
   };
 
   // ----- the steps ----------------------------------------------------------------------------
   const MORE = ' It may sit behind [[⋯]].';
+  // …on a desk. A tablet has no ⋯: its header strip scrolls sideways instead.
+  const more = () => (narrow() ? ' The header strip scrolls sideways if it is out of view.' : MORE);
+  // A tablet (the app's breakpoint, 768 px inclusive) keeps several of these controls
+  // elsewhere: the sidebar behind ☰, the status-bar links gone, a few header buttons under
+  // the ☰ at the top right. A step whose door moves says so, live (the engine renders a body
+  // that is a function every tick), and lights that door.
+  const narrow = () => { try { return window.matchMedia('(max-width: 768px)').matches; } catch (_) { return window.innerWidth <= 768; } };
+  const burgerOpen = () => document.body.classList.contains('right-menu-open');
+  const drawerOpen = () => document.body.classList.contains('sidebar-open');
   const STEPS = [
     {
       id: 'welcome', title: 'Every button, on a blank sheet', kind: 'do',
@@ -447,8 +457,10 @@
     },
     {
       id: 'quickkeys', title: 'Footer: quick keys', kind: 'do',
-      body: '1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose your counter. Close the dialog.\n3. Press M, then 1: the counter arms again from the keyboard.\n4. Click inside the circle.\nOn a real sheet that is the rhythm: 1, click, click, 2, click, click.',
-      target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'], page: 0,
+      body: () => (narrow()
+        ? '1. Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]).\n2. Beside Quick keys, tap [[Edit]]. Beside key 1, choose your counter. Close the dialog.\n3. With a keyboard attached, press 1 and the counter arms; without one, tap the counter in the sidebar.\n4. Tap inside the circle.\nOn a desk the number row is the rhythm: 1, click, click, 2, click, click.'
+        : '1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose your counter. Close the dialog.\n3. Press M, then 1: the counter arms again from the keyboard.\n4. Click inside the circle.\nOn a real sheet that is the rhythm: 1, click, click, 2, click, click.'),
+      target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys', '#settingsQuickKeys', '#settingsGearBtn', '#sidebarLogoGear'], page: 0,
       zones: () => K().markZones(0, cid(), [KEY], 16),
       check: () => { const c = counter(); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id) && K().allDone(K().markZones(0, c.id, [KEY], 16)); },
       hint: () => (counter() ? '' : 'Make a counter first (go Back one step)'),
@@ -467,18 +479,22 @@
     },
     {
       id: 'snap', title: 'Header: Snap to 45°', kind: 'do',
-      body: 'Runs on a plan are square. With snap on, a line you draw holds to horizontal, vertical or 45°, however your hand wobbles.\n1. In the header, click [[Snap to 45° angles]] (or press J) so it lights.\nIt is a device setting, not a project one; the tour puts it back the way it was when you leave.',
-      target: ['#lineTypeSnapToHVHeaderBtn'],
+      body: () => 'Runs on a plan are square. With snap on, a line you draw holds to horizontal, vertical or 45°, however your hand wobbles.\n' + (narrow()
+        ? '1. Tap ☰ at the top left, then the LINE TYPES heading in the sidebar: Line Type Settings opens.\n2. Turn on [[Snap to 45° angles]] and close the dialog.\n'
+        : '1. In the header, click [[Snap to 45° angles]] (or press J) so it lights.\n') + 'It is a device setting, not a project one; the tour puts it back the way it was when you leave.',
+      target: ['#lineTypeSnapToHVBtn', '#lineTypeSnapToHVHeaderBtn', '#lineTypesSectionTitle'],
       check: () => !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical),
       action: { label: 'Turn snap on', run: ACT.snap },
     },
     {
       id: 'polyline', title: 'Header: Polyline', kind: 'do',
-      body: 'A run with corners.\n1. In the header, click [[Polyline]] (or press P).' + MORE + '\n2. Click inside the first circle, the second, then the third.\n3. Press Enter.\nEvery corner is a fitting the run can count for you; right-click a corner to say what it is.',
+      body: () => 'A run with corners.\n' + (narrow()
+        ? '1. Tap ☰ at the top left, then [[Polyline]] in the sidebar\'s tool row.\n2. Tap inside the first circle, the second, then the third.\n3. Tap [[Finish]].\nEvery corner is a fitting the run can count for you; press and hold a corner to say what it is.'
+        : '1. In the header, click [[Polyline]] (or press P).' + MORE + '\n2. Click inside the first circle, the second, then the third.\n3. Press Enter.\nEvery corner is a fitting the run can count for you; right-click a corner to say what it is.'),
       target: ['#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => K().pathZones(POLY, 16, polyPaths(true)),
       check: () => K().allDone(K().pathZones(POLY, 16, polyPaths(false))),
-      progress: () => (S().drawingPolyline && K().allDone(K().pathZones(POLY, 16, polyPaths(true))) ? 'Now press Enter to finish the run' : ''),
+      progress: () => (S().drawingPolyline && K().allDone(K().pathZones(POLY, 16, polyPaths(true))) ? (narrow() ? 'Now tap Finish' : 'Now press Enter to finish the run') : ''),
       action: { label: 'Trace it for me', run: ACT.polyline },
     },
     {
@@ -491,26 +507,26 @@
     },
     {
       id: 'drop', title: 'Header: Drop, and Drop sizes', kind: 'do',
-      body: 'Plan view never shows the vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the chained run inside the circle.\n4. In the header, click [[Drop sizes]] so every drop wears its number on the sheet.\nThe 3 ft joins the run\'s footage in the sidebar.',
-      target: ['#dropSizesBtn', '#dropPanel', '#dropBtn'], page: 0,
+      body: () => 'Plan view never shows the vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the chained run inside the circle.\n4. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Drop sizes]],' : 'In the header, click [[Drop sizes]]') + ' so every drop wears its number on the sheet.\nThe 3 ft joins the run\'s footage in the sidebar.',
+      target: ['#dropSizesBtn', '#dropPanel', '#dropBtn', '#headerBurger'], page: 0,
       zones: () => [{ kind: 'circle', x: CHAIN[0].x, y: CHAIN[0].y, r: 16, done: dropAt(CHAIN[0], 16) }],
       check: () => dropAt(CHAIN[0], 16) && !!S().showDropSizes,
       hint: () => (!dropAt(CHAIN[0], 16) && anyDrop() ? 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' : ''),
-      progress: () => (dropAt(CHAIN[0], 16) && !S().showDropSizes ? 'Drop set. Now click Drop sizes in the header' : ''),
+      progress: () => (dropAt(CHAIN[0], 16) && !S().showDropSizes ? (narrow() ? 'Drop set. Now Drop sizes, under the ☰ at the top right' : 'Drop set. Now click Drop sizes in the header') : ''),
       action: { label: 'Add 3 ft and show the sizes', run: ACT.drop },
     },
     {
       id: 'duct', title: 'Header: Duct', kind: 'do',
-      body: 'The sheet-metal run: drawn at its size, weighed by the foot.\n1. In the header, click [[Duct]] (or press U).' + MORE + '\n2. Leave the size and click [[Start Tracing]].\n3. Click inside the first circle, then the second.\n4. Press Enter.\nThe DUCT section in the sidebar gets a Schedule: pounds, gauge and fittings from the SMACNA tables.',
+      body: () => 'The sheet-metal run: drawn at its size, weighed by the foot.\n1. In the header, click [[Duct]] (or press U).' + (narrow() ? '' : MORE) + '\n2. Leave the size and click [[Start Tracing]].\n3. Click inside the first circle, then the second.\n4. ' + (narrow() ? 'Tap [[Finish Duct Run]].' : 'Press Enter.') + '\nThe DUCT section in the sidebar gets a Schedule: pounds, gauge and fittings from the SMACNA tables.',
       target: ['#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => K().pathZones(DUCT, 18, ductPaths(true)),
       check: () => K().allDone(K().pathZones(DUCT, 18, ductPaths(false))),
-      progress: () => (S().drawingDuct && K().allDone(K().pathZones(DUCT, 18, ductPaths(true))) ? 'Now press Enter to finish the run' : ''),
+      progress: () => (S().drawingDuct && K().allDone(K().pathZones(DUCT, 18, ductPaths(true))) ? (narrow() ? 'Now tap Finish Duct Run' : 'Now press Enter to finish the run') : ''),
       action: { label: 'Trace it for me', run: ACT.duct },
     },
     {
       id: 'highlight', title: 'Header: Highlight', kind: 'do',
-      body: '1. In the header, click [[Highlight]] (or press H).' + MORE + '\n2. Drag a box over the three marks, inside the shaded boundary.\nA highlight is a marker pen, never a count. The panel that opens picks its colour, and Highlight Pages (PDF) under EXPORT OPTIONS collects every highlighted sheet.',
+      body: () => '1. In the header, click [[Highlight]] (or press H).' + more() + '\n2. Drag a box over the three marks, inside the shaded boundary.\nA highlight is a marker pen, never a count. The panel that opens picks its colour, and Highlight Pages (PDF) under EXPORT OPTIONS collects every highlighted sheet.',
       target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [K().boxZone(rects('highlights'), HL_IN, HL_OUT, 'Drag your highlight over the three marks')],
       check: () => K().boxZone(rects('highlights'), HL_IN, HL_OUT).done,
@@ -519,7 +535,7 @@
     },
     {
       id: 'multiply', title: 'Header: Multiply Zone', kind: 'do',
-      body: 'Count a typical once and bid it many times.\n1. In the header, click [[Multiply Zone]] (or press X).' + MORE + '\n2. Drag a box around the two chained marks, inside the shaded boundary.\n3. Type 2.\n4. Click [[Apply]].\nThe two marks and the run between them count double in every total while the sheet stays clean.',
+      body: () => 'Count a typical once and bid it many times.\n1. In the header, click [[Multiply Zone]] (or press X).' + more() + '\n2. Drag a box around the two chained marks, inside the shaded boundary.\n3. Type 2.\n4. Click [[Apply]].\nThe two marks and the run between them count double in every total while the sheet stays clean.',
       target: ['#multiplyZoneApply', '#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [K().boxZone(rects('multiplyZones', (z) => (z.multiplier || 1) > 1), MZ_IN, MZ_OUT, 'Drag your box around the chained pair, anywhere in here')],
       check: () => K().boxZone(rects('multiplyZones', (z) => (z.multiplier || 1) > 1), MZ_IN, MZ_OUT).done,
@@ -528,7 +544,7 @@
     },
     {
       id: 'scalezone', title: 'Header: Scale Zone', kind: 'do',
-      body: 'A detail drawn at another scale on the same sheet.\n1. In the header, click [[Scale Zone]].' + MORE + '\n2. Drag a box inside the shaded boundary.\n3. In the dialog, click the [[Architectural & Engineering]] tab and choose [[1/4" = 1\']].\nInside the box every measurement is at 1/4"; the rest of the sheet stays at 1/8".',
+      body: () => 'A detail drawn at another scale on the same sheet.\n1. In the header, click [[Scale Zone]].' + more() + '\n2. Drag a box inside the shaded boundary.\n3. In the dialog, click the [[Architectural & Engineering]] tab and choose [[1/4" = 1\']].\nInside the box every measurement is at 1/4"; the rest of the sheet stays at 1/8".',
       target: ['#scaleModalTabs .counter-tab[data-tab="presets"]', '#scaleZoneBtn', '#scaleZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [K().boxZone(rects('scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 18) < 0.1), SZ_IN, SZ_OUT, 'Drag your scale zone anywhere in here')],
       check: () => K().boxZone(rects('scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 18) < 0.1), SZ_IN, SZ_OUT).done,
@@ -537,7 +553,7 @@
     },
     {
       id: 'room', title: 'Header: Room Sizer', kind: 'do',
-      body: '1. In the header, click [[Room Sizer]] (or press V).' + MORE + '\n2. Drag a box inside the shaded boundary.\n3. In Name, type Office. In Ceiling, type 9.\n4. Click [[Apply]].\nThe room\'s area and volume land in the sidebar and the legend, and an HVAC bid reads its air from here.',
+      body: () => '1. In the header, click [[Room Sizer]] (or press V).' + more() + '\n2. Drag a box inside the shaded boundary.\n3. In Name, type Office. In Ceiling, type 9.\n4. Click [[Apply]].\nThe room\'s area and volume land in the sidebar and the legend, and an HVAC bid reads its air from here.',
       target: ['#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [K().boxZone(rects('roomBoxes'), ROOM_IN, ROOM_OUT, 'Drag your room anywhere in here')],
       check: () => K().boxZone(rects('roomBoxes'), ROOM_IN, ROOM_OUT).done && (S().rooms || []).length > 0,
@@ -546,7 +562,7 @@
     },
     {
       id: 'ghost', title: 'Header: Ghost', kind: 'do',
-      body: 'Copy a typical and lay it somewhere else as a see-through reference.\n1. In the header, click [[Ghost]] (or press G).' + MORE + '\n2. Click one corner of a box around the three marks, then the opposite corner.\n3. The copy rides the pointer. Click inside the circle to drop it.\nA ghost is never counted. Right-click it to stamp it as real marks, or to hide part of it.',
+      body: () => 'Copy a typical and lay it somewhere else as a see-through reference.\n1. In the header, click [[Ghost]] (or press G).' + more() + '\n2. Click one corner of a box around the three marks, then the opposite corner.\n3. The copy rides the pointer. Click inside the circle to drop it.\nA ghost is never counted. Right-click it to stamp it as real marks, or to hide part of it.',
       target: ['#ghostBtn', '#headerMoreBtn'], page: 0,
       zones: () => [box(HL_IN, HL_OUT, ghosts().length, 'Box the three marks, corner to corner'), { kind: 'circle', x: GHOST_DROP.x, y: GHOST_DROP.y, r: 50, done: ghosts().length > 0 }],
       check: () => ghosts().length > 0,
@@ -555,7 +571,7 @@
     },
     {
       id: 'deletearea', title: 'Header: Delete area', kind: 'do',
-      body: '1. In the header, click [[Delete area]].' + MORE + '\n2. Click one corner of a box around the single mark inside the shaded boundary, then the opposite corner.\n3. Confirm.\nEverything the box caught goes at once, and Undo brings it back. Right-click a single mark to delete just that one.',
+      body: () => '1. In the header, click [[Delete area]].' + more() + '\n2. Click one corner of a box around the single mark inside the shaded boundary, then the opposite corner.\n3. Confirm.\nEverything the box caught goes at once, and Undo brings it back. Right-click a single mark to delete just that one.',
       target: ['#confirmOk', '#deleteZoneBtn', '#deleteZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [box(DEL_IN, DEL_OUT, !markNearKey(), 'Box just this mark')],
       check: () => !markNearKey(),
@@ -563,17 +579,19 @@
     },
     {
       id: 'note', title: 'Header: Note, and Notes ledger', kind: 'do',
-      body: '1. In the header, click [[Note]] (or press N).' + MORE + '\n2. Click inside the circle.\n3. Type anything and click [[Done]].\n4. In the header, click [[Notes ledger]] to see every note on every sheet in one list, then close it with its ×.\nA note that starts with RFI: is a question for the GC, and Copy RFI Flags collects them.',
+      body: () => '1. In the header, click [[Note]] (or press N).' + (narrow() ? ' The strip scrolls; it is near the end.' : MORE) + '\n2. Click inside the circle.\n3. Type anything and click [[Done]].\n' + (narrow()
+        ? 'On a desk the header also has [[Notes ledger]], every note on every sheet in one list; a tablet reaches the same list through Note Pages (PDF) under EXPORT OPTIONS.\n'
+        : '4. In the header, click [[Notes ledger]] to see every note on every sheet in one list, then close it with its ×.\n') + 'A note that starts with RFI: is a question for the GC, and Copy RFI Flags collects them.',
       target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: NOTE_SPOT.x, y: NOTE_SPOT.y, r: 45, done: noteAt(NOTE_SPOT, 45) }],
-      check: () => noteAt(NOTE_SPOT, 45) && latch('ledger', ledgerOpen()) && !ledgerOpen(),
-      progress: () => (noteAt(NOTE_SPOT, 45) ? (!seen.ledger ? 'Note placed. Now click Notes ledger in the header' : (ledgerOpen() ? 'That is the ledger. Close it with its ×' : '')) : ''),
+      check: () => noteAt(NOTE_SPOT, 45) && (narrow() || (latch('ledger', ledgerOpen()) && !ledgerOpen())),
+      progress: () => (noteAt(NOTE_SPOT, 45) && !narrow() ? (!seen.ledger ? 'Note placed. Now click Notes ledger in the header' : (ledgerOpen() ? 'That is the ledger. Close it with its ×' : '')) : ''),
       action: { label: 'Write one and open the ledger', run: ACT.note },
     },
     {
       id: 'toggles', title: 'Header: three ways to see the sheet', kind: 'do',
-      body: 'Three buttons that change what you see, never what you counted. The first two may sit behind [[⋯]].\n1. Click [[Summary legend]] to take the legend off the sheet, and again to bring it back.\n2. Click [[Grid overlay]]: its settings open, so click [[Apply]] for a 3 ft grid over the sheet. Click [[Grid overlay]] again to clear it.\n3. Click [[Hide marks]], the eye, to read the bare sheet, and again to show the marks.\nRight-click any of the three for its settings.',
-      target: ['#gridSettingsApply', '#legendBtn', '#gridBtn', '#hideMarksBtn', '#headerMoreBtn'],
+      body: () => 'Three buttons that change what you see, never what you counted. ' + (narrow() ? 'The first two are at the end of the header strip; scroll it sideways.' : 'The first two may sit behind [[⋯]].') + '\n1. Click [[Summary legend]] to take the legend off the sheet, and again to bring it back.\n2. Click [[Grid overlay]]: its settings open, so click [[Apply]] for a 3 ft grid over the sheet. Click [[Grid overlay]] again to clear it.\n3. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Hide marks]] to read the bare sheet, and again to show the marks.' : 'Click [[Hide marks]], the eye, to read the bare sheet, and again to show the marks.') + '\n' + (narrow() ? 'Press and hold' : 'Right-click') + ' any of the three for its settings.',
+      target: ['#gridSettingsApply', '#legendBtn', '#gridBtn', '#hideMarksBtn', '#headerBurger', '#headerMoreBtn'],
       check: () => { const s = S(); const a = latch('legendOff', !s.showLegendOverlay) && !!s.showLegendOverlay; const b = latch('gridOn', !!s.showGridOverlay) && !s.showGridOverlay; const c = latch('marksHidden', !!s.hideMarks) && !s.hideMarks; return a && b && c; },
       progress: () => { const s = S(); const left = []; if (!(seen.legendOff && s.showLegendOverlay)) left.push(seen.legendOff ? 'legend back on' : 'legend'); if (!(seen.gridOn && !s.showGridOverlay)) left.push(seen.gridOn ? 'grid off again' : 'grid'); if (!(seen.marksHidden && !s.hideMarks)) left.push(seen.marksHidden ? 'marks back' : 'hide marks'); return left.length && left.length < 3 ? 'Still to do: ' + left.join(', ') : ''; },
       action: { label: 'Press all three for me', run: ACT.toggles },
@@ -588,10 +606,10 @@
     },
     {
       id: 'layers', title: 'Footer: layers', kind: 'do',
-      body: 'One sheet can carry several layers, an alternate or an addendum kept apart from the base bid, each with its own totals.\n1. In the footer, beside the layer name, click [[Add canvas]], the + button.\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\n5. Press the up or down arrow key until the footer reads Main again.\nThe layers button beside the name lists them, and the one beside it shows every layer at once.',
-      target: ['#addCanvasModalCreate', '#addCanvasBtn'],
+      body: () => 'One sheet can carry several layers, an alternate or an addendum kept apart from the base bid, each with its own totals.\n1. ' + (narrow() ? 'In the footer, tap [[Layers]] beside the layer name, then [[+ Add layer]].' : 'In the footer, beside the layer name, click [[Add canvas]], the + button.') + '\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\n5. ' + (narrow() ? 'Tap [[Layers]] again and pick Main.' : 'Press the up or down arrow key until the footer reads Main again.') + '\n' + (narrow() ? '' : 'The layers button beside the name lists them, and the one beside it shows every layer at once.'),
+      target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#addCanvasBtn', '#canvasLayersBtn'],
       check: () => { const p = page0(); return !!p && (p.canvases || []).length >= 2 && activeCanvasIsMain(); },
-      progress: () => { const p = page0(); return p && (p.canvases || []).length >= 2 && !activeCanvasIsMain() ? 'Layer made. Now press the up or down arrow until the footer reads Main' : ''; },
+      progress: () => { const p = page0(); return p && (p.canvases || []).length >= 2 && !activeCanvasIsMain() ? (narrow() ? 'Layer made. Now Layers, then Main' : 'Layer made. Now press the up or down arrow until the footer reads Main') : ''; },
       action: { label: 'Add the layer for me', run: ACT.layers },
     },
     {
@@ -604,7 +622,7 @@
     },
     {
       id: 'zoom', title: 'Footer: zoom', kind: 'do',
-      body: '1. In the footer, click + to zoom in (or roll the wheel). The − beside it zooms out.\n2. Click [[Fit]] to see the whole sheet again.\nThe zoom percentage opens a rail of fixed stops; each is a size the app has already drawn, so the jump is instant.',
+      body: () => '1. ' + (narrow() ? 'Pinch the sheet to zoom in.' : 'In the footer, click + to zoom in (or roll the wheel). The − beside it zooms out.') + '\n2. ' + (narrow() ? 'Tap' : 'Click') + ' [[Fit]] to see the whole sheet again.\nThe zoom percentage opens a rail of fixed stops; each is a size the app has already drawn, so the jump is instant.',
       target: ['#zoomIn', '#zoomFit'],
       // the zoom the step started at is the app's own fit (the sheet step before it ends on ‹, which fits);
       // Fit from anywhere lands at or under it
@@ -614,15 +632,19 @@
     },
     {
       id: 'sidebar', title: 'Header: the sidebar', kind: 'do',
-      body: 'The whole screen for the sheet when you need it.\n1. Click the CountTooling logo at the top left (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.',
-      target: ['#headerSidebarToggle', '#headerLogo'],
-      check: () => latch('collapsed', document.body.classList.contains('sidebar-collapsed')) && !document.body.classList.contains('sidebar-collapsed'),
-      progress: () => (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the logo again' : ''),
+      body: () => (narrow()
+        ? 'On a tablet the sidebar is a drawer, so the sheet has the whole screen.\n1. Tap ☰ at the top left: the sidebar slides over the sheet.\n2. Tap the sheet to put it away.'
+        : 'The whole screen for the sheet when you need it.\n1. Click the CountTooling logo at the top left (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.'),
+      target: ['#headerSidebarToggle', '#headerLogo', '#hamburger'],
+      check: () => (narrow()
+        ? latch('drawer', drawerOpen()) && !drawerOpen()
+        : latch('collapsed', document.body.classList.contains('sidebar-collapsed')) && !document.body.classList.contains('sidebar-collapsed')),
+      progress: () => (narrow() ? (seen.drawer && drawerOpen() ? 'Open. Now tap the sheet to put it away' : '') : (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the logo again' : '')),
       action: { label: 'Fold and unfold it', run: ACT.sidebar },
     },
     {
       id: 'groups', title: 'Sidebar: Groups', kind: 'do',
-      body: 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]]. Close the dialog.\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; right-click a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
+      body: () => 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. ' + (narrow() ? 'Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]), and turn on [[Use groups]]. Close the dialog.' : 'In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]]. Close the dialog.') + '\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; ' + (narrow() ? 'press and hold' : 'right-click') + ' a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
       target: ['#groupModalDone', '#settingsUseGroupsBtn', '#addGroup', '#groupsSectionTitle', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => !!group(),
       progress: () => (S().groupsEnabled ? 'Groups are on. Now + Add under GROUPS' : ''),
@@ -644,23 +666,25 @@
     },
     {
       id: 'settings', title: 'Header: Project Settings', kind: 'do', hold: true,
-      body: '1. In the header, click the gear ([[Project Settings]]).\nEverything about this project lives here: its name and trade, the ceiling height, groups, the legend, and under Help the guides, the lessons and these tours.\n2. Close the dialog.',
+      body: () => '1. ' + (narrow() ? 'Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]).' : 'In the header, click the gear ([[Project Settings]]).') + '\nEverything about this project lives here: its name and trade, the ceiling height, groups, the legend, and under Help the guides, the lessons and these tours.\n2. Close the dialog.',
       target: ['#settingsGearBtn', '#sidebarLogoGear'],
       check: () => latch('settings', modalUp('settingsModal')),
       action: { label: 'Open it for me', run: ACT.settings },
     },
     {
       id: 'savestatus', title: 'Header: Save status', kind: 'do', hold: true,
-      body: '1. In the header, click the bell ([[Save status]]).\nIt says where your work is: the backup this device keeps every few seconds, and the cloud copy once you sign in and save. Green is safe.\n2. Close it.',
-      target: ['#saveStatusBtnHeader'],
+      body: () => '1. ' + (narrow() ? 'Open [[Project Settings]] again (☰, then the gear) and tap [[Save status]].' : 'In the header, click the bell ([[Save status]]).') + '\nIt says where your work is: the backup this device keeps every few seconds, and the cloud copy once you sign in and save. Green is safe.\n2. Close it.',
+      target: ['#saveStatusBtn', '#saveStatusBtnHeader', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => latch('savestatus', modalUp('saveStatusModal')),
       action: { label: 'Open it for me', run: ACT.savestatus },
     },
     {
       id: 'exportmenu', title: 'Header: Export', kind: 'do',
-      body: '1. In the header, click [[Export project]], the download arrow.\nExport Canvas is your marks as a file you can lay back on the same PDF later; Original PDF is the clean sheet; Export Both is the pair. Close project lives here too. On a phone this arrow saves the sheet you are on as a marked-up PDF.\n2. Click anywhere else to close the menu.',
-      target: ['#exportDropdownBtn'],
-      check: () => { const m = el('exportDropdownMenu'); return latch('exportmenu', !!m && m.classList.contains('visible')); },
+      body: () => (narrow()
+        ? '1. Tap the ☰ at the top right ([[More actions]]).\nUnder Export: Export Canvas is your marks as a file you can lay back on the same PDF later; Original PDF is the clean sheet; Export Both is the pair. Download saves the sheet you are on as a marked-up PDF, and Close project lives here too.\n2. Tap the sheet to close the menu.'
+        : '1. In the header, click [[Export project]], the download arrow.\nExport Canvas is your marks as a file you can lay back on the same PDF later; Original PDF is the clean sheet; Export Both is the pair. Close project lives here too. On a phone this arrow saves the sheet you are on as a marked-up PDF.\n2. Click anywhere else to close the menu.'),
+      target: ['#exportDropdownBtn', '#headerBurger'],
+      check: () => { const m = el('exportDropdownMenu'); return latch('exportmenu', (!!m && m.classList.contains('visible')) || (narrow() && burgerOpen())); },
       action: { label: 'Open it for me', run: ACT.exportmenu },
     },
     {
@@ -684,8 +708,8 @@
     },
     {
       id: 'close', title: 'Header: Close this project', kind: 'do',
-      body: '1. In the header, click the × ([[Close this project]]).\n2. Confirm.\nThe sheet closes and the empty canvas comes back. A real project would still be in its local backup, and in the cloud if you had saved it.',
-      target: ['#confirmOk', '#headerCloseProjectBtn'],
+      body: () => '1. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Close project]].' : 'In the header, click the × ([[Close this project]]).') + '\n2. Confirm.\nThe sheet closes and the empty canvas comes back. A real project would still be in its local backup, and in the cloud if you had saved it.',
+      target: ['#confirmOk', '#headerCloseProjectBtn', '#headerBurger'],
       check: () => !(S().pages || []).length,
       action: { label: 'Close it for me', run: ACT.close },
     },

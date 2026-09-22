@@ -88,7 +88,10 @@
   // side of the screen: that is not visible either (a dialog's scrolled-away row,
   // off the top or bottom, still is: the spotlight scrolls it into view).
   const onScreenX = (el) => { const r = el.getBoundingClientRect(); return r.right > 0 && r.left < window.innerWidth; };
-  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && onScreenX(el) && (!within || within.contains(el))) return el; } return null; };
+  // On a tablet the header's tool strip scrolls sideways, so a tool can be shown yet past the
+  // edge; it still counts (render scrolls it into view), where a tool that is display:none does not.
+  const inStrip = (el) => !!el.closest('.header-tools-scroll');
+  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && (onScreenX(el) || inStrip(el)) && (!within || within.contains(el))) return el; } return null; };
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
@@ -847,8 +850,11 @@
   // A touch device has no keys and, under 768 px, no sidebar on screen: the
   // "(or press S)" asides go, and a step that sends the reader to the sidebar
   // says where a phone keeps it.
-  const isTouch = () => { try { return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768; } catch (_) { return false; } };
-  const isNarrow = () => window.innerWidth < 768;
+  // "Narrow" is the app's own breakpoint, 768 px INCLUSIVE (styles.css max-width: 768px): an iPad
+  // in portrait is exactly 768, and there the sidebar is a drawer behind ☰, the status-bar links
+  // are gone and the header strip scrolls. (< 768 left every tour telling an iPad "in the left sidebar".)
+  const isTouch = () => { try { return window.matchMedia('(pointer: coarse)').matches || isNarrow(); } catch (_) { return false; } };
+  const isNarrow = () => { try { return window.matchMedia('(max-width: 768px)').matches; } catch (_) { return window.innerWidth <= 768; } };
   const forTouch = (body) => {
     let b = String(body).replace(/\s*\((?:or )?press [^)]*\)/gi, '').replace(/^\d+\.\s+Press [^\n]*\n?/gim, '');
     if (isNarrow() && /left sidebar/i.test(b)) b = b.replace(/[Ii]n the left sidebar/, (m) => (m[0] === 'I' ? 'In the sidebar (tap ☰ at the top left to open it)' : 'in the sidebar (tap ☰ at the top left to open it)'));
@@ -916,7 +922,7 @@
       if (target !== lastTarget) scrollSettled = false;
       let r = target.getBoundingClientRect();
       const inView = r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
-      if (!inView && !scrollSettled) { try { target.scrollIntoView({ block: 'nearest', inline: 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
+      if (!inView && (!scrollSettled || inStrip(target))) { try { target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
       else if (inView) scrollSettled = true;
       lastTarget = target;
       const pad = 6;
@@ -968,7 +974,16 @@
       // No control to point at (a step about the sheet itself): the corner the step asks
       // for with cardAt, or where the reader dragged it, keeps the card off the drawing.
       const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220, edge = 12;
-      const corner = step.cardAt ? { left: step.cardAt[1] === 'l' ? edge : window.innerWidth - cw - edge, top: step.cardAt[0] === 't' ? 56 : window.innerHeight - ch - 40 } : null;
+      let corner = step.cardAt ? { left: step.cardAt[1] === 'l' ? edge : window.innerWidth - cw - edge, top: step.cardAt[0] === 't' ? 56 : window.innerHeight - ch - 40 } : null;
+      // With nothing to point at but targets on the sheet, the card still keeps off them (it sat
+      // on the quick-key circle on a tablet, where the status-bar link it would light is gone).
+      const zs = (!modalOpen && (step.page == null || state().currentPage === step.page)) ? zoneScreenBoxes(step) : [];
+      if (zs.length && !corner) {
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const corners = [{ left: edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: 56 }, { left: edge, top: 56 }];
+        const clear = (c) => !zs.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
+        corner = corners.find(clear) || corners[0];
+      }
       const at = dragPos || corner;
       if (at) { card.style.left = at.left + 'px'; card.style.top = at.top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = ''; }
       else if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
@@ -1043,9 +1058,14 @@
       x1 = Math.min(x1, b.x1); y1 = Math.min(y1, b.y1); x2 = Math.max(x2, b.x2); y2 = Math.max(y2, b.y2);
       if (z.kind === 'circle') minR = Math.min(minR, z.r);
     });
-    const W = wrap.clientWidth, H = wrap.clientHeight;
+    const W = wrap.clientWidth, Hfull = wrap.clientHeight;
+    // On a narrow screen the card docks over the bottom of the sheet (styles.css): the targets
+    // are brought up into the part of the sheet the card leaves free.
+    const card = el('tourCard');
+    const docked = isNarrow() && card && !card.classList.contains('tour-card-top') ? Math.min(Hfull * 0.45, (card.offsetHeight || 0) + 16) : 0;
+    const H = Hfull - docked;
     const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
-    const fit = Math.min(W / vp.width, H / vp.height);
+    const fit = Math.min(W / vp.width, Hfull / vp.height);
     const z0 = state().zoom || fit;
     const onScreen = (x, y) => { const sx = (state().pan ? state().pan.x : 0) + x * z0, sy = (state().pan ? state().pan.y : 0) + y * z0; return sx > 20 && sy > 20 && sx < W - 20 && sy < H - 20; };
     const bigEnough = minR === Infinity ? true : minR * z0 >= TARGET_MIN_PX;

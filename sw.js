@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'bb6b53d7a26e';
+const CACHE_VERSION = 'cab280b407be';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -203,7 +203,7 @@ const PRECACHE_SHA256 = {
   '/app/': '07c796914b1db4bb9aae957dcdcd9d6aeb938b4f9021f69da0e9823a5e77d65b',
   '/app/index.html': '07c796914b1db4bb9aae957dcdcd9d6aeb938b4f9021f69da0e9823a5e77d65b',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': 'd2c4a5b8418cce5711d23c0c310728205866988959e1302f3c6948395b4f984f',
+  '/styles.css': 'd41735a4ea4a2a718cd4227b4b802ba9a4e2e120783b6d6fc6cded9c84798d00',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '312ff02cb27f053bac2d89e938abd39e3a3e394e459884ec31eeb1f631a96c30',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -320,12 +320,12 @@ const PRECACHE_SHA256 = {
   '/features/duct-bidcheck.js': '793ca70d74a92aa4c6af035d60d90e87213247260c7e39ec832d61a8cd59c9a6',
   '/features/rules.js': '01e86c4f75ee125c375265b33566364603a9056780716841f487b4a323be8192',
   '/features/tag-reader.js': 'c74c1ca9508963670e3dd554838fe5018e3d285026c924fc7352f6217de509f0',
-  '/features/tutorial.js': 'b1e29b36ec9d8c4c205ede0b09c72bff0c52239ebe26b7abb3d811e994638954',
+  '/features/tutorial.js': '92b41621116852c71ec72e775a34d5fde279b14e9f8fcb8c07644d5ca0c681a3',
   '/features/lessons.js': 'd2918d2d083e26c2f6e071632a335dddd3fe81285b28b72a4d5fe5b3b998747b',
   '/features/course-plumbing.js': '2aa90dca74cefa9f5cf2df2a0f7def4f16e8c1f349242d8943c077d36efde592',
   '/features/course-electrical.js': '40046380180ed539ce62d7279a9e24a594f7eeb9c3118d1fedf179c6ec152fb5',
   '/features/course-hvac.js': 'eddbe04574fe35474582a673e377a85ca99f86a6a87d7e47346ec8a7b7ed9646',
-  '/features/tour-blank.js': '1f135c3489a74ff369a928b43bd0603e0411e717dee979e1611b0832e0912a81',
+  '/features/tour-blank.js': 'b06ef483f8e77d762747b23542259e758b77552efd656b6cb777a5a1b57edac6',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
   '/report.js': '9afd5359f674ef9051a3cf3d9f4935137021c8338fc8ca287f0d7244fba2e665',

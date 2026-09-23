@@ -135,7 +135,14 @@
       auto = auto.concat(duct.auto);
       manual = duct.manual.map((r) => ({ id: r.id, label: r.label, short: r.short, trade: 'duct', done: r.done })).concat(manual);
     }
-    return { auto, manual, open: bm.bidCheckOpenCount(auto, manualState, trade, duct ? duct.manual : null), defaults: d };
+    // WATER-PLAN rung 6: the water rows, once the project has a water run (features/water-bidcheck.js).
+    const water = App.getWaterBidCheck ? App.getWaterBidCheck({ pageIndices, getAnnotations: getAnn }) : null;
+    if (water) {
+      auto = auto.concat(water.auto);
+      manual = water.manual.map((r) => ({ id: r.id, label: r.label, short: r.short, trade: 'water', done: r.done })).concat(manual);
+    }
+    const extraManual = (duct ? duct.manual : []).concat(water ? water.manual : []);
+    return { auto, manual, open: bm.bidCheckOpenCount(auto, manualState, trade, extraManual.length ? extraManual : null), defaults: d };
   }
 
   // --- the sidebar section ----------------------------------------------------

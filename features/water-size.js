@@ -217,6 +217,29 @@
     if (card) card.onclick = () => toggleWaterSizePopover();
   }
 
+  // --- telemetry (WATER-PLAN §8), behind the water-telemetry flag until the allowlist
+  // migration is on prod: water_run on every committed water-sided polyline, with the
+  // load and flow at its head and whether the S moment's suggestion sized it.
+  let lastSizedTypeId = null;
+  function onPolylineCommitted(poly) {
+    const wm = WM();
+    const state = App.state;
+    if (!wm || !poly || !(App.featureFlagEnabled && App.featureFlagEnabled('water-telemetry')) || !App.logUserEvent) return;
+    const lt = (state.lineTypes || []).find((l) => l.id === poly.lineTypeId);
+    if (!lt || !(lt.waterSide === 'cold' || lt.waterSide === 'hot')) return;
+    const pageIdx = state.currentPage;
+    const ann = App.getActiveAnnotations(state.pages[pageIdx], pageIdx);
+    const runs = App.getWaterRuns ? App.getWaterRuns(pageIdx, ann) : [];
+    const fixtures = App.collectWaterFixtures ? App.collectWaterFixtures(pageIdx, ann) : [];
+    const down = wm.waterDownstreamByRun(fixtures, runs)[poly.id] || { wsfu: 0, flushValve: false };
+    const sizeIn = SM() && SM().supportSizeInFromName ? SM().supportSizeInFromName(lt.name) : null;
+    App.logUserEvent('water_run', state.currentProjectId || null, {
+      side: lt.waterSide, sizeIn, material: wm.waterMaterialFromName(lt.name), segments: Math.max(0, (poly.points || []).length - 1),
+      wsfu: down.wsfu, gpm: down.wsfu > 0 ? wm.demandGpm(down.wsfu, down.flushValve ? 'flush-valve' : 'flush-tank') : 0,
+      suggestionTaken: lastSizedTypeId === lt.id,
+    });
+  }
+
   // --- taking a size: a new run from here -------------------------------------------
   function unusedLineColor(exclude) {
     const used = new Set((App.state.lineTypes || []).map((l) => String(l.color || '').toLowerCase()));
@@ -269,6 +292,7 @@
     }
     state.activeLineTypeId = next.id;
     state.tool = App.TOOL.POLYLINE;
+    lastSizedTypeId = next.id;
     App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
@@ -284,4 +308,5 @@
   App.isWaterPopoverOpen = isWaterPopoverOpen;
   App.applyWaterSize = applyWaterSize;
   App.lineTypeForWaterSize = lineTypeForSize;   // spec seam
+  App.onPolylineCommitted = onPolylineCommitted;
 })();

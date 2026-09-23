@@ -54,7 +54,7 @@ Drop a **Note** [[note]] (press `N`) on the spot and start it with `RFI:`. **Cop
 
 ## Bid Check, then prove the number
 
-The **Bid Check** section in the sidebar says what the app knows and asks what it cannot. For plumbing it judges two rows on its own, *Hangers on every supported run* and *Fittings counted on every pipe run*, and lists the calls only you can make (fixture units against the building drain, trap arm lengths, slope on waste runs, backflow and water-heater venting) as ticks that are saved with the bid. It never blocks an export; it tells you what is still open.
+The **Bid Check** section in the sidebar says what the app knows and asks what it cannot. For plumbing it judges two rows on its own, *Hangers on every supported run* and *Fittings counted on every pipe run*, and once a line type carries water five more: *Every water run sized for its fixture units* (naming the size that passes), *Fixture supply minimums*, *Every fixture served*, *Water service at least 3/4″* (name the run from the meter *service*) and *Scale set on every water sheet*, with four ticks of their own (pressure available checked per Appendix E, backflow, the water heater, recirculation); an open water row gates Copy to /Tooling and Export PDFs the way an open duct row does, Review or Export anyway. It judges and lists the calls only you can make (fixture units against the building drain, trap arm lengths, slope on waste runs, backflow and water-heater venting) as ticks that are saved with the bid. It never blocks an export; it tells you what is still open.
 
 ![The Bid Check section open on a plumbing takeoff: the hangers row judged automatically with its IPC chip, the fittings row, and the manual rows below.](/guides/img/plumbing-bid-check.png)
 

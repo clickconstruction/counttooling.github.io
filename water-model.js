@@ -554,7 +554,88 @@ function waterScheduleRow(opts) {
   return { column, gpm, capFps: cap, sizeIn, velocityFps: v, over, underMin, suggestSizeIn, unsized: sizeIn == null || !o.material, ok: !over && !underMin && sizeIn != null && !!o.material };
 }
 
+// --- rung 6: Bid Check ---------------------------------------------------------------
+// The water rows of Bid Check, the duct table's shape: auto rows evaluate live
+// inputs and show their work; manual rows are the calls only the estimator can
+// make, ticked per project. inputs: { rows (the schedule's), unserved, served,
+// waterPages, unscaledPages, service: [{ name, sizeIn, sizeLabel }] }.
+function waterPlural(n, word) { return n + ' ' + word + (n === 1 ? '' : 's'); }
+const WATER_BID_CHECK_ROWS = [
+  {
+    id: 'water-runs-sized', kind: 'auto', label: 'Every water run sized for its fixture units', short: 'Every water run sized', rule: 'plumb.water.velocity',
+    evaluate(i) {
+      const rows = (i && i.rows) || [];
+      if (!rows.length) return { verdict: 'na', detail: 'Give a line type a water side and trace the runs to check them.' };
+      const over = rows.filter((r) => r.over && !r.unsized);
+      const unsized = rows.filter((r) => r.unsized);
+      if (!over.length && !unsized.length) return { verdict: 'ok', detail: waterPlural(rows.length, 'run') + ' within ' + [...new Set(rows.map((r) => r.capFps))].join(' / ') + ' fps ✓' };
+      const parts = over.map((r) => r.name + ' (' + r.side + '): ' + r.sizeLabel + ' at ' + (Math.round(r.velocityFps * 10) / 10).toFixed(1) + ' fps ⚠' + (r.suggestLabel ? ' → ' + r.suggestLabel : ', no size passes'));
+      if (unsized.length) parts.push(waterPlural(unsized.length, 'run') + ' with no size or material in the type’s name: ' + unsized.map((r) => r.name).join(', '));
+      return { verdict: 'warn', detail: parts.join('; ') };
+    },
+  },
+  {
+    id: 'water-supply-min', kind: 'auto', label: 'Fixture supply minimums', short: 'Fixture supply minimums', rule: 'plumb.water.fixture-supply-min',
+    evaluate(i) {
+      const rows = ((i && i.rows) || []).filter((r) => r.supplyMinIn > 0);
+      if (!rows.length) return { verdict: 'na', detail: 'No fixture with a supply minimum is on a run yet.' };
+      const under = rows.filter((r) => r.underMin);
+      if (!under.length) return { verdict: 'ok', detail: waterPlural(rows.length, 'run') + ' at or above the minimums of the fixtures they serve ✓' };
+      return { verdict: 'warn', detail: under.map((r) => (r.minFixtureName || 'A fixture') + ' on ' + r.name + ' (' + r.sizeLabel + '); needs ' + sizeFraction(r.supplyMinIn) + '″ ⚠').join('; ') };
+    },
+  },
+  {
+    id: 'water-fixtures-served', kind: 'auto', label: 'Every fixture served', short: 'Every fixture served', rule: 'plumb.wsfu.fixtures',
+    evaluate(i) {
+      const un = (i && i.unserved) || [];
+      const served = (i && i.served) || 0;
+      if (!un.length && !served) return { verdict: 'na', detail: 'No fixture with fixture units is on the sheet yet.' };
+      if (!un.length) return { verdict: 'ok', detail: waterPlural(served, 'fixture side') + ' on runs ✓' };
+      return { verdict: 'warn', detail: un.map((u) => u.counterName + ', ' + u.side + (u.count > 1 ? ' ×' + u.count : '') + ': no ' + u.side + ' run within reach').join('; ') + ' ⚠ (trace one past it, or right-click the mark for Attach to nearest run)' };
+    },
+  },
+  {
+    id: 'water-service-min', kind: 'auto', label: 'Water service at least 3/4″', short: 'Water service at least 3/4″', rule: 'plumb.water.distribution-min',
+    evaluate(i) {
+      const svc = (i && i.service) || [];
+      if (!svc.length) return { verdict: 'na', detail: 'Name the run from the meter "service" to check it against ' + sizeFraction(WATER_SERVICE_MIN_IN) + '″.' };
+      const small = svc.filter((r) => r.sizeIn != null && r.sizeIn < WATER_SERVICE_MIN_IN);
+      if (!small.length) return { verdict: 'ok', detail: svc.map((r) => r.name + ' ' + r.sizeLabel).join(', ') + ' ✓' };
+      return { verdict: 'warn', detail: small.map((r) => r.name + ' ' + r.sizeLabel + ' is under ' + sizeFraction(WATER_SERVICE_MIN_IN) + '″ ⚠').join('; ') };
+    },
+  },
+  {
+    id: 'water-sheets-scaled', kind: 'auto', label: 'Scale set on every water sheet', short: 'Scale set on every water sheet',
+    evaluate(i) {
+      const pages = (i && i.waterPages) || [];
+      const unscaled = (i && i.unscaledPages) || [];
+      if (!pages.length) return { verdict: 'na', detail: 'Trace a water run to check its sheet.' };
+      if (!unscaled.length) return { verdict: 'ok', detail: waterPlural(pages.length, 'water sheet') + ' scaled ✓' };
+      return { verdict: 'warn', detail: unscaled.join(', ') + (unscaled.length === 1 ? ' has' : ' have') + ' water runs but no scale ⚠' };
+    },
+  },
+  { id: 'water-pressure-checked', kind: 'manual', label: 'Pressure available checked (IPC Appendix E)', short: 'Pressure available checked' },
+  { id: 'water-backflow', kind: 'manual', label: 'Backflow at hose bibbs and equipment', short: 'Backflow at hose bibbs and equipment' },
+  { id: 'water-heater-sized', kind: 'manual', label: 'Water heater sized for the load', short: 'Water heater sized for the load' },
+  { id: 'water-recirc', kind: 'manual', label: 'Recirculation where the code asks', short: 'Recirculation where the code asks' },
+];
+function waterBidCheckRows(inputs, manualState) {
+  const ticks = manualState || {};
+  return WATER_BID_CHECK_ROWS.map((row) => {
+    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
+    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
+    const done = !!ticks[row.id];
+    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done, upgraded: false };
+  });
+}
+function waterBidCheckUnresolved(rows) {
+  const auto = (rows || []).filter((r) => r.kind === 'auto' && r.verdict === 'warn');
+  const manual = (rows || []).filter((r) => r.kind === 'manual' && !r.done);
+  return { auto, manual, first: auto[0] || manual[0] || null };
+}
+
 const WATER_MODEL_API = {
+  WATER_BID_CHECK_ROWS, waterBidCheckRows, waterBidCheckUnresolved,
   WATER_SETTINGS_DEFAULTS, normalizeWaterSettings, waterScheduleRow,
   waterChildLinks, waterPolylineLength, waterDraftRemainingLoad, waterDownstreamByRun, waterDraftSuggestion, waterSizeLadder, replaceSizeInName,
   WATER_SIDE_LABELS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, waterFixtureLoads, waterRunsFromAnnotations,

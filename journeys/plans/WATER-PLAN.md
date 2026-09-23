@@ -93,6 +93,19 @@
 > summary as its own unit. `plumb.wsfu.demand`, `plumb.water.velocity`, `plumb.water.pipe-id`
 > and `plumb.water.fixture-supply-min` are **applied** now. Telemetry (`water_run`,
 > `wsfu_prefill`) is still not wired: one allowlist migration for the whole ladder, with rung 6.
+>
+> **Rung 6 shipped 2026-09-23** (branch `claude/water-rung-6`, stacked on rung 5; **the ladder
+> is built**): [features/water-bidcheck.js](../../features/water-bidcheck.js) feeds Bid Check the
+> five auto rows of §4 and the four manual rows once a project has a water run (the service
+> row is new: a run named *service* under 3/4″, `plumb.water.distribution-min` applied); the
+> export gate's scope includes water, so the badge and the Review · Export anyway toast serve
+> it unchanged. The plumbing walkthrough gains its fourth step set, *Size the branch at S*
+> (give the pipe its water, fixture units on the lavatory, trace the main and take 3/4″ at S),
+> and the plumbing guide names the rows. Telemetry (§8): `water_run` and `wsfu_prefill` are
+> wired behind the `water-telemetry` feature flag with migration
+> `20260923190000_log_user_event_water.sql` in the repo, unapplied; punch row WATER-TELEM
+> applies it and flips the flag. Open, not blocking: WATER-TABLES (the trade check of the
+> rules) and the Quick Line trace (one segment) gets no card.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -259,7 +272,7 @@ save/load, export/import and the Artboard for free.
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy
    Schedule, the `--- Water sizing ---` block, report table. **Shipped 2026-09-23.**
 6. **Bid Check rows + gate**; the guide + a fourth tour step set
-   ("Size the branch at S") in the plumbing walkthrough.
+   ("Size the branch at S") in the plumbing walkthrough. **Shipped 2026-09-23.**
 
 Each rung is one topic branch on the house loop (targeted specs +
 `npm run check` per unit, the full suite at push checkpoints, a live walk

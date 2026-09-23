@@ -13,6 +13,42 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 6, Bid Check rows, the gate, the guide and the tour (2026-09-23)
+
+Punch row P4-WATER, the last rung of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6,
+stacked on rung 5. The ladder Will chose on 2026-09-14 (fixture-unit sizing, IPC first,
+water only) is built; the row closes.
+
+- **Bid Check** ([features/water-bidcheck.js](features/water-bidcheck.js)) gains five auto
+  rows once a project has a water run, water-model's `WATER_BID_CHECK_ROWS` over the
+  schedule: *Every water run sized for its fixture units* (an over-the-cap run named with
+  the size that passes, unsized types named), *Fixture supply minimums* (a run under a
+  directly-served fixture's Table 604.4 minimum: "WC flush valve on Cold main (3/4″); needs
+  1″"), *Every fixture served* (the strays per side, with the fix), *Water service at least
+  3/4″* (a run named *service* or *meter* under IPC 603.1, na until one is named;
+  `plumb.water.distribution-min` goes applied) and *Scale set on every water sheet*; and
+  four manual rows (pressure available checked per Appendix E, backflow at hose bibbs and
+  equipment, water heater sized, recirculation), ticked like the duct ones.
+- **The gate.** The duct export gate's scope now includes a project with water runs: the
+  badge on Copy to /Tooling and Export PDFs, the "Review · Export anyway" toast and the
+  acknowledgment memory serve water unchanged; the water schedule's copy toast carries its
+  own ⚠ count, so the advisory stays quiet there.
+- **The tour.** The plumbing walkthrough's fourth step set, *Size the branch at S*: give the
+  1in PEX its water (Cold), the lavatory its fixture units (the table's 2), trace the main
+  from the riser as a polyline and take the 3/4″ the card offers at S, the next run starting
+  from the last click. Each step has its zones, check, hint and a do-it-for-me action.
+- **The guide.** The plumbing takeoff guide names the rows and the gate.
+- **Telemetry** (§8): `water_run` (side, size, material, segments, the load and flow at the
+  run's head, whether the S moment sized it) on every committed water-sided polyline and
+  `wsfu_prefill` (accepted or overwritten) on counter create, behind the `water-telemetry`
+  feature flag until migration `20260923190000_log_user_event_water.sql` is on prod (punch
+  row WATER-TELEM applies it and flips the flag).
+
+[water-bidcheck.spec.js](water-bidcheck.spec.js) walks the rows, the ticks, the badge, the
+toast and the report; tutorial.spec.js walks the new steps with the rest of the plumbing
+tour. Open after the ladder: WATER-TABLES (a tester with the trade reads the six rules
+against the printed IPC), WATER-TELEM.
+
 ## feat(water): rung 5, the Water Sizing schedule (2026-09-23)
 
 Punch row P4-WATER, rung 5 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on

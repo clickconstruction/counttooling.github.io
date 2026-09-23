@@ -127,7 +127,9 @@
         const loads = wm.waterFixtureLoads(c, occ, wm.markerWsfu(m, c));
         if (!loads) return;
         const k = App.getMultiplyZoneForPoint ? App.getMultiplyZoneForPoint(a, m) : 1;
-        out.push({ id: c.id + ':' + index, x: m.x, y: m.y, loads: { cold: loads.cold * k, hot: loads.hot * k }, total: loads.total * k, known: loads.known, counterId: c.id, index });
+        // a flush valve among the fixtures picks the demand column at the S moment (rung 4)
+        const hit = wm.wsfuFixtureFromName(c.name);
+        out.push({ id: c.id + ':' + index, x: m.x, y: m.y, loads: { cold: loads.cold * k, hot: loads.hot * k }, total: loads.total * k, known: loads.known, flushValve: !!(hit && hit.control && /^flush-valve/.test(hit.control)), counterId: c.id, index });
       });
     });
     return out;

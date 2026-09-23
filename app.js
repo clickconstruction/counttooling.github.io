@@ -2363,6 +2363,7 @@
     // size chip. Sits after the hideMarks early-return above, so a hidden
     // overlay paints no duct either.
     if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, lineOpacity: lo });
+    if (App.drawWaterOverlay) App.drawWaterOverlay(ctx, { fontScale: z * currentEffDpr });   // WATER-PLAN rung 4: syncs the water suggestion card
     if (App.drawTagOverlay) App.drawTagOverlay(ctx, { fontScale: z * currentEffDpr });   // S6: the "Plan says B" chip
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
@@ -7487,6 +7488,13 @@
         e.preventDefault();
         return;
       }
+      // WATER-PLAN rung 4: a water polyline being traced owns S the same way
+      // (features/water-size.js): the size popover, not Set Scale, for that stretch.
+      if (k === 's' && state.tool === TOOL.POLYLINE && App.isWaterDrawing && App.isWaterDrawing()) {
+        App.toggleWaterSizePopover && App.toggleWaterSizePopover();
+        e.preventDefault();
+        return;
+      }
       const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
       if (hk && (hk.viewerAllowed || !state.isViewer)) {
         // B10 (J18): R under the open Count-by-Page modal would rotate the
@@ -7610,7 +7618,9 @@
         // Staged like Quick Line/Ghost: each Escape unwinds one clicked vertex;
         // with none left, Escape exits to Move. A stray Esc never costs more
         // than the last click. (JOURNEY-MAP Tier-2 #22)
-        if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
+        // WATER-PLAN rung 4: the water size popover closes first, costing no vertex.
+        if (App.isWaterPopoverOpen && App.isWaterPopoverOpen()) { App.closeWaterSizePopover(); }
+        else if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
         else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       }
       else if (state.tool === TOOL.DUCT) {
@@ -8219,6 +8229,7 @@
   App.turnOnGroups = turnOnGroups;   // D17: the duct surfaces' "Turn on groups" link
   App.legendRowsFor = (ann, pi) => canvasDraw.computeLegendRows(ann, pi);   // D17 spec seam: the legend's rows (multiply-zone duct arithmetic)
   App.settlePolylineDraft = settlePolylineDraft;   // D17 (J5-B): the Duct arm settles a live polyline draft
+  App.nextPolylineName = nextPolylineName;         // WATER-PLAN rung 4: the run started from here after a size change
   // Same-id palette collapse (features/palette-insights.js id-aware merge +
   // spec seam; annotation-model.js pure helper).
   App.dedupePaletteById = dedupePaletteById;

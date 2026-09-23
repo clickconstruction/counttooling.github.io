@@ -1949,6 +1949,16 @@ body.tour-active .canvas-empty-hint { display: none; }
 .summary-wsfu-row .derived-tag { text-transform: none; }
 /* WATER-PLAN rung 3: the water side and the fixture units a run serves, under a line type or a line row */
 .sidebar-item-line-type .line-water-meta { font-size: 0.72rem; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; margin-left: 24px; }
+/* WATER-PLAN rung 4: the water size popover's ladder, every size of the material with its velocity */
+.water-hint-card { cursor: pointer; }
+.water-size-ladder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.water-size-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; cursor: pointer; }
+.water-size-step:hover { border-color: var(--accent); }
+.water-size-step.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.water-size-step-size { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 0.9rem; }
+.water-size-step-v { font-size: 0.68rem; color: var(--text3); white-space: nowrap; }
+.water-size-step.ok .water-size-step-v { color: var(--green, #47c88e); }
+.water-size-step.over .water-size-step-v { color: var(--text3); }
 /* D19 (B19 part 2): the "More ▸ air & mounting" disclosure that folds the
    CFM / Mount height / Flex drop fields on the Counter modal's Create and Quick
    Count tabs. Same shape as the Load Project filters toggle (button with

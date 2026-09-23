@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,528 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 8,539 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,100 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,930 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,717 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,631 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,732 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,641 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 777 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 927 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 165 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 925 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (94 files) | 30,410 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (95 files) | 30,699 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -274,6 +274,8 @@ modules. Candidates in priority order:
 | [water-fixtures.spec.js](water-fixtures.spec.js) | Playwright regression for rung 2: on a trade-less project the Create tab's field shows and prefills "Lavatory" → 2 (public), the chip names the row and carries § IPC, the flip reads 0.7 (private) and back, a typed 3 survives a name change; the counter carries `wsfu` 3 and no `wsfuOccupancy`; two marks make the Summary line 6 WSFU; the context row writes a 4.5 override (7.5 WSFU, the "(WSFU override 4.5)" title) and Enter on an empty field deletes the key; the details modal shows 3 with the table's 2, its flip writes private + 0.7, blur commits 5 then deletes on empty (the Summary line goes); the Quick Count twin prefills "Urinal" → 5 (3/4 in flush valve); a private project reads WC → 2.2 flush tank; an HVAC project hides the field but a counter carrying one still shows it in its details. |
 | [features/water-runs.js](features/water-runs.js) | **Water runs and the fixtures they serve** (WATER-PLAN.md rung 3, 2026-09-23): a line type's `waterSide` (`'cold' | 'hot'`, the airside precedent) makes every quick line and polyline of the type a water run; fixture-unit marks attach per side to the nearest run of that side within snap (water-model `attachWaterFixtures`, the duct rule twinned per side; derived from geometry, never stored). Owns the Water field (—, Cold, Hot) on the sidebar Add Line Type modal, the Choose Line Type modal's Create and Quick tabs and the details modal (`App.registerWaterSideForm(key, { radioName, groupId, nameInputId?, name(), onPick? })`, `resetWaterSideForm`, `loadWaterSideForm`, `syncWaterSideForm`, `waterSideFieldValue`, `applyWaterSideToLineType`; prefilled from the name by `waterSideFromName` while unpicked, set-only on create, the details radio writes at once); the collectors `collectWaterFixtures(pageIdx, ann)` (loads per side from `waterFixtureLoads` × the multiply zone), `getWaterRuns`, `getWaterServed(pageIdx)` → `{ [runId]: { side, wsfu, fixtures } }`, `getWaterServedForLine`; the stray rescue `waterStrayTarget(marker, counter, ann)` that app.js's `strayDeviceAttachTarget` asks after the CFM rule (the shared "Attach to nearest run" row moves the fixture onto the nearest run of a side nothing serves); the sidebar read-back `waterLineTypeMetaHtml` ("cold · 12 WSFU served · 2 fixtures" under the line type row) and `waterLineMetaHtml` (the Lines list's per-run "cold · 6 WSFU"). canvas-draw.js paints the leaders (`waterFixtureLeaders`, dashed, the run's color, under the strokes). Rung 4 reads `getWaterServed` for the downstream load. |
 | [water-runs.spec.js](water-runs.spec.js) | Playwright regression for rung 3: a seeded cold quick line and hot polyline with two lavatories, a WC and a floor drain attach per side (the lavatory's cold at 10 pt snaps, its hot at 20 does not; the drain never), `getWaterServed` reads 11.5 cold / 0 hot, the line type rows and the Lines list carry the served text, the leaders exist for the two attached ties, a ×3 zone triples the WC's share, the shared "Attach to nearest run" row moves the stray lavatory onto the hot run (30 pt beats the cold at 60) and is not offered to an attached fixture; the Water field prefills "hot" / "CW" / "Domestic cold water" on the three create surfaces (set-only; a pick wins over a later name), the details radio writes and — deletes the key; an HVAC project hides the field but a sided type still shows it in its details. |
+| [features/water-size.js](features/water-size.js) | **The S moment for water** (WATER-PLAN.md rung 4, 2026-09-23), the ductulator suggestion twinned: while a POLYLINE of a water-sided type is traced, `#waterHintCard` (the duct hint card's twin, above the footer) reads the fixture units still to serve beyond the tip and the smallest size of the type's material under the side's cap ("3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts"; "1/2″ holds · … ✓"; a flow-only line with no material in the name). The number: water-model `waterDraftRemainingLoad` over the page's committed water runs, the draft's PLACED vertices and the collected fixtures (at or past the tip, on child branches, or on no run of the side); a flush valve picks the demand column; the material and the run's own size are read off the type's name. `S` (app.js keydown, after the duct rule) or a tap on the card opens `#waterSizePopover` (the duct popover's classes): the suggested chip, the material's ladder with each size's velocity (✓ / ⚠, the current one marked), the note that a size change is a new run; Escape closes it first on the polyline ladder. `App.applyWaterSize(sizeIn)` is WATER-PLAN Q1: the draft so far commits (`App.settlePolylineDraft`), a line type of the new size is found or made (`App.lineTypeForWaterSize`: the name with its size swapped by `replaceSizeInName`, side / curve / bend fittings carried, hanger rows re-read from the rulebook for the new size, a palette color no type uses) and a new draft starts at the last point in it. Seams: `getWaterDraftSuggestion`, `isWaterDrawing`, `drawWaterOverlay` (renderAnnotations after the duct overlay; paints nothing, syncs the card), `open/close/toggleWaterSizePopover`, `isWaterPopoverOpen`. |
+| [water-size.spec.js](water-size.spec.js) | Playwright regression for rung 4: a seeded cold PEX draft past three lavatories with a flush-valve WC ahead reads 10 WSFU at valves (27 gpm), suggests 1-1/2 in and names 3/4 in as over; the card shows the sentence with the S keycap; S opens the popover (the chip, seven ladder steps, the current size marked, the first passing size), Escape closes it costing no vertex; taking the chip commits the run, makes "1-1/2in PEX cold" (side carried, the hanger row re-read to 48 in, the tee row kept, a fresh color) and starts the next draft at the last point in it, with the toast; the same size again is a no-op and stepping back finds the original type; once the trace passes the WC the card goes and S toasts instead of opening Set Scale. A plain polyline keeps S as Set Scale. |
 | [duct-deferred.spec.js](duct-deferred.spec.js) | Playwright regression for D15 (the deferred duct choices): the Quick tab's CFM box stamps `cfm` only when positive (empty / 0 leave the key unset; the box opens empty; markup twins `#counterCfm`); an under-served Office box adds the exact `⚠ Office 101 needs 108 · served 50` legend line for that sheet (read back through a `fillText` tap around one live render), no line before the room has a type, none on the other sheet, none with `legendSettings.showDuct` off, and none once a device inside lifts it out of ⚠ (the sidebar badge agreeing throughout); the per-marker override end to end — right-click a CFM-type marker → `#ctxMarkerCfm` → `#markerCfmModal` (hint names the type's CFM, input focused) → `cfmOverride` 250 with the type untouched, `collectDuctDevices` reading 250, the "(override 250)" note on the sidebar row title + details modal, the room served 250, the live suggestion's `250 CFM downstream`, reopening prefilled, Enter on a cleared field deleting the key, and a non-CFM type's marker getting no row; and the key surviving the REAL export → reload → import path (the untouched sibling marker keeping its pre-D15 shape). |
 | [duct-callouts.spec.js](duct-callouts.spec.js) | Playwright regression for D10: a pdf-lib page with a real text layer ("24x12", "20x12", a date and a scale ratio as decoys) — the text layer is fetched lazily and exactly once (`getTextContent` spied), arming Duct beside a callout pre-fills the size + shows the note (through the deferred-load path), the same size offers nothing, the decoy offers nothing, the different-size callout yields the chip line + the FIRST popover section whose chip records the sizeStep (→ a transition at commit), the plan callout outranks a live ductulator suggestion (chip line + section order), and a text-less PDF shows no note / prefill / offer / section |
 | [duct-tool.spec.js](duct-tool.spec.js) | Playwright regression for the Duct tool (D2, live since D5): `#ductBtn` is visible with NO preview flag (no localStorage key, the `enableDuctPreview` shim gone); create→trace→S-step→commit stores a run with 2+ segments whose per-segment lengths/lb match the seeded scale (duct-model math re-run in-spec); the staged Esc ladder (popover → vertex pops → exit); the live footer readout content; committed runs re-render after reload (annotations re-applied through the load path paint ink); hideMarks blanks the overlay with the run data untouched; viewer sessions hide the button and disarm the tool. |
@@ -610,57 +612,57 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1592 - PDF render bitmap cache
 - L1646 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1657 - PDF Rendering
-- L2491 - UI Render Functions
-- L2492 - Recent bids
-- L3206 - Inline rename & polyline edit mode
-- L3322 - Modal primitives (showModal / hideModal)
-- L3463 - Toasts & line color picker
-- L3531 - Airboard cloud sync
-- L3576 - Supabase RPC & presence heartbeat
-- L3616 - User activity / event telemetry
-- L3675 - Supabase auth & dev auth
-- L3861 - [sync] Checkout subscription & permission refresh
-- L3871 - Modals & Handlers
-- L3939 - PDF intake (upload, test PDF, hashing)
-- L3947 - Toolbar tool buttons
-- L4159 - Tool sidebar buttons & legend overlay
-- L4250 - Add Line Type modal
-- L4435 - Line color & sidebar handlers
-- L4644 - Polyline modal & drawing
-- L4699 - Zoom bar & page navigation
-- L4725 - Export canvas JSON
-- L4749 - PDF download helpers
-- L4758 - View-link URL helpers & show-highlights/notes
-- L4830 - Custom icon upload handler
-- L4840 - Export & report dropdown menus
-- L4933 - Sidebar drawer toggles
-- L4964 - Mobile actions burger menu pointer & header logo
-- L4976 - User Activity pointer (format.js + features/user-activity.js)
-- L4988 - My Settings pointer (features/my-settings.js)
-- L5013 - Auth & settings entry buttons
-  - L5086 - Project Settings checkout & Save Status bell
-  - L5192 - [sync] Checkout expired recovery
-  - L5248 - [sync] Turn In
-  - L5357 - Share modal pointer & copy-project openers
-  - L5388 - Settings menu actions
-  - L5426 - Auth sign-in form
-  - L5451 - Save Project modal
-  - L5463 - Checkout expired recovery modal wiring
-  - L5568 - Last-session restore prompt
-  - L5575 - Canvas Repair modal wiring
-- L5762 - Canvas Event Handlers
-- L6306 - Event Binding
-- L6316 - Aim loupe (mobile press-hold precise placement)
-- L6468 - Zoom transform preview & commit
-- L6547 - Canvas mouse, wheel & touch handlers
-- L7348 - Global dropdown dismissal & keyboard hotkeys
-- L7740 - [sync] Manual save to cloud
-- L7750 - [sync] Auto-save
-- L7757 - [sync] Local backup (IndexedDB takeoff state)
-- L7890 - [sync] Checkout keep-alive
-- L7904 - App feature registry
-- L8270 - View-only mode
-- L8276 - Init / boot
+- L2492 - UI Render Functions
+- L2493 - Recent bids
+- L3207 - Inline rename & polyline edit mode
+- L3323 - Modal primitives (showModal / hideModal)
+- L3464 - Toasts & line color picker
+- L3532 - Airboard cloud sync
+- L3577 - Supabase RPC & presence heartbeat
+- L3617 - User activity / event telemetry
+- L3676 - Supabase auth & dev auth
+- L3862 - [sync] Checkout subscription & permission refresh
+- L3872 - Modals & Handlers
+- L3940 - PDF intake (upload, test PDF, hashing)
+- L3948 - Toolbar tool buttons
+- L4160 - Tool sidebar buttons & legend overlay
+- L4251 - Add Line Type modal
+- L4436 - Line color & sidebar handlers
+- L4645 - Polyline modal & drawing
+- L4700 - Zoom bar & page navigation
+- L4726 - Export canvas JSON
+- L4750 - PDF download helpers
+- L4759 - View-link URL helpers & show-highlights/notes
+- L4831 - Custom icon upload handler
+- L4841 - Export & report dropdown menus
+- L4934 - Sidebar drawer toggles
+- L4965 - Mobile actions burger menu pointer & header logo
+- L4977 - User Activity pointer (format.js + features/user-activity.js)
+- L4989 - My Settings pointer (features/my-settings.js)
+- L5014 - Auth & settings entry buttons
+  - L5087 - Project Settings checkout & Save Status bell
+  - L5193 - [sync] Checkout expired recovery
+  - L5249 - [sync] Turn In
+  - L5358 - Share modal pointer & copy-project openers
+  - L5389 - Settings menu actions
+  - L5427 - Auth sign-in form
+  - L5452 - Save Project modal
+  - L5464 - Checkout expired recovery modal wiring
+  - L5569 - Last-session restore prompt
+  - L5576 - Canvas Repair modal wiring
+- L5763 - Canvas Event Handlers
+- L6307 - Event Binding
+- L6317 - Aim loupe (mobile press-hold precise placement)
+- L6469 - Zoom transform preview & commit
+- L6548 - Canvas mouse, wheel & touch handlers
+- L7349 - Global dropdown dismissal & keyboard hotkeys
+- L7750 - [sync] Manual save to cloud
+- L7760 - [sync] Auto-save
+- L7767 - [sync] Local backup (IndexedDB takeoff state)
+- L7900 - [sync] Checkout keep-alive
+- L7914 - App feature registry
+- L8281 - View-only mode
+- L8287 - Init / boot
 
 <!-- END SECTION TOC -->
 

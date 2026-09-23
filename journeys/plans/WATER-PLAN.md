@@ -66,6 +66,19 @@
 > color (canvas-draw.js); the shared *Attach to nearest run* row rescues a fixture with a
 > side nothing serves; the line type row reads "cold · 12 WSFU served · 2 fixtures" and
 > the Lines list "cold · 6 WSFU" per run. `App.getWaterServed(pageIdx)` is rung 4's input.
+>
+> **Rung 4 shipped 2026-09-23** (branch `claude/water-rung-4`, stacked on rung 3):
+> [features/water-size.js](../../features/water-size.js). While a polyline of a water-sided
+> type is traced, the card above the footer reads the load still to serve beyond the tip
+> (water-model `waterDraftRemainingLoad`: fixtures of the side at or past the tip, on
+> branches tapped off the draft, or on no run of the side; a flush valve picks the demand
+> column) and the smallest size of the type's material under the side's cap, Q5's wording
+> ("3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts"). S or a tap opens the popover:
+> the suggested chip, the material's ladder with every size's velocity, the new-run note.
+> Taking a size is Q1: the run so far commits, a type of the new size is found or made (the
+> name's size swapped, side carried, hangers re-read), and the next draft starts from the
+> last point in it. Not in this rung: the Quick Line (single-segment) trace gets no card; the
+> `water_run` telemetry waits for rung 5's knobs so the migration lands once.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -228,7 +241,7 @@ save/load, export/import and the Artboard for free.
    leaders paint, the strays rescue; the sidebar readout shows WSFU served
    per run. **Shipped 2026-09-23.**
 4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
-   the popover suggestion; "a size change is a new run from here."
+   the popover suggestion; "a size change is a new run from here." **Shipped 2026-09-23.**
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy
    Schedule, the `--- Water sizing ---` block, report table.
 6. **Bid Check rows + gate**; the guide + a fourth tour step set

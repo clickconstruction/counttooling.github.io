@@ -13,6 +13,40 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 4, the moment at S, what the trace still has to serve and the size it earns (2026-09-23)
+
+Punch row P4-WATER, the fourth rung, stacked on rung 3. This is where the water tables start
+driving a number an estimator acts on, which is why the trade check of rung 1's transcription
+matters more from here on.
+
+- **The card.** While a polyline is traced on a water type, a card above the footer (the duct
+  trace's idiom) reads "3/4 in suggested · 3 WSFU still to serve · 4.3 ft/s · S accepts". The
+  load is the ductulator's "air still to serve" in fixture units: every fixture of the side
+  that no committed run of the side serves is assumed ahead of this trace, less those the
+  placed vertices have already passed (a fixture the tip has just reached is still ahead), so
+  the number changes on clicks, not on hover. The flow reads off the set's curve (a flush valve
+  among what is ahead moves it to the steeper column); the size is the smallest of the type's
+  material under the side's cap, copper Type L assumed and said when the name has no material.
+- **S opens the popover** (the duct popover's markup): the suggestion first with its gpm and
+  curve, then every size of the material with its velocity at that flow, the size being traced
+  outlined and the over-cap sizes muted. Plain pipe falls through to Set Scale as before;
+  Escape closes the popover alone and leaves the draft's points.
+- **"A size change is a new run from here."** A tap ends the run at its last placed point and
+  starts the next one there in the sized type: the size token swapped in the name ("1.5in
+  Copper CW" → "0.75in Copper CW"; '3/4" PEX HW' → '1/2" PEX HW'), an existing type of that
+  name reused, else a new one in the traced type's color and side. The two share the point, so
+  the new run is the old one's branch (rung 3's rule) and drops and hangers count once. A
+  one-point draft just changes type; the same size is a no-op.
+- **The Lines list readout** now carries the flow and the velocity in each run's own bore
+  ("13 WSFU cold · 3 fixtures (2 on branches) · 29.4 gpm · 5.3 ft/s ✓", or "⚠ over 8"), the
+  §5 sidebar readout in full.
+- Not built, by the ladder: the Water Sizing schedule and the exports (rung 5), the Bid Check
+  rows and the gate (6). Practice, not code: the pressure and developed-length check is Bid
+  Check's, and the card does not pretend otherwise.
+- water-size-at-s.spec.js pins the card's arithmetic as the trace passes a water closet, the
+  popover, Escape, the split at the shared point, the readouts, the no-op, the reuse, plain
+  pipe and Set Scale; water-model.test.js the pure rules.
+
 ## feat(water): rung 3, hot and cold on line types, fixtures attach, the runs read what they serve (2026-09-23)
 
 Punch row P4-WATER, the third rung, stacked on rung 2. A water run knows its side, its

@@ -60,9 +60,10 @@ test.describe('Water side, attachment and the served readout (WATER rung 3)', ()
     expect(await page.locator('#lineTypesList .sidebar-item[data-line-type-id="pvc"] .line-water-tag').count()).toBe(0);
     // what each run serves: the main carries lav1's cold (1.5) + the WC (10) + the branch's lav2 cold (1.5)
     let r = await readouts(page);
-    expect(r.cmain).toBe('13 WSFU cold · 3 fixtures (1 on branches)');
-    expect(r.cbranch).toBe('1.5 WSFU cold · 1 fixture');
-    expect(r.hmain).toBe('1.5 WSFU hot · 1 fixture');
+    // (rung 4 appends the flow and the velocity; water-size-at-s.spec.js pins those words)
+    expect(r.cmain).toMatch(/^13 WSFU cold · 3 fixtures \(1 on branches\) · 29\.4 gpm · /);
+    expect(r.cbranch).toMatch(/^1\.5 WSFU cold · 1 fixture · /);
+    expect(r.hmain).toMatch(/^1\.5 WSFU hot · 1 fixture · /);
     expect(r.waste).toBeUndefined();
     // the Lines list shows it under each run
     await page.evaluate(() => { window.state.linesTypeExpanded = { cw: true, hw: true, pvc: true }; window.App.renderLinesList(); });
@@ -79,7 +80,7 @@ test.describe('Water side, attachment and the served readout (WATER rung 3)', ()
     await page.evaluate(() => { window.state.lineTypes.find((l) => l.id === 'cw').waterSide = 'none'; window.App.updateUI(); });
     r = await readouts(page);
     expect(r.cmain).toBeUndefined();
-    expect(r.hmain).toBe('1.5 WSFU hot · 1 fixture');
+    expect(r.hmain).toMatch(/^1\.5 WSFU hot · 1 fixture · /);
     await page.evaluate(() => { delete window.state.lineTypes.find((l) => l.id === 'cw').waterSide; window.App.updateUI(); });
     expect(errors).toEqual([]);
   });
@@ -96,7 +97,7 @@ test.describe('Water side, attachment and the served readout (WATER rung 3)', ()
     expect(mark.waterRuns).toEqual({ hot: 'hmain' });
     expect(mark.x).toBe(330); expect(mark.y).toBe(215);   // the fixture stays on its symbol
     let r = await readouts(page);
-    expect(r.hmain).toBe('3 WSFU hot · 2 fixtures');
+    expect(r.hmain).toMatch(/^3 WSFU hot · 2 fixtures · /);
     const leaders = await page.evaluate(() => window.App.waterLeaders(window.App.getActiveAnnotations(window.state.pages[window.state.currentPage]), window.state.currentPage));
     const linked = leaders.find((l) => l.side === 'hot' && l.from.x === 330);
     expect(linked).toBeTruthy();
@@ -119,12 +120,12 @@ test.describe('Water side, attachment and the served readout (WATER rung 3)', ()
     await page.click('#ctxAttachWater');
     expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[window.state.currentPage]).counterMarkers.lav[2].waterRuns)).toEqual({ cold: 'cmain', hot: 'hmain' });
     r = await readouts(page);
-    expect(r.cmain).toBe('14.5 WSFU cold · 4 fixtures (1 on branches)');
+    expect(r.cmain).toMatch(/^14\.5 WSFU cold · 4 fixtures \(1 on branches\) · /);
     // delete the hot main: the link dangles harmlessly and the side is a stray again
     await page.evaluate(() => { const ann = window.App.getActiveAnnotations(window.state.pages[window.state.currentPage]); ann.quickLines = ann.quickLines.filter((q) => q.id !== 'hmain'); window.App.updateUI(); });
     r = await readouts(page);
     expect(r.hmain).toBeUndefined();
-    expect(r.cmain).toBe('14.5 WSFU cold · 4 fixtures (1 on branches)');
+    expect(r.cmain).toMatch(/^14\.5 WSFU cold · 4 fixtures \(1 on branches\) · /);
     // the keys ride the project data
     const data = await page.evaluate(() => JSON.parse(JSON.stringify(window.App.getActiveAnnotations(window.state.pages[window.state.currentPage]).counterMarkers.lav[2])));
     expect(data.waterRuns).toEqual({ cold: 'cmain', hot: 'hmain' });

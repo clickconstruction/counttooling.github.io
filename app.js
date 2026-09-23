@@ -2019,6 +2019,7 @@
     const t0 = performance.now();
     renderAnnotationsInner();
     notePerfSample('renderAnnotationsMs', performance.now() - t0);
+    App.onWaterTraceSync && App.onWaterTraceSync(false);   // WATER-PLAN rung 4: memoized on the draft's placed vertices
   }
   function renderAnnotationsInner() {
     const page = state.pages[state.currentPage];
@@ -2652,6 +2653,7 @@
     // Duct tool (preview flag, features/duct-tool.js): the feature owns its
     // button's visibility (flag + viewer gating), active state, and finish bar.
     App.onDuctToolSync && App.onDuctToolSync();
+    App.onWaterTraceSync && App.onWaterTraceSync(true);   // WATER-PLAN rung 4: the trace card and popover follow the draft
     App.onHighlightToolSync && App.onHighlightToolSync();
     document.getElementById('noteBtn').classList.toggle('active', state.tool === TOOL.NOTE);
     document.getElementById('counterBtn').classList.toggle('active', state.tool === TOOL.COUNTER);
@@ -7485,6 +7487,13 @@
         e.preventDefault();
         return;
       }
+      // WATER-PLAN rung 4: a polyline traced on a water type owns S the same
+      // way (features/water-fixtures.js: the size popover); plain pipe falls
+      // through to Set Scale as before.
+      if (k === 's' && state.tool === TOOL.POLYLINE && state.drawingPolyline && App.toggleWaterSizePopover && App.toggleWaterSizePopover()) {
+        e.preventDefault();
+        return;
+      }
       const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
       if (hk && (hk.viewerAllowed || !state.isViewer)) {
         // B10 (J18): R under the open Count-by-Page modal would rotate the
@@ -8060,6 +8069,8 @@
   App.snapToGrid = snapToGrid;
   App.logCounterMarkerAddedEvent = logCounterMarkerAddedEvent;
   App.logLineAddedEvent = logLineAddedEvent;
+  App.finishPolyline = finishPolyline;             // WATER-PLAN rung 4: "a new run from here" ends the traced run first
+  App.nextPolylineName = nextPolylineName;
   App.collapsePagesSectionForPlacing = collapsePagesSectionForPlacing;
   // Child counts dep (features/child-counts.js) — publish-only.
   App.getMultiplyZoneForLine = getMultiplyZoneForLine;

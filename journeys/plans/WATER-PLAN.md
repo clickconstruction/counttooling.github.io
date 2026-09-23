@@ -227,8 +227,19 @@ save/load, export/import and the Artboard for free.
    from the duct precedent, on purpose: the rescue ("Attach to nearest cold run") stores the
    link on the mark (`marker.waterRuns`) instead of moving the fixture, because a lavatory
    has two sides and one move cannot serve both, and the mark belongs on its symbol.
-4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
-   the popover suggestion; "a size change is a new run from here."
+4. ~~**The S moment** — downstream WSFU → gpm → size at the cap; the chip and
+   the popover suggestion; "a size change is a new run from here."~~ **Built 2026-09-23**
+   (branch `claude/water-rung4-size-at-s`): while a polyline is traced on a water type, a card
+   above the footer (the duct hint's idiom) reads what the trace still has to serve on its
+   side, the ductulator's "air still to serve" in fixture units: every unserved fixture of the
+   side less those the placed vertices have passed, so the number changes on clicks; the flow
+   on the set's curve; the smallest size of the type's material under the side's cap. S opens
+   the popover: the suggestion first with its gpm, then every size of the material with its
+   velocity at that flow. A tap ends the run at its last placed point and starts the next one
+   there in the sized type (the size token swapped in the name, "1.5in Copper CW" → "0.75in
+   Copper CW"; an existing type reused), so the two share the point and the new run is the
+   old one's branch. The Lines list readout gained gpm and ft/s per run, ⚠ over the cap. The
+   pressure check stays Bid Check's (rung 6).
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy
    Schedule, the `--- Water sizing ---` block, report table.
 6. **Bid Check rows + gate**; the guide + a fourth tour step set

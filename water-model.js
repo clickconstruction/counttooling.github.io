@@ -484,6 +484,113 @@ function waterServedByRun(fixtures, runs, opts) {
   return out;
 }
 
+// --- Rung 4: the moment at S -----------------------------------------------------
+// The material a line type's name declares, in PIPE_ID_IN's terms, or null.
+// CPVC before copper and PVC (support-model reads "CPVC" as no material on
+// purpose; here it is a bore). Galvanized steel by galv / GI / steel.
+function waterMaterialFromName(name) {
+  const n = ' ' + String(name || '').toLowerCase().replace(/[_/,()]+/g, ' ') + ' ';
+  if (/\bcpvc\b/.test(n)) return 'cpvc';
+  if (/\bpex(-al-pex)?\b/.test(n)) return 'pex';
+  if (/\b(copper|cu|type\s?[klm])\b/.test(n)) return 'copper';
+  if (/\b(galv|galvanized|galvanised|g\.?i\.?|steel|black\s?iron|\bbi\b)\b/.test(n)) return 'galvanized';
+  return null;
+}
+// The trade size a line type's name declares, in inches (the support model's
+// read: "1.5in", '3/4"', "1-1/4 in"), or null.
+function waterSizeInFromName(name) {
+  const m = /(\d+\s*-\s*\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)\s*(?:in\b|inch(?:es)?\b|"|″|”)/i.exec(String(name || ''));
+  if (!m) return null;
+  const t = m[1].replace(/\s+/g, '');
+  let v;
+  if (/^\d+-\d+\/\d+$/.test(t)) { const [w, f] = t.split('-'); const [a, b] = f.split('/'); v = Number(w) + Number(a) / Number(b); }
+  else if (/^\d+\/\d+$/.test(t)) { const [a, b] = t.split('/'); v = Number(a) / Number(b); }
+  else v = Number(t);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+// The name of the same type at another size: the size token replaced in the
+// style the name used ("1.5in Copper CW" → "0.75in Copper CW", '3/4" PEX HW' →
+// '1/2" PEX HW'); a name with no size gets one in front.
+function sizedTypeName(name, sizeIn) {
+  const key = sizeKey(sizeIn);
+  if (!key) return String(name || '');
+  const src = String(name || '');
+  const re = /(\d+\s*-\s*\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d+(?:\.\d+)?)(\s*)(in\b|inch(?:es)?\b|"|″|”)/i;
+  const m = re.exec(src);
+  if (!m) return key + 'in ' + src;
+  const decimal = /^\d+(\.\d+)?$/.test(m[1].trim()) && !/\//.test(m[1]);
+  const num = decimal ? String(Math.round(Number(sizeIn) * 1000) / 1000) : key;
+  return src.slice(0, m.index) + num + m[2] + m[3] + src.slice(m.index + m[0].length);
+}
+// What the run being traced still has to serve on its side, the ductulator's
+// "air still to serve" in fixture units: every fixture of the side that no
+// COMMITTED run of the side serves is assumed downstream of this trace, less
+// those the trace has already passed (attached to the draft strictly behind
+// its tip). A fixture the tip has just reached is still ahead. The draft's
+// placed vertices only: the number changes on clicks, not on every hover.
+// opts: { runs (committed water runs), draft: { id?, side, vertices }, fixtures, snapDist? }
+// Returns { wsfu, totalWsfu, servedWsfu, ahead: [fixture], column } or null
+// when nothing on the side is unserved.
+function waterDraftRemaining(opts) {
+  const o = opts || {};
+  const draft = o.draft;
+  if (!draft || !WATER_SIDES.includes(draft.side)) return null;
+  const EPS = 1e-6;
+  const side = draft.side;
+  const verts = (draft.vertices || []).filter((v) => v && Number.isFinite(v.x) && Number.isFinite(v.y));
+  const draftRun = { id: draft.id || '__draft__', side, vertices: verts };
+  const committed = (o.runs || []).filter((r) => r && r.side === side && (r.vertices ? r.vertices.length : 0) >= 2);
+  const all = verts.length >= 2 ? committed.concat([draftRun]) : committed;
+  const fixtures = (o.fixtures || []).filter((f) => f && Number(f[side]) > 0);
+  if (!fixtures.length) return null;
+  const { attached, strays } = attachWaterFixtures(fixtures, all, o);
+  const tipLen = waterNearestOnRun(verts[verts.length - 1] || { x: 0, y: 0 }, verts).s;
+  let totalWsfu = 0, servedWsfu = 0;
+  const ahead = [];
+  attached.forEach((a) => {
+    if (a.side !== side) return;
+    if (a.runId !== draftRun.id) return;   // a committed run of the side serves it: not this trace's load
+    totalWsfu += Number(a.fixture[side]) || 0;
+    if (a.s < tipLen - EPS) servedWsfu += Number(a.fixture[side]) || 0;   // passed by the trace
+    else ahead.push(a.fixture);
+  });
+  strays.forEach((st) => {
+    if (st.side !== side) return;
+    totalWsfu += Number(st.fixture[side]) || 0;   // unserved: assumed ahead of this trace
+    ahead.push(st.fixture);
+  });
+  if (!(totalWsfu > 0)) return null;
+  const column = demandColumnFor(ahead.map((f) => ({ key: f.fixtureKey, qty: 1 })));
+  return { wsfu: round2(totalWsfu - servedWsfu), totalWsfu: round2(totalWsfu), servedWsfu: round2(servedWsfu), ahead, column, side };
+}
+// The suggestion for a trace: fixture units ahead → design gpm on the set's
+// curve → the smallest size of the material under the side's cap. `material`
+// null reads as copper Type L and says so. Returns null when nothing is ahead.
+function waterDraftSuggestion(opts) {
+  const o = opts || {};
+  const rem = o.remaining;
+  if (!rem || !(rem.wsfu > 0)) return null;
+  const material = PIPE_ID_IN[o.material] ? o.material : 'copper';
+  const materialAssumed = !PIPE_ID_IN[o.material];
+  const gpm = demandGpm(rem.wsfu, rem.column);
+  const pick = suggestWaterSize({ gpm, side: rem.side, material, capFps: o.capFps });
+  if (!pick) return null;
+  const cap = pick.capFps;
+  const sizeLabel = pick.key + ' in';
+  const chipText = sizeLabel + ' suggested · ' + fmtWsfu(rem.wsfu) + ' WSFU still to serve · ' + pick.velocityFps + ' ft/s' + (pick.ok ? '' : ', over ' + cap) + (materialAssumed ? ' as copper' : '') + ' · S accepts';
+  return { wsfu: rem.wsfu, gpm, column: rem.column, side: rem.side, material, materialAssumed, sizeIn: pick.sizeIn, key: pick.key, velocityFps: pick.velocityFps, capFps: cap, ok: pick.ok, sizeLabel, chipText };
+}
+// Every size of a material with its velocity at a flow, for the popover's row.
+function waterSizeOptions(gpm, side, material) {
+  const m = PIPE_ID_IN[material] ? material : 'copper';
+  const cap = WATER_VELOCITY_CAPS[WATER_SIDES.includes(side) ? side : 'cold'];
+  return pipeSizesIn(m).map((sizeIn) => {
+    const v = velocityFps(gpm, pipeIdIn(m, sizeIn));
+    return { sizeIn, key: sizeKey(sizeIn), velocityFps: round1(v), ok: v <= cap, capFps: cap };
+  });
+}
+function fmtWsfu(v) { return String(Math.round(v * 100) / 100); }
+
 function round1(v) { return Math.round(v * 10) / 10; }
 function round2(v) { return Math.round(v * 100) / 100; }
 
@@ -497,6 +604,7 @@ const WATER_MODEL_API = {
   WSFU_RULE_ID, wsfuFixtureFromName, wsfuPrefillFor, counterWsfu, markerWsfu, counterWsfuSplit,
   WATER_SIDE_COLORS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, lineTypeWaterSide, waterRunVertices, waterRunsOf,
   waterNearestOnRun, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterChildLinks, waterServedByRun,
+  waterMaterialFromName, waterSizeInFromName, sizedTypeName, waterDraftRemaining, waterDraftSuggestion, waterSizeOptions,
 };
 if (typeof window !== 'undefined') window.WaterModel = WATER_MODEL_API;
 // Node test harness and the rulebook's drift check only: in a classic browser <script> `module` is undefined.

@@ -512,6 +512,9 @@
                stays at the cursor. features/duct-tool.js syncDuctHintCard fills and toggles it;
                the S popover carries the same information for assistive tech. -->
           <div class="duct-hint-card" id="ductHintCard" aria-hidden="true" hidden></div>
+          <!-- WATER-PLAN rung 4: the water trace's card, the same idiom ("3/4 in suggested ·
+               6 WSFU still to serve · 7.9 ft/s · S accepts"), features/water-fixtures.js. -->
+          <div class="duct-hint-card water-hint-card" id="waterHintCard" aria-hidden="true" hidden></div>
           <div class="canvas-container" id="canvasContainer">
             <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             <canvas id="cropCanvas" class="crop-canvas"></canvas>
@@ -3527,6 +3530,17 @@
       <button type="button" id="ductSizePopoverClose" class="chain-panel-close" title="Close (Esc)" aria-label="Close">×</button>
     </div>
     <div id="ductSizeSections"></div>
+  </div>
+  <!-- WATER-PLAN rung 4: the water size popover, opened by S while a polyline on
+       a water type is traced (features/water-fixtures.js): the suggestion first,
+       then every size of the material with its velocity; a tap ends the run at
+       its last point and starts the next one there in the sized type. -->
+  <div class="duct-size-popover water-size-popover" id="waterSizePopover" style="display:none;" role="dialog" aria-label="Water pipe size">
+    <div class="duct-size-popover-head">
+      <span id="waterSizeCurrent"></span>
+      <button type="button" id="waterSizePopoverClose" class="chain-panel-close" title="Close (Esc)" aria-label="Close">×</button>
+    </div>
+    <div id="waterSizeSections"></div>
   </div>
   <!-- Highlight bookmarks panel: shown while TOOL.HIGHLIGHT is active. Rows
        are BUILT by features/highlight-labels.js from every page's highlights

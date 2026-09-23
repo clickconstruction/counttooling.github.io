@@ -1963,6 +1963,19 @@ body.tour-active .canvas-empty-hint { display: none; }
 .modal-card .wsfu-chip-use:hover { color: var(--accent); border-color: var(--accent); }
 /* WATER-PLAN rung 3: the water side picker's note, the per-run served line in
    the Lines list, and the side tag on a line type's row. */
+/* WATER-PLAN rung 4: the size popover's grid, every size of the material with
+   its velocity at the flow ahead; the suggestion accented, over-cap sizes muted. */
+.water-size-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-bottom: 8px; }
+.water-size-chip { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); cursor: pointer; font: inherit; }
+.water-size-chip:hover { border-color: var(--accent); }
+.water-size-chip-size { font-family: 'DM Mono', monospace; font-size: 0.82rem; }
+.water-size-chip-v { font-size: 0.66rem; color: var(--text3); }
+.water-size-chip-suggested { border-color: var(--accent); }
+.water-size-chip-suggested .water-size-chip-v { color: var(--accent); }
+.water-size-chip-over { opacity: 0.55; }
+.water-size-chip-current { outline: 1px dashed var(--border2); outline-offset: 1px; }
+.water-size-popover { width: 260px; }
+.water-hint-card b { color: var(--blue); }
 .water-side-segment { margin-bottom: 4px; }
 .water-side-note { font-size: 0.76rem; color: var(--text3); line-height: 1.4; }
 .line-water { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }

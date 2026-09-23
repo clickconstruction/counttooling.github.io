@@ -248,3 +248,67 @@ test('rung 3: runs, attachment per side, leaders, branches and the served walk',
   assert.strictEqual(loop.get('a').served + loop.get('b').served > 0, true);
   assert.ok(loop.get('a').served <= 4 && loop.get('b').served <= 4);
 });
+
+test('rung 4: the material and size a name declares, and the same type at another size', () => {
+  assert.strictEqual(w.waterMaterialFromName('1.5in Copper CW'), 'copper');
+  assert.strictEqual(w.waterMaterialFromName('3/4" PEX HW'), 'pex');
+  assert.strictEqual(w.waterMaterialFromName('1in CPVC'), 'cpvc');
+  assert.strictEqual(w.waterMaterialFromName('2in Galv CW'), 'galvanized');
+  assert.strictEqual(w.waterMaterialFromName('1.25in BI'), 'galvanized');
+  assert.strictEqual(w.waterMaterialFromName('3in PVC'), null);
+  assert.strictEqual(w.waterSizeInFromName('1.5in Copper CW'), 1.5);
+  assert.strictEqual(w.waterSizeInFromName('3/4" PEX'), 0.75);
+  assert.strictEqual(w.waterSizeInFromName('1-1/4 in copper'), 1.25);
+  assert.strictEqual(w.waterSizeInFromName('Cold main'), null);
+  assert.strictEqual(w.sizedTypeName('1.5in Copper CW', 0.75), '0.75in Copper CW');
+  assert.strictEqual(w.sizedTypeName('3/4" PEX HW', 0.5), '1/2" PEX HW');
+  assert.strictEqual(w.sizedTypeName('1-1/4 in copper', 1), '1 in copper');
+  assert.strictEqual(w.sizedTypeName('Cold main', 0.75), '3/4in Cold main');
+});
+
+test('rung 4: what a trace still has to serve, and the size it earns', () => {
+  const runs = [{ id: 'hmain', side: 'hot', vertices: [{ x: 0, y: 200 }, { x: 300, y: 200 }] }];
+  const fixtures = [
+    { id: 'wc1', x: 50, y: 10, cold: 10, hot: 0, fixtureKey: 'water-closet-valve' },
+    { id: 'lav1', x: 150, y: 10, cold: 1.5, hot: 1.5, fixtureKey: 'lavatory' },
+    { id: 'lav2', x: 250, y: 10, cold: 1.5, hot: 1.5, fixtureKey: 'lavatory' },
+    { id: 'served', x: 100, y: 190, cold: 3, hot: 3, fixtureKey: 'service-sink' },   // hot side served by hmain; its cold side is a stray, ahead
+  ];
+  // a cold trace with one vertex: nothing behind it yet, everything cold unserved is ahead
+  let r = w.waterDraftRemaining({ runs, draft: { side: 'cold', vertices: [{ x: 0, y: 0 }] }, fixtures });
+  assert.strictEqual(r.wsfu, 16); assert.strictEqual(r.totalWsfu, 16); assert.strictEqual(r.servedWsfu, 0); assert.strictEqual(r.column, 'flushValve');
+  // past the water closet: it is behind the tip, so served; the lavs and the sink's cold side remain
+  r = w.waterDraftRemaining({ runs, draft: { side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }] }, fixtures });
+  assert.strictEqual(r.servedWsfu, 10); assert.strictEqual(r.wsfu, 6); assert.strictEqual(r.column, 'flushTank');
+  // the tip exactly at a fixture: still ahead
+  r = w.waterDraftRemaining({ runs, draft: { side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 150, y: 0 }] }, fixtures });
+  assert.strictEqual(r.servedWsfu, 10); assert.strictEqual(r.wsfu, 6);
+  // past both lavs: only the sink's cold side, far away, remains
+  r = w.waterDraftRemaining({ runs, draft: { side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 300, y: 0 }] }, fixtures });
+  assert.strictEqual(r.wsfu, 3);
+  // a hot trace: the sink's hot side is served by the committed hot main, so only the lavs' hot is ahead
+  r = w.waterDraftRemaining({ runs, draft: { side: 'hot', vertices: [{ x: 0, y: 0 }] }, fixtures });
+  assert.strictEqual(r.wsfu, 3); assert.strictEqual(r.totalWsfu, 3);
+  // nothing on the side: null
+  assert.strictEqual(w.waterDraftRemaining({ runs, draft: { side: 'hot', vertices: [{ x: 0, y: 0 }] }, fixtures: [fixtures[0]] }), null);
+  assert.strictEqual(w.waterDraftRemaining({ runs, draft: { side: 'warm', vertices: [] }, fixtures }), null);
+  // the suggestion: 16 WSFU on the valve curve → 31.8 gpm; 1-1/4 in copper runs 8.1 ft/s, just over the cold cap of 8, so 1-1/2 in
+  const rem = w.waterDraftRemaining({ runs, draft: { side: 'cold', vertices: [{ x: 0, y: 0 }] }, fixtures });
+  const sug = w.waterDraftSuggestion({ remaining: rem, material: 'copper' });
+  assert.strictEqual(sug.gpm, 31.8);
+  assert.strictEqual(sug.key, '1-1/2'); assert.strictEqual(sug.ok, true); assert.strictEqual(sug.materialAssumed, false);
+  assert.strictEqual(sug.velocityFps, 5.7);
+  assert.strictEqual(sug.chipText, '1-1/2 in suggested · 16 WSFU still to serve · 5.7 ft/s · S accepts');
+  // no material in the name: sized as copper and said so
+  const sug2 = w.waterDraftSuggestion({ remaining: rem, material: null });
+  assert.strictEqual(sug2.materialAssumed, true); assert.match(sug2.chipText, / as copper · S accepts$/);
+  // nothing ahead: null
+  assert.strictEqual(w.waterDraftSuggestion({ remaining: null }), null);
+  // every size of the material with its velocity, the cap marked
+  const opts = w.waterSizeOptions(31.8, 'cold', 'copper');
+  assert.deepStrictEqual(opts.map((o) => o.key), ['3/8', '1/2', '3/4', '1', '1-1/4', '1-1/2', '2', '2-1/2', '3']);
+  assert.strictEqual(opts.find((o) => o.key === '1-1/4').ok, false);
+  assert.strictEqual(opts.find((o) => o.key === '1-1/4').velocityFps, 8.1);
+  assert.strictEqual(opts.find((o) => o.key === '1-1/2').ok, true);
+  assert.strictEqual(opts[0].capFps, 8);
+});

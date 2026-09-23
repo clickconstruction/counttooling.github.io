@@ -321,7 +321,7 @@
         const f = split
           ? { cold: Math.round(split.cold * k * 100) / 100, hot: Math.round(split.hot * k * 100) / 100, unsplit: false }
           : { cold: total, hot: total, unsplit: true };
-        out.push({ x: m.x, y: m.y, cold: f.cold, hot: f.hot, total, unsplit: f.unsplit, counterId: c.id, counterName: c.name, index: i, links: m.waterRuns || null, marker: m });
+        out.push({ x: m.x, y: m.y, cold: f.cold, hot: f.hot, total, unsplit: f.unsplit, counterId: c.id, counterName: c.name, index: i, links: m.waterRuns || null, marker: m, fixtureKey: c.wsfuFixture || null });
       });
     });
     return out;
@@ -369,10 +369,43 @@
     const served = wm.waterServedByRun(fixtures, runs);
     const { attached } = wm.attachWaterFixtures(fixtures, runs);
     const unsplitRuns = new Set(attached.filter((a) => a.fixture.unsplit).map((a) => a.runId));
+    // Rung 4: the flow and the velocity in the run's own bore, when its type
+    // names a size and a material; the demand curve from the fixtures the run
+    // and its branches serve (any flush valve → the valve curve).
+    const fixturesByRun = new Map();
+    attached.forEach((a) => { if (!fixturesByRun.has(a.runId)) fixturesByRun.set(a.runId, []); fixturesByRun.get(a.runId).push(a.fixture); });
+    const keysUnder = (id, seen) => {
+      if (seen.has(id)) return [];
+      seen.add(id);
+      const row = served.get(id);
+      let keys = (fixturesByRun.get(id) || []).map((f) => ({ key: f.fixtureKey, qty: 1 }));
+      (row ? row.children : []).forEach((c) => { keys = keys.concat(keysUnder(c, seen)); });
+      return keys;
+    };
+    const ltById = new Map((App.state.lineTypes || []).map((lt) => [lt.id, lt]));
     served.forEach((row, id) => {
       const fx = row.servedCount === 1 ? '1 fixture' : row.servedCount + ' fixtures';
       const branch = row.servedCount > row.ownCount ? ' (' + (row.servedCount - row.ownCount) + ' on branches)' : '';
-      out.set(id, { side: row.side, served: row.served, count: row.servedCount, text: fmt(row.served) + ' WSFU ' + row.side + ' · ' + fx + branch + (unsplitRuns.has(id) ? ' · a total with no fixture counted whole' : '') });
+      let flow = '';
+      let gpm = null, velocityFps = null, ok = null;
+      if (row.served > 0) {
+        const run = runs.find((r) => r.id === id);
+        const lt = run ? ltById.get(run.lineTypeId) : null;
+        const column = wm.demandColumnFor(keysUnder(id, new Set()));
+        gpm = wm.demandGpm(row.served, column);
+        const sizeIn = lt ? wm.waterSizeInFromName(lt.name) : null;
+        const material = lt ? wm.waterMaterialFromName(lt.name) : null;
+        const idIn = sizeIn != null && material ? wm.pipeIdIn(material, sizeIn) : null;
+        flow = ' · ' + gpm + ' gpm';
+        if (idIn) {
+          const v = wm.velocityFps(gpm, idIn);
+          const cap = wm.WATER_VELOCITY_CAPS[row.side];
+          velocityFps = Math.round(v * 10) / 10;
+          ok = v <= cap;
+          flow += ' · ' + velocityFps + ' ft/s ' + (ok ? '✓' : '⚠ over ' + cap);
+        }
+      }
+      out.set(id, { side: row.side, served: row.served, count: row.servedCount, gpm, velocityFps, ok, text: fmt(row.served) + ' WSFU ' + row.side + ' · ' + fx + branch + flow + (unsplitRuns.has(id) ? ' · a total with no fixture counted whole' : '') });
     });
     return out;
   }
@@ -533,6 +566,225 @@
   App.readQuickLineWaterSide = readQuickLineWaterSide;
   App.renderWaterSideSection = renderWaterSideSection;
   App.lineTypeWaterTag = lineTypeWaterTag;
+  // --- Rung 4: the moment at S ------------------------------------------------------
+  // The live trace, when it is a polyline on a water type: { draft, lt, side }.
+  function waterDraft() {
+    const wm = WM();
+    const state = App.state;
+    const d = state.drawingPolyline;
+    if (!wm || !d || state.tool !== App.TOOL.POLYLINE) return null;
+    const lt = (state.lineTypes || []).find((l) => l.id === d.lineTypeId);
+    const side = wm.lineTypeWaterSide(lt);
+    if (!lt || !side) return null;
+    return { draft: d, lt, side };
+  }
+  // What the trace still has to serve and the size it earns, or null.
+  function waterDraftSuggestion() {
+    const wm = WM();
+    const wd = waterDraft();
+    if (!wm || !wd) return null;
+    const state = App.state;
+    const fixtures = collectWaterFixtures(state.currentPage);
+    if (!fixtures.length) return null;
+    const runs = getWaterRuns(state.currentPage).filter((r) => r.id !== wd.draft.id);
+    const remaining = wm.waterDraftRemaining({ runs, draft: { id: wd.draft.id, side: wd.side, vertices: wd.draft.points || [] }, fixtures });
+    const sug = wm.waterDraftSuggestion({ remaining, material: wm.waterMaterialFromName(wd.lt.name) });
+    if (!sug) return null;
+    const currentSizeIn = wm.waterSizeInFromName(wd.lt.name);
+    return { ...sug, remaining, currentSizeIn, currentKey: currentSizeIn != null ? wm.sizeKey(currentSizeIn) : null, lineType: wd.lt, draft: wd.draft };
+  }
+  // The card above the footer (the DUCT-HINT idiom, #waterHintCard): synced on
+  // every updateUI (force) and on every paint, memoized on the draft's placed
+  // vertices so a hover costs nothing.
+  let hintKey = null;
+  function syncWaterHintCard(force) {
+    const el = document.getElementById('waterHintCard');
+    if (!el) return;
+    const wd = waterDraft();
+    if (!wd) {
+      hintKey = null;
+      if (!el.hidden) { el.hidden = true; el.innerHTML = ''; }
+      if (popoverOpen) closeWaterSizePopover();
+      return;
+    }
+    const key = wd.draft.id + ':' + (wd.draft.points || []).length + ':' + wd.lt.id + ':' + App.state.currentPage;
+    if (!force && key === hintKey) return;
+    hintKey = key;
+    const sug = waterDraftSuggestion();
+    if (!sug) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; } return; }
+    let text = sug.chipText;
+    let tail = '';
+    const m = text.match(/\s*·\s*S accepts\s*$/);
+    if (m) { text = text.slice(0, m.index); tail = ' · <kbd>S</kbd> accepts'; }
+    const parts = text.split(' · ');
+    const html = '<b>' + esc(parts[0]) + '</b> · ' + esc(parts.slice(1).join(' · ')) + tail;
+    if (el.innerHTML !== html) el.innerHTML = html;
+    if (el.hidden) el.hidden = false;
+  }
+  function onWaterTraceSync(force) { syncWaterHintCard(!!force); }
+
+  // --- the S popover -------------------------------------------------------------
+  let popoverOpen = false;
+  let popoverWired = false;
+  function wirePopover() {
+    if (popoverWired) return;
+    popoverWired = true;
+    const close = document.getElementById('waterSizePopoverClose');
+    if (close) close.onclick = closeWaterSizePopover;
+    // Escape closes the popover and nothing else (the trace's own Esc rung
+    // would pop a vertex): capture phase, stopped before the app's handler.
+    document.addEventListener('keydown', (e) => {
+      if (!popoverOpen || e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      closeWaterSizePopover();
+    }, true);
+  }
+  function renderWaterSizePopover() {
+    const wm = WM();
+    const wd = waterDraft();
+    const el = document.getElementById('waterSizePopover');
+    if (!wm || !wd || !el) return false;
+    const sug = waterDraftSuggestion();
+    const head = document.getElementById('waterSizeCurrent');
+    if (head) head.textContent = wd.lt.name || 'Line';
+    const host = document.getElementById('waterSizeSections');
+    host.innerHTML = '';
+    const material = wm.waterMaterialFromName(wd.lt.name) || 'copper';
+    const materialLabel = wm.PIPE_ID_IN[material].label;
+    if (sug) {
+      const sec = document.createElement('div');
+      sec.className = 'duct-popover-section';
+      sec.innerHTML = '<div class="duct-popover-section-label">Suggested</div>';
+      const row = document.createElement('div');
+      row.className = 'duct-suggest-row';
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'duct-suggest-chip';
+      b.id = 'waterSizeSuggested';
+      b.textContent = sug.sizeLabel;
+      b.title = 'Take ' + sug.sizeLabel + ' from here';
+      b.onclick = () => applyWaterSize(sug.sizeIn);
+      row.appendChild(b);
+      sec.appendChild(row);
+      const from = document.createElement('div');
+      from.className = 'duct-suggest-from';
+      from.textContent = 'from ' + fmt(sug.wsfu) + ' WSFU still to serve · ' + sug.gpm + ' gpm on the ' + (sug.column === 'flushValve' ? 'flush-valve' : 'flush-tank') + ' curve · ' + sug.velocityFps + ' ft/s in ' + materialLabel + (sug.materialAssumed ? ' (no material in the name)' : '') + ' · ' + wd.side + ' capped at ' + sug.capFps + (sug.ok ? '' : ' · nothing under the cap; the largest size');
+      sec.appendChild(from);
+      host.appendChild(sec);
+    } else {
+      const sec = document.createElement('div');
+      sec.className = 'duct-popover-section';
+      sec.innerHTML = '<div class="duct-popover-section-label">Suggested</div><div class="duct-suggest-from">nothing on the ' + esc(wd.side) + ' side left to serve on this sheet; pick a size to step down anyway</div>';
+      host.appendChild(sec);
+    }
+    // Every size of the material, its velocity at the flow ahead, the cap marked.
+    const sec2 = document.createElement('div');
+    sec2.className = 'duct-popover-section';
+    sec2.innerHTML = '<div class="duct-popover-section-label">A new run from here, in ' + esc(materialLabel) + '</div>';
+    const grid = document.createElement('div');
+    grid.className = 'water-size-grid';
+    const options = wm.waterSizeOptions(sug ? sug.gpm : 0, wd.side, material);
+    options.forEach((o) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'water-size-chip' + (sug && o.key === sug.key ? ' water-size-chip-suggested' : '') + (sug && !o.ok ? ' water-size-chip-over' : '') + (sug && sug.currentKey === o.key ? ' water-size-chip-current' : '');
+      b.dataset.size = o.key;
+      b.innerHTML = '<span class="water-size-chip-size">' + esc(o.key) + ' in</span>' + (sug ? '<span class="water-size-chip-v">' + o.velocityFps + ' ft/s</span>' : '');
+      b.title = (sug && sug.currentKey === o.key ? 'The size being traced' : 'End this run here and start a ' + o.key + ' in run from the last point') + (sug && !o.ok ? '; over the ' + o.capFps + ' ft/s cap' : '');
+      b.onclick = () => applyWaterSize(o.sizeIn);
+      grid.appendChild(b);
+    });
+    sec2.appendChild(grid);
+    const foot = document.createElement('div');
+    foot.className = 'duct-suggest-from';
+    foot.textContent = 'A size change is a new run from the last point; the two share it. Practice, not code: the pressure check is Bid Check’s.';
+    sec2.appendChild(foot);
+    host.appendChild(sec2);
+    return true;
+  }
+  function openWaterSizePopover() {
+    const el = document.getElementById('waterSizePopover');
+    if (!el || !waterDraft()) return false;
+    wirePopover();
+    if (!renderWaterSizePopover()) return false;
+    el.style.display = '';
+    popoverOpen = true;
+    // Above the hint card when it shows (measured, so the two never overlap),
+    // else near the canvas centre; placeFixedMenu clamps to the viewport.
+    const card = document.getElementById('waterHintCard');
+    let x, y;
+    if (card && !card.hidden) { const r = card.getBoundingClientRect(); x = r.left + r.width / 2 - 130; y = r.top - 8 - (el.offsetHeight || 260); }
+    else { const c = document.getElementById('annCanvas'); const r = c ? c.getBoundingClientRect() : { left: 100, top: 100, width: 400, height: 300 }; x = r.left + r.width / 2 - 130; y = r.top + r.height / 3; }
+    App.placeFixedMenu(el, x, Math.max(8, y));
+    return true;
+  }
+  function closeWaterSizePopover() {
+    const el = document.getElementById('waterSizePopover');
+    if (el) el.style.display = 'none';
+    popoverOpen = false;
+  }
+  // S while a water run is traced: returns true when it took the key.
+  function toggleWaterSizePopover() {
+    if (!waterDraft()) return false;
+    if (popoverOpen) { closeWaterSizePopover(); return true; }
+    return openWaterSizePopover();
+  }
+  function isWaterPopoverOpen() { return popoverOpen; }
+
+  // The sized type: an existing type with that name, else a new one in the
+  // traced type's color and side. Returns the line type.
+  function sizedLineTypeFor(lt, sizeIn) {
+    const wm = WM();
+    const state = App.state;
+    const name = wm.sizedTypeName(lt.name, sizeIn);
+    const found = (state.lineTypes || []).find((l) => String(l.name || '').trim().toLowerCase() === name.trim().toLowerCase());
+    if (found) return found;
+    const next = { id: App.uid(), name, color: lt.color, curveStyle: lt.curveStyle || 'straight' };
+    if (lt.waterSide) next.waterSide = lt.waterSide;
+    state.lineTypes.push(next);
+    return next;
+  }
+  // "A size change is a new run from here": the run being traced ends at its
+  // last placed point and the next one starts there in the sized type; the two
+  // share the point, so the new run is the old one's branch and drops and
+  // hangers count once. A draft with one point just changes type.
+  function applyWaterSize(sizeIn) {
+    const wm = WM();
+    const wd = waterDraft();
+    closeWaterSizePopover();
+    if (!wm || !wd) return;
+    const state = App.state;
+    const currentSizeIn = wm.waterSizeInFromName(wd.lt.name);
+    if (currentSizeIn != null && Math.abs(currentSizeIn - sizeIn) < 1e-9) return;
+    const next = sizedLineTypeFor(wd.lt, sizeIn);
+    const pts = wd.draft.points || [];
+    const last = pts[pts.length - 1];
+    if (pts.length >= 2 && App.finishPolyline) {
+      App.finishPolyline(false);   // commits the run traced so far, one undo step
+      state.drawingPolyline = { id: App.uid(), name: App.nextPolylineName ? App.nextPolylineName() : 'Polyline', color: next.color, points: [{ x: last.x, y: last.y }], closed: false, lineTypeId: next.id, group: state.activeGroupId || null };
+      state.tool = App.TOOL.POLYLINE;
+    } else {
+      App.pushUndoSnapshotCurrentPage();
+      wd.draft.lineTypeId = next.id;
+      wd.draft.color = next.color;
+    }
+    state.activeLineTypeId = next.id;
+    App.markProjectDirty();
+    App.updateUI();
+    App.renderAnnotations();
+    if (App.showToast) App.showToast(pts.length >= 2 ? (wd.lt.name + ' ends here; ' + next.name + ' runs on from this point.') : ('Tracing ' + next.name + '.'), 2600);
+  }
+
+  App.waterDraft = waterDraft;
+  App.waterDraftSuggestion = waterDraftSuggestion;
+  App.onWaterTraceSync = onWaterTraceSync;
+  App.openWaterSizePopover = openWaterSizePopover;
+  App.closeWaterSizePopover = closeWaterSizePopover;
+  App.toggleWaterSizePopover = toggleWaterSizePopover;
+  App.isWaterPopoverOpen = isWaterPopoverOpen;
+  App.applyWaterSize = applyWaterSize;
+  App.sizedLineTypeFor = sizedLineTypeFor;
   App.applyCounterWaterMore = applyCounterWaterMore;
   App.bindWsfuField = bindWsfuField;
   App.readWsfuField = readWsfuField;

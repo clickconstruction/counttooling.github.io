@@ -178,7 +178,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->93<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->94<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -397,7 +397,9 @@
   (features/conductors.js) — never marks, never stored totals. Plumbing's fixture units
   ride the same way (WATER-PLAN rung 2): a counter's `wsfu` (+ `wsfuOccupancy`, the
   counter's own public | private column, absent = the project's), a mark's
-  `wsfuOverride` (features/water-fixtures.js; the tables in water-model.js).
+  `wsfuOverride` (features/water-fixtures.js; the tables in water-model.js), and a line
+  type's `waterSide` (`'cold' | 'hot'`, rung 3, features/water-runs.js: every line of
+  the type is a water run; fixtures attach per side by proximity, never stored).
 - Keep the app functional with Supabase disabled.
 - **Feature flags (dormant ships).** A change that must land on main before a tester has
   walked it on the real site ships OFF behind `featureFlagEnabled('<name>')` (app.js

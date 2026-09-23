@@ -248,7 +248,145 @@ function fixtureSupplyMinLabel(fixtureKey, control) {
   return v == null ? '' : sizeFraction(v);
 }
 
+// --- rung 3: water runs, attachment, leaders, served loads ----------------------
+const WATER_SIDE_LABELS = { cold: 'Cold', hot: 'Hot' };
+// A fixture attaches to the nearest run of its side within this many sheet
+// points (the duct tap snap); the rescue looks this far for the obvious run.
+const WATER_ATTACH_SNAP_PDF = 12;
+const WATER_ATTACH_SEARCH_PDF = 96;
+
+// The water side a line type's name declares: "hot", "HW", "HWR", "hot water"
+// → hot; "cold", "CW", "cold water", "domestic cold" → cold; null otherwise.
+function waterSideFromName(name) {
+  const n = ' ' + String(name || '').toLowerCase().replace(/[_/,()#.:-]+/g, ' ').replace(/\s+/g, ' ') + ' ';
+  if (/\b(hot|hw|hwr|hws|dhw|hot water)\b/.test(n)) return 'hot';
+  if (/\b(cold|cw|dcw|cold water)\b/.test(n)) return 'cold';
+  return null;
+}
+// A fixture's load per side for the number it carries: the table row for its
+// name (the counter's own column, else the project's) scaled to that number,
+// so a typed-over 3 on a lavatory still splits half and half; a fixture the
+// table does not know counts its whole number on each side it touches.
+// null when the number is not positive.
+function waterFixtureLoads(counter, occupancy, number) {
+  const n = Number(number);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  const occ = counter && (counter.wsfuOccupancy === 'public' || counter.wsfuOccupancy === 'private') ? counter.wsfuOccupancy : occupancy;
+  const read = counter ? wsfuPrefillFor(counter.name, occ) : null;
+  if (read && read.total > 0) {
+    const k = n / read.total;
+    return { cold: round2(read.cold * k), hot: round2(read.hot * k), total: n, known: true };
+  }
+  return { cold: n, hot: n, total: n, known: false };
+}
+function round2(n) { return Math.round(n * 100) / 100; }
+// The water runs on a page: every quick line and polyline whose line type has
+// a water side, as { id, side, lineTypeId, kind: 'quick' | 'poly', index,
+// vertices, color }. Pure over the annotation shape; a line's own color wins.
+function waterRunsFromAnnotations(ann, lineTypes) {
+  const sideOf = {};
+  const colorOf = {};
+  (lineTypes || []).forEach((lt) => { if (lt && (lt.waterSide === 'cold' || lt.waterSide === 'hot')) { sideOf[lt.id] = lt.waterSide; colorOf[lt.id] = lt.color; } });
+  const out = [];
+  (ann && ann.quickLines || []).forEach((q, index) => {
+    const side = q && sideOf[q.lineTypeId];
+    if (!side) return;
+    out.push({ id: q.id || ('q' + index), side, lineTypeId: q.lineTypeId, kind: 'quick', index, vertices: [{ x: q.x1, y: q.y1 }, { x: q.x2, y: q.y2 }], color: q.color || colorOf[q.lineTypeId] });
+  });
+  (ann && ann.polylines || []).forEach((poly, index) => {
+    const side = poly && sideOf[poly.lineTypeId];
+    if (!side || !Array.isArray(poly.points) || poly.points.length < 2) return;
+    out.push({ id: poly.id || ('p' + index), side, lineTypeId: poly.lineTypeId, kind: 'poly', index, vertices: poly.points, color: poly.color || colorOf[poly.lineTypeId] });
+  });
+  return out;
+}
+// Nearest point on a polyline: { dist, s, point }; s = arclength from vertex 0.
+function waterNearestOnPolyline(p, verts) {
+  let best = { dist: Infinity, s: 0, point: null };
+  let acc = 0;
+  for (let i = 0; i < (verts ? verts.length : 0) - 1; i++) {
+    const a = verts[i], b = verts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+    const fx = a.x + t * dx, fy = a.y + t * dy;
+    const d = Math.hypot(p.x - fx, p.y - fy);
+    const segLen = Math.sqrt(len2);
+    if (d < best.dist) best = { dist: d, s: acc + t * segLen, point: { x: fx, y: fy } };
+    acc += segLen;
+  }
+  return best;
+}
+// The attachment rule, per side. fixtures = [{ x, y, loads: { cold, hot }, … }];
+// runs from waterRunsFromAnnotations. Each side a fixture loads attaches to the
+// nearest run OF THAT SIDE within snap (a lavatory ties to its cold run and its
+// hot run separately). Returns { attached: [{ fixture, side, load, runId, s,
+// dist, point }], unattached: [{ fixture, side, load }] }.
+function attachWaterFixtures(fixtures, runs, opts) {
+  const snap = opts && opts.snapDist > 0 ? opts.snapDist : WATER_ATTACH_SNAP_PDF;
+  const list = (runs || []).filter((r) => r && (r.vertices ? r.vertices.length : 0) >= 2);
+  const attached = [], unattached = [];
+  (fixtures || []).forEach((f) => {
+    if (!f || !Number.isFinite(f.x) || !Number.isFinite(f.y) || !f.loads) return;
+    WATER_SIDES.forEach((side) => {
+      const load = f.loads[side];
+      if (!(load > 0)) return;
+      let best = null;
+      list.forEach((run) => {
+        if (run.side !== side) return;
+        const hit = waterNearestOnPolyline(f, run.vertices);
+        if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { fixture: f, side, load, runId: run.id, s: hit.s, dist: hit.dist, point: hit.point };
+      });
+      if (best) attached.push(best);
+      else unattached.push({ fixture: f, side, load });
+    });
+  });
+  return { attached, unattached };
+}
+// The leaders to paint: one per attached side, from the fixture to the point
+// on its run; a zero-length one (the fixture sits on the run) is dropped.
+function waterFixtureLeaders(fixtures, runs, opts) {
+  const { attached } = attachWaterFixtures(fixtures, runs, opts);
+  const out = [];
+  attached.forEach((a) => {
+    if (!a.point) return;
+    const from = { x: a.fixture.x, y: a.fixture.y };
+    if (Math.hypot(a.point.x - from.x, a.point.y - from.y) < 0.5) return;
+    out.push({ fixture: a.fixture, side: a.side, runId: a.runId, from, to: { x: a.point.x, y: a.point.y }, dist: a.dist });
+  });
+  return out;
+}
+// The rescue: the nearest run of one of `sides` within the search distance,
+// as { runId, side, point, dist }, or null when none is close enough.
+function waterNearestRunPoint(fixture, runs, sides, opts) {
+  const search = opts && opts.searchDist > 0 ? opts.searchDist : WATER_ATTACH_SEARCH_PDF;
+  const want = Array.isArray(sides) && sides.length ? sides : WATER_SIDES;
+  if (!fixture || !Number.isFinite(fixture.x) || !Number.isFinite(fixture.y)) return null;
+  let best = null;
+  (runs || []).forEach((run) => {
+    if (!run || !want.includes(run.side) || (run.vertices ? run.vertices.length : 0) < 2) return;
+    const hit = waterNearestOnPolyline(fixture, run.vertices);
+    if (hit.point && hit.dist <= search && (!best || hit.dist < best.dist)) best = { runId: run.id, side: run.side, point: hit.point, dist: hit.dist };
+  });
+  return best;
+}
+// What each run serves: { [runId]: { side, wsfu, fixtures } } summed over the
+// attached fixtures of its side (a fixture's multiply factor rides in its load).
+function waterServedByRun(fixtures, runs, opts) {
+  const out = {};
+  (runs || []).forEach((r) => { if (r) out[r.id] = { side: r.side, wsfu: 0, fixtures: 0 }; });
+  attachWaterFixtures(fixtures, runs, opts).attached.forEach((a) => {
+    const row = out[a.runId];
+    if (!row) return;
+    row.wsfu = round2(row.wsfu + a.load);
+    row.fixtures++;
+  });
+  return out;
+}
+
 const WATER_MODEL_API = {
+  WATER_SIDE_LABELS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, waterFixtureLoads, waterRunsFromAnnotations,
+  waterNearestOnPolyline, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterServedByRun,
   WSFU_LOADS, WSFU_CONTROL_LABELS, WATER_OCCUPANCIES, WATER_SIDES, wsfuFor, wsfuFixtureFromName, wsfuPrefillFor, markerWsfu,
   DEMAND_CURVE, demandGpm,
   WATER_VELOCITY_CAP_FPS, PIPE_ID_IN, WATER_MATERIAL_ORDER, waterMaterialFromName, pipeIdIn, velocityFps, suggestWaterSizeIn,

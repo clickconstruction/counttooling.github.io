@@ -23,6 +23,10 @@ Make a **counter** [[counter]] per fixture type: water closets, lavatories, urin
 
 Then click each fixture. One click is one tally, and the sidebar total rolls up across every sheet in the set, not just the one you are on. [Groups](/guides/organizing-a-busy-sheet/) subtotal a restroom or a riser stack at a time when a set gets busy.
 
+## Give the fixtures their water
+
+On a plumbing project every counter has a **Fixture units** field. Name it the way the trade does (*Lavatory*, *WC*, *Urinal*, *Mop sink*) and the app prefills its water supply fixture units from the IPC table for the project's occupancy (Project Settings, beside the code editions: public on a commercial bid, private on a dwelling), with a chip naming the row it read; type over it and the counter keeps yours. Then give the water pipe a side: the line type's **Water** field (Cold or Hot, prefilled from a name like *3/4in PEX hot*) makes every run of that type a water run, and each fixture attaches to the nearest run of each side it needs, a dashed tie showing the connection. The line type row reads how many fixture units its runs serve; a fixture nothing reaches gets **Attach to nearest run** on its right-click menu. Sizing the run from that load is the next slice.
+
 ## Chain a battery
 
 Three lavatories on one branch are three fixtures and two pieces of pipe. Counting them and then tracing between them is nine clicks. The **Chain** tool [[chain]] (press `T`) does it in three: choose the fixture and the line type in its panel (**+ New counter** makes one right there), then click lav, lav, lav. Every click places the fixture and draws the branch back to the last one.

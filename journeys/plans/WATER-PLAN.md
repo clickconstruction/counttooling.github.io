@@ -53,6 +53,19 @@
 > "total WSFU per sheet" §6 promised, per sheet in the hover). `plumb.wsfu.fixtures` is
 > **applied** now. Not in this rung: the `wsfu_prefill` telemetry of §8 waits for rung 4's
 > `water_run` so the allowlist migration is applied once.
+>
+> **Rung 3 shipped 2026-09-23** (branch `claude/water-rung-3`, stacked on rung 2):
+> [features/water-runs.js](../../features/water-runs.js). A line type's **Water** side (—,
+> Cold, Hot) on the sidebar Add Line Type modal, the Choose Line Type modal's Create and
+> Quick tabs and the details modal, prefilled from the name (hot / HW / cold / CW); every
+> line of a sided type is a water run. Fixtures attach **per side** to the nearest run of
+> that side within the duct tap snap (a lavatory ties to its cold run and its hot run
+> separately; a WC to cold only; a typed-over number splits pro rata to the table row; a
+> fixture the table does not know counts its whole number on each side it touches),
+> derived from geometry every read, never stored. The dashed leaders paint in the run's
+> color (canvas-draw.js); the shared *Attach to nearest run* row rescues a fixture with a
+> side nothing serves; the line type row reads "cold · 12 WSFU served · 2 fixtures" and
+> the Lines list "cold · 6 WSFU" per run. `App.getWaterServed(pageIdx)` is rung 4's input.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -213,7 +226,7 @@ save/load, export/import and the Artboard for free.
    read total WSFU per sheet in the Summary). **Shipped 2026-09-23.**
 3. **Water side on line types + attachment** — Hot/Cold, fixtures attach,
    leaders paint, the strays rescue; the sidebar readout shows WSFU served
-   per run.
+   per run. **Shipped 2026-09-23.**
 4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
    the popover suggestion; "a size change is a new run from here."
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy

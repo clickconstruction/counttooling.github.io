@@ -83,6 +83,24 @@
         document.querySelectorAll('input[name="counterLineTypeDetailsCurve"]').forEach(r => { r.checked = r.value === curveVal; });
       }
     }
+    // WATER-PLAN rung 3: the line type's water side; the radio writes it at once.
+    const waterGroup = document.getElementById('counterLineTypeDetailsWaterGroup');
+    if (waterGroup && App.registerWaterSideForm) {
+      if (kind === 'lineType') {
+        App.registerWaterSideForm('details', {
+          radioName: 'counterLineTypeDetailsWaterSide', groupId: 'counterLineTypeDetailsWaterGroup', name: () => item.name || '',
+          onPick: (side) => {
+            if ((side || null) === (item.waterSide || null)) return;
+            App.pushUndoSnapshotCurrentPage();
+            if (side) item.waterSide = side; else delete item.waterSide;
+            App.markProjectDirty();
+            App.updateUI();
+            App.renderAnnotations();
+          },
+        });
+        App.loadWaterSideForm('details', item);
+      } else waterGroup.style.display = 'none';
+    }
     const iconGroup = document.getElementById('counterLineTypeDetailsIconGroup');
     if (iconGroup) iconGroup.style.display = kind === 'counter' ? '' : 'none';
     // D6: the per-counter CFM (air devices only; empty = not an air device).

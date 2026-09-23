@@ -4256,6 +4256,8 @@
   document.getElementById('addLineType').onclick = () => {
     document.getElementById('lineTypeName').value = '';
     App.setupCreateColorPicker({ presetsRowId: 'lineTypeColorRow', customInputId: 'lineTypeColorCustom', recentRowId: 'lineTypeColorRecent', recentGroupId: 'lineTypeColorRecentGroup' });
+    // WATER-PLAN rung 3: the Water side field, prefilled from the name (features/water-runs.js).
+    if (App.registerWaterSideForm) { App.registerWaterSideForm('add', { radioName: 'lineTypeWaterSide', groupId: 'lineTypeWaterGroup', nameInputId: 'lineTypeName', name: () => document.getElementById('lineTypeName').value }); App.resetWaterSideForm('add'); }
     showModal('lineTypeModal');
   };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
@@ -4266,6 +4268,7 @@
     const curveStyle = curveSel ? curveSel.value : 'straight';
     pushUndoSnapshot();
     const newLt = { id: uid(), name, color, curveStyle };
+    if (App.applyWaterSideToLineType) App.applyWaterSideToLineType('add', newLt);   // WATER-PLAN rung 3, set-only
     state.lineTypes.push(newLt);
     App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
@@ -5772,7 +5775,13 @@
     const page = state.pages[state.currentPage];
     const ann = page ? getActiveAnnotations(page) : null;
     const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
-    if (!marker || !(ductMarkerCfm(marker, counter) > 0)) return null;
+    if (!marker) return null;
+    // WATER-PLAN rung 3: a fixture-unit counter is rescued onto the nearest
+    // water run of a side no run yet serves (features/water-runs.js).
+    if (!(ductMarkerCfm(marker, counter) > 0)) {
+      const w = App.waterStrayTarget ? App.waterStrayTarget(marker, counter, ann) : null;
+      return w ? { marker, point: w.point, runId: w.runId, side: w.side } : null;
+    }
     const runs = ann?.ductRuns || [];
     if (!runs.length) return null;
     // Already attached? Then there is nothing to rescue.

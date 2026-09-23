@@ -172,3 +172,57 @@ test('wsfuPrefillFor: the table row for the name and the occupancy, with its lab
   assert.strictEqual(w.markerWsfu({}, {}), 0);
   assert.strictEqual(w.markerWsfu(null, null), 0);
 });
+
+test('rung 3: the side from a name, a fixture\'s loads per side, the runs from a page', () => {
+  assert.strictEqual(w.waterSideFromName('3/4in PEX hot'), 'hot');
+  assert.strictEqual(w.waterSideFromName('1/2" Cu CW'), 'cold');
+  assert.strictEqual(w.waterSideFromName('HWR 3/4'), 'hot');
+  assert.strictEqual(w.waterSideFromName('Domestic cold water'), 'cold');
+  assert.strictEqual(w.waterSideFromName('2in PVC waste'), null);
+  assert.strictEqual(w.waterSideFromName(''), null);
+  // a public lavatory carrying the table's 2 splits 1.5 / 1.5; typed over to 3 it splits pro rata; a WC is all cold
+  assert.deepStrictEqual(w.waterFixtureLoads({ name: 'Lavatory' }, 'public', 2), { cold: 1.5, hot: 1.5, total: 2, known: true });
+  assert.deepStrictEqual(w.waterFixtureLoads({ name: 'Lavatory' }, 'public', 3), { cold: 2.25, hot: 2.25, total: 3, known: true });
+  assert.deepStrictEqual(w.waterFixtureLoads({ name: 'WC' }, 'public', 10), { cold: 10, hot: 0, total: 10, known: true });
+  // the counter's own column wins over the project's
+  assert.deepStrictEqual(w.waterFixtureLoads({ name: 'Lavatory', wsfuOccupancy: 'private' }, 'public', 0.7), { cold: 0.5, hot: 0.5, total: 0.7, known: true });
+  // a fixture the table does not know counts its whole number on each side
+  assert.deepStrictEqual(w.waterFixtureLoads({ name: 'Ice maker' }, 'public', 1), { cold: 1, hot: 1, total: 1, known: false });
+  assert.strictEqual(w.waterFixtureLoads({ name: 'Lavatory' }, 'public', 0), null);
+  const lineTypes = [{ id: 'c', name: 'cold', color: '#00f', waterSide: 'cold' }, { id: 'h', name: 'hot', color: '#f00', waterSide: 'hot' }, { id: 'w', name: 'waste' }];
+  const ann = {
+    quickLines: [{ id: 'q1', lineTypeId: 'c', x1: 0, y1: 0, x2: 100, y2: 0 }, { id: 'q2', lineTypeId: 'w', x1: 0, y1: 50, x2: 100, y2: 50 }],
+    polylines: [{ id: 'p1', lineTypeId: 'h', color: '#a00', points: [{ x: 0, y: 20 }, { x: 100, y: 20 }] }, { id: 'p2', lineTypeId: 'h', points: [{ x: 0, y: 0 }] }],
+  };
+  const runs = w.waterRunsFromAnnotations(ann, lineTypes);
+  assert.deepStrictEqual(runs.map((r) => [r.id, r.side, r.kind, r.color]), [['q1', 'cold', 'quick', '#00f'], ['p1', 'hot', 'poly', '#a00']]);
+  assert.deepStrictEqual(runs[0].vertices, [{ x: 0, y: 0 }, { x: 100, y: 0 }]);
+  assert.deepStrictEqual(w.waterRunsFromAnnotations(null, lineTypes), []);
+});
+
+test('rung 3: attachment per side, leaders, the rescue, and what each run serves', () => {
+  const runs = [
+    { id: 'cold-main', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 200, y: 0 }] },
+    { id: 'hot-main', side: 'hot', vertices: [{ x: 0, y: 30 }, { x: 200, y: 30 }] },
+  ];
+  const lav = { id: 'lav', x: 50, y: 10, loads: { cold: 1.5, hot: 1.5 } };      // 10 from the cold run, 20 from the hot
+  const wc = { id: 'wc', x: 120, y: 5, loads: { cold: 10, hot: 0 } };           // cold only
+  const far = { id: 'far', x: 100, y: 80, loads: { cold: 2, hot: 2 } };         // 50 from the hot run: a stray
+  const r = w.attachWaterFixtures([lav, wc, far], runs, { snapDist: 25 });
+  assert.deepStrictEqual(r.attached.map((a) => [a.fixture.id, a.side, a.runId, a.load, a.dist]), [['lav', 'cold', 'cold-main', 1.5, 10], ['lav', 'hot', 'hot-main', 1.5, 20], ['wc', 'cold', 'cold-main', 10, 5]]);
+  assert.deepStrictEqual(r.unattached.map((u) => [u.fixture.id, u.side]), [['far', 'cold'], ['far', 'hot']]);
+  // the default snap is the duct tap snap: the lavatory's hot side at 20 is beyond 12
+  assert.deepStrictEqual(w.attachWaterFixtures([lav], runs).attached.map((a) => a.side), ['cold']);
+  // a side attaches only to a run of that side, whatever is nearer
+  const hotOnly = { id: 'h', x: 50, y: 2, loads: { cold: 0, hot: 1 } };
+  assert.deepStrictEqual(w.attachWaterFixtures([hotOnly], runs, { snapDist: 40 }).attached.map((a) => a.runId), ['hot-main']);
+  // leaders: one per attached side, none when the fixture sits on the run
+  const leaders = w.waterFixtureLeaders([lav, { id: 'on', x: 90, y: 0, loads: { cold: 1, hot: 0 } }], runs, { snapDist: 25 });
+  assert.deepStrictEqual(leaders.map((l) => [l.fixture.id, l.side, l.to]), [['lav', 'cold', { x: 50, y: 0 }], ['lav', 'hot', { x: 50, y: 30 }]]);
+  // the rescue: the nearest run of a wanted side within reach
+  assert.deepStrictEqual(w.waterNearestRunPoint(far, runs, ['hot']), { runId: 'hot-main', side: 'hot', point: { x: 100, y: 30 }, dist: 50 });
+  assert.deepStrictEqual(w.waterNearestRunPoint(far, runs, ['cold']), { runId: 'cold-main', side: 'cold', point: { x: 100, y: 0 }, dist: 80 });
+  assert.strictEqual(w.waterNearestRunPoint({ x: 100, y: 500, loads: {} }, runs), null);
+  // served per run
+  assert.deepStrictEqual(w.waterServedByRun([lav, wc, far], runs, { snapDist: 25 }), { 'cold-main': { side: 'cold', wsfu: 11.5, fixtures: 2 }, 'hot-main': { side: 'hot', wsfu: 1.5, fixtures: 1 } });
+});

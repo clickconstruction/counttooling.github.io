@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 3, water runs and the fixtures they serve (2026-09-23)
+
+Punch row P4-WATER, rung 3 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on
+rung 2. A line type can now say which water it carries, and the fixtures counted in rung 2
+attach to its runs.
+
+- **The Water field** (—, Cold, Hot) on the four line-type surfaces: the sidebar Add Line
+  Type modal, the Choose Line Type modal's Create and Quick tabs, and the line type's details
+  modal. Prefilled from the name (*3/4in PEX hot*, *1/2in CW*, *Domestic cold water*) while
+  the estimator has not picked; a pick wins over a later name; set-only on create, so a
+  waste line keeps its shape; the details radio writes at once and — deletes the key. Shown
+  on a plumbing-shaped project, or whenever the type already has a side.
+  [features/water-runs.js](features/water-runs.js).
+- **Attachment per side.** Every quick line and polyline of a sided type is a water run
+  (water-model `waterRunsFromAnnotations`). A fixture-unit mark attaches, for each side it
+  loads, to the nearest run OF THAT SIDE within the duct tap snap (12 sheet points): a
+  lavatory ties to its cold run and its hot run separately, a WC to cold only. Its loads per
+  side come from the table row for its name (the counter's own column, else the project's)
+  scaled to the number it carries, so a typed-over 3 on a lavatory still splits half and
+  half; a fixture the table does not know counts its whole number on each side it touches.
+  Multiply zones ride in the loads. Derived from geometry on every read, never stored, the
+  duct model's rule.
+- **The leaders.** An attached side paints a dashed tie from the mark to the point on its
+  run, in the run's color, under the strokes and the glyphs (canvas-draw.js, the flex-leader
+  idiom); a stray paints nothing, its bare glyph is the tell. Plain renders stay
+  byte-identical (render-pixels.spec.js).
+- **The strays rescue.** The shared *Attach to nearest run* context row now serves water
+  too: a fixture with a side no run within snap serves, and a run of that side within reach,
+  is moved onto the nearest one (app.js `strayDeviceAttachTarget` asks
+  `App.waterStrayTarget` after the CFM rule).
+- **The readouts.** The line type row reads "cold · 12 WSFU served · 2 fixtures" under its
+  name; the Lines list reads "cold · 6 WSFU" per run. `App.getWaterServed(pageIdx)` is what
+  rung 4's S moment reads for the load still to serve.
+
+[water-runs.spec.js](water-runs.spec.js) walks the attachment, the readouts, the leaders,
+the zone factor, the rescue and the field on every surface; the line-type, lines, details,
+polyline, chain, duct and pixel specs (39 tests) still pass.
+
 ## feat(water): rung 2, fixture units on counters (2026-09-23)
 
 Punch row P4-WATER, rung 2 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on

@@ -50,6 +50,10 @@ const moduleGlobals = Object.fromEntries(
 const ductModelGlobals = Object.fromEntries(
   Object.keys(require('./duct-model.js')).map((k) => [k, 'readonly']),
 );
+// water-model.js (WATER-PLAN rung 3): canvas-draw.js reads the water leaders' shapes by bare name.
+const waterModelGlobals = Object.fromEntries(
+  Object.keys(require('./water-model.js')).map((k) => [k, 'readonly']),
+);
 // conductor-model.js: the pure raceway / conductor model (S3). canvas-draw.js
 // (tick marks) reads its exports by bare name; features read window.ConductorModel.
 const conductorModelGlobals = Object.fromEntries(
@@ -189,7 +193,7 @@ module.exports = [
   // canvas-draw.js: the annotation draw core (createCanvasDraw(deps));
   // loaded after geometry.js + icons.js, reads both by bare name; everything
   // state-coupled arrives via deps.
-  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...conductorModelGlobals, ...circuitModelGlobals }),
+  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...waterModelGlobals, ...conductorModelGlobals, ...circuitModelGlobals }),
   // render-service.js: the raster seam (createRenderService(deps)) — browser
   // globals only (Worker, OffscreenCanvas, navigator); the rest arrives via deps.
   browserModule(['render-service.js']),

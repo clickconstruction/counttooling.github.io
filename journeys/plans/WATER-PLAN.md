@@ -28,6 +28,19 @@
 > The "Water Sizing" artboards were not reachable from the session that
 > recorded this; the calls were made against §7's worked example and the
 > advanced sample plan in the app.
+>
+> **Rung 1 shipped 2026-09-23** (branch `claude/water-rung-1`, punch row P4-WATER):
+> [water-model.js](../../water-model.js) holds the tables (the WSFU loads, the demand
+> curve, the velocity caps, the pipe bores, the fixture supply minimums, the 3/4 in
+> service) and the arithmetic over them (`demandGpm`, `velocityFps`,
+> `suggestWaterSizeIn`); the six rules of §2 are in `content/rules/plumbing/` as
+> **drafts** with a `code:` pointer on every one of their 225 values, so the drift
+> check pins them from here on; the project **occupancy** (public | private) is a
+> one-word flip in Project Settings' Codes row hint, riding `state.codes` through
+> every intake and the device default like the editions (codes.spec.js). Nothing
+> reads the tables in the app yet; rung 2 is the counter's WSFU field. The
+> transcriptions are punch row **WATER-TABLES** (a tester with the trade, against the
+> printed IPC) before rung 4 is offered.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -182,6 +195,7 @@ save/load, export/import and the Artboard for free.
 
 1. **Rulebook slice** (§2) — six rules with `code:` pointers, checked by
    the walkthrough; the project occupancy toggle beside the edition.
+   **Shipped 2026-09-23** (the status block above).
 2. **Fixture units on counters** — the field, the prefill, the chip, the
    per-mark override; nothing else changes yet (an estimator can already
    read total WSFU per sheet in the Summary).

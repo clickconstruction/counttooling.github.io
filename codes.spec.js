@@ -26,7 +26,7 @@ test.describe('Codes & jurisdiction', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
     await load(page);
-    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: '' });
+    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: '', occupancy: 'public' });
     expect(await page.evaluate(() => window.state.codes)).toBe(null);
     await page.click('#settingsGearBtn');
     await expect(page.locator('#settingsModal')).toHaveClass(/visible/);
@@ -42,6 +42,13 @@ test.describe('Codes & jurisdiction', () => {
     expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin' });
     expect(await page.evaluate(() => window.App.getAutoSaveDirty())).toBe(true);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('codesDefault')))).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin' });
+    // occupancy (WATER-PLAN rung 1): public by default, the segment flips it, it rides state.codes and the device default
+    await expect(page.locator('#settingsOccupancyFlip')).toHaveText('public');
+    await page.click('#settingsOccupancyFlip');
+    await expect(page.locator('#settingsOccupancyFlip')).toHaveText('private');
+    expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin', occupancy: 'private' });
+    expect(await page.evaluate(() => window.App.getProjectCodes().occupancy)).toBe('private');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('codesDefault')).occupancy)).toBe('private');
     await page.evaluate(() => window.App.hideModal('settingsModal'));
     // the popover: not checked against IPC 2024 (the PEX rule was checked against 2018 · 2021)
     await page.evaluate(() => window.App.openRulePopover('plumb.hanger.pex', document.body));
@@ -74,7 +81,7 @@ test.describe('Codes & jurisdiction', () => {
     await page.reload();
     await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => window.state.codes)).toBe(null);
-    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'UPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: 'Texas · Austin' });
+    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'UPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: 'Texas · Austin', occupancy: 'private' });
     expect(errors).toEqual([]);
   });
 
@@ -84,13 +91,15 @@ test.describe('Codes & jurisdiction', () => {
     // hydrate from project data
     await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [], codes: { plumbing: 'IPC 2018', hvac: 'SMACNA 2005', jurisdiction: 'Ohio', electrical: 7 } }));
     expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2018', hvac: 'SMACNA 2005', jurisdiction: 'Ohio' });
-    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2018', electrical: 'NEC 2023', hvac: 'SMACNA 2005', jurisdiction: 'Ohio' });
+    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2018', electrical: 'NEC 2023', hvac: 'SMACNA 2005', jurisdiction: 'Ohio', occupancy: 'public' });
     // an old save carries no codes → null → defaults
     await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [] }));
     expect(await page.evaluate(() => window.state.codes)).toBe(null);
     expect(await page.evaluate(() => window.App.getProjectCodes().plumbing)).toBe('IPC 2021');
     // the takeoff backup shape
-    await page.evaluate(() => window.App.applyTakeoffBackupToState({ counters: [], lineTypes: [], codes: { electrical: 'NEC 2020' } }));
+    await page.evaluate(() => window.App.applyTakeoffBackupToState({ counters: [], lineTypes: [], codes: { electrical: 'NEC 2020', occupancy: 'private' } }));
+    expect(await page.evaluate(() => window.state.codes)).toEqual({ electrical: 'NEC 2020', occupancy: 'private' });
+    await page.evaluate(() => window.App.applyTakeoffBackupToState({ counters: [], lineTypes: [], codes: { electrical: 'NEC 2020', occupancy: 'mixed' } }));
     expect(await page.evaluate(() => window.state.codes)).toEqual({ electrical: 'NEC 2020' });
     // canvas JSON import (features/import-clear.js) restores the same shape
     await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [], codes: { plumbing: 'UPC 2024' } }));

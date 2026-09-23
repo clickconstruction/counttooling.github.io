@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-09-22 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-09-23 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,14 +28,14 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,496 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 8,510 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,100 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,890 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,635 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,620 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,638 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,622 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 777 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
-| [annotation-model.js](annotation-model.js) | 925 | Done — extracted canvas/annotation data model + node tests. |
+| [annotation-model.js](annotation-model.js) | 927 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 165 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 925 | Self-contained report builder with a frozen `window.*` contract. Leave. |
@@ -248,6 +248,8 @@ modules. Candidates in priority order:
 | [support-model.js](support-model.js) | **The pure pipe-support model** (rulebook slice 3, 2026-09-09): `HANGER_SPACING` (IPC Table 308.5 as the app applies it — PEX 32 in ≤ 1 in / 48 in above, copper 6 ft ≤ 1-1/4 in / 10 ft above, PVC-ABS-DWV 4 ft, cast iron 5 ft; verticals kept for the pages; the `plumb.hanger.*` rules point here, so the drift check pins every number), `supportMaterialFromName` / `supportSizeInFromName` (word-bounded — CPVC is not PVC; sizes as `1in`, `3/4"`, `1-1/4 in`), `hangerSuggestionsFor(name)` (the Child counts row a line type earns: `{ name: 'Hanger', qty: 1, per: 'ft', intervalIn, ruleId, match }`; no size in the name → the tighter spacing), `childIntervalFeet` / `childIntervalLabel` (an inch `intervalIn` wins over the whole-foot `ftInterval`; 48 in reads "4 ft"), `lineTypeCountsHangers`, `hangerCoverage(lineTypes)` (the Bid Check auto row for plumbing: warn while a supported-material type has no hanger count). Classic script after tag-model.js; `window.SupportModel` + CommonJS footer. |
 | [fitting-model.js](fitting-model.js) | **The pure "fittings from bends" model** (punch row BEND-FITTINGS, 2026-09-18): a line type's `bendFittings` `{ enabled, bend45, bend90, drop }` (each `{ name, qty }`, defaults from the type's name) turns every interior vertex of a polyline into a 45 or a 90 by its direction change (the duct tool's angle function; nearer of the two: 22.5° / 67.5°) and every drop at a run's end into a 90. `runBendCounts` / `lineDropEnds` / `bendFittingRows` feed features/child-counts.js (derived rows, never marks); `vertexBendClass` honours a per-vertex `fitting` override (written by [features/bend-override.js](features/bend-override.js)) and drives the chips (`drawBendFittingChips` in canvas-draw.js, shared by the draw core and app.js's edit-mode paint); `normalizeBendFittings` fills the dialog. Loaded as a script (window.FittingModel) and as a CommonJS module for [fitting-model.test.js](fitting-model.test.js). |
 | [features/bend-override.js](features/bend-override.js) | **The edit-mode vertex menu for fittings from bends** (punch row BEND-OVERRIDE, 2026-09-18): app.js `handleContextMenu`'s EDIT_POLY branch asks `App.tryOpenBendVertexMenu(idx, clientX, clientY)` first; when the editing run's type counts fittings from bends it opens `#bendVertexMenu` (a `.tool-context-menu`) with a heading naming the angle read and any override, then "No fitting here" (`points[i].fitting = 'none'`), "Count as 45", "Count as 90", "Read from the angle" (deletes the key; only while set) and "Delete vertex" (the old action); an open run's endpoints get Delete vertex only. Returns false when the option is off so the right-click deletes the vertex as before. One undo snapshot per choice (`App.pushUndoSnapshotCurrentPage`), then markProjectDirty + renderAnnotations + updateUI. Dismissal is the tool-context-menu.js pattern (capture-phase Escape with `stopImmediatePropagation`, so one press closes the menu and not edit mode). Seams: `App.hideBendVertexMenu`, `App.isBendVertexMenuOpen`. Regression: the fourth and fifth cases in [bend-fittings.spec.js](bend-fittings.spec.js) (the fifth: Delete vertex, undo/redo mid-edit, a closed run, outside click, edge placement, touch long-press, save/import round trip). Undo mid-edit is safe because app.js's snapshot wrappers (`withEditingPolylineHome`) put the run being edited home for the copy and `leaveEditModeIfOrphaned` exits edit mode after an undo/redo; Done Editing homes `state.editingPolylineOrig` so one undo reverts the whole session. |
+| [water-model.js](water-model.js) | **The pure water-sizing model** (WATER-PLAN.md rung 1, 2026-09-23): the IPC Appendix E tables as the app applies them, each pinned by a `plumb.wsfu.*` / `plumb.water.*` rule so the drift check fails when a number moves. `WSFU_LOADS` (Table E103.3(2): per fixture, the private / public column, the supply control, cold / hot / total) + `wsfuFor(fixture, occupancy, control)`; `DEMAND_CURVE` (Table E103.3(3), both columns) + `demandGpm(wsfu, column)` (straight-line interpolation, the tank column under 5 WSFU for valves, to zero under 1, the last value past 5,000); `WATER_VELOCITY_CAP_FPS` (8 cold / 5 hot, convention); `PIPE_ID_IN` (PEX SDR 9, copper L, CPVC CTS, Schedule 40 steel) + `pipeIdIn`, `velocityFps` (0.4085 Q / d²), `suggestWaterSizeIn(gpm, material, side, cap)` (the smallest size under the cap); `waterMaterialFromName` (CPVC is neither copper nor PVC; galv / GI / steel); `FIXTURE_SUPPLY_MIN_IN` (Table 604.4) + `fixtureSupplyMinIn` / `fixtureSupplyMinLabel`; `WATER_SERVICE_MIN_IN` (603.1); `sizeFraction` (0.375 → "3/8", 1.25 → "1-1/4"). Loads after support-model.js; `window.WaterModel`; rung 2 (the counter's WSFU field) is its first app consumer. |
+| [water-model.test.js](water-model.test.js) | Node tests for the water model: the load rows by occupancy and control (a bidet is private-only, a service sink public-only; no hot reads 0; total ≥ the larger side), the demand curve's printed points, interpolation, both ends and monotonicity, velocity and the size under each side's cap (the plan's worked example: 8 gpm cold → 3/4 in PEX, hot → 1 in), the material aliases, the fixture supply minimums and the fraction labels. |
 | [support-model.test.js](support-model.test.js) | Node tests for the support model: material and size detection (CPVC ≠ PVC, ABS/DWV = PVC), the suggestion by material and size and the no-size fallback, the interval helpers, and the coverage row's verdicts and rule id. |
 | [rules-chip.spec.js](rules-chip.spec.js) | Playwright regression for the chips: rules.json loads and `getRule` reads it; the conduit-fill row carries `§ NEC Chapter 9` and a row without a public rule carries nothing; the popover states the value, section, editions and Bid Check, links the page, closes on Escape without touching the active tool and on an outside click; the Project Settings make-up chip reads `convention` and Escape closes the popover without closing the modal; the Chain palette cites both vertical rules; `/rules/rules.json` is in the service-worker precache. |
 | [codes.spec.js](codes.spec.js) | Playwright regression for Codes & jurisdiction (rulebook slice 4): the Project Settings rows show the defaults (IPC 2021 · NEC 2023 · SMACNA 2020); a change lands on `state.codes`, marks the project dirty and is remembered in `codesDefault`; the rule popover's "This project" line names the edition and jurisdiction, warns `not checked against IPC 2024` and `cited from the IPC — this project follows UPC 2021`, and scopes amendments to the jurisdiction; Bid Check's footer says what the rows resolve for and opens Project Settings; the choices ride hydrate and the takeoff backup and an old save resolves to the defaults. |
@@ -619,42 +621,42 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L3947 - Toolbar tool buttons
 - L4159 - Tool sidebar buttons & legend overlay
 - L4250 - Add Line Type modal
-- L4418 - Line color & sidebar handlers
-- L4627 - Polyline modal & drawing
-- L4682 - Zoom bar & page navigation
-- L4708 - Export canvas JSON
-- L4732 - PDF download helpers
-- L4741 - View-link URL helpers & show-highlights/notes
-- L4813 - Custom icon upload handler
-- L4823 - Export & report dropdown menus
-- L4916 - Sidebar drawer toggles
-- L4947 - Mobile actions burger menu pointer & header logo
-- L4959 - User Activity pointer (format.js + features/user-activity.js)
-- L4971 - My Settings pointer (features/my-settings.js)
-- L4996 - Auth & settings entry buttons
-  - L5069 - Project Settings checkout & Save Status bell
-  - L5175 - [sync] Checkout expired recovery
-  - L5231 - [sync] Turn In
-  - L5340 - Share modal pointer & copy-project openers
-  - L5371 - Settings menu actions
-  - L5409 - Auth sign-in form
-  - L5434 - Save Project modal
-  - L5446 - Checkout expired recovery modal wiring
-  - L5551 - Last-session restore prompt
-  - L5558 - Canvas Repair modal wiring
-- L5745 - Canvas Event Handlers
-- L6274 - Event Binding
-- L6284 - Aim loupe (mobile press-hold precise placement)
-- L6436 - Zoom transform preview & commit
-- L6515 - Canvas mouse, wheel & touch handlers
-- L7316 - Global dropdown dismissal & keyboard hotkeys
-- L7708 - [sync] Manual save to cloud
-- L7718 - [sync] Auto-save
-- L7725 - [sync] Local backup (IndexedDB takeoff state)
-- L7858 - [sync] Checkout keep-alive
-- L7872 - App feature registry
-- L8238 - View-only mode
-- L8244 - Init / boot
+- L4432 - Line color & sidebar handlers
+- L4641 - Polyline modal & drawing
+- L4696 - Zoom bar & page navigation
+- L4722 - Export canvas JSON
+- L4746 - PDF download helpers
+- L4755 - View-link URL helpers & show-highlights/notes
+- L4827 - Custom icon upload handler
+- L4837 - Export & report dropdown menus
+- L4930 - Sidebar drawer toggles
+- L4961 - Mobile actions burger menu pointer & header logo
+- L4973 - User Activity pointer (format.js + features/user-activity.js)
+- L4985 - My Settings pointer (features/my-settings.js)
+- L5010 - Auth & settings entry buttons
+  - L5083 - Project Settings checkout & Save Status bell
+  - L5189 - [sync] Checkout expired recovery
+  - L5245 - [sync] Turn In
+  - L5354 - Share modal pointer & copy-project openers
+  - L5385 - Settings menu actions
+  - L5423 - Auth sign-in form
+  - L5448 - Save Project modal
+  - L5460 - Checkout expired recovery modal wiring
+  - L5565 - Last-session restore prompt
+  - L5572 - Canvas Repair modal wiring
+- L5759 - Canvas Event Handlers
+- L6288 - Event Binding
+- L6298 - Aim loupe (mobile press-hold precise placement)
+- L6450 - Zoom transform preview & commit
+- L6529 - Canvas mouse, wheel & touch handlers
+- L7330 - Global dropdown dismissal & keyboard hotkeys
+- L7722 - [sync] Manual save to cloud
+- L7732 - [sync] Auto-save
+- L7739 - [sync] Local backup (IndexedDB takeoff state)
+- L7872 - [sync] Checkout keep-alive
+- L7886 - App feature registry
+- L8252 - View-only mode
+- L8258 - Init / boot
 
 <!-- END SECTION TOC -->
 

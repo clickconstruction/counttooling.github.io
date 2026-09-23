@@ -47,6 +47,7 @@
   <script src="/tag-model.js"></script>
   <script src="/sheet-title-model.js"></script>
   <script src="/support-model.js"></script>
+  <script src="/water-model.js"></script>
   <script src="/fitting-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/bid-basis-model.js"></script>
@@ -2338,7 +2339,9 @@
             <div class="settings-project-row-text">
               <div>Codes</div>
             </div>
-            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Remembered for your next bid.</div>
+            <!-- WATER-PLAN rung 1: the occupancy column fixture units read (public on a commercial bid,
+                 private on a dwelling), one word that flips; no row of its own so the card keeps its height. -->
+            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Fixture units read the <button type="button" class="settings-occ-flip" id="settingsOccupancyFlip" title="Public on a commercial bid, private on a dwelling or a hotel room. Click to flip. A counter can be flipped on its own.">public</button> column.</div>
             <div class="settings-codes-grid">
               <label class="settings-code-cell"><span class="settings-code-label">Plumbing</span><select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select></label>
               <label class="settings-code-cell"><span class="settings-code-label">Electrical</span><select id="settingsCodeElectrical" aria-label="Electrical code edition"></select></label>

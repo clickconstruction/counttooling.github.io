@@ -226,3 +226,67 @@ test('rung 3: attachment per side, leaders, the rescue, and what each run serves
   // served per run
   assert.deepStrictEqual(w.waterServedByRun([lav, wc, far], runs, { snapDist: 25 }), { 'cold-main': { side: 'cold', wsfu: 11.5, fixtures: 2 }, 'hot-main': { side: 'hot', wsfu: 1.5, fixtures: 1 } });
 });
+
+test('rung 4: branch links, the load beyond the tip of a trace, the downstream per run', () => {
+  const main = { id: 'main', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 300, y: 0 }] };
+  const branch = { id: 'br', side: 'cold', vertices: [{ x: 200, y: 5 }, { x: 200, y: 100 }] };   // starts 5 off the main
+  const other = { id: 'other', side: 'cold', vertices: [{ x: 0, y: 200 }, { x: 300, y: 200 }] };
+  const hot = { id: 'hot', side: 'hot', vertices: [{ x: 200, y: 3 }, { x: 200, y: 100 }] };       // a hot line is never a cold main's child
+  assert.deepStrictEqual(w.waterChildLinks([main, branch, other, hot]).map((l) => [l.childId, l.parentId, l.s]), [['br', 'main', 200]]);
+  const fx = (id, x, y, cold, flushValve) => ({ id, x, y, loads: { cold, hot: 0 }, flushValve: !!flushValve });
+  const fixtures = [fx('a', 50, 5, 1.5), fx('b', 250, 5, 10, true), fx('c', 200, 60, 2), fx('d', 100, 205, 3), fx('e', 150, 400, 4)];
+  // the trace is the main itself so far (0 → 300): a and b are attached to it, c hangs off the branch (a child), d is on the other run, e is a stray
+  let r = w.waterDraftRemainingLoad({ runs: [branch, other], draft: { side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 300, y: 0 }] }, fixtures });
+  // at the tip (300): a at 50 and b at 250 are behind → served; the branch's c and the stray e are still to serve
+  assert.deepStrictEqual(r, { wsfu: 6, served: 11.5, fixtures: 2, flushValve: false });
+  // the trace has only reached 100: a is behind (served); b at 250 is not on any run yet, so it is
+  // the pool the trace is heading for (its flush valve picks the column); the branch is its own root
+  // until the trace reaches it, so c is served elsewhere; e is a stray
+  r = w.waterDraftRemainingLoad({ runs: [branch, other], draft: { side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }] }, fixtures });
+  assert.deepStrictEqual(r, { wsfu: 14, served: 1.5, fixtures: 2, flushValve: true });
+  // one placed point: nothing attaches to the draft and nothing is behind its tip; the unserved pool (a, b, e) is what it is heading for
+  r = w.waterDraftRemainingLoad({ runs: [branch, other], draft: { side: 'cold', vertices: [{ x: 0, y: 0 }] }, fixtures });
+  assert.deepStrictEqual(r, { wsfu: 15.5, served: 0, fixtures: 3, flushValve: true });
+  // the branch traced as a draft off the committed main: its fixture c, and a flush valve sets the column
+  r = w.waterDraftRemainingLoad({ runs: [main, other], draft: { side: 'cold', vertices: [{ x: 200, y: 5 }, { x: 200, y: 30 }] }, fixtures: fixtures.concat([fx('f', 200, 90, 10, true)]) });
+  assert.deepStrictEqual(r, { wsfu: 16, served: 0, fixtures: 3, flushValve: true });
+  assert.strictEqual(w.waterDraftRemainingLoad({ runs: [], draft: { side: 'hot', vertices: [] }, fixtures }), null);
+  // downstream per committed run: the main carries its own and the branch's
+  const d = w.waterDownstreamByRun(fixtures, [main, branch, other]);
+  assert.deepStrictEqual(d, { main: { side: 'cold', wsfu: 13.5, fixtures: 3, flushValve: true }, br: { side: 'cold', wsfu: 2, fixtures: 1, flushValve: false }, other: { side: 'cold', wsfu: 3, fixtures: 1, flushValve: false } });
+});
+
+test('rung 4: the suggestion, the ladder, and a name with its size swapped', () => {
+  // 12 WSFU at flush tanks → 16 gpm; cold at 8 fps wants 1 in PEX (0.862 in: 8.8 fps? no, 1 in reads 8.8 → 1-1/4 in)
+  const s = w.waterDraftSuggestion({ wsfu: 12, material: 'pex', side: 'cold', currentSizeIn: 0.75 });
+  assert.strictEqual(s.column, 'flush-tank');
+  assert.strictEqual(s.gpm, 16);
+  assert.strictEqual(s.capFps, 8);
+  assert.strictEqual(s.sizeIn, 1.25);
+  assert.ok(s.velocityFps < 8);
+  assert.strictEqual(s.currentSizeIn, 0.75);
+  assert.ok(s.currentVelocityFps > 8);
+  assert.strictEqual(s.over, true);
+  assert.strictEqual(s.holds, false);
+  // a flush valve picks the valve column (12 → 28.6 gpm); the project's cap overrides the side's
+  const v = w.waterDraftSuggestion({ wsfu: 12, flushValve: true, material: 'copper', side: 'cold', cap: 10, currentSizeIn: 1.25 });
+  assert.strictEqual(v.column, 'flush-valve');
+  assert.strictEqual(v.gpm, 28.6);
+  assert.strictEqual(v.capFps, 10);
+  assert.strictEqual(v.sizeIn, 1.25);
+  assert.strictEqual(v.holds, true);
+  // no material: the flow, no size
+  const n = w.waterDraftSuggestion({ wsfu: 4, side: 'hot' });
+  assert.strictEqual(n.gpm, 8);
+  assert.strictEqual(n.sizeIn, null);
+  assert.strictEqual(n.capFps, 5);
+  assert.strictEqual(w.waterDraftSuggestion({ wsfu: 0, material: 'pex', side: 'cold' }), null);
+  const ladder = w.waterSizeLadder(8, 'pex', 8);
+  assert.deepStrictEqual(ladder.map((r) => [r.label, r.ok]), [['3/8', false], ['1/2', false], ['3/4', true], ['1', true], ['1-1/4', true], ['1-1/2', true], ['2', true]]);
+  assert.deepStrictEqual(w.waterSizeLadder(8, 'brass', 8), []);
+  assert.strictEqual(w.replaceSizeInName('3/4in PEX hot', 1), '1in PEX hot');
+  assert.strictEqual(w.replaceSizeInName('1/2" Cu', 0.75), '3/4" Cu');
+  assert.strictEqual(w.replaceSizeInName('1-1/4 in copper', 1.5), '1-1/2 in copper');
+  assert.strictEqual(w.replaceSizeInName('2 inch galv', 2.5), '2-1/2 inch galv');
+  assert.strictEqual(w.replaceSizeInName('PEX cold', 0.5), '1/2in PEX cold');
+});

@@ -512,6 +512,10 @@
                stays at the cursor. features/duct-tool.js syncDuctHintCard fills and toggles it;
                the S popover carries the same information for assistive tech. -->
           <div class="duct-hint-card" id="ductHintCard" aria-hidden="true" hidden></div>
+          <!-- WATER-PLAN rung 4: the water trace's suggestion card (features/water-size.js),
+               the duct card twinned: "3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts".
+               A tap opens the size popover. -->
+          <div class="duct-hint-card water-hint-card" id="waterHintCard" aria-hidden="true" hidden></div>
           <div class="canvas-container" id="canvasContainer">
             <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             <canvas id="cropCanvas" class="crop-canvas"></canvas>
@@ -3506,6 +3510,16 @@
     </div>
     <div id="ductSizeSections"></div>
   </div>
+  <!-- WATER-PLAN rung 4: the water size popover (features/water-size.js), opened by S or
+       the card while a water polyline is traced: the suggested size, the material's
+       ladder with each size's velocity, and the note that a size change is a new run. -->
+  <div class="duct-size-popover water-size-popover" id="waterSizePopover" style="display:none;" role="dialog" aria-label="Water pipe size">
+    <div class="duct-size-popover-head">
+      <span id="waterSizeCurrent"></span>
+      <button type="button" id="waterSizePopoverClose" class="chain-panel-close" title="Close (Esc)" aria-label="Close">×</button>
+    </div>
+    <div id="waterSizeSections"></div>
+  </div>
   <!-- Highlight bookmarks panel: shown while TOOL.HIGHLIGHT is active. Rows
        are BUILT by features/highlight-labels.js from every page's highlights
        (merged across canvas layers); a row click jumps to its page, ✎ names /
@@ -3637,6 +3651,7 @@
   <script src="/features/duct-suggest.js"></script>
   <script src="/features/water-fixtures.js"></script>
   <script src="/features/water-runs.js"></script>
+  <script src="/features/water-size.js"></script>
   <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>

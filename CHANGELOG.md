@@ -13,6 +13,39 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 4, the S moment (2026-09-23)
+
+Punch row P4-WATER, rung 4 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on
+rung 3. The ductulator suggestion, for water: the size an estimator would pencil in, at the
+cursor, while the main is traced.
+
+- **The card.** While a polyline of a water-sided type is traced, a card above the footer
+  (the duct hint card's twin, [features/water-size.js](features/water-size.js)) reads the
+  fixture units still to serve beyond the tip and the smallest size of the type's material
+  under the side's cap: *"3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts"*; *"1/2″
+  holds · 6 WSFU downstream · 6.8 fps ✓"* when the run's own size passes; the flow alone when
+  the type's name carries no material. The number is water-model's
+  `waterDraftRemainingLoad`, the duct rule per side: fixtures of the side attached to the
+  draft at or past its tip, on committed runs that branch off it (`waterChildLinks`), or
+  attached to no run of the side at all; fixtures the trace has passed, and fixtures on
+  unrelated runs, are served elsewhere. A flush valve among them picks the demand column.
+  Placed vertices only, so the number changes on clicks, not on hover.
+- **The popover.** `S` (or a tap on the card) opens it, the duct size popover's markup: the
+  suggested size as a chip, the material's whole ladder with each size's velocity (✓ / ⚠,
+  the run's own size marked), the flow and the column, and the note that a size change is a
+  new run. Escape closes it first on the polyline ladder, costing no vertex. With nothing in
+  reach S says so instead of opening Set Scale; a plain polyline keeps S as Set Scale.
+- **A new run from here** (WATER-PLAN Q1). Taking a size commits the draft as it stands,
+  finds or makes a line type of the new size (the name with its size swapped,
+  `replaceSizeInName`: *3/4in PEX cold* → *1-1/2in PEX cold*; the side, curve and bend
+  fittings carried; hanger rows re-read from the rulebook for the new size; a palette color
+  no type uses) and starts the next draft at the last point in it, so drops and hangers
+  count once. A size the draft already has is a no-op.
+
+[water-size.spec.js](water-size.spec.js) walks it; the polyline, duct-tool, scale, hotkey,
+bend-fittings and render-pixels specs still pass. Not in this rung: the Quick Line trace
+(one segment) gets no card; `water_run` telemetry waits for rung 5's knobs.
+
 ## feat(water): rung 3, water runs and the fixtures they serve (2026-09-23)
 
 Punch row P4-WATER, rung 3 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on

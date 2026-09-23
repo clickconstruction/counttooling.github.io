@@ -384,7 +384,144 @@ function waterServedByRun(fixtures, runs, opts) {
   return out;
 }
 
+// --- rung 4: the S moment ------------------------------------------------------------
+// Branch links: a run whose FIRST vertex lands within snap of another run of
+// the SAME side is that parent's child (a branch tapped off a main). Returns
+// [{ childId, parentId, s }], s = arclength along the parent. Nearest wins.
+function waterChildLinks(runs, opts) {
+  const snap = opts && opts.snapDist > 0 ? opts.snapDist : WATER_ATTACH_SNAP_PDF;
+  const list = (runs || []).filter((r) => r && (r.vertices ? r.vertices.length : 0) >= 2);
+  const out = [];
+  list.forEach((child) => {
+    const start = child.vertices[0];
+    let best = null;
+    list.forEach((parent) => {
+      if (parent === child || parent.id === child.id || parent.side !== child.side) return;
+      const hit = waterNearestOnPolyline(start, parent.vertices);
+      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { childId: child.id, parentId: parent.id, s: hit.s, dist: hit.dist };
+    });
+    if (best) out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
+  });
+  return out;
+}
+function waterPolylineLength(verts) {
+  let acc = 0;
+  for (let i = 0; i < (verts ? verts.length : 0) - 1; i++) acc += Math.hypot(verts[i + 1].x - verts[i].x, verts[i + 1].y - verts[i].y);
+  return acc;
+}
+// The load still to serve beyond the tip of an IN-PROGRESS water trace, the
+// duct rule per side: fixtures of the draft's side attached to the draft AT or
+// past its tip, on committed runs that branch off the draft (children,
+// recursively), or attached to no run of that side at all (assumed to be what
+// the trace is heading for). Fixtures the trace has already passed (attached
+// strictly behind the tip) and fixtures on unrelated runs of the side are
+// served elsewhere. `flushValve` says a flush valve is among them, which picks
+// the demand column. opts: { runs, draft: { vertices, side }, fixtures
+// ([{ x, y, loads, flushValve? }]), snapDist? }. Returns { wsfu, served,
+// fixtures, flushValve } or null with nothing in scope.
+function waterDraftRemainingLoad(opts) {
+  const o = opts || {};
+  const draft = o.draft;
+  if (!draft || !WATER_SIDES.includes(draft.side)) return null;
+  const EPS = 1e-6;
+  const side = draft.side;
+  const draftRun = { id: '__draft__', side, vertices: draft.vertices || [] };
+  const committed = (o.runs || []).filter((r) => r && r.side === side && (r.vertices ? r.vertices.length : 0) >= 2);
+  const all = draftRun.vertices.length >= 2 ? committed.concat([draftRun]) : committed;
+  const fixtures = (o.fixtures || []).filter((f) => f && f.loads && f.loads[side] > 0);
+  const { attached, unattached } = attachWaterFixtures(fixtures, all, o);
+  const links = waterChildLinks(all, o);
+  const childrenOf = new Map();
+  links.forEach((l) => { if (!childrenOf.has(l.parentId)) childrenOf.set(l.parentId, []); childrenOf.get(l.parentId).push(l.childId); });
+  const onRun = new Map();
+  attached.forEach((a) => { if (a.side !== side) return; if (!onRun.has(a.runId)) onRun.set(a.runId, []); onRun.get(a.runId).push(a); });
+  const tipLen = waterPolylineLength(draftRun.vertices);
+  let wsfu = 0, served = 0, count = 0, flushValve = false;
+  const take = (a) => { wsfu += a.load; count++; if (a.fixture.flushValve) flushValve = true; };
+  (onRun.get('__draft__') || []).forEach((a) => { if (a.s >= tipLen - EPS) take(a); else served += a.load; });
+  const visited = new Set(['__draft__']);
+  const subtree = (rid) => {
+    if (visited.has(rid)) return;
+    visited.add(rid);
+    (onRun.get(rid) || []).forEach(take);
+    (childrenOf.get(rid) || []).forEach(subtree);
+  };
+  (childrenOf.get('__draft__') || []).forEach(subtree);
+  unattached.forEach((u) => { if (u.side === side) take({ load: u.load, fixture: u.fixture }); });
+  if (!(wsfu > 0) && !(served > 0)) return null;
+  return { wsfu: round2(wsfu), served: round2(served), fixtures: count, flushValve };
+}
+// What a COMMITTED run carries at its head: its own attached fixtures plus its
+// children's, recursively (the schedule's number, rung 5). Returns
+// { [runId]: { side, wsfu, fixtures, flushValve } }.
+function waterDownstreamByRun(fixtures, runs, opts) {
+  const list = (runs || []).filter((r) => r && (r.vertices ? r.vertices.length : 0) >= 2);
+  const { attached } = attachWaterFixtures(fixtures, list, opts);
+  const links = waterChildLinks(list, opts);
+  const childrenOf = new Map();
+  links.forEach((l) => { if (!childrenOf.has(l.parentId)) childrenOf.set(l.parentId, []); childrenOf.get(l.parentId).push(l.childId); });
+  const onRun = new Map();
+  attached.forEach((a) => { if (!onRun.has(a.runId)) onRun.set(a.runId, []); onRun.get(a.runId).push(a); });
+  const out = {};
+  list.forEach((run) => {
+    let wsfu = 0, count = 0, flushValve = false;
+    const visited = new Set();
+    const walk = (rid) => {
+      if (visited.has(rid)) return;
+      visited.add(rid);
+      (onRun.get(rid) || []).forEach((a) => { wsfu += a.load; count++; if (a.fixture.flushValve) flushValve = true; });
+      (childrenOf.get(rid) || []).forEach(walk);
+    };
+    walk(run.id);
+    out[run.id] = { side: run.side, wsfu: round2(wsfu), fixtures: count, flushValve };
+  });
+  return out;
+}
+// The size the S moment offers for a load: the demand flow in the column the
+// fixtures call for, the smallest size of the material under the side's cap,
+// and how the run's current size fares. opts: { wsfu, flushValve?, material,
+// side, cap?, currentSizeIn? }. Returns null when the load is not positive.
+function waterDraftSuggestion(opts) {
+  const o = opts || {};
+  if (!(o.wsfu > 0)) return null;
+  const column = o.flushValve ? 'flush-valve' : 'flush-tank';
+  const gpm = demandGpm(o.wsfu, column);
+  const cap = Number.isFinite(Number(o.cap)) && Number(o.cap) > 0 ? Number(o.cap) : (WATER_VELOCITY_CAP_FPS[o.side] || WATER_VELOCITY_CAP_FPS.cold);
+  const out = { wsfu: o.wsfu, column, gpm, capFps: cap, side: o.side, material: o.material || null, sizeIn: null, velocityFps: null, currentSizeIn: null, currentVelocityFps: null, over: false, holds: false };
+  const sug = o.material ? suggestWaterSizeIn(gpm, o.material, o.side, cap) : null;
+  if (sug) { out.sizeIn = sug.sizeIn; out.velocityFps = sug.velocityFps; }
+  if (o.material && Number.isFinite(Number(o.currentSizeIn)) && Number(o.currentSizeIn) > 0) {
+    const id = pipeIdIn(o.material, o.currentSizeIn);
+    out.currentSizeIn = Number(o.currentSizeIn);
+    out.currentVelocityFps = id ? velocityFps(gpm, id) : null;
+    out.over = out.currentVelocityFps != null && out.currentVelocityFps > cap;
+    out.holds = out.currentVelocityFps != null && !out.over;
+  }
+  return out;
+}
+// The velocity at every size the material comes in, for the popover's ladder.
+function waterSizeLadder(gpm, material, cap) {
+  const m = PIPE_ID_IN[material];
+  if (!m) return [];
+  return Object.keys(m.sizes).map(Number).sort((a, b) => a - b).map((sizeIn) => {
+    const v = velocityFps(gpm, m.sizes[String(sizeIn)]);
+    return { sizeIn, label: sizeFraction(sizeIn), velocityFps: v, ok: v != null && v <= cap };
+  });
+}
+// A line type's name with its size swapped for a new one, in the style the
+// name wrote it: '3/4in PEX hot' → '1in PEX hot', '1/2" Cu' → '3/4" Cu',
+// '1-1/4 in copper' → '1-1/2 in copper'. A name with no size gets the new one in front.
+function replaceSizeInName(name, sizeIn) {
+  const frac = sizeFraction(sizeIn);
+  const n = String(name || '');
+  const re = /(\d+(?:[-\s]\d+\/\d+)?|\d+\/\d+)(\s*)(in\b|inch\b|"|″)/i;
+  const m = re.exec(n);
+  if (m) return n.slice(0, m.index) + frac + m[2] + m[3] + n.slice(m.index + m[0].length);
+  return frac + 'in ' + n;
+}
+
 const WATER_MODEL_API = {
+  waterChildLinks, waterPolylineLength, waterDraftRemainingLoad, waterDownstreamByRun, waterDraftSuggestion, waterSizeLadder, replaceSizeInName,
   WATER_SIDE_LABELS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, waterFixtureLoads, waterRunsFromAnnotations,
   waterNearestOnPolyline, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterServedByRun,
   WSFU_LOADS, WSFU_CONTROL_LABELS, WATER_OCCUPANCIES, WATER_SIDES, wsfuFor, wsfuFixtureFromName, wsfuPrefillFor, markerWsfu,

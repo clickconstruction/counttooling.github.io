@@ -178,7 +178,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->94<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->95<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -649,7 +649,7 @@ is armed from the Counter modal's Create tab.
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
 (Polyline), U (Duct — D18; D was taken, so the first free letter of "Duct";
-mid-trace S steps the duct size instead of Set Scale), T (Chain — counter +
+mid-trace S steps the duct size instead of Set Scale; a polyline of a water-sided line type does the same with the water size popover, WATER-PLAN rung 4, features/water-size.js), T (Chain — counter +
 connecting line per click), B (Drop — one
 click per line end adds the palette's rise/fall), D (Measure),
 H (Highlight), X (Multiply Zone), V (Room Sizer), N

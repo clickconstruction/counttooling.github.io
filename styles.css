@@ -898,6 +898,8 @@
     .settings-code-cell { display: flex; flex-direction: column; gap: 3px; margin: 0; min-width: 0; }
     .settings-code-label { font-size: 0.7rem; color: var(--text3); padding-left: 2px; }
     .modal-card .settings-code-cell select { width: 100%; min-width: 0; padding: 7px 8px; font-size: 0.85rem; font-family: 'DM Mono', monospace; }
+    .modal-card .settings-occ-flip { background: none; border: none; padding: 0; margin: 0; width: auto; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+    .modal-card .settings-occ-flip:hover { color: var(--text); }
     .settings-project-row-sub { padding-top: 2px; }
     .settings-project-row-sub .settings-project-row-text > div:first-child { font-size: 0.9rem; color: var(--text2); }
     .settings-quick-keys-control { min-width: 0; }

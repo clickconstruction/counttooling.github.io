@@ -43,9 +43,9 @@ test.describe('Codes & jurisdiction', () => {
     expect(await page.evaluate(() => window.App.getAutoSaveDirty())).toBe(true);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('codesDefault')))).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin' });
     // occupancy (WATER-PLAN rung 1): public by default, the segment flips it, it rides state.codes and the device default
-    expect(await page.locator('#settingsOccupancySegment button[data-occupancy="public"]').getAttribute('aria-pressed')).toBe('true');
-    await page.click('#settingsOccupancySegment button[data-occupancy="private"]');
-    expect(await page.locator('#settingsOccupancySegment button[data-occupancy="private"]').getAttribute('aria-pressed')).toBe('true');
+    await expect(page.locator('#settingsOccupancyFlip')).toHaveText('public');
+    await page.click('#settingsOccupancyFlip');
+    await expect(page.locator('#settingsOccupancyFlip')).toHaveText('private');
     expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin', occupancy: 'private' });
     expect(await page.evaluate(() => window.App.getProjectCodes().occupancy)).toBe('private');
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('codesDefault')).occupancy)).toBe('private');

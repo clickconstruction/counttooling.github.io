@@ -173,8 +173,9 @@ numbers and the one project setting the rest of the ladder reads.
   up from 50). The four table rules were emitted from the model's tables so rule and code
   started equal; the transcription itself is punch row WATER-TABLES's to check against the
   printed code, the gate the plan set before the S moment is offered.
-- **Occupancy** in Project Settings, a Public | Private segment under the code editions: the
-  column the fixture-unit table is read in. It rides `state.codes` as `occupancy` (so every
+- **Occupancy** in Project Settings, one word in the Codes row's hint ("Fixture units read the
+  public column") that flips to private and back, so the card keeps its height: the column the
+  fixture-unit table is read in. It rides `state.codes` as `occupancy` (so every
   intake, the export and the device default carry it for free, `normalizeProjectCodes` keeps
   only the two values) and `getProjectCodes()` resolves it to public when a project never chose.
   [codes.spec.js](codes.spec.js) walks the segment, the state, the device default and the

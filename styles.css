@@ -1961,6 +1961,16 @@ body.tour-active .canvas-empty-hint { display: none; }
 .wsfu-chip-note { color: var(--text3); }
 .modal-card .wsfu-chip-use { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 1px 7px; margin: 0; width: auto; font: inherit; font-size: 0.74rem; color: var(--text2); cursor: pointer; }
 .modal-card .wsfu-chip-use:hover { color: var(--accent); border-color: var(--accent); }
+/* WATER-PLAN rung 3: the water side picker's note, the per-run served line in
+   the Lines list, and the side tag on a line type's row. */
+.water-side-segment { margin-bottom: 4px; }
+.water-side-note { font-size: 0.76rem; color: var(--text3); line-height: 1.4; }
+.line-water { font-size: 0.72rem; color: var(--text2); margin-top: 2px; }
+.line-water-cold { color: #6fb0ff; }
+.line-water-hot { color: #ff8a80; }
+.line-water-tag { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 8px; font-size: 0.62rem; line-height: 1.5; vertical-align: middle; text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid; }
+.line-water-tag-cold { color: #6fb0ff; border-color: rgba(111,176,255,0.5); }
+.line-water-tag-hot { color: #ff8a80; border-color: rgba(255,138,128,0.5); }
 .summary-water { font-size: 0.76rem; color: var(--text2); padding: 6px 0 2px; border-top: 1px dashed var(--border); margin-top: 6px; line-height: 1.4; }
 /* D19 (J5-E): Legend Settings rows that only exist once the project has the
    thing they toggle — the duct rows / true-width ghost until a duct run is

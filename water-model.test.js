@@ -171,3 +171,80 @@ test('rung 2: a counter\'s fixture units, the per-mark override, and the cold / 
   assert.strictEqual(w.counterWsfuSplit({ wsfu: 3 }, 'public'), null);
   assert.strictEqual(w.counterWsfuSplit({}, 'public'), null);
 });
+
+test('rung 3: the side a line type declares, by its name or its own key', () => {
+  assert.strictEqual(w.waterSideFromName('2in Copper CW'), 'cold');
+  assert.strictEqual(w.waterSideFromName('1.25in Copper HW'), 'hot');
+  assert.strictEqual(w.waterSideFromName('0.75in Copper HWR'), 'hot');
+  assert.strictEqual(w.waterSideFromName('3/4" DCW'), 'cold');
+  assert.strictEqual(w.waterSideFromName('Cold water main'), 'cold');
+  assert.strictEqual(w.waterSideFromName('Hot recirc'), 'hot');
+  assert.strictEqual(w.waterSideFromName('1in PEX'), null);
+  assert.strictEqual(w.waterSideFromName('4in PVC'), null);
+  assert.strictEqual(w.waterSideFromName('Showcase'), null);   // no false hits inside words
+  assert.strictEqual(w.lineTypeWaterSide({ name: '1in PEX', waterSide: 'hot' }), 'hot');
+  assert.strictEqual(w.lineTypeWaterSide({ name: '2in Copper CW', waterSide: 'none' }), null);
+  assert.strictEqual(w.lineTypeWaterSide({ name: '2in Copper CW' }), 'cold');
+  assert.strictEqual(w.lineTypeWaterSide(null), null);
+});
+
+test('rung 3: runs, attachment per side, leaders, branches and the served walk', () => {
+  const lineTypes = [{ id: 'cw', name: '1in PEX CW', color: '#2e86de' }, { id: 'hw', name: '3/4in PEX HW', color: '#e85447' }, { id: 'w', name: '3in PVC', color: '#47c88e' }];
+  const ann = {
+    quickLines: [
+      { id: 'cmain', x1: 0, y1: 0, x2: 200, y2: 0, lineTypeId: 'cw' },        // cold main along y = 0
+      { id: 'hmain', x1: 0, y1: 40, x2: 200, y2: 40, lineTypeId: 'hw' },      // hot main along y = 40
+      { id: 'waste', x1: 0, y1: 300, x2: 200, y2: 300, lineTypeId: 'w' },     // not water
+      { id: 'lonely', x1: 0, y1: 0, x2: 0, y2: 0, lineTypeId: 'cw' },         // zero length: dropped, or it would be the main's branch
+    ],
+    polylines: [
+      { id: 'cbranch', points: [{ x: 100, y: 2 }, { x: 100, y: 120 }, { x: 160, y: 120 }], lineTypeId: 'cw' },   // starts on the cold main
+      { id: 'hbranch', points: [{ x: 100, y: 200 }, { x: 160, y: 200 }], lineTypeId: 'hw' },                     // starts nowhere near the hot main
+    ],
+  };
+  const runs = w.waterRunsOf(ann, lineTypes);
+  assert.deepStrictEqual(runs.map((r) => r.id).sort(), ['cbranch', 'cmain', 'hbranch', 'hmain']);   // the zero-length run is not pipe
+  assert.strictEqual(runs.find((r) => r.id === 'cmain').side, 'cold');
+  assert.strictEqual(runs.find((r) => r.id === 'hbranch').side, 'hot');
+  const fixtures = [
+    { id: 'lav1', x: 50, y: 20, cold: 1.5, hot: 1.5 },        // 20 from the cold main, 20 from the hot main: both attach
+    { id: 'wc1', x: 150, y: 10, cold: 10, hot: 0 },           // cold only, near the cold main
+    { id: 'lav2', x: 170, y: 118, cold: 1.5, hot: 1.5 },      // cold near the branch's end; hot has no run within 24
+    { id: 'far', x: 150, y: 260, cold: 3, hot: 3 },           // near nothing (hbranch at y 200 is 60 away)
+  ];
+  const { attached, strays } = w.attachWaterFixtures(fixtures, runs);
+  const key = (a) => a.fixture.id + ':' + a.side + '→' + a.runId;
+  assert.deepStrictEqual(attached.map(key).sort(), ['lav1:cold→cmain', 'lav1:hot→hmain', 'lav2:cold→cbranch', 'wc1:cold→cmain']);
+  assert.deepStrictEqual(strays.map((s) => s.fixture.id + ':' + s.side).sort(), ['far:cold', 'far:hot', 'lav2:hot']);
+  // a stored link wins over proximity while its run exists and is that side
+  const linked = w.attachWaterFixtures([{ id: 'x', x: 150, y: 260, cold: 3, hot: 3, links: { hot: 'hbranch', cold: 'nope' } }], runs);
+  assert.deepStrictEqual(linked.attached.map(key), ['x:hot→hbranch']);
+  assert.strictEqual(linked.attached[0].explicit, true);
+  assert.deepStrictEqual(linked.strays.map((s) => s.side), ['cold']);
+  // a link naming a run of the other side is ignored
+  assert.strictEqual(w.attachWaterFixtures([{ id: 'y', x: 150, y: 260, cold: 3, hot: 0, links: { cold: 'hbranch' } }], runs).attached.length, 0);
+  // leaders: one per attached side, from the mark to the foot on the run; zero-length dropped
+  const leaders = w.waterFixtureLeaders(fixtures.concat([{ id: 'on', x: 20, y: 0, cold: 1, hot: 0 }]), runs);
+  assert.strictEqual(leaders.length, 4);
+  const l = leaders.find((x) => x.fixture.id === 'lav1' && x.side === 'hot');
+  assert.deepStrictEqual(l.to, { x: 50, y: 40 }); assert.strictEqual(l.dist, 20);
+  // the rescue: the nearest run of the side within the search, none across the sheet
+  assert.strictEqual(w.waterNearestRunPoint(fixtures[3], runs, 'hot').runId, 'hbranch');
+  assert.strictEqual(w.waterNearestRunPoint(fixtures[3], runs, 'hot').dist, 60);
+  assert.strictEqual(w.waterNearestRunPoint(fixtures[3], runs, 'cold'), null);   // the cold branch's leg on y 120 is 140 away: past the reach
+  assert.strictEqual(w.waterNearestRunPoint(fixtures[3], runs, 'cold', { searchDist: 150 }).runId, 'cbranch');
+  assert.strictEqual(w.waterNearestRunPoint({ x: 150, y: 400, cold: 1, hot: 1 }, runs, 'cold'), null);
+  // branches: the cold branch starts on the cold main; the hot branch starts on nothing
+  assert.deepStrictEqual(w.waterChildLinks(runs).map((c) => c.childId + '<' + c.parentId), ['cbranch<cmain']);
+  // served: the main carries its own (lav1 cold 1.5 + wc1 10) and the branch's (lav2 cold 1.5)
+  const served = w.waterServedByRun(fixtures, runs);
+  assert.deepStrictEqual(served.get('cmain'), { side: 'cold', own: 11.5, served: 13, ownCount: 2, servedCount: 3, children: ['cbranch'] });
+  assert.deepStrictEqual(served.get('cbranch'), { side: 'cold', own: 1.5, served: 1.5, ownCount: 1, servedCount: 1, children: [] });
+  assert.deepStrictEqual(served.get('hmain'), { side: 'hot', own: 1.5, served: 1.5, ownCount: 1, servedCount: 1, children: [] });
+  assert.strictEqual(served.get('waste'), undefined);
+  // a cycle walks once
+  const loopRuns = [{ id: 'a', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }] }, { id: 'b', side: 'cold', vertices: [{ x: 100, y: 0 }, { x: 0, y: 0 }] }];
+  const loop = w.waterServedByRun([{ x: 50, y: 0, cold: 2, hot: 0 }], loopRuns);
+  assert.strictEqual(loop.get('a').served + loop.get('b').served > 0, true);
+  assert.ok(loop.get('a').served <= 4 && loop.get('b').served <= 4);
+});

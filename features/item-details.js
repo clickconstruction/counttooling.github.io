@@ -208,6 +208,7 @@
     // call at open time, per the registry boundary rule.
     App.renderChildCountsSection && App.renderChildCountsSection(kind, item);
     App.renderConductorsSection && App.renderConductorsSection(kind, item);
+    App.renderWaterSideSection && App.renderWaterSideSection(kind, item);   // WATER-PLAN rung 3
     App.renderPanelSection && App.renderPanelSection(kind, item);   // S4 panel / homerun
     App.renderTagField && App.renderTagField(kind, item);   // S6 fixture tag
     nameEl.value = item.name || '';

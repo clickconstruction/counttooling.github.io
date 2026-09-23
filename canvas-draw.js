@@ -811,6 +811,31 @@ function createCanvasDraw(deps) {
         }
       }
     }
+    // WATER-PLAN rung 3: the water leaders, the flex leaders' twin. A fixture
+    // that a water run serves paints a dashed tie per side to the point on the
+    // run, in the run's own color, so cold and hot read apart. Attachment is
+    // the feature's (deps.waterLeaders wraps water-model's attachWaterFixtures,
+    // the same rule the Lines list tallies with); a project with no water runs
+    // paints nothing.
+    if (typeof deps.waterLeaders === 'function' && ((ann.quickLines || []).length || (ann.polylines || []).length)) {
+      const wl = deps.waterLeaders(ann, env.pageIdx);
+      if (wl && wl.length) {
+        const lScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+        ctx.save();
+        ctx.globalAlpha = DUCT_LEADER_ALPHA;
+        ctx.lineWidth = 1 * lScale;
+        ctx.setLineDash(DUCT_LEADER_DASH.map(d => d * lScale));
+        wl.forEach(l => {
+          ctx.strokeStyle = l.color || '#4a9eff';
+          const a = tc(l.from), b = tc(l.to);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        });
+        ctx.restore();
+      }
+    }
     // Duct runs (DUCT-PLAN unit D2). One continuous trace whose stroke width
     // STEPS with each size segment (ductStrokePx band table in duct-model.js,
     // scaled by env.ductStrokeScale — 1 on the live overlay, raster scale on

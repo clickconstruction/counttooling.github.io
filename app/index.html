@@ -1840,6 +1840,13 @@
             <button type="button" id="quickLineAddMaterial" class="plum-add-btn" title="Add material">+</button>
           </div>
         </div>
+        <!-- WATER-PLAN rung 3: the water side, cold or hot, read from the composed
+             name (CW / HW) until picked; a water run's fixtures attach to it
+             (features/water-fixtures.js syncQuickLineWaterSide). -->
+        <div class="form-group" id="quickLineWaterSideGroup">
+          <label>Water side <span class="form-sublabel">(cold or hot; fixtures within reach attach to its runs)</span></label>
+          <div id="quickLineWaterSide"></div>
+        </div>
         <div class="form-group">
           <label>Display</label>
           <div class="radio-seg" role="radiogroup"><label><input type="radio" name="quickLineCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="quickLineCurve" value="arc"><span>Curved</span></label></div>
@@ -2192,6 +2199,13 @@
            item already carries them); cable per count on a counter. -->
       <!-- S4: a counter that IS a panel (name + the schedule's pole count, for
            the cross-check); a line type whose every run is a homerun. -->
+      <!-- WATER-PLAN rung 3: a line type's water side (features/water-fixtures.js
+           renderWaterSideSection): shown on a plumbing project or when the type
+           carries or derives one; the name's CW / HW answers until picked. -->
+      <div class="form-group" id="waterSideGroup" style="display:none;">
+        <label>Water side <span class="form-sublabel">(cold or hot; fixtures within reach attach to its runs)</span></label>
+        <div class="water-side-host"></div>
+      </div>
       <div class="form-group" id="panelGroup" style="display:none;">
         <label>Panel <span class="form-sublabel">(this counter is a panelboard; name it for the cross-check)</span></label>
         <div class="child-count-add">
@@ -3547,6 +3561,9 @@
          device that is NOT attached to any run and has one close enough to be
          the obvious intent (duct-model ductNearestRunPoint). -->
     <button id="ctxAttachToRun" style="display:none;">Attach to nearest run</button>
+    <!-- WATER-PLAN rung 3: a fixture's stray side, with a run of that side in
+         reach; the link is stored on the mark, the fixture stays on its symbol. -->
+    <button id="ctxAttachWater" style="display:none;">Attach to nearest cold run</button>
     <button class="danger" id="ctxDelete">Delete</button>
     <div id="ctxTargetNameRow" class="context-menu-target-name" aria-hidden="true"></div>
   </div>

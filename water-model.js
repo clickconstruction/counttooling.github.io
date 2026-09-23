@@ -20,7 +20,9 @@
  *
  * Rung 2 (features/water-fixtures.js) reads WSFU_FIXTURES through wsfuPrefillFor:
  * a counter's name earns its fixture units in the project's occupancy column;
- * rung 4 will read the rest for the size suggestion at S. The helpers below are the math those rungs
+ * rung 3 (the same module) puts a side on a line type, attaches fixtures to the
+ * nearest run of that side and walks what each run serves; rung 4 will read the
+ * rest for the size suggestion at S. The helpers below are the math those rungs
  * will call, pinned by water-model.test.js against the plan's worked example.
  *
  * No state, no DOM: a classic <script src> after support-model.js, exposed as
@@ -302,6 +304,186 @@ function counterWsfuSplit(counter, occupancy) {
   return { cold: round2(total * w.cold / w.total), hot: round2(total * w.hot / w.total), total };
 }
 
+// --- Rung 3: water side on line types, attachment, the served walk -----------------
+// The two sides, and the colors the pickers and the legend use for them (the
+// leaders wear their run's own color). Cold reads blue and hot red on the plan.
+const WATER_SIDE_COLORS = { cold: '#2e86de', hot: '#e85447' };
+// The side a line type's name declares: CW / DCW / cold → cold; HW / DHW / HWR /
+// hot / recirc → hot; nothing → null. Word-bounded, like the material read.
+function waterSideFromName(name) {
+  const n = ' ' + String(name || '').toLowerCase().replace(/[_/,()]+/g, ' ') + ' ';
+  if (/\b(hw|hwr|hws|dhw|dhwr|hot|h\.w\.|recirc|recirculation)\b/.test(n)) return 'hot';
+  if (/\b(cw|dcw|cold|c\.w\.)\b/.test(n)) return 'cold';
+  return null;
+}
+// THE per-type rule: an explicit `waterSide` ('cold' | 'hot' | 'none') wins,
+// else the name decides. A type with no side is what it is today: pipe.
+function lineTypeWaterSide(lt) {
+  if (!lt) return null;
+  if (lt.waterSide === 'cold' || lt.waterSide === 'hot') return lt.waterSide;
+  if (lt.waterSide === 'none') return null;
+  return waterSideFromName(lt.name);
+}
+// A run's vertices in PDF space: a polyline's points, a quick line's two ends.
+function waterRunVertices(item, isPoly) {
+  if (!item) return [];
+  if (isPoly) return Array.isArray(item.points) ? item.points.filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)) : [];
+  return [Number.isFinite(item.x1) && Number.isFinite(item.y1) ? { x: item.x1, y: item.y1 } : null, Number.isFinite(item.x2) && Number.isFinite(item.y2) ? { x: item.x2, y: item.y2 } : null].filter(Boolean);
+}
+// The water runs on a canvas: every quick line and polyline whose type has a
+// side and which has two or more vertices, as { id, side, vertices, lineTypeId,
+// item, isPoly, color }. Runs whose type has no side are not water.
+function waterRunsOf(ann, lineTypes) {
+  const byId = new Map((lineTypes || []).map((lt) => [lt.id, lt]));
+  const out = [];
+  const add = (item, isPoly) => {
+    const lt = byId.get(item && item.lineTypeId);
+    const side = lineTypeWaterSide(lt);
+    if (!side) return;
+    const vertices = waterRunVertices(item, isPoly);
+    if (vertices.length < 2) return;
+    // A run with no length (two clicks on one point) is not pipe and would sit
+    // on whatever it was clicked on as a branch of it.
+    if (!vertices.some((v, i) => i > 0 && (v.x !== vertices[0].x || v.y !== vertices[0].y))) return;
+    out.push({ id: item.id, side, vertices, lineTypeId: lt.id, item, isPoly, color: item.color || lt.color || WATER_SIDE_COLORS[side] });
+  };
+  ((ann && ann.quickLines) || []).forEach((q) => add(q, false));
+  ((ann && ann.polylines) || []).forEach((p) => add(p, true));
+  return out;
+}
+// Nearest point on a run: { dist, s, point } (duct-model's walk, kept local so
+// this module needs no other).
+function waterNearestOnRun(p, verts) {
+  let best = { dist: Infinity, s: 0, point: null };
+  let acc = 0;
+  for (let i = 0; i < (verts ? verts.length : 0) - 1; i++) {
+    const a = verts[i], b = verts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2)) : 0;
+    const fx = a.x + t * dx, fy = a.y + t * dy;
+    const d = Math.hypot(p.x - fx, p.y - fy);
+    const segLen = Math.sqrt(len2);
+    if (d < best.dist) best = { dist: d, s: acc + t * segLen, point: { x: fx, y: fy } };
+    acc += segLen;
+  }
+  return best;
+}
+// The attachment rule. A fixture sits on the floor and its pipe runs in the
+// wall, so the snap is twice the duct tap's: 24 pt is 2'-8" at 1/8" = 1'-0".
+const WATER_ATTACH_SNAP_PDF = 24;
+// The rescue looks further, but never across the sheet.
+const WATER_ATTACH_SEARCH_PDF = 96;
+// Fixtures attach PER SIDE: a lavatory joins the nearest cold run and the
+// nearest hot run; a water closet the nearest cold run only. fixtures =
+// [{ x, y, cold, hot, links? }] where `links` ({ cold: runId, hot: runId }) is
+// the rescue's stored answer and wins over proximity while that run exists.
+// Returns { attached: [{ fixture, side, runId, s, dist, point, explicit }],
+// strays: [{ fixture, side }] } — a stray is a side with load and no run.
+function attachWaterFixtures(fixtures, runs, opts) {
+  const snap = opts && opts.snapDist > 0 ? opts.snapDist : WATER_ATTACH_SNAP_PDF;
+  const list = (runs || []).filter((r) => r && (r.vertices ? r.vertices.length : 0) >= 2);
+  const attached = [], strays = [];
+  (fixtures || []).forEach((f) => {
+    if (!f || !Number.isFinite(f.x) || !Number.isFinite(f.y)) return;
+    WATER_SIDES.forEach((side) => {
+      if (!(Number(f[side]) > 0)) return;
+      const linkId = f.links && f.links[side];
+      const linked = linkId ? list.find((r) => r.id === linkId && r.side === side) : null;
+      if (linked) {
+        const hit = waterNearestOnRun(f, linked.vertices);
+        attached.push({ fixture: f, side, runId: linked.id, s: hit.s, dist: hit.dist, point: hit.point, explicit: true });
+        return;
+      }
+      let best = null;
+      list.forEach((run) => {
+        if (run.side !== side) return;
+        const hit = waterNearestOnRun(f, run.vertices);
+        if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { fixture: f, side, runId: run.id, s: hit.s, dist: hit.dist, point: hit.point, explicit: false };
+      });
+      if (best) attached.push(best);
+      else strays.push({ fixture: f, side });
+    });
+  });
+  return { attached, strays };
+}
+// The leaders: one dashed tie per attached side, from the mark to the point on
+// the run that serves it; a zero-length tie is dropped.
+function waterFixtureLeaders(fixtures, runs, opts) {
+  const { attached } = attachWaterFixtures(fixtures, runs, opts);
+  const out = [];
+  attached.forEach((a) => {
+    if (!a.point) return;
+    const from = { x: a.fixture.x, y: a.fixture.y };
+    if (Math.hypot(a.point.x - from.x, a.point.y - from.y) < 0.5) return;
+    out.push({ fixture: a.fixture, side: a.side, runId: a.runId, from, to: { x: a.point.x, y: a.point.y }, dist: a.dist, explicit: a.explicit });
+  });
+  return out;
+}
+// The rescue's target: the nearest run of a side within the search distance.
+function waterNearestRunPoint(fixture, runs, side, opts) {
+  const search = opts && opts.searchDist > 0 ? opts.searchDist : WATER_ATTACH_SEARCH_PDF;
+  if (!fixture || !Number.isFinite(fixture.x) || !Number.isFinite(fixture.y)) return null;
+  let best = null;
+  (runs || []).forEach((run) => {
+    if (!run || run.side !== side || (run.vertices ? run.vertices.length : 0) < 2) return;
+    const hit = waterNearestOnRun(fixture, run.vertices);
+    if (hit.point && hit.dist <= search && (!best || hit.dist < best.dist)) best = { runId: run.id, point: hit.point, dist: hit.dist, run };
+  });
+  return best;
+}
+// Branches: a run whose FIRST vertex lands within snap of another run of the
+// same side is that parent's child (the tap precedent). Nearest parent wins.
+function waterChildLinks(runs, opts) {
+  const snap = opts && opts.snapDist > 0 ? opts.snapDist : WATER_ATTACH_SNAP_PDF;
+  const list = (runs || []).filter((r) => r && (r.vertices ? r.vertices.length : 0) >= 2);
+  const out = [];
+  list.forEach((child) => {
+    const start = child.vertices[0];
+    let best = null;
+    list.forEach((parent) => {
+      if (parent === child || parent.id === child.id || parent.side !== child.side) return;
+      const hit = waterNearestOnRun(start, parent.vertices);
+      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { childId: child.id, parentId: parent.id, s: hit.s, dist: hit.dist };
+    });
+    if (best) out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
+  });
+  return out;
+}
+// What each run serves: its own attached fixtures' units on its side, plus
+// everything its branches serve. Returns a Map runId → { side, own, served,
+// ownCount, servedCount, children: [ids] }. A cycle (two runs starting on each
+// other) is walked once.
+function waterServedByRun(fixtures, runs, opts) {
+  const { attached } = attachWaterFixtures(fixtures, runs, opts);
+  const links = waterChildLinks(runs, opts);
+  const out = new Map();
+  (runs || []).forEach((r) => { if (r && r.id) out.set(r.id, { side: r.side, own: 0, served: 0, ownCount: 0, servedCount: 0, children: [] }); });
+  attached.forEach((a) => {
+    const row = out.get(a.runId);
+    if (!row) return;
+    row.own += Number(a.fixture[a.side]) || 0;
+    row.ownCount += 1;
+  });
+  links.forEach((l) => { const p = out.get(l.parentId); if (p && !p.children.includes(l.childId)) p.children.push(l.childId); });
+  const memo = new Map();
+  const walk = (id, stack) => {
+    if (memo.has(id)) return memo.get(id);
+    const row = out.get(id);
+    if (!row) return { wsfu: 0, count: 0 };
+    if (stack.has(id)) return { wsfu: 0, count: 0 };
+    stack.add(id);
+    let wsfu = row.own, count = row.ownCount;
+    row.children.forEach((c) => { const r = walk(c, stack); wsfu += r.wsfu; count += r.count; });
+    stack.delete(id);
+    const res = { wsfu: round2(wsfu), count };
+    memo.set(id, res);
+    return res;
+  };
+  out.forEach((row, id) => { const r = walk(id, new Set()); row.served = r.wsfu; row.servedCount = r.count; row.own = round2(row.own); });
+  return out;
+}
+
 function round1(v) { return Math.round(v * 10) / 10; }
 function round2(v) { return Math.round(v * 100) / 100; }
 
@@ -313,6 +495,8 @@ const WATER_MODEL_API = {
   PIPE_ID_IN, WATER_MATERIAL_ORDER, sizeKey, sizeKeyIn, pipeIdIn, pipeSizesIn, velocityFps, suggestWaterSize,
   FIXTURE_SUPPLY_MIN_IN, fixtureSupplyMinIn, fixtureSupplyMinLabel, WATER_SERVICE_MIN_IN,
   WSFU_RULE_ID, wsfuFixtureFromName, wsfuPrefillFor, counterWsfu, markerWsfu, counterWsfuSplit,
+  WATER_SIDE_COLORS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, lineTypeWaterSide, waterRunVertices, waterRunsOf,
+  waterNearestOnRun, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterChildLinks, waterServedByRun,
 };
 if (typeof window !== 'undefined') window.WaterModel = WATER_MODEL_API;
 // Node test harness and the rulebook's drift check only: in a classic browser <script> `module` is undefined.

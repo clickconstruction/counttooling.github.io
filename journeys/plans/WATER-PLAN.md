@@ -215,9 +215,18 @@ save/load, export/import and the Artboard for free.
    for row. `plumb.wsfu.fixtures` is now `applied` (used_by counter); the other five stay draft.
    The name → fixture matcher is `wsfuFixtureFromName` in water-model.js; a wrong match is
    fixed at the name, the hanger rule's discipline.
-3. **Water side on line types + attachment** — Hot/Cold, fixtures attach,
+3. ~~**Water side on line types + attachment** — Hot/Cold, fixtures attach,
    leaders paint, the strays rescue; the sidebar readout shows WSFU served
-   per run.
+   per run.~~ **Built 2026-09-23** (branch `claude/water-rung3-sides`): the side is
+   `lineType.waterSide` ('cold' | 'hot' | 'none') with the NAME's CW / HW as the default, so
+   the course's own types (2in Copper CW, 1.25in Copper HW, 0.75in Copper HWR) are water runs
+   with no edit; picked on the Quick Line tab and in the details modal. Fixtures attach PER
+   SIDE to the nearest run of that side within 24 pt (a lavatory to a cold run and a hot run);
+   dashed leaders in the run's color; a run whose first vertex lands on a run of the same side
+   is its branch; the Lines list reads what each run serves, branches included. One departure
+   from the duct precedent, on purpose: the rescue ("Attach to nearest cold run") stores the
+   link on the mark (`marker.waterRuns`) instead of moving the fixture, because a lavatory
+   has two sides and one move cannot serve both, and the mark belongs on its symbol.
 4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
    the popover suggestion; "a size change is a new run from here."
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy

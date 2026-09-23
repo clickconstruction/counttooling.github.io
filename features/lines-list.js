@@ -61,6 +61,9 @@
       return name.toLowerCase().includes(linesQ);
     };
     const showEdit = !state.isViewer;
+    // WATER-PLAN rung 3: the served readouts, one pass per page (features/water-fixtures.js).
+    const waterByPage = {};
+    const waterFor = (pi) => waterByPage[pi] || (waterByPage[pi] = App.waterRunReadouts ? App.waterRunReadouts(pi) : new Map());
     Object.entries(byType).forEach(([tid, items]) => {
       const filteredItems = linesQ ? items.filter(filterItem) : items;
       if (linesQ && filteredItems.length === 0) return;
@@ -118,7 +121,11 @@
           if (ed > 0) parts.push('↧ ' + ed + (eu ? ' ' + eu : ''));
           dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
         }
-        div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
+        // WATER-PLAN rung 3: what a water run serves, from the fixtures attached to
+        // it and to its branches (features/water-fixtures.js waterRunReadout).
+        const water = waterFor(it.pageIdx).get(line.id) || null;
+        const waterHtml = water ? '<div class="line-water line-water-' + water.side + '">' + esc(water.text) + '</div>' : '';
+        div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml + waterHtml;
         div.onclick = (e) => {
           if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;
           if (isSelected) {

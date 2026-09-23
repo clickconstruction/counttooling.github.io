@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 3, hot and cold on line types, fixtures attach, the runs read what they serve (2026-09-23)
+
+Punch row P4-WATER, the third rung, stacked on rung 2. A water run knows its side, its
+fixtures find it, and the Lines list says what each run carries.
+
+- **The side.** `lineType.waterSide` ('cold' | 'hot' | 'none'), with the NAME as the default:
+  CW, DCW, cold → cold; HW, DHW, HWR, hot, recirc → hot (water-model `waterSideFromName`), so the
+  plumbing course's own types are water runs with no edit and no new key. Picked on the Quick
+  Line tab (the segment follows the composed name; only a pick that differs from it is written)
+  and in the details modal (shown on a plumbing project or when the type carries or derives a
+  side; the name's own answer deletes the key). The line type row wears a cold / hot tag.
+- **Attachment, per side.** A fixture with cold units joins the nearest cold run within 24 pt
+  (2'-8" at 1/8"; a fixture sits on the floor and its pipe runs in the wall, so twice the duct
+  tap's snap), a fixture with hot units the nearest hot run, a lavatory both, a water closet the
+  cold only. A dashed leader per attached side, in the run's own color, painted by the draw core
+  under the runs (canvas-draw.js through `deps.waterLeaders`), so cold and hot read apart and a
+  stray side's bare glyph is the tell. A run whose first vertex lands on a run of the same side
+  is its branch (the tap precedent); a zero-length run is not pipe.
+- **What each run serves.** The Lines list reads, under every water run, "13 WSFU cold ·
+  3 fixtures (1 on branches)": its own attached fixtures' units on its side plus everything its
+  branches serve (water-model `waterServedByRun`, one pass per page). A counter with a total but
+  no fixture key is counted whole on either side it meets and the readout says so.
+- **The rescue, and the one departure from the duct precedent.** "Attach to nearest cold run"
+  (or hot, or both) on a fixture's right-click menu, offered when a side has load, no run serves
+  it, and a run of that side is within 96 pt. The duct rescue MOVES the device onto the run;
+  this one stores the link on the mark (`marker.waterRuns = { hot: runId }`) and leaves the
+  fixture on its symbol, because a lavatory has two sides and one move cannot serve both. The
+  stored link wins over proximity while that run exists and is that side; a dangling link is
+  ignored. The toast names the run and the distance closed.
+- Not built, by the ladder: the cursor chip and the suggestion at S (rung 4), the schedule (5),
+  the Bid Check rows (6). Nothing is sized yet.
+- water-sides.spec.js pins the sides, the tags, the walk with a branch, the leaders, plain pipe,
+  the rescue and its dangling link, both pickers and the HVAC gate; water-model.test.js the
+  pure rules, including the cycle walked once.
+
 ## feat(water): rung 2, fixture units on counters, the prefill from the name and the occupancy (2026-09-23)
 
 Punch row P4-WATER, the second rung, stacked on rung 1 (the tables and the occupancy toggle).

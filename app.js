@@ -2002,6 +2002,8 @@
     // The sheet legend (2026-09-19): the trade names the block, the neck table
     // fills the air column, the raceway + conductors make a conduit's spec line.
     getTrade: () => getQuickTrade(),
+    // WATER-PLAN rung 3: the fixture-to-run leaders on the water side (features/water-fixtures.js).
+    waterLeaders: (ann, pageIdx) => (App.waterLeaders ? App.waterLeaders(ann, pageIdx) : []),
     suggestNeckSize: (cfm) => (typeof suggestNeckSize === 'function' ? suggestNeckSize(cfm) : null),
     lineTypeSpecText: (lt) => {
       const cm = window.ConductorModel;
@@ -5836,6 +5838,14 @@
     // obvious intent, so the row never appears as a no-op.
     const ctxAttachBtn = document.getElementById('ctxAttachToRun');
     if (ctxAttachBtn) ctxAttachBtn.style.display = strayDeviceAttachTarget() ? 'block' : 'none';
+    // WATER-PLAN rung 3: a fixture with a side no water run serves, and a run of
+    // that side in reach (features/water-fixtures.js waterStrayTarget).
+    const ctxAttachWaterBtn = document.getElementById('ctxAttachWater');
+    if (ctxAttachWaterBtn) {
+      const wt = App.waterStrayTarget ? App.waterStrayTarget() : null;
+      ctxAttachWaterBtn.style.display = wt ? 'block' : 'none';
+      if (wt && App.waterStrayLabel) ctxAttachWaterBtn.textContent = App.waterStrayLabel(wt);
+    }
     const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
     if (ctxNameHighlightBtn) {
       const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';

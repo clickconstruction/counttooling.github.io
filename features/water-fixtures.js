@@ -292,6 +292,247 @@
     return 'Water supply · ' + fmt(t.total) + ' WSFU' + (t.cold != null ? ' (cold ' + fmt(t.cold) + ' · hot ' + fmt(t.hot) + ')' : '') + ' · ' + t.occupancy + ' · ' + (t.column === 'flushValve' ? 'flush-valve curve' : 'flush-tank curve');
   }
 
+  // --- Rung 3: water runs, attachment, leaders, the rescue, the served readout -----
+  // The placed marks that carry fixture units on a page's ACTIVE canvas, split
+  // into the two sides through the counter's fixture (counterWsfuSplit); a
+  // counter with a total but no fixture key puts its whole total on either
+  // side it meets (`unsplit`), which the readout says. `links` is the rescue's
+  // stored answer on the mark (marker.waterRuns).
+  function collectWaterFixtures(pageIdx) {
+    const page = App.state.pages[pageIdx];
+    if (!page) return [];
+    return collectWaterFixturesFrom(App.getActiveAnnotations(page, pageIdx));
+  }
+  // The same, from one canvas's annotations (the draw core paints a canvas at a
+  // time, the active one or a peeked one).
+  function collectWaterFixturesFrom(ann) {
+    const wm = WM();
+    const state = App.state;
+    if (!wm || !ann) return [];
+    const occ = occupancy();
+    const out = [];
+    (state.counters || []).forEach((c) => {
+      const base = wm.counterWsfu(c);
+      const split = wm.counterWsfuSplit(c, occ);
+      (ann?.counterMarkers?.[c.id] || []).forEach((m, i) => {
+        const total = wm.markerWsfu(m, c);
+        if (total == null) return;
+        const k = base != null ? total / base : 1;
+        const f = split
+          ? { cold: Math.round(split.cold * k * 100) / 100, hot: Math.round(split.hot * k * 100) / 100, unsplit: false }
+          : { cold: total, hot: total, unsplit: true };
+        out.push({ x: m.x, y: m.y, cold: f.cold, hot: f.hot, total, unsplit: f.unsplit, counterId: c.id, counterName: c.name, index: i, links: m.waterRuns || null, marker: m });
+      });
+    });
+    return out;
+  }
+  function getWaterRuns(pageIdx) {
+    const wm = WM();
+    const page = App.state.pages[pageIdx];
+    if (!wm || !page) return [];
+    return wm.waterRunsOf(App.getActiveAnnotations(page, pageIdx), App.state.lineTypes || []);
+  }
+  // The leaders the draw core paints for a canvas's annotations (canvas-draw.js
+  // reads it through its deps): [{ from, to, side, color }] in PDF space.
+  function waterLeaders(ann, pageIdx) {
+    const wm = WM();
+    if (!wm || !ann) return [];
+    const runs = wm.waterRunsOf(ann, App.state.lineTypes || []);
+    if (!runs.length) return [];
+    void pageIdx;
+    const fixtures = collectWaterFixturesFrom(ann);
+    if (!fixtures.length) return [];
+    return wm.waterFixtureLeaders(fixtures, runs).map((l) => {
+      const run = runs.find((r) => r.id === l.runId);
+      return { from: l.from, to: l.to, side: l.side, color: run ? run.color : wm.WATER_SIDE_COLORS[l.side], explicit: l.explicit };
+    });
+  }
+  // What each water run on a page serves: Map runId → the served row.
+  function getWaterServed(pageIdx) {
+    const wm = WM();
+    if (!wm) return new Map();
+    const runs = getWaterRuns(pageIdx);
+    if (!runs.length) return new Map();
+    return wm.waterServedByRun(collectWaterFixtures(pageIdx), runs);
+  }
+  // The Lines list's readouts for a page, one pass over the page: Map runId →
+  // { side, served, count, text }, the text "6 WSFU cold · 3 fixtures (1 on
+  // branches)"; a run whose fixtures include a total with no fixture key says
+  // so, so the number is not over-read. Runs that are not water are absent.
+  function waterRunReadouts(pageIdx) {
+    const wm = WM();
+    const out = new Map();
+    if (!wm) return out;
+    const runs = getWaterRuns(pageIdx);
+    if (!runs.length) return out;
+    const fixtures = collectWaterFixtures(pageIdx);
+    const served = wm.waterServedByRun(fixtures, runs);
+    const { attached } = wm.attachWaterFixtures(fixtures, runs);
+    const unsplitRuns = new Set(attached.filter((a) => a.fixture.unsplit).map((a) => a.runId));
+    served.forEach((row, id) => {
+      const fx = row.servedCount === 1 ? '1 fixture' : row.servedCount + ' fixtures';
+      const branch = row.servedCount > row.ownCount ? ' (' + (row.servedCount - row.ownCount) + ' on branches)' : '';
+      out.set(id, { side: row.side, served: row.served, count: row.servedCount, text: fmt(row.served) + ' WSFU ' + row.side + ' · ' + fx + branch + (unsplitRuns.has(id) ? ' · a total with no fixture counted whole' : '') });
+    });
+    return out;
+  }
+  function waterRunReadout(item, pageIdx) {
+    return item ? waterRunReadouts(pageIdx).get(item.id) || null : null;
+  }
+
+  // The rescue: the context-menu mark, for each side it carries that no run of
+  // that side serves, with a run of that side within reach. Returns
+  // { marker, counter, sides: [{ side, runId, dist, runName }] } or null.
+  function waterStrayTarget() {
+    const wm = WM();
+    const state = App.state;
+    const t = state.ctxTarget;
+    if (!wm || state.isViewer || !t || t.type !== 'marker') return null;
+    const counter = (state.counters || []).find((c) => c.id === t.typeId);
+    if (!counter) return null;
+    const fixtures = collectWaterFixtures(state.currentPage);
+    const f = fixtures.find((x) => x.counterId === t.typeId && x.index === t.index);
+    if (!f) return null;
+    const runs = getWaterRuns(state.currentPage);
+    if (!runs.length) return null;
+    const { strays } = wm.attachWaterFixtures([f], runs);
+    const sides = [];
+    strays.forEach((st) => {
+      const near = wm.waterNearestRunPoint(f, runs, st.side);
+      if (!near) return;
+      const lt = (state.lineTypes || []).find((l) => l.id === near.run.lineTypeId);
+      sides.push({ side: st.side, runId: near.runId, dist: near.dist, runName: (lt && lt.name) || (near.run.isPoly ? 'polyline' : 'line') });
+    });
+    if (!sides.length) return null;
+    return { marker: f.marker, counter, sides };
+  }
+  function waterStrayLabel(target) {
+    if (!target) return '';
+    const sides = target.sides.map((s) => s.side);
+    return 'Attach to nearest ' + (sides.length === 2 ? 'cold and hot runs' : sides[0] + ' run');
+  }
+  const ctxAttachWaterBtn = document.getElementById('ctxAttachWater');
+  if (ctxAttachWaterBtn) ctxAttachWaterBtn.onclick = () => {
+    const state = App.state;
+    const target = waterStrayTarget();
+    document.getElementById('contextMenu').classList.remove('visible');
+    state.ctxTarget = null;
+    if (!target) return;
+    App.pushUndoSnapshot();
+    const links = { ...(target.marker.waterRuns || {}) };
+    target.sides.forEach((s) => { links[s.side] = s.runId; });
+    target.marker.waterRuns = links;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+    const sc = state.pages[state.currentPage]?.scale;
+    const ftOf = (pt) => (sc && sc.pixelsPerUnit > 0 && sc.unit === 'ft' ? (Math.round(pt / sc.pixelsPerUnit * 10) / 10) + ' ft' : Math.round(pt) + ' pt');
+    if (App.showToast) App.showToast(target.sides.map((s) => (s.side === 'cold' ? 'Cold' : 'Hot') + ' on ' + s.runName + ', ' + ftOf(s.dist) + ' away').join(' · '), 3200);
+  };
+
+  // --- the water side picker (Quick Line tab and the details modal) ---------------
+  function sideSegmentHtml(idPrefix) {
+    return '<div class="filter-scope-segment water-side-segment" id="' + idPrefix + 'Segment" role="group" aria-label="Water side">'
+      + '<button type="button" data-side="none" aria-pressed="false">None</button>'
+      + '<button type="button" data-side="cold" aria-pressed="false">Cold</button>'
+      + '<button type="button" data-side="hot" aria-pressed="false">Hot</button></div>';
+  }
+  function syncSideSegment(seg, side) {
+    if (!seg) return;
+    seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.side === (side || 'none'))));
+  }
+  // Quick Line: the segment follows the composed name until the estimator picks;
+  // a pick that differs from what the name says is what gets stored.
+  let quickLinePick = null;   // 'cold' | 'hot' | 'none' | null (follow the name)
+  function syncQuickLineWaterSide() {
+    const wm = WM();
+    const host = document.getElementById('quickLineWaterSide');
+    if (!wm || !host) return;
+    if (!host.querySelector('.water-side-segment')) {
+      host.innerHTML = sideSegmentHtml('quickLineWaterSide') + '<div class="water-side-note" id="quickLineWaterSideNote"></div>';
+      host.querySelector('.water-side-segment').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-side]');
+        if (!b) return;
+        quickLinePick = b.dataset.side;
+        syncQuickLineWaterSide();
+      });
+    }
+    const name = document.getElementById('quickLineName')?.value || '';
+    const fromName = wm.waterSideFromName(name);
+    const side = quickLinePick != null ? (quickLinePick === 'none' ? null : quickLinePick) : fromName;
+    syncSideSegment(host.querySelector('.water-side-segment'), side);
+    const note = document.getElementById('quickLineWaterSideNote');
+    if (note) note.textContent = quickLinePick == null ? (fromName ? 'from the name (' + (fromName === 'cold' ? 'CW' : 'HW') + '); fixtures within reach attach to its runs' : 'none from the name; pick one for a water run') : (side ? 'fixtures within reach attach to its runs' : 'plain pipe: nothing attaches');
+  }
+  function resetQuickLineWaterSide() { quickLinePick = null; syncQuickLineWaterSide(); }
+  // Written onto a new line type: only a pick that differs from the name is a key.
+  function readQuickLineWaterSide(lt) {
+    const wm = WM();
+    if (!wm || !lt || quickLinePick == null) return;
+    const fromName = wm.waterSideFromName(lt.name);
+    const picked = quickLinePick === 'none' ? null : quickLinePick;
+    if (picked !== fromName) lt.waterSide = quickLinePick;
+  }
+  // The details modal: shown for line types on a plumbing project, or when the
+  // type carries or derives a side (the raceway section's own gate, mirrored).
+  function renderWaterSideSection(kind, item) {
+    const wm = WM();
+    const group = document.getElementById('waterSideGroup');
+    if (!wm || !group) return;
+    const state = App.state;
+    const show = kind === 'lineType' && !!item && (state.trade === 'plumbing' || !!wm.lineTypeWaterSide(item) || item.waterSide != null);
+    group.style.display = show ? '' : 'none';
+    if (!show) return;
+    if (!group.querySelector('.water-side-segment')) {
+      group.querySelector('.water-side-host').innerHTML = sideSegmentHtml('lineTypeWaterSide') + '<div class="water-side-note" id="lineTypeWaterSideNote"></div>';
+    }
+    const seg = group.querySelector('.water-side-segment');
+    const note = document.getElementById('lineTypeWaterSideNote');
+    const render = () => {
+      const side = wm.lineTypeWaterSide(item);
+      syncSideSegment(seg, side);
+      const fromName = wm.waterSideFromName(item.name);
+      if (note) note.textContent = item.waterSide == null
+        ? (fromName ? 'from the name; fixtures within reach attach to its runs and the Lines list shows what each serves' : 'none from the name; pick one to make it a water run')
+        : (side ? 'set here' + (fromName && fromName !== side ? ', over the name’s ' + (fromName === 'cold' ? 'CW' : 'HW') : '') + '; fixtures within reach attach to its runs' : 'plain pipe, set here' + (fromName ? ' over the name' : ''));
+    };
+    seg.onclick = (e) => {
+      const b = e.target.closest('button[data-side]');
+      if (!b) return;
+      const pick = b.dataset.side;
+      const fromName = wm.waterSideFromName(item.name);
+      const next = (pick === 'none' ? null : pick) === fromName ? undefined : pick;   // the name's own answer needs no key
+      if ((next === undefined && item.waterSide == null) || next === item.waterSide) { render(); return; }
+      App.pushUndoSnapshotCurrentPage();
+      if (next === undefined) delete item.waterSide; else item.waterSide = next;
+      App.markProjectDirty();
+      App.updateUI();
+      App.renderAnnotations && App.renderAnnotations();
+      render();
+    };
+    render();
+  }
+  // A short tag for a line type's side, for the sidebar rows: "cold" / "hot".
+  function lineTypeWaterTag(lt) {
+    const wm = WM();
+    const side = wm ? wm.lineTypeWaterSide(lt) : null;
+    return side ? '<span class="line-water-tag line-water-tag-' + side + '" title="Water side: fixtures within reach attach to this type’s runs">' + side + '</span>' : '';
+  }
+
+  App.collectWaterFixtures = collectWaterFixtures;
+  App.collectWaterFixturesFrom = collectWaterFixturesFrom;
+  App.waterRunReadouts = waterRunReadouts;
+  App.getWaterRuns = getWaterRuns;
+  App.waterLeaders = waterLeaders;
+  App.getWaterServed = getWaterServed;
+  App.waterRunReadout = waterRunReadout;
+  App.waterStrayTarget = waterStrayTarget;
+  App.waterStrayLabel = waterStrayLabel;
+  App.syncQuickLineWaterSide = syncQuickLineWaterSide;
+  App.resetQuickLineWaterSide = resetQuickLineWaterSide;
+  App.readQuickLineWaterSide = readQuickLineWaterSide;
+  App.renderWaterSideSection = renderWaterSideSection;
+  App.lineTypeWaterTag = lineTypeWaterTag;
   App.applyCounterWaterMore = applyCounterWaterMore;
   App.bindWsfuField = bindWsfuField;
   App.readWsfuField = readWsfuField;

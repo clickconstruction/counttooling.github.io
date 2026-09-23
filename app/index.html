@@ -725,6 +725,17 @@
         <!-- DUCT unit D6: optional CFM on a counter — air devices only. Empty
              = not an air device (zero behavior change); placed markers inherit
              it for the design-build duct suggestions. -->
+        <!-- WATER-PLAN rung 2: the fixture's water supply fixture units, prefilled from
+             the name for the project's occupancy (features/water-fixtures.js); shown on a
+             plumbing-shaped project. The chip names the table row read and its § rule;
+             its occupancy word flips this counter to the other column. -->
+        <div class="form-group wsfu-group" id="counterWsfuGroup" style="display:none;">
+          <label>Fixture units <span class="form-sublabel">(WSFU, water supply; leave empty for a fixture with no water)</span></label>
+          <div class="cfm-row">
+            <input type="number" id="counterWsfu" min="0" step="0.5" placeholder="e.g. 2" style="width:120px;" autocomplete="off">
+            <span class="wsfu-chip" id="counterWsfuChip" hidden></span>
+          </div>
+        </div>
         <!-- D19 (B19 part 2, ratcheted): the three device fields fold under ONE
              "More ▸ air & mounting" disclosure so a plumbing Create tab is not
              three air/electrical fields deep. Hiding them outright was rejected
@@ -847,6 +858,15 @@
             <select id="counterQuickCountMaterial"></select>
             <button type="button" id="counterQuickCountRemoveMaterial" class="plum-remove-btn" title="Remove material">−</button>
             <button type="button" id="counterQuickCountAddMaterial" class="plum-add-btn" title="Add material">+</button>
+          </div>
+        </div>
+        <!-- WATER-PLAN rung 2: the Create tab's Fixture units field, twinned; prefilled
+             from the composed name, shown on a plumbing-shaped project. -->
+        <div class="form-group plum-modifier-row wsfu-group" id="counterQuickCountWsfuRow" style="display:none;">
+          <label>Fixture units</label>
+          <div class="plum-select-btn-row">
+            <input type="number" id="counterQuickCountWsfu" min="0" step="0.5" placeholder="e.g. 2" style="width:110px;" autocomplete="off" title="Water supply fixture units; empty = a fixture with no water">
+            <span class="wsfu-chip" id="counterQuickCountWsfuChip" hidden></span>
           </div>
         </div>
         <!-- D19 (B19 part 2): the Create tab's "More ▸ air & mounting"
@@ -1863,6 +1883,22 @@
       </div>
     </div>
   </div>
+  <!-- WATER-PLAN rung 2: the per-mark fixture-unit override ("WSFU for this one…"
+       on a placed marker's context menu), the D15 CFM modal twinned
+       (features/water-fixtures.js). -->
+  <div class="modal-overlay" id="markerWsfuModal">
+    <div class="modal-card">
+      <div class="modal-card-header"><h2>Fixture units for this one</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group">
+        <label>WSFU <span class="form-sublabel" id="markerWsfuHint"></span></label>
+        <input type="number" id="markerWsfuInput" min="0" step="0.5" placeholder="e.g. 2" autocomplete="off" style="width:140px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);">
+      </div>
+      <div class="actions">
+        <button id="markerWsfuCancel" class="ghost">Cancel</button>
+        <button id="markerWsfuSave" class="primary">Save</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="multiplyZoneModal">
     <div class="modal-card">
       <div class="modal-card-header"><h2>Multiply Zone</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
@@ -2084,8 +2120,18 @@
       <!-- DUCT unit D6: the per-counter CFM (counters only; hidden for line
            types). Same optional-field semantics as the Create tab. -->
       <details class="modal-section" id="counterLineTypeDetailsAirSection" style="display:none;" open>
-        <summary>Air &amp; mounting<small>CFM, flex drop, mount height, fixture tag</small></summary>
+        <summary>Air &amp; mounting<small>Fixture units, CFM, flex drop, mount height, fixture tag</small></summary>
         <div class="modal-section-body">
+      <!-- WATER-PLAN rung 2: the counter's fixture units (features/water-fixtures.js);
+           blur commits like the CFM field, a cleared value deletes the key. -->
+      <div class="form-group wsfu-group" id="counterLineTypeDetailsWsfuGroup" style="display:none;">
+        <label>Fixture units <span class="form-sublabel">(WSFU, water supply; leave empty for a fixture with no water)</span></label>
+        <div class="cfm-row">
+          <input type="number" id="counterLineTypeDetailsWsfu" min="0" step="0.5" placeholder="e.g. 2" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);" autocomplete="off">
+          <span class="wsfu-chip" id="counterLineTypeDetailsWsfuChip" hidden></span>
+        </div>
+        <div class="form-sublabel" id="counterLineTypeDetailsWsfuOverrides" style="display:none;margin-top:6px;"></div>
+      </div>
       <div class="form-group" id="counterLineTypeDetailsCfmGroup" style="display:none;">
         <label>CFM <span class="form-sublabel">(air devices only, leave empty otherwise)</span></label>
         <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -3476,6 +3522,7 @@
     <button id="ctxEditRoomBox" style="display:none;">Edit room box</button>
     <button id="ctxNameHighlight" style="display:none;">Name highlight…</button>
     <button id="ctxMarkerCfm" style="display:none;">CFM for this one…</button>
+    <button id="ctxMarkerWsfu" style="display:none;">WSFU for this one…</button>
     <!-- D19 (J19 Friction #3): the stray-device rescue. Shown only for a CFM
          device that is NOT attached to any run and has one close enough to be
          the obvious intent (duct-model ductNearestRunPoint). -->
@@ -3578,6 +3625,7 @@
   <script src="/features/duct-sidebar.js"></script>
   <script src="/features/duct-schedule.js"></script>
   <script src="/features/duct-suggest.js"></script>
+  <script src="/features/water-fixtures.js"></script>
   <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>

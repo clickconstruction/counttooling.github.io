@@ -41,6 +41,18 @@
 > reads the tables in the app yet; rung 2 is the counter's WSFU field. The
 > transcriptions are punch row **WATER-TABLES** (a tester with the trade, against the
 > printed IPC) before rung 4 is offered.
+>
+> **Rung 2 shipped 2026-09-23** (branch `claude/water-rung-2`, stacked on rung 1):
+> [features/water-fixtures.js](../../features/water-fixtures.js). A counter's **Fixture
+> units** field on the Create tab, the Quick Count twin and the details modal, prefilled
+> from the name for the project's occupancy (water-model's `wsfuFixtureFromName` reads
+> the trade's names: Lav, WC, UR, mop sink, 3-comp sink, EWC, DW…; a bare public WC is a
+> flush valve, a private one a flush tank) with the chip and the § chip; the chip's
+> occupancy word is Q3's per-counter flip (`wsfuOccupancy`); the per-mark override
+> (*WSFU for this one…*, `wsfuOverride`); the Summary's **Fixture units** line (the
+> "total WSFU per sheet" §6 promised, per sheet in the hover). `plumb.wsfu.fixtures` is
+> **applied** now. Not in this rung: the `wsfu_prefill` telemetry of §8 waits for rung 4's
+> `water_run` so the allowlist migration is applied once.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -198,7 +210,7 @@ save/load, export/import and the Artboard for free.
    **Shipped 2026-09-23** (the status block above).
 2. **Fixture units on counters** — the field, the prefill, the chip, the
    per-mark override; nothing else changes yet (an estimator can already
-   read total WSFU per sheet in the Summary).
+   read total WSFU per sheet in the Summary). **Shipped 2026-09-23.**
 3. **Water side on line types + attachment** — Hot/Cold, fixtures attach,
    leaders paint, the strays rescue; the sidebar readout shows WSFU served
    per run.

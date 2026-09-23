@@ -22,7 +22,7 @@ Before you count, set up the type you're counting:
 
 ![The Create Counter dialog: ① name the counter, ② pick a built-in icon or upload your own, and ③ choose a color.](/guides/img/counter-create.png)
 
-The trade-specific fields (**CFM** and **Flex drop** for air devices, **Mount height** for wall devices) fold under **More ▸ air & mounting** below the name, so a plumbing counter is name, icon, color and done; on an HVAC or Electrical project the disclosure opens by itself, and it remembers how you left it for the rest of the project.
+On a plumbing project a **Fixture units** field sits below the name: type a fixture's name (*Lavatory*, *WC*, *Urinal*, *Mop sink*) and the app prefills its water supply fixture units from the IPC table for the project's occupancy (Project Settings, beside the code editions), with a chip naming the row it read; type over it and the counter keeps yours, and the chip's *public* / *private* word flips that one counter to the other column. A placed mark can carry its own number (right-click, **WSFU for this one…**), and the Summary totals the fixture units placed. The trade-specific fields (**CFM** and **Flex drop** for air devices, **Mount height** for wall devices) fold under **More ▸ air & mounting** below the name, so a plumbing counter is name, icon, color and done; on an HVAC or Electrical project the disclosure opens by itself, and it remembers how you left it for the rest of the project.
 
 Then select the counter and start clicking. The running total updates as you go, and it adds up across every sheet and canvas in the project, not just the page you're on.
 

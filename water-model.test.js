@@ -17,6 +17,8 @@ test('wsfuFor: the occupancy column asked for, the other when the code prints on
   assert.strictEqual(w.wsfuFor('water-closet', 'public', 'flush-tank').cold, 5);
   assert.strictEqual(w.wsfuFor('water-closet', 'private', 'flush-tank').cold, 2.2);
   assert.strictEqual(w.wsfuFor('water-closet', 'public', 'nope').control, 'flush-valve');
+  assert.strictEqual(w.wsfuFor('water-closet', 'private').control, 'flush-tank');
+  assert.strictEqual(w.wsfuFor('urinal', 'public').control, 'flush-valve-3/4');
   // no hot connection reads 0, never undefined
   assert.strictEqual(w.wsfuFor('urinal', 'public').hot, 0);
   assert.strictEqual(w.wsfuFor('dishwasher', 'private').cold, 0);
@@ -118,4 +120,55 @@ test('fixture supply minimums and the fraction labels the rulebook pins', () => 
   assert.strictEqual(w.sizeFraction(2.5), '2-1/2');
   assert.strictEqual(w.sizeFraction(0), '');
   assert.strictEqual(w.WATER_SERVICE_MIN_IN, 0.75);
+});
+
+test('wsfuFixtureFromName: the trade\'s names, word-bounded, drains and bibbs are not fixtures', () => {
+  const f = (n) => w.wsfuFixtureFromName(n);
+  assert.deepStrictEqual(f('Lavatory'), { fixture: 'lavatory', control: null });
+  assert.deepStrictEqual(f('LAV-1'), { fixture: 'lavatory', control: null });
+  assert.deepStrictEqual(f('Hand sink'), { fixture: 'lavatory', control: null });
+  assert.deepStrictEqual(f('Water Closet'), { fixture: 'water-closet', control: null });
+  assert.deepStrictEqual(f('WC flush valve'), { fixture: 'water-closet', control: 'flush-valve' });
+  assert.deepStrictEqual(f('WC-2 (tank)'), { fixture: 'water-closet', control: 'flush-tank' });
+  assert.deepStrictEqual(f('Toilet, flushometer tank'), { fixture: 'water-closet', control: 'flushometer-tank' });
+  assert.deepStrictEqual(f('Urinal'), { fixture: 'urinal', control: null });
+  assert.deepStrictEqual(f('UR 1" FV'), { fixture: 'urinal', control: 'flush-valve-1' });
+  assert.deepStrictEqual(f('Urinal flush valve'), { fixture: 'urinal', control: 'flush-valve-3/4' });
+  assert.deepStrictEqual(f('Sink'), { fixture: 'kitchen-sink', control: null });
+  assert.deepStrictEqual(f('3-comp sink'), { fixture: 'kitchen-sink', control: null });
+  assert.deepStrictEqual(f('Mop sink'), { fixture: 'service-sink', control: null });
+  assert.deepStrictEqual(f('Shower'), { fixture: 'shower', control: null });
+  assert.deepStrictEqual(f('Bath'), { fixture: 'bathtub', control: null });
+  assert.deepStrictEqual(f('Water Fountain'), { fixture: 'drinking-fountain', control: null });
+  assert.deepStrictEqual(f('EWC'), { fixture: 'drinking-fountain', control: null });
+  assert.deepStrictEqual(f('DW'), { fixture: 'dishwasher', control: null });
+  assert.deepStrictEqual(f('Washer 15 lb'), { fixture: 'washing-machine-15', control: null });
+  assert.deepStrictEqual(f('Washing machine'), { fixture: 'washing-machine-8', control: null });
+  assert.deepStrictEqual(f('Laundry tray'), { fixture: 'laundry-tray', control: null });
+  assert.deepStrictEqual(f('Bidet'), { fixture: 'bidet', control: null });
+  // not fixtures: drains, bibbs, heaters, cleanouts, and a floor sink is a drain even though it says sink
+  for (const n of ['Floor drain', 'FD-1', 'Floor sink', 'Hose Bib', 'HB', 'Water Heater', 'Cleanout', 'Backflow preventer', 'Duplex Receptacle', '1/2in Copper Tee', '']) assert.strictEqual(f(n), null, n);
+});
+
+test('wsfuPrefillFor: the table row for the name and the occupancy, with its label', () => {
+  const pub = w.wsfuPrefillFor('Lavatory', 'public');
+  assert.strictEqual(pub.total, 2);
+  assert.strictEqual(pub.occupancy, 'public');
+  assert.strictEqual(pub.label, 'Lavatory');
+  assert.strictEqual(pub.controlLabel, 'faucet');
+  assert.strictEqual(w.wsfuPrefillFor('Lavatory', 'private').total, 0.7);
+  // a bare public WC is a flush valve (10), a private one a flush tank (2.2); the name's control wins
+  assert.strictEqual(w.wsfuPrefillFor('WC', 'public').total, 10);
+  assert.strictEqual(w.wsfuPrefillFor('WC', 'private').total, 2.2);
+  assert.strictEqual(w.wsfuPrefillFor('WC tank', 'public').total, 5);
+  assert.strictEqual(w.wsfuPrefillFor('WC tank', 'public').controlLabel, 'flush tank');
+  // a fixture the code prints in one column reads that column whatever the project says
+  assert.strictEqual(w.wsfuPrefillFor('Mop sink', 'private').occupancy, 'public');
+  assert.strictEqual(w.wsfuPrefillFor('Floor drain', 'public'), null);
+  // a mark's number: its override, else its counter's, else 0
+  assert.strictEqual(w.markerWsfu({ wsfuOverride: 3 }, { wsfu: 2 }), 3);
+  assert.strictEqual(w.markerWsfu({}, { wsfu: 2 }), 2);
+  assert.strictEqual(w.markerWsfu({ wsfuOverride: 0 }, { wsfu: 2 }), 2);
+  assert.strictEqual(w.markerWsfu({}, {}), 0);
+  assert.strictEqual(w.markerWsfu(null, null), 0);
 });

@@ -3,7 +3,7 @@ id: plumb.wsfu.fixtures
 title: Water supply fixture units by fixture
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: The load a fixture puts on the water supply, in water supply fixture units (WSFU), cold and hot, by the private or public column and the kind of supply control.
 values:
   - when: Bathroom group, private, flush tank · cold
@@ -190,14 +190,6 @@ values:
     value: 4
     unit: WSFU
     code: water-model.js#WSFU_LOADS.shower.public.mixing-valve.total
-  - when: Urinal, public, 1 in flush valve · cold
-    value: 10
-    unit: WSFU
-    code: water-model.js#WSFU_LOADS.urinal.public.flush-valve-1.cold
-  - when: Urinal, public, 1 in flush valve · total
-    value: 10
-    unit: WSFU
-    code: water-model.js#WSFU_LOADS.urinal.public.flush-valve-1.total
   - when: Urinal, public, 3/4 in flush valve · cold
     value: 5
     unit: WSFU
@@ -206,6 +198,14 @@ values:
     value: 5
     unit: WSFU
     code: water-model.js#WSFU_LOADS.urinal.public["flush-valve-3/4"].total
+  - when: Urinal, public, 1 in flush valve · cold
+    value: 10
+    unit: WSFU
+    code: water-model.js#WSFU_LOADS.urinal.public.flush-valve-1.cold
+  - when: Urinal, public, 1 in flush valve · total
+    value: 10
+    unit: WSFU
+    code: water-model.js#WSFU_LOADS.urinal.public.flush-valve-1.total
   - when: Urinal, public, flush tank · cold
     value: 3
     unit: WSFU
@@ -250,14 +250,6 @@ values:
     value: 4
     unit: WSFU
     code: water-model.js#WSFU_LOADS.washing-machine-15.public.automatic.total
-  - when: Water closet, private, flush valve · cold
-    value: 6
-    unit: WSFU
-    code: water-model.js#WSFU_LOADS.water-closet.private.flush-valve.cold
-  - when: Water closet, private, flush valve · total
-    value: 6
-    unit: WSFU
-    code: water-model.js#WSFU_LOADS.water-closet.private.flush-valve.total
   - when: Water closet, private, flush tank · cold
     value: 2.2
     unit: WSFU
@@ -266,6 +258,14 @@ values:
     value: 2.2
     unit: WSFU
     code: water-model.js#WSFU_LOADS.water-closet.private.flush-tank.total
+  - when: Water closet, private, flush valve · cold
+    value: 6
+    unit: WSFU
+    code: water-model.js#WSFU_LOADS.water-closet.private.flush-valve.cold
+  - when: Water closet, private, flush valve · total
+    value: 6
+    unit: WSFU
+    code: water-model.js#WSFU_LOADS.water-closet.private.flush-valve.total
   - when: Water closet, private, flushometer tank · cold
     value: 2
     unit: WSFU
@@ -304,7 +304,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: []
+used_by: [quickCreate]
 updated: 2026-09-23
 ---
 
@@ -312,7 +312,7 @@ A fixture does not draw water all the time, so pipes are not sized by adding up 
 
 ## What the app does with it
 
-When a counter's name says what the fixture is (*Lavatory*, *WC flush valve*, *Urinal*), the counter's **WSFU** field is prefilled from this table for the project's occupancy (Project Settings, beside the code editions: public by default on a commercial bid, private on a dwelling), and a chip names this rule and the value it read. Type over it and the counter keeps yours; a placed mark can carry its own override. The occupancy toggle ships first (rung 1); the field, the prefill and the chip follow in rung 2 of the water-sizing ladder.
+When a counter's name says what the fixture is (*Lavatory*, *WC flush valve*, *Urinal*), the counter's **WSFU** field is prefilled from this table for the project's occupancy (Project Settings, beside the code editions: public by default on a commercial bid, private on a dwelling), and a chip names this rule and the value it read. Type over it and the counter keeps yours; a placed mark can carry its own override. The occupancy toggle shipped with rung 1 of the water-sizing ladder, the field, the prefill and the chip with rung 2; a placed mark can carry its own number (right-click, *WSFU for this one…*), and the Summary totals the fixture units placed.
 
 ## What it does not do
 

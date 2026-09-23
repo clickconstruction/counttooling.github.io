@@ -87,6 +87,8 @@
       const neckText = [
         App.getDuctNeckSuggestionText ? App.getDuctNeckSuggestionText(c) : null,
         App.getCounterCfmOverrideText ? App.getCounterCfmOverrideText(c) : null,
+        App.getCounterWsfuText ? App.getCounterWsfuText(c) : null,   // WATER-PLAN rung 2
+        App.getCounterWsfuOverrideText ? App.getCounterWsfuOverrideText(c) : null,
       ].filter(Boolean).join(' ');
       const neckTitle = neckText ? ' title="' + esc(neckText) + '"' : '';
       div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name"' + neckTitle + '>' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + withRepeats + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');

@@ -37,22 +37,70 @@ const WSFU_LOADS = {
   lavatory: { label: 'Lavatory', private: { faucet: { cold: 0.5, hot: 0.5, total: 0.7 } }, public: { faucet: { cold: 1.5, hot: 1.5, total: 2 } } },
   'service-sink': { label: 'Service sink', public: { faucet: { cold: 2.25, hot: 2.25, total: 3 } } },
   shower: { label: 'Shower head', private: { 'mixing-valve': { cold: 1, hot: 1, total: 1.4 } }, public: { 'mixing-valve': { cold: 3, hot: 3, total: 4 } } },
-  urinal: { label: 'Urinal', public: { 'flush-valve-1': { cold: 10, hot: 0, total: 10 }, 'flush-valve-3/4': { cold: 5, hot: 0, total: 5 }, 'flush-tank': { cold: 3, hot: 0, total: 3 } } },
+  urinal: { label: 'Urinal', public: { 'flush-valve-3/4': { cold: 5, hot: 0, total: 5 }, 'flush-valve-1': { cold: 10, hot: 0, total: 10 }, 'flush-tank': { cold: 3, hot: 0, total: 3 } } },
   'washing-machine-8': { label: 'Washing machine (8 lb)', private: { automatic: { cold: 1, hot: 1, total: 1.4 } }, public: { automatic: { cold: 2.25, hot: 2.25, total: 3 } } },
   'washing-machine-15': { label: 'Washing machine (15 lb)', public: { automatic: { cold: 3, hot: 3, total: 4 } } },
-  'water-closet': { label: 'Water closet', private: { 'flush-valve': { cold: 6, hot: 0, total: 6 }, 'flush-tank': { cold: 2.2, hot: 0, total: 2.2 }, 'flushometer-tank': { cold: 2, hot: 0, total: 2 } }, public: { 'flush-valve': { cold: 10, hot: 0, total: 10 }, 'flush-tank': { cold: 5, hot: 0, total: 5 }, 'flushometer-tank': { cold: 2, hot: 0, total: 2 } } },
+  'water-closet': { label: 'Water closet', private: { 'flush-tank': { cold: 2.2, hot: 0, total: 2.2 }, 'flush-valve': { cold: 6, hot: 0, total: 6 }, 'flushometer-tank': { cold: 2, hot: 0, total: 2 } }, public: { 'flush-valve': { cold: 10, hot: 0, total: 10 }, 'flush-tank': { cold: 5, hot: 0, total: 5 }, 'flushometer-tank': { cold: 2, hot: 0, total: 2 } } },
 };
 const WSFU_CONTROL_LABELS = {
   faucet: 'faucet', automatic: 'automatic', 'flush-tank': 'flush tank', 'flush-valve': 'flush valve', 'flushometer-tank': 'flushometer tank',
   'mixing-valve': 'mixing valve', 'valve-3/8': '3/8 in valve', 'flush-valve-1': '1 in flush valve', 'flush-valve-3/4': '3/4 in flush valve',
 };
 const WATER_OCCUPANCIES = ['public', 'private'];
+
+// The fixture a counter's name declares, as { fixture, control } (control null
+// when the name does not say), or null when the name is not a water fixture
+// the table knows (a floor drain, a hose bibb, a water heater, a cleanout).
+// Word-bounded on the lowercased name with punctuation as spaces, so "WC-1"
+// reads, "Hand sink" is a lavatory before "sink" is a kitchen sink, and
+// "Floor sink" is a drain, not a fixture.
+function wsfuFixtureFromName(name) {
+  const n = ' ' + String(name || '').toLowerCase().replace(/[_/,()#.:-]+/g, ' ').replace(/\s+/g, ' ') + ' ';
+  if (/\b(floor sink|floor drain|fs|fd|hose bibb?|hb|wall hydrant|water heater|wh|cleanout|co|backflow|trap primer|ice maker|ice machine)\b/.test(n)) return null;
+  let fixture = null;
+  if (/\b(bathroom group|bath group)\b/.test(n)) fixture = 'bathroom-group';
+  else if (/\bcombination (fixture|sink)\b/.test(n)) fixture = 'combination-fixture';
+  else if (/\b(lav|lavs|lavatory|lavatories|hand sink|hand wash(ing)? sink|hs|wash basin|basin)\b/.test(n)) fixture = 'lavatory';
+  else if (/\b(wc|w c|water closet|water closets|toilet|toilets)\b/.test(n)) fixture = 'water-closet';
+  else if (/\b(ur|urinal|urinals)\b/.test(n)) fixture = 'urinal';
+  else if (/\bbidet\b/.test(n)) fixture = 'bidet';
+  else if (/\b(bathtub|bath tub|tub|bath|bt)\b/.test(n)) fixture = 'bathtub';
+  else if (/\b(shower|showers|shower head|sh)\b/.test(n)) fixture = 'shower';
+  else if (/\b(mop sink|service sink|slop sink|janitor sink|jan sink|ms)\b/.test(n)) fixture = 'service-sink';
+  else if (/\b(dw|dishwasher|dish washer|dish machine|dishwashing machine)\b/.test(n)) fixture = 'dishwasher';
+  else if (/\b(df|ewc|drinking fountain|water fountain|water cooler|bottle fill(er|ing)?( station)?)\b/.test(n)) fixture = 'drinking-fountain';
+  else if (/\b(laundry tray|laundry sink|laundry tub|lt)\b/.test(n)) fixture = 'laundry-tray';
+  else if (/\b(wm|washer|washing machine|clothes washer|laundry machine)\b/.test(n)) fixture = /\b15 ?lbs?\b/.test(n) ? 'washing-machine-15' : 'washing-machine-8';
+  else if (/\b(sink|sinks|ks|kitchen sink|prep sink|bar sink|pot sink|scullery|[23] ?comp(artment)?( sink)?|three comp(artment)?( sink)?|two comp(artment)?( sink)?)\b/.test(n)) fixture = 'kitchen-sink';
+  if (!fixture) return null;
+  let control = null;
+  if (/\bflushometer tank\b/.test(n)) control = 'flushometer-tank';
+  else if (/\b(flush valve|flushometer|fv)\b/.test(n)) control = fixture === 'urinal' ? (/\b1 ?(in|inch)\b|\b1 ?"/.test(n) ? 'flush-valve-1' : 'flush-valve-3/4') : 'flush-valve';
+  else if (/\b(flush tank|tank|ft)\b/.test(n)) control = 'flush-tank';
+  return { fixture, control };
+}
+// What the counter's WSFU field is prefilled with for a name and the project's
+// occupancy: the table row plus the fixture's label, or null when the name is
+// not a fixture the table knows.
+function wsfuPrefillFor(name, occupancy) {
+  const hit = wsfuFixtureFromName(name);
+  if (!hit) return null;
+  const row = wsfuFor(hit.fixture, occupancy, hit.control);
+  return row ? { ...row, label: WSFU_LOADS[hit.fixture].label, controlLabel: WSFU_CONTROL_LABELS[row.control] || row.control } : null;
+}
+// A placed mark's fixture units: its own override, else its counter's, else 0.
+function markerWsfu(marker, counter) {
+  if (marker && Number.isFinite(marker.wsfuOverride) && marker.wsfuOverride > 0) return marker.wsfuOverride;
+  return counter && Number.isFinite(counter.wsfu) && counter.wsfu > 0 ? counter.wsfu : 0;
+}
 const WATER_SIDES = ['cold', 'hot'];
 
 // The load row for a fixture: the occupancy column asked for, or the other one
 // when the code prints the fixture in only one (a bidet is private-only, a
-// service sink public-only); the control asked for, or the fixture's first.
-// null when the fixture is unknown.
+// service sink public-only); the control asked for, or the fixture's first
+// (the table's order is the read a bare name gets: a public water closet is a
+// flush valve, a private one a flush tank, a public urinal a 3/4 in flush
+// valve). null when the fixture is unknown.
 function wsfuFor(fixtureKey, occupancy, control) {
   const f = WSFU_LOADS[fixtureKey];
   if (!f) return null;
@@ -201,7 +249,7 @@ function fixtureSupplyMinLabel(fixtureKey, control) {
 }
 
 const WATER_MODEL_API = {
-  WSFU_LOADS, WSFU_CONTROL_LABELS, WATER_OCCUPANCIES, WATER_SIDES, wsfuFor,
+  WSFU_LOADS, WSFU_CONTROL_LABELS, WATER_OCCUPANCIES, WATER_SIDES, wsfuFor, wsfuFixtureFromName, wsfuPrefillFor, markerWsfu,
   DEMAND_CURVE, demandGpm,
   WATER_VELOCITY_CAP_FPS, PIPE_ID_IN, WATER_MATERIAL_ORDER, waterMaterialFromName, pipeIdIn, velocityFps, suggestWaterSizeIn,
   FIXTURE_SUPPLY_MIN_IN, fixtureSupplyMinIn, fixtureSupplyMinLabel, WATER_SERVICE_MIN_IN, sizeFraction,

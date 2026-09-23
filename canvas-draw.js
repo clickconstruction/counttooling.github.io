@@ -595,6 +595,46 @@ function createCanvasDraw(deps) {
       }
       ctx.restore();
     };
+    // WATER-PLAN rung 3: water leaders — a dashed tie from a fixture-unit mark
+    // to the point on the run of each side it attaches to, in the run's color,
+    // painted under the strokes and the glyphs like the duct flex leaders. The
+    // shapes are the ones features/water-runs.js collects (waterFixtureLoads ×
+    // the multiply zone, waterRunsFromAnnotations), so a leader is drawn only
+    // where the tally attaches. A project with no water-sided type paints
+    // nothing, so plain renders stay byte-identical.
+    if (typeof waterRunsFromAnnotations === 'function' && typeof waterFixtureLeaders === 'function') {
+      const st = deps.getState();
+      const wRuns = waterRunsFromAnnotations(ann, st.lineTypes || []);
+      if (wRuns.length) {
+        const occ = st.codes && st.codes.occupancy === 'private' ? 'private' : 'public';
+        const fixtures = [];
+        (st.counters || []).forEach(c => {
+          if (!(c.wsfu > 0)) return;
+          (ann.counterMarkers?.[c.id] || []).forEach(m => {
+            const loads = waterFixtureLoads(c, occ, markerWsfu(m, c));
+            if (loads) fixtures.push({ x: m.x, y: m.y, loads });
+          });
+        });
+        const wLeaders = fixtures.length ? waterFixtureLeaders(fixtures, wRuns) : [];
+        if (wLeaders.length) {
+          const lScale = env.ductStrokeScale != null ? env.ductStrokeScale : 1;
+          ctx.save();
+          ctx.globalAlpha = DUCT_LEADER_ALPHA;
+          ctx.lineWidth = 1 * lScale;
+          ctx.setLineDash(DUCT_LEADER_DASH.map(d => d * lScale));
+          wLeaders.forEach(l => {
+            const run = wRuns.find(r => r.id === l.runId);
+            ctx.strokeStyle = (run && run.color) || '#4a9eff';
+            const a = tc(l.from), b = tc(l.to);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          });
+          ctx.restore();
+        }
+      }
+    }
     (ann.quickLines || []).forEach(q => {
       const aPdf = { x: q.x1, y: q.y1 }, bPdf = { x: q.x2, y: q.y2 };
       const a = tc(aPdf), b = tc(bPdf);

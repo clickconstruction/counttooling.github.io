@@ -299,6 +299,57 @@
   const rfiAt = (spot, r) => { const a = ann(); return !!a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')) && inCircle({ x: n.x, y: n.y }, { x: spot.x, y: spot.y, r })); };
   const anyDrop = () => { const a = ann(); if (!a) return false; const has = (l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0; return (a.quickLines || []).some(has) || (a.polylines || []).some(has); };
 
+  // WATER-PLAN rung 6 (2026-09-23): the fourth step set, "Size the branch at S". The lav
+  // battery's cold branch comes off a main; the main is traced as a polyline from the
+  // riser at the first lavatory down to the wall, and the S moment sizes it from the
+  // three lavatories' fixture units (4.5 WSFU at flush tanks → 8.7 gpm: 1in PEX holds at
+  // 4.8 fps, 3/4in would do). Taking 3/4 in at S ends the run there and starts the next
+  // from the last point in a 3/4in PEX cold type the app makes.
+  const MAIN_RISER = LAV_SPOTS[0];
+  const MAIN_MID = { x: 688.5, y: 405 };
+  const MAIN_END = { x: 640, y: 405 };
+  const waterSided = (lt) => !!(lt && (lt.waterSide === 'cold' || lt.waterSide === 'hot'));
+  const waterTypeIds = () => new Set((state().lineTypes || []).filter(waterSided).map((lt) => lt.id));
+  const waterPolyPaths = () => {
+    const a = ann(); const ids = waterTypeIds(); const d = state().drawingPolyline;
+    const out = ((a && a.polylines) || []).filter((p) => ids.has(p.lineTypeId)).map((p) => p.points || []);
+    if (d && ids.has(d.lineTypeId)) out.push(d.points || []);
+    return out;
+  };
+  const coldSizes = () => { const sm = window.SupportModel; return new Set((state().lineTypes || []).filter((lt) => lt.waterSide === 'cold' && sm && sm.supportSizeInFromName(lt.name) != null).map((lt) => sm.supportSizeInFromName(lt.name))); };
+  function setBranchCold() {
+    const lt = pLineType();
+    if (!lt) return;
+    if (lt.waterSide !== 'cold') { App.pushUndoSnapshot(); lt.waterSide = 'cold'; App.markProjectDirty(); }
+    App.updateUI(); App.renderAnnotations();
+  }
+  function giveLavFixtureUnits() {
+    const c = pLav();
+    if (!c) return;
+    const wm = window.WaterModel;
+    const read = wm && wm.wsfuPrefillFor ? wm.wsfuPrefillFor(c.name, App.getProjectOccupancy ? App.getProjectOccupancy() : 'public') : null;
+    const v = read && read.total > 0 ? read.total : 2;
+    if (c.wsfu !== v) { App.pushUndoSnapshot(); c.wsfu = v; App.markProjectDirty(); }
+    App.updateUI(); App.renderAnnotations();
+  }
+  function traceAndSizeMain() {
+    const lt = pLineType();
+    if (!lt) return;
+    if (lt.waterSide !== 'cold') lt.waterSide = 'cold';
+    const s = state();
+    if (App.settlePolylineDraft) App.settlePolylineDraft();
+    s.currentPage = 0;
+    s.activeLineTypeId = lt.id;
+    s.tool = App.TOOL.POLYLINE;
+    s.drawingPolyline = { id: App.uid(), name: App.nextPolylineName ? App.nextPolylineName() : 'Cold main', color: lt.color, points: [{ x: MAIN_RISER.x, y: MAIN_RISER.y }, { x: MAIN_MID.x, y: MAIN_MID.y }], closed: false, lineTypeId: lt.id, group: null };
+    App.updateUI(); App.renderAnnotations();
+    const sug = App.getWaterDraftSuggestion ? App.getWaterDraftSuggestion() : null;
+    if (sug && sug.sizeIn != null && sug.sizeIn !== sug.currentSizeIn && App.applyWaterSize) App.applyWaterSize(sug.sizeIn);
+    const d = state().drawingPolyline;
+    if (d) { d.points.push({ x: MAIN_END.x, y: MAIN_END.y }); App.settlePolylineDraft(); }
+    App.markProjectDirty(); App.updateUI(); App.renderAnnotations();
+  }
+
   const PLUMBING_STEPS = [
     {
       id: 'welcome', title: 'A five-minute plumbing takeoff', kind: 'do',
@@ -361,6 +412,29 @@
       action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
     {
+      id: 'waterside', title: 'Give the pipe its water', kind: 'do',
+      body: 'The branch carries cold water, and the app can size cold water from the fixtures on it once the pipe says so.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under Water, click [[Cold]].\nEvery run of the type is now a cold-water run, and the three lavatories chained on it tie to it with a dashed leader.',
+      target: ['#counterLineTypeDetailsWaterGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
+      check: () => { const lt = pLineType(); return !!(lt && lt.waterSide === 'cold'); },
+      action: { label: 'Make it cold water', run: setBranchCold },
+    },
+    {
+      id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
+      body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. Under [[Fixture units]], the app has read 2 WSFU for a public lavatory. Leave it, or type your own.\nThe chip names the row it read; its public word flips one counter to the private column.',
+      target: ['#counterLineTypeDetailsWsfuGroup', '#countersList .edit-btn', '#countersSectionTitle'],
+      check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
+      action: { label: 'Read the table for me', run: giveLavFixtureUnits },
+    },
+    {
+      id: 'size', title: 'Size the branch at S', kind: 'do',
+      body: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n1. In the header, click [[⋯]], then [[Polyline]] (or press P). Pick 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card above the sheet reads the fixture units still to serve and the size that keeps the water under 8 fps: 1in holds, 3/4in would do.\n3. Press S and click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click.\n4. Click inside the second circle, then press Enter.',
+      target: ['#waterSizePopover', '#waterHintCard', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
+      zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
+      check: () => waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
+      hint: () => (waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? 'The main is traced but still one size. Press S while tracing and take the 3/4″ the card offers' : ''),
+      action: { label: 'Trace and size it for me', run: traceAndSizeMain },
+    },
+    {
       id: 'zone', title: 'A typical floor', kind: 'do',
       body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Women 108: start and end anywhere inside the shaded boundary.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
@@ -394,7 +468,7 @@
     },
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
-      body: 'Scale, prove it, count, chain, riser, hangers, ×3, proof, hand off.\nGroups subtotal a restroom at a time when a set gets busy. Your work here is saved on this device like any takeoff. When you are ready for a real plan, click [[Upload PDF]] in the header. Guides for every tool live under Help → Guides.',
+      body: 'Scale, prove it, count, chain, riser, hangers, cold water sized at S, ×3, proof, hand off.\nGroups subtotal a restroom at a time when a set gets busy. Your work here is saved on this device like any takeoff. When you are ready for a real plan, click [[Upload PDF]] in the header. Guides for every tool live under Help → Guides.',
       target: [],
       check: () => true,
     },

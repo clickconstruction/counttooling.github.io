@@ -47,6 +47,7 @@
   <script src="/tag-model.js"></script>
   <script src="/sheet-title-model.js"></script>
   <script src="/support-model.js"></script>
+  <script src="/water-model.js"></script>
   <script src="/fitting-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/bid-basis-model.js"></script>
@@ -373,6 +374,9 @@
         <div class="sidebar-section" id="lineTypesSection">
           <div class="sidebar-section-header-row">
             <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types</h3>
+            <!-- WATER-PLAN rung 5: the Water Sizing schedule opener, shown exactly when a
+                 line type has a water side (features/water-schedule.js syncWaterScheduleBtn). -->
+            <button id="waterScheduleBtn" class="sidebar-btn-inline" title="Water Sizing, every water run's fixture units, flow, velocity and size check" style="display:none;">Water</button>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
             <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span>
           </div>
@@ -511,6 +515,10 @@
                stays at the cursor. features/duct-tool.js syncDuctHintCard fills and toggles it;
                the S popover carries the same information for assistive tech. -->
           <div class="duct-hint-card" id="ductHintCard" aria-hidden="true" hidden></div>
+          <!-- WATER-PLAN rung 4: the water trace's suggestion card (features/water-size.js),
+               the duct card twinned: "3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts".
+               A tap opens the size popover. -->
+          <div class="duct-hint-card water-hint-card" id="waterHintCard" aria-hidden="true" hidden></div>
           <div class="canvas-container" id="canvasContainer">
             <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             <canvas id="cropCanvas" class="crop-canvas"></canvas>
@@ -724,6 +732,17 @@
         <!-- DUCT unit D6: optional CFM on a counter — air devices only. Empty
              = not an air device (zero behavior change); placed markers inherit
              it for the design-build duct suggestions. -->
+        <!-- WATER-PLAN rung 2: the fixture's water supply fixture units, prefilled from
+             the name for the project's occupancy (features/water-fixtures.js); shown on a
+             plumbing-shaped project. The chip names the table row read and its § rule;
+             its occupancy word flips this counter to the other column. -->
+        <div class="form-group wsfu-group" id="counterWsfuGroup" style="display:none;">
+          <label>Fixture units <span class="form-sublabel">(WSFU, water supply; leave empty for a fixture with no water)</span></label>
+          <div class="cfm-row">
+            <input type="number" id="counterWsfu" min="0" step="0.5" placeholder="e.g. 2" style="width:120px;" autocomplete="off">
+            <span class="wsfu-chip" id="counterWsfuChip" hidden></span>
+          </div>
+        </div>
         <!-- D19 (B19 part 2, ratcheted): the three device fields fold under ONE
              "More ▸ air & mounting" disclosure so a plumbing Create tab is not
              three air/electrical fields deep. Hiding them outright was rejected
@@ -848,6 +867,15 @@
             <button type="button" id="counterQuickCountAddMaterial" class="plum-add-btn" title="Add material">+</button>
           </div>
         </div>
+        <!-- WATER-PLAN rung 2: the Create tab's Fixture units field, twinned; prefilled
+             from the composed name, shown on a plumbing-shaped project. -->
+        <div class="form-group plum-modifier-row wsfu-group" id="counterQuickCountWsfuRow" style="display:none;">
+          <label>Fixture units</label>
+          <div class="plum-select-btn-row">
+            <input type="number" id="counterQuickCountWsfu" min="0" step="0.5" placeholder="e.g. 2" style="width:110px;" autocomplete="off" title="Water supply fixture units; empty = a fixture with no water">
+            <span class="wsfu-chip" id="counterQuickCountWsfuChip" hidden></span>
+          </div>
+        </div>
         <!-- D19 (B19 part 2): the Create tab's "More ▸ air & mounting"
              disclosure, twinned here. Same rule — always present (the first CFM
              device must stay creatable), open by itself on HVAC / Electrical.
@@ -909,6 +937,11 @@
       <div class="form-group">
         <label>Display</label>
         <div class="radio-seg" role="radiogroup"><label><input type="radio" name="lineTypeCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="lineTypeCurve" value="arc"><span>Curved</span></label></div>
+      </div>
+      <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+      <div class="form-group" id="lineTypeWaterGroup" style="display:none;">
+        <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+        <div class="radio-seg" role="radiogroup"><label><input type="radio" name="lineTypeWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="lineTypeWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="lineTypeWaterSide" value="hot"><span>Hot</span></label></div>
       </div>
       <div class="form-group">
         <label>Color</label>
@@ -1088,6 +1121,39 @@
       <div class="actions">
         <button id="ductScheduleCopy" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
         <button id="ductScheduleClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <!-- WATER-PLAN rung 5: the Water Sizing schedule (features/water-schedule.js), the
+       Duct Schedule twinned: one row per water run (size, fixture units served, gpm,
+       fps, the check), cold and hot totals, the fixtures no run reaches; the velocity
+       caps and the occupancy column at the foot stick with the project. -->
+  <div class="modal-overlay" id="waterScheduleModal">
+    <div class="modal-card duct-schedule-card">
+      <div class="modal-card-header">
+        <h2>Water Sizing</h2>
+        <div class="duct-shape-toggle duct-schedule-scope" id="waterScheduleScope" style="display:none;">
+          <button type="button" data-scope="page">This sheet</button>
+          <button type="button" data-scope="project" class="active">Every sheet</button>
+        </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div id="waterScheduleBody"></div>
+      <div class="section-rule"><b>Sizing</b></div>
+      <div class="duct-schedule-knobs">
+        <label class="duct-knob">Cold cap <input type="number" id="waterCapCold" class="duct-schedule-pct duct-schedule-num" min="1" max="20" step="0.5" aria-label="Cold water velocity cap, feet per second"><span>fps</span></label>
+        <label class="duct-knob">Hot cap <input type="number" id="waterCapHot" class="duct-schedule-pct duct-schedule-num" min="1" max="20" step="0.5" aria-label="Hot water velocity cap, feet per second"><span>fps</span></label>
+        <button type="button" class="rule-chip" data-rule="plumb.water.velocity" hidden></button>
+        <label class="duct-knob water-occupancy-label">Occupancy
+          <div class="filter-scope-segment" id="waterScheduleOccupancy" role="group" aria-label="Occupancy for fixture units">
+            <button type="button" data-occupancy="public" aria-pressed="false">Public</button>
+            <button type="button" data-occupancy="private" aria-pressed="false">Private</button>
+          </div>
+        </label>
+      </div>
+      <div class="form-sublabel water-schedule-foot" id="waterScheduleFoot"></div>
+      <div class="actions">
+        <button id="waterScheduleCopy" class="ghost" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
+        <button id="waterScheduleClose" class="primary">Done</button>
       </div>
     </div>
   </div>
@@ -1770,6 +1836,11 @@
           <label>Display</label>
           <div class="radio-seg" role="radiogroup"><label><input type="radio" name="createLineTypeCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="createLineTypeCurve" value="arc"><span>Curved</span></label></div>
         </div>
+        <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+        <div class="form-group" id="createLineTypeWaterGroup" style="display:none;">
+          <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+          <div class="radio-seg" role="radiogroup"><label><input type="radio" name="createLineTypeWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="createLineTypeWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="createLineTypeWaterSide" value="hot"><span>Hot</span></label></div>
+        </div>
         <div class="form-group">
           <label>Color</label>
           <div class="color-row" id="createLineTypeColorRow"></div>
@@ -1810,6 +1881,11 @@
         <div class="form-group">
           <label>Display</label>
           <div class="radio-seg" role="radiogroup"><label><input type="radio" name="quickLineCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="quickLineCurve" value="arc"><span>Curved</span></label></div>
+        </div>
+        <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+        <div class="form-group" id="quickLineWaterGroup" style="display:none;">
+          <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+          <div class="radio-seg" role="radiogroup"><label><input type="radio" name="quickLineWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="quickLineWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="quickLineWaterSide" value="hot"><span>Hot</span></label></div>
         </div>
         <div class="actions">
           <button id="quickLineCancel">Cancel</button>
@@ -1859,6 +1935,22 @@
       <div class="actions">
         <button id="markerCfmCancel">Cancel</button>
         <button id="markerCfmSave">Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- WATER-PLAN rung 2: the per-mark fixture-unit override ("WSFU for this one…"
+       on a placed marker's context menu), the D15 CFM modal twinned
+       (features/water-fixtures.js). -->
+  <div class="modal-overlay" id="markerWsfuModal">
+    <div class="modal-card">
+      <div class="modal-card-header"><h2>Fixture units for this one</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group">
+        <label>WSFU <span class="form-sublabel" id="markerWsfuHint"></span></label>
+        <input type="number" id="markerWsfuInput" min="0" step="0.5" placeholder="e.g. 2" autocomplete="off" style="width:140px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);">
+      </div>
+      <div class="actions">
+        <button id="markerWsfuCancel" class="ghost">Cancel</button>
+        <button id="markerWsfuSave" class="primary">Save</button>
       </div>
     </div>
   </div>
@@ -2083,8 +2175,18 @@
       <!-- DUCT unit D6: the per-counter CFM (counters only; hidden for line
            types). Same optional-field semantics as the Create tab. -->
       <details class="modal-section" id="counterLineTypeDetailsAirSection" style="display:none;" open>
-        <summary>Air &amp; mounting<small>CFM, flex drop, mount height, fixture tag</small></summary>
+        <summary>Air &amp; mounting<small>Fixture units, CFM, flex drop, mount height, fixture tag</small></summary>
         <div class="modal-section-body">
+      <!-- WATER-PLAN rung 2: the counter's fixture units (features/water-fixtures.js);
+           blur commits like the CFM field, a cleared value deletes the key. -->
+      <div class="form-group wsfu-group" id="counterLineTypeDetailsWsfuGroup" style="display:none;">
+        <label>Fixture units <span class="form-sublabel">(WSFU, water supply; leave empty for a fixture with no water)</span></label>
+        <div class="cfm-row">
+          <input type="number" id="counterLineTypeDetailsWsfu" min="0" step="0.5" placeholder="e.g. 2" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);" autocomplete="off">
+          <span class="wsfu-chip" id="counterLineTypeDetailsWsfuChip" hidden></span>
+        </div>
+        <div class="form-sublabel" id="counterLineTypeDetailsWsfuOverrides" style="display:none;margin-top:6px;"></div>
+      </div>
       <div class="form-group" id="counterLineTypeDetailsCfmGroup" style="display:none;">
         <label>CFM <span class="form-sublabel">(air devices only, leave empty otherwise)</span></label>
         <input type="number" id="counterLineTypeDetailsCfm" min="0" step="5" placeholder="e.g. 150" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
@@ -2117,6 +2219,11 @@
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
         <div class="radio-seg" role="radiogroup"><label><input type="radio" name="counterLineTypeDetailsCurve" value="straight"><span>Straight</span></label><label><input type="radio" name="counterLineTypeDetailsCurve" value="arc"><span>Curved</span></label></div>
+      </div>
+      <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+      <div class="form-group" id="counterLineTypeDetailsWaterGroup" style="display:none;">
+        <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+        <div class="radio-seg" role="radiogroup"><label><input type="radio" name="counterLineTypeDetailsWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="counterLineTypeDetailsWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="counterLineTypeDetailsWaterSide" value="hot"><span>Hot</span></label></div>
       </div>
       <div class="form-group">
         <div class="section-rule"><b>On pages</b></div>
@@ -2338,7 +2445,9 @@
             <div class="settings-project-row-text">
               <div>Codes</div>
             </div>
-            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Remembered for your next bid.</div>
+            <!-- WATER-PLAN rung 1: the occupancy column fixture units read (public on a commercial bid,
+                 private on a dwelling), one word that flips; no row of its own so the card keeps its height. -->
+            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Fixture units read the <button type="button" class="settings-occ-flip" id="settingsOccupancyFlip" title="Public on a commercial bid, private on a dwelling or a hotel room. Click to flip. A counter can be flipped on its own.">public</button> column.</div>
             <div class="settings-codes-grid">
               <label class="settings-code-cell"><span class="settings-code-label">Plumbing</span><select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select></label>
               <label class="settings-code-cell"><span class="settings-code-label">Electrical</span><select id="settingsCodeElectrical" aria-label="Electrical code edition"></select></label>
@@ -3437,6 +3546,16 @@
     </div>
     <div id="ductSizeSections"></div>
   </div>
+  <!-- WATER-PLAN rung 4: the water size popover (features/water-size.js), opened by S or
+       the card while a water polyline is traced: the suggested size, the material's
+       ladder with each size's velocity, and the note that a size change is a new run. -->
+  <div class="duct-size-popover water-size-popover" id="waterSizePopover" style="display:none;" role="dialog" aria-label="Water pipe size">
+    <div class="duct-size-popover-head">
+      <span id="waterSizeCurrent"></span>
+      <button type="button" id="waterSizePopoverClose" class="chain-panel-close" title="Close (Esc)" aria-label="Close">×</button>
+    </div>
+    <div id="waterSizeSections"></div>
+  </div>
   <!-- Highlight bookmarks panel: shown while TOOL.HIGHLIGHT is active. Rows
        are BUILT by features/highlight-labels.js from every page's highlights
        (merged across canvas layers); a row click jumps to its page, ✎ names /
@@ -3463,6 +3582,7 @@
     <button id="ctxEditRoomBox" style="display:none;">Edit room box</button>
     <button id="ctxNameHighlight" style="display:none;">Name highlight…</button>
     <button id="ctxMarkerCfm" style="display:none;">CFM for this one…</button>
+    <button id="ctxMarkerWsfu" style="display:none;">WSFU for this one…</button>
     <!-- D19 (J19 Friction #3): the stray-device rescue. Shown only for a CFM
          device that is NOT attached to any run and has one close enough to be
          the obvious intent (duct-model ductNearestRunPoint). -->
@@ -3565,6 +3685,11 @@
   <script src="/features/duct-sidebar.js"></script>
   <script src="/features/duct-schedule.js"></script>
   <script src="/features/duct-suggest.js"></script>
+  <script src="/features/water-fixtures.js"></script>
+  <script src="/features/water-runs.js"></script>
+  <script src="/features/water-size.js"></script>
+  <script src="/features/water-schedule.js"></script>
+  <script src="/features/water-bidcheck.js"></script>
   <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>

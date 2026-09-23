@@ -66,6 +66,7 @@
         if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
         if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
         if (data.ductSettings) state.ductSettings = { ...state.ductSettings, ...data.ductSettings };
+        if (data.waterSettings) state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(data.waterSettings) : data.waterSettings;   // WATER-PLAN rung 5
         if (data.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...data.multiplyZoneSettings };
         if (data.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...data.scaleZoneSettings };
         if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;

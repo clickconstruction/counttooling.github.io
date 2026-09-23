@@ -190,7 +190,7 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.locator('#canvasEmptyHintTour').isVisible()).toBe(true);
     await page.click('#canvasEmptyHintTourPlumbing');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['plumbing', 'welcome']);
-    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 14');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 17');
     // the sample plan is a true ANSI B sheet — no sheet-size warning can greet the scale step
 
     // 1. the sample plan → the project is stamped plumbing (not remembered as the device default)
@@ -256,6 +256,19 @@ test.describe('Interactive walkthrough', () => {
     await page.evaluate(() => window.App.tutorialDoStep());
     // the hanger comes from the rulebook: PEX at 1 in → 32 in, stamped with its rule
     expect(await page.evaluate(() => window.state.lineTypes[0].childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }]);
+    // 9b. WATER-PLAN rung 6, the fourth step set: the branch's water side, the lavatory's
+    // fixture units from the table, the main traced from the riser and stepped down at S
+    await waitForStep(page, 'waterside');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    expect(await page.evaluate(() => window.state.lineTypes[0].waterSide)).toBe('cold');
+    await waitForStep(page, 'wsfu');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    expect(await page.evaluate(() => window.state.counters.find((c) => /lav/i.test(c.name)).wsfu)).toBe(2);
+    await waitForStep(page, 'size');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    expect(await page.evaluate(() => window.state.lineTypes.map((l) => [l.name, l.waterSide]))).toEqual([['1in PEX', 'cold'], ['3/4in PEX', 'cold']]);
+    expect(await page.evaluate(() => { const ids = window.state.lineTypes.map((l) => l.id); return window.App.getActiveAnnotations(window.state.pages[0]).polylines.map((p) => [ids.indexOf(p.lineTypeId), p.points.length]); })).toEqual([[0, 2], [1, 2]]);
+    expect(await page.evaluate(() => window.state.lineTypes[1].childCounts)).toEqual([{ name: 'Hanger', qty: 1, per: 'ft', intervalIn: 32, ruleId: 'plumb.hanger.pex' }]);
     await waitForStep(page, 'zone');
     // 10. the ×3 zone around Women 108 triples the water closets in the tally
     await page.evaluate(() => window.App.tutorialDoStep());
@@ -292,8 +305,12 @@ test.describe('Interactive walkthrough', () => {
     const summary = await page.evaluate(() => window.getPipeToolingSummary());
     expect(summary).toContain('Water Closet\t9');
     expect(summary).toContain('Lavatory\t9');
-    expect(summary).toContain('ft of 1in PEX\t28.00');   // 2 lav-to-lav runs of 3.17 ft × 3 floors + 3 risers of 3 ft
-    expect(summary).toContain('  Hanger\t15');
+    // 2 lav-to-lav runs of 3.17 ft + the 3 ft main from the riser, × 3 floors, + 3 risers of 3 ft; the
+    // 3/4in PEX the S moment made carries the rest of the main (WATER-PLAN rung 6)
+    expect(summary).toContain('ft of 1in PEX\t40.00');
+    expect(summary).toContain('  Hanger\t30');
+    expect(summary).toContain('ft of 3/4in PEX\t16.17');
+    expect(summary).toContain('--- Water sizing ---');
     expect(errors).toEqual([]);
   });
 
@@ -481,7 +498,7 @@ test.describe('Interactive walkthrough', () => {
     for (let i = 0; i < 3; i++) { zs = await zones(); await page.mouse.click(zs[i].cx - zs[i].r * 0.4, zs[i].cy + zs[i].r * 0.4); await page.waitForTimeout(250); }
     await waitForStep(page, 'linetype');
     // the typical floor: a box hanging out of the boundary is refused with the reason
-    for (const next of ['chain', 'drop', 'hangers', 'zone']) { await page.evaluate(() => window.App.tutorialDoStep()); await waitForStep(page, next); }
+    for (const next of ['chain', 'drop', 'hangers', 'waterside', 'wsfu', 'size', 'zone']) { await page.evaluate(() => window.App.tutorialDoStep()); await waitForStep(page, next); }
     await page.waitForTimeout(900);
     const z = (await zones())[0];
     expect(z.kind).toBe('box');

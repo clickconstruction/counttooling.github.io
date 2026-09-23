@@ -38,6 +38,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./bid-check-model.js')),
       Object.keys(require('./tag-model.js')),
       Object.keys(require('./sheet-title-model.js')),
+      Object.keys(require('./water-model.js')),
       Object.keys(require('./canvas-draw.js')),
       Object.keys(require('./render-service.js')),
       Object.keys(require('./duct-model.js')),
@@ -49,6 +50,10 @@ const moduleGlobals = Object.fromEntries(
 // duct-run painter) and the duct feature files read its exports by bare name.
 const ductModelGlobals = Object.fromEntries(
   Object.keys(require('./duct-model.js')).map((k) => [k, 'readonly']),
+);
+// water-model.js (WATER-PLAN rung 3): canvas-draw.js reads the water leaders' shapes by bare name.
+const waterModelGlobals = Object.fromEntries(
+  Object.keys(require('./water-model.js')).map((k) => [k, 'readonly']),
 );
 // conductor-model.js: the pure raceway / conductor model (S3). canvas-draw.js
 // (tick marks) reads its exports by bare name; features read window.ConductorModel.
@@ -175,7 +180,7 @@ module.exports = [
   js.configs.recommended,
   // Definition modules: classic scripts whose top-level declarations exist
   // solely to be consumed cross-file by the index.html IIFE / report.js.
-  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'recent-bids.js', 'duct-model.js', 'fitting-model.js', 'conductor-model.js', 'circuit-model.js', 'bid-check-model.js', 'tag-model.js', 'sheet-title-model.js', 'support-model.js', 'bid-basis-model.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
+  browserModule(['geometry.js', 'constants.js', 'zoom-ladder.js', 'hotkeys.js', 'recent-colors.js', 'recent-drops.js', 'recent-bids.js', 'duct-model.js', 'fitting-model.js', 'conductor-model.js', 'circuit-model.js', 'bid-check-model.js', 'tag-model.js', 'sheet-title-model.js', 'support-model.js', 'water-model.js', 'bid-basis-model.js', 'icons.js', 'icons-custom.js', 'save-utils.js']),
   // idb.js / format.js: classic <script>s loaded after constants.js, so they
   // reference constants (store names / caps, USER_ACTIVITY_TZ) by bare name.
   // Constants-only globals — NOT their own exports (no-redeclare).
@@ -189,7 +194,7 @@ module.exports = [
   // canvas-draw.js: the annotation draw core (createCanvasDraw(deps));
   // loaded after geometry.js + icons.js, reads both by bare name; everything
   // state-coupled arrives via deps.
-  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...conductorModelGlobals, ...circuitModelGlobals }),
+  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...waterModelGlobals, ...conductorModelGlobals, ...circuitModelGlobals }),
   // render-service.js: the raster seam (createRenderService(deps)) — browser
   // globals only (Worker, OffscreenCanvas, navigator); the rest arrives via deps.
   browserModule(['render-service.js']),

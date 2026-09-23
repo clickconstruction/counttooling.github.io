@@ -198,6 +198,8 @@
       });
       appendDerivedRows(el, 'null', conductorTotals);
     }
+    // WATER-PLAN rung 2: the fixture units placed, one line at the foot (features/water-fixtures.js).
+    if (App.appendWsfuSummaryRow) App.appendWsfuSummaryRow(el);
   }
 
   App.renderSummary = renderSummary;

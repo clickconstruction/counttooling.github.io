@@ -247,11 +247,19 @@ function createAnnotationModel(ctx) {
     }
   }
 
+  // WATER-PLAN rung 5: the water caps, through water-model's normalizer when it is loaded (the node tests load this file alone).
+  function normWater(raw) {
+    const wm = typeof window !== 'undefined' ? window.WaterModel : null;
+    if (wm && typeof wm.normalizeWaterSettings === 'function') return wm.normalizeWaterSettings(raw);
+    return raw && raw.capFps ? { capFps: { ...raw.capFps } } : raw;
+  }
   // Codes & jurisdiction (rulebook slice 4): keep only the strings a project chose.
   function normCodes(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const out = {};
     ['plumbing', 'electrical', 'hvac', 'jurisdiction'].forEach((k) => { if (typeof raw[k] === 'string' && raw[k].trim()) out[k] = raw[k].trim(); });
+    // WATER-PLAN rung 1: the fixture-unit column (public | private), the same two values constants.js keeps.
+    if (raw.occupancy === 'public' || raw.occupancy === 'private') out.occupancy = raw.occupancy;
     return Object.keys(out).length ? out : null;
   }
   function applyTakeoffBackupToState(backup) {
@@ -289,6 +297,7 @@ function createAnnotationModel(ctx) {
     if (backup.pageBakeFrames) backup.pageBakeFrames.forEach((bf, i) => { if (ctx.getState().pages[i]) verifyPageBakeFrame(ctx.getState().pages[i], bf); });
     if (backup.legendSettings) ctx.getState().legendSettings = { ...ctx.getState().legendSettings, ...backup.legendSettings };
     if (backup.ductSettings) ctx.getState().ductSettings = { ...ctx.getState().ductSettings, ...backup.ductSettings };
+    if (backup.waterSettings) ctx.getState().waterSettings = normWater(backup.waterSettings);   // WATER-PLAN rung 5
     if (backup.multiplyZoneSettings) ctx.getState().multiplyZoneSettings = { ...ctx.getState().multiplyZoneSettings, ...backup.multiplyZoneSettings };
     if (backup.scaleZoneSettings) ctx.getState().scaleZoneSettings = { ...ctx.getState().scaleZoneSettings, ...backup.scaleZoneSettings };
     if (backup.showGridOverlay != null) ctx.getState().showGridOverlay = !!backup.showGridOverlay;
@@ -324,6 +333,7 @@ function createAnnotationModel(ctx) {
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
     if (d.ductSettings) state.ductSettings = { ...state.ductSettings, ...d.ductSettings };
+    if (d.waterSettings) state.waterSettings = normWater(d.waterSettings);   // WATER-PLAN rung 5: the velocity caps
     if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
     if (d.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...d.scaleZoneSettings };
     if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;

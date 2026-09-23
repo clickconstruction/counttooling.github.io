@@ -36,6 +36,7 @@
     if (tab === 'choose') populateChooseLineTypeList(document.getElementById('lineTypeModalSearchInput')?.value);
     else if (tab === 'create') {
       document.getElementById('createLineTypeName').value = '';
+      if (App.registerWaterSideForm) { App.registerWaterSideForm('create', { radioName: 'createLineTypeWaterSide', groupId: 'createLineTypeWaterGroup', nameInputId: 'createLineTypeName', name: () => document.getElementById('createLineTypeName').value }); App.resetWaterSideForm('create'); }   // WATER-PLAN rung 3
       App.setupCreateColorPicker({ presetsRowId: 'createLineTypeColorRow', customInputId: 'createLineTypeColorCustom', recentRowId: 'createLineTypeColorRecent', recentGroupId: 'createLineTypeColorRecentGroup' });
     } else if (tab === 'quick') App.populateQuickLineModal();
   }
@@ -100,6 +101,7 @@
     const curveStyle = curveSel ? curveSel.value : 'straight';
     App.pushUndoSnapshot();
     const newLt = { id: App.uid(), name, color, curveStyle };
+    if (App.applyWaterSideToLineType) App.applyWaterSideToLineType('create', newLt);   // WATER-PLAN rung 3, set-only
     state.lineTypes.push(newLt);
     App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;

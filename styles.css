@@ -898,6 +898,8 @@
     .settings-code-cell { display: flex; flex-direction: column; gap: 3px; margin: 0; min-width: 0; }
     .settings-code-label { font-size: 0.7rem; color: var(--text3); padding-left: 2px; }
     .modal-card .settings-code-cell select { width: 100%; min-width: 0; padding: 7px 8px; font-size: 0.85rem; font-family: 'DM Mono', monospace; }
+    .modal-card .settings-occ-flip { background: none; border: none; padding: 0; margin: 0; width: auto; color: var(--accent); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+    .modal-card .settings-occ-flip:hover { color: var(--text); }
     .settings-project-row-sub { padding-top: 2px; }
     .settings-project-row-sub .settings-project-row-text > div:first-child { font-size: 0.9rem; color: var(--text2); }
     .settings-quick-keys-control { min-width: 0; }
@@ -1938,6 +1940,35 @@ body.tour-active .canvas-empty-hint { display: none; }
 .cfm-icon-chip-name { color: var(--text); font-weight: 600; }
 .modal-card .cfm-icon-chip-change { background: none; border: none; padding: 0; margin: 0; width: auto; color: var(--accent); font: inherit; font-size: 0.8rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .modal-card .cfm-icon-chip-change:hover { color: var(--text); }
+/* WATER-PLAN rung 2: the fixture-unit chip beside the WSFU field — "→ 2 WSFU · public lavatory, faucet § IPC" */
+.wsfu-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text2); white-space: nowrap; flex-wrap: wrap; }
+.wsfu-chip[hidden] { display: none !important; }
+.wsfu-chip-arrow, .wsfu-chip-sep { color: var(--text3); }
+.wsfu-chip-val { color: var(--text); font-weight: 600; }
+.modal-card .wsfu-occ-flip { background: none; border: none; padding: 0; margin: 0; width: auto; color: var(--accent); font: inherit; font-size: 0.8rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.modal-card .wsfu-occ-flip:hover { color: var(--text); }
+.wsfu-chip .rule-chip { margin-left: 2px; }
+.summary-wsfu-row .derived-tag { text-transform: none; }
+/* WATER-PLAN rung 3: the water side and the fixture units a run serves, under a line type or a line row */
+.sidebar-item-line-type .line-water-meta { font-size: 0.72rem; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; margin-left: 24px; }
+/* WATER-PLAN rung 4: the water size popover's ladder, every size of the material with its velocity */
+.water-hint-card { cursor: pointer; }
+.water-size-ladder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.water-size-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; cursor: pointer; }
+.water-size-step:hover { border-color: var(--accent); }
+.water-size-step.current { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.water-size-step-size { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 0.9rem; }
+.water-size-step-v { font-size: 0.68rem; color: var(--text3); white-space: nowrap; }
+.water-size-step.ok .water-size-step-v { color: var(--green, #47c88e); }
+.water-size-step.over .water-size-step-v { color: var(--text3); }
+/* WATER-PLAN rung 5: the Water Sizing schedule */
+.water-schedule-table td { vertical-align: top; }
+.water-row-type { font-size: 0.7rem; color: var(--text3); }
+.water-row-warn td:last-child { color: var(--accent); }
+.water-unserved { margin: 4px 0 8px; padding-left: 18px; font-size: 0.8rem; color: var(--text2); }
+.water-unserved li { margin: 2px 0; }
+.water-schedule-foot { margin-top: 8px; }
+.water-occupancy-label { gap: 8px; }
 /* D19 (B19 part 2): the "More ▸ air & mounting" disclosure that folds the
    CFM / Mount height / Flex drop fields on the Counter modal's Create and Quick
    Count tabs. Same shape as the Load Project filters toggle (button with

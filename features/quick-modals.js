@@ -166,6 +166,7 @@
     }
     const hintEl = document.getElementById('counterQuickCountCfmHint');
     if (hintEl) hintEl.hidden = hasCfm && !!path;
+    if (App.syncWsfuForm) App.syncWsfuForm('quick');   // WATER-PLAN rung 2: the name changed, re-read the table
   }
   // S1/S2: the mount height row — prefilled from the profile per variant,
   // then per category; the estimator can overwrite it before Add.
@@ -235,6 +236,12 @@
     lbl('counterQuickCountSizeLabel', l1); lbl('counterQuickCountTypeLabel', l2); lbl('counterQuickCountMaterialLabel', l3);
     const nameInput = document.getElementById('counterQuickCountName');
     if (nameInput && prof.placeholder) nameInput.placeholder = prof.placeholder;
+    // WATER-PLAN rung 2: the Fixture units twin, prefilled from the composed name.
+    if (App.registerWsfuForm) {
+      App.registerWsfuForm('quick', { inputId: 'counterQuickCountWsfu', chipId: 'counterQuickCountWsfuChip', groupId: 'counterQuickCountWsfuRow', name: () => document.getElementById('counterQuickCountName')?.value || '' });
+      App.resetWsfuForm('quick');
+      if (nameInput && !nameInput.dataset.wsfuBound) { nameInput.dataset.wsfuBound = '1'; nameInput.addEventListener('input', () => App.syncWsfuForm && App.syncWsfuForm('quick')); }
+    }
     const sizeSel = document.getElementById('counterQuickCountSize');
     const typeSel = document.getElementById('counterQuickCountType');
     const materialSel = document.getElementById('counterQuickCountMaterial');
@@ -382,6 +389,7 @@
     // positive number was entered, so a non-air counter's shape is unchanged.
     const cfmVal = parseFloat(document.getElementById('counterQuickCountCfm')?.value);
     if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
+    if (App.applyWsfuFieldToCounter) App.applyWsfuFieldToCounter('quick', newCounter);   // WATER-PLAN rung 2
     // A project that never chose a trade adopts the one it just created in.
     if (App.state.trade == null && App.setProjectTrade) App.setProjectTrade(quickTrade(), { route: 'quick-add' });
     App.state.counters.push(newCounter);

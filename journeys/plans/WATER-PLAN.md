@@ -28,6 +28,84 @@
 > The "Water Sizing" artboards were not reachable from the session that
 > recorded this; the calls were made against §7's worked example and the
 > advanced sample plan in the app.
+>
+> **Rung 1 shipped 2026-09-23** (branch `claude/water-rung-1`, punch row P4-WATER):
+> [water-model.js](../../water-model.js) holds the tables (the WSFU loads, the demand
+> curve, the velocity caps, the pipe bores, the fixture supply minimums, the 3/4 in
+> service) and the arithmetic over them (`demandGpm`, `velocityFps`,
+> `suggestWaterSizeIn`); the six rules of §2 are in `content/rules/plumbing/` as
+> **drafts** with a `code:` pointer on every one of their 225 values, so the drift
+> check pins them from here on; the project **occupancy** (public | private) is a
+> one-word flip in Project Settings' Codes row hint, riding `state.codes` through
+> every intake and the device default like the editions (codes.spec.js). Nothing
+> reads the tables in the app yet; rung 2 is the counter's WSFU field. The
+> transcriptions are punch row **WATER-TABLES** (a tester with the trade, against the
+> printed IPC) before rung 4 is offered.
+>
+> **Rung 2 shipped 2026-09-23** (branch `claude/water-rung-2`, stacked on rung 1):
+> [features/water-fixtures.js](../../features/water-fixtures.js). A counter's **Fixture
+> units** field on the Create tab, the Quick Count twin and the details modal, prefilled
+> from the name for the project's occupancy (water-model's `wsfuFixtureFromName` reads
+> the trade's names: Lav, WC, UR, mop sink, 3-comp sink, EWC, DW…; a bare public WC is a
+> flush valve, a private one a flush tank) with the chip and the § chip; the chip's
+> occupancy word is Q3's per-counter flip (`wsfuOccupancy`); the per-mark override
+> (*WSFU for this one…*, `wsfuOverride`); the Summary's **Fixture units** line (the
+> "total WSFU per sheet" §6 promised, per sheet in the hover). `plumb.wsfu.fixtures` is
+> **applied** now. Not in this rung: the `wsfu_prefill` telemetry of §8 waits for rung 4's
+> `water_run` so the allowlist migration is applied once.
+>
+> **Rung 3 shipped 2026-09-23** (branch `claude/water-rung-3`, stacked on rung 2):
+> [features/water-runs.js](../../features/water-runs.js). A line type's **Water** side (—,
+> Cold, Hot) on the sidebar Add Line Type modal, the Choose Line Type modal's Create and
+> Quick tabs and the details modal, prefilled from the name (hot / HW / cold / CW); every
+> line of a sided type is a water run. Fixtures attach **per side** to the nearest run of
+> that side within the duct tap snap (a lavatory ties to its cold run and its hot run
+> separately; a WC to cold only; a typed-over number splits pro rata to the table row; a
+> fixture the table does not know counts its whole number on each side it touches),
+> derived from geometry every read, never stored. The dashed leaders paint in the run's
+> color (canvas-draw.js); the shared *Attach to nearest run* row rescues a fixture with a
+> side nothing serves; the line type row reads "cold · 12 WSFU served · 2 fixtures" and
+> the Lines list "cold · 6 WSFU" per run. `App.getWaterServed(pageIdx)` is rung 4's input.
+>
+> **Rung 4 shipped 2026-09-23** (branch `claude/water-rung-4`, stacked on rung 3):
+> [features/water-size.js](../../features/water-size.js). While a polyline of a water-sided
+> type is traced, the card above the footer reads the load still to serve beyond the tip
+> (water-model `waterDraftRemainingLoad`: fixtures of the side at or past the tip, on
+> branches tapped off the draft, or on no run of the side; a flush valve picks the demand
+> column) and the smallest size of the type's material under the side's cap, Q5's wording
+> ("3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts"). S or a tap opens the popover:
+> the suggested chip, the material's ladder with every size's velocity, the new-run note.
+> Taking a size is Q1: the run so far commits, a type of the new size is found or made (the
+> name's size swapped, side carried, hangers re-read), and the next draft starts from the
+> last point in it. Not in this rung: the Quick Line (single-segment) trace gets no card; the
+> `water_run` telemetry waits for rung 5's knobs so the migration lands once.
+>
+> **Rung 5 shipped 2026-09-23** (branch `claude/water-rung-5`, stacked on rung 4):
+> [features/water-schedule.js](../../features/water-schedule.js). The **Water Sizing**
+> schedule (the Water button on the Line Types header, shown once a type has a side): one
+> row per water run with its size, the fixture units at its head (branches included), the
+> flow in the column its fixtures call for, the velocity at that size and the check (✓, ⚠
+> over the cap → the passing size, ⚠ under a served fixture's Table 604.4 minimum, or unsized
+> when the type's name carries no material or size), cold and hot totals, the fixtures no
+> run reaches; the velocity caps per side (`state.waterSettings.capFps`, every intake) and
+> the occupancy column at the foot; Copy Schedule; the report table; the
+> `--- Water sizing ---` block in Copy Summary / Copy to /Tooling, read back by the paste
+> summary as its own unit. `plumb.wsfu.demand`, `plumb.water.velocity`, `plumb.water.pipe-id`
+> and `plumb.water.fixture-supply-min` are **applied** now. Telemetry (`water_run`,
+> `wsfu_prefill`) is still not wired: one allowlist migration for the whole ladder, with rung 6.
+>
+> **Rung 6 shipped 2026-09-23** (branch `claude/water-rung-6`, stacked on rung 5; **the ladder
+> is built**): [features/water-bidcheck.js](../../features/water-bidcheck.js) feeds Bid Check the
+> five auto rows of §4 and the four manual rows once a project has a water run (the service
+> row is new: a run named *service* under 3/4″, `plumb.water.distribution-min` applied); the
+> export gate's scope includes water, so the badge and the Review · Export anyway toast serve
+> it unchanged. The plumbing walkthrough gains its fourth step set, *Size the branch at S*
+> (give the pipe its water, fixture units on the lavatory, trace the main and take 3/4″ at S),
+> and the plumbing guide names the rows. Telemetry (§8): `water_run` and `wsfu_prefill` are
+> wired behind the `water-telemetry` feature flag with migration
+> `20260923190000_log_user_event_water.sql` in the repo, unapplied; punch row WATER-TELEM
+> applies it and flips the flag. Open, not blocking: WATER-TABLES (the trade check of the
+> rules) and the Quick Line trace (one segment) gets no card.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -182,18 +260,19 @@ save/load, export/import and the Artboard for free.
 
 1. **Rulebook slice** (§2) — six rules with `code:` pointers, checked by
    the walkthrough; the project occupancy toggle beside the edition.
+   **Shipped 2026-09-23** (the status block above).
 2. **Fixture units on counters** — the field, the prefill, the chip, the
    per-mark override; nothing else changes yet (an estimator can already
-   read total WSFU per sheet in the Summary).
+   read total WSFU per sheet in the Summary). **Shipped 2026-09-23.**
 3. **Water side on line types + attachment** — Hot/Cold, fixtures attach,
    leaders paint, the strays rescue; the sidebar readout shows WSFU served
-   per run.
+   per run. **Shipped 2026-09-23.**
 4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
-   the popover suggestion; "a size change is a new run from here."
+   the popover suggestion; "a size change is a new run from here." **Shipped 2026-09-23.**
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy
-   Schedule, the `--- Water sizing ---` block, report table.
+   Schedule, the `--- Water sizing ---` block, report table. **Shipped 2026-09-23.**
 6. **Bid Check rows + gate**; the guide + a fourth tour step set
-   ("Size the branch at S") in the plumbing walkthrough.
+   ("Size the branch at S") in the plumbing walkthrough. **Shipped 2026-09-23.**
 
 Each rung is one topic branch on the house loop (targeted specs +
 `npm run check` per unit, the full suite at push checkpoints, a live walk

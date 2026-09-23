@@ -157,7 +157,7 @@
     try { return normalizeProjectCodes(JSON.parse(localStorage.getItem(CODES_DEFAULT_KEY) || 'null')); } catch (_) { return null; }
   }
   function getProjectCodes() {
-    return { ...CODE_DEFAULTS, jurisdiction: '', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
+    return { ...CODE_DEFAULTS, jurisdiction: '', occupancy: 'public', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
   }
   function setProjectCodes(patch, opts) {
     const merged = { ...(state.codes || {}), ...(patch || {}) };
@@ -319,6 +319,7 @@
     // the design-build ductulator knobs: equal-friction rate (in/100ft) and
     // the velocity cap (fpm) behind the size-chip/S-popover suggestions.
     ductSettings: { ...DUCT_SETTINGS_DEFAULTS },
+    waterSettings: normalizeWaterSettings(null),   // WATER-PLAN rung 5: the velocity caps per side
     multiplyZoneSettings: { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' },
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
@@ -601,6 +602,8 @@
   // the tester signs off, the follow-up PR flips the default and deletes the
   // reads — the flag is a staging area, not a settings surface. Live flags:
   //   self-release   the save-engine self-release stamp (2026-09-15, _TODO R1)
+  //   water-telemetry  the water_run / wsfu_prefill events (2026-09-23, WATER-PLAN §8) until
+  //                    the allowlist migration 20260923190000 is on prod (punch row WATER-TELEM)
   const FEATURE_FLAG_KEY_PREFIX = 'clickcount-ff-';
   function featureFlagEnabled(name) {
     try { return localStorage.getItem(FEATURE_FLAG_KEY_PREFIX + name) === '1'; } catch (_) { return false; }
@@ -898,6 +901,7 @@
     state.bidCheck = { manual: {} };
     state.rooms = [];
     state.ductSettings = { ...DUCT_SETTINGS_DEFAULTS };
+    state.waterSettings = normalizeWaterSettings(null);
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
     // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key
@@ -2363,6 +2367,7 @@
     // size chip. Sits after the hideMarks early-return above, so a hidden
     // overlay paints no duct either.
     if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, lineOpacity: lo });
+    if (App.drawWaterOverlay) App.drawWaterOverlay(ctx, { fontScale: z * currentEffDpr });   // WATER-PLAN rung 4: syncs the water suggestion card
     if (App.drawTagOverlay) App.drawTagOverlay(ctx, { fontScale: z * currentEffDpr });   // S6: the "Plan says B" chip
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
@@ -4256,6 +4261,8 @@
   document.getElementById('addLineType').onclick = () => {
     document.getElementById('lineTypeName').value = '';
     App.setupCreateColorPicker({ presetsRowId: 'lineTypeColorRow', customInputId: 'lineTypeColorCustom', recentRowId: 'lineTypeColorRecent', recentGroupId: 'lineTypeColorRecentGroup' });
+    // WATER-PLAN rung 3: the Water side field, prefilled from the name (features/water-runs.js).
+    if (App.registerWaterSideForm) { App.registerWaterSideForm('add', { radioName: 'lineTypeWaterSide', groupId: 'lineTypeWaterGroup', nameInputId: 'lineTypeName', name: () => document.getElementById('lineTypeName').value }); App.resetWaterSideForm('add'); }
     showModal('lineTypeModal');
   };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
@@ -4266,6 +4273,7 @@
     const curveStyle = curveSel ? curveSel.value : 'straight';
     pushUndoSnapshot();
     const newLt = { id: uid(), name, color, curveStyle };
+    if (App.applyWaterSideToLineType) App.applyWaterSideToLineType('add', newLt);   // WATER-PLAN rung 3, set-only
     state.lineTypes.push(newLt);
     App.pushRecentColor(color);
     state.activeLineTypeId = newLt.id;
@@ -4323,6 +4331,7 @@
     });
     const jEl = document.getElementById('settingsJurisdiction');
     if (jEl) jEl.value = codes.jurisdiction || '';
+    syncOccupancySegment(codes.occupancy);
     const ceilEl = document.getElementById('settingsCeilingHeight');
     if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
     const muEl = document.getElementById('settingsMakeUp');
@@ -4342,6 +4351,19 @@
     if (!seg) return;
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.trade === trade)));
   }
+  // Occupancy (WATER-PLAN rung 1): the fixture-unit column the project reads,
+  // public by default on a commercial bid. Rides state.codes like the editions.
+  function syncOccupancySegment(occupancy) {
+    const btn = document.getElementById('settingsOccupancyFlip');
+    if (!btn) return;
+    btn.textContent = occupancy === 'private' ? 'private' : 'public';
+    btn.dataset.occupancy = occupancy === 'private' ? 'private' : 'public';
+  }
+  document.getElementById('settingsOccupancyFlip')?.addEventListener('click', () => {
+    const next = getProjectCodes().occupancy === 'private' ? 'public' : 'private';
+    setProjectCodes({ occupancy: next }, { route: 'settings' });
+    syncOccupancySegment(getProjectCodes().occupancy);
+  });
   document.getElementById('settingsTradeSegment')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-trade]');
     if (!b) return;
@@ -4672,6 +4694,7 @@
     const canvas = page && ensureActiveCanvas(page);
     if (canvas) { if (!canvas.annotations.polylines) canvas.annotations.polylines = []; canvas.annotations.polylines.push(state.drawingPolyline); }
     logLineAddedEvent('polyline');
+    if (App.onPolylineCommitted) App.onPolylineCommitted(state.drawingPolyline);   // WATER-PLAN rung 6: the water_run event
     state.drawingPolyline = null;
     state.tool = TOOL.NONE;
     markProjectDirty();
@@ -4716,7 +4739,7 @@
   // (features/bid-basis.js), which stores it on the PipeTooling bid as the
   // "which marks did we bid to" snapshot.
   function buildCanvasExportData() {
-    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, stripPins: state.stripPins || {}, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, stripPins: state.stripPins || {}, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, waterSettings: state.waterSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
   }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
@@ -5758,7 +5781,13 @@
     const page = state.pages[state.currentPage];
     const ann = page ? getActiveAnnotations(page) : null;
     const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
-    if (!marker || !(ductMarkerCfm(marker, counter) > 0)) return null;
+    if (!marker) return null;
+    // WATER-PLAN rung 3: a fixture-unit counter is rescued onto the nearest
+    // water run of a side no run yet serves (features/water-runs.js).
+    if (!(ductMarkerCfm(marker, counter) > 0)) {
+      const w = App.waterStrayTarget ? App.waterStrayTarget(marker, counter, ann) : null;
+      return w ? { marker, point: w.point, runId: w.runId, side: w.side } : null;
+    }
     const runs = ann?.ductRuns || [];
     if (!runs.length) return null;
     // Already attached? Then there is nothing to rescue.
@@ -5809,6 +5838,15 @@
       const mc = !state.isViewer && state.ctxTarget?.type === 'marker'
         ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
       ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
+    }
+    // WATER-PLAN rung 2: "WSFU for this one…" — a mark of a fixture-unit counter
+    // gets the per-mark override row (features/water-fixtures.js owns the click
+    // and #markerWsfuModal).
+    const ctxMarkerWsfuBtn = document.getElementById('ctxMarkerWsfu');
+    if (ctxMarkerWsfuBtn) {
+      const mw = !state.isViewer && state.ctxTarget?.type === 'marker'
+        ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
+      ctxMarkerWsfuBtn.style.display = mw && mw.wsfu > 0 ? 'block' : 'none';
     }
     // D19 (J19 Friction #3): "Attach to nearest run" — the rescue for a CFM
     // device that finished a foot short of its branch. Offered ONLY when the
@@ -7455,6 +7493,13 @@
         e.preventDefault();
         return;
       }
+      // WATER-PLAN rung 4: a water polyline being traced owns S the same way
+      // (features/water-size.js): the size popover, not Set Scale, for that stretch.
+      if (k === 's' && state.tool === TOOL.POLYLINE && App.isWaterDrawing && App.isWaterDrawing()) {
+        App.toggleWaterSizePopover && App.toggleWaterSizePopover();
+        e.preventDefault();
+        return;
+      }
       const hk = HOTKEYS.find((h) => !h.bespoke && h.key === k);
       if (hk && (hk.viewerAllowed || !state.isViewer)) {
         // B10 (J18): R under the open Count-by-Page modal would rotate the
@@ -7578,7 +7623,9 @@
         // Staged like Quick Line/Ghost: each Escape unwinds one clicked vertex;
         // with none left, Escape exits to Move. A stray Esc never costs more
         // than the last click. (JOURNEY-MAP Tier-2 #22)
-        if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
+        // WATER-PLAN rung 4: the water size popover closes first, costing no vertex.
+        if (App.isWaterPopoverOpen && App.isWaterPopoverOpen()) { App.closeWaterSizePopover(); }
+        else if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
         else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
       }
       else if (state.tool === TOOL.DUCT) {
@@ -8187,6 +8234,7 @@
   App.turnOnGroups = turnOnGroups;   // D17: the duct surfaces' "Turn on groups" link
   App.legendRowsFor = (ann, pi) => canvasDraw.computeLegendRows(ann, pi);   // D17 spec seam: the legend's rows (multiply-zone duct arithmetic)
   App.settlePolylineDraft = settlePolylineDraft;   // D17 (J5-B): the Duct arm settles a live polyline draft
+  App.nextPolylineName = nextPolylineName;         // WATER-PLAN rung 4: the run started from here after a size change
   // Same-id palette collapse (features/palette-insights.js id-aware merge +
   // spec seam; annotation-model.js pure helper).
   App.dedupePaletteById = dedupePaletteById;
@@ -8204,6 +8252,7 @@
   App.getProjectCodes = getProjectCodes;                // rulebook slice 4 (features/rules.js popover, bid-check.js footer, codes.spec.js)
   App.setProjectCodes = setProjectCodes;
   App.normalizeProjectCodes = normalizeProjectCodes;
+  App.normalizeWaterSettings = normalizeWaterSettings;   // WATER-PLAN rung 5: every intake restores the caps through it
   App.CODE_EDITIONS = CODE_EDITIONS;
   App.syncProjectSettingsRows = syncProjectSettingsRows;   // duct-model.js data table (features/duct-schedule.js seeds from it; rulebook-pinned)
   App.logDropSetEvent = logDropSetEvent;

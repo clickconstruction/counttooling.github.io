@@ -93,7 +93,9 @@
   number in code cannot change without its rule. When you change one of those
   tables (`fillLimitFor`, `VD_K`, `VD_LIMIT_PCT_DEFAULT`, `ELECTRICAL_DEFAULTS.mountByType`,
   `DEFAULT_MAKE_UP_FT`, `DUCT_GAUGE_TABLE`, `SHEET_WEIGHT_LB_PER_SQFT`,
-  `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`), change the rule in the same
+  `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`, and water-model.js's `WSFU_LOADS`,
+  `DEMAND_CURVE`, `WATER_VELOCITY_CAP_FPS`, `PIPE_ID_IN`, `FIXTURE_SUPPLY_MIN_IN`,
+  `WATER_SERVICE_MIN_IN`), change the rule in the same
   commit. `build:guides` owns `sitemap.xml` and lists the rule pages too.
   [rules.test.js](rules.test.js) (Node, CI) pins the parser, the pointers, the pages and
   the JSON.
@@ -176,7 +178,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->92<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->97<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -392,7 +394,12 @@
   counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a counter's `tag`, a group's
   `panel` / `circuit` / `loadAmps` (palettes serialize wholesale; a line's
   override rides the annotation). Wire and cable are DERIVED at tally time
-  (features/conductors.js) — never marks, never stored totals.
+  (features/conductors.js) — never marks, never stored totals. Plumbing's fixture units
+  ride the same way (WATER-PLAN rung 2): a counter's `wsfu` (+ `wsfuOccupancy`, the
+  counter's own public | private column, absent = the project's), a mark's
+  `wsfuOverride` (features/water-fixtures.js; the tables in water-model.js), and a line
+  type's `waterSide` (`'cold' | 'hot'`, rung 3, features/water-runs.js: every line of
+  the type is a water run; fixtures attach per side by proximity, never stored).
 - Keep the app functional with Supabase disabled.
 - **Feature flags (dormant ships).** A change that must land on main before a tester has
   walked it on the real site ships OFF behind `featureFlagEnabled('<name>')` (app.js
@@ -517,7 +524,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   `stripPins` so a plain reload keeps the device's arrangement and seeds the
   next bid — the both-places rule the sidebar filter scope uses. Wiped by the
   sign-out key list.)
-- Per-project, in save/load: `codes` (rulebook slice 4 — `{ plumbing?, electrical?, hvac?, jurisdiction? }`, only what the project CHOSE (null = never chosen); `getProjectCodes()` layers the device default (localStorage `codesDefault`, written on every change like `defaultTrade`) and `CODE_DEFAULTS` under it; rides every intake beside `ceilingHeightFt` — save payloads, hydrate, the IndexedDB backup, canvas JSON export/import, copy/load/pdf-intake), `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored; D9 adds the duct rows — `duct-*` ids from duct-model's `DUCT_BID_CHECK_ROWS`, ticked in the same `manual` map once the project has a duct run), `maxZoom`, `groups`, `ductSettings` (the Duct
+- Per-project, in save/load: `codes` (rulebook slice 4 — `{ plumbing?, electrical?, hvac?, jurisdiction?, occupancy? }`, only what the project CHOSE (null = never chosen; `occupancy` is `'public' | 'private'`, the fixture-unit column the project reads, WATER-PLAN rung 1, set from the flip word in Project Settings' Codes row hint and resolved to public when unchosen); `getProjectCodes()` layers the device default (localStorage `codesDefault`, written on every change like `defaultTrade`) and `CODE_DEFAULTS` under it; rides every intake beside `ceilingHeightFt` — save payloads, hydrate, the IndexedDB backup, canvas JSON export/import, copy/load/pdf-intake), `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored; D9 adds the duct rows — `duct-*` ids from duct-model's `DUCT_BID_CHECK_ROWS`, ticked in the same `manual` map once the project has a duct run), `maxZoom`, `groups`, `ductSettings` (the Duct
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the
@@ -531,7 +538,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   D11 static-path knob `terminalAllowanceInWg` (0.10 — the diffuser + flex
   allowance added once at the end of the critical path; on the Suggestions row);
   defaults in app.js state init, restored by
-  every intake like `legendSettings`), `groupsEnabled` (the Groups
+  every intake like `legendSettings`), `waterSettings` (WATER-PLAN rung 5 — `{ capFps: { cold, hot } }`, the Water Sizing
+  schedule's velocity caps per side, defaulted from water-model's `WATER_SETTINGS_DEFAULTS` (8 / 5 fps) and normalized
+  by `normalizeWaterSettings` on every intake ductSettings rides; the schedule's occupancy knob writes the codes blob), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is
   true OR the project has groups; latched true on first group create; restored
   by BOTH shared hydrate paths and the copy/load/import intakes), `rooms` (Room Sizer palette — a room carries `nameFromPlan: true` when D24 read its name off the plan's text layer, which switches its label to the once-per-room totals tag;
@@ -642,7 +651,7 @@ is armed from the Counter modal's Create tab.
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
 S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
 (Polyline), U (Duct — D18; D was taken, so the first free letter of "Duct";
-mid-trace S steps the duct size instead of Set Scale), T (Chain — counter +
+mid-trace S steps the duct size instead of Set Scale; a polyline of a water-sided line type does the same with the water size popover, WATER-PLAN rung 4, features/water-size.js), T (Chain — counter +
 connecting line per click), B (Drop — one
 click per line end adds the palette's rise/fall), D (Measure),
 H (Highlight), X (Multiply Zone), V (Room Sizer), N

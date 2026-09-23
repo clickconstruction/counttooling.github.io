@@ -36,7 +36,7 @@
 > `suggestWaterSizeIn`); the six rules of §2 are in `content/rules/plumbing/` as
 > **drafts** with a `code:` pointer on every one of their 225 values, so the drift
 > check pins them from here on; the project **occupancy** (public | private) is a
-> segment in Project Settings beside the code editions, riding `state.codes` through
+> one-word flip in Project Settings' Codes row hint, riding `state.codes` through
 > every intake and the device default like the editions (codes.spec.js). Nothing
 > reads the tables in the app yet; rung 2 is the counter's WSFU field. The
 > transcriptions are punch row **WATER-TABLES** (a tester with the trade, against the

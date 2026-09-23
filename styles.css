@@ -1959,6 +1959,14 @@ body.tour-active .canvas-empty-hint { display: none; }
 .water-size-step-v { font-size: 0.68rem; color: var(--text3); white-space: nowrap; }
 .water-size-step.ok .water-size-step-v { color: var(--green, #47c88e); }
 .water-size-step.over .water-size-step-v { color: var(--text3); }
+/* WATER-PLAN rung 5: the Water Sizing schedule */
+.water-schedule-table td { vertical-align: top; }
+.water-row-type { font-size: 0.7rem; color: var(--text3); }
+.water-row-warn td:last-child { color: var(--accent); }
+.water-unserved { margin: 4px 0 8px; padding-left: 18px; font-size: 0.8rem; color: var(--text2); }
+.water-unserved li { margin: 2px 0; }
+.water-schedule-foot { margin-top: 8px; }
+.water-occupancy-label { gap: 8px; }
 /* D19 (B19 part 2): the "More ▸ air & mounting" disclosure that folds the
    CFM / Mount height / Flex drop fields on the Counter modal's Create and Quick
    Count tabs. Same shape as the Load Project filters toggle (button with

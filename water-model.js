@@ -520,7 +520,42 @@ function replaceSizeInName(name, sizeIn) {
   return frac + 'in ' + n;
 }
 
+// --- rung 5: the schedule --------------------------------------------------------------
+// The per-project knobs the schedule's foot edits: the velocity cap per side.
+// (Occupancy is the codes blob's.) Defaults are the rulebook's figures.
+const WATER_SETTINGS_DEFAULTS = { capFps: { cold: WATER_VELOCITY_CAP_FPS.cold, hot: WATER_VELOCITY_CAP_FPS.hot } };
+// A saved / imported waterSettings blob → the shape the app stores.
+function normalizeWaterSettings(raw) {
+  const out = { capFps: { ...WATER_SETTINGS_DEFAULTS.capFps } };
+  const caps = raw && raw.capFps;
+  WATER_SIDES.forEach((side) => {
+    const v = caps ? Number(caps[side]) : NaN;
+    if (Number.isFinite(v) && v > 0) out.capFps[side] = v;
+  });
+  return out;
+}
+// One schedule row's arithmetic for a committed run: the demand in the column
+// its fixtures call for, the velocity at the run's own size, over the cap or
+// under a served fixture's supply minimum, and the size that would pass.
+// opts: { side, material, sizeIn, wsfu, flushValve, supplyMinIn, cap }.
+function waterScheduleRow(opts) {
+  const o = opts || {};
+  const column = o.flushValve ? 'flush-valve' : 'flush-tank';
+  const gpm = o.wsfu > 0 ? demandGpm(o.wsfu, column) : 0;
+  const cap = Number.isFinite(Number(o.cap)) && Number(o.cap) > 0 ? Number(o.cap) : (WATER_VELOCITY_CAP_FPS[o.side] || WATER_VELOCITY_CAP_FPS.cold);
+  const sizeIn = Number.isFinite(Number(o.sizeIn)) && Number(o.sizeIn) > 0 ? Number(o.sizeIn) : null;
+  const id = o.material && sizeIn ? pipeIdIn(o.material, sizeIn) : null;
+  const v = id && gpm > 0 ? velocityFps(gpm, id) : (id ? 0 : null);
+  const over = v != null && v > cap;
+  const underMin = sizeIn != null && Number.isFinite(Number(o.supplyMinIn)) && Number(o.supplyMinIn) > sizeIn;
+  const sug = o.material && gpm > 0 ? suggestWaterSizeIn(gpm, o.material, o.side, cap) : null;
+  let suggestSizeIn = sug ? sug.sizeIn : null;
+  if (underMin && Number(o.supplyMinIn) > (suggestSizeIn || 0)) suggestSizeIn = Number(o.supplyMinIn);
+  return { column, gpm, capFps: cap, sizeIn, velocityFps: v, over, underMin, suggestSizeIn, unsized: sizeIn == null || !o.material, ok: !over && !underMin && sizeIn != null && !!o.material };
+}
+
 const WATER_MODEL_API = {
+  WATER_SETTINGS_DEFAULTS, normalizeWaterSettings, waterScheduleRow,
   waterChildLinks, waterPolylineLength, waterDraftRemainingLoad, waterDownstreamByRun, waterDraftSuggestion, waterSizeLadder, replaceSizeInName,
   WATER_SIDE_LABELS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, waterFixtureLoads, waterRunsFromAnnotations,
   waterNearestOnPolyline, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterServedByRun,

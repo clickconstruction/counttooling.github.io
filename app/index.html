@@ -374,6 +374,9 @@
         <div class="sidebar-section" id="lineTypesSection">
           <div class="sidebar-section-header-row">
             <h3 id="lineTypesSectionTitle" class="section-settings" title="Line type settings">Line Types</h3>
+            <!-- WATER-PLAN rung 5: the Water Sizing schedule opener, shown exactly when a
+                 line type has a water side (features/water-schedule.js syncWaterScheduleBtn). -->
+            <button id="waterScheduleBtn" class="sidebar-btn-inline" title="Water Sizing, every water run's fixture units, flow, velocity and size check" style="display:none;">Water</button>
             <button id="addLineType" class="sidebar-btn-inline" title="Add line type">+ Add</button>
             <span class="collapse-icon" id="lineTypesCollapseIcon" title="Click to collapse">▼</span>
           </div>
@@ -1118,6 +1121,39 @@
       <div class="actions">
         <button id="ductScheduleCopy" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
         <button id="ductScheduleClose">Done</button>
+      </div>
+    </div>
+  </div>
+  <!-- WATER-PLAN rung 5: the Water Sizing schedule (features/water-schedule.js), the
+       Duct Schedule twinned: one row per water run (size, fixture units served, gpm,
+       fps, the check), cold and hot totals, the fixtures no run reaches; the velocity
+       caps and the occupancy column at the foot stick with the project. -->
+  <div class="modal-overlay" id="waterScheduleModal">
+    <div class="modal-card duct-schedule-card">
+      <div class="modal-card-header">
+        <h2>Water Sizing</h2>
+        <div class="duct-shape-toggle duct-schedule-scope" id="waterScheduleScope" style="display:none;">
+          <button type="button" data-scope="page">This sheet</button>
+          <button type="button" data-scope="project" class="active">Every sheet</button>
+        </div>
+      <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div id="waterScheduleBody"></div>
+      <div class="section-rule"><b>Sizing</b></div>
+      <div class="duct-schedule-knobs">
+        <label class="duct-knob">Cold cap <input type="number" id="waterCapCold" class="duct-schedule-pct duct-schedule-num" min="1" max="20" step="0.5" aria-label="Cold water velocity cap, feet per second"><span>fps</span></label>
+        <label class="duct-knob">Hot cap <input type="number" id="waterCapHot" class="duct-schedule-pct duct-schedule-num" min="1" max="20" step="0.5" aria-label="Hot water velocity cap, feet per second"><span>fps</span></label>
+        <button type="button" class="rule-chip" data-rule="plumb.water.velocity" hidden></button>
+        <label class="duct-knob water-occupancy-label">Occupancy
+          <div class="filter-scope-segment" id="waterScheduleOccupancy" role="group" aria-label="Occupancy for fixture units">
+            <button type="button" data-occupancy="public" aria-pressed="false">Public</button>
+            <button type="button" data-occupancy="private" aria-pressed="false">Private</button>
+          </div>
+        </label>
+      </div>
+      <div class="form-sublabel water-schedule-foot" id="waterScheduleFoot"></div>
+      <div class="actions">
+        <button id="waterScheduleCopy" class="ghost" title="Copy the schedule as a paste-ready text table">Copy Schedule</button>
+        <button id="waterScheduleClose" class="primary">Done</button>
       </div>
     </div>
   </div>
@@ -3662,6 +3698,7 @@
   <script src="/features/water-fixtures.js"></script>
   <script src="/features/water-runs.js"></script>
   <script src="/features/water-size.js"></script>
+  <script src="/features/water-schedule.js"></script>
   <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>

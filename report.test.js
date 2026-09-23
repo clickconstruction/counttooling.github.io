@@ -170,6 +170,27 @@ test('summarizeToolingExport: the --- Duct --- block is its own unit (bid weight
   assert.strictEqual('duct' in summarizeToolingExport('WC\t12\t1'), false);
 });
 
+test('summarizeToolingExport: the --- Water sizing --- block is its own unit (runs, ⚠), never ea/ft/px — WATER-PLAN rung 5', () => {
+  const text = [
+    'WC\t12\t1',
+    '',
+    '--- Water sizing ---',
+    'Cold · Cold main (3/4in PEX cold)\t3/4″\t14.5 WSFU · 4 fixtures\t30.6 gpm\t27.8 fps\t⚠ over 8 fps → 2″',
+    'Cold · Branch (PEX cold)\t—\t10 WSFU · 1 fixture\t27.0 gpm\t\tno size in the name',
+    'Cold water total\t\t14.5 WSFU · 4 fixtures\t\t\t1 ⚠',
+    'Hot · Hot main (1/2in PEX hot)\t1/2″\t0 WSFU\t\t\t✓',
+    'Hot water total\t\t0 WSFU · 0 fixtures\t\t\t✓',
+    'Not reached · Lavatory, hot ×4\t\t6 WSFU\t\t\t⚠ no hot run within reach',
+    'Sized at 8 fps cold / 5 fps hot, practice not code; public fixture units\t\t\t\t\t',
+  ].join('\n');
+  const s = summarizeToolingExport(text);
+  assert.deepStrictEqual(s.ea, { items: 1, total: 12 });
+  assert.deepStrictEqual(s.ft, { items: 0, total: 0 });
+  assert.deepStrictEqual(s.water, { rows: 4, warnings: 1 });
+  assert.strictEqual(formatToolingExportSummary(s), '1 count (12 ea) · water sizing (4 runs, 1 ⚠)');
+  assert.strictEqual('water' in summarizeToolingExport('WC\t12\t1'), false);
+});
+
 test('formatToolingExportSummary mirrors the PipeTooling import toast wording', () => {
   const s = summarizeToolingExport('WC\t1122\t1\nLav\t4\t1\nft of x\t444.74\t2');
   assert.strictEqual(formatToolingExportSummary(s), '2 counts (1,126 ea) · 1 line type (444.74 ft)');

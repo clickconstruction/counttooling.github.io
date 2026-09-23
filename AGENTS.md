@@ -178,7 +178,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->95<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->96<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -538,7 +538,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   D11 static-path knob `terminalAllowanceInWg` (0.10 — the diffuser + flex
   allowance added once at the end of the critical path; on the Suggestions row);
   defaults in app.js state init, restored by
-  every intake like `legendSettings`), `groupsEnabled` (the Groups
+  every intake like `legendSettings`), `waterSettings` (WATER-PLAN rung 5 — `{ capFps: { cold, hot } }`, the Water Sizing
+  schedule's velocity caps per side, defaulted from water-model's `WATER_SETTINGS_DEFAULTS` (8 / 5 fps) and normalized
+  by `normalizeWaterSettings` on every intake ductSettings rides; the schedule's occupancy knob writes the codes blob), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is
   true OR the project has groups; latched true on first group create; restored
   by BOTH shared hydrate paths and the copy/load/import intakes), `rooms` (Room Sizer palette — a room carries `nameFromPlan: true` when D24 read its name off the plan's text layer, which switches its label to the once-per-room totals tag;

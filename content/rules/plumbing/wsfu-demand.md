@@ -3,7 +3,7 @@ id: plumb.wsfu.demand
 title: Demand curve: fixture units to gallons per minute
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: The design flow a load of water supply fixture units stands for, in gallons per minute, read off the code's demand table in its flush-tank and flush-valve columns.
 values:
   - when: 1 WSFU, flush tanks
@@ -412,7 +412,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: []
+used_by: [waterSchedule]
 updated: 2026-09-23
 ---
 

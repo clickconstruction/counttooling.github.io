@@ -206,6 +206,7 @@
       el.appendChild(div);
     });
     appendFilterHintRow(el, hiddenCount, scope, App.setLineTypeListFilterScope, 'lineTypeShowOnlySegment', renderLineTypesList);
+    if (App.syncWaterScheduleBtn) App.syncWaterScheduleBtn();   // WATER-PLAN rung 5: the Water opener shows when a type has a side
   }
 
   function renderGroupsList() {

@@ -207,9 +207,15 @@ in `candidateA()`; the fixture symbols are the helpers at the top of the file
   (12 px/ft on a 918 pt sheet). Fixed on both candidates; B's title block too.
 
 **Still open (polish — the trade eye):**
-- Corridor dimension: `dimV(112, COR_T, COR_B, "5'-0\"")` labels a 44 px band
+- ~~Corridor dimension: `dimV(112, COR_T, COR_B, "5'-0\"")` labels a 44 px band
   (3'-8" at 12 px/ft) as 5'-0". Either widen the corridor to 60 px or relabel;
-  the vertical total then has to agree with 20 + corridor + 18.
+  the vertical total then has to agree with 20 + corridor + 18.~~ **Relabelled 2026-09-23**
+  (branch `claude/sample-a-corridor-dim`): the band stays 44 px, which is 44 inches, the IBC
+  1020.2 minimum corridor width, so the drawing was right and the string was wrong; it now
+  reads 3'-8". The three vertical strings are 20 + 3'-8" + 18 = 41'-8" and there is no
+  overall vertical string to reconcile. No wall moved, so the tour targets and the seven
+  sheet-reading specs are untouched; the guide screenshots that show the string are the
+  manual `build:screenshots` pass, next time it runs.
 - Door swings: every top-row office door swings into the corridor; check which
   way a real TI would hang them (egress usually swings out of the room).
 - Break 104's counter, sink and REF are placeholders; Lobby 100 is empty.

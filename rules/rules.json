@@ -594,6 +594,654 @@
       ],
       "url": "/rules/plumbing/hanger-spacing-pvc/",
       "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.wsfu.demand",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Design flow from fixture units",
+      "summary": "How a load in water supply fixture units becomes a design flow in gallons per minute, on the flush-tank curve or the flush-valve curve, with straight-line reading between the table's rows.",
+      "values": [
+        {
+          "when": "1 WSFU, flush tanks",
+          "value": 3,
+          "unit": "gpm"
+        },
+        {
+          "when": "5 WSFU, flush tanks",
+          "value": 9.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "10 WSFU, flush tanks",
+          "value": 14.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "20 WSFU, flush tanks",
+          "value": 19.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "50 WSFU, flush tanks",
+          "value": 29.1,
+          "unit": "gpm"
+        },
+        {
+          "when": "100 WSFU, flush tanks",
+          "value": 43.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "200 WSFU, flush tanks",
+          "value": 65,
+          "unit": "gpm"
+        },
+        {
+          "when": "500 WSFU, flush tanks",
+          "value": 124,
+          "unit": "gpm"
+        },
+        {
+          "when": "1000 WSFU, flush tanks",
+          "value": 208,
+          "unit": "gpm"
+        },
+        {
+          "when": "5000 WSFU, flush tanks",
+          "value": 593,
+          "unit": "gpm"
+        },
+        {
+          "when": "5 WSFU, with flush valves",
+          "value": 15,
+          "unit": "gpm"
+        },
+        {
+          "when": "10 WSFU, with flush valves",
+          "value": 27,
+          "unit": "gpm"
+        },
+        {
+          "when": "20 WSFU, with flush valves",
+          "value": 35,
+          "unit": "gpm"
+        },
+        {
+          "when": "50 WSFU, with flush valves",
+          "value": 50,
+          "unit": "gpm"
+        },
+        {
+          "when": "100 WSFU, with flush valves",
+          "value": 67.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "200 WSFU, with flush valves",
+          "value": 90,
+          "unit": "gpm"
+        },
+        {
+          "when": "500 WSFU, with flush valves",
+          "value": 143,
+          "unit": "gpm"
+        },
+        {
+          "when": "1000 WSFU, with flush valves",
+          "value": 208,
+          "unit": "gpm"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "Appendix E, Table E103.3(3)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-demand/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.fixture-supply-min",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Minimum fixture supply pipe size",
+      "summary": "The smallest pipe the code allows to a fixture, from 3/8 inch to a lavatory or a flush-tank water closet up to 1 inch to a flush-valve water closet.",
+      "values": [
+        {
+          "when": "bathtub",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "bidet",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "combination fixture",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "dishwasher",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "drinking fountain",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "hose bibb",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "kitchen sink",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "laundry tray",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "lavatory",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "shower",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "sink flushing rim",
+          "value": "3/4",
+          "unit": "in"
+        },
+        {
+          "when": "service sink",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "urinal tank",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "urinal valve",
+          "value": "3/4",
+          "unit": "in"
+        },
+        {
+          "when": "wall hydrant",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "water closet tank",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "water closet valve",
+          "value": "1",
+          "unit": "in"
+        },
+        {
+          "when": "water closet flushometer tank",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "water closet one piece",
+          "value": "1/2",
+          "unit": "in"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "604.5, Table 604.5",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-fixture-supply-min/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.wsfu.fixtures",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Water supply fixture units by fixture",
+      "summary": "The load each fixture puts on the water supply, in water supply fixture units (WSFU), by public or private occupancy, with the cold and hot split the sizing needs.",
+      "values": [
+        {
+          "when": "bathroom group, flush tank, private",
+          "value": 3.6,
+          "unit": "WSFU",
+          "note": "cold 2.7 · hot 1.5"
+        },
+        {
+          "when": "bathroom group, flush valve, private",
+          "value": 8,
+          "unit": "WSFU",
+          "note": "cold 6 · hot 3"
+        },
+        {
+          "when": "bathtub, public",
+          "value": 4,
+          "unit": "WSFU",
+          "note": "cold 3 · hot 3"
+        },
+        {
+          "when": "bathtub, private",
+          "value": 1.4,
+          "unit": "WSFU",
+          "note": "cold 1 · hot 1"
+        },
+        {
+          "when": "bidet, private",
+          "value": 2,
+          "unit": "WSFU",
+          "note": "cold 1.5 · hot 1.5"
+        },
+        {
+          "when": "combination fixture, private",
+          "value": 3,
+          "unit": "WSFU",
+          "note": "cold 2.25 · hot 2.25"
+        },
+        {
+          "when": "dishwashing machine, private",
+          "value": 1.4,
+          "unit": "WSFU",
+          "note": "cold 0 · hot 1.4"
+        },
+        {
+          "when": "drinking fountain, public",
+          "value": 0.25,
+          "unit": "WSFU",
+          "note": "cold 0.25 · hot 0"
+        },
+        {
+          "when": "kitchen sink, public",
+          "value": 4,
+          "unit": "WSFU",
+          "note": "cold 3 · hot 3"
+        },
+        {
+          "when": "kitchen sink, private",
+          "value": 1.4,
+          "unit": "WSFU",
+          "note": "cold 1 · hot 1"
+        },
+        {
+          "when": "laundry trays (1 to 3), private",
+          "value": 1.4,
+          "unit": "WSFU",
+          "note": "cold 1 · hot 1"
+        },
+        {
+          "when": "lavatory, public",
+          "value": 2,
+          "unit": "WSFU",
+          "note": "cold 1.5 · hot 1.5"
+        },
+        {
+          "when": "lavatory, private",
+          "value": 0.7,
+          "unit": "WSFU",
+          "note": "cold 0.5 · hot 0.5"
+        },
+        {
+          "when": "service sink, public",
+          "value": 3,
+          "unit": "WSFU",
+          "note": "cold 2.25 · hot 2.25"
+        },
+        {
+          "when": "shower head, public",
+          "value": 4,
+          "unit": "WSFU",
+          "note": "cold 3 · hot 3"
+        },
+        {
+          "when": "shower head, private",
+          "value": 1.4,
+          "unit": "WSFU",
+          "note": "cold 1 · hot 1"
+        },
+        {
+          "when": "urinal, 1 in flush valve, public",
+          "value": 10,
+          "unit": "WSFU",
+          "note": "cold 10 · hot 0"
+        },
+        {
+          "when": "urinal, 3/4 in flush valve, public",
+          "value": 5,
+          "unit": "WSFU",
+          "note": "cold 5 · hot 0"
+        },
+        {
+          "when": "urinal, flush tank, public",
+          "value": 3,
+          "unit": "WSFU",
+          "note": "cold 3 · hot 0"
+        },
+        {
+          "when": "washing machine (8 lb), public",
+          "value": 3,
+          "unit": "WSFU",
+          "note": "cold 2.25 · hot 2.25"
+        },
+        {
+          "when": "washing machine (8 lb), private",
+          "value": 1.4,
+          "unit": "WSFU",
+          "note": "cold 1 · hot 1"
+        },
+        {
+          "when": "washing machine (15 lb), public",
+          "value": 4,
+          "unit": "WSFU",
+          "note": "cold 3 · hot 3"
+        },
+        {
+          "when": "water closet, flush valve, public",
+          "value": 10,
+          "unit": "WSFU",
+          "note": "cold 10 · hot 0"
+        },
+        {
+          "when": "water closet, flush valve, private",
+          "value": 6,
+          "unit": "WSFU",
+          "note": "cold 6 · hot 0"
+        },
+        {
+          "when": "water closet, flush tank, public",
+          "value": 5,
+          "unit": "WSFU",
+          "note": "cold 5 · hot 0"
+        },
+        {
+          "when": "water closet, flush tank, private",
+          "value": 2.2,
+          "unit": "WSFU",
+          "note": "cold 2.2 · hot 0"
+        },
+        {
+          "when": "water closet, flushometer tank, public",
+          "value": 2,
+          "unit": "WSFU",
+          "note": "cold 2 · hot 0"
+        },
+        {
+          "when": "water closet, flushometer tank, private",
+          "value": 2,
+          "unit": "WSFU",
+          "note": "cold 2 · hot 0"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "Appendix E, Table E103.3(2)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-fixture-units/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.pipe-id",
+      "trade": "plumbing",
+      "kind": "standard",
+      "status": "draft",
+      "title": "Inside diameters of water pipe",
+      "summary": "The inside diameter behind each nominal size, for PEX, Type L copper, CPVC and Schedule 40 galvanized steel, which is what turns a flow into a velocity.",
+      "values": [
+        {
+          "when": "3/8 in PEX, CTS SDR 9",
+          "value": 0.35,
+          "unit": "in"
+        },
+        {
+          "when": "1/2 in PEX, CTS SDR 9",
+          "value": 0.475,
+          "unit": "in"
+        },
+        {
+          "when": "3/4 in PEX, CTS SDR 9",
+          "value": 0.671,
+          "unit": "in"
+        },
+        {
+          "when": "1 in PEX, CTS SDR 9",
+          "value": 0.862,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/4 in PEX, CTS SDR 9",
+          "value": 1.054,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/2 in PEX, CTS SDR 9",
+          "value": 1.244,
+          "unit": "in"
+        },
+        {
+          "when": "2 in PEX, CTS SDR 9",
+          "value": 1.629,
+          "unit": "in"
+        },
+        {
+          "when": "3/8 in copper tube, Type L",
+          "value": 0.43,
+          "unit": "in"
+        },
+        {
+          "when": "1/2 in copper tube, Type L",
+          "value": 0.545,
+          "unit": "in"
+        },
+        {
+          "when": "3/4 in copper tube, Type L",
+          "value": 0.785,
+          "unit": "in"
+        },
+        {
+          "when": "1 in copper tube, Type L",
+          "value": 1.025,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/4 in copper tube, Type L",
+          "value": 1.265,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/2 in copper tube, Type L",
+          "value": 1.505,
+          "unit": "in"
+        },
+        {
+          "when": "2 in copper tube, Type L",
+          "value": 1.985,
+          "unit": "in"
+        },
+        {
+          "when": "2-1/2 in copper tube, Type L",
+          "value": 2.465,
+          "unit": "in"
+        },
+        {
+          "when": "3 in copper tube, Type L",
+          "value": 2.945,
+          "unit": "in"
+        },
+        {
+          "when": "1/2 in CPVC, CTS SDR 11",
+          "value": 0.489,
+          "unit": "in"
+        },
+        {
+          "when": "3/4 in CPVC, CTS SDR 11",
+          "value": 0.715,
+          "unit": "in"
+        },
+        {
+          "when": "1 in CPVC, CTS SDR 11",
+          "value": 0.921,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/4 in CPVC, CTS SDR 11",
+          "value": 1.125,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/2 in CPVC, CTS SDR 11",
+          "value": 1.329,
+          "unit": "in"
+        },
+        {
+          "when": "2 in CPVC, CTS SDR 11",
+          "value": 1.739,
+          "unit": "in"
+        },
+        {
+          "when": "1/2 in galvanized steel, Schedule 40",
+          "value": 0.622,
+          "unit": "in"
+        },
+        {
+          "when": "3/4 in galvanized steel, Schedule 40",
+          "value": 0.824,
+          "unit": "in"
+        },
+        {
+          "when": "1 in galvanized steel, Schedule 40",
+          "value": 1.049,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/4 in galvanized steel, Schedule 40",
+          "value": 1.38,
+          "unit": "in"
+        },
+        {
+          "when": "1-1/2 in galvanized steel, Schedule 40",
+          "value": 1.61,
+          "unit": "in"
+        },
+        {
+          "when": "2 in galvanized steel, Schedule 40",
+          "value": 2.067,
+          "unit": "in"
+        },
+        {
+          "when": "2-1/2 in galvanized steel, Schedule 40",
+          "value": 2.469,
+          "unit": "in"
+        },
+        {
+          "when": "3 in galvanized steel, Schedule 40",
+          "value": 3.068,
+          "unit": "in"
+        }
+      ],
+      "source": {
+        "code": "ASTM",
+        "section": "F876 (PEX, CTS SDR 9), B88 (copper tube, Type L), D2846 (CPVC, CTS SDR 11); ASME B36.10 (Schedule 40 steel)",
+        "editions": []
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-pipe-id/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.service-min",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Minimum water service size",
+      "summary": "The pipe from the main to the building is never smaller than 3/4 inch, whatever the load says.",
+      "values": [
+        {
+          "when": "water service pipe, from the main to the building",
+          "value": "3/4",
+          "unit": "in"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "603.1",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-service-min/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.velocity",
+      "trade": "plumbing",
+      "kind": "convention",
+      "status": "draft",
+      "title": "Velocity cap for water piping",
+      "summary": "The speed the app will not let a suggested size exceed, cold water at 8 feet per second and hot at 5, the rule of thumb a walk-through size is penciled to; the pressure and developed-length calculation stays with Bid Check.",
+      "values": [
+        {
+          "when": "cold water",
+          "value": 8,
+          "unit": "ft/s"
+        },
+        {
+          "when": "hot water",
+          "value": 5,
+          "unit": "ft/s"
+        }
+      ],
+      "source": {
+        "code": "trade practice",
+        "section": "design guidance from the tube and fitting makers and the plumbing engineering handbooks; the IPC's Appendix E sizes by pressure available and developed length instead",
+        "editions": []
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-velocity/",
+      "updated": "2026-09-23"
     }
   ]
 }

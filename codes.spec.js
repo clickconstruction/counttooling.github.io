@@ -7,7 +7,9 @@
  * the choices ride hydrate and the local backup; the rule popover's "This project"
  * line names the edition and jurisdiction and warns when the rule was not checked
  * against that edition or the project follows another code family; Bid Check's
- * footer says what the rows resolve for and opens Project Settings.
+ * footer says what the rows resolve for and opens Project Settings. WATER-PLAN.md rung 1
+ * adds the Occupancy segment under Codes: public by default, a pick lands on
+ * state.codes.occupancy beside the editions, is remembered, rides hydrate, junk drops.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -26,7 +28,7 @@ test.describe('Codes & jurisdiction', () => {
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => { errors.push(err.message); });
     await load(page);
-    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: '' });
+    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: '', occupancy: 'public' });
     expect(await page.evaluate(() => window.state.codes)).toBe(null);
     await page.click('#settingsGearBtn');
     await expect(page.locator('#settingsModal')).toHaveClass(/visible/);
@@ -34,6 +36,7 @@ test.describe('Codes & jurisdiction', () => {
     expect(await page.locator('#settingsCodeElectrical').inputValue()).toBe('NEC 2023');
     expect(await page.locator('#settingsCodeHvac').inputValue()).toBe('SMACNA 2020');
     expect(await page.locator('#settingsJurisdiction').inputValue()).toBe('');
+    expect(await page.locator('#settingsOccupancySegment button[data-occupancy="public"]').getAttribute('aria-pressed')).toBe('true');
     // a change: state, dirty, remembered
     await page.evaluate(() => { window.App.setAutoSaveDirty(false); });
     await page.locator('#settingsCodePlumbing').selectOption('IPC 2024');
@@ -42,6 +45,15 @@ test.describe('Codes & jurisdiction', () => {
     expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin' });
     expect(await page.evaluate(() => window.App.getAutoSaveDirty())).toBe(true);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('codesDefault')))).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin' });
+    // occupancy: the segment flips, lands beside the editions, is remembered
+    await page.click('#settingsOccupancySegment button[data-occupancy="private"]');
+    expect(await page.locator('#settingsOccupancySegment button[data-occupancy="private"]').getAttribute('aria-pressed')).toBe('true');
+    expect(await page.locator('#settingsOccupancySegment button[data-occupancy="public"]').getAttribute('aria-pressed')).toBe('false');
+    expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin', occupancy: 'private' });
+    expect(await page.evaluate(() => window.App.getProjectCodes().occupancy)).toBe('private');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('codesDefault')).occupancy)).toBe('private');
+    await page.click('#settingsOccupancySegment button[data-occupancy="public"]');
+    expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2024', jurisdiction: 'Texas · Austin', occupancy: 'public' });
     await page.evaluate(() => window.App.hideModal('settingsModal'));
     // the popover: not checked against IPC 2024 (the PEX rule was checked against 2018 · 2021)
     await page.evaluate(() => window.App.openRulePopover('plumb.hanger.pex', document.body));
@@ -74,7 +86,7 @@ test.describe('Codes & jurisdiction', () => {
     await page.reload();
     await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
     expect(await page.evaluate(() => window.state.codes)).toBe(null);
-    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'UPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: 'Texas · Austin' });
+    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'UPC 2021', electrical: 'NEC 2023', hvac: 'SMACNA 2020', jurisdiction: 'Texas · Austin', occupancy: 'public' });
     expect(errors).toEqual([]);
   });
 
@@ -82,9 +94,13 @@ test.describe('Codes & jurisdiction', () => {
     await load(page);
     await page.evaluate(() => localStorage.removeItem('codesDefault'));
     // hydrate from project data
-    await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [], codes: { plumbing: 'IPC 2018', hvac: 'SMACNA 2005', jurisdiction: 'Ohio', electrical: 7 } }));
-    expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2018', hvac: 'SMACNA 2005', jurisdiction: 'Ohio' });
-    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2018', electrical: 'NEC 2023', hvac: 'SMACNA 2005', jurisdiction: 'Ohio' });
+    await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [], codes: { plumbing: 'IPC 2018', hvac: 'SMACNA 2005', jurisdiction: 'Ohio', electrical: 7, occupancy: 'private' } }));
+    expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2018', hvac: 'SMACNA 2005', jurisdiction: 'Ohio', occupancy: 'private' });
+    expect(await page.evaluate(() => window.App.getProjectCodes())).toEqual({ plumbing: 'IPC 2018', electrical: 'NEC 2023', hvac: 'SMACNA 2005', jurisdiction: 'Ohio', occupancy: 'private' });
+    // a junk occupancy drops; the resolved codes fall back to public
+    await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [], codes: { plumbing: 'IPC 2018', occupancy: 'both' } }));
+    expect(await page.evaluate(() => window.state.codes)).toEqual({ plumbing: 'IPC 2018' });
+    expect(await page.evaluate(() => window.App.getProjectCodes().occupancy)).toBe('public');
     // an old save carries no codes → null → defaults
     await page.evaluate(() => window.App.hydrateStateFromProjectData({ counters: [], lineTypes: [], groups: [] }));
     expect(await page.evaluate(() => window.state.codes)).toBe(null);

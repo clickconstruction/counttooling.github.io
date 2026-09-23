@@ -111,6 +111,8 @@ function normalizeProjectCodes(raw) {
   const out = {};
   ['plumbing', 'electrical', 'hvac'].forEach((t) => { if (typeof raw[t] === 'string' && raw[t].trim()) out[t] = raw[t].trim(); });
   if (typeof raw.jurisdiction === 'string' && raw.jurisdiction.trim()) out.jurisdiction = raw.jurisdiction.trim();
+  // Water sizing (WATER-PLAN.md rung 1): the occupancy column of IPC Table E103.3(2), public or private; anything else drops.
+  if (raw.occupancy === 'public' || raw.occupancy === 'private') out.occupancy = raw.occupancy;
   return Object.keys(out).length ? out : null;
 }
 const COLORS = ['#e85447','#4a9eff','#e8c547','#47c88e','#a47fff','#ff7a47','#47d4d4','#ff47b0','#bfff47','#2c3e50','#8b4513','#ff6b6b','#6366f1','#059669','#f59e0b','#0ea5e9','#7c3aed','#e11d48'];

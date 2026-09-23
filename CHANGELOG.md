@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 1 of water sizing, the IPC Appendix E tables in the rulebook and the occupancy toggle (2026-09-23)
+
+Punch row P4-WATER, the first rung of WATER-PLAN.md's ladder; the row stays open for rungs 2 to 6.
+Nothing is sized yet. What shipped is the slice everything else reads from, in the form the repo
+keeps its numbers: six rulebook pages under `content/rules/plumbing/water-*.md`, every value
+pinned by a `code:` pointer into a new pure module, so a number cannot change in one place
+without the other (`npm run build:rules --check`).
+
+- **`water-model.js`**, classic script after fitting-model.js, `window.WaterModel`, CommonJS
+  footer: `WSFU_FIXTURES` (IPC Table E103.3(2), cold / hot / total per fixture, public and
+  private columns), `WSFU_DEMAND` + `demandGpm` (Table E103.3(3), both curves, straight-line
+  reading between rows; under the first row the flow scales from zero, a valve load under 5 WSFU
+  reads the tank curve, past the table the last value holds), `WATER_VELOCITY_CAPS` (cold 8, hot
+  5 ft/s, practice not code), `PIPE_ID_IN` (bores for PEX, Type L copper, CPVC, Schedule 40
+  steel), `FIXTURE_SUPPLY_MIN_IN` (Table 604.5), `WATER_SERVICE_MIN_IN` (603.1), and the math
+  the later rungs call: `wsfuFor` (falls back across the occupancy column and says so),
+  `wsfuTotals`, `demandColumnFor`, `velocityFps`, `suggestWaterSize` (the smallest size under
+  the side's cap, a fixture minimum as a floor, `ok:false` on the largest when none passes).
+  water-model.test.js pins the shape, the math and the plan's worked example: three public
+  lavatories are 4.5 WSFU cold, 8.7 gpm, 3/4 in PEX at 8 ft/s and 1 in for the hot side at 5.
+- **The six rules ship `status: draft`** (the pages and the popover say "not applied yet"),
+  `used_by: []`, editions 2018 and 2021, and the plan's own honesty rule applies doubly: the
+  tables were transcribed from memory of the code and the ASTM dimension tables, not copied from
+  a book in hand. The plumber walkthrough checks every row against the edition on the shelf
+  before rung 2 reads a number from them. Two section numbers in the plan were wrong and are
+  corrected: the fixture supply minimums are Table 604.5 (604.4 is maximum flow), the service
+  minimum is 603.1, and the sixth rule is `plumb.water.service-min` rather than
+  `distribution-min`, since the distribution piping has no single minimum in the section.
+- **Occupancy** is a Public / Private segment under Codes in Project Settings (`#settingsOccupancySegment`),
+  public by default, stored as `state.codes.occupancy` beside the code editions
+  (constants.js `normalizeProjectCodes` accepts the two words and drops anything else), so it
+  rides save, load, export, backup, copy and the device default with no new plumbing, and
+  `codes_set` already carries it in its payload: no new event, no migration. codes.spec.js
+  covers the default, the pick, the memory, hydrate and junk.
+- Not built, by the ladder: the WSFU field on counters (rung 2), hot and cold on line types and
+  attachment (3), the suggestion at S (4), the schedule and exports (5), the Bid Check rows (6).
+
 ## test(view-only): the viewer's Hide marks eye, pinned across the matrix (2026-09-22)
 
 Punch row VIEWER-HIDEMARKS, closed with no defect found. The 2026-08-31 cloud walk left the

@@ -89,6 +89,21 @@ weight) and today has one auto Bid Check row (hangers). This gives it the rest.
 
 ## 2. The rulebook slice (IPC 2018 / 2021, Appendix E) — transcribed, not typed
 
+> **Rung 1 built 2026-09-23** (branch `claude/water-rung1-rulebook`): the six rules are in
+> `content/rules/plumbing/water-*.md`, status **draft** (written, not yet applied; the pages say
+> so), every value pinned by a `code:` pointer into the new pure module `water-model.js`, which
+> carries the whole of each table and the math the later rungs call (`demandGpm`,
+> `suggestWaterSize`, `wsfuTotals`; the plan's worked example is a unit test). The occupancy
+> toggle is a Public / Private segment under Codes in Project Settings, stored as
+> `state.codes.occupancy` beside the editions so it rides save, load, export, backup and the
+> device default for free, public by default. **The values were transcribed from memory of the
+> 2018 / 2021 IPC and the ASTM dimension tables, not copied from the book in hand:** the plumber
+> walkthrough checks every row against the edition on the shelf before rung 2 reads a single
+> number from them, which is why the rules ship draft and nothing in the app reads them yet.
+> Section numbers corrected on the way: the fixture supply minimums are Table **604.5** (604.4
+> is maximum flow), and the service minimum is **603.1**; the sixth rule is `service-min`, not
+> `distribution-min`, because the distribution piping carries no single minimum in the section.
+
 Every number the app applies must be a rulebook rule with a `code:` pointer
 into the data table that uses it (`npm run build:rules` checks them against
 each other on every build). The slice, in the order the ladder needs it:
@@ -99,8 +114,8 @@ each other on every build). The slice, in the order the ladder needs it:
 | `plumb.wsfu.demand` — WSFU → gpm, flush-tank and flush-valve columns | IPC Table E103.3(3) | the design flow behind every suggestion |
 | `plumb.water.velocity` — maximum velocity per side (defaults: cold 8 fps, hot 5 fps) | not a code table: the trade's design practice (manufacturer / ASPE guidance; the IPC method sizes by pressure and length, §3 below) | the size pick; editable knob, stamped "practice, not code" |
 | `plumb.water.pipe-id` — nominal size → inside diameter for the materials the Quick Line knows (PEX, copper L, CPVC, galvanized) | manufacturer / ASTM dimensions | velocity = gpm ÷ area |
-| `plumb.water.fixture-supply-min` — minimum fixture supply pipe size per fixture | IPC Table 604.4 | the ⚠ on a branch smaller than its fixture's minimum; a Bid Check row |
-| `plumb.water.distribution-min` — minimum building supply and distribution sizes | IPC 604.3 / 604.4 | a Bid Check row |
+| `plumb.water.fixture-supply-min` — minimum fixture supply pipe size per fixture | IPC Table 604.5 (this table said 604.4 until the slice was transcribed; 604.4 is the maximum-flow table) | the ⚠ on a branch smaller than its fixture's minimum; a Bid Check row |
+| `plumb.water.service-min` — the water service is never under 3/4 in (was `distribution-min`: the distribution piping has no single minimum in the section; it is sized by the method and floored per fixture by Table 604.5) | IPC 603.1 | a Bid Check row |
 
 **The values in the mockups are illustrative.** The slice is written by
 transcribing the code tables (2018 and 2021 editions, with the project's
@@ -180,8 +195,10 @@ save/load, export/import and the Artboard for free.
 > editing the run for "No fitting here" / "Count as 45" / "Count as 90" / "Read from the angle",
 > written to `points[i].fitting`. Mockup: https://claude.ai/artifact/6Gj27nuq1uYh9BZjeSPm82.
 
-1. **Rulebook slice** (§2) — six rules with `code:` pointers, checked by
-   the walkthrough; the project occupancy toggle beside the edition.
+1. ~~**Rulebook slice** (§2) — six rules with `code:` pointers, checked by
+   the walkthrough; the project occupancy toggle beside the edition.~~ **Built 2026-09-23**
+   (see the note under §2); the walkthrough's check of the transcription is what stands
+   between it and `status: applied`.
 2. **Fixture units on counters** — the field, the prefill, the chip, the
    per-mark override; nothing else changes yet (an estimator can already
    read total WSFU per sheet in the Summary).

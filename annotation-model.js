@@ -248,10 +248,14 @@ function createAnnotationModel(ctx) {
   }
 
   // Codes & jurisdiction (rulebook slice 4): keep only the strings a project chose.
+  // The same shape as constants.js normalizeProjectCodes (kept in step by hand:
+  // this module is node-tested without the constants globals); WATER-PLAN.md rung 1
+  // adds `occupancy`, public or private, the fixture-unit column.
   function normCodes(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const out = {};
     ['plumbing', 'electrical', 'hvac', 'jurisdiction'].forEach((k) => { if (typeof raw[k] === 'string' && raw[k].trim()) out[k] = raw[k].trim(); });
+    if (raw.occupancy === 'public' || raw.occupancy === 'private') out.occupancy = raw.occupancy;
     return Object.keys(out).length ? out : null;
   }
   function applyTakeoffBackupToState(backup) {

@@ -157,7 +157,7 @@
     try { return normalizeProjectCodes(JSON.parse(localStorage.getItem(CODES_DEFAULT_KEY) || 'null')); } catch (_) { return null; }
   }
   function getProjectCodes() {
-    return { ...CODE_DEFAULTS, jurisdiction: '', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
+    return { ...CODE_DEFAULTS, jurisdiction: '', occupancy: 'public', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
   }
   function setProjectCodes(patch, opts) {
     const merged = { ...(state.codes || {}), ...(patch || {}) };
@@ -4323,6 +4323,9 @@
     });
     const jEl = document.getElementById('settingsJurisdiction');
     if (jEl) jEl.value = codes.jurisdiction || '';
+    // Occupancy (WATER-PLAN.md rung 1): which column of the fixture-unit table a plumbing counter will read.
+    const occSeg = document.getElementById('settingsOccupancySegment');
+    if (occSeg) occSeg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.occupancy === (codes.occupancy || 'public'))));
     const ceilEl = document.getElementById('settingsCeilingHeight');
     if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
     const muEl = document.getElementById('settingsMakeUp');
@@ -4351,6 +4354,12 @@
   });
   TRADES.forEach((t) => {
     document.getElementById('settingsCode' + t.charAt(0).toUpperCase() + t.slice(1))?.addEventListener('change', (e) => setProjectCodes({ [t]: e.target.value }, { route: 'settings' }));
+  });
+  document.getElementById('settingsOccupancySegment')?.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-occupancy]');
+    if (!b) return;
+    setProjectCodes({ occupancy: b.dataset.occupancy }, { route: 'settings' });
+    syncProjectSettingsRows();
   });
   const jurisdictionEl = document.getElementById('settingsJurisdiction');
   if (jurisdictionEl) {

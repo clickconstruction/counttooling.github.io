@@ -48,6 +48,7 @@
   <script src="/sheet-title-model.js"></script>
   <script src="/support-model.js"></script>
   <script src="/fitting-model.js"></script>
+  <script src="/water-model.js"></script>
   <script src="/duct-model.js"></script>
   <script src="/bid-basis-model.js"></script>
   <script src="/canvas-draw.js"></script>
@@ -2343,6 +2344,18 @@
               <label class="settings-code-cell"><span class="settings-code-label">Plumbing</span><select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select></label>
               <label class="settings-code-cell"><span class="settings-code-label">Electrical</span><select id="settingsCodeElectrical" aria-label="Electrical code edition"></select></label>
               <label class="settings-code-cell"><span class="settings-code-label">HVAC</span><select id="settingsCodeHvac" aria-label="HVAC standard edition"></select></label>
+            </div>
+          </div>
+          <div class="settings-project-row settings-project-row-sub" id="settingsOccupancyRow" title="Public or private occupancy picks the column of the fixture-unit table (IPC Table E103.3(2)) a plumbing counter reads. Public is the usual answer on a commercial bid.">
+            <div class="settings-project-row-text">
+              <div>Occupancy</div>
+            </div>
+            <div class="settings-project-row-hint">Picks the fixture-unit column for water sizing.</div>
+            <div class="settings-project-row-control">
+              <div class="filter-scope-segment" id="settingsOccupancySegment" role="group" aria-label="Fixture occupancy for water sizing">
+                <button type="button" data-occupancy="public" aria-pressed="true">Public</button>
+                <button type="button" data-occupancy="private" aria-pressed="false">Private</button>
+              </div>
             </div>
           </div>
           <div class="settings-project-row settings-project-row-stack settings-project-row-sub" id="settingsJurisdictionRow" title="State and city, so amendments on file are applied and named. Not on file means the model code as written.">

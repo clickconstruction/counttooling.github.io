@@ -127,6 +127,46 @@
         syncNeckLine();
       };
     }
+    // WATER-PLAN rung 2: the counter's fixture units — prefilled from its name
+    // while the stored number is the table's, kept when it is the estimator's;
+    // the chip's occupancy word flips this counter's column. Blur commits.
+    const wsfuGroup = document.getElementById('counterLineTypeDetailsWsfuGroup');
+    const wsfuEl = document.getElementById('counterLineTypeDetailsWsfu');
+    const wsfuOverridesEl = document.getElementById('counterLineTypeDetailsWsfuOverrides');
+    const syncWsfuOverrides = () => {
+      if (!wsfuOverridesEl) return;
+      const o = kind === 'counter' && App.getCounterWsfuOverrideText ? App.getCounterWsfuOverrideText(item) : null;
+      wsfuOverridesEl.textContent = o ? 'Placed marks with their own fixture units: ' + o : '';
+      wsfuOverridesEl.style.display = o ? '' : 'none';
+    };
+    if (wsfuGroup && wsfuEl && App.registerWsfuForm) {
+      if (kind === 'counter') {
+        App.registerWsfuForm('details', {
+          inputId: 'counterLineTypeDetailsWsfu', chipId: 'counterLineTypeDetailsWsfuChip', groupId: 'counterLineTypeDetailsWsfuGroup',
+          name: () => item.name || '',
+          onFlip: (occ, wsfu) => {
+            App.pushUndoSnapshotCurrentPage();
+            if (occ) item.wsfuOccupancy = occ; else delete item.wsfuOccupancy;
+            if (wsfu != null) item.wsfu = wsfu; else delete item.wsfu;
+            App.markProjectDirty();
+            App.updateUI();
+            syncWsfuOverrides();
+          },
+        });
+        App.loadWsfuForm('details', item);
+        wsfuEl.onblur = () => {
+          const v = App.wsfuFieldValue('details').wsfu;
+          if ((v == null && item.wsfu == null) || v === item.wsfu) return;
+          App.pushUndoSnapshotCurrentPage();
+          if (v == null) delete item.wsfu;
+          else item.wsfu = v;
+          App.markProjectDirty();
+          App.updateUI();
+          syncWsfuOverrides();
+        };
+      } else wsfuGroup.style.display = 'none';
+    }
+    syncWsfuOverrides();
     // D8: the per-type flex-drop length (ft) — the CFM field's optional-field
     // semantics exactly (cleared/invalid deletes the key).
     const flexGroup = document.getElementById('counterLineTypeDetailsFlexGroup');

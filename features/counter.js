@@ -259,6 +259,7 @@
       const path = c.dataset.path;
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
       syncCreateCfmChip();   // D18: an explicit pick replaces the chip's icon
+      if (App.syncWsfuForm) App.syncWsfuForm('create');   // the pick may have named the counter
     });
     customGrid.querySelectorAll('.icon-cell').forEach(c => {
       c.onclick = () => {
@@ -273,9 +274,18 @@
         const path = c.dataset.path;
         if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
         syncCreateCfmChip();
+        if (App.syncWsfuForm) App.syncWsfuForm('create');
       };
     });
     if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
+    // WATER-PLAN rung 2: the Fixture units field, prefilled from the name for
+    // the project's occupancy while the estimator has not typed in it.
+    if (App.registerWsfuForm) {
+      App.registerWsfuForm('create', { inputId: 'counterWsfu', chipId: 'counterWsfuChip', groupId: 'counterWsfuGroup', name: () => document.getElementById('counterName').value });
+      App.resetWsfuForm('create');
+      const nameEl = document.getElementById('counterName');
+      if (nameEl) nameEl.oninput = () => App.syncWsfuForm('create');
+    }
     syncCreateCfmChip();   // a fresh panel: CFM empty → chip hidden
     applyCounterAirMore('counterAirMoreToggle', 'counterAirMoreFields');
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
@@ -423,6 +433,9 @@
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color };
     if (hasCfm) newCounter.cfm = cfmVal;
+    // WATER-PLAN rung 2: fixture units, set-only like the CFM; the counter's own
+    // occupancy column rides only when it differs from the project's.
+    if (App.applyWsfuFieldToCounter) App.applyWsfuFieldToCounter('create', newCounter);
     // S1: optional mount height (inches AFF) — same set-only rule; the Chain
     // tool reads it for the default vertical (S2).
     const mountIn = App.parseMountHeightIn(document.getElementById('counterMountHeight')?.value);

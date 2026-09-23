@@ -13,6 +13,42 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 2, fixture units on counters (2026-09-23)
+
+Punch row P4-WATER, rung 2 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on
+rung 1. A counter now carries its water supply fixture units the way an air device carries a
+CFM, and the app reads them off the counter's name.
+
+- **The field.** *Fixture units* on the Counter modal's Create tab, its Quick Count twin and
+  the counter's details modal, shown on a plumbing-shaped project (or whenever the counter
+  already carries a number). [features/water-fixtures.js](features/water-fixtures.js) owns
+  the three as registered forms with one rule: while the estimator has not typed in the field
+  it is prefilled from the name for the project's occupancy; type over it and the counter
+  keeps yours. Set-only like the CFM, so a counter with no water keeps its shape.
+- **The read.** water-model's `wsfuFixtureFromName` knows the trade's names (Lav, WC, UR,
+  hand sink, mop sink, 3-comp sink, EWC, DW, tub, shower, washer…) and the control words
+  (flush valve, tank, flushometer tank, a 1 in urinal valve); a floor sink, a floor drain, a
+  hose bibb or a water heater is not a fixture. A bare public water closet reads as a flush
+  valve (10), a private one as a flush tank (2.2), a public urinal as a 3/4 in flush valve
+  (5), the table's first row per column. A chip beside the field says what was read,
+  "→ 2 WSFU · public lavatory, faucet" with the § chip of `plumb.wsfu.fixtures` (applied
+  now, `used_by: [quickCreate]`).
+- **The flip.** The chip's occupancy word is a button: it flips THIS counter to the other
+  column (`wsfuOccupancy` on the counter, absent = the project's) and re-reads the table,
+  WATER-PLAN Q3's per-counter flip, and in the details modal writes the counter at once.
+- **The override.** *WSFU for this one…* on a placed mark's context menu, the D15 CFM modal
+  twinned: a positive number is `marker.wsfuOverride`, cleared deletes the key. The sidebar
+  row's hover and the details modal show "(WSFU override 4.5)".
+- **The Summary.** A *Fixture units* line at the foot of the Summary totals every placed
+  mark's number (override, else the counter's), multiply zones honoured, per sheet in the
+  hover; it names the project's occupancy.
+
+Counters and markers serialize wholesale, so nothing in save/load, export/import or the
+Artboard changed. [water-fixtures.spec.js](water-fixtures.spec.js) walks all of it; the
+counter, quick, summary, details, duct and rules specs (67 tests) still pass. Not in this
+rung: the `wsfu_prefill` telemetry (§8) waits for rung 4's `water_run` so the allowlist
+migration is applied once.
+
 ## feat(water): rung 1 of the water-sizing ladder, the rulebook slice and the occupancy toggle (2026-09-23)
 
 Punch row P4-WATER, the first of the six rungs in [WATER-PLAN.md](journeys/plans/WATER-PLAN.md)

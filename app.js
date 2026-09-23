@@ -5824,6 +5824,15 @@
         ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
       ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
     }
+    // WATER-PLAN rung 2: "WSFU for this one…" — a mark of a fixture-unit counter
+    // gets the per-mark override row (features/water-fixtures.js owns the click
+    // and #markerWsfuModal).
+    const ctxMarkerWsfuBtn = document.getElementById('ctxMarkerWsfu');
+    if (ctxMarkerWsfuBtn) {
+      const mw = !state.isViewer && state.ctxTarget?.type === 'marker'
+        ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
+      ctxMarkerWsfuBtn.style.display = mw && mw.wsfu > 0 ? 'block' : 'none';
+    }
     // D19 (J19 Friction #3): "Attach to nearest run" — the rescue for a CFM
     // device that finished a foot short of its branch. Offered ONLY when the
     // device is genuinely unattached AND a run sits close enough to be the

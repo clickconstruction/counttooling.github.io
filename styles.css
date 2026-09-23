@@ -1940,6 +1940,15 @@ body.tour-active .canvas-empty-hint { display: none; }
 .cfm-icon-chip-name { color: var(--text); font-weight: 600; }
 .modal-card .cfm-icon-chip-change { background: none; border: none; padding: 0; margin: 0; width: auto; color: var(--accent); font: inherit; font-size: 0.8rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .modal-card .cfm-icon-chip-change:hover { color: var(--text); }
+/* WATER-PLAN rung 2: the fixture-unit chip beside the WSFU field — "→ 2 WSFU · public lavatory, faucet § IPC" */
+.wsfu-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text2); white-space: nowrap; flex-wrap: wrap; }
+.wsfu-chip[hidden] { display: none !important; }
+.wsfu-chip-arrow, .wsfu-chip-sep { color: var(--text3); }
+.wsfu-chip-val { color: var(--text); font-weight: 600; }
+.modal-card .wsfu-occ-flip { background: none; border: none; padding: 0; margin: 0; width: auto; color: var(--accent); font: inherit; font-size: 0.8rem; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.modal-card .wsfu-occ-flip:hover { color: var(--text); }
+.wsfu-chip .rule-chip { margin-left: 2px; }
+.summary-wsfu-row .derived-tag { text-transform: none; }
 /* D19 (B19 part 2): the "More ▸ air & mounting" disclosure that folds the
    CFM / Mount height / Flex drop fields on the Counter modal's Create and Quick
    Count tabs. Same shape as the Load Project filters toggle (button with

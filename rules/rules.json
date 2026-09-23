@@ -1498,7 +1498,7 @@
       "id": "plumb.wsfu.fixtures",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Water supply fixture units by fixture",
       "summary": "The load a fixture puts on the water supply, in water supply fixture units (WSFU), cold and hot, by the private or public column and the kind of supply control.",
       "values": [
@@ -1733,16 +1733,6 @@
           "unit": "WSFU"
         },
         {
-          "when": "Urinal, public, 1 in flush valve · cold",
-          "value": 10,
-          "unit": "WSFU"
-        },
-        {
-          "when": "Urinal, public, 1 in flush valve · total",
-          "value": 10,
-          "unit": "WSFU"
-        },
-        {
           "when": "Urinal, public, 3/4 in flush valve · cold",
           "value": 5,
           "unit": "WSFU"
@@ -1750,6 +1740,16 @@
         {
           "when": "Urinal, public, 3/4 in flush valve · total",
           "value": 5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, 1 in flush valve · cold",
+          "value": 10,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, 1 in flush valve · total",
+          "value": 10,
           "unit": "WSFU"
         },
         {
@@ -1808,16 +1808,6 @@
           "unit": "WSFU"
         },
         {
-          "when": "Water closet, private, flush valve · cold",
-          "value": 6,
-          "unit": "WSFU"
-        },
-        {
-          "when": "Water closet, private, flush valve · total",
-          "value": 6,
-          "unit": "WSFU"
-        },
-        {
           "when": "Water closet, private, flush tank · cold",
           "value": 2.2,
           "unit": "WSFU"
@@ -1825,6 +1815,16 @@
         {
           "when": "Water closet, private, flush tank · total",
           "value": 2.2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flush valve · cold",
+          "value": 6,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flush valve · total",
+          "value": 6,
           "unit": "WSFU"
         },
         {
@@ -1878,7 +1878,9 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "quickCreate"
+      ],
       "url": "/rules/plumbing/wsfu-fixtures/",
       "updated": "2026-09-23"
     }

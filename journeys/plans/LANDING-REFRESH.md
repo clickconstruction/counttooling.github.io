@@ -772,6 +772,13 @@ one thing the end screen must not do. Two ways out, do the second:
 
 ### Still open
 
+> **All four resolved 2026-09-19 by the build, and stamped here 2026-09-23.** Each was settled on
+> the real page with Will and is recorded in the BUILT block at the top of this section: the
+> cards over the film became the rail under it, which is the answer to "cleaner"; the question
+> keeps a wording per trade and resolves into the film's own rounded length; that number is
+> `Math.round(duration)` from the chapters file, never copy; and the question lives in the bar,
+> the clock beside it. The bullets below stay as the record of what was asked.
+
 - **Make the strip cleaner.** Robert's last note on the chapter cards. Candidates from
   the mock: fewer competing weights in the strip (the question, the clock, four card
   names, the live beat and the stamped times are six type sizes in ~140px), drop the

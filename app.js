@@ -4354,14 +4354,14 @@
   // Occupancy (WATER-PLAN rung 1): the fixture-unit column the project reads,
   // public by default on a commercial bid. Rides state.codes like the editions.
   function syncOccupancySegment(occupancy) {
-    const seg = document.getElementById('settingsOccupancySegment');
-    if (!seg) return;
-    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.occupancy === occupancy)));
+    const btn = document.getElementById('settingsOccupancyFlip');
+    if (!btn) return;
+    btn.textContent = occupancy === 'private' ? 'private' : 'public';
+    btn.dataset.occupancy = occupancy === 'private' ? 'private' : 'public';
   }
-  document.getElementById('settingsOccupancySegment')?.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-occupancy]');
-    if (!b) return;
-    setProjectCodes({ occupancy: b.dataset.occupancy }, { route: 'settings' });
+  document.getElementById('settingsOccupancyFlip')?.addEventListener('click', () => {
+    const next = getProjectCodes().occupancy === 'private' ? 'public' : 'private';
+    setProjectCodes({ occupancy: next }, { route: 'settings' });
     syncOccupancySegment(getProjectCodes().occupancy);
   });
   document.getElementById('settingsTradeSegment')?.addEventListener('click', (e) => {

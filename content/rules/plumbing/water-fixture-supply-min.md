@@ -3,7 +3,7 @@ id: plumb.water.fixture-supply-min
 title: Minimum fixture supply pipe sizes
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: The smallest pipe that may supply each fixture, 3/8 inch for a lavatory or a tank water closet up to 1 inch for a flush-valve water closet.
 values:
   - when: Bathtub
@@ -88,7 +88,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: []
+used_by: [waterSchedule]
 updated: 2026-09-23
 ---
 

@@ -496,6 +496,7 @@
               if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
               if (d.legendSettings) state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
               if (d.ductSettings) state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
+              if (d.waterSettings) state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(d.waterSettings) : d.waterSettings;   // WATER-PLAN rung 5
               if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
               if (d.scaleZoneSettings) state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
               if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
@@ -559,6 +560,7 @@
         if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
         if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
         if (canvasData.ductSettings) state.ductSettings = { ...state.ductSettings, ...canvasData.ductSettings };
+        if (canvasData.waterSettings) state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(canvasData.waterSettings) : canvasData.waterSettings;   // WATER-PLAN rung 5
         if (canvasData.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...canvasData.multiplyZoneSettings };
         if (canvasData.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...canvasData.scaleZoneSettings };
         if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;

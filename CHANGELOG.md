@@ -13,6 +13,35 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 5, the Water Sizing schedule (2026-09-23)
+
+Punch row P4-WATER, rung 5 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on
+rung 4. The schedule prices like a bid, the Duct Schedule's twin.
+
+- **The schedule.** One row per committed water run: the run and its type, the size read
+  off the type's name, the fixture units it carries at its head (its own attached fixtures
+  plus every branch tapped off it, water-model `waterDownstreamByRun`), the design flow in
+  the column its fixtures call for, the velocity at that size (the bores of
+  `plumb.water.pipe-id`), and the check: ✓; ⚠ over the side's cap with the size that passes;
+  ⚠ under a directly-served fixture's supply minimum (IPC Table 604.4, a flush-valve WC on
+  a 3/4 in branch); or unsized when the name carries no material or size. Cold and hot
+  totals, and the fixtures no run of a side reaches, with the fix named (trace past it, or
+  Attach to nearest run). [features/water-schedule.js](features/water-schedule.js); the
+  opener is a *Water* button on the Line Types header, shown once a type has a side.
+- **The knobs** at the foot stick with the project: the velocity cap per side
+  (`state.waterSettings.capFps`, 8 / 5 fps from the rulebook, normalized by
+  `normalizeWaterSettings` on every intake `ductSettings` rides) and the occupancy column
+  (the codes blob, one writer). The foot stamps *"sized at 8 fps cold / 5 fps hot, practice
+  not code; the pressure check is Bid Check's"*.
+- **The exports.** Copy Schedule (tab-separated, the pre-copy scale gate); the Show Report /
+  Export PDFs table; the `--- Water sizing ---` block in Copy Summary and Copy to /Tooling,
+  which the paste summary reads back as its own unit ("water sizing (3 runs, 1 ⚠)").
+- Four rules go **applied**: `plumb.wsfu.demand`, `plumb.water.velocity`,
+  `plumb.water.pipe-id`, `plumb.water.fixture-supply-min` (their § chips head the columns).
+
+[water-schedule.spec.js](water-schedule.spec.js) and a report.test.js case walk it. Not in
+this rung: telemetry (`water_run`, `wsfu_prefill`), one migration with rung 6.
+
 ## feat(water): rung 4, the S moment (2026-09-23)
 
 Punch row P4-WATER, rung 4 of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6, stacked on

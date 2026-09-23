@@ -3,7 +3,7 @@ id: plumb.water.velocity
 title: Design velocity for water pipe
 trade: plumbing
 kind: convention
-status: draft
+status: applied
 summary: The velocity the app sizes a water run to, 8 feet per second cold and 5 feet per second hot. Design practice, not a code table; the code's own method sizes by pressure and length.
 values:
   - when: Cold water
@@ -20,7 +20,7 @@ source:
   editions: []
   url: https://www.copper.org/publications/pub_list/pdf/copper_tube_handbook.pdf
 amendments: []
-used_by: []
+used_by: [waterSchedule]
 updated: 2026-09-23
 ---
 

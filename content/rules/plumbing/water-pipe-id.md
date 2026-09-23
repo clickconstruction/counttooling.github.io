@@ -3,7 +3,7 @@ id: plumb.water.pipe-id
 title: Inside diameters of water pipe by nominal size
 trade: plumbing
 kind: standard
-status: draft
+status: applied
 summary: The inside diameter the velocity is computed from, per nominal size, for PEX (SDR 9), copper Type L, CPVC CTS and Schedule 40 galvanized steel.
 values:
   - when: PEX 1 in nominal
@@ -162,7 +162,7 @@ source:
   editions: []
   url: https://www.astm.org/
 amendments: []
-used_by: []
+used_by: [waterSchedule]
 updated: 2026-09-23
 ---
 

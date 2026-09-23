@@ -290,3 +290,42 @@ test('rung 4: the suggestion, the ladder, and a name with its size swapped', () 
   assert.strictEqual(w.replaceSizeInName('2 inch galv', 2.5), '2-1/2 inch galv');
   assert.strictEqual(w.replaceSizeInName('PEX cold', 0.5), '1/2in PEX cold');
 });
+
+test('rung 5: the settings blob and a schedule row', () => {
+  assert.deepStrictEqual(w.normalizeWaterSettings(null), { capFps: { cold: 8, hot: 5 } });
+  assert.deepStrictEqual(w.normalizeWaterSettings({ capFps: { cold: 6, hot: 'x', junk: 1 }, other: 2 }), { capFps: { cold: 6, hot: 5 } });
+  assert.deepStrictEqual(w.WATER_SETTINGS_DEFAULTS, { capFps: { cold: 8, hot: 5 } });
+  // 12 WSFU at tanks on 3/4 in PEX cold: 16 gpm, 14.5 fps, over; 1-1/4 in would pass
+  let r = w.waterScheduleRow({ side: 'cold', material: 'pex', sizeIn: 0.75, wsfu: 12 });
+  assert.strictEqual(r.column, 'flush-tank');
+  assert.strictEqual(r.gpm, 16);
+  assert.ok(r.velocityFps > 14 && r.velocityFps < 15);
+  assert.strictEqual(r.over, true);
+  assert.strictEqual(r.suggestSizeIn, 1.25);
+  assert.strictEqual(r.ok, false);
+  // 3 WSFU on 1 in copper hot: 6.5 gpm at 2.5 fps, fine
+  r = w.waterScheduleRow({ side: 'hot', material: 'copper', sizeIn: 1, wsfu: 3 });
+  assert.strictEqual(r.over, false);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.suggestSizeIn, 0.75);   // 1/2 in copper would run 8.9 fps, over the 5 fps hot cap
+  // a flush-valve WC on a 3/4 in branch: the size may pass the cap but is under the 1 in supply minimum
+  r = w.waterScheduleRow({ side: 'cold', material: 'copper', sizeIn: 0.75, wsfu: 10, flushValve: true, supplyMinIn: 1 });
+  assert.strictEqual(r.column, 'flush-valve');
+  assert.strictEqual(r.underMin, true);
+  assert.strictEqual(r.ok, false);
+  assert.ok(r.suggestSizeIn >= 1);
+  // the project's cap overrides the side's
+  r = w.waterScheduleRow({ side: 'cold', material: 'pex', sizeIn: 0.75, wsfu: 12, cap: 20 });
+  assert.strictEqual(r.over, false);
+  assert.strictEqual(r.capFps, 20);
+  // no material or no size in the name: unsized, never ok, no velocity
+  r = w.waterScheduleRow({ side: 'cold', material: null, sizeIn: 0.75, wsfu: 12 });
+  assert.strictEqual(r.unsized, true);
+  assert.strictEqual(r.velocityFps, null);
+  assert.strictEqual(r.ok, false);
+  // nothing served: zero flow, zero velocity, still ok when sized
+  r = w.waterScheduleRow({ side: 'cold', material: 'pex', sizeIn: 0.75, wsfu: 0 });
+  assert.strictEqual(r.gpm, 0);
+  assert.strictEqual(r.velocityFps, 0);
+  assert.strictEqual(r.ok, true);
+});

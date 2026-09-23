@@ -38,6 +38,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./bid-check-model.js')),
       Object.keys(require('./tag-model.js')),
       Object.keys(require('./sheet-title-model.js')),
+      Object.keys(require('./water-model.js')),
       Object.keys(require('./canvas-draw.js')),
       Object.keys(require('./render-service.js')),
       Object.keys(require('./duct-model.js')),

@@ -79,6 +79,20 @@
 > name's size swapped, side carried, hangers re-read), and the next draft starts from the
 > last point in it. Not in this rung: the Quick Line (single-segment) trace gets no card; the
 > `water_run` telemetry waits for rung 5's knobs so the migration lands once.
+>
+> **Rung 5 shipped 2026-09-23** (branch `claude/water-rung-5`, stacked on rung 4):
+> [features/water-schedule.js](../../features/water-schedule.js). The **Water Sizing**
+> schedule (the Water button on the Line Types header, shown once a type has a side): one
+> row per water run with its size, the fixture units at its head (branches included), the
+> flow in the column its fixtures call for, the velocity at that size and the check (✓, ⚠
+> over the cap → the passing size, ⚠ under a served fixture's Table 604.4 minimum, or unsized
+> when the type's name carries no material or size), cold and hot totals, the fixtures no
+> run reaches; the velocity caps per side (`state.waterSettings.capFps`, every intake) and
+> the occupancy column at the foot; Copy Schedule; the report table; the
+> `--- Water sizing ---` block in Copy Summary / Copy to /Tooling, read back by the paste
+> summary as its own unit. `plumb.wsfu.demand`, `plumb.water.velocity`, `plumb.water.pipe-id`
+> and `plumb.water.fixture-supply-min` are **applied** now. Telemetry (`water_run`,
+> `wsfu_prefill`) is still not wired: one allowlist migration for the whole ladder, with rung 6.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -243,7 +257,7 @@ save/load, export/import and the Artboard for free.
 4. **The S moment** — downstream WSFU → gpm → size at the cap; the chip and
    the popover suggestion; "a size change is a new run from here." **Shipped 2026-09-23.**
 5. **Water Sizing schedule + exports** — the table, its knobs, Copy
-   Schedule, the `--- Water sizing ---` block, report table.
+   Schedule, the `--- Water sizing ---` block, report table. **Shipped 2026-09-23.**
 6. **Bid Check rows + gate**; the guide + a fourth tour step set
    ("Size the branch at S") in the plumbing walkthrough.
 

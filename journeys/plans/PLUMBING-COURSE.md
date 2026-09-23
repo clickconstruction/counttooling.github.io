@@ -135,11 +135,13 @@ floor gets hosed"), not as a rule.
 
 ## Open, and not blocking
 
-- **A trade review.** The coaching bodies cite the IPC, the FDA Food Code and NFPA 96 by
-  section. Someone with the trade should read chapters 2 to 5 once before the course is offered
-  on the landing.
+- **A trade review** of chapters 2 to 6 (the gas chapter cites the fuel gas code too) and the
+  fixture units on P-501 (PC-REVIEW on the punch list). The coaching bodies cite the IPC, the FDA
+  Food Code and NFPA 96 by section; someone with the trade reads them once before the course is
+  offered on the landing.
 - **Rulebook pages for the DWV rules** the course cites (slope, cleanouts, vents, the
   interceptor, backflow). The rulebook's format wants a value row with a code pointer and the
   app applies none of these yet, so they wait for the drainage slice (WATER-PLAN.md Q6).
-- **The electrical and HVAC courses** wait on E-101 and M-101 (SAMPLE-PLANS.md §3, ladder
-  rungs 3 and 4). This file's format is theirs.
+- **The electrical and HVAC courses** followed the same day, each on its own set, in this
+  file's format: [ELECTRICAL-COURSE.md](ELECTRICAL-COURSE.md), [HVAC-COURSE.md](HVAC-COURSE.md)
+  (re-stamped 2026-09-23; this line had them waiting on E-101 and M-101).

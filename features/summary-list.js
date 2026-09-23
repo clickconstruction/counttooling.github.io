@@ -198,6 +198,17 @@
       });
       appendDerivedRows(el, 'null', conductorTotals);
     }
+    // WATER-PLAN rung 2: the project's water supply fixture units, added up from
+    // the counters that carry them (features/water-fixtures.js), as a quiet foot
+    // line; nothing when no counter has any.
+    const water = App.waterSummaryLine ? App.waterSummaryLine() : null;
+    if (water) {
+      const foot = document.createElement('div');
+      foot.className = 'summary-water';
+      foot.id = 'summaryWaterLine';
+      foot.innerHTML = esc(water) + (App.ruleChipHtml && window.WaterModel ? ' ' + App.ruleChipHtml(window.WaterModel.WSFU_RULE_ID) : '');
+      el.appendChild(foot);
+    }
   }
 
   App.renderSummary = renderSummary;

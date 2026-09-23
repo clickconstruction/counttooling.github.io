@@ -3,7 +3,7 @@ id: plumb.wsfu.fixtures
 title: Water supply fixture units by fixture
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: The load each fixture puts on the water supply, in water supply fixture units (WSFU), by public or private occupancy, with the cold and hot split the sizing needs.
 values:
   - when: bathroom group, flush tank, private
@@ -152,15 +152,17 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: []
+used_by: [counter]
 updated: 2026-09-23
 ---
 
 A water supply fixture unit is not a gallon. It is a weight the method gives each fixture for how often it runs and how hard it draws, so that a hundred lavatories are never sized as if all hundred ran at once. A public lavatory carries more than a private one because it is used more; a flush valve carries far more than a flush tank because it draws its water in a rush. The total column is the diversified figure the method adds up before it turns the sum into gallons; the cold and hot columns are what each side of the system actually carries.
 
-## What the app will do with it
+## What the app does with it
 
-Rung 2 of the water-sizing ladder (WATER-PLAN.md §6): a counter on a plumbing project gets a WSFU field the rulebook fills from the counter's name, in the column the project's occupancy picks (Project Settings, beside the code editions; public is the default on a commercial bid), with a chip naming this rule and the value it read. Type over it and the counter keeps yours; a placed mark can carry its own override. A fixture the table does not list, a hose bibb, a floor drain, a grease interceptor, gets no prefill: a hose bibb is a continuous demand the method adds separately, and a drain draws nothing.
+A counter gets a WSFU field under **More ▸ water supply** (open by itself on a plumbing project) that the rulebook fills from the counter's name, in the column the project's occupancy picks (Project Settings ▸ Codes ▸ Occupancy; public is the default on a commercial bid), with a chip naming this rule, the row it read and any assumption it made (a water closet that does not say tank or valve is read as a flush valve on a public bid). Type over it and the counter keeps yours; a placed mark can carry its own (**WSFU for this one…** on its right-click menu). The Summary's foot line adds the project's fixture units up, cold and hot, and names the demand curve the set reads. Nothing is sized from it yet: that is the next rung.
+
+**The transcription awaits its trade check.** These values were written from memory of the 2018 and 2021 editions, not copied from the book; the plumber walkthrough in WATER-PLAN.md reads every row against the edition on the shelf. Until then, treat a prefill as a starting point you can see the source of, which is what the chip is for. A fixture the table does not list, a hose bibb, a floor drain, a grease interceptor, gets no prefill: a hose bibb is a continuous demand the method adds separately, and a drain draws nothing.
 
 ## What it does not do
 

@@ -142,6 +142,7 @@
     noteModal: [['Add', () => App.openNoteModal('create', '', { x: 100, y: 100 })], ['Edit', () => App.openNoteModal('edit', 'Confirm fixture spec, see addendum 2', { x: 100, y: 100, text: 'Confirm fixture spec, see addendum 2', color: '#e85447' })]],
     highlightNameModal: () => App.openHighlightNameModal({ label: '', x1: 0, y1: 0, x2: 10, y2: 10 }, 0),
     markerCfmModal: () => { const m = firstMarker(); if (!m) needSample(); App.openMarkerCfmModal(m, firstCounter()); },
+    markerWsfuModal: () => { const m = firstMarker(); if (!m) needSample(); App.openMarkerWsfuModal(m, firstCounter()); },
     roomEditModal: () => { if (!(st().rooms || []).length) needSample('a room'); App.openRoomBoxModalForEdit(0); },
     confirmModal: [
       ['Confirm', () => App.confirmDialog({ title: 'Delete this page?', body: 'Its marks go with it. Undo does not bring a page back.', confirmLabel: 'Delete', danger: true })],

@@ -765,6 +765,24 @@
             </div>
           </div>
         </div>
+        <!-- WATER-PLAN rung 2: the water side's twin of the disclosure above. The
+             WSFU field (water supply fixture units, IPC Table E103.3(2)) is filled
+             by the rulebook from the counter's name in the project's occupancy
+             column, the chip names the row it read; typed over, the counter keeps
+             yours. Open by itself on a plumbing project (features/water-fixtures.js
+             applyCounterWaterMore, state.counterWaterMoreOpen). -->
+        <div class="form-group counter-air-more counter-water-more">
+          <button type="button" id="counterWaterMoreToggle" class="counter-air-more-toggle" aria-expanded="false" aria-controls="counterWaterMoreFields">More <span class="counter-air-more-caret" aria-hidden="true">▸</span> water supply</button>
+          <div id="counterWaterMoreFields" class="counter-air-more-fields" hidden>
+            <div class="form-group">
+              <label>WSFU <span class="form-sublabel">(water supply fixture units; the rulebook fills it from the name, leave empty for a fixture that draws no supply)</span></label>
+              <div class="wsfu-row">
+                <input type="number" id="counterWsfu" min="0" step="0.1" placeholder="e.g. 2" style="width:120px;" autocomplete="off">
+                <span class="wsfu-chip" id="counterWsfuChip" hidden></span>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="form-group">
           <div class="counter-icon-tabs">
             <button class="counter-icon-tab active" data-icon-tab="icon">Icon</button>
@@ -876,6 +894,20 @@
                      hint yields to it while a CFM is typed). -->
                 <span class="cfm-icon-chip" id="counterQuickCountCfmIconChip" hidden></span>
                 <span id="counterQuickCountCfmHint" style="font-size:0.78rem;color:var(--text3);">air devices only; empty = not an air device</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- WATER-PLAN rung 2: the water supply disclosure, twinned here; the field
+             reads the name this tab composes (features/water-fixtures.js). -->
+        <div class="form-group counter-air-more counter-water-more">
+          <button type="button" id="counterQuickCountWaterMoreToggle" class="counter-air-more-toggle" aria-expanded="false" aria-controls="counterQuickCountWaterMoreFields">More <span class="counter-air-more-caret" aria-hidden="true">▸</span> water supply</button>
+          <div id="counterQuickCountWaterMoreFields" class="counter-air-more-fields" hidden>
+            <div class="form-group plum-modifier-row" id="counterQuickCountWsfuRow">
+              <label>WSFU</label>
+              <div class="wsfu-row">
+                <input type="number" id="counterQuickCountWsfu" min="0" step="0.1" placeholder="e.g. 2" style="width:110px;" autocomplete="off" title="Water supply fixture units; the rulebook fills it from the name">
+                <span class="wsfu-chip" id="counterQuickCountWsfuChip" hidden></span>
               </div>
             </div>
           </div>
@@ -1863,6 +1895,22 @@
       </div>
     </div>
   </div>
+  <!-- WATER-PLAN rung 2: the per-mark WSFU override ("WSFU for this one…" on a
+       placed mark's context menu). One number; empty = the counter's fixture
+       units (features/water-fixtures.js owns it; the markerCfmModal pattern). -->
+  <div class="modal-overlay" id="markerWsfuModal">
+    <div class="modal-card">
+      <div class="modal-card-header"><h2>WSFU for this one</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <div class="form-group">
+        <label>WSFU <span class="form-sublabel" id="markerWsfuHint"></span></label>
+        <input type="number" id="markerWsfuInput" min="0" step="0.1" placeholder="e.g. 2" autocomplete="off" style="width:140px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+      <div class="actions">
+        <button id="markerWsfuCancel">Cancel</button>
+        <button id="markerWsfuSave">Save</button>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="multiplyZoneModal">
     <div class="modal-card">
       <div class="modal-card-header"><h2>Multiply Zone</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
@@ -2112,6 +2160,22 @@
       <div class="form-group" id="counterLineTypeDetailsMountGroup" style="display:none;">
         <label>Mount height <span class="form-sublabel">(inches AFF; empty = ceiling / no default vertical)</span></label>
         <input type="text" id="counterLineTypeDetailsMount" placeholder='e.g. 18 or 4&#39;-0"' autocomplete="off" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+      </div>
+        </div>
+      </details>
+      <!-- WATER-PLAN rung 2: the per-counter fixture units (counters only). The
+           rulebook's reading for the name sits beside the field with a one-tap
+           "use it" when they differ; features/water-fixtures.js bindWsfuDetails. -->
+      <details class="modal-section" id="counterLineTypeDetailsWaterSection" style="display:none;" open>
+        <summary>Water supply<small>fixture units (WSFU)</small></summary>
+        <div class="modal-section-body">
+      <div class="form-group" id="counterLineTypeDetailsWsfuGroup">
+        <label>WSFU <span class="form-sublabel">(water supply fixture units; empty = draws no supply)</span></label>
+        <div class="wsfu-row">
+          <input type="number" id="counterLineTypeDetailsWsfu" min="0" step="0.1" placeholder="e.g. 2" autocomplete="off" style="width:120px;padding:8px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:1rem;">
+          <span class="wsfu-chip" id="counterLineTypeDetailsWsfuChip" hidden></span>
+        </div>
+        <div class="form-sublabel" id="counterLineTypeDetailsWsfuOverrides" style="display:none;margin-top:6px;"></div>
       </div>
         </div>
       </details>
@@ -3476,6 +3540,9 @@
     <button id="ctxEditRoomBox" style="display:none;">Edit room box</button>
     <button id="ctxNameHighlight" style="display:none;">Name highlight…</button>
     <button id="ctxMarkerCfm" style="display:none;">CFM for this one…</button>
+    <!-- WATER-PLAN rung 2: the per-mark fixture-unit override, for marks of a
+         counter that carries WSFU (features/water-fixtures.js). -->
+    <button id="ctxMarkerWsfu" style="display:none;">WSFU for this one…</button>
     <!-- D19 (J19 Friction #3): the stray-device rescue. Shown only for a CFM
          device that is NOT attached to any run and has one close enough to be
          the obvious intent (duct-model ductNearestRunPoint). -->
@@ -3578,6 +3645,7 @@
   <script src="/features/duct-sidebar.js"></script>
   <script src="/features/duct-schedule.js"></script>
   <script src="/features/duct-suggest.js"></script>
+  <script src="/features/water-fixtures.js"></script>
   <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>

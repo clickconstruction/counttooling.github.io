@@ -13,6 +13,42 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 2, fixture units on counters, the prefill from the name and the occupancy (2026-09-23)
+
+Punch row P4-WATER, the second rung, stacked on rung 1 (the tables and the occupancy toggle).
+A counter now carries its water supply fixture units, and the rulebook fills them in.
+
+- **The field.** A "More ▸ water supply" disclosure on the Counter modal's Create tab and its
+  Quick Count twin (the D19 air & mounting idiom; open by itself on a plumbing project, closed
+  elsewhere but always reachable, `state.counterWaterMoreOpen`) holds a WSFU field. As the name
+  is typed the rulebook reads it (water-model `wsfuFixtureFromName`: the schedule reader's tag
+  prefixes and the bare tags both read, "HS-1 Hand Sink" is a lavatory, "3CS-1 3-Compartment
+  Sink" a kitchen sink, a floor drain, a cleanout, a water heater or a hose bibb nothing) and
+  fills the field with IPC Table E103.3(2)'s value in the column the project's occupancy picks;
+  the chip beside it says "→ 2 WSFU · public lavatory · § IPC Appendix E", names any assumption
+  (a water closet that says neither tank nor valve is a flush valve on a public bid, a flush
+  tank in a house), and the field is refilled only while it is untouched or still the last
+  prefill. Type over it and the chip reads "yours · the rulebook reads 2 for a public lavatory".
+  The counter takes `wsfu` and, while the value is the rulebook's own, `wsfuFixture`, so a
+  typed total still knows its cold / hot shape later. Set-only-when-positive, like `cfm`.
+- **The details modal** gains a Water supply section: the stored value, the rulebook's reading
+  for the name with a one-tap "use it" when they differ, and "(override 4)" for placed marks
+  with their own. **A placed mark** takes its own through "WSFU for this one…" on its
+  right-click menu (`#markerWsfuModal`, the CFM override's pattern; cleared deletes the key).
+- **The Summary's foot line** adds the project's fixture units up, multiply-zone adjusted and
+  per-mark overrides honoured: "Water supply · 26 WSFU (cold 24.5 · hot 4.5) · public ·
+  flush-valve curve", the split shown only when every WSFU counter knows its fixture, the curve
+  named because any flush valve on the set moves the whole set to the steeper column. Nothing is
+  sized from it yet; rung 4 is the suggestion at S.
+- **The check that matters:** the prefill reproduces the sample set's own P-501 fixture schedule
+  row for row (WC-1 10, U-1 5, L-1 2, HS-1 2, 3CS-1 4, MS-1 3, FD-1 and FS-1 none), which is the
+  engineer's column and the course's teaching point. `plumb.wsfu.fixtures` is therefore
+  `status: applied` now (a new `used_by` value, `counter`); the other five rules stay draft, and
+  the page says the transcription still awaits its trade check.
+- No new telemetry event: `codes_set` already carries the occupancy. Counters and marks
+  serialize wholesale, so the keys ride save, load, export, import, the backup and the Artboard.
+  water-fixtures.spec.js pins every surface; water-model.test.js the matcher and the split.
+
 ## feat(water): rung 1 of water sizing, the IPC Appendix E tables in the rulebook and the occupancy toggle (2026-09-23)
 
 Punch row P4-WATER, the first rung of WATER-PLAN.md's ladder; the row stays open for rungs 2 to 6.

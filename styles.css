@@ -1950,6 +1950,18 @@ body.tour-active .canvas-empty-hint { display: none; }
 .counter-air-more-fields { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 .counter-air-more-fields[hidden] { display: none !important; }
 .counter-air-more-fields > .form-group { margin: 0; }
+/* WATER-PLAN rung 2: the WSFU chip beside the fixture-unit field ("→ 2 WSFU ·
+   public lavatory · § IPC"), and the Summary's water foot line. */
+.wsfu-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wsfu-chip { font-size: 0.78rem; color: var(--text2); display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; line-height: 1.4; }
+.wsfu-chip[hidden] { display: none !important; }
+.wsfu-chip b { color: var(--text); font-weight: 600; }
+.wsfu-chip-arrow { color: var(--text3); }
+.wsfu-chip-yours { color: var(--accent); font-weight: 600; }
+.wsfu-chip-note { color: var(--text3); }
+.modal-card .wsfu-chip-use { background: none; border: 1px solid var(--border); border-radius: 4px; padding: 1px 7px; margin: 0; width: auto; font: inherit; font-size: 0.74rem; color: var(--text2); cursor: pointer; }
+.modal-card .wsfu-chip-use:hover { color: var(--accent); border-color: var(--accent); }
+.summary-water { font-size: 0.76rem; color: var(--text2); padding: 6px 0 2px; border-top: 1px dashed var(--border); margin-top: 6px; line-height: 1.4; }
 /* D19 (J5-E): Legend Settings rows that only exist once the project has the
    thing they toggle — the duct rows / true-width ghost until a duct run is
    traced, room volumes until a room is boxed. The rows carry an inline

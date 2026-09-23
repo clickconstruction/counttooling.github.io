@@ -30,7 +30,7 @@ source:
   editions: [2017, 2020, 2023]       # editions the value was checked against
   url: https://…                     # where the public text can be read
 amendments: []                       # [{ jurisdiction: Texas, note: … }] when one changes the value
-used_by: [bidCheck]                  # bidCheck | childCount | chain | ductSchedule | roomSizer | quickCreate
+used_by: [bidCheck]                  # bidCheck | childCount | chain | ductSchedule | roomSizer | quickCreate | counter
 updated: 2026-09-09
 ---
 ```

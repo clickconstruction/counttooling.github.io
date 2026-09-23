@@ -119,3 +119,55 @@ test('fixture supply minimums: the table rows, both urinal valves on one row, la
     assert.ok(w.fixtureSupplyMinIn(key) != null, key + ': no minimum supply size');
   }
 });
+
+test('rung 2: the fixture a counter name declares, with the tag prefixes the schedule reader writes', () => {
+  const k = (name, occ) => (w.wsfuFixtureFromName(name, occ) || {}).key || null;
+  // the engineer's own schedule on P-501 (public): WC-1 10, U-1 5, L-1 2, HS-1 2, 3CS-1 4, MS-1 3, FD-1 and FS-1 none
+  const sched = { 'WC-1 Water Closet': 10, 'U-1 Urinal': 5, 'L-1 Lavatory': 2, 'HS-1 Hand Sink': 2, '3CS-1 3-Compartment Sink': 4, 'MS-1 Mop Sink': 3 };
+  for (const name of Object.keys(sched)) assert.strictEqual(w.wsfuPrefillFor(name, 'public').total, sched[name], name);
+  for (const name of ['FD-1 Floor Drain', 'FS-1 Floor Sink', 'HB Hose Bibb', 'Water Heater', 'Grease Interceptor', 'Cleanout', 'Trap primer', 'VTR', 'Ball Valve', '1/2in PEX Tee', '']) assert.strictEqual(w.wsfuPrefillFor(name, 'public'), null, name);
+  // bare tags and words
+  assert.strictEqual(k('WC', 'public'), 'water-closet-valve');
+  assert.strictEqual(k('WC', 'private'), 'water-closet-tank');
+  assert.strictEqual(k('Toilet, flush tank', 'public'), 'water-closet-tank');
+  assert.strictEqual(k('Water Closet FV', 'private'), 'water-closet-valve');
+  assert.strictEqual(k('Flushometer tank WC', 'public'), 'water-closet-flushometer-tank');
+  assert.strictEqual(k('Urinal 1" flush valve', 'public'), 'urinal-valve-1in');
+  assert.strictEqual(k('Urinal, flush tank', 'public'), 'urinal-tank');
+  assert.strictEqual(k('LAV', 'public'), 'lavatory');
+  assert.strictEqual(k('Kitchen Sink', 'public'), 'kitchen-sink');
+  assert.strictEqual(k('Prep Sink', 'public'), 'kitchen-sink');
+  assert.strictEqual(k('Service Sink', 'public'), 'service-sink');
+  assert.strictEqual(k('DW Dishwasher', 'public'), 'dishwasher');
+  assert.strictEqual(k('EWC', 'public'), 'drinking-fountain');
+  assert.strictEqual(k('Shower', 'public'), 'shower');
+  assert.strictEqual(k('Bathtub', 'private'), 'bathtub');
+  assert.strictEqual(k('Laundry Tray', 'private'), 'laundry-tray');
+  assert.strictEqual(k('Washer', 'private'), 'washing-machine-8lb');
+  assert.strictEqual(k('Commercial washing machine', 'public'), 'washing-machine-15lb');
+  assert.strictEqual(k('Bathroom group', 'private'), 'bathroom-group-tank');
+  // the match names the assumption
+  assert.match(w.wsfuFixtureFromName('WC-1', 'public').match, /flush valve assumed/);
+  assert.match(w.wsfuFixtureFromName('HS-1 Hand Sink', 'public').match, /read as a lavatory/);
+  // the prefill carries the rule and the occupancy it read
+  const p = w.wsfuPrefillFor('L-1 Lavatory', 'private');
+  assert.strictEqual(p.total, 0.7); assert.strictEqual(p.occupancy, 'private'); assert.strictEqual(p.ruleId, 'plumb.wsfu.fixtures'); assert.strictEqual(p.fallback, false);
+  // a public-only fixture on a private project falls back and says so
+  assert.strictEqual(w.wsfuPrefillFor('Mop Sink', 'private').fallback, true);
+});
+
+test('rung 2: a counter\'s fixture units, the per-mark override, and the cold / hot split of a typed total', () => {
+  assert.strictEqual(w.counterWsfu({ wsfu: 2 }), 2);
+  assert.strictEqual(w.counterWsfu({ wsfu: 0 }), null);
+  assert.strictEqual(w.counterWsfu({}), null);
+  assert.strictEqual(w.counterWsfu(null), null);
+  assert.strictEqual(w.markerWsfu({ wsfuOverride: 4 }, { wsfu: 2 }), 4);
+  assert.strictEqual(w.markerWsfu({}, { wsfu: 2 }), 2);
+  assert.strictEqual(w.markerWsfu({ wsfuOverride: -1 }, { wsfu: 2 }), 2);
+  assert.strictEqual(w.markerWsfu({}, {}), null);
+  assert.deepStrictEqual(w.counterWsfuSplit({ wsfu: 2, wsfuFixture: 'lavatory' }, 'public'), { cold: 1.5, hot: 1.5, total: 2 });
+  assert.deepStrictEqual(w.counterWsfuSplit({ wsfu: 4, wsfuFixture: 'lavatory' }, 'public'), { cold: 3, hot: 3, total: 4 });   // typed over: the fixture's shape
+  assert.deepStrictEqual(w.counterWsfuSplit({ wsfu: 10, wsfuFixture: 'water-closet-valve' }, 'public'), { cold: 10, hot: 0, total: 10 });
+  assert.strictEqual(w.counterWsfuSplit({ wsfu: 3 }, 'public'), null);
+  assert.strictEqual(w.counterWsfuSplit({}, 'public'), null);
+});

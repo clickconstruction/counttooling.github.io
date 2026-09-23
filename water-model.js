@@ -18,8 +18,9 @@
  *   FIXTURE_SUPPLY_MIN_IN  IPC Table 604.5: minimum fixture supply pipe size
  *   WATER_SERVICE_MIN_IN   IPC 603.1: the water service is never under 3/4 in
  *
- * Nothing in the app reads this yet: rung 2 wires the WSFU prefill on counters,
- * rung 4 the size suggestion at S. The helpers below are the math those rungs
+ * Rung 2 (features/water-fixtures.js) reads WSFU_FIXTURES through wsfuPrefillFor:
+ * a counter's name earns its fixture units in the project's occupancy column;
+ * rung 4 will read the rest for the size suggestion at S. The helpers below are the math those rungs
  * will call, pinned by water-model.test.js against the plan's worked example.
  *
  * No state, no DOM: a classic <script src> after support-model.js, exposed as
@@ -217,6 +218,90 @@ function fixtureSupplyMinLabel(key) {
 // IPC 603.1: the water service pipe is never smaller than 3/4 inch.
 const WATER_SERVICE_MIN_IN = 0.75;
 
+// --- Rung 2: fixture units on counters ------------------------------------------
+// The rule the prefill is stamped with (content/rules/plumbing/water-fixture-units.md).
+const WSFU_RULE_ID = 'plumb.wsfu.fixtures';
+
+// The fixture a counter's name declares, or null. Word-bounded over the name in
+// lower case, the way support-model reads a material off a line type: the tag
+// prefixes the schedule reader writes ("WC-1 Water Closet", "L-1 Lavatory",
+// "HS-1 Hand Sink", "MS-1 Mop Sink", "3CS-1 3-Compartment Sink") and the bare
+// tags ("WC", "LAV", "UR", "DF") both read. The things a plumbing takeoff counts
+// that draw no supply (a floor drain, a floor sink, a cleanout, a trap primer, a
+// water heater, an interceptor) and the continuous demands the method leaves out
+// (a hose bibb, a wall hydrant) read as null on purpose: no prefill, no chip.
+// A water closet or urinal whose name does not say tank or valve is assumed a
+// flush valve on a public bid and a flush tank in a house, and `match` says so.
+function wsfuFixtureFromName(name, occupancy) {
+  const n = ' ' + String(name || '').toLowerCase().replace(/[_/,()]+/g, ' ').replace(/\s+/g, ' ') + ' ';
+  const occ = occupancy === 'private' ? 'private' : 'public';
+  const has = (re) => re.test(n);
+  // Not a supply fixture, or a continuous demand: never a prefill.
+  if (has(/\b(floor sink|fs-?\d*|floor drain|fd-?\d*|drain|cleanout|clean out|c\.?o\.?-?\d*|trap primer|water heater|wh-?\d*|heater|interceptor|grease|hose ?bibb?|hb-?\d*|wall hydrant|hydrant|vtr|vent|backflow|rpz|meter|valve|shut-?off|pump|expansion)\b/) && !has(/\bflush ?valve\b|\bfv\b/)) return null;
+  const flushValve = has(/\bflush ?valve\b|\bf\.?v\.?\b|\bflushometer\b(?! ?tank)/);
+  const flushTank = has(/\bflush ?tank\b|\btank\b/);
+  const flushometerTank = has(/\bflushometer ?tank\b/);
+  if (has(/\bbathroom group\b|\bbath group\b/)) return { key: flushValve ? 'bathroom-group-valve' : 'bathroom-group-tank', match: 'bathroom group' + (flushValve ? ', flush valve' : ', flush tank') };
+  if (has(/\bwater ?closet\b|\bw\.?c\.?-?\d*\b|\btoilet\b/)) {
+    if (flushometerTank) return { key: 'water-closet-flushometer-tank', match: 'water closet, flushometer tank' };
+    if (flushTank) return { key: 'water-closet-tank', match: 'water closet, flush tank' };
+    if (flushValve) return { key: 'water-closet-valve', match: 'water closet, flush valve' };
+    return occ === 'private'
+      ? { key: 'water-closet-tank', match: 'water closet, flush tank assumed (say valve in the name to change)' }
+      : { key: 'water-closet-valve', match: 'water closet, flush valve assumed (say tank in the name to change)' };
+  }
+  if (has(/\burinal\b|\bur-?\d*\b|\bu-\d+\b/)) {
+    if (flushTank) return { key: 'urinal-tank', match: 'urinal, flush tank' };
+    if (has(/\b1 ?(in|inch|")\b|\b1"/)) return { key: 'urinal-valve-1in', match: 'urinal, 1 in flush valve' };
+    return { key: 'urinal-valve-3-4in', match: flushValve ? 'urinal, 3/4 in flush valve' : 'urinal, 3/4 in flush valve assumed' };
+  }
+  if (has(/\blavatory\b|\blav-?\d*\b|\bl-\d+\b|\bhand ?sink\b|\bhs-?\d*\b|\bwash ?basin\b|\bbasin\b/)) return { key: 'lavatory', match: has(/hand ?sink|\bhs/) ? 'hand sink, read as a lavatory' : 'lavatory' };
+  if (has(/\bmop ?sink\b|\bservice ?sink\b|\bjanitor\b|\bms-?\d*\b|\bslop ?sink\b/)) return { key: 'service-sink', match: 'service sink' };
+  if (has(/\bdish ?washer\b|\bdw-?\d*\b|\bdish ?machine\b/)) return { key: 'dishwasher', match: 'dishwashing machine' };
+  if (has(/\bdrinking ?fountain\b|\bdf-?\d*\b|\bewc\b|\bwater ?cooler\b|\bbottle ?fill/)) return { key: 'drinking-fountain', match: 'drinking fountain' };
+  if (has(/\blaundry ?(tray|sink|tub)\b|\blt-?\d*\b/)) return { key: 'laundry-tray', match: 'laundry tray' };
+  if (has(/\bwashing ?machine\b|\bclothes ?washer\b|\bwasher\b|\bwm-?\d*\b/)) return has(/\b15 ?lb\b|\bcommercial\b/) ? { key: 'washing-machine-15lb', match: 'washing machine, 15 lb' } : { key: 'washing-machine-8lb', match: 'washing machine, 8 lb' };
+  if (has(/\bbidet\b/)) return { key: 'bidet', match: 'bidet' };
+  if (has(/\bbath ?tub\b|\btub\b/)) return { key: 'bathtub', match: 'bathtub' };
+  if (has(/\bshower\b|\bsh-?\d*\b/)) return { key: 'shower', match: 'shower head' };
+  if (has(/\bsink\b|\bscullery\b|\bcs-?\d*\b|\bks-?\d*\b/)) return { key: 'kitchen-sink', match: has(/\d ?-? ?comp/) ? 'compartment sink, read as a kitchen sink' : 'kitchen sink' };
+  return null;
+}
+// The prefill a counter's name earns for the project's occupancy: the table row
+// plus the rule id and the words the chip shows. Null when the name declares no
+// supply fixture.
+function wsfuPrefillFor(name, occupancy) {
+  const f = wsfuFixtureFromName(name, occupancy);
+  if (!f) return null;
+  const w = wsfuFor(f.key, occupancy);
+  if (!w) return null;
+  return { ...w, match: f.match, ruleId: WSFU_RULE_ID };
+}
+// A counter's fixture units: `wsfu` when it carries one (> 0), else null.
+// `wsfuFixture` (the table key the prefill came from, kept when the value was
+// accepted) lets the later rungs split a typed total into cold and hot.
+function counterWsfu(counter) {
+  const v = counter ? Number(counter.wsfu) : NaN;
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+// THE per-mark rule, the twin of duct-model's ductMarkerCfm: a positive
+// `wsfuOverride` on the placed mark wins, else the counter's, else null.
+function markerWsfu(marker, counter) {
+  const o = marker ? Number(marker.wsfuOverride) : NaN;
+  if (Number.isFinite(o) && o > 0) return o;
+  return counterWsfu(counter);
+}
+// The cold / hot split of a counter's total: the table's proportions for its
+// fixture when one is known (a typed-over total keeps the fixture's shape);
+// null when the counter has no fixture key.
+function counterWsfuSplit(counter, occupancy) {
+  const total = counterWsfu(counter);
+  if (total == null) return null;
+  const w = counter.wsfuFixture ? wsfuFor(counter.wsfuFixture, occupancy) : null;
+  if (!w || !(w.total > 0)) return null;
+  return { cold: round2(total * w.cold / w.total), hot: round2(total * w.hot / w.total), total };
+}
+
 function round1(v) { return Math.round(v * 10) / 10; }
 function round2(v) { return Math.round(v * 100) / 100; }
 
@@ -227,6 +312,7 @@ const WATER_MODEL_API = {
   WATER_VELOCITY_CAPS,
   PIPE_ID_IN, WATER_MATERIAL_ORDER, sizeKey, sizeKeyIn, pipeIdIn, pipeSizesIn, velocityFps, suggestWaterSize,
   FIXTURE_SUPPLY_MIN_IN, fixtureSupplyMinIn, fixtureSupplyMinLabel, WATER_SERVICE_MIN_IN,
+  WSFU_RULE_ID, wsfuFixtureFromName, wsfuPrefillFor, counterWsfu, markerWsfu, counterWsfuSplit,
 };
 if (typeof window !== 'undefined') window.WaterModel = WATER_MODEL_API;
 // Node test harness and the rulebook's drift check only: in a classic browser <script> `module` is undefined.

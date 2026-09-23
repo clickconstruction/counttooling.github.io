@@ -373,7 +373,8 @@
     rooms: [],
     roomsListCollapsed: false,
     parkedScaleDraft: null,   // D20 (J5-A): a live polyline / quick-line draft held across the Set Scale modal and resumed when it closes. In-memory, one modal round-trip long.
-    counterAirMoreOpen: null,   // D19: in-memory per project — the Counter modal's "More ▸ air & mounting" disclosure. null = follow the trade (open on hvac/electrical); true/false = the estimator's override for this project. A view preference like showAllCanvases, deliberately NOT in save/load.
+    counterAirMoreOpen: null,
+    counterWaterMoreOpen: null,  // WATER-PLAN rung 2: the Counter modal's "More ▸ water supply" disclosure. null = follow the trade (open on plumbing)   // D19: in-memory per project — the Counter modal's "More ▸ air & mounting" disclosure. null = follow the trade (open on hvac/electrical); true/false = the estimator's override for this project. A view preference like showAllCanvases, deliberately NOT in save/load.
     recentRoomHeights: [],
     activeGroupId: null,
     activeCanvasIdByPage: {},
@@ -890,7 +891,8 @@
     state.groupsEnabled = false;
     state.trade = null;
     state.stripPins = readDeviceStripPins();   // D21: per project — the next project starts from the device's last arrangement
-    state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
+    state.counterAirMoreOpen = null;
+    state.counterWaterMoreOpen = null;   // WATER-PLAN rung 2: same rule for the water supply disclosure   // D19: the next project follows its own trade, not this one's override
     state.parkedScaleDraft = null;
     state.ceilingHeightFt = null;
     state.codes = null;
@@ -5819,6 +5821,15 @@
         ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
       ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
     }
+    // WATER-PLAN rung 2: "WSFU for this one…" — a placed mark of a counter that
+    // carries fixture units gets the per-mark override row (features/water-fixtures.js
+    // binds the click and owns #markerWsfuModal).
+    const ctxMarkerWsfuBtn = document.getElementById('ctxMarkerWsfu');
+    if (ctxMarkerWsfuBtn) {
+      const mw = !state.isViewer && state.ctxTarget?.type === 'marker'
+        ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
+      ctxMarkerWsfuBtn.style.display = mw && mw.wsfu > 0 ? 'block' : 'none';
+    }
     // D19 (J19 Friction #3): "Attach to nearest run" — the rescue for a CFM
     // device that finished a foot short of its branch. Offered ONLY when the
     // device is genuinely unattached AND a run sits close enough to be the
@@ -7541,6 +7552,7 @@
       else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
       else if (document.getElementById('ductScheduleModal')?.classList.contains('visible')) { hideModal('ductScheduleModal'); } // DUCT D5
       else if (document.getElementById('markerCfmModal')?.classList.contains('visible')) { App.cancelMarkerCfm ? App.cancelMarkerCfm() : hideModal('markerCfmModal'); } // DUCT D15
+      else if (document.getElementById('markerWsfuModal')?.classList.contains('visible')) { App.cancelMarkerWsfu ? App.cancelMarkerWsfu() : hideModal('markerWsfuModal'); } // WATER rung 2
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
       // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
       // Escape closes the board and leaves the shortcut list up behind it.

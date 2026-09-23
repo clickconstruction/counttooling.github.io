@@ -2339,23 +2339,13 @@
             <div class="settings-project-row-text">
               <div>Codes</div>
             </div>
-            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Remembered for your next bid.</div>
+            <!-- WATER-PLAN rung 1: the occupancy column fixture units read (public on a commercial bid,
+                 private on a dwelling), one word that flips; no row of its own so the card keeps its height. -->
+            <div class="settings-project-row-hint">Rule chips and Bid Check resolve against these. Fixture units read the <button type="button" class="settings-occ-flip" id="settingsOccupancyFlip" title="Public on a commercial bid, private on a dwelling or a hotel room. Click to flip. A counter can be flipped on its own.">public</button> column.</div>
             <div class="settings-codes-grid">
               <label class="settings-code-cell"><span class="settings-code-label">Plumbing</span><select id="settingsCodePlumbing" aria-label="Plumbing code edition"></select></label>
               <label class="settings-code-cell"><span class="settings-code-label">Electrical</span><select id="settingsCodeElectrical" aria-label="Electrical code edition"></select></label>
               <label class="settings-code-cell"><span class="settings-code-label">HVAC</span><select id="settingsCodeHvac" aria-label="HVAC standard edition"></select></label>
-            </div>
-          </div>
-          <div class="settings-project-row settings-project-row-stack settings-project-row-sub" id="settingsOccupancyRow" title="Which column of the fixture-unit table a fixture reads. Public is the commercial default; private is a dwelling or a hotel room. A counter can be flipped to the other column.">
-            <div class="settings-project-row-text">
-              <div>Occupancy</div>
-            </div>
-            <div class="settings-project-row-hint">Fixture units read the public or the private column.</div>
-            <div class="settings-project-row-control">
-              <div class="filter-scope-segment" id="settingsOccupancySegment" role="group" aria-label="Occupancy for fixture units">
-                <button type="button" data-occupancy="public" aria-pressed="false">Public</button>
-                <button type="button" data-occupancy="private" aria-pressed="false">Private</button>
-              </div>
             </div>
           </div>
           <div class="settings-project-row settings-project-row-stack settings-project-row-sub" id="settingsJurisdictionRow" title="State and city, so amendments on file are applied and named. Not on file means the model code as written.">

@@ -77,11 +77,11 @@ test.describe('Project Settings on small viewports', () => {
     expect(adv.bottom).toBeLessThanOrEqual(560.5);
   });
 
-  test('order: This project (Trade, Codes, Occupancy, Jurisdiction, Ceiling, Use groups, Sheets, Quick keys), then the footer (Close project, Load project, Help, Advanced), then the one primary, Save', async ({ page }) => {
+  test('order: This project (Trade, Codes, Jurisdiction, Ceiling, Use groups, Sheets, Quick keys), then the footer (Close project, Load project, Help, Advanced), then the one primary, Save', async ({ page }) => {
     await openSettings(page, 1280, 800);
     // Modal polish (2026-09-18): one primary action, in the footer .actions; Add pages /
     // Download PDF became the Sheets row; Close project is a footer link.
-    const order = await page.evaluate(() => ['settingsProjectSection', 'settingsTradeRow', 'settingsCodesRow', 'settingsOccupancyRow', 'settingsJurisdictionRow', 'settingsCeilingRow', 'settingsUseGroupsRow', 'settingsSheetsRow', 'settingsQuickKeysRow', 'settingsCloseProject', 'settingsLoadProject', 'settingsAdvancedBtn', 'settingsSaveProject'].map((id) => document.getElementById(id).getBoundingClientRect()).filter((r) => r.height > 0).map((r) => r.top));   // rows hidden with no project open (Sheets, Close project) drop out
+    const order = await page.evaluate(() => ['settingsProjectSection', 'settingsTradeRow', 'settingsCodesRow', 'settingsJurisdictionRow', 'settingsCeilingRow', 'settingsUseGroupsRow', 'settingsSheetsRow', 'settingsQuickKeysRow', 'settingsCloseProject', 'settingsLoadProject', 'settingsAdvancedBtn', 'settingsSaveProject'].map((id) => document.getElementById(id).getBoundingClientRect()).filter((r) => r.height > 0).map((r) => r.top));   // rows hidden with no project open (Sheets, Close project) drop out
     for (let i = 1; i < order.length; i++) expect(order[i]).toBeGreaterThanOrEqual(order[i - 1]);
     expect(await page.locator('#settingsProjectSection .settings-project-label').textContent()).toBe('This project');
     // desktop: label and control share the row, the hint sits under them

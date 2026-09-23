@@ -825,7 +825,8 @@
       },
       "amendments": [],
       "used_by": [
-        "waterSchedule"
+        "waterSchedule",
+        "bidCheck"
       ],
       "url": "/rules/plumbing/water-fixture-supply-min/",
       "updated": "2026-09-23"
@@ -1018,7 +1019,8 @@
       },
       "amendments": [],
       "used_by": [
-        "counter"
+        "counter",
+        "bidCheck"
       ],
       "url": "/rules/plumbing/water-fixture-units/",
       "updated": "2026-09-23"
@@ -1198,7 +1200,7 @@
       "id": "plumb.water.service-min",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Minimum water service size",
       "summary": "The pipe from the main to the building is never smaller than 3/4 inch, whatever the load says.",
       "values": [
@@ -1218,7 +1220,9 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "bidCheck"
+      ],
       "url": "/rules/plumbing/water-service-min/",
       "updated": "2026-09-23"
     },
@@ -1248,7 +1252,8 @@
       },
       "amendments": [],
       "used_by": [
-        "waterSchedule"
+        "waterSchedule",
+        "bidCheck"
       ],
       "url": "/rules/plumbing/water-velocity/",
       "updated": "2026-09-23"

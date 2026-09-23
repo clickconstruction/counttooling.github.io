@@ -87,7 +87,7 @@
   const GATED_SURFACES = ['pipe-tooling', 'takeoff-tooling', 'export-pdfs'];
   // Surfaces whose own confirmation toast carries the open-items line, so the
   // S5 advisory card must not stack a second one (D18: Copy Schedule).
-  const FOLDED_ADVISORY_SURFACES = ['duct-schedule'];
+  const FOLDED_ADVISORY_SURFACES = ['duct-schedule', 'water-schedule'];   // WATER rung 5: the water copy's toast is its own
 
   function scopeOf(opts) {
     const state = App.state;
@@ -245,8 +245,11 @@
 
   // What the gate reads: the WHOLE panel's open items (S5's trade rows too —
   // the panel is one sign-off list) — but only while the project has duct.
+  // WATER-PLAN rung 6: the gate is one gate; it arms while the project has duct
+  // OR a water run (features/water-bidcheck.js), and reads the whole panel.
+  function gateArmed() { return hasDuctRuns() || !!(App.hasWaterRuns && App.hasWaterRuns()); }
   function gateStatus() {
-    if (!hasDuctRuns()) return null;
+    if (!gateArmed()) return null;
     const check = App.getBidCheck ? App.getBidCheck() : null;
     if (!check) return null;
     const auto = check.auto.filter((r) => r.verdict === 'warn');
@@ -257,7 +260,7 @@
 
   function ductBidGateHandles(surface) {
     if (FOLDED_ADVISORY_SURFACES.includes(surface)) return true;
-    return GATED_SURFACES.includes(surface) && hasDuctRuns();
+    return GATED_SURFACES.includes(surface) && gateArmed();
   }
 
   // --- gate memory (D18) -----------------------------------------------------

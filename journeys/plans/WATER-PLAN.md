@@ -186,6 +186,10 @@ save/load, export/import and the Artboard for free.
 
 ## 6. Suggested build ladder (after the mockup round)
 
+> **Ladder complete 2026-09-23**, rungs 1 to 6 on six stacked branches (#177, #178, #180, #182,
+> #185 and rung 6), each with its spec. What stands between the slice and a bid is the trade
+> check of the transcribed tables (§2's note): punch row **P4-WATER-CHECK**.
+
 > **Rung 0 shipped 2026-09-18 (punch row BEND-FITTINGS, Robert's ask):** *fittings from
 > bends.* A line type's details carry a table (bend nearer 45° → fitting × qty, nearer 90° →
 > …, drop at an end → …), off by default, defaults from the type's name; every run of the
@@ -253,8 +257,17 @@ save/load, export/import and the Artboard for free.
    suggestion and the Lines list readouts, so one knob moves every surface. Four more rules
    are `applied` now (demand, velocity, pipe-id, fixture-supply-min, used_by waterSchedule);
    only `service-min` waits for rung 6.
-6. **Bid Check rows + gate**; the guide + a fourth tour step set
-   ("Size the branch at S") in the plumbing walkthrough.
+6. ~~**Bid Check rows + gate**; the guide + a fourth tour step set
+   ("Size the branch at S") in the plumbing walkthrough.~~ **Built 2026-09-23** (branch
+   `claude/water-rung6-bidcheck`, features/water-bidcheck.js): the four auto rows of §4 plus a
+   fifth, the service at least 3/4 in (IPC 603.1, so `service-min` is applied and every rule
+   in the slice is live), each showing its work; the three manual rows (pressure available per
+   Appendix E, the water heater's load, recirculation; backflow was already a plumbing row);
+   the gate is the duct gate, armed on water too, with its badge, toast and memory. **Not in
+   this rung, on purpose:** the guide page and the tour step. The plumbing guide and the
+   course teach what ships; both wait for the plumber's row-by-row check of the tables (§2),
+   since a lesson would teach numbers nobody has yet verified against the book. That check is
+   the punch row that replaces P4-WATER.
 
 Each rung is one topic branch on the house loop (targeted specs +
 `npm run check` per unit, the full suite at push checkpoints, a live walk

@@ -88,7 +88,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: [waterSchedule]
+used_by: [waterSchedule, bidCheck]
 updated: 2026-09-23
 ---
 

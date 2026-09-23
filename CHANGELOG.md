@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 6, the Bid Check rows and the gate; the ladder is built (2026-09-23)
+
+Punch row P4-WATER closes with this rung, stacked on rung 5; what replaces it is P4-WATER-CHECK,
+the plumber's read of the transcribed tables (below). The pattern's sign-off: quantity →
+capacity → physics → the estimator's word.
+
+- **Five auto rows**, each showing its work (features/water-bidcheck.js over water-model's
+  `WATER_BID_CHECK_ROWS`, the duct table's shape): every water run sized for its fixture units
+  (over the side's cap, with the size that passes), fixture supply minimums (a run serving a
+  fixture directly at less than Table 604.5 allows), every fixture served (the stray sides by
+  counter, with the rescue named), scale set on every water sheet, and the water service at
+  least 3/4 in (IPC 603.1, on the cold run no run feeds; the sixth rule is applied with it, so
+  the whole slice is live). Each reads the app's own tallies: the schedule's rows, rung 3's
+  attachment and branches, the sheets' scales.
+- **Three manual rows**: pressure available checked (IPC Appendix E), the water heater sized
+  for the load, recirculation where the code asks. Backflow was already a plumbing row.
+- **The gate is the duct gate.** Its status reads the whole panel and now arms while the
+  project has duct OR a water run, so the badge on Copy to /Tooling and Export PDFs, the
+  "Bid Check: Every fixture served? — Review · Export anyway" toast, and the memory that
+  Export anyway is the acknowledgment until the set changes, all cover a water takeoff with no
+  duct on it. The water schedule's copy folds the advisory like the duct schedule's.
+- **Not in this rung, on purpose:** the guide page and the tour step the plan listed. Both
+  would teach numbers nobody has yet checked against the book; they follow P4-WATER-CHECK.
+- water-bidcheck.spec.js pins the rows' verdicts and words on a laid takeoff, the ticks, and
+  the gate on water alone; water-model.test.js the rows in isolation.
+
 ## feat(water): rung 5, the Water Sizing schedule, its knobs, and the block in every export (2026-09-23)
 
 Punch row P4-WATER, the fifth rung, stacked on rung 4. The schedule prices like a bid, the

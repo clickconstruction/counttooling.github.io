@@ -19,7 +19,7 @@ source:
   section: design guidance from the tube and fitting makers and the plumbing engineering handbooks; the IPC's Appendix E sizes by pressure available and developed length instead
   editions: []
 amendments: []
-used_by: [waterSchedule]
+used_by: [waterSchedule, bidCheck]
 updated: 2026-09-23
 ---
 

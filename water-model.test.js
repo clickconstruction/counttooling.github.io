@@ -334,3 +334,29 @@ test('rung 5: the per-project caps and a schedule row\'s numbers', () => {
   r = w.waterRunSizing({ served: 3, fixtureKeys: ['lavatory', 'lavatory'], sizeIn: null, material: null, side: 'hot' });
   assert.strictEqual(r.gpm, 6.5); assert.strictEqual(r.velocityFps, null); assert.strictEqual(r.capFps, 5); assert.strictEqual(r.ok, true); assert.strictEqual(r.key, null);
 });
+
+test('rung 6: the Bid Check rows, na without inputs, ok and warn with their work, the manual rows and the ticks', () => {
+  const na = w.waterBidCheckRows({}, {});
+  assert.deepStrictEqual(na.map((r) => r.id), ['water-runs-sized', 'water-fixture-min', 'water-fixtures-served', 'water-sheets-scaled', 'water-service-min', 'water-pressure', 'water-heater-load', 'water-recirc']);
+  assert.ok(na.slice(0, 5).every((r) => r.kind === 'auto' && r.verdict === 'na'));
+  assert.ok(na.slice(5).every((r) => r.kind === 'manual' && r.verdict === 'open' && !r.done));
+  assert.strictEqual(w.waterBidCheckRows({}, { 'water-pressure': true }).find((r) => r.id === 'water-pressure').done, true);
+  const good = { name: 'Main', typeName: '1.5in Copper CW', side: 'cold', key: '1-1/2', sizeIn: 1.5, velocityFps: 5.3, capFps: 8, overCap: false, underMin: false, minSupplyIn: 1, minSupplyKey: 'water-closet-valve', suggestedKey: '1-1/4' };
+  const bad = { name: 'Quick line', typeName: '1/2in Copper CW', side: 'cold', key: '1/2', sizeIn: 0.5, velocityFps: 37.1, capFps: 8, overCap: true, underMin: true, minSupplyIn: 1, minSupplyKey: 'water-closet-valve', suggestedKey: '1-1/4' };
+  const ok = w.waterBidCheckRows({ runs: [good], strays: [], fixtures: 3, roots: [{ name: 'Main', typeName: '1.5in Copper CW', side: 'cold', key: '1-1/2', sizeIn: 1.5 }], waterPages: ['P-101'], unscaledPages: [] }, {});
+  assert.deepStrictEqual(ok.slice(0, 5).map((r) => r.verdict), ['ok', 'ok', 'ok', 'ok', 'ok']);
+  assert.strictEqual(ok[0].detail, '1 water run under the velocity caps ✓');
+  assert.strictEqual(ok[0].rule, 'plumb.water.velocity');
+  assert.strictEqual(ok[4].detail, '1 cold main at 3/4 in or more ✓');
+  const warn = w.waterBidCheckRows({ runs: [good, bad], strays: [{ counterName: 'L-1 Lavatory', side: 'hot', count: 2 }, { counterName: 'WC-1 Water Closet', side: 'cold', count: 1 }], fixtures: 4, roots: [{ name: 'Stub', typeName: '1/2in Copper CW', side: 'cold', key: '1/2', sizeIn: 0.5 }], waterPages: ['P-101', 'P-102'], unscaledPages: ['P-102'] }, {});
+  assert.strictEqual(warn[0].verdict, 'warn'); assert.strictEqual(warn[0].detail, 'Quick line (1/2in Copper CW): 37.1 ft/s over 8 → 1-1/4 in ⚠');
+  assert.strictEqual(warn[1].verdict, 'warn'); assert.strictEqual(warn[1].detail, 'Quick line (1/2in Copper CW) on 1/2 in; a water closet valve needs 1 in ⚠');
+  assert.strictEqual(warn[2].verdict, 'warn'); assert.strictEqual(warn[2].detail, '3 sides no run serves: L-1 Lavatory hot ×2, WC-1 Water Closet cold · right-click a fixture for Attach to nearest run ⚠');
+  assert.strictEqual(warn[3].verdict, 'warn'); assert.strictEqual(warn[3].detail, 'P-102 has water runs but no scale ⚠');
+  assert.strictEqual(warn[4].verdict, 'warn'); assert.strictEqual(warn[4].detail, 'Stub (1/2in Copper CW) starts the cold side at 1/2 in; the service is never under 3/4 in ⚠');
+  const u = w.waterBidCheckUnresolved(warn);
+  assert.strictEqual(u.auto.length, 5); assert.strictEqual(u.manual.length, 3); assert.strictEqual(u.first.id, 'water-runs-sized');
+  // the sizing row carries the flags the rows read
+  const r = w.waterRunSizing({ served: 10, fixtureKeys: ['water-closet-valve'], ownFixtureKeys: ['water-closet-valve'], sizeIn: 0.5, material: 'copper', side: 'cold' });
+  assert.strictEqual(r.overCap, true); assert.strictEqual(r.underMin, true); assert.strictEqual(r.minSupplyKey, 'water-closet-valve');
+});

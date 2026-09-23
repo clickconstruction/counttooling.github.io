@@ -152,7 +152,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: [counter]
+used_by: [counter, bidCheck]
 updated: 2026-09-23
 ---
 

@@ -633,9 +633,95 @@ function waterRunSizing(opts) {
   });
   if (sizeIn != null && minIn != null && sizeIn < minIn - 1e-9) warnings.push('under the ' + sizeKey(minIn) + ' in a ' + String(minKey).replace(/-/g, ' ') + ' needs');
   const passes = idIn ? suggestWaterSize({ gpm, side: o.side, material, capFps: cap }) : null;
-  return { served: round2(served), column, gpm, sizeIn, key: sizeIn != null ? sizeKey(sizeIn) : null, material, idIn, velocityFps, capFps: cap, ok: warnings.length === 0, warnings, minSupplyIn: minIn, suggestedKey: passes ? passes.key : null };
+  const overCap = velocityFps != null && velocityFps > cap;
+  const underMin = sizeIn != null && minIn != null && sizeIn < minIn - 1e-9;
+  return { served: round2(served), column, gpm, sizeIn, key: sizeIn != null ? sizeKey(sizeIn) : null, material, idIn, velocityFps, capFps: cap, ok: warnings.length === 0, warnings, overCap, underMin, minSupplyIn: minIn, minSupplyKey: minKey, suggestedKey: passes ? passes.key : null };
 }
 function velocityFps_(gpm, idIn) { return velocityFps(gpm, idIn); }
+
+// --- Rung 6: Bid Check ---------------------------------------------------------------
+// The water rows of Bid Check, the duct table's shape: AUTO rows with a pure
+// evaluate(inputs) → { verdict: ok | warn | na, detail }, MANUAL rows ticked per
+// project. Inputs (all optional; a missing block reads as not-applicable, never ⚠):
+//   runs:          the schedule's rows [{ name, typeName, side, key, sizeIn, ok, overCap,
+//                  underMin, suggestedKey, minSupplyIn, minSupplyKey, velocityFps, capFps, fixtures }]
+//   strays:        [{ counterName, side, count }]  sides with load that no run serves
+//   fixtures:      the count of placed marks carrying fixture units
+//   roots:         [{ name, typeName, side, key, sizeIn }]  runs no run feeds (the service end)
+//   waterPages:    [label]  sheets carrying a water run
+//   unscaledPages: [label]  sheets carrying a water run with no effective scale
+const wplural = (n, one, many) => n + ' ' + (n === 1 ? one : (many || one + 's'));
+const WATER_BID_CHECK_ROWS = [
+  {
+    id: 'water-runs-sized', kind: 'auto', label: 'Every water run sized for its fixture units', short: 'Every water run sized', rule: 'plumb.water.velocity',
+    evaluate(i) {
+      const runs = ((i && i.runs) || []).filter((r) => r && r.velocityFps != null);
+      if (!runs.length) return { verdict: 'na', detail: 'Trace a water run whose type names a size and a material (1in PEX CW) to check it.' };
+      const over = runs.filter((r) => r.overCap);
+      if (!over.length) return { verdict: 'ok', detail: wplural(runs.length, 'water run') + ' under the velocity caps ✓' };
+      return { verdict: 'warn', detail: over.map((r) => r.name + ' (' + r.typeName + '): ' + r.velocityFps + ' ft/s over ' + r.capFps + (r.suggestedKey && r.suggestedKey !== r.key ? ' → ' + r.suggestedKey + ' in' : '')).join('; ') + ' ⚠' };
+    },
+  },
+  {
+    id: 'water-fixture-min', kind: 'auto', label: 'Fixture supply minimums', short: 'Fixture supply minimums', rule: 'plumb.water.fixture-supply-min',
+    evaluate(i) {
+      const runs = ((i && i.runs) || []).filter((r) => r && r.sizeIn != null && r.minSupplyIn != null);
+      if (!runs.length) return { verdict: 'na', detail: 'A run that serves a fixture directly is checked against the fixture’s minimum supply size.' };
+      const under = runs.filter((r) => r.underMin);
+      if (!under.length) return { verdict: 'ok', detail: wplural(runs.length, 'fixture supply', 'fixture supplies') + ' at or above the table ✓' };
+      return { verdict: 'warn', detail: under.map((r) => r.name + ' (' + r.typeName + ') on ' + r.key + ' in; a ' + String(r.minSupplyKey || 'fixture').replace(/-/g, ' ') + ' needs ' + sizeKey(r.minSupplyIn) + ' in').join('; ') + ' ⚠' };
+    },
+  },
+  {
+    id: 'water-fixtures-served', kind: 'auto', label: 'Every fixture served', short: 'Every fixture served', rule: 'plumb.wsfu.fixtures',
+    evaluate(i) {
+      const n = (i && i.fixtures) || 0;
+      if (!n) return { verdict: 'na', detail: 'Give a counter fixture units (its name fills them) to check its fixtures are on a run.' };
+      const strays = (i && i.strays) || [];
+      if (!strays.length) return { verdict: 'ok', detail: wplural(n, 'fixture') + ' on a run, every side ✓' };
+      const total = strays.reduce((a, s) => a + (s.count || 0), 0);
+      return { verdict: 'warn', detail: wplural(total, 'side') + ' no run serves: ' + strays.map((s) => s.counterName + ' ' + s.side + (s.count > 1 ? ' ×' + s.count : '')).join(', ') + ' · right-click a fixture for Attach to nearest run ⚠' };
+    },
+  },
+  {
+    id: 'water-sheets-scaled', kind: 'auto', label: 'Scale set on every water sheet', short: 'Scale set on every water sheet',
+    evaluate(i) {
+      const pages = (i && i.waterPages) || [];
+      const unscaled = (i && i.unscaledPages) || [];
+      if (!pages.length) return { verdict: 'na', detail: 'Trace a water run to check its sheet.' };
+      if (!unscaled.length) return { verdict: 'ok', detail: wplural(pages.length, 'water sheet') + ' scaled ✓' };
+      return { verdict: 'warn', detail: unscaled.join(', ') + (unscaled.length === 1 ? ' has' : ' have') + ' water runs but no scale ⚠' };
+    },
+  },
+  {
+    id: 'water-service-min', kind: 'auto', label: 'Water service at least 3/4 in', short: 'Water service at least 3/4 in', rule: 'plumb.water.service-min',
+    evaluate(i) {
+      const roots = ((i && i.roots) || []).filter((r) => r && r.side === 'cold' && r.sizeIn != null);
+      if (!roots.length) return { verdict: 'na', detail: 'The cold run no run feeds is the service end; it is checked once its type names a size.' };
+      const under = roots.filter((r) => r.sizeIn < WATER_SERVICE_MIN_IN - 1e-9);
+      if (!under.length) return { verdict: 'ok', detail: wplural(roots.length, 'cold main') + ' at ' + sizeKey(WATER_SERVICE_MIN_IN) + ' in or more ✓' };
+      return { verdict: 'warn', detail: under.map((r) => r.name + ' (' + r.typeName + ') starts the cold side at ' + r.key + ' in').join('; ') + '; the service is never under ' + sizeKey(WATER_SERVICE_MIN_IN) + ' in ⚠' };
+    },
+  },
+  { id: 'water-pressure', kind: 'manual', label: 'Pressure available checked (IPC Appendix E)', short: 'Pressure available checked' },
+  { id: 'water-heater-load', kind: 'manual', label: 'Water heater sized for the load', short: 'Water heater sized' },
+  { id: 'water-recirc', kind: 'manual', label: 'Recirculation where the code asks', short: 'Recirculation where the code asks' },
+];
+function waterBidCheckRows(inputs, manualState) {
+  const ticks = manualState || {};
+  return WATER_BID_CHECK_ROWS.map((row) => {
+    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
+    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
+    const done = !!ticks[row.id];
+    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done, upgraded: false };
+  });
+}
+function waterBidCheckUnresolved(rows) {
+  const auto = (rows || []).filter((r) => r.kind === 'auto' && r.verdict === 'warn');
+  const manual = (rows || []).filter((r) => r.kind === 'manual' && !r.done);
+  return { auto, manual, first: auto[0] || manual[0] || null };
+}
+
 
 
 function round1(v) { return Math.round(v * 10) / 10; }
@@ -653,6 +739,7 @@ const WATER_MODEL_API = {
   waterNearestOnRun, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterChildLinks, waterServedByRun,
   waterMaterialFromName, waterSizeInFromName, sizedTypeName, waterDraftRemaining, waterDraftSuggestion, waterSizeOptions,
   WATER_SETTINGS_DEFAULTS, normalizeWaterSettings, waterCapFor, waterRunSizing,
+  WATER_BID_CHECK_ROWS, waterBidCheckRows, waterBidCheckUnresolved,
 };
 if (typeof window !== 'undefined') window.WaterModel = WATER_MODEL_API;
 // Node test harness and the rulebook's drift check only: in a classic browser <script> `module` is undefined.

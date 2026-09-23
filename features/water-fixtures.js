@@ -139,6 +139,13 @@
     const v = fieldValue(key);
     if (v.wsfu != null) counter.wsfu = v.wsfu;
     if (v.wsfu != null && v.occupancy) counter.wsfuOccupancy = v.occupancy;
+    // WATER-PLAN §8: wsfu_prefill, accepted or overwritten, behind the water-telemetry flag
+    // until the allowlist migration is on prod.
+    const f = forms[key];
+    const read = f && WM() ? WM().wsfuPrefillFor(f.name(), v.occupancy || projectOccupancy()) : null;
+    if (read && App.featureFlagEnabled && App.featureFlagEnabled('water-telemetry') && App.logUserEvent) {
+      App.logUserEvent('wsfu_prefill', App.state.currentProjectId || null, { fixture: read.fixture, occupancy: read.occupancy, read: read.total, kept: v.wsfu, accepted: v.wsfu === read.total });
+    }
   }
 
   // --- read-back --------------------------------------------------------------------

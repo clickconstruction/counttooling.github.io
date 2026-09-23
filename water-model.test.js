@@ -329,3 +329,42 @@ test('rung 5: the settings blob and a schedule row', () => {
   assert.strictEqual(r.velocityFps, 0);
   assert.strictEqual(r.ok, true);
 });
+
+test('rung 6: the Bid Check rows over the schedule, and the ticks', () => {
+  const rows = [
+    { name: 'Cold main', side: 'cold', sizeLabel: '3/4″', velocityFps: 27.8, capFps: 8, over: true, underMin: false, unsized: false, suggestLabel: '2″', supplyMinIn: 1, minFixtureName: 'WC flush valve' },
+    { name: 'Branch', side: 'cold', sizeLabel: '—', velocityFps: null, capFps: 8, over: false, underMin: false, unsized: true, suggestLabel: null, supplyMinIn: null },
+    { name: 'Hot main', side: 'hot', sizeLabel: '1/2″', velocityFps: 0, capFps: 5, over: false, underMin: false, unsized: false, suggestLabel: null, supplyMinIn: null },
+    { name: 'Lav branch', side: 'cold', sizeLabel: '1/2″', velocityFps: 3, capFps: 8, over: false, underMin: true, unsized: false, suggestLabel: '1″', supplyMinIn: 1, minFixtureName: 'WC flush valve' },
+  ];
+  const inputs = { rows, unserved: [{ counterName: 'Lavatory', side: 'hot', count: 4, wsfu: 6 }], served: 5, waterPages: ['P-101'], unscaledPages: [], service: [] };
+  const r = w.waterBidCheckRows(inputs, { 'water-backflow': true });
+  const by = Object.fromEntries(r.map((x) => [x.id, x]));
+  assert.strictEqual(by['water-runs-sized'].verdict, 'warn');
+  assert.ok(by['water-runs-sized'].detail.includes('Cold main (cold): 3/4″ at 27.8 fps ⚠ → 2″'));
+  assert.ok(by['water-runs-sized'].detail.includes('1 run with no size or material'));
+  assert.strictEqual(by['water-supply-min'].verdict, 'warn');
+  assert.ok(by['water-supply-min'].detail.includes('WC flush valve on Lav branch (1/2″); needs 1″ ⚠'));
+  assert.strictEqual(by['water-fixtures-served'].verdict, 'warn');
+  assert.ok(by['water-fixtures-served'].detail.startsWith('Lavatory, hot ×4: no hot run within reach'));
+  assert.strictEqual(by['water-service-min'].verdict, 'na');
+  assert.strictEqual(by['water-sheets-scaled'].verdict, 'ok');
+  assert.strictEqual(by['water-backflow'].kind, 'manual');
+  assert.strictEqual(by['water-backflow'].done, true);
+  assert.strictEqual(by['water-recirc'].done, false);
+  const u = w.waterBidCheckUnresolved(r);
+  assert.deepStrictEqual(u.auto.map((x) => x.id), ['water-runs-sized', 'water-supply-min', 'water-fixtures-served']);
+  assert.deepStrictEqual(u.manual.map((x) => x.id), ['water-pressure-checked', 'water-heater-sized', 'water-recirc']);
+  assert.strictEqual(u.first.id, 'water-runs-sized');
+  // everything in order: ✓ across the auto rows; a small service is named
+  const ok = w.waterBidCheckRows({ rows: [rows[2]], unserved: [], served: 3, waterPages: ['P-101'], unscaledPages: [], service: [{ name: 'Service', sizeIn: 1, sizeLabel: '1″' }] }, {});
+  const okBy = Object.fromEntries(ok.map((x) => [x.id, x]));
+  assert.strictEqual(okBy['water-runs-sized'].verdict, 'ok');
+  assert.strictEqual(okBy['water-fixtures-served'].detail, '3 fixture sides on runs ✓');
+  assert.strictEqual(okBy['water-service-min'].verdict, 'ok');
+  assert.strictEqual(w.waterBidCheckRows({ service: [{ name: 'Service', sizeIn: 0.5, sizeLabel: '1/2″' }] }, {}).find((x) => x.id === 'water-service-min').verdict, 'warn');
+  // nothing yet: every auto row is na, nothing unresolved but the manual rows
+  const na = w.waterBidCheckRows({}, {});
+  assert.ok(na.filter((x) => x.kind === 'auto').every((x) => x.verdict === 'na'));
+  assert.strictEqual(w.waterBidCheckUnresolved(na).auto.length, 0);
+});

@@ -74,6 +74,7 @@
     const totals = { cold: blank(), hot: blank() };
     const rows = [];
     const unserved = {};
+    let servedSides = 0;
     indices.forEach((pi) => {
       const page = state.pages[pi];
       if (!page) return;
@@ -91,7 +92,8 @@
       const down = wm.waterDownstreamByRun(fixtures, runs);
       const { attached, unattached } = wm.attachWaterFixtures(fixtures, runs);
       const minByRun = {};
-      attached.forEach((a) => { if (a.fixture.supplyMinIn > (minByRun[a.runId] || 0)) minByRun[a.runId] = a.fixture.supplyMinIn; });
+      attached.forEach((a) => { if (a.fixture.supplyMinIn > ((minByRun[a.runId] || {}).min || 0)) minByRun[a.runId] = { min: a.fixture.supplyMinIn, name: a.fixture.counterName }; });
+      servedSides += attached.length;
       runs.forEach((run) => {
         const lt = (state.lineTypes || []).find((l) => l.id === run.lineTypeId);
         const line = run.kind === 'quick' ? (ann.quickLines || [])[run.index] : (ann.polylines || [])[run.index];
@@ -99,7 +101,7 @@
         const material = wm.waterMaterialFromName(typeName);
         const sizeIn = sm && sm.supportSizeInFromName ? sm.supportSizeInFromName(typeName) : null;
         const d = down[run.id] || { wsfu: 0, fixtures: 0, flushValve: false };
-        const r = wm.waterScheduleRow({ side: run.side, material, sizeIn, wsfu: d.wsfu, flushValve: d.flushValve, supplyMinIn: minByRun[run.id] || null, cap: ws.capFps[run.side] });
+        const r = wm.waterScheduleRow({ side: run.side, material, sizeIn, wsfu: d.wsfu, flushValve: d.flushValve, supplyMinIn: (minByRun[run.id] || {}).min || null, cap: ws.capFps[run.side] });
         let lengthFt = null;
         try {
           const lenFn = App.getLineLengthFeetForTotals || window.getLineLengthFeetForTotals;
@@ -111,7 +113,7 @@
           material, sizeIn, sizeLabel: sizeIn != null ? wm.sizeFraction(sizeIn) + '″' : '—',
           wsfu: d.wsfu, fixtures: d.fixtures, lengthFt: Number.isFinite(lengthFt) ? lengthFt : null,
           ...r, suggestLabel: r.suggestSizeIn != null ? wm.sizeFraction(r.suggestSizeIn) + '″' : null,
-          supplyMinIn: minByRun[run.id] || null,
+          supplyMinIn: (minByRun[run.id] || {}).min || null, minFixtureName: (minByRun[run.id] || {}).name || null,
         });
         const t = totals[run.side];
         t.runs++;
@@ -129,7 +131,7 @@
     if (!rows.length) return null;
     SIDES.forEach((side) => { totals[side].wsfu = Math.round(totals[side].wsfu * 100) / 100; });
     const un = Object.values(unserved).map((u) => ({ ...u, wsfu: Math.round(u.wsfu * 100) / 100 }));
-    return { rows, totals, unserved: un, warnings: totals.cold.warn + totals.hot.warn, unsized: totals.cold.unsized + totals.hot.unsized, capFps: { ...ws.capFps }, occupancy: App.getProjectOccupancy ? App.getProjectOccupancy() : 'public' };
+    return { rows, totals, unserved: un, served: servedSides, warnings: totals.cold.warn + totals.hot.warn, unsized: totals.cold.unsized + totals.hot.unsized, capFps: { ...ws.capFps }, occupancy: App.getProjectOccupancy ? App.getProjectOccupancy() : 'public' };
   }
   function verdictText(r) {
     if (r.unsized) return r.material ? 'no size in the name' : 'no material in the name';

@@ -3,7 +3,7 @@ id: plumb.water.distribution-min
 title: Minimum water service size
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: The water service pipe from the main to the building is never smaller than 3/4 inch; the pipes past it are sized to the fixtures they serve.
 values:
   - when: Water service pipe
@@ -16,7 +16,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: []
+used_by: [bidCheck]
 updated: 2026-09-23
 ---
 

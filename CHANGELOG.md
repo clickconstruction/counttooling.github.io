@@ -13,6 +13,39 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 1 of the water-sizing ladder, the rulebook slice and the occupancy toggle (2026-09-23)
+
+Punch row P4-WATER, the first of the six rungs in [WATER-PLAN.md](journeys/plans/WATER-PLAN.md)
+§6 (Will's 2026-09-14 sequencing call: fixture-unit sizing, IPC first, water only, all six
+mockup questions decided the same day). Nothing in the app sizes a pipe yet; this rung is the
+numbers and the one project setting the rest of the ladder reads.
+
+- **[water-model.js](water-model.js)**, a pure module in the support-model mold, holds every
+  number the ladder will apply: `WSFU_LOADS` (IPC Table E103.3(2), per fixture the private and
+  public columns, the supply control, cold / hot / total), `DEMAND_CURVE` (Table E103.3(3), the
+  flush-tank and flush-valve columns) with `demandGpm` interpolating on a straight line between
+  the printed rows, `WATER_VELOCITY_CAP_FPS` (8 cold / 5 hot, design practice, not a code
+  table), `PIPE_ID_IN` (PEX SDR 9, copper Type L, CPVC CTS, Schedule 40 galvanized) with
+  `velocityFps` and `suggestWaterSizeIn` (the smallest size under the side's cap),
+  `FIXTURE_SUPPLY_MIN_IN` (Table 604.4) and `WATER_SERVICE_MIN_IN` (603.1). The plan's worked
+  example reads right off it: 8 gpm cold wants 3/4 in PEX at 7.3 fps, hot wants 1 in.
+- **Six rules** in `content/rules/plumbing/` (`plumb.wsfu.fixtures`, `plumb.wsfu.demand`,
+  `plumb.water.velocity`, `plumb.water.pipe-id`, `plumb.water.fixture-supply-min`,
+  `plumb.water.distribution-min`), all **draft** until their app surfaces land, every one of
+  their 225 values carrying a `code:` pointer into the model so `build:rules --check` fails
+  the moment a number in code and its rule disagree (275 pointers checked across the book now,
+  up from 50). The four table rules were emitted from the model's tables so rule and code
+  started equal; the transcription itself is punch row WATER-TABLES's to check against the
+  printed code, the gate the plan set before the S moment is offered.
+- **Occupancy** in Project Settings, a Public | Private segment under the code editions: the
+  column the fixture-unit table is read in. It rides `state.codes` as `occupancy` (so every
+  intake, the export and the device default carry it for free, `normalizeProjectCodes` keeps
+  only the two values) and `getProjectCodes()` resolves it to public when a project never chose.
+  [codes.spec.js](codes.spec.js) walks the segment, the state, the device default and the
+  hydrate shapes; [constants.test.js](constants.test.js) pins the normalizer.
+
+Next: rung 2, the counter's WSFU field with the prefill by name and the chip.
+
 ## test(view-only): the viewer's Hide marks eye, pinned across the matrix (2026-09-22)
 
 Punch row VIEWER-HIDEMARKS, closed with no defect found. The 2026-08-31 cloud walk left the

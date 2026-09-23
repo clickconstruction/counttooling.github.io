@@ -93,7 +93,9 @@
   number in code cannot change without its rule. When you change one of those
   tables (`fillLimitFor`, `VD_K`, `VD_LIMIT_PCT_DEFAULT`, `ELECTRICAL_DEFAULTS.mountByType`,
   `DEFAULT_MAKE_UP_FT`, `DUCT_GAUGE_TABLE`, `SHEET_WEIGHT_LB_PER_SQFT`,
-  `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`), change the rule in the same
+  `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`, and water-model.js's `WSFU_LOADS`,
+  `DEMAND_CURVE`, `WATER_VELOCITY_CAP_FPS`, `PIPE_ID_IN`, `FIXTURE_SUPPLY_MIN_IN`,
+  `WATER_SERVICE_MIN_IN`), change the rule in the same
   commit. `build:guides` owns `sitemap.xml` and lists the rule pages too.
   [rules.test.js](rules.test.js) (Node, CI) pins the parser, the pointers, the pages and
   the JSON.
@@ -517,7 +519,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   `stripPins` so a plain reload keeps the device's arrangement and seeds the
   next bid — the both-places rule the sidebar filter scope uses. Wiped by the
   sign-out key list.)
-- Per-project, in save/load: `codes` (rulebook slice 4 — `{ plumbing?, electrical?, hvac?, jurisdiction? }`, only what the project CHOSE (null = never chosen); `getProjectCodes()` layers the device default (localStorage `codesDefault`, written on every change like `defaultTrade`) and `CODE_DEFAULTS` under it; rides every intake beside `ceilingHeightFt` — save payloads, hydrate, the IndexedDB backup, canvas JSON export/import, copy/load/pdf-intake), `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored; D9 adds the duct rows — `duct-*` ids from duct-model's `DUCT_BID_CHECK_ROWS`, ticked in the same `manual` map once the project has a duct run), `maxZoom`, `groups`, `ductSettings` (the Duct
+- Per-project, in save/load: `codes` (rulebook slice 4 — `{ plumbing?, electrical?, hvac?, jurisdiction?, occupancy? }`, only what the project CHOSE (null = never chosen; `occupancy` is `'public' | 'private'`, the fixture-unit column the project reads, WATER-PLAN rung 1, set from Project Settings' Occupancy segment and resolved to public when unchosen); `getProjectCodes()` layers the device default (localStorage `codesDefault`, written on every change like `defaultTrade`) and `CODE_DEFAULTS` under it; rides every intake beside `ceilingHeightFt` — save payloads, hydrate, the IndexedDB backup, canvas JSON export/import, copy/load/pdf-intake), `trade` (`'plumbing' | 'electrical' | 'hvac' | null` — the Quick creator's vocabulary and the handoff's stamp; explicit, set from the Quick tab's Trade segment or Project Settings, null = never chosen = plumbing behavior), `ceilingHeightFt` + `makeUpFt` (vertical by default — with a counter's `mountHeightIn` the Chain tool writes ceiling − mount + make-up as the run's drop; Room Sizer rooms override the ceiling; null ceiling = off), `bidCheck` (S5 — `{ manual: { <row-id>: true }, loadAmps?, volts? }`: the Bid Check's manual ticks and the voltage-drop defaults; the auto verdicts are computed, never stored; D9 adds the duct rows — `duct-*` ids from duct-model's `DUCT_BID_CHECK_ROWS`, ticked in the same `manual` map once the project has a duct run), `maxZoom`, `groups`, `ductSettings` (the Duct
   Schedule knobs — `seamWastePct` (+15 default), `fittingFactorPct` (40) and
   the Counted|Factor `fittingMode`, plus the D6 design-build ductulator knobs
   `frictionInPer100ft` (0.08) and `maxVelocityFpm` (1200), edited on the

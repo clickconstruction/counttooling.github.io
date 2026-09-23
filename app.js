@@ -157,7 +157,7 @@
     try { return normalizeProjectCodes(JSON.parse(localStorage.getItem(CODES_DEFAULT_KEY) || 'null')); } catch (_) { return null; }
   }
   function getProjectCodes() {
-    return { ...CODE_DEFAULTS, jurisdiction: '', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
+    return { ...CODE_DEFAULTS, jurisdiction: '', occupancy: 'public', ...(getDeviceDefaultCodes() || {}), ...(state.codes || {}) };
   }
   function setProjectCodes(patch, opts) {
     const merged = { ...(state.codes || {}), ...(patch || {}) };
@@ -4323,6 +4323,7 @@
     });
     const jEl = document.getElementById('settingsJurisdiction');
     if (jEl) jEl.value = codes.jurisdiction || '';
+    syncOccupancySegment(codes.occupancy);
     const ceilEl = document.getElementById('settingsCeilingHeight');
     if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
     const muEl = document.getElementById('settingsMakeUp');
@@ -4342,6 +4343,19 @@
     if (!seg) return;
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.trade === trade)));
   }
+  // Occupancy (WATER-PLAN rung 1): the fixture-unit column the project reads,
+  // public by default on a commercial bid. Rides state.codes like the editions.
+  function syncOccupancySegment(occupancy) {
+    const seg = document.getElementById('settingsOccupancySegment');
+    if (!seg) return;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.occupancy === occupancy)));
+  }
+  document.getElementById('settingsOccupancySegment')?.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-occupancy]');
+    if (!b) return;
+    setProjectCodes({ occupancy: b.dataset.occupancy }, { route: 'settings' });
+    syncOccupancySegment(getProjectCodes().occupancy);
+  });
   document.getElementById('settingsTradeSegment')?.addEventListener('click', (e) => {
     const b = e.target.closest('button[data-trade]');
     if (!b) return;

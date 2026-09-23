@@ -314,3 +314,10 @@ test('nextLineTypeName: a caller-supplied stem is honored', () => {
 test('nextLineTypeName: malformed palette rows are ignored, not thrown on', () => {
   assert.strictEqual(c.nextLineTypeName([null, {}, { name: null }, { name: 'Line' }]), 'Line 2');
 });
+
+test('normalizeProjectCodes keeps the editions, the jurisdiction and a public|private occupancy, drops the rest', () => {
+  assert.deepStrictEqual(c.normalizeProjectCodes({ plumbing: 'IPC 2018', jurisdiction: ' Ohio ', occupancy: 'private', electrical: 7 }), { plumbing: 'IPC 2018', jurisdiction: 'Ohio', occupancy: 'private' });
+  assert.deepStrictEqual(c.normalizeProjectCodes({ occupancy: 'mixed' }), null);
+  assert.deepStrictEqual(c.normalizeProjectCodes({ occupancy: 'public' }), { occupancy: 'public' });
+  assert.strictEqual(c.normalizeProjectCodes(null), null);
+});

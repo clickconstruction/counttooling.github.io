@@ -252,6 +252,8 @@ function createAnnotationModel(ctx) {
     if (!raw || typeof raw !== 'object') return null;
     const out = {};
     ['plumbing', 'electrical', 'hvac', 'jurisdiction'].forEach((k) => { if (typeof raw[k] === 'string' && raw[k].trim()) out[k] = raw[k].trim(); });
+    // WATER-PLAN rung 1: the fixture-unit column (public | private), the same two values constants.js keeps.
+    if (raw.occupancy === 'public' || raw.occupancy === 'private') out.occupancy = raw.occupancy;
     return Object.keys(out).length ? out : null;
   }
   function applyTakeoffBackupToState(backup) {

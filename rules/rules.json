@@ -594,6 +594,1293 @@
       ],
       "url": "/rules/plumbing/hanger-spacing-pvc/",
       "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.water.distribution-min",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Minimum water service size",
+      "summary": "The water service pipe from the main to the building is never smaller than 3/4 inch; the pipes past it are sized to the fixtures they serve.",
+      "values": [
+        {
+          "when": "Water service pipe",
+          "value": "3/4",
+          "unit": "in"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "603.1",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-distribution-min/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.fixture-supply-min",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Minimum fixture supply pipe sizes",
+      "summary": "The smallest pipe that may supply each fixture, 3/8 inch for a lavatory or a tank water closet up to 1 inch for a flush-valve water closet.",
+      "values": [
+        {
+          "when": "Bathtub",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Bidet",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "Combination sink and tray",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Dishwasher, domestic",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Drinking fountain",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "Hose bibb",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Kitchen sink",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Laundry, 1, 2 or 3 compartments",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Lavatory",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "Shower, single head",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Sink, flushing rim",
+          "value": "3/4",
+          "unit": "in"
+        },
+        {
+          "when": "Sink, service",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Urinal, flush tank",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Urinal, flush valve",
+          "value": "3/4",
+          "unit": "in"
+        },
+        {
+          "when": "Wall hydrant",
+          "value": "1/2",
+          "unit": "in"
+        },
+        {
+          "when": "Water closet, flush tank",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "Water closet, flush valve",
+          "value": 1,
+          "unit": "in"
+        },
+        {
+          "when": "Water closet, flushometer tank",
+          "value": "3/8",
+          "unit": "in"
+        },
+        {
+          "when": "Water closet, one piece",
+          "value": "1/2",
+          "unit": "in"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "604.4, Table 604.4",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-fixture-supply-min/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.pipe-id",
+      "trade": "plumbing",
+      "kind": "standard",
+      "status": "draft",
+      "title": "Inside diameters of water pipe by nominal size",
+      "summary": "The inside diameter the velocity is computed from, per nominal size, for PEX (SDR 9), copper Type L, CPVC CTS and Schedule 40 galvanized steel.",
+      "values": [
+        {
+          "when": "PEX 1 in nominal",
+          "value": 0.862,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "PEX 2 in nominal",
+          "value": 1.629,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "PEX 3/8 in nominal",
+          "value": 0.35,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "PEX 1/2 in nominal",
+          "value": 0.475,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "PEX 3/4 in nominal",
+          "value": 0.671,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "PEX 1-1/4 in nominal",
+          "value": 1.054,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "PEX 1-1/2 in nominal",
+          "value": 1.244,
+          "unit": "in",
+          "note": "ASTM F876, SDR 9"
+        },
+        {
+          "when": "Copper Type L 1 in nominal",
+          "value": 1.025,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 2 in nominal",
+          "value": 1.985,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 3 in nominal",
+          "value": 2.945,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 3/8 in nominal",
+          "value": 0.43,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 1/2 in nominal",
+          "value": 0.545,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 3/4 in nominal",
+          "value": 0.785,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 1-1/4 in nominal",
+          "value": 1.265,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 1-1/2 in nominal",
+          "value": 1.505,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "Copper Type L 2-1/2 in nominal",
+          "value": 2.465,
+          "unit": "in",
+          "note": "ASTM B88"
+        },
+        {
+          "when": "CPVC 1 in nominal",
+          "value": 0.921,
+          "unit": "in",
+          "note": "ASTM D2846, CTS SDR 11"
+        },
+        {
+          "when": "CPVC 2 in nominal",
+          "value": 1.739,
+          "unit": "in",
+          "note": "ASTM D2846, CTS SDR 11"
+        },
+        {
+          "when": "CPVC 1/2 in nominal",
+          "value": 0.489,
+          "unit": "in",
+          "note": "ASTM D2846, CTS SDR 11"
+        },
+        {
+          "when": "CPVC 3/4 in nominal",
+          "value": 0.715,
+          "unit": "in",
+          "note": "ASTM D2846, CTS SDR 11"
+        },
+        {
+          "when": "CPVC 1-1/4 in nominal",
+          "value": 1.125,
+          "unit": "in",
+          "note": "ASTM D2846, CTS SDR 11"
+        },
+        {
+          "when": "CPVC 1-1/2 in nominal",
+          "value": 1.329,
+          "unit": "in",
+          "note": "ASTM D2846, CTS SDR 11"
+        },
+        {
+          "when": "Galvanized steel 1 in nominal",
+          "value": 1.049,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 2 in nominal",
+          "value": 2.067,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 3 in nominal",
+          "value": 3.068,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 1/2 in nominal",
+          "value": 0.622,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 3/4 in nominal",
+          "value": 0.824,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 1-1/4 in nominal",
+          "value": 1.38,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 1-1/2 in nominal",
+          "value": 1.61,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        },
+        {
+          "when": "Galvanized steel 2-1/2 in nominal",
+          "value": 2.469,
+          "unit": "in",
+          "note": "ASTM A53, Schedule 40"
+        }
+      ],
+      "source": {
+        "code": "ASTM",
+        "section": "F876 (PEX, SDR 9); B88 (copper Type L); D2846 (CPVC CTS, SDR 11); A53 (steel, Schedule 40)",
+        "editions": [],
+        "url": "https://www.astm.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-pipe-id/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.water.velocity",
+      "trade": "plumbing",
+      "kind": "convention",
+      "status": "draft",
+      "title": "Design velocity for water pipe",
+      "summary": "The velocity the app sizes a water run to, 8 feet per second cold and 5 feet per second hot. Design practice, not a code table; the code's own method sizes by pressure and length.",
+      "values": [
+        {
+          "when": "Cold water",
+          "value": 8,
+          "unit": "fps"
+        },
+        {
+          "when": "Hot water",
+          "value": 5,
+          "unit": "fps"
+        }
+      ],
+      "source": {
+        "code": "ASPE",
+        "section": "Plumbing Engineering Design Handbook, Vol. 2, Ch. 5 (cold water) and Ch. 6 (hot water), velocity limits; Copper Development Association, Copper Tube Handbook, \"velocity\" (5 fps hot, 8 fps cold)",
+        "editions": [],
+        "url": "https://www.copper.org/publications/pub_list/pdf/copper_tube_handbook.pdf"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/water-velocity/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.wsfu.demand",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Demand curve: fixture units to gallons per minute",
+      "summary": "The design flow a load of water supply fixture units stands for, in gallons per minute, read off the code's demand table in its flush-tank and flush-valve columns.",
+      "values": [
+        {
+          "when": "1 WSFU, flush tanks",
+          "value": 3,
+          "unit": "gpm"
+        },
+        {
+          "when": "2 WSFU, flush tanks",
+          "value": 5,
+          "unit": "gpm"
+        },
+        {
+          "when": "3 WSFU, flush tanks",
+          "value": 6.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "4 WSFU, flush tanks",
+          "value": 8,
+          "unit": "gpm"
+        },
+        {
+          "when": "5 WSFU, flush tanks",
+          "value": 9.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "6 WSFU, flush tanks",
+          "value": 10.7,
+          "unit": "gpm"
+        },
+        {
+          "when": "7 WSFU, flush tanks",
+          "value": 11.8,
+          "unit": "gpm"
+        },
+        {
+          "when": "8 WSFU, flush tanks",
+          "value": 12.8,
+          "unit": "gpm"
+        },
+        {
+          "when": "9 WSFU, flush tanks",
+          "value": 13.7,
+          "unit": "gpm"
+        },
+        {
+          "when": "10 WSFU, flush tanks",
+          "value": 14.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "11 WSFU, flush tanks",
+          "value": 15.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "12 WSFU, flush tanks",
+          "value": 16,
+          "unit": "gpm"
+        },
+        {
+          "when": "13 WSFU, flush tanks",
+          "value": 16.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "14 WSFU, flush tanks",
+          "value": 17,
+          "unit": "gpm"
+        },
+        {
+          "when": "15 WSFU, flush tanks",
+          "value": 17.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "16 WSFU, flush tanks",
+          "value": 18,
+          "unit": "gpm"
+        },
+        {
+          "when": "17 WSFU, flush tanks",
+          "value": 18.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "18 WSFU, flush tanks",
+          "value": 18.8,
+          "unit": "gpm"
+        },
+        {
+          "when": "19 WSFU, flush tanks",
+          "value": 19.2,
+          "unit": "gpm"
+        },
+        {
+          "when": "20 WSFU, flush tanks",
+          "value": 19.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "25 WSFU, flush tanks",
+          "value": 21.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "30 WSFU, flush tanks",
+          "value": 23.3,
+          "unit": "gpm"
+        },
+        {
+          "when": "35 WSFU, flush tanks",
+          "value": 24.9,
+          "unit": "gpm"
+        },
+        {
+          "when": "40 WSFU, flush tanks",
+          "value": 26.3,
+          "unit": "gpm"
+        },
+        {
+          "when": "45 WSFU, flush tanks",
+          "value": 27.7,
+          "unit": "gpm"
+        },
+        {
+          "when": "50 WSFU, flush tanks",
+          "value": 29.1,
+          "unit": "gpm"
+        },
+        {
+          "when": "60 WSFU, flush tanks",
+          "value": 32,
+          "unit": "gpm"
+        },
+        {
+          "when": "70 WSFU, flush tanks",
+          "value": 35,
+          "unit": "gpm"
+        },
+        {
+          "when": "80 WSFU, flush tanks",
+          "value": 38,
+          "unit": "gpm"
+        },
+        {
+          "when": "90 WSFU, flush tanks",
+          "value": 41,
+          "unit": "gpm"
+        },
+        {
+          "when": "100 WSFU, flush tanks",
+          "value": 43.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "120 WSFU, flush tanks",
+          "value": 48,
+          "unit": "gpm"
+        },
+        {
+          "when": "140 WSFU, flush tanks",
+          "value": 52.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "160 WSFU, flush tanks",
+          "value": 57,
+          "unit": "gpm"
+        },
+        {
+          "when": "180 WSFU, flush tanks",
+          "value": 61,
+          "unit": "gpm"
+        },
+        {
+          "when": "200 WSFU, flush tanks",
+          "value": 65,
+          "unit": "gpm"
+        },
+        {
+          "when": "225 WSFU, flush tanks",
+          "value": 70,
+          "unit": "gpm"
+        },
+        {
+          "when": "250 WSFU, flush tanks",
+          "value": 75,
+          "unit": "gpm"
+        },
+        {
+          "when": "275 WSFU, flush tanks",
+          "value": 80,
+          "unit": "gpm"
+        },
+        {
+          "when": "300 WSFU, flush tanks",
+          "value": 85,
+          "unit": "gpm"
+        },
+        {
+          "when": "400 WSFU, flush tanks",
+          "value": 105,
+          "unit": "gpm"
+        },
+        {
+          "when": "500 WSFU, flush tanks",
+          "value": 124,
+          "unit": "gpm"
+        },
+        {
+          "when": "750 WSFU, flush tanks",
+          "value": 170,
+          "unit": "gpm"
+        },
+        {
+          "when": "1000 WSFU, flush tanks",
+          "value": 208,
+          "unit": "gpm"
+        },
+        {
+          "when": "1250 WSFU, flush tanks",
+          "value": 239,
+          "unit": "gpm"
+        },
+        {
+          "when": "1500 WSFU, flush tanks",
+          "value": 269,
+          "unit": "gpm"
+        },
+        {
+          "when": "1750 WSFU, flush tanks",
+          "value": 297,
+          "unit": "gpm"
+        },
+        {
+          "when": "2000 WSFU, flush tanks",
+          "value": 325,
+          "unit": "gpm"
+        },
+        {
+          "when": "2500 WSFU, flush tanks",
+          "value": 380,
+          "unit": "gpm"
+        },
+        {
+          "when": "3000 WSFU, flush tanks",
+          "value": 433,
+          "unit": "gpm"
+        },
+        {
+          "when": "4000 WSFU, flush tanks",
+          "value": 525,
+          "unit": "gpm"
+        },
+        {
+          "when": "5000 WSFU, flush tanks",
+          "value": 593,
+          "unit": "gpm"
+        },
+        {
+          "when": "5 WSFU, flush valves",
+          "value": 15,
+          "unit": "gpm"
+        },
+        {
+          "when": "6 WSFU, flush valves",
+          "value": 17.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "7 WSFU, flush valves",
+          "value": 19.8,
+          "unit": "gpm"
+        },
+        {
+          "when": "8 WSFU, flush valves",
+          "value": 22.2,
+          "unit": "gpm"
+        },
+        {
+          "when": "9 WSFU, flush valves",
+          "value": 24.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "10 WSFU, flush valves",
+          "value": 27,
+          "unit": "gpm"
+        },
+        {
+          "when": "11 WSFU, flush valves",
+          "value": 27.8,
+          "unit": "gpm"
+        },
+        {
+          "when": "12 WSFU, flush valves",
+          "value": 28.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "13 WSFU, flush valves",
+          "value": 29.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "14 WSFU, flush valves",
+          "value": 30.2,
+          "unit": "gpm"
+        },
+        {
+          "when": "15 WSFU, flush valves",
+          "value": 31,
+          "unit": "gpm"
+        },
+        {
+          "when": "16 WSFU, flush valves",
+          "value": 31.8,
+          "unit": "gpm"
+        },
+        {
+          "when": "17 WSFU, flush valves",
+          "value": 32.6,
+          "unit": "gpm"
+        },
+        {
+          "when": "18 WSFU, flush valves",
+          "value": 33.4,
+          "unit": "gpm"
+        },
+        {
+          "when": "19 WSFU, flush valves",
+          "value": 34.2,
+          "unit": "gpm"
+        },
+        {
+          "when": "20 WSFU, flush valves",
+          "value": 35,
+          "unit": "gpm"
+        },
+        {
+          "when": "25 WSFU, flush valves",
+          "value": 38,
+          "unit": "gpm"
+        },
+        {
+          "when": "30 WSFU, flush valves",
+          "value": 42,
+          "unit": "gpm"
+        },
+        {
+          "when": "35 WSFU, flush valves",
+          "value": 44,
+          "unit": "gpm"
+        },
+        {
+          "when": "40 WSFU, flush valves",
+          "value": 46,
+          "unit": "gpm"
+        },
+        {
+          "when": "45 WSFU, flush valves",
+          "value": 48,
+          "unit": "gpm"
+        },
+        {
+          "when": "50 WSFU, flush valves",
+          "value": 50,
+          "unit": "gpm"
+        },
+        {
+          "when": "60 WSFU, flush valves",
+          "value": 54,
+          "unit": "gpm"
+        },
+        {
+          "when": "70 WSFU, flush valves",
+          "value": 58,
+          "unit": "gpm"
+        },
+        {
+          "when": "80 WSFU, flush valves",
+          "value": 61.2,
+          "unit": "gpm"
+        },
+        {
+          "when": "90 WSFU, flush valves",
+          "value": 64.3,
+          "unit": "gpm"
+        },
+        {
+          "when": "100 WSFU, flush valves",
+          "value": 67.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "120 WSFU, flush valves",
+          "value": 73,
+          "unit": "gpm"
+        },
+        {
+          "when": "140 WSFU, flush valves",
+          "value": 77,
+          "unit": "gpm"
+        },
+        {
+          "when": "160 WSFU, flush valves",
+          "value": 81,
+          "unit": "gpm"
+        },
+        {
+          "when": "180 WSFU, flush valves",
+          "value": 85.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "200 WSFU, flush valves",
+          "value": 90,
+          "unit": "gpm"
+        },
+        {
+          "when": "225 WSFU, flush valves",
+          "value": 95.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "250 WSFU, flush valves",
+          "value": 101,
+          "unit": "gpm"
+        },
+        {
+          "when": "275 WSFU, flush valves",
+          "value": 104.5,
+          "unit": "gpm"
+        },
+        {
+          "when": "300 WSFU, flush valves",
+          "value": 108,
+          "unit": "gpm"
+        },
+        {
+          "when": "400 WSFU, flush valves",
+          "value": 127,
+          "unit": "gpm"
+        },
+        {
+          "when": "500 WSFU, flush valves",
+          "value": 143,
+          "unit": "gpm"
+        },
+        {
+          "when": "750 WSFU, flush valves",
+          "value": 177,
+          "unit": "gpm"
+        },
+        {
+          "when": "1000 WSFU, flush valves",
+          "value": 208,
+          "unit": "gpm"
+        },
+        {
+          "when": "1250 WSFU, flush valves",
+          "value": 239,
+          "unit": "gpm"
+        },
+        {
+          "when": "1500 WSFU, flush valves",
+          "value": 269,
+          "unit": "gpm"
+        },
+        {
+          "when": "1750 WSFU, flush valves",
+          "value": 297,
+          "unit": "gpm"
+        },
+        {
+          "when": "2000 WSFU, flush valves",
+          "value": 325,
+          "unit": "gpm"
+        },
+        {
+          "when": "2500 WSFU, flush valves",
+          "value": 380,
+          "unit": "gpm"
+        },
+        {
+          "when": "3000 WSFU, flush valves",
+          "value": 433,
+          "unit": "gpm"
+        },
+        {
+          "when": "4000 WSFU, flush valves",
+          "value": 525,
+          "unit": "gpm"
+        },
+        {
+          "when": "5000 WSFU, flush valves",
+          "value": 593,
+          "unit": "gpm"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "Appendix E, Table E103.3(3)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/wsfu-demand/",
+      "updated": "2026-09-23"
+    },
+    {
+      "id": "plumb.wsfu.fixtures",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Water supply fixture units by fixture",
+      "summary": "The load a fixture puts on the water supply, in water supply fixture units (WSFU), cold and hot, by the private or public column and the kind of supply control.",
+      "values": [
+        {
+          "when": "Bathroom group, private, flush tank · cold",
+          "value": 2.7,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathroom group, private, flush tank · hot",
+          "value": 1.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathroom group, private, flush tank · total",
+          "value": 3.6,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathroom group, private, flush valve · cold",
+          "value": 6,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathroom group, private, flush valve · hot",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathroom group, private, flush valve · total",
+          "value": 8,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathtub, private, faucet · cold",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathtub, private, faucet · hot",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathtub, private, faucet · total",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathtub, public, faucet · cold",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathtub, public, faucet · hot",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bathtub, public, faucet · total",
+          "value": 4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bidet, private, faucet · cold",
+          "value": 1.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bidet, private, faucet · hot",
+          "value": 1.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Bidet, private, faucet · total",
+          "value": 2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Combination fixture, private, faucet · cold",
+          "value": 2.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Combination fixture, private, faucet · hot",
+          "value": 2.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Combination fixture, private, faucet · total",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Dishwashing machine, private, automatic · hot",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Dishwashing machine, private, automatic · total",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Drinking fountain, public, 3/8 in valve · cold",
+          "value": 0.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Drinking fountain, public, 3/8 in valve · total",
+          "value": 0.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Kitchen sink, private, faucet · cold",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Kitchen sink, private, faucet · hot",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Kitchen sink, private, faucet · total",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Kitchen sink, public, faucet · cold",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Kitchen sink, public, faucet · hot",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Kitchen sink, public, faucet · total",
+          "value": 4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Laundry trays (1 to 3), private, faucet · cold",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Laundry trays (1 to 3), private, faucet · hot",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Laundry trays (1 to 3), private, faucet · total",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Lavatory, private, faucet · cold",
+          "value": 0.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Lavatory, private, faucet · hot",
+          "value": 0.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Lavatory, private, faucet · total",
+          "value": 0.7,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Lavatory, public, faucet · cold",
+          "value": 1.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Lavatory, public, faucet · hot",
+          "value": 1.5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Lavatory, public, faucet · total",
+          "value": 2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Service sink, public, faucet · cold",
+          "value": 2.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Service sink, public, faucet · hot",
+          "value": 2.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Service sink, public, faucet · total",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Shower head, private, mixing valve · cold",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Shower head, private, mixing valve · hot",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Shower head, private, mixing valve · total",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Shower head, public, mixing valve · cold",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Shower head, public, mixing valve · hot",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Shower head, public, mixing valve · total",
+          "value": 4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, 1 in flush valve · cold",
+          "value": 10,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, 1 in flush valve · total",
+          "value": 10,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, 3/4 in flush valve · cold",
+          "value": 5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, 3/4 in flush valve · total",
+          "value": 5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, flush tank · cold",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Urinal, public, flush tank · total",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (8 lb), private, automatic · cold",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (8 lb), private, automatic · hot",
+          "value": 1,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (8 lb), private, automatic · total",
+          "value": 1.4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (8 lb), public, automatic · cold",
+          "value": 2.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (8 lb), public, automatic · hot",
+          "value": 2.25,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (8 lb), public, automatic · total",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (15 lb), public, automatic · cold",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (15 lb), public, automatic · hot",
+          "value": 3,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Washing machine (15 lb), public, automatic · total",
+          "value": 4,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flush valve · cold",
+          "value": 6,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flush valve · total",
+          "value": 6,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flush tank · cold",
+          "value": 2.2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flush tank · total",
+          "value": 2.2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flushometer tank · cold",
+          "value": 2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, private, flushometer tank · total",
+          "value": 2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, public, flush valve · cold",
+          "value": 10,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, public, flush valve · total",
+          "value": 10,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, public, flush tank · cold",
+          "value": 5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, public, flush tank · total",
+          "value": 5,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, public, flushometer tank · cold",
+          "value": 2,
+          "unit": "WSFU"
+        },
+        {
+          "when": "Water closet, public, flushometer tank · total",
+          "value": 2,
+          "unit": "WSFU"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "Appendix E, Table E103.3(2)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/wsfu-fixtures/",
+      "updated": "2026-09-23"
     }
   ]
 }

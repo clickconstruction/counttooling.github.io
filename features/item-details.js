@@ -93,6 +93,8 @@
     if (cfmGroup) cfmGroup.style.display = kind === 'counter' ? '' : 'none';
     const airSection = document.getElementById('counterLineTypeDetailsAirSection');
     if (airSection) airSection.style.display = kind === 'counter' ? '' : 'none';
+    // WATER-PLAN rung 2: the Water supply section (features/water-fixtures.js).
+    if (App.bindWsfuDetails) App.bindWsfuDetails(item, kind);
     // D8: the neck-size prefill line under the CFM ("150 CFM → 8"Ø neck",
     // duct-model's D1 table via App.getDuctNeckSuggestionText — shown only
     // when the counter carries a CFM and its name has no explicit size).

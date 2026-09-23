@@ -193,6 +193,7 @@
   // rest of the project (state.counterAirMoreOpen; in-memory, reset with the
   // project by resetLocalSessionState). Both tabs read the one flag, so the
   // preference does not split between them.
+  let syncCreateWsfu = null;   // WATER-PLAN rung 2: the Create tab's WSFU sync, bound per open
   function airMoreDefaultOpen() {
     const trade = App.getQuickTrade ? App.getQuickTrade() : 'plumbing';
     return trade === 'hvac' || trade === 'electrical';
@@ -257,7 +258,7 @@
       c.classList.add('selected');
       createIconPicked = true;
       const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+      if (path && !document.getElementById('counterName').value.trim()) { document.getElementById('counterName').value = App.getIconName(path); if (syncCreateWsfu) syncCreateWsfu(true); }
       syncCreateCfmChip();   // D18: an explicit pick replaces the chip's icon
     });
     customGrid.querySelectorAll('.icon-cell').forEach(c => {
@@ -271,13 +272,20 @@
         c.classList.add('selected');
         createIconPicked = true;
         const path = c.dataset.path;
-        if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+        if (path && !document.getElementById('counterName').value.trim()) { document.getElementById('counterName').value = App.getIconName(path); if (syncCreateWsfu) syncCreateWsfu(true); }
         syncCreateCfmChip();
       };
     });
     if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
     syncCreateCfmChip();   // a fresh panel: CFM empty → chip hidden
     applyCounterAirMore('counterAirMoreToggle', 'counterAirMoreFields');
+    // WATER-PLAN rung 2: the "More ▸ water supply" disclosure and the WSFU field
+    // the rulebook fills from the name (features/water-fixtures.js). The name is
+    // read on every keystroke and after an icon pick writes it.
+    if (App.applyCounterWaterMore) App.applyCounterWaterMore('counterWaterMoreToggle', 'counterWaterMoreFields');
+    const nameEl = document.getElementById('counterName');
+    syncCreateWsfu = App.bindWsfuField ? App.bindWsfuField('counterWsfu', 'counterWsfuChip', () => (nameEl ? nameEl.value : '')) : null;
+    if (nameEl) nameEl.oninput = () => { if (syncCreateWsfu) syncCreateWsfu(true); };
     App.setupCreateColorPicker({ presetsRowId: 'counterColorRow', customInputId: 'counterColorCustom', recentRowId: 'counterColorRecent', recentGroupId: 'counterColorRecentGroup' });
   }
 
@@ -398,7 +406,7 @@
       c.classList.add('selected');
       createIconPicked = true;
       const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+      if (path && !document.getElementById('counterName').value.trim()) { document.getElementById('counterName').value = App.getIconName(path); if (syncCreateWsfu) syncCreateWsfu(true); }
       syncCreateCfmChip();
     });
   };
@@ -423,6 +431,9 @@
     App.pushUndoSnapshot();
     const newCounter = { id: App.uid(), name, icon, color };
     if (hasCfm) newCounter.cfm = cfmVal;
+    // WATER-PLAN rung 2: fixture units, set only when positive; the fixture key
+    // rides along while the value is the rulebook's own (features/water-fixtures.js).
+    if (App.readWsfuField) App.readWsfuField('counterWsfu', newCounter);
     // S1: optional mount height (inches AFF) — same set-only rule; the Chain
     // tool reads it for the default vertical (S2).
     const mountIn = App.parseMountHeightIn(document.getElementById('counterMountHeight')?.value);

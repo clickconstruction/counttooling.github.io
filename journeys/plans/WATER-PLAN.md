@@ -100,6 +100,9 @@ weight) and today has one auto Bid Check row (hangers). This gives it the rest.
 > 2018 / 2021 IPC and the ASTM dimension tables, not copied from the book in hand:** the plumber
 > walkthrough checks every row against the edition on the shelf before rung 2 reads a single
 > number from them, which is why the rules ship draft and nothing in the app reads them yet.
+> **Rung 2 built the same day** (see the ladder). The fixtures table is therefore APPLIED before
+> its trade check: the prefill is a visible, chip-stamped starting value the estimator can type
+> over, and the walkthrough's row-by-row check now guards a live number, not a draft.
 > Section numbers corrected on the way: the fixture supply minimums are Table **604.5** (604.4
 > is maximum flow), and the service minimum is **603.1**; the sixth rule is `service-min`, not
 > `distribution-min`, because the distribution piping carries no single minimum in the section.
@@ -199,9 +202,19 @@ save/load, export/import and the Artboard for free.
    the walkthrough; the project occupancy toggle beside the edition.~~ **Built 2026-09-23**
    (see the note under §2); the walkthrough's check of the transcription is what stands
    between it and `status: applied`.
-2. **Fixture units on counters** — the field, the prefill, the chip, the
+2. ~~**Fixture units on counters** — the field, the prefill, the chip, the
    per-mark override; nothing else changes yet (an estimator can already
-   read total WSFU per sheet in the Summary).
+   read total WSFU per sheet in the Summary).~~ **Built 2026-09-23** (branch
+   `claude/water-rung2-wsfu`, features/water-fixtures.js): a "More ▸ water supply" disclosure
+   on the Create tab and Quick Count (open by itself on plumbing), the WSFU field the rulebook
+   fills from the NAME in the project's occupancy column with the chip naming the row and any
+   assumption (a bare water closet reads as a flush valve on a public bid), `wsfu` +
+   `wsfuFixture` on the counter, `wsfuOverride` on the mark behind "WSFU for this one…", the
+   details modal's Water supply section with a one-tap "use it", and the Summary's foot line
+   (total, cold / hot, the demand curve). The prefill reproduces P-501's own WSFU column row
+   for row. `plumb.wsfu.fixtures` is now `applied` (used_by counter); the other five stay draft.
+   The name → fixture matcher is `wsfuFixtureFromName` in water-model.js; a wrong match is
+   fixed at the name, the hanger rule's discipline.
 3. **Water side on line types + attachment** — Hot/Cold, fixtures attach,
    leaders paint, the strays rescue; the sidebar readout shows WSFU served
    per run.

@@ -830,7 +830,7 @@
       "id": "plumb.wsfu.fixtures",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Water supply fixture units by fixture",
       "summary": "The load each fixture puts on the water supply, in water supply fixture units (WSFU), by public or private occupancy, with the cold and hot split the sizing needs.",
       "values": [
@@ -1013,7 +1013,9 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "counter"
+      ],
       "url": "/rules/plumbing/water-fixture-units/",
       "updated": "2026-09-23"
     },

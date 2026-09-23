@@ -132,6 +132,7 @@
     const dupe = counters.some(c => c.icon === iconPath && norm(c.color) === norm(base));
     return dupe ? nextUnusedCounterColor(counters, App.COLORS, base) : base;
   }
+  let syncQuickWsfu = null;   // WATER-PLAN rung 2: bound per open, re-read when the name changes
   function updateCounterQuickCountNamePreview() {
     const name = composeName();
     const nameEl = document.getElementById('counterQuickCountName');
@@ -166,6 +167,7 @@
     }
     const hintEl = document.getElementById('counterQuickCountCfmHint');
     if (hintEl) hintEl.hidden = hasCfm && !!path;
+    if (syncQuickWsfu) syncQuickWsfu(true);   // WATER-PLAN rung 2
   }
   // S1/S2: the mount height row — prefilled from the profile per variant,
   // then per category; the estimator can overwrite it before Add.
@@ -235,6 +237,8 @@
     lbl('counterQuickCountSizeLabel', l1); lbl('counterQuickCountTypeLabel', l2); lbl('counterQuickCountMaterialLabel', l3);
     const nameInput = document.getElementById('counterQuickCountName');
     if (nameInput && prof.placeholder) nameInput.placeholder = prof.placeholder;
+    // WATER-PLAN rung 2: a name typed over the composed one re-reads the fixture units.
+    if (nameInput) nameInput.oninput = () => { if (syncQuickWsfu) syncQuickWsfu(true); };
     const sizeSel = document.getElementById('counterQuickCountSize');
     const typeSel = document.getElementById('counterQuickCountType');
     const materialSel = document.getElementById('counterQuickCountMaterial');
@@ -284,6 +288,10 @@
     // folding the mount + CFM rows here too. One shared flag, so the tab the
     // estimator opened it on does not matter.
     App.applyCounterAirMore && App.applyCounterAirMore('counterQuickCountAirMoreToggle', 'counterQuickCountAirMoreFields');
+    // WATER-PLAN rung 2: the water supply disclosure and the WSFU field, prefilled
+    // from the name the tab composes (or the one typed over it).
+    App.applyCounterWaterMore && App.applyCounterWaterMore('counterQuickCountWaterMoreToggle', 'counterQuickCountWaterMoreFields');
+    syncQuickWsfu = App.bindWsfuField ? App.bindWsfuField('counterQuickCountWsfu', 'counterQuickCountWsfuChip', () => (document.getElementById('counterQuickCountName')?.value?.trim() || composeName())) : null;
     const swatchEl = document.getElementById('counterQuickCountSwatch');
     if (swatchEl) {
       swatchEl.onclick = () => {
@@ -382,6 +390,7 @@
     // positive number was entered, so a non-air counter's shape is unchanged.
     const cfmVal = parseFloat(document.getElementById('counterQuickCountCfm')?.value);
     if (Number.isFinite(cfmVal) && cfmVal > 0) newCounter.cfm = cfmVal;
+    if (App.readWsfuField) App.readWsfuField('counterQuickCountWsfu', newCounter);   // WATER-PLAN rung 2
     // A project that never chose a trade adopts the one it just created in.
     if (App.state.trade == null && App.setProjectTrade) App.setProjectTrade(quickTrade(), { route: 'quick-add' });
     App.state.counters.push(newCounter);

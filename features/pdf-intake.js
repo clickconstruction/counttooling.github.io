@@ -182,6 +182,7 @@
     App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
       if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
       if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
+      if (d.waterSettings) App.state.waterSettings = { ...App.state.waterSettings, ...d.waterSettings };
       if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
       if (d.scaleZoneSettings) App.state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
       if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
@@ -274,6 +275,7 @@
     App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
     if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
     if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
+    if (d.waterSettings) App.state.waterSettings = { ...App.state.waterSettings, ...d.waterSettings };
     if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
     if (d.scaleZoneSettings) App.state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
     if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;

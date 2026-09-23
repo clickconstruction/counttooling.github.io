@@ -240,8 +240,19 @@ save/load, export/import and the Artboard for free.
    Copper CW"; an existing type reused), so the two share the point and the new run is the
    old one's branch. The Lines list readout gained gpm and ft/s per run, ⚠ over the cap. The
    pressure check stays Bid Check's (rung 6).
-5. **Water Sizing schedule + exports** — the table, its knobs, Copy
-   Schedule, the `--- Water sizing ---` block, report table.
+5. ~~**Water Sizing schedule + exports** — the table, its knobs, Copy
+   Schedule, the `--- Water sizing ---` block, report table.~~ **Built 2026-09-23** (branch
+   `claude/water-rung5-schedule`, features/water-schedule.js): a Water button on the Line Types
+   header while a water run exists; per run its side, the units it serves with its branches,
+   the gpm on the set's curve, the size its type names, the velocity in that bore, ✓ or ⚠
+   (over the side's cap; under a fixture's supply minimum) with the size that would pass; cold
+   and hot peaks as the largest run's, never a sum; the caps per side (`state.waterSettings`,
+   riding every save path beside `ductSettings`) and the occupancy (the same `codes` field
+   Project Settings edits) as knobs at the foot; Copy Schedule; the report table; the
+   `--- Water sizing ---` block in Copy Summary and Copy to /Tooling. The caps feed rung 4's
+   suggestion and the Lines list readouts, so one knob moves every surface. Four more rules
+   are `applied` now (demand, velocity, pipe-id, fixture-supply-min, used_by waterSchedule);
+   only `service-min` waits for rung 6.
 6. **Bid Check rows + gate**; the guide + a fourth tour step set
    ("Size the branch at S") in the plumbing walkthrough.
 

@@ -126,6 +126,7 @@
     counterModal: [['Choose', () => App.showCounterTab('choose')], ['Create', () => App.showCounterTab('create')], ['Quick', () => App.showCounterTab('quickcount')]],
     chooseLineTypeModal: [['Choose', () => { App.showChooseLineTypeModal(); App.showLineTypeTab('choose'); }], ['Create', () => { App.showChooseLineTypeModal(); App.showLineTypeTab('create'); }]],
     ductScheduleModal: () => App.openDuctScheduleModal(),
+    waterScheduleModal: () => App.openWaterScheduleModal(),
     counterSettingsModal: () => App.openCounterSettingsModal(),
     pageSettingsModal: () => App.openPageSettingsModal(),
     zoomModal: () => App.showZoomModal(),

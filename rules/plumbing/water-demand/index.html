@@ -78,7 +78,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/rules/">Rules</a> <span class="sep">›</span> <a href="/rules/#plumbing">Plumbing</a> <span class="sep">›</span> <span>Design flow from fixture units</span></nav>
     <article class="article rule-article">
-      <p class="rule-kicker"><span class="rule-kind rule-kind-code">Code</span> <span class="rule-status rule-status-draft">Draft — written, not yet applied</span> <code class="rule-id">plumb.wsfu.demand</code></p>
+      <p class="rule-kicker"><span class="rule-kind rule-kind-code">Code</span> <span class="rule-status rule-status-applied">Applied by the app</span> <code class="rule-id">plumb.wsfu.demand</code></p>
       <h1>Design flow from fixture units</h1>
       <p class="rule-summary">How a load in water supply fixture units becomes a design flow in gallons per minute, on the flush-tank curve or the flush-valve curve, with straight-line reading between the table's rows.</p>
       <section class="rule-card" aria-label="The rule as the app applies it">
@@ -109,13 +109,13 @@
         <dl class="rule-facts">
           <div><dt>Source</dt><dd>IPC · Appendix E, Table E103.3(3) · <a href="https://codes.iccsafe.org/" rel="noopener">read the public text</a></dd></div>
           <div><dt>Editions checked</dt><dd>2018 · 2021</dd></div>
-          <div><dt>Used by</dt><dd><span class="rule-unused">not applied by the app yet</span></dd></div>
+          <div><dt>Used by</dt><dd><span class="rule-chip">Water Sizing</span></dd></div>
           <div><dt>Amendments</dt><dd><p class="rule-amend">No state or local amendment to this rule is on file. Not on file means the model code as written — check your jurisdiction.</p></dd></div>
         </dl>
         <p class="rule-kind-blurb">A model code the authority having jurisdiction adopts.</p>
       </section>
 <p>This is Hunter&#39;s curve as the IPC prints it: the probable peak demand for a load of fixture units, which rises steeply at first and then flattens, because the more fixtures there are the smaller the share that runs at once. A system with any flush valve on it reads the steeper column, since a flush valve draws its water in a few seconds. The rows above are a sample of the table for the drift check; the app carries the whole table and reads between its rows in a straight line, the table&#39;s own instruction.</p>
-<h2>What the app will do with it</h2>
+<h2>What the app does with it</h2>
 <p>Rung 4 of the ladder: while a water run is traced, the fixture units still to be served beyond the cursor become a flow through this curve, and the flow becomes the size suggestion in the chip. The gpm shows in the S popover and on the Water Sizing schedule, not on the cursor. Under the first row the flow scales from zero (a lone private lavatory reads about 2 gpm, never a full unit&#39;s 3); a flush-valve load under 5 fixture units reads the tank column, where the two meet; past the last row the last value holds.</p>
 <h2>What it does not do</h2>
 <p>A continuous demand (a hose bibb left running, process water, irrigation) is not a fixture unit. The table&#39;s note says to estimate it separately and add it, and so the app leaves those fixtures out of the sum rather than pretend a weight for them.</p>

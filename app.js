@@ -319,6 +319,7 @@
     // the design-build ductulator knobs: equal-friction rate (in/100ft) and
     // the velocity cap (fpm) behind the size-chip/S-popover suggestions.
     ductSettings: { ...DUCT_SETTINGS_DEFAULTS },
+    waterSettings: window.WaterModel ? { ...window.WaterModel.WATER_SETTINGS_DEFAULTS } : { coldFps: 8, hotFps: 5 },   // WATER-PLAN rung 5: the velocity caps, per project
     multiplyZoneSettings: { showLabelOnZone: true, defaultMultiplier: 2, labelSize: 14, labelPosition: 'center' },
     scaleZoneSettings: { showLabelOnZone: true, labelSize: 14, labelPosition: 'top-left' },
     exportSettings: { markerScale: 0.75, lineScale: 0.75, bundleHighlightsToPdf: true, bundleNotesToPdf: true },
@@ -900,6 +901,7 @@
     state.bidCheck = { manual: {} };
     state.rooms = [];
     state.ductSettings = { ...DUCT_SETTINGS_DEFAULTS };
+    state.waterSettings = window.WaterModel ? { ...window.WaterModel.WATER_SETTINGS_DEFAULTS } : { coldFps: 8, hotFps: 5 };
     state.maxZoom = null;
     state.activeCanvasIdByPage = {};
     // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key
@@ -4731,7 +4733,7 @@
   // (features/bid-basis.js), which stores it on the PipeTooling bid as the
   // "which marks did we bid to" snapshot.
   function buildCanvasExportData() {
-    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, stripPins: state.stripPins || {}, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, stripPins: state.stripPins || {}, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, waterSettings: state.waterSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
   }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
@@ -7570,6 +7572,7 @@
       else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
       else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
       else if (document.getElementById('ductScheduleModal')?.classList.contains('visible')) { hideModal('ductScheduleModal'); } // DUCT D5
+      else if (document.getElementById('waterScheduleModal')?.classList.contains('visible')) { hideModal('waterScheduleModal'); } // WATER rung 5
       else if (document.getElementById('markerCfmModal')?.classList.contains('visible')) { App.cancelMarkerCfm ? App.cancelMarkerCfm() : hideModal('markerCfmModal'); } // DUCT D15
       else if (document.getElementById('markerWsfuModal')?.classList.contains('visible')) { App.cancelMarkerWsfu ? App.cancelMarkerWsfu() : hideModal('markerWsfuModal'); } // WATER rung 2
       else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }

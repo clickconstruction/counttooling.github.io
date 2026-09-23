@@ -591,6 +591,53 @@ function waterSizeOptions(gpm, side, material) {
 }
 function fmtWsfu(v) { return String(Math.round(v * 100) / 100); }
 
+// --- Rung 5: the Water Sizing schedule -----------------------------------------
+// The two knobs at the schedule's foot, per project (state.waterSettings): the
+// velocity cap per side. Occupancy is the third knob and lives on the codes
+// blob (state.codes.occupancy) with the editions. Defaults are the rulebook's
+// caps (plumb.water.velocity points at WATER_VELOCITY_CAPS).
+const WATER_SETTINGS_DEFAULTS = { coldFps: WATER_VELOCITY_CAPS.cold, hotFps: WATER_VELOCITY_CAPS.hot };
+function normalizeWaterSettings(raw) {
+  const r = raw && typeof raw === 'object' ? raw : {};
+  return {
+    coldFps: Number.isFinite(Number(r.coldFps)) && Number(r.coldFps) > 0 ? Number(r.coldFps) : WATER_SETTINGS_DEFAULTS.coldFps,
+    hotFps: Number.isFinite(Number(r.hotFps)) && Number(r.hotFps) > 0 ? Number(r.hotFps) : WATER_SETTINGS_DEFAULTS.hotFps,
+  };
+}
+function waterCapFor(side, settings) {
+  const ws = normalizeWaterSettings(settings);
+  return side === 'hot' ? ws.hotFps : ws.coldFps;
+}
+// One schedule row's numbers for a committed run: the flow from what it
+// serves on the set's curve, the velocity in its own bore, and the ⚠ reasons
+// (over the side's cap; a fixture it serves DIRECTLY whose supply minimum is
+// larger than the run). Null size or material → no velocity, no cap warning.
+// opts: { served, fixtureKeys (under the run and its branches), ownFixtureKeys,
+//         sizeIn, material, side, settings }
+function waterRunSizing(opts) {
+  const o = opts || {};
+  const served = Number(o.served) || 0;
+  const column = demandColumnFor((o.fixtureKeys || []).map((k) => ({ key: k, qty: 1 })));
+  const gpm = demandGpm(served, column);
+  const cap = waterCapFor(o.side, o.settings);
+  const sizeIn = Number.isFinite(Number(o.sizeIn)) && Number(o.sizeIn) > 0 ? Number(o.sizeIn) : null;
+  const material = PIPE_ID_IN[o.material] ? o.material : null;
+  const idIn = sizeIn != null && material ? pipeIdIn(material, sizeIn) : null;
+  const velocityFps = idIn ? round1(velocityFps_(gpm, idIn)) : null;
+  const warnings = [];
+  if (velocityFps != null && velocityFps > cap) warnings.push('over ' + cap + ' ft/s');
+  let minIn = null, minKey = null;
+  (o.ownFixtureKeys || []).forEach((k) => {
+    const m = fixtureSupplyMinIn(k);
+    if (m != null && (minIn == null || m > minIn)) { minIn = m; minKey = k; }
+  });
+  if (sizeIn != null && minIn != null && sizeIn < minIn - 1e-9) warnings.push('under the ' + sizeKey(minIn) + ' in a ' + String(minKey).replace(/-/g, ' ') + ' needs');
+  const passes = idIn ? suggestWaterSize({ gpm, side: o.side, material, capFps: cap }) : null;
+  return { served: round2(served), column, gpm, sizeIn, key: sizeIn != null ? sizeKey(sizeIn) : null, material, idIn, velocityFps, capFps: cap, ok: warnings.length === 0, warnings, minSupplyIn: minIn, suggestedKey: passes ? passes.key : null };
+}
+function velocityFps_(gpm, idIn) { return velocityFps(gpm, idIn); }
+
+
 function round1(v) { return Math.round(v * 10) / 10; }
 function round2(v) { return Math.round(v * 100) / 100; }
 
@@ -605,6 +652,7 @@ const WATER_MODEL_API = {
   WATER_SIDE_COLORS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, lineTypeWaterSide, waterRunVertices, waterRunsOf,
   waterNearestOnRun, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterChildLinks, waterServedByRun,
   waterMaterialFromName, waterSizeInFromName, sizedTypeName, waterDraftRemaining, waterDraftSuggestion, waterSizeOptions,
+  WATER_SETTINGS_DEFAULTS, normalizeWaterSettings, waterCapFor, waterRunSizing,
 };
 if (typeof window !== 'undefined') window.WaterModel = WATER_MODEL_API;
 // Node test harness and the rulebook's drift check only: in a classic browser <script> `module` is undefined.

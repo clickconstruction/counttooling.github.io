@@ -38,7 +38,7 @@
   const App = (window.App = window.App || {});
   const RULES_URL = '/rules/rules.json';
   const KIND_LABEL = { code: 'Code', standard: 'Standard', recommendation: 'Recommendation', convention: 'Convention' };
-  const USED_BY_LABEL = { bidCheck: 'Bid Check', childCount: 'Child counts', chain: 'Chain tool', ductSchedule: 'Duct Schedule', roomSizer: 'Room Sizer', quickCreate: 'Quick creator', counter: 'Counters' };
+  const USED_BY_LABEL = { bidCheck: 'Bid Check', childCount: 'Child counts', chain: 'Chain tool', ductSchedule: 'Duct Schedule', roomSizer: 'Room Sizer', quickCreate: 'Quick creator', counter: 'Counters', waterSchedule: 'Water Sizing' };
 
   let rules = null;          // Map id -> rule, once loaded (empty Map on failure)
   let loading = null;

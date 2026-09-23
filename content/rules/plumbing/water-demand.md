@@ -3,7 +3,7 @@ id: plumb.wsfu.demand
 title: Design flow from fixture units
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: How a load in water supply fixture units becomes a design flow in gallons per minute, on the flush-tank curve or the flush-valve curve, with straight-line reading between the table's rows.
 values:
   - when: 1 WSFU, flush tanks
@@ -84,13 +84,13 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
-used_by: []
+used_by: [waterSchedule]
 updated: 2026-09-23
 ---
 
 This is Hunter's curve as the IPC prints it: the probable peak demand for a load of fixture units, which rises steeply at first and then flattens, because the more fixtures there are the smaller the share that runs at once. A system with any flush valve on it reads the steeper column, since a flush valve draws its water in a few seconds. The rows above are a sample of the table for the drift check; the app carries the whole table and reads between its rows in a straight line, the table's own instruction.
 
-## What the app will do with it
+## What the app does with it
 
 Rung 4 of the ladder: while a water run is traced, the fixture units still to be served beyond the cursor become a flow through this curve, and the flow becomes the size suggestion in the chip. The gpm shows in the S popover and on the Water Sizing schedule, not on the cursor. Under the first row the flow scales from zero (a lone private lavatory reads about 2 gpm, never a full unit's 3); a flush-valve load under 5 fixture units reads the tank column, where the two meet; past the last row the last value holds.
 

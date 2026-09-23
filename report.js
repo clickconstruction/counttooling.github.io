@@ -152,6 +152,20 @@
     const s = getDuctSchedule(pageIndices, getAnn);
     return (s && window.App && typeof window.App.buildDuctCopyRows === 'function') ? window.App.buildDuctCopyRows(s) : [];
   }
+  // WATER-PLAN rung 5: the Water Sizing schedule (features/water-schedule.js),
+  // the duct schedule's twin: a table in the report, and rows under a
+  // "--- Water sizing ---" heading in Copy Summary / Copy to /Tooling. Null /
+  // [] when the scope holds no water run, so water-free output is byte-identical.
+  function getWaterSchedule(pageIndices, getAnn) {
+    return (window.App && typeof window.App.getWaterScheduleForReport === 'function')
+      ? window.App.getWaterScheduleForReport({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : null;
+  }
+  const WATER_COPY_HEADING = '--- Water sizing ---';
+  function getWaterCopyRows(pageIndices, getAnn) {
+    const s = getWaterSchedule(pageIndices, getAnn);
+    return (s && window.App && typeof window.App.buildWaterCopyRows === 'function') ? window.App.buildWaterCopyRows(s) : [];
+  }
 
   // Child counts (features/child-counts.js registers this on window.App after
   // this file loads; resolved at call time, optional). Shape:
@@ -327,7 +341,8 @@
     html += '<h2 class="page-header">Summary</h2>';
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     const ductSchedule = getDuctSchedule(pageIndices, getAnn);
-    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule || getCircuitSchedule(pageIndices, getAnn).panels.length > 0 || getBidCheck(pageIndices, getAnn).auto.length > 0;
+    const waterSchedule = getWaterSchedule(pageIndices, getAnn);
+    const hasSummary = orderedGroupIds.length > 0 || roomTotals.length > 0 || !!ductSchedule || !!waterSchedule || getCircuitSchedule(pageIndices, getAnn).panels.length > 0 || getBidCheck(pageIndices, getAnn).auto.length > 0;
     let anyPxSummaryRow = false;
     if (orderedGroupIds.length > 0) {
       orderedGroupIds.forEach(gid => {
@@ -446,6 +461,24 @@
     // size, fittings (counted rows or the factor line, following the modal's
     // per-project Counted|Factor pick), insulation sq ft, seam & waste, and
     // the Bid weight line. Only rendered when the scope holds duct runs.
+    // WATER-PLAN rung 5: the Water Sizing table, one row per water run, the
+    // cold and hot peaks, the occupancy and the caps it was sized at.
+    if (waterSchedule) {
+      const wsch = waterSchedule;
+      html += '<h3 class="section-header">Water Sizing</h3>';
+      html += '<table class="report-table"><tr><th>Run</th><th>Side</th><th>WSFU</th><th>gpm</th><th>Size</th><th>ft/s</th><th>Check</th></tr>';
+      ['cold', 'hot'].forEach((side) => {
+        const rs = wsch.rows.filter((r) => r.side === side);
+        if (!rs.length) return;
+        rs.forEach((r) => {
+          html += '<tr><td>' + escapeHtml(r.name + ' (' + r.typeName + ')') + '</td><td>' + side + '</td><td>' + r.served + '</td><td>' + r.gpm + '</td><td>' + escapeHtml(r.key ? r.key + ' in' : '') + '</td><td>' + (r.velocityFps != null ? r.velocityFps : '') + '</td><td>' + (r.ok ? '\u2713' : escapeHtml('\u26a0 ' + r.warnings.join('; ') + (r.suggestedKey && r.suggestedKey !== r.key ? ' \u2192 ' + r.suggestedKey + ' in' : ''))) + '</td></tr>';
+        });
+        const t = wsch.totals[side];
+        html += '<tr><td><strong>' + (side === 'hot' ? 'Hot' : 'Cold') + ' peak</strong></td><td>' + side + '</td><td><strong>' + t.wsfu + '</strong></td><td><strong>' + t.gpm + '</strong></td><td></td><td>cap ' + t.cap + '</td><td>' + (t.warn ? t.warn + ' \u26a0' : '') + '</td></tr>';
+      });
+      html += '</table>';
+      html += '<p class="report-group-totals">Fixture units on the ' + escapeHtml(wsch.occupancy) + ' column; a run\u2019s units are its own fixtures plus its branches\u2019, the peak the largest run\u2019s. Sized at the velocity cap: practice, not code; the pressure check is Bid Check\u2019s.</p>';
+    }
     if (ductSchedule) {
       const ds = ductSchedule;
       const fmtLbR = (lb) => Math.round(lb).toLocaleString();
@@ -586,6 +619,13 @@
       lines.push(DUCT_COPY_HEADING);
       lines.push(...ductRows);
     }
+    // WATER-PLAN rung 5: the water sizing rows, only when the scope has a water run.
+    const waterRows = getWaterCopyRows(pageIndices, getAnn);
+    if (waterRows.length) {
+      if (lines.length) lines.push('');
+      lines.push(WATER_COPY_HEADING);
+      lines.push(...waterRows);
+    }
     if (scopeLine) lines.unshift('--- ' + scopeLine + ' ---');   // D25: framed like '--- Duct ---', which the paste parser treats as a heading
     return lines.join('\n');
   }
@@ -664,9 +704,12 @@
     // own unit — never ea/ft/px; `out.duct` = { rows, bidWeightLb } only when
     // the text carries one, so duct-free summaries keep their exact shape.
     let inDuct = false;
+    let inWater = false;   // WATER-PLAN rung 5: the "--- Water sizing ---" block is its own unit too
     String(text).split(/\r?\n/).forEach((line) => {
-      if (!line.trim()) { inDuct = false; return; }
+      if (!line.trim()) { inDuct = false; inWater = false; return; }
       if (line.trim() === DUCT_COPY_HEADING) { inDuct = true; out.duct = { rows: 0, bidWeightLb: 0 }; return; }
+      if (line.trim() === WATER_COPY_HEADING) { inWater = true; out.water = { rows: 0 }; return; }
+      if (inWater) { out.water.rows += 1; return; }
       // D25: the scope header ("--- Counts — <project> · every sheet · layers: … ---")
       // is a heading in the same frame, never a row — nor is any framed line.
       if (/^---\s.*\s---$/.test(line.trim())) return;
@@ -852,6 +895,13 @@
       if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
       lines.push(DUCT_COPY_HEADING);
       lines.push(...ductRows);
+      lines.push('');
+    }
+    const waterRows = getWaterCopyRows(pageIndices, getAnn);
+    if (waterRows.length) {
+      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
+      lines.push(WATER_COPY_HEADING);
+      lines.push(...waterRows);
       lines.push('');
     }
     const roomTotals = getRoomTotals(pageIndices, getAnn);

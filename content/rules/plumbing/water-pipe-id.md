@@ -3,7 +3,7 @@ id: plumb.water.pipe-id
 title: Inside diameters of water pipe
 trade: plumbing
 kind: standard
-status: draft
+status: applied
 summary: The inside diameter behind each nominal size, for PEX, Type L copper, CPVC and Schedule 40 galvanized steel, which is what turns a flow into a velocity.
 values:
   - when: 3/8 in PEX, CTS SDR 9
@@ -131,13 +131,13 @@ source:
   section: F876 (PEX, CTS SDR 9), B88 (copper tube, Type L), D2846 (CPVC, CTS SDR 11); ASME B36.10 (Schedule 40 steel)
   editions: []
 amendments: []
-used_by: []
+used_by: [waterSchedule]
 updated: 2026-09-23
 ---
 
 A nominal size is a name, not a measurement. Half-inch PEX has a bore under half an inch; half-inch Schedule 40 steel has a bore over it; and the same flow runs a third faster in the PEX. The velocity cap can only be applied to the true bore, so the app carries the dimension tables the materials are made to. PEX and CPVC bores are the makers' published averages for the standard's wall (the standards fix a minimum wall, so a bore varies a little by maker); copper and steel are the standards' own dimensions.
 
-## What the app will do with it
+## What the app does with it
 
 Rung 4 of the ladder: velocity is the design flow over the bore's area, and the material comes from the line type's name the way the hanger rule already reads it (PEX, Cu or Type L, CPVC, galvanized). A material the table does not carry (PP-R, stainless, lead) gets no suggestion.
 

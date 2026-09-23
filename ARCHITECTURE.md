@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,538 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 3,100 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 8,541 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 3,103 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,915 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,747 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,655 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 777 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
-| [annotation-model.js](annotation-model.js) | 929 | Done — extracted canvas/annotation data model + node tests. |
+| [app/index.html](app/index.html) | 3,783 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,662 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 779 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
+| [annotation-model.js](annotation-model.js) | 931 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 165 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
-| [report.js](report.js) | 925 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (93 files) | 30,694 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| [report.js](report.js) | 975 | Self-contained report builder with a frozen `window.*` contract. Leave. |
+| `features/*.js` (94 files) | 30,963 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -247,12 +247,14 @@ modules. Candidates in priority order:
 | [features/rules.js](features/rules.js) | **The rulebook in the app** (slice 2, 2026-09-09): fetches `/rules/rules.json` once at boot (precached — chips work offline) and gives derived surfaces the § chip + popover. `ruleChipHtml(id)` → `<button class="rule-chip" data-rule>` whose label is the citation (`§ NEC Chapter 9`, `§ IPC 308.5`) or `convention` for a working figure; static chips in app/index.html (the make-up field in Project Settings) are filled by `syncChips()` when the list arrives. One popover (`#rulePopover`, placed via `App.placeFixedMenu` under the chip) renders the values table "as the app applies it", source + section, editions checked, the project line (via `App.getProjectCodes`, slice 4), used-by chips, amendments on file, and the rule-page link. Closes on Escape (capture-phase listener, so the Esc ladder never sees it), outside click, or ×. Chips live on: Bid Check auto rows (`rule:` on `bidCheckAutoRows` output — conduit-fill, voltage-drop), the Chain palette foot (mount heights + make-up when the counter has a mount height), the Duct Schedule's Gauge / lb-per-ft headers and Seam & waste line. Telemetry `rule_open`. Registers `getRule`, `ruleChipHtml`, `ruleChipLabel`, `openRulePopover`, `closeRulePopover`, `isRulePopoverOpen`, `rulesReady`, `rulesCount`, `syncRuleChips`. |
 | [support-model.js](support-model.js) | **The pure pipe-support model** (rulebook slice 3, 2026-09-09): `HANGER_SPACING` (IPC Table 308.5 as the app applies it — PEX 32 in ≤ 1 in / 48 in above, copper 6 ft ≤ 1-1/4 in / 10 ft above, PVC-ABS-DWV 4 ft, cast iron 5 ft; verticals kept for the pages; the `plumb.hanger.*` rules point here, so the drift check pins every number), `supportMaterialFromName` / `supportSizeInFromName` (word-bounded — CPVC is not PVC; sizes as `1in`, `3/4"`, `1-1/4 in`), `hangerSuggestionsFor(name)` (the Child counts row a line type earns: `{ name: 'Hanger', qty: 1, per: 'ft', intervalIn, ruleId, match }`; no size in the name → the tighter spacing), `childIntervalFeet` / `childIntervalLabel` (an inch `intervalIn` wins over the whole-foot `ftInterval`; 48 in reads "4 ft"), `lineTypeCountsHangers`, `hangerCoverage(lineTypes)` (the Bid Check auto row for plumbing: warn while a supported-material type has no hanger count). Classic script after tag-model.js; `window.SupportModel` + CommonJS footer. |
 | [fitting-model.js](fitting-model.js) | **The pure "fittings from bends" model** (punch row BEND-FITTINGS, 2026-09-18): a line type's `bendFittings` `{ enabled, bend45, bend90, drop }` (each `{ name, qty }`, defaults from the type's name) turns every interior vertex of a polyline into a 45 or a 90 by its direction change (the duct tool's angle function; nearer of the two: 22.5° / 67.5°) and every drop at a run's end into a 90. `runBendCounts` / `lineDropEnds` / `bendFittingRows` feed features/child-counts.js (derived rows, never marks); `vertexBendClass` honours a per-vertex `fitting` override (written by [features/bend-override.js](features/bend-override.js)) and drives the chips (`drawBendFittingChips` in canvas-draw.js, shared by the draw core and app.js's edit-mode paint); `normalizeBendFittings` fills the dialog. Loaded as a script (window.FittingModel) and as a CommonJS module for [fitting-model.test.js](fitting-model.test.js). |
-| [water-model.js](water-model.js) | **The pure water-supply sizing model** (WATER-PLAN.md rung 1, 2026-09-23): the IPC Appendix E tables transcribed so the rulebook's six `plumb.wsfu.*` / `plumb.water.*` pages can pin every number (`WSFU_FIXTURES`, Table E103.3(2), cold / hot / total per fixture and occupancy; `WSFU_DEMAND` + `demandGpm(wsfu, column)`, Table E103.3(3) with straight-line reading between rows and the documented edges; `WATER_VELOCITY_CAPS` cold 8 / hot 5 ft/s, practice not code; `PIPE_ID_IN` bores for PEX, Type L copper, CPVC and Schedule 40 steel; `FIXTURE_SUPPLY_MIN_IN`, Table 604.5; `WATER_SERVICE_MIN_IN`, 603.1), and the math the later rungs call: `wsfuFor(key, occupancy)` (falls back across the occupancy column and says so), `wsfuTotals`, `demandColumnFor` (any flush valve → the valve curve), `velocityFps`, `suggestWaterSize({ gpm, side, material, minSizeIn, capFps })` (the smallest size under the side's cap, `ok:false` on the largest when none passes), `fixtureSupplyMinIn` / `fixtureSupplyMinLabel`, `sizeKey` / `sizeKeyIn`. Rung 2 ([features/water-fixtures.js](features/water-fixtures.js)) reads `WSFU_FIXTURES` through `wsfuFixtureFromName(name, occupancy)` (word-bounded over the counter's name: the schedule reader's tag prefixes and the bare tags both read, a water closet that says neither tank nor valve is assumed a flush valve on a public bid, and a drain, a cleanout, a water heater or a hose bibb reads as null on purpose), `wsfuPrefillFor` (the row plus `match` and `ruleId`), `counterWsfu` / `markerWsfu` (the per-mark override wins) and `counterWsfuSplit` (a typed total keeps its fixture's cold / hot shape). Rung 3 adds the water side and the network: `WATER_SIDE_COLORS`, `waterSideFromName` (CW / DCW / cold; HW / DHW / HWR / hot / recirc), `lineTypeWaterSide`, `waterRunVertices` / `waterRunsOf(ann, lineTypes)` (quick lines and polylines whose type has a side, zero-length runs dropped), `attachWaterFixtures(fixtures, runs)` (PER SIDE: the nearest run of that side within `WATER_ATTACH_SNAP_PDF` 24 pt, a stored `links[side]` winning while that run exists; strays are sides with load and no run), `waterFixtureLeaders`, `waterNearestRunPoint` (the rescue's reach, `WATER_ATTACH_SEARCH_PDF` 96), `waterChildLinks` (a run whose first vertex lands on a run of the same side is its branch) and `waterServedByRun` (own fixtures plus branches, a cycle walked once). Rung 4: `waterMaterialFromName` (PEX, copper, CPVC, galvanized / BI / steel), `waterSizeInFromName`, `sizedTypeName(name, sizeIn)` (the size token swapped in the name's own style), `waterDraftRemaining({ runs, draft, fixtures })` (the ductulator's "air still to serve" in fixture units: unserved fixtures of the side less those the draft's placed vertices have passed, the tip's own fixture still ahead, the demand column from what is ahead), `waterDraftSuggestion({ remaining, material })` and `waterSizeOptions(gpm, side, material)`. Occupancy itself is `state.codes.occupancy` (public \| private, default public), a Project Settings segment under Codes, normalized by constants.js `normalizeProjectCodes` and riding save / load / export / backup with the editions. Classic script after fitting-model.js; `window.WaterModel` + CommonJS footer; node-tested in [water-model.test.js](water-model.test.js). |
+| [water-model.js](water-model.js) | **The pure water-supply sizing model** (WATER-PLAN.md rung 1, 2026-09-23): the IPC Appendix E tables transcribed so the rulebook's six `plumb.wsfu.*` / `plumb.water.*` pages can pin every number (`WSFU_FIXTURES`, Table E103.3(2), cold / hot / total per fixture and occupancy; `WSFU_DEMAND` + `demandGpm(wsfu, column)`, Table E103.3(3) with straight-line reading between rows and the documented edges; `WATER_VELOCITY_CAPS` cold 8 / hot 5 ft/s, practice not code; `PIPE_ID_IN` bores for PEX, Type L copper, CPVC and Schedule 40 steel; `FIXTURE_SUPPLY_MIN_IN`, Table 604.5; `WATER_SERVICE_MIN_IN`, 603.1), and the math the later rungs call: `wsfuFor(key, occupancy)` (falls back across the occupancy column and says so), `wsfuTotals`, `demandColumnFor` (any flush valve → the valve curve), `velocityFps`, `suggestWaterSize({ gpm, side, material, minSizeIn, capFps })` (the smallest size under the side's cap, `ok:false` on the largest when none passes), `fixtureSupplyMinIn` / `fixtureSupplyMinLabel`, `sizeKey` / `sizeKeyIn`. Rung 2 ([features/water-fixtures.js](features/water-fixtures.js)) reads `WSFU_FIXTURES` through `wsfuFixtureFromName(name, occupancy)` (word-bounded over the counter's name: the schedule reader's tag prefixes and the bare tags both read, a water closet that says neither tank nor valve is assumed a flush valve on a public bid, and a drain, a cleanout, a water heater or a hose bibb reads as null on purpose), `wsfuPrefillFor` (the row plus `match` and `ruleId`), `counterWsfu` / `markerWsfu` (the per-mark override wins) and `counterWsfuSplit` (a typed total keeps its fixture's cold / hot shape). Rung 3 adds the water side and the network: `WATER_SIDE_COLORS`, `waterSideFromName` (CW / DCW / cold; HW / DHW / HWR / hot / recirc), `lineTypeWaterSide`, `waterRunVertices` / `waterRunsOf(ann, lineTypes)` (quick lines and polylines whose type has a side, zero-length runs dropped), `attachWaterFixtures(fixtures, runs)` (PER SIDE: the nearest run of that side within `WATER_ATTACH_SNAP_PDF` 24 pt, a stored `links[side]` winning while that run exists; strays are sides with load and no run), `waterFixtureLeaders`, `waterNearestRunPoint` (the rescue's reach, `WATER_ATTACH_SEARCH_PDF` 96), `waterChildLinks` (a run whose first vertex lands on a run of the same side is its branch) and `waterServedByRun` (own fixtures plus branches, a cycle walked once). Rung 4: `waterMaterialFromName` (PEX, copper, CPVC, galvanized / BI / steel), `waterSizeInFromName`, `sizedTypeName(name, sizeIn)` (the size token swapped in the name's own style), `waterDraftRemaining({ runs, draft, fixtures })` (the ductulator's "air still to serve" in fixture units: unserved fixtures of the side less those the draft's placed vertices have passed, the tip's own fixture still ahead, the demand column from what is ahead), `waterDraftSuggestion({ remaining, material, capFps })` and `waterSizeOptions(gpm, side, material)`. Rung 5: `WATER_SETTINGS_DEFAULTS` / `normalizeWaterSettings` / `waterCapFor(side, settings)` (the per-project caps) and `waterRunSizing({ served, fixtureKeys, ownFixtureKeys, sizeIn, material, side, settings })` (a schedule row's gpm, velocity, cap, the ⚠ reasons and the size that would pass). Occupancy itself is `state.codes.occupancy` (public \| private, default public), a Project Settings segment under Codes, normalized by constants.js `normalizeProjectCodes` and riding save / load / export / backup with the editions. Classic script after fitting-model.js; `window.WaterModel` + CommonJS footer; node-tested in [water-model.test.js](water-model.test.js). |
 | [water-model.test.js](water-model.test.js) | Node tests for the water model: every fixture row well formed (a side never above the total, the total never above the sum), `wsfuFor`'s occupancy column and cross-column fallback, the sums and unknown keys, the demand column pick, the demand curve on and between its rows and at its edges, the velocity formula, sorted sizes with plausible bores, the plan's worked example (three public lavatories → 4.5 WSFU → 8.7 gpm → 3/4 in PEX cold, 1 in hot; with three flush-tank water closets → 1-1/4 in), the fixture minimum as a floor, a custom cap, the no-size-passes case, and the fixture-supply table. |
 | [features/water-fixtures.js](features/water-fixtures.js) | **Fixture units on counters** (WATER-PLAN.md rung 2, 2026-09-23), the CFM field's twin for the water side. A counter may carry `wsfu` (its water supply fixture units) and `wsfuFixture` (the Table E103.3(2) row the value came from); a placed mark may carry `wsfuOverride`. `App.applyCounterWaterMore` is the "More ▸ water supply" disclosure on the Create tab and Quick Count (the D19 idiom; open by itself on plumbing, `state.counterWaterMoreOpen`); `App.bindWsfuField(inputId, chipId, nameOf)` fills the field from the name through water-model's `wsfuPrefillFor` in the project's occupancy column (`state.codes.occupancy`) while the field is untouched or still the last prefill (`data-prefill` / `data-fixture`), never after the estimator typed, and renders the chip ("→ 2 WSFU · public lavatory · § IPC", or "yours · the rulebook reads 2 …"); `App.readWsfuField` writes the two keys set-only-when-positive; `App.bindWsfuDetails(item, kind)` is the details modal's Water supply section (the stored value, the rulebook's reading with a one-tap "use it", the "(override 4)" note); `App.openMarkerWsfuModal` / `App.cancelMarkerWsfu` own `#markerWsfuModal` behind `#ctxMarkerWsfu` (gated in app.js showContextMenu on `counter.wsfu > 0`; Save writes a positive value and deletes the key when cleared); `App.waterSummaryTotals` / `App.waterSummaryLine` are the Summary's foot line (multiply-zone adjusted, overrides honoured, the cold / hot split only when every WSFU counter knows its fixture, the demand curve named). No new event: `codes_set` already carries the occupancy. **Rung 3 (the same day):** a line type's WATER SIDE (water-model `lineTypeWaterSide`: `waterSide` 'cold' \| 'hot' \| 'none', else the name's CW / HW), picked on the Quick Line tab (`App.syncQuickLineWaterSide` / `resetQuickLineWaterSide` / `readQuickLineWaterSide`: the segment follows the composed name, only a pick that differs from it is written) and in the details modal (`App.renderWaterSideSection`, `#waterSideGroup`, shown on a plumbing project or when the type carries or derives a side; the name's own answer deletes the key); `App.collectWaterFixtures(pageIdx)` / `collectWaterFixturesFrom(ann)` (placed marks with fixture units, split into cold / hot through `counterWsfuSplit`, a keyless total counted whole on either side and flagged `unsplit`, `links` from the mark's `waterRuns`); `App.getWaterRuns`; `App.waterLeaders(ann)` (canvas-draw.js paints them through `deps.waterLeaders`, dashed, in the run's color, one per attached side); `App.waterRunReadouts(pageIdx)` (one pass: Map runId → "13 WSFU cold · 3 fixtures (1 on branches)", from `waterServedByRun`; the Lines list reads it per row, the line type row wears `App.lineTypeWaterTag`); the rescue `App.waterStrayTarget` / `waterStrayLabel` behind `#ctxAttachWater` (gated in app.js showContextMenu; "Attach to nearest cold run" / "… cold and hot runs"), which STORES `marker.waterRuns = { side: runId }` rather than moving the fixture off its symbol, because a lavatory has two sides and one move cannot serve both; a dangling link is ignored. **Rung 4 (the same day), the moment at S:** `App.waterDraft()` (a polyline being traced on a water type), `App.waterDraftSuggestion()` (water-model `waterDraftRemaining`: every unserved fixture of the side less those the placed vertices have passed, on the set's curve, the smallest size of the type's material under the side's cap; copper assumed and said when the name has no material), `App.onWaterTraceSync(force)` (`#waterHintCard`, the DUCT-HINT idiom, synced from updateUI and memoized on the draft's placed vertices from renderAnnotations), `App.toggleWaterSizePopover` / `openWaterSizePopover` / `closeWaterSizePopover` (`#waterSizePopover`, the duct popover's markup: the suggestion first with its gpm and curve, then every size of the material with its velocity at the flow ahead, the current size outlined and over-cap sizes muted; S in app.js's keydown while a water polyline is traced, plain pipe falling through to Set Scale; Escape in capture phase closes it alone), `App.applyWaterSize(sizeIn)` ("a new run from here": `App.finishPolyline` commits the run traced so far, the next draft starts at its last point in the sized type from `App.sizedLineTypeFor` (the name's size token swapped, an existing type reused, else a new one in the traced type's color and side), so the two share the point and the new run is the old one's branch; a one-point draft just changes type; the same size is a no-op). The Lines list readout gains the flow and the velocity in the run's own bore (`waterSizeInFromName` / `waterMaterialFromName` / `pipeIdIn`), ✓ or ⚠ over the cap. Regression: [water-fixtures.spec.js](water-fixtures.spec.js), [water-sides.spec.js](water-sides.spec.js), [water-size-at-s.spec.js](water-size-at-s.spec.js). |
 | [water-size-at-s.spec.js](water-size-at-s.spec.js) | Playwright regression for rung 4: the card's numbers as the trace passes a water closet (13 WSFU on the valve curve → 1-1/2 in, then 3 WSFU on the tank curve → 3/4 in), S opening the popover with the suggestion, the current size and the over-cap sizes marked, Escape leaving the draft alone, a tap committing the run and starting the next at the shared point in "0.75in Copper CW" (a new type, the traced color, the side from the name, no key), the two runs' readouts with gpm and ft/s, the same size as a no-op, a one-point draft changing type, an existing sized type reused, the card going with the draft; plain pipe showing no card and S still opening Set Scale; a 1/2 in main over the cap reading ⚠ in the Lines list. |
 | [water-sides.spec.js](water-sides.spec.js) | Playwright regression for rung 3: sides from names and the sidebar tags, attachment per side, the served walk with a branch (13 WSFU cold · 3 fixtures (1 on branches)), the leaders the draw core paints in the run's color, plain pipe on `waterSide: 'none'`, the rescue storing the link on an unmoved mark and the leader following, both sides in one row, a dangling link after the run is deleted, the Quick Line picker following the name and storing a differing pick, the details picker setting, clearing and deferring to the name, and the HVAC gate. |
 | [water-fixtures.spec.js](water-fixtures.spec.js) | Playwright regression for fixture units on counters: the Create tab's disclosure open on plumbing and closed on HVAC, the prefill from the name and its chip, the assumption named for a bare water closet, the occupancy flipping an untouched prefill, a typed value kept with the chip saying so, the created counter's `wsfu` / `wsfuFixture`, a floor drain earning nothing, the Quick Count twin, the details modal's field / "use it" / overrides note and its absence on a line type, the context-menu override and its cleared key, the Summary foot line's arithmetic (26 WSFU, cold 24.5, hot 4.5, the flush-valve curve) and the export data. |
+| [features/water-schedule.js](features/water-schedule.js) | **The Water Sizing schedule** (WATER-PLAN.md rung 5, 2026-09-23), the Duct Schedule's twin on the water side: `App.computeWaterSchedule({ pageIndices, getAnnotations? })` (one row per water run in scope from `waterRunsOf` + `waterServedByRun` + `waterRunSizing`: side, the fixture units it serves with its branches, the design gpm on the set's curve, the size and material its type names, the velocity in that bore, ✓ or ⚠ with the reasons (over the side's cap; a fixture it serves directly whose supply minimum is larger) and the size that would pass; cold and hot peaks as the LARGEST run's, never a sum, since a branch's fixtures are already in its main's), `App.getWaterSettings()` (`state.waterSettings` `{ coldFps, hotFps }`, normalized on read, defaults from `WATER_SETTINGS_DEFAULTS`, riding every save/load/export/import/backup path beside `ductSettings`), the modal `#waterScheduleModal` (opened by `#waterScheduleBtn` on the Line Types header, shown only while a water run exists, `App.syncWaterScheduleBtn` from the trace sync; the scope segment hidden at one page; the two caps and the occupancy as knobs at the foot, occupancy writing the same `state.codes.occupancy` Project Settings edits; a cap change re-reads the schedule, the Lines list readouts and the trace's suggestion), Copy Schedule (`App.buildWaterScheduleText`, tab-separated, through `App.runGatedCopy` with a collector that flags nothing), and the report seam (`App.getWaterScheduleForReport`, `App.buildWaterCopyRows`: report.js renders the table in Show Report / Export PDFs and appends the rows under `--- Water sizing ---` in Copy Summary / Copy to /Tooling, and `summarizeToolingExport` counts that block as its own unit, `out.water.rows`). Regression: [water-schedule.spec.js](water-schedule.spec.js). |
+| [water-schedule.spec.js](water-schedule.spec.js) | Playwright regression for rung 5: the button only with a water run, the rows (the main 13 WSFU on the valve curve at 5.3 ft/s in 1-1/2 in, the 3/4 in branch, the hot main), the peaks as the largest run's, the cold cap knob flipping the main to ⚠ with the size that passes and the Lines list and the trace's suggestion following, the occupancy knob as Project Settings' field, an invalid cap falling back, the settings riding the project data, hydrate and the backup; a 1/2 in branch to a flush-valve water closet ⚠ over the cap and under the 1 in minimum; Copy Schedule's exact text; the report's table; the `--- Water sizing ---` block in Copy to /Tooling and the email text, and the parser counting it apart from ea / ft rows. |
 | [features/bend-override.js](features/bend-override.js) | **The edit-mode vertex menu for fittings from bends** (punch row BEND-OVERRIDE, 2026-09-18): app.js `handleContextMenu`'s EDIT_POLY branch asks `App.tryOpenBendVertexMenu(idx, clientX, clientY)` first; when the editing run's type counts fittings from bends it opens `#bendVertexMenu` (a `.tool-context-menu`) with a heading naming the angle read and any override, then "No fitting here" (`points[i].fitting = 'none'`), "Count as 45", "Count as 90", "Read from the angle" (deletes the key; only while set) and "Delete vertex" (the old action); an open run's endpoints get Delete vertex only. Returns false when the option is off so the right-click deletes the vertex as before. One undo snapshot per choice (`App.pushUndoSnapshotCurrentPage`), then markProjectDirty + renderAnnotations + updateUI. Dismissal is the tool-context-menu.js pattern (capture-phase Escape with `stopImmediatePropagation`, so one press closes the menu and not edit mode). Seams: `App.hideBendVertexMenu`, `App.isBendVertexMenuOpen`. Regression: the fourth and fifth cases in [bend-fittings.spec.js](bend-fittings.spec.js) (the fifth: Delete vertex, undo/redo mid-edit, a closed run, outside click, edge placement, touch long-press, save/import round trip). Undo mid-edit is safe because app.js's snapshot wrappers (`withEditingPolylineHome`) put the run being edited home for the copy and `leaveEditModeIfOrphaned` exits edit mode after an undo/redo; Done Editing homes `state.editingPolylineOrig` so one undo reverts the whole session. |
 | [support-model.test.js](support-model.test.js) | Node tests for the support model: material and size detection (CPVC ≠ PVC, ABS/DWV = PVC), the suggestion by material and size and the no-size fallback, the interval helpers, and the coverage row's verdicts and rule id. |
 | [rules-chip.spec.js](rules-chip.spec.js) | Playwright regression for the chips: rules.json loads and `getRule` reads it; the conduit-fill row carries `§ NEC Chapter 9` and a row without a public rule carries nothing; the popover states the value, section, editions and Bid Check, links the page, closes on Escape without touching the active tool and on an outside click; the Project Settings make-up chip reads `convention` and Escape closes the popover without closing the modal; the Chain palette cites both vertical rules; `/rules/rules.json` is in the service-worker precache. |
@@ -597,70 +599,70 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L199 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L243 - ICONS array lives in icons.js (see icon-data note above).
 - L293 - State
-- L514 - [sync] Sync recovery & client recycle
-- L595 - Feature flags (per device, dormant-by-default ships)
-- L622 - [sync] Global force reload
-- L713 - [sync] Save Status log & envelope
-- L716 - [sync] Field-error telemetry
-- L775 - [sync] Dirty tracking & local session reset
-- L781 - Undo/redo stacks
-- L978 - [sync] Checkout probe, hashing & PDF cache
-- L1040 - Math & Format Helpers
-- L1586 - Coordinate Helpers
-- L1594 - PDF render bitmap cache
-- L1648 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1659 - PDF Rendering
-- L2496 - UI Render Functions
-- L2497 - Recent bids
-- L3212 - Inline rename & polyline edit mode
-- L3328 - Modal primitives (showModal / hideModal)
-- L3469 - Toasts & line color picker
-- L3537 - Airboard cloud sync
-- L3582 - Supabase RPC & presence heartbeat
-- L3622 - User activity / event telemetry
-- L3681 - Supabase auth & dev auth
-- L3867 - [sync] Checkout subscription & permission refresh
-- L3877 - Modals & Handlers
-- L3945 - PDF intake (upload, test PDF, hashing)
-- L3953 - Toolbar tool buttons
-- L4165 - Tool sidebar buttons & legend overlay
-- L4256 - Add Line Type modal
-- L4433 - Line color & sidebar handlers
-- L4642 - Polyline modal & drawing
-- L4697 - Zoom bar & page navigation
-- L4723 - Export canvas JSON
-- L4747 - PDF download helpers
-- L4756 - View-link URL helpers & show-highlights/notes
-- L4828 - Custom icon upload handler
-- L4838 - Export & report dropdown menus
-- L4931 - Sidebar drawer toggles
-- L4962 - Mobile actions burger menu pointer & header logo
-- L4974 - User Activity pointer (format.js + features/user-activity.js)
-- L4986 - My Settings pointer (features/my-settings.js)
-- L5011 - Auth & settings entry buttons
-  - L5084 - Project Settings checkout & Save Status bell
-  - L5190 - [sync] Checkout expired recovery
-  - L5246 - [sync] Turn In
-  - L5355 - Share modal pointer & copy-project openers
-  - L5386 - Settings menu actions
-  - L5424 - Auth sign-in form
-  - L5449 - Save Project modal
-  - L5461 - Checkout expired recovery modal wiring
-  - L5566 - Last-session restore prompt
-  - L5573 - Canvas Repair modal wiring
-- L5760 - Canvas Event Handlers
-- L6306 - Event Binding
-- L6316 - Aim loupe (mobile press-hold precise placement)
-- L6468 - Zoom transform preview & commit
-- L6547 - Canvas mouse, wheel & touch handlers
-- L7348 - Global dropdown dismissal & keyboard hotkeys
-- L7748 - [sync] Manual save to cloud
-- L7758 - [sync] Auto-save
-- L7765 - [sync] Local backup (IndexedDB takeoff state)
-- L7898 - [sync] Checkout keep-alive
-- L7912 - App feature registry
-- L8280 - View-only mode
-- L8286 - Init / boot
+- L515 - [sync] Sync recovery & client recycle
+- L596 - Feature flags (per device, dormant-by-default ships)
+- L623 - [sync] Global force reload
+- L714 - [sync] Save Status log & envelope
+- L717 - [sync] Field-error telemetry
+- L776 - [sync] Dirty tracking & local session reset
+- L782 - Undo/redo stacks
+- L980 - [sync] Checkout probe, hashing & PDF cache
+- L1042 - Math & Format Helpers
+- L1588 - Coordinate Helpers
+- L1596 - PDF render bitmap cache
+- L1650 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1661 - PDF Rendering
+- L2498 - UI Render Functions
+- L2499 - Recent bids
+- L3214 - Inline rename & polyline edit mode
+- L3330 - Modal primitives (showModal / hideModal)
+- L3471 - Toasts & line color picker
+- L3539 - Airboard cloud sync
+- L3584 - Supabase RPC & presence heartbeat
+- L3624 - User activity / event telemetry
+- L3683 - Supabase auth & dev auth
+- L3869 - [sync] Checkout subscription & permission refresh
+- L3879 - Modals & Handlers
+- L3947 - PDF intake (upload, test PDF, hashing)
+- L3955 - Toolbar tool buttons
+- L4167 - Tool sidebar buttons & legend overlay
+- L4258 - Add Line Type modal
+- L4435 - Line color & sidebar handlers
+- L4644 - Polyline modal & drawing
+- L4699 - Zoom bar & page navigation
+- L4725 - Export canvas JSON
+- L4749 - PDF download helpers
+- L4758 - View-link URL helpers & show-highlights/notes
+- L4830 - Custom icon upload handler
+- L4840 - Export & report dropdown menus
+- L4933 - Sidebar drawer toggles
+- L4964 - Mobile actions burger menu pointer & header logo
+- L4976 - User Activity pointer (format.js + features/user-activity.js)
+- L4988 - My Settings pointer (features/my-settings.js)
+- L5013 - Auth & settings entry buttons
+  - L5086 - Project Settings checkout & Save Status bell
+  - L5192 - [sync] Checkout expired recovery
+  - L5248 - [sync] Turn In
+  - L5357 - Share modal pointer & copy-project openers
+  - L5388 - Settings menu actions
+  - L5426 - Auth sign-in form
+  - L5451 - Save Project modal
+  - L5463 - Checkout expired recovery modal wiring
+  - L5568 - Last-session restore prompt
+  - L5575 - Canvas Repair modal wiring
+- L5762 - Canvas Event Handlers
+- L6308 - Event Binding
+- L6318 - Aim loupe (mobile press-hold precise placement)
+- L6470 - Zoom transform preview & commit
+- L6549 - Canvas mouse, wheel & touch handlers
+- L7350 - Global dropdown dismissal & keyboard hotkeys
+- L7751 - [sync] Manual save to cloud
+- L7761 - [sync] Auto-save
+- L7768 - [sync] Local backup (IndexedDB takeoff state)
+- L7901 - [sync] Checkout keep-alive
+- L7915 - App feature registry
+- L8283 - View-only mode
+- L8289 - Init / boot
 
 <!-- END SECTION TOC -->
 

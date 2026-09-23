@@ -1975,6 +1975,15 @@ body.tour-active .canvas-empty-hint { display: none; }
 .water-size-chip-over { opacity: 0.55; }
 .water-size-chip-current { outline: 1px dashed var(--border2); outline-offset: 1px; }
 .water-size-popover { width: 260px; }
+/* WATER-PLAN rung 5: the Water Sizing schedule. */
+.water-ok { color: var(--green, #47c88e); }
+.water-warn { color: var(--accent); font-size: 0.78rem; }
+.water-schedule-note { margin: 8px 0 0; line-height: 1.4; }
+.water-schedule-rules { margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.water-schedule-table td:first-child { max-width: 150px; }
+.water-knob-occupancy { display: flex; align-items: center; gap: 8px; }
+.water-knob-occupancy .filter-scope-segment button { padding: 3px 9px; font-size: 0.78rem; }
+
 .water-hint-card b { color: var(--blue); }
 .water-side-segment { margin-bottom: 4px; }
 .water-side-note { font-size: 0.76rem; color: var(--text3); line-height: 1.4; }

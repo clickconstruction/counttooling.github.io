@@ -27,7 +27,7 @@ const KIND_BLURB = {
   recommendation: 'In the code, but advisory — an informational note, not a requirement.',
   convention: 'A working figure the trade uses and the app defaults to. Shops override these most.',
 };
-const USED_BY_LABEL = { bidCheck: 'Bid Check', childCount: 'Child counts', chain: 'Chain tool', ductSchedule: 'Duct Schedule', roomSizer: 'Room Sizer', quickCreate: 'Quick creator', counter: 'Counters' };
+const USED_BY_LABEL = { bidCheck: 'Bid Check', childCount: 'Child counts', chain: 'Chain tool', ductSchedule: 'Duct Schedule', roomSizer: 'Room Sizer', quickCreate: 'Quick creator', counter: 'Counters', waterSchedule: 'Water Sizing' };
 
 function valueCell(v) {
   const val = typeof v.value === 'number' ? String(v.value) : escHtml(v.value);

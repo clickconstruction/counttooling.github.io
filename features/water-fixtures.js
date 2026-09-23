@@ -399,7 +399,7 @@
         flow = ' · ' + gpm + ' gpm';
         if (idIn) {
           const v = wm.velocityFps(gpm, idIn);
-          const cap = wm.WATER_VELOCITY_CAPS[row.side];
+          const cap = wm.waterCapFor(row.side, App.getWaterSettings ? App.getWaterSettings() : null);   // rung 5: the schedule's knob
           velocityFps = Math.round(v * 10) / 10;
           ok = v <= cap;
           flow += ' · ' + velocityFps + ' ft/s ' + (ok ? '✓' : '⚠ over ' + cap);
@@ -588,7 +588,7 @@
     if (!fixtures.length) return null;
     const runs = getWaterRuns(state.currentPage).filter((r) => r.id !== wd.draft.id);
     const remaining = wm.waterDraftRemaining({ runs, draft: { id: wd.draft.id, side: wd.side, vertices: wd.draft.points || [] }, fixtures });
-    const sug = wm.waterDraftSuggestion({ remaining, material: wm.waterMaterialFromName(wd.lt.name) });
+    const sug = wm.waterDraftSuggestion({ remaining, material: wm.waterMaterialFromName(wd.lt.name), capFps: wm.waterCapFor(wd.side, App.getWaterSettings ? App.getWaterSettings() : null) });
     if (!sug) return null;
     const currentSizeIn = wm.waterSizeInFromName(wd.lt.name);
     return { ...sug, remaining, currentSizeIn, currentKey: currentSizeIn != null ? wm.sizeKey(currentSizeIn) : null, lineType: wd.lt, draft: wd.draft };
@@ -621,7 +621,10 @@
     if (el.innerHTML !== html) el.innerHTML = html;
     if (el.hidden) el.hidden = false;
   }
-  function onWaterTraceSync(force) { syncWaterHintCard(!!force); }
+  function onWaterTraceSync(force) {
+    syncWaterHintCard(!!force);
+    if (force && App.syncWaterScheduleBtn) App.syncWaterScheduleBtn();   // rung 5: the Water button follows the runs
+  }
 
   // --- the S popover -------------------------------------------------------------
   let popoverOpen = false;
@@ -684,7 +687,8 @@
     sec2.innerHTML = '<div class="duct-popover-section-label">A new run from here, in ' + esc(materialLabel) + '</div>';
     const grid = document.createElement('div');
     grid.className = 'water-size-grid';
-    const options = wm.waterSizeOptions(sug ? sug.gpm : 0, wd.side, material);
+    const capNow = wm.waterCapFor(wd.side, App.getWaterSettings ? App.getWaterSettings() : null);
+    const options = wm.waterSizeOptions(sug ? sug.gpm : 0, wd.side, material).map((o) => ({ ...o, ok: o.velocityFps <= capNow, capFps: capNow }));
     options.forEach((o) => {
       const b = document.createElement('button');
       b.type = 'button';

@@ -312,3 +312,25 @@ test('rung 4: what a trace still has to serve, and the size it earns', () => {
   assert.strictEqual(opts.find((o) => o.key === '1-1/2').ok, true);
   assert.strictEqual(opts[0].capFps, 8);
 });
+
+test('rung 5: the per-project caps and a schedule row\'s numbers', () => {
+  assert.deepStrictEqual(w.normalizeWaterSettings(null), { coldFps: 8, hotFps: 5 });
+  assert.deepStrictEqual(w.normalizeWaterSettings({ coldFps: 6, hotFps: 'x' }), { coldFps: 6, hotFps: 5 });
+  assert.deepStrictEqual(w.normalizeWaterSettings({ coldFps: -1, hotFps: 4 }), { coldFps: 8, hotFps: 4 });
+  assert.strictEqual(w.waterCapFor('hot', { hotFps: 4 }), 4);
+  assert.strictEqual(w.waterCapFor('cold', undefined), 8);
+  // a 1-1/2 in copper cold main serving 13 WSFU with a flush valve on it: 29.4 gpm, 5.3 ft/s, clean
+  let r = w.waterRunSizing({ served: 13, fixtureKeys: ['water-closet-valve', 'lavatory', 'lavatory'], ownFixtureKeys: ['water-closet-valve'], sizeIn: 1.5, material: 'copper', side: 'cold' });
+  assert.strictEqual(r.column, 'flushValve'); assert.strictEqual(r.gpm, 29.4); assert.strictEqual(r.velocityFps, 5.3); assert.strictEqual(r.ok, true); assert.deepStrictEqual(r.warnings, []); assert.strictEqual(r.suggestedKey, '1-1/4');
+  // the same load in 3/4 in: over the cap, and under the flush valve's 1 in minimum
+  r = w.waterRunSizing({ served: 13, fixtureKeys: ['water-closet-valve', 'lavatory'], ownFixtureKeys: ['water-closet-valve'], sizeIn: 0.75, material: 'copper', side: 'cold' });
+  assert.strictEqual(r.ok, false);
+  assert.deepStrictEqual(r.warnings, ['over 8 ft/s', 'under the 1 in a water closet valve needs']);
+  assert.strictEqual(r.minSupplyIn, 1);
+  // a tighter cap from the knob flips a clean row
+  r = w.waterRunSizing({ served: 13, fixtureKeys: ['water-closet-valve'], sizeIn: 1.5, material: 'copper', side: 'cold', settings: { coldFps: 5 } });
+  assert.deepStrictEqual(r.warnings, ['over 5 ft/s']); assert.strictEqual(r.capFps, 5);
+  // a hot run reads the hot cap; no size or material → flow only
+  r = w.waterRunSizing({ served: 3, fixtureKeys: ['lavatory', 'lavatory'], sizeIn: null, material: null, side: 'hot' });
+  assert.strictEqual(r.gpm, 6.5); assert.strictEqual(r.velocityFps, null); assert.strictEqual(r.capFps, 5); assert.strictEqual(r.ok, true); assert.strictEqual(r.key, null);
+});

@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(water): rung 5, the Water Sizing schedule, its knobs, and the block in every export (2026-09-23)
+
+Punch row P4-WATER, the fifth rung, stacked on rung 4. The schedule prices like a bid, the
+Duct Schedule's shape on the water side.
+
+- **The schedule** (`#waterScheduleModal`, a Water button on the Line Types header while the
+  project has a water run): per water run, its name and type, its side, the fixture units it
+  serves (its own fixtures plus its branches, rung 3's walk), the design gpm on the set's curve,
+  the size its type names, the velocity in that bore, and ✓ or ⚠ with the reasons: over the
+  side's cap, or under the supply minimum of a fixture it serves directly (a 1/2 in branch to a
+  flush-valve water closet reads "⚠ over 8 ft/s; under the 1 in a water closet valve needs
+  → 1 in"), with the size that would pass. Cold and hot peaks are the largest run's, never a
+  sum: a branch's fixtures are already in its main's units. Rule chips on the column heads.
+- **The knobs at the foot**, stamped practice, not code: the velocity cap per side
+  (`state.waterSettings`, normalized on read, riding save, load, export, import, the backup and
+  the copy beside `ductSettings`) and the occupancy, which is the same `codes` field Project
+  Settings edits. A cap change re-reads the schedule, the Lines list readouts and the trace's
+  suggestion at S, so one knob moves every surface.
+- **Copy Schedule** writes a tab-separated table (Run · Side · WSFU · gpm · Size · Velocity ·
+  Check, the peaks, the occupancy line). **The report** carries a Water Sizing table in Show
+  Report and Export PDFs. **Copy Summary and Copy to /Tooling** append the rows under
+  `--- Water sizing ---`, the `--- Duct ---` precedent, and the summary parser counts that
+  block as its own unit so the ea / ft counts stay exact.
+- Four more rules are `applied` now that the schedule and the S popover read them: the demand
+  curve, the velocity cap, the bores and the fixture supply minimums (used_by Water Sizing);
+  `service-min` waits for rung 6's Bid Check row.
+- Not built, by the ladder: the Bid Check rows and the gate (rung 6). The pressure and
+  developed-length check is still nobody's; the schedule's foot says so.
+- water-schedule.spec.js pins the rows, the peaks, the knobs and their reach, the persistence,
+  the exact copy text, the report table, the summary blocks and the parser; water-model.test.js
+  the row math.
+
 ## feat(water): rung 4, the moment at S, what the trace still has to serve and the size it earns (2026-09-23)
 
 Punch row P4-WATER, the fourth rung, stacked on rung 3. This is where the water tables start

@@ -36,6 +36,7 @@
     const materialSel = document.getElementById('quickLineMaterial');
     sizeSel.innerHTML = mods.sizes.map(s => '<option value="' + esc(s) + '">' + esc(s) + '</option>').join('');
     materialSel.innerHTML = mods.materials.map(m => '<option value="' + esc(m) + '">' + esc(m) + '</option>').join('');
+    if (App.registerWaterSideForm) { App.registerWaterSideForm('quick', { radioName: 'quickLineWaterSide', groupId: 'quickLineWaterGroup', nameInputId: 'quickLineName', name: () => document.getElementById('quickLineName')?.value || '' }); App.resetWaterSideForm('quick'); }   // WATER-PLAN rung 3
     updateQuickLineNamePreview();
     const swatchEl = document.getElementById('quickLineSwatch');
     if (swatchEl) {
@@ -60,6 +61,7 @@
     if (nameEl) nameEl.value = name;
     const swatchEl = document.getElementById('quickLineSwatch');
     if (swatchEl) swatchEl.style.background = App.getLineModifiers().defaultColor || App.COLORS[2];
+    if (App.syncWaterSideForm) App.syncWaterSideForm('quick');   // WATER-PLAN rung 3: the composed name may say hot or cold
   }
   // (Tier-3 B17: the dead #plumLineBtn sidebar opener was deleted with its
   // .sidebar-plum-row markup and viewerHideIds entry; the Quick tab stays
@@ -119,6 +121,7 @@
     const curveStyle = curveSel ? curveSel.value : 'straight';
     App.pushUndoSnapshot();
     const newLt = { id: App.uid(), name, color, curveStyle };
+    if (App.applyWaterSideToLineType) App.applyWaterSideToLineType('quick', newLt);   // WATER-PLAN rung 3, set-only
     state.lineTypes.push(newLt);
     state.activeLineTypeId = newLt.id;
     App.markProjectDirty();

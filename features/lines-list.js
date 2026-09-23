@@ -119,6 +119,7 @@
           dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
         }
         div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
+        if (App.waterLineMetaHtml) div.insertAdjacentHTML('beforeend', App.waterLineMetaHtml(line, it.pageIdx));   // WATER-PLAN rung 3: "cold · 6 WSFU"
         div.onclick = (e) => {
           if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;
           if (isSelected) {

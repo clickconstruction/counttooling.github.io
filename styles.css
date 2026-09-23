@@ -1949,6 +1949,8 @@ body.tour-active .canvas-empty-hint { display: none; }
 .modal-card .wsfu-occ-flip:hover { color: var(--text); }
 .wsfu-chip .rule-chip { margin-left: 2px; }
 .summary-wsfu-row .derived-tag { text-transform: none; }
+/* WATER-PLAN rung 3: the water side and the fixture units a run serves, under a line type or a line row */
+.sidebar-item-line-type .line-water-meta { font-size: 0.72rem; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; margin-left: 24px; }
 /* D19 (B19 part 2): the "More ▸ air & mounting" disclosure that folds the
    CFM / Mount height / Flex drop fields on the Counter modal's Create and Quick
    Count tabs. Same shape as the Load Project filters toggle (button with

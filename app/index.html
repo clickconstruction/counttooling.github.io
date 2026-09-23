@@ -931,6 +931,11 @@
         <label>Display</label>
         <div class="radio-seg" role="radiogroup"><label><input type="radio" name="lineTypeCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="lineTypeCurve" value="arc"><span>Curved</span></label></div>
       </div>
+      <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+      <div class="form-group" id="lineTypeWaterGroup" style="display:none;">
+        <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+        <div class="radio-seg" role="radiogroup"><label><input type="radio" name="lineTypeWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="lineTypeWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="lineTypeWaterSide" value="hot"><span>Hot</span></label></div>
+      </div>
       <div class="form-group">
         <label>Color</label>
         <div class="color-row" id="lineTypeColorRow"></div>
@@ -1791,6 +1796,11 @@
           <label>Display</label>
           <div class="radio-seg" role="radiogroup"><label><input type="radio" name="createLineTypeCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="createLineTypeCurve" value="arc"><span>Curved</span></label></div>
         </div>
+        <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+        <div class="form-group" id="createLineTypeWaterGroup" style="display:none;">
+          <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+          <div class="radio-seg" role="radiogroup"><label><input type="radio" name="createLineTypeWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="createLineTypeWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="createLineTypeWaterSide" value="hot"><span>Hot</span></label></div>
+        </div>
         <div class="form-group">
           <label>Color</label>
           <div class="color-row" id="createLineTypeColorRow"></div>
@@ -1831,6 +1841,11 @@
         <div class="form-group">
           <label>Display</label>
           <div class="radio-seg" role="radiogroup"><label><input type="radio" name="quickLineCurve" value="straight" checked><span>Straight</span></label><label><input type="radio" name="quickLineCurve" value="arc"><span>Curved</span></label></div>
+        </div>
+        <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+        <div class="form-group" id="quickLineWaterGroup" style="display:none;">
+          <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+          <div class="radio-seg" role="radiogroup"><label><input type="radio" name="quickLineWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="quickLineWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="quickLineWaterSide" value="hot"><span>Hot</span></label></div>
         </div>
         <div class="actions">
           <button id="quickLineCancel">Cancel</button>
@@ -2164,6 +2179,11 @@
       <div class="form-group" id="counterLineTypeDetailsCurveGroup" style="display:none;">
         <label>Display</label>
         <div class="radio-seg" role="radiogroup"><label><input type="radio" name="counterLineTypeDetailsCurve" value="straight"><span>Straight</span></label><label><input type="radio" name="counterLineTypeDetailsCurve" value="arc"><span>Curved</span></label></div>
+      </div>
+      <!-- WATER-PLAN rung 3: the water side of a line type (features/water-runs.js), prefilled from the name; shown on a plumbing-shaped project. -->
+      <div class="form-group" id="counterLineTypeDetailsWaterGroup" style="display:none;">
+        <label>Water <span class="form-sublabel">(a run fixtures attach to; leave — for pipe with no side)</span></label>
+        <div class="radio-seg" role="radiogroup"><label><input type="radio" name="counterLineTypeDetailsWaterSide" value="" checked><span>—</span></label><label><input type="radio" name="counterLineTypeDetailsWaterSide" value="cold"><span>Cold</span></label><label><input type="radio" name="counterLineTypeDetailsWaterSide" value="hot"><span>Hot</span></label></div>
       </div>
       <div class="form-group">
         <div class="section-rule"><b>On pages</b></div>
@@ -3616,6 +3636,7 @@
   <script src="/features/duct-schedule.js"></script>
   <script src="/features/duct-suggest.js"></script>
   <script src="/features/water-fixtures.js"></script>
+  <script src="/features/water-runs.js"></script>
   <script src="/features/duct-callouts.js"></script>
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>

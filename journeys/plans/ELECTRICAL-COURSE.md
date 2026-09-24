@@ -51,6 +51,38 @@ is unchanged (proved element for element before the refactor was kept).
 chain 60.5 ft (22.5 on the plan and four 9.5 ft verticals the chain wrote), the homerun 84.17 ft,
 the feeder 12.33 ft with its rise. Computed from the same flat geometry the button lays.
 
+## Trade findings from the 2026-09-24 read
+
+A read of every step against the sheet's source and the app's code, after a new estimator got lost
+on the tours' Prove the scale (CHANGELOG 2026-09-24). These are the TRADE items: the drawing, the
+numbers or the teaching, where someone with the trade should say which side is right before anyone
+edits. The app-side stalls from the same read (dead-end steps, hints, steps that pass on their own)
+are being fixed separately. Each item names the step and where it lives; nothing here was walked
+live, and a code citation marked *from memory* came from the reviewer's recollection, not the
+printed code.
+
+- **Two 208 V two-pole circuits on E-501** (`sheet:schedule` ~306-309): the step wants "the one",
+  and both DW (2,4) and EF-1 (8,10) are. A reader who picks EF-1 is told to look for what it
+  already is. Ask for the dishwasher's row. Near it: `row` (~312) says every other circuit is #12
+  (RTU-1 is #8) and `equipment:poles` (~482) says everything else is one pole (EF-1 is two).
+- **The receptacle story in chapter 2** (~325, ~337): "twenty receptacles" where the sheet has 21
+  (and the chapter's done text says 21); the kitchen duplex that 210.8(B)(2) makes GFCI is accepted
+  as GFCI in `gfci` and then counted again as a duplex in `duplex`, whose body calls it both. Pick
+  one answer, and tell `gfci` to leave it.
+- **E-601 calls the dishwasher three phase** (scripts/sample-electrical.js ~270, note 2); E-501 and
+  the course say single phase.
+- **The rise** (`service:rise` ~515): MDP at 5 ft and the panel top at 6'6" make a 1.5 ft rise;
+  the step asks for 5 ft with "12 ft minus 7" as the only reason. Say which drawing gives the
+  12 ft, or change the heights.
+- **The clearance** (`sheet:clearance` ~301-304): "wall to its outer edge", but the dashed box
+  starts at the panel face, 10 in off the wall, so a wall click reads 3'-10". Measure from the
+  panel face, or draw the box from the wall.
+- **Arrows that are not where the text says**: `circuits:homerun` (~443) puts LP-1-1 at the top
+  receptacle (it is between the 2nd and 3rd); `sheet:panel` (~295) has every homerun arrow point
+  at the panel (they are sideways stubs, LP-1-9 points away).
+- **Prove it** (~291) opens with "the same string" as the plumbing course, which a reader who
+  started here has not seen.
+
 ## Open, and not blocking
 
 - **A trade review** of chapters 2 to 7 and the panel schedule's loads and sizes (EC-REVIEW).

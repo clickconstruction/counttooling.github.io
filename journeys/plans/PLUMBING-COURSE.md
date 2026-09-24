@@ -133,6 +133,47 @@ it, cited by section, never the code reprinted, never company practice.** A reas
 does not show and no section covers is written as practice ("an engineer puts a drain where a
 floor gets hosed"), not as a rule.
 
+## Trade findings from the 2026-09-24 read
+
+A read of every step against the sheet's source and the app's code, after a new estimator got lost
+on the tours' Prove the scale (CHANGELOG 2026-09-24). These are the TRADE items: the drawing, the
+numbers or the teaching, where someone with the trade should say which side is right before anyone
+edits. The app-side stalls from the same read (dead-end steps, hints, steps that pass on their own)
+are being fixed separately. Each item names the step and where it lives; nothing here was walked
+live, and a code citation marked *from memory* came from the reviewer's recollection, not the
+printed code.
+
+- **P-401 contradicts P-101** (chapter 7, `details`, course-plumbing.js ~616-642; the sheet in
+  scripts/sample-plan-candidates.js ~686-726): five WCs and a urinal on P-401 against two WCs on
+  P-101, MEN and WOMEN swapped, the rooms 12'×10' against about 11'-8"×12'-8", and note 2's "(4)
+  cook line and bar stations" against three hand sinks. "Count on one sheet, never both" then
+  collides with "count one, bid four". Redraw P-401 to match, or make the mismatch the step (an RFI).
+- **Trap arm citation** (`riser:traparm` ~544-548 and the riser sheet's note): cited as IPC Table
+  1002.2; the IPC trap-arm table is 906.1, and UPC Table 1002.2 would fail this 4' arm at 1-1/2"
+  (*from memory*). The step's check also reads only the value, so the FD arm's 4'-0" passes too.
+- **Gas hanger spacing** (`gas` chapter ~598): cited as IPC 308.5 at 12 ft; gas piping support
+  is the fuel gas code (IFGC 415.1), about 10 ft for 1-1/4" steel (*from memory*).
+- **The gas main's sizes** (`gas:meter` to `gas:trace`, ~570-580): the reveal teaches 1-1/2" from
+  the meter stepping to 1-1/4", then the course makes one 1.25in BI type and traces the whole main
+  with it (so does the reference). Two types split at the WH tee, or trace from the change.
+- **U-1 and WC-1 share 4 DFU** (`sheet:row` ~357-362; sheet ~732): the step asks for the row with
+  the biggest number in the DFU column, and a reader who picks U-1 is told to look for a bigger
+  one. Ask for the biggest waste pipe, or give U-1 another value. P-101 also has no urinal and
+  nothing says U-1 is unused (`fixtures:counters` ~382-389).
+- **Cleanouts** (`waste:cleanouts` ~507-511): the sheet's note says a cleanout at each turn, the
+  grease lines turn five times with none; a reader who follows the note adds marks the check
+  ignores but the takeoff keeps.
+- **The wet wall** (`fixtures:wetwall` ~377/382): "every fixture against the shared wall or the top
+  wall, back to back", but the MEN lav hangs on MEN's west wall and the rooms repeat rather than
+  mirror; the 11 ft reading is WC to WC, not a length of wall.
+- **Which hand sink** (`fixtures:handsinks` ~391-395): the right one is about 8 ft from the range
+  past the prep sink; the exit hand sink is as close to the fryer end, and "under HOOD ABOVE" does
+  not tell them apart.
+- **Words that do not match the sheet**: `fixtures:keys` (~412) says ten little 1/2" lines ride the
+  primers (only the primer row is added); `waste:layer` (~490) says the red note is nine words (it
+  is seven); `gas:trace` / `gas:drops` (~578, ~587) say "behind the cook line", but the line is
+  drawn on the aisle side.
+
 ## Open, and not blocking
 
 - **A trade review** of chapters 2 to 6 (the gas chapter cites the fuel gas code too) and the

@@ -153,6 +153,22 @@ test.describe('The electrical course: the chapters', () => {
 });
 
 test.describe('The electrical course: a question is answered with a click', () => {
+  test('the panel step passes on the counter the reader made, not an Artboard counter that shares the word (wendi, 2026-09-24)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=electrical:sheet', errors);
+    await openSheets(page);
+    await gotoStep(page, 'panel');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'panel');
+    // A standing palette counter with "panel" in its name, no marks, ahead of the reader's in the list (the Artboard rides into the set).
+    await page.evaluate(() => { const c = { id: window.App.uid(), name: 'Panel Schedule Box', icon: window.App.getOrderedIcons()[0].value, color: '#888888' }; window.state.counters.unshift(c); });
+    // The reader adds Panelboard from the Quick tab (armed on Add Counter) and clicks LP-1.
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'Panelboard Panel', icon: window.App.getOrderedIcons()[0].value, color: '#8a4bb0', mountHeightIn: 78 }; window.state.counters.push(c); window.state.activeCounterType = c.id; k.mark(0, c, [k.P(704, 506)]); k.dirty(); });
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true, null, { timeout: 5000 });
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    expect(errors).toEqual([]);
+  });
+
   test('a duplex clicked as a GFCI is refused and told why; the missing GFCIs are named by room', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];

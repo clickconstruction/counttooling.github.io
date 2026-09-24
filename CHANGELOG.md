@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(lessons): a lesson reads the counter the reader made, not the first palette item that shares its word (2026-09-24)
+
+Reported by wendi on the electrical course's "Where is the panel?" step: she added Panelboard from
+the Quick tab, clicked LP-1, and the card kept saying "The counter is armed: click LP-1" with Next
+dark. The lesson kit's `counterNamed(re)` (features/lessons.js) took the FIRST counter whose name
+matched the step's word, and the set opener keeps the Artboard, so a standing palette counter with
+"panel" in its name and no marks sat ahead of her fresh "Panelboard Panel" in the list and every
+check and hint read that one. `counterNamed` / `lineTypeNamed` now choose, among the matches: the
+lesson's own (lesson-flagged) item, else the one the reader has armed (`activeCounterType` /
+`activeLineTypeId`), else one that carries marks or lines, else the NEWEST match. No course file
+changed: every `counter(RE.x)` / `circlesFor` / hint goes through the kit. Pinned by
+course-electrical.spec.js ("the panel step passes on the counter the reader made, not an
+Artboard counter that shares the word"), which fails on the old lookup.
+
+---
+
 ## fix(sample-plan): the corridor's dimension string reads what the corridor measures (2026-09-23)
 
 SAMPLE-A hand-off, one polish item done. On the design-build sample plan (A-101, candidate A in

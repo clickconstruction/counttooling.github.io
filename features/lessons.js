@@ -83,8 +83,18 @@
   const pageAnn = (i) => { const p = S().pages && S().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
   const onPage = (i) => S().currentPage === i;
   const isSetOpen = (lesson) => { const set = setOf(lesson); return !!(S().pages && S().pages.length === set.pages && S().currentProjectName === set.name); };
-  const counterNamed = (re) => (S().counters || []).find((c) => c.lesson && re.test(c.name || '')) || (S().counters || []).find((c) => re.test(c.name || ''));
-  const lineTypeNamed = (re) => (S().lineTypes || []).find((l) => l.lesson && re.test(l.name || '')) || (S().lineTypes || []).find((l) => re.test(l.name || ''));
+  // The counter (line type) a lesson names, among the palette items matching its word: the
+  // lesson's own (lesson-flagged) first; else the one the reader has armed; else one that
+  // carries marks; else the NEWEST match. Never the first match: the Artboard rides into the
+  // set, so a standing palette counter with the word in its name and no marks ("Panel …"
+  // ahead of the reader's fresh "Panelboard Panel", wendi, 2026-09-24) shadowed the counter
+  // the reader made, and a right click read as an armed counter never used.
+  const named = (list, re, armedId, used) => {
+    const hits = (list || []).filter((x) => re.test(x.name || ''));
+    return hits.find((x) => x.lesson) || hits.find((x) => x.id === armedId) || hits.find(used) || hits[hits.length - 1];
+  };
+  const counterNamed = (re) => named(S().counters, re, S().activeCounterType, (c) => K().markCount(c.id) > 0);
+  const lineTypeNamed = (re) => named(S().lineTypes, re, S().activeLineTypeId, (l) => (S().pages || []).some((p) => { const a = App.getActiveAnnotations(p); return !!a && (a.polylines || []).concat(a.quickLines || []).some((ln) => ln.lineTypeId === l.id); }));
   const marksOf = (c) => (c ? K().markCount(c.id) : 0);
   const scaleIs = (i, ppu) => { const sc = App.getPageScale && App.getPageScale(i); return !!sc && Math.abs(sc.pixelsPerUnit - ppu) < 0.05; };
   const inRect = (pt, r) => pt.x >= r.x1 && pt.x <= r.x2 && pt.y >= r.y1 && pt.y <= r.y2;

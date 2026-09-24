@@ -116,6 +116,24 @@ test.describe('Electrical, First-Class S6 — read the tags', () => {
     expect(errors).toEqual([]);
   });
 
+  test('two counters carry the same tag: the armed one takes the click, not the first in the list (by hand, 2026-09-24)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await bootWithTextPdf(page, 'electrical');
+    // the standing palette's "B — 2x2 troffer" (typeB) sits first; the reader makes a second B and arms it
+    await page.evaluate(() => { const s = window.state; s.counters.push({ id: 'typeB2', name: 'B — the one just made', icon: 'M96 96h448v448H96z', color: '#e85447' }); s.activeCounterType = 'typeB2'; window.App.updateUI(); });
+    expect(await page.evaluate(() => { window.state.mousePos = { x: 425, y: 305 }; return window.App.tagHintText(); })).toBe('Plan says B → B — the one just made');
+    await page.evaluate(() => window.App.handleCanvasClick(null, { x: 425, y: 305 }));
+    expect(await page.evaluate(() => { const m = window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers; return { b: (m.typeB || []).length, b2: (m.typeB2 || []).length }; })).toEqual({ b: 0, b2: 1 });
+    // with Type A armed the tag still wins, and the first B takes it as before
+    await page.evaluate(() => { window.state.activeCounterType = 'typeA'; window.App.updateUI(); });
+    expect(await page.evaluate(() => { window.state.mousePos = { x: 425, y: 305 }; return window.App.tagHintText(); })).toBe('Plan says B → B — 2x2 troffer');
+    await page.evaluate(() => window.App.handleCanvasClick(null, { x: 425, y: 305 }));
+    expect(await page.evaluate(() => { const m = window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers; return { a: (m.typeA || []).length, b: (m.typeB || []).length, b2: (m.typeB2 || []).length }; })).toEqual({ a: 0, b: 1, b2: 1 });
+    expect(errors).toEqual([]);
+  });
+
   test('a plumbing project reads nothing: no hint, no swap, the Create-tab link hidden', async ({ page }) => {
     await bootWithTextPdf(page, 'plumbing').catch(() => {});
     // the text cache never primes for a non-electrical project with untagged counters

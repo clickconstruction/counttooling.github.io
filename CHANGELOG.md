@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tag-reader): two counters carrying one tag, the armed one takes the click (2026-09-24)
+
+Found by hand on the electrical course's J-box step, on a device with a standing palette: the
+reader adds "J-Box Junction Box" from the Quick tab and clicks the six J-boxes, and every mark
+lands on the palette's "J-Box 4x4". tag-model's `tagOfCounter` reads the tag J off both names (the
+leading token before a hyphen), the plan prints J beside each box, and `counterForTag` took the
+FIRST counter with the tag. The toast even said so, "Plan says J → J-Box 4x4". It now takes the
+ARMED counter when it carries the tag (the reader chose it), else the first as before, so the
+"one tool for every type" swap still fires when the armed counter is a different letter. Pinned by
+tag-reader.spec.js ("two counters carry the same tag: the armed one takes the click").
+
+## fix(tour): the card keeps off every control a step names, not only the one it points at (2026-09-24)
+
+Found by hand at 1440 × 900 on the electrical course's GFCI step (and chapter 1's panel step, the
+same shape): the step points at the sheet, its first line says click COUNTERS [[+ Add]], and the
+card, sent to the top-left corner by `cardAt`, sat on that button. The engine placed the card
+beside the ONE target it points at and, for a corner, checked only the on-sheet zones. It now
+also gathers the step's other named controls that are on screen (`otherControlBoxes`, inside the
+open dialog when one is up, never the sheet) and, when the chosen place covers any of them or the
+pointed-at control, takes the first corner clear of all of them; none clear, it stays. Pinned by
+course-electrical.spec.js ("the card keeps off every control a step names"), which reads
+`apart: false` on the old engine.
+
 ## fix(lessons): a lesson clears the sidebar search boxes when its set opens, and types them back when it stops (2026-09-24)
 
 The second half of wendi's report: the Counters search box still held "FD" from her last bid (the

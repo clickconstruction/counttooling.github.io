@@ -140,9 +140,16 @@
   // --- tag-aware placement ------------------------------------------------------
   let currentHint = null;   // { tag, counterId | null, x, y } for the cursor position
 
+  // The counter a tag belongs to: the ARMED counter when it carries the tag (the reader
+  // chose it, and two counters can share a tag: a standing "J-Box 4x4" beside the "J-Box
+  // Junction Box" just made both read J, and every click went to the palette's one, found
+  // by hand 2026-09-24), else the first counter with the tag.
   function counterForTag(tag) {
     const tm = TM();
-    return (App.state.counters || []).find((c) => tm.tagOfCounter(c) === tag) || null;
+    const cs = App.state.counters || [];
+    const armed = cs.find((c) => c.id === App.state.activeCounterType);
+    if (armed && tm.tagOfCounter(armed) === tag) return armed;
+    return cs.find((c) => tm.tagOfCounter(c) === tag) || null;
   }
   function hintAt(pt) {
     const state = App.state;

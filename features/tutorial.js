@@ -1036,6 +1036,20 @@
         const clear = (c) => !zs.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
         place = corners.find(clear) || corners[0];
       }
+      // The step's OTHER named controls keep the card off them too. The card is placed
+      // beside the one it points at, and a corner (cardAt, or the sheet as the target)
+      // never looked at the rest: found by hand 2026-09-24, the GFCI step points at the
+      // sheet, its first line says click COUNTERS + Add, and the top-left card sat on
+      // that button. The first corner clear of every box wins; none clear, it stays.
+      const ctl = otherControlBoxes(step, target, openModal);
+      if (ctl.length) {
+        const keep = zs.concat(ctl, r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }]);
+        const clearOf = (c) => !keep.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
+        if (!clearOf(place)) {
+          const corners = [{ left: edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: 56 }, { left: edge, top: 56 }];
+          place = corners.find(clearOf) || place;
+        }
+      }
       if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
       const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
@@ -1110,6 +1124,20 @@
     });
     html += '</g>';
     if (svg.__last !== html) { svg.innerHTML = html; svg.__last = html; }
+  }
+  // The step's named controls other than the one pointed at, on screen and not the sheet
+  // (inside the open dialog when one is up), as screen boxes the card must keep off.
+  function otherControlBoxes(step, pointed, within) {
+    const out = [];
+    (step.target || []).forEach((sel) => {
+      const el = document.querySelector(sel);
+      if (!el || el === pointed || el.offsetParent === null || (within && !within.contains(el))) return;
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height || r.width * r.height > window.innerWidth * window.innerHeight * 0.4) return;
+      if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return;
+      out.push({ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom });
+    });
+    return out;
   }
   function zoneScreenBoxes(step) {
     const b = sheetBox(); if (!b) return [];

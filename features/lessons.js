@@ -83,8 +83,18 @@
   const pageAnn = (i) => { const p = S().pages && S().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
   const onPage = (i) => S().currentPage === i;
   const isSetOpen = (lesson) => { const set = setOf(lesson); return !!(S().pages && S().pages.length === set.pages && S().currentProjectName === set.name); };
-  const counterNamed = (re) => (S().counters || []).find((c) => c.lesson && re.test(c.name || '')) || (S().counters || []).find((c) => re.test(c.name || ''));
-  const lineTypeNamed = (re) => (S().lineTypes || []).find((l) => l.lesson && re.test(l.name || '')) || (S().lineTypes || []).find((l) => re.test(l.name || ''));
+  // The counter (line type) a lesson names, among the palette items matching its word: the
+  // lesson's own (lesson-flagged) first; else the one the reader has armed; else one that
+  // carries marks; else the NEWEST match. Never the first match: the Artboard rides into the
+  // set, so a standing palette counter with the word in its name and no marks ("Panel …"
+  // ahead of the reader's fresh "Panelboard Panel", wendi, 2026-09-24) shadowed the counter
+  // the reader made, and a right click read as an armed counter never used.
+  const named = (list, re, armedId, used) => {
+    const hits = (list || []).filter((x) => re.test(x.name || ''));
+    return hits.find((x) => x.lesson) || hits.find((x) => x.id === armedId) || hits.find(used) || hits[hits.length - 1];
+  };
+  const counterNamed = (re) => named(S().counters, re, S().activeCounterType, (c) => K().markCount(c.id) > 0);
+  const lineTypeNamed = (re) => named(S().lineTypes, re, S().activeLineTypeId, (l) => (S().pages || []).some((p) => { const a = App.getActiveAnnotations(p); return !!a && (a.polylines || []).concat(a.quickLines || []).some((ln) => ln.lineTypeId === l.id); }));
   const marksOf = (c) => (c ? K().markCount(c.id) : 0);
   const scaleIs = (i, ppu) => { const sc = App.getPageScale && App.getPageScale(i); return !!sc && Math.abs(sc.pixelsPerUnit - ppu) < 0.05; };
   const inRect = (pt, r) => pt.x >= r.x1 && pt.x <= r.x2 && pt.y >= r.y1 && pt.y <= r.y2;
@@ -182,6 +192,7 @@
       else if (!(await App.closeProject({ route: 'lesson' }))) return;   // their own plan: the app's one Close project, which asks first
     }
     sweepLessonPalette();
+    setSearches({ counter: '', lineType: '', lines: '' });   // a filter typed on the last bid hid the counter the reader just made (wendi, 2026-09-24)
     seededFor = null;
     openingFor = lesson.id;
     const set = setOf(lesson);
@@ -635,13 +646,28 @@
 
   // A lesson teaches two settings that live on the DEVICE, not the project: the sidebar
   // filter and Snap to 45°. It puts both back the way it found them when it stops, so a
-  // lesson never changes how the reader's own bids behave.
+  // lesson never changes how the reader's own bids behave. The three sidebar search boxes
+  // (Counters, Line types, Lines: state + localStorage, per device) ride the same way: a
+  // word typed on the last bid is cleared when the set opens, so every counter the lesson
+  // makes is in the list, and typed back when the lesson stops.
+  const SEARCHES = { counter: ['counterSearch', 'counterSearchInput'], lineType: ['lineTypeSearch', 'lineTypeSearchInput'], lines: ['linesSearch', 'linesSearchInput'] };
+  const getSearches = () => { const out = {}; Object.keys(SEARCHES).forEach((k) => { out[k] = S()[SEARCHES[k][0]] || ''; }); return out; };
+  function setSearches(values) {
+    Object.keys(SEARCHES).forEach((k) => {
+      const [field, inputId] = SEARCHES[k];
+      const v = values[k] || '';
+      S()[field] = v;
+      try { if (v) localStorage.setItem(field, v); else localStorage.removeItem(field); } catch (_) { /* storage may be unavailable */ }
+      if (el(inputId)) el(inputId).value = v;
+    });
+  }
   let deviceBefore = null;
-  function rememberDevice() { deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) }; }
+  function rememberDevice() { deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical), searches: getSearches() }; }
   function restoreDevice() {
     if (!deviceBefore) return;
     if (App.getCounterListFilterScope && App.getCounterListFilterScope() !== deviceBefore.scope) App.setCounterListFilterScope(deviceBefore.scope);
     if (!!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) !== deviceBefore.snap && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
+    setSearches(deviceBefore.searches || {});
     deviceBefore = null;
     App.updateUI();
   }

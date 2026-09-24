@@ -41,8 +41,12 @@ async function doAndGo(page) {
   const was = await stepId(page);
   await page.evaluate(() => window.App.tutorialDoStep());
   await page.waitForFunction((w) => window.App.tutorialStepId() !== w || document.getElementById('tourNext').classList.contains('tour-next-ready'), was, { timeout: 8000 });
-  await page.waitForTimeout(1100);
-  if ((await stepId(page)) === was) await page.click('#tourNext');
+  // give a doing step its beat to move itself on (longer on a slow runner)...
+  await page.waitForFunction((w) => window.App.tutorialStepId() !== w, was, { timeout: 2500 }).catch(() => {});
+  // ...then press Next only if it is STILL this step, in one move inside the page: a click from
+  // outside raced the auto-advance on CI and landed on the next step's disabled Next.
+  await page.evaluate((w) => { if (window.App.tutorialStepId() === w) { const b = document.getElementById('tourNext'); if (b && !b.disabled) b.click(); } }, was);
+  await page.waitForFunction((w) => window.App.tutorialStepId() !== w, was, { timeout: 8000 });
 }
 
 test.describe('Interactive walkthrough', () => {

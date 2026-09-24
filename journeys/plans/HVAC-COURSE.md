@@ -55,6 +55,34 @@ The same Main St Restaurant, on `restaurantShell`: a diffuser on M-101 sits at a
 50.5 (the main's last span and the kitchen branch), 12×10 10, 12×8 40.5, 10×8 21.5, 20×16 22,
 8"ø 27.6, 18"ø welded black steel 10.1, from the same flat geometry the button lays; the bid weight from the Duct Schedule.
 
+## Trade findings from the 2026-09-24 read
+
+A read of every step against the sheet's source and the app's code, after a new estimator got lost
+on the tours' Prove the scale (CHANGELOG 2026-09-24). These are the TRADE items: the drawing, the
+numbers or the teaching, where someone with the trade should say which side is right before anyone
+edits. The app-side stalls from the same read (dead-end steps, hints, steps that pass on their own)
+are being fixed separately. Each item names the step and where it lives; nothing here was walked
+live, and a code citation marked *from memory* came from the reviewer's recollection, not the
+printed code.
+
+- **The 8" diffuser neck "whistles"** (`diffusers:neck` ~381-382): 200 CFM through an 8" neck is
+  about 573 fpm, inside the 400-600 fpm band the card itself quotes, and 10" is 367, below it.
+  Quote the band the trade uses (300-500?) or drop the number.
+- **Exhaust and make-up air on RTU-1** (`exhaust:makeup` ~508-511, chapter 8's `layRun` ~192-198):
+  new runs take the active group, RTU-1, and designed air adds supply and exhaust alike, so MA-1's
+  2,000 and EG-1's 225 land on RTU-1 (about 4,875 / 3,000 ⚠) and "Systems within capacity" warns,
+  against what chapter 4 taught. Decide whether exhaust belongs on a supply unit's capacity, and
+  give MAU-1 its own system.
+- **The size changes on the main** (`main:trace` ~423): "click the corner, press S" at 20x12 where
+  the run is straight, and each size label is printed about 60 px downstream of its change
+  (scripts/sample-hvac.js ~99), so a reader clicks at the label and chapter 8's feet by size drift.
+- **Counts in the words**: `sheet:what` (~295) says three kinds of duct and four of grille (the
+  legend has four and three); `diffusers:rest` (~376) and the chapter's done text say the row reads
+  ✓ (the row never draws one; the ⚠ just goes).
+- **`exhaust:makeup` opens with "Spiral round in ten-foot sticks…"**, left over from the restroom
+  step, on a card about a 20x16 rectangular duct; "the MAU-1 drop" sits on the drawn back-run band
+  with no drop symbol.
+
 ## Open, and not blocking
 
 - **A trade review** of chapters 2 to 7, the room air schedule's numbers and the diffuser necks

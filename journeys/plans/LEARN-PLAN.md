@@ -93,3 +93,46 @@ hand-built state change where a writer exists. Bodies are lines, one action per 
 line, controls as `[[chips]]`, no em dashes. Numbers quoted in a body are read live or
 pinned by spec. A lesson refuses to start over a cloud project, and never becomes the
 device's default trade.
+
+## Card wording that does not match the screen (the 2026-09-24 read)
+
+From the same read that found the courses' trade items (their plan files) and the stalls (fixed
+separately): step cards that describe the screen wrongly or not at all. None stops the reader for
+good, and each is an edit to a step body or hint. Items marked *suspect* were read in code, not
+walked.
+
+**The plumbing tour** (features/tutorial.js `PLUMBING_STEPS`, walked live):
+- `size`: "The card above the sheet reads…": the water card sits at the bottom of the sheet.
+  "Pick 1in PEX" says nowhere to pick it (it is already the active type). "1in holds, 3/4in would
+  do" never says why to step down (3/4" also stays under 8 fps and costs less). The size popover
+  opens over circle 2, the next place the card sends the reader.
+- `wsfu`: "its public word flips one counter to the private column" does not say what public and
+  private mean (the IPC table's two columns) or that the word is a button.
+
+**The HVAC course** (features/course-hvac.js):
+- `system:designed` (~405) and `main:fittings` (~441): designed air is "on the DUCT section's
+  header"; it is on RTU-1's row under GROUPS, and in chapter 4 the DUCT section is not on screen.
+- `rooms:dining` (~337) and the `rooms:kitchen` hint (~349): "click the pencil beside DINING";
+  room rows have no pencil, a click on the row opens Edit Room.
+- `sheet:unit` (~308): the Quick tab offers "Size, Type and Mounting"; the third field is Material.
+- `system:group` (~399): "In ESP, type 1.0"; the field is labelled Static available.
+- `main:arm` (~418): "Set Liner to Wrap"; the select is labelled Insulation.
+- `sheet:schedule` (~314): "Under PAGES, click M-501", but the Quick Add Counter a step before
+  collapsed PAGES.
+- `main:arm` / `main:kitchen` (~418, ~432, *suspect*): the size prefill reads the callout nearest
+  the cursor's last spot, so the kitchen branch may open at 12x10, not 16x10, and neither step has
+  a hint; `main:trace`'s hint goes quiet once a run with a missed step-down is committed. Give each
+  step its size in the body and a hint for a committed run at the wrong sizes.
+- `bid:handoff` (~561) and `bid:rows` (~550): Copy RFI Flags "puts the hood question beside it",
+  but no step makes an RFI; the rows reveal cites "the two you counted", and chapter 9 seeds no
+  fire dampers.
+
+**The electrical course** (features/course-electrical.js):
+- `bid:handoff` (~574): Copy RFI Flags "puts the shunt-trip question beside it", but chapter 9
+  seeds no RFI note.
+- Chapter 8 `lay` (*suspect*): the Quick tab names the meter "Meter Panel", which `/panel/i`
+  matches, so with the meter armed the hint can say "Not all counted: Panelboard" over a counted
+  panel. Tighten `RE.panel` to `/panelboard|\blp-/i`.
+- `service:gear` (~522) and `conduit:chain` (~411, *suspect*): no hint. The meter and MDP circles
+  are 17 pt apart, so a click with the other counter armed is easy; a chain with a counter that has
+  no mount height, or no ceiling set, writes no drops and the card just waits.

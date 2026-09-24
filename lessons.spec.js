@@ -157,6 +157,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.locator('#pdfInput').setInputFiles('test-page.pdf');
     await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
     await page.evaluate(() => { const s = window.state; s.counters.push({ id: 'mine', name: 'My Counter', icon: window.App.getOrderedIcons()[0].value, color: '#fff' }); window.App.ensureActiveCanvas(s.pages[0]).annotations.counterMarkers.mine = [{ x: 50, y: 50, id: 'm1', group: null }]; window.App.markProjectDirty(); window.App.updateUI(); });
+    // a word typed in the Counters search on this bid (per device; it hid the counter wendi made in a lesson, 2026-09-24)
+    await page.locator('#counterSearchInput').fill('FD');
+    expect(await page.evaluate(() => [window.state.counterSearch, localStorage.getItem('counterSearch')])).toEqual(['FD', 'FD']);
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
     await expect(page.locator('#tourShow')).toHaveText('Open the lesson sheets');   // the one step nobody can do by hand keeps a button that does it
     await page.click('#tourShow');
@@ -171,9 +174,14 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.click('#confirmOk');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
     expect(await page.evaluate(() => [window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual([4, ['My Counter']]);
+    // the search is cleared with the set open, so the lesson's counter shows in the list; the lesson gives it back when it stops
+    expect(await page.evaluate(() => [window.state.counterSearch, localStorage.getItem('counterSearch'), document.getElementById('counterSearchInput').value])).toEqual(['', null, '']);
     await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await expect(page.locator('#countersList')).toContainText('Floor Drain');
     await page.click('#tourLeave');
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => [window.state.counterSearch, localStorage.getItem('counterSearch'), document.getElementById('counterSearchInput').value])).toEqual(['FD', 'FD', 'FD']);
     // the next lesson: no question over lesson sheets, the last lesson's counter swept, theirs kept
     expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
     await page.click('#tourShow');

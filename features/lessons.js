@@ -192,6 +192,7 @@
       else if (!(await App.closeProject({ route: 'lesson' }))) return;   // their own plan: the app's one Close project, which asks first
     }
     sweepLessonPalette();
+    setSearches({ counter: '', lineType: '', lines: '' });   // a filter typed on the last bid hid the counter the reader just made (wendi, 2026-09-24)
     seededFor = null;
     openingFor = lesson.id;
     const set = setOf(lesson);
@@ -645,13 +646,28 @@
 
   // A lesson teaches two settings that live on the DEVICE, not the project: the sidebar
   // filter and Snap to 45°. It puts both back the way it found them when it stops, so a
-  // lesson never changes how the reader's own bids behave.
+  // lesson never changes how the reader's own bids behave. The three sidebar search boxes
+  // (Counters, Line types, Lines: state + localStorage, per device) ride the same way: a
+  // word typed on the last bid is cleared when the set opens, so every counter the lesson
+  // makes is in the list, and typed back when the lesson stops.
+  const SEARCHES = { counter: ['counterSearch', 'counterSearchInput'], lineType: ['lineTypeSearch', 'lineTypeSearchInput'], lines: ['linesSearch', 'linesSearchInput'] };
+  const getSearches = () => { const out = {}; Object.keys(SEARCHES).forEach((k) => { out[k] = S()[SEARCHES[k][0]] || ''; }); return out; };
+  function setSearches(values) {
+    Object.keys(SEARCHES).forEach((k) => {
+      const [field, inputId] = SEARCHES[k];
+      const v = values[k] || '';
+      S()[field] = v;
+      try { if (v) localStorage.setItem(field, v); else localStorage.removeItem(field); } catch (_) { /* storage may be unavailable */ }
+      if (el(inputId)) el(inputId).value = v;
+    });
+  }
   let deviceBefore = null;
-  function rememberDevice() { deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) }; }
+  function rememberDevice() { deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical), searches: getSearches() }; }
   function restoreDevice() {
     if (!deviceBefore) return;
     if (App.getCounterListFilterScope && App.getCounterListFilterScope() !== deviceBefore.scope) App.setCounterListFilterScope(deviceBefore.scope);
     if (!!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) !== deviceBefore.snap && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
+    setSearches(deviceBefore.searches || {});
     deviceBefore = null;
     App.updateUI();
   }

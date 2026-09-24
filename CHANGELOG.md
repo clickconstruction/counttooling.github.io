@@ -13,6 +13,19 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(lessons): a lesson clears the sidebar search boxes when its set opens, and types them back when it stops (2026-09-24)
+
+The second half of wendi's report: the Counters search box still held "FD" from her last bid (the
+three sidebar searches, Counters / Line types / Lines, persist per device in localStorage), so the
+Panelboard counter she made in the lesson never showed in the list and she could not tell it
+existed. The lesson kit already remembers two device settings when teaching begins (the sidebar
+filter scope and Snap to 45°) and puts them back when the lesson stops; the three searches now ride
+the same `rememberDevice` / `restoreDevice` pair (features/lessons.js `setSearches`): cleared, in
+state, storage and the input, when the set opens (`openSheetsFor`, which every lesson and all
+three courses go through), and typed back on stop so the reader's own bid is as they left it.
+Pinned in lessons.spec.js's clean-sheets test: "FD" typed before the lesson, gone with the set
+open, the Floor Drain counter visible in the list, "FD" back after Leave.
+
 ## fix(lessons): a lesson reads the counter the reader made, not the first palette item that shares its word (2026-09-24)
 
 Reported by wendi on the electrical course's "Where is the panel?" step: she added Panelboard from

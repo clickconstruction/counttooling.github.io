@@ -248,11 +248,11 @@
         // B9 (J15): touch talks "Tap", mouse talks "Click" — same hints, the
         // trade's word for the device in hand (App.isCoarsePointer, live).
         const press = App.isCoarsePointer && App.isCoarsePointer() ? 'Tap' : 'Click';
-        if (state.tool === TOOL.MEASURE) toolHint = state.aiming ? 'Hold + drag to aim; release to place' : (state.scaleMode === SCALE_MODES.POINT_A ? 'Tap first point (or hold to aim)' : 'Tap second point (or hold to aim)');
+        if (state.tool === TOOL.MEASURE) toolHint = state.aiming ? 'Hold + drag to aim; release to place' : (state.scaleMode === SCALE_MODES.POINT_A ? press + ' first point (or hold to aim)' : press + ' second point (or hold to aim)');
         else if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? press + ' first point' : press + ' second point';
         else if (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) {
           toolHint = state.tool === TOOL.LINE
-            ? (state.quickLineStart ? 'Tap end point' : 'Tap start point')
+            ? (state.quickLineStart ? press + ' end point' : press + ' start point')
             : press + ' to add points';
           const readout = liveDrawReadout();
           if (readout) {

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * Tests: the status-bar tool hint ("Tap start point" etc., features/status-bar.js)
+ * Tests: the status-bar tool hint ("Click start point" etc., features/status-bar.js)
  * only rides when the bar stays on ONE line. On narrow layouts the bar
  * flex-wraps; a long project name + hint used to shove the right-side actions
  * onto a second row (field feedback 2026-08-14). Guards both directions and
@@ -29,7 +29,7 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
   test('wide bar shows the hint; narrow bar drops it instead of wrapping the actions', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 800 });
     await bootWithLineTool(page);
-    await expect(page.locator('#statusMode')).toContainText('Tap start point');
+    await expect(page.locator('#statusMode')).toContainText('Click start point');
 
     // Desktop-width borderline case (the >768px regime is where the bar
     // wraps): the name + hint overflow the row, the name alone fits — so
@@ -38,7 +38,7 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
     // moved this borderline by ~50px.)
     await page.setViewportSize({ width: 1050, height: 800 });
     await page.evaluate(() => window.App.updateStatus());
-    await expect(page.locator('#statusMode')).not.toContainText('Tap start point');
+    await expect(page.locator('#statusMode')).not.toContainText('Click start point');
     // The right-side actions stayed on the same row as the mode text.
     const sameRow = await page.evaluate(() => {
       const mode = document.getElementById('statusMode');
@@ -50,7 +50,7 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
     // Widening again brings the hint back (cache key includes the bar width).
     await page.setViewportSize({ width: 1600, height: 800 });
     await page.evaluate(() => window.App.updateStatus());
-    await expect(page.locator('#statusMode')).toContainText('Tap start point');
+    await expect(page.locator('#statusMode')).toContainText('Click start point');
   });
 });
 
@@ -76,24 +76,49 @@ async function bootForReadout(page, { scale = { pixelsPerUnit: 9, unit: 'ft' } }
 }
 
 test.describe('Live length readout while drawing (T2 #21)', () => {
+  // A mouse reads "Click", a finger "Tap" (B9): Measure and Line said "Tap" to a mouse
+  // until 2026-09-24, the one line a new estimator reads mid-way through Prove the scale.
+  test('the hint says Click to a mouse and Tap to a finger, for Line and Measure alike', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 800 });
+    await bootWithLineTool(page);
+    const mode = page.locator('#statusMode');
+    const set = (tool, coarse) => page.evaluate(([t, c]) => {
+      const s = window.state;
+      s.currentProjectName = 'plan';
+      s.tool = window.App.TOOL[t];
+      s.scaleMode = window.App.SCALE_MODES.POINT_A;
+      if (!window.__realCoarse) window.__realCoarse = window.App.isCoarsePointer;
+      window.App.isCoarsePointer = c ? () => true : window.__realCoarse;
+      window.App.updateUI(); window.App.updateStatus();
+    }, [tool, coarse]);
+    await set('MEASURE', false);
+    await expect(mode).toContainText('Click first point (or hold to aim)');
+    await set('LINE', false);
+    await expect(mode).toContainText('Click start point');
+    await set('MEASURE', true);
+    await expect(mode).toContainText('Tap first point (or hold to aim)');
+    await set('LINE', true);
+    await expect(mode).toContainText('Tap start point');
+  });
+
   test('quick line shows live feet-inches readout', async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 800 });
     await bootForReadout(page);
-    await expect(page.locator('#statusMode')).toContainText('Tap start point');
+    await expect(page.locator('#statusMode')).toContainText('Click start point');
 
     await page.evaluate(() => {
       window.state.quickLineStart = { x: 0, y: 0 };
       window.state.mousePos = { x: 90, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Tap end point: 10\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Click end point: 10\'-0"');
 
     // Moving the cursor updates the readout live.
     await page.evaluate(() => {
       window.state.mousePos = { x: 45, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Tap end point: 5\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Click end point: 5\'-0"');
   });
 
   test('polyline readout is cumulative', async ({ page }) => {
@@ -131,20 +156,20 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
       window.state.mousePos = { x: 90, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).toContainText('Tap end point: 10\'-0"');
+    await expect(page.locator('#statusMode')).toContainText('Click end point: 10\'-0"');
 
     // The borderline-width regime from the wrap test (1050px since B4's wider
     // status-bar links): the long project name alone fits, name + hint
     // doesn't — hint AND readout drop together.
     await page.setViewportSize({ width: 1050, height: 800 });
     await page.evaluate(() => window.App.updateStatus());
-    await expect(page.locator('#statusMode')).not.toContainText('Tap end point');
+    await expect(page.locator('#statusMode')).not.toContainText('Click end point');
     // The worst-case key keeps the verdict stable while the cursor moves.
     await page.evaluate(() => {
       window.state.mousePos = { x: 200, y: 0 };
       window.App.updateStatus();
     });
-    await expect(page.locator('#statusMode')).not.toContainText('Tap end point');
+    await expect(page.locator('#statusMode')).not.toContainText('Click end point');
     const sameRow = await page.evaluate(() => {
       const mode = document.getElementById('statusMode');
       const actions = document.getElementById('statusBarActions');

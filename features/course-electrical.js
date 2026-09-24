@@ -118,6 +118,12 @@
     disc: [RE.disc, 'Disconnect 200A', 'Disconnect', '#47c88e', { mountHeightIn: MOUNT.disconnect }],
     os: [RE.os, 'Switch Occupancy', 'Occupancy', '#47c88e', { mountHeightIn: 48 }],
   };
+  // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
+  // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
+  // on the card. Built on first use: the tour kit registers after this file loads.
+  const proofs = {};
+  const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
+  const proveE101 = () => proof('E101', () => ({ page: E101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
   function pick(tag) {
     const t = TAGS[tag];
     const have = counter(t[0]);
@@ -288,10 +294,11 @@
           body: 'The title block says 1/8" = 1\'-0".\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(E101, 9),
           action: { label: 'Use 1/8" = 1\'-0"', run: async () => { K().goPage(E101); await T().applyScalePreset('1/8" = 1\'', 9); } } },
-        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: E101, zones: () => guide(pts(G.dim318), 13, K().measured(E101, 31.67, 0.4)),
-          body: 'The same building as the plumbing set, the same string to prove it on.\n1. In the header, click [[Measure]] (or press D).\n2. Click the tick mark at one end of the 31\'-8" string over the kitchen half: it is circled.\n3. Click the tick mark in the other circle.\nThe footer should read 31\'-8".',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(E101, 31.67, 0.4),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === E101 && T().measuredFeet() != null ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Try the two tick marks again' : ''; },
+        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: E101, hold: true,
+          body: () => (proveE101().check()
+            ? proveE101().verdict() + ': the scale is right.\n1. Click [[Next]].'
+            : 'The engineer wrote 31\'-8" over the kitchen half of the building. A dimension like that is the only thing that proves the scale: a PDF printed down keeps its scale bar and measures short.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 31\'-8" string over the kitchen half.\n3. Click inside circle 2, at its right end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveE101().check(), hint: () => proveE101().hint(), zones: () => proveE101().zones(),
           action: { label: 'Measure the 31\'-8" string', run: async () => { K().goPage(E101); if (!K().scaleIs(E101, 9)) await T().applyScalePreset('1/8" = 1\'', 9); const d = pts(G.dim318); K().measure(d[0], d[1]); } } },
         { id: 'panel', title: 'Where is the panel?', kind: 'do', cardAt: 'tl',
           body: 'Every homerun arrow on the plan points at one thing. Find it.\n1. In the left sidebar, under COUNTERS, click [[+ Add]]. The project is electrical, so the [[Quick]] tab offers Category, Variant and Rating.\n2. Set Category to Panel and Variant to Panelboard, and click [[Add Counter]].\n3. Click the panel on the plan.',

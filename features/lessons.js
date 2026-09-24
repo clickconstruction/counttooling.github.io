@@ -145,6 +145,10 @@
     if (!m[counter.id]) m[counter.id] = [];
     spots.forEach((pt) => m[counter.id].push({ x: pt.x, y: pt.y, id: App.uid(), group: null }));
   }
+  // The Scale lesson's proof, built once on first use (the kit registers after this file loads):
+  // the span, the circle that ticks as its click lands, and the hint that names the miss.
+  let proveP401Memo = null;
+  const proveP401 = () => proveP401Memo || (proveP401Memo = K().measureProof({ page: P401, ends: DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
   function measure(a, b) {
     const s = S();
     s.tool = App.TOOL.MEASURE;
@@ -278,9 +282,11 @@
           target: ['#setScale', '#setScaleSidebar'], check: () => scaleIs(P401, 18),
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { goPage(P401); await K().applyScalePreset('1/4" = 1\'', 18); } } },
         { id: 'prove', cardAt: 'bl', title: 'Prove it', kind: 'do',
-          body: '1. In the header, click [[Measure]] (or press D).\n2. Click the tick mark in one circle, at an end of the 12\'-0" dimension over WOMEN.\n3. Click the tick mark in the other circle.\nThe footer should read 12\'-0". Do this on every sheet you measure on. A PDF printed down to a smaller sheet looks right and measures short, and the title block will not tell you.',
-          target: ['#measureBtn', '#measureBtnSidebar'], page: P401, zones: () => guide(DETAIL.prove, 16, measured(P401, 12, 0.4)), check: () => measured(P401, 12, 0.4),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === P401 && K().measuredFeet() != null ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Try the two tick marks again' : ''; },
+          hold: true,   // the reading is the lesson: the card shows it and waits for Next
+          body: () => (proveP401().check()
+            ? proveP401().verdict() + ': this sheet\'s scale is right.\nDo this on every sheet you measure on. A PDF printed down to a smaller sheet looks right and measures short, and the title block will not tell you.\n1. Click [[Next]].'
+            : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 12\'-0" dimension over WOMEN.\n3. Click inside circle 2, at its right end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], page: P401, zones: () => proveP401().zones(), check: () => proveP401().check(), hint: () => proveP401().hint(),
           action: { label: 'Measure the 12\'-0" string', run: async () => { goPage(P401); if (!scaleIs(P401, 18)) await K().applyScalePreset('1/4" = 1\'', 18); measure(DETAIL.prove[0], DETAIL.prove[1]); } } },
         { id: 'zone', cardAt: 'bl', title: 'A detail at another scale', kind: 'do',
           body: 'Detail 2 is drawn at 1/2". Measured at the sheet\'s 1/4" it would read double.\n1. In the header, click [[⋯]], then [[Scale Zone]].\n2. Drag a box around detail 2: start and end anywhere inside the shaded boundary.\n3. In the dialog, choose [[1/2" = 1\']].\nEverything inside the box now measures at its own scale, beside the rest of the sheet.',

@@ -35,6 +35,15 @@ const ready = (page) => page.waitForFunction(() => window.App && window.App.boot
 async function waitForStep(page, id) {
   await page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 8000 });
 }
+// Do the current step for the reader, then move on: a doing step advances a beat after its
+// check; a held one (the scale proof shows its reading and waits) needs Next.
+async function doAndGo(page) {
+  const was = await stepId(page);
+  await page.evaluate(() => window.App.tutorialDoStep());
+  await page.waitForFunction((w) => window.App.tutorialStepId() !== w || document.getElementById('tourNext').classList.contains('tour-next-ready'), was, { timeout: 8000 });
+  await page.waitForTimeout(1100);
+  if ((await stepId(page)) === was) await page.click('#tourNext');
+}
 
 test.describe('Interactive walkthrough', () => {
   test('the do-it-for-me path builds a real takeoff and the tour advances on real state', async ({ page }) => {
@@ -65,9 +74,14 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'measure');
     expect(await page.evaluate(() => { const sc = window.state.pages[0].scale; return [sc.pixelsPerUnit, sc.correctionFactor, sc.sheetSize]; })).toEqual([9, undefined, undefined]);
     expect(await page.locator('#scaleModal').evaluate((m) => m.classList.contains('visible'))).toBe(false);
-    // 2b. prove it: the 20'-0" wall reads 20'-0"
+    // 2b. prove it: the 20'-0" wall reads 20'-0", and the card holds on the reading until Next
     await page.evaluate(() => window.App.tutorialDoStep());
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('measure');
+    await expect(page.locator('#tourBody')).toContainText('You measured 20\'-0", the same as the drawing: the scale is right.');
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    await page.click('#tourNext');
     await waitForStep(page, 'trade');
     // 3. trade
     await page.evaluate(() => window.App.tutorialDoStep());
@@ -204,15 +218,36 @@ test.describe('Interactive walkthrough', () => {
     await page.evaluate(() => window.App.tutorialDoStep());
     await waitForStep(page, 'measure');
     expect(await page.evaluate(() => { const sc = window.state.pages[0].scale; return [sc.pixelsPerUnit, sc.correctionFactor]; })).toEqual([9, undefined]);
-    // 3. the proof GATES: a wrong reading names itself and does not advance
-    await page.evaluate(() => { window.state.lastMeasure = { text: 'Distance: 53\'-4"', pageIdx: 0, pts: 180, scale: { pixelsPerUnit: 3.375, unit: 'ft' } }; });
-    await page.waitForTimeout(600);
+    // 3. the proof GATES, and says which of three things went wrong. The two ticks, in sheet points:
+    const A = { x: 144, y: 145 }, B = { x: 144, y: 325 };
+    const status = () => page.locator('#tourStatus').textContent();
+    // (a) the reader clicks a circle with Measure off: the app does nothing, so the card says why
+    await page.waitForTimeout(900);   // the step's focus zoom onto its circles
+    const zones = () => page.evaluate(() => window.App.tutorialZoneScreen());
+    let zs = await zones();
+    expect(zs.map((z) => z.kind)).toEqual(['circle', 'circle', 'span']);   // the dimension is drawn between them
+    await page.mouse.click(zs[0].cx, zs[0].cy);
+    await expect.poll(status).toBe('Measure is not on yet. Click Measure in the header first (or press D)');
+    // (b) Measure on, the first click in circle 1: that circle ticks before the second click
+    await page.keyboard.press('d');
+    await expect.poll(status).toBe('0 of 2 done');
+    zs = await zones();
+    await page.mouse.click(zs[0].cx, zs[0].cy);
+    await expect.poll(status).toBe('1 of 2 done');
+    await page.keyboard.press('Escape');
+    // (c) a reading with a click outside the circles is the clicks' fault, not the scale's
+    await page.evaluate(([a]) => { window.state.tool = 0; window.state.scaleMode = 0; window.state.lastMeasure = { text: 'Distance: 12\'-11"', pageIdx: 0, pts: 116, scale: window.state.pages[0].scale, a, b: { x: 260, y: 145 } }; }, [A]);
+    await expect.poll(status).toBe('That read 12\'-11", but a click missed a circle. Click inside circle 1, then inside circle 2');
+    // (d) both clicks in the circles and still wrong: now it is the scale
+    await page.evaluate(([a, b]) => { window.state.lastMeasure = { text: 'Distance: 53\'-4"', pageIdx: 0, pts: 180, scale: { pixelsPerUnit: 3.375, unit: 'ft' }, a, b }; }, [A, B]);
+    await expect.poll(status).toBe('Read 53\'-4" with both clicks in the circles, so the scale is off. Click Back and set it again');
     expect(await stepId(page)).toBe('measure');
-    expect(await page.locator('#tourStatus').textContent()).toBe('Read 53\'-4". Go Back and set the scale again');
     // ...and the 20'-0" dimension measures 20 ft through the real Measure commit
     await page.evaluate(() => window.App.tutorialDoStep());
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 20\'-0"');
     expect(await page.evaluate(() => window.state.tool)).toBe(0);
+    await expect(page.locator('#tourBody')).toContainText('You measured 20\'-0", the same as the drawing');
+    await page.click('#tourNext');
     await waitForStep(page, 'counter');
     // the spotlight follows the reader into the dialog: with the counter dialog
     // open the ladder lights Create Counter, never the + Add under the backdrop
@@ -336,7 +371,7 @@ test.describe('Interactive walkthrough', () => {
     // 2-3. scale + proof through the shared steps
     await page.evaluate(() => window.App.tutorialDoStep());
     await waitForStep(page, 'measure');
-    await page.evaluate(() => window.App.tutorialDoStep());
+    await doAndGo(page);
     await waitForStep(page, 'room');
     // 4. the room: name read off the plan (D24), typed, decked, one totals tag
     await page.evaluate(() => window.App.tutorialDoStep());
@@ -437,7 +472,7 @@ test.describe('Interactive walkthrough', () => {
     await page.goto('/app/?tour=plumbing');
     await ready(page);
     await waitForStep(page, 'welcome');
-    for (const next of ['scale', 'measure', 'counter', 'place', 'linetype']) { await page.evaluate(() => window.App.tutorialDoStep()); await waitForStep(page, next); }
+    for (const next of ['scale', 'measure', 'counter', 'place', 'linetype']) { await doAndGo(page); await waitForStep(page, next); }
     expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toEqual(['Water Closet']);
     await page.waitForFunction(async () => { const b = await window.App.takeoffBackupGet('local', null); return !!(b && b.data && (b.data.counters || []).length); }, null, { timeout: 15000 });
     // 2. the next visit arrives by an HVAC tour link. Before 2026-09-21 the boot's restore
@@ -488,7 +523,7 @@ test.describe('Interactive walkthrough', () => {
     await expect(page.locator('#tourShow')).toHaveText('Open the sample plan');   // the one hands-off step keeps a button that does it
     await page.click('#tourShow');
     await waitForStep(page, 'scale');
-    for (const next of ['measure', 'counter', 'place']) { await page.evaluate(() => window.App.tutorialDoStep()); await waitForStep(page, next); }
+    for (const next of ['measure', 'counter', 'place']) { await doAndGo(page); await waitForStep(page, next); }
     await page.waitForTimeout(900);   // the focus zoom
     const zones = () => page.evaluate(() => window.App.tutorialZoneScreen());
     let zs = await zones();

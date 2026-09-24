@@ -5993,8 +5993,9 @@
       // lastMeasure.pageIdx === state.currentPage (features/status-bar.js), a
       // new measure overwrites it, and a PDF/project load resets state.
       // pts + scale ride along so a consumer can re-derive the length in any unit
-      // (features/tutorial.js checks the prove-the-scale reading against 20 ft).
-      state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage, pts: dist, scale: effScale };
+      // (features/tutorial.js checks the prove-the-scale reading against 20 ft, and
+      // a / b, the two clicks, against the circles it drew: measureProof).
+      state.lastMeasure = { text: 'Distance: ' + formatted, pageIdx: state.currentPage, pts: dist, scale: effScale, a: { x: state.scalePointA.x, y: state.scalePointA.y }, b: { x: state.scalePointB.x, y: state.scalePointB.y } };
       showToast('Distance: ' + formatted, 5000);
       state.scalePointA = null;
       state.scalePointB = null;

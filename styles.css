@@ -1737,8 +1737,10 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-zone-tag-bg { fill: var(--zone); }
 .tour-zone-tag-bg.is-done { fill: #47c88e; }
 .tour-zone-label { font: 600 12px 'DM Sans', system-ui, sans-serif; fill: var(--zone-ink); paint-order: stroke; stroke: rgba(255,255,255,0.85); stroke-width: 3px; }
+.tour-zone-span { fill: none; stroke: var(--zone); stroke-width: 2.5; stroke-dasharray: 8 6; }
+.tour-zone-span.is-done { stroke: #2fa873; stroke-dasharray: none; }
 @keyframes tourZonePulse { 0% { stroke-width: 2.5; } 50% { stroke-width: 9; } 100% { stroke-width: 2.5; } }
-.tour-zones.is-pulsing .tour-zone:not(.is-done) { animation: tourZonePulse 0.7s ease-in-out 3; }
+.tour-zones.is-pulsing .tour-zone:not(.is-done), .tour-zones.is-pulsing .tour-zone-span:not(.is-done) { animation: tourZonePulse 0.7s ease-in-out 3; }
 @keyframes tourSpotPulse { 0% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 2px var(--accent); } 50% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 9px var(--accent); } 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 2px var(--accent); } }
 /* a step with targets on the sheet keeps the sheet readable: the dim drops to a veil */
 .tour-spot.has-zones { box-shadow: 0 0 0 9999px rgba(0,0,0,0.2), 0 0 0 2px var(--accent); }

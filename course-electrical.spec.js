@@ -192,6 +192,25 @@ test.describe('The electrical course: a question is answered with a click', () =
     expect(errors).toEqual([]);
   });
 
+  test('the card keeps off every control a step names, not only the one it points at: COUNTERS + Add beside a sheet target (by hand, 2026-09-24)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    const apart = () => page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(), a = document.getElementById('addCounter').getBoundingClientRect(); return { apart: c.right <= a.left || c.left >= a.right || c.bottom <= a.top || c.top >= a.bottom, card: [Math.round(c.left), Math.round(c.top), Math.round(c.right), Math.round(c.bottom)], add: [Math.round(a.left), Math.round(a.top), Math.round(a.right), Math.round(a.bottom)] }; });
+    await boot(page, '/app/?chapter=electrical:devices', errors);
+    await openSheets(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'gfci');
+    await page.waitForTimeout(600);
+    expect(await apart()).toMatchObject({ apart: true });
+    // the same shape in chapter 1: the panel step points at the sheet and asks for + Add
+    await boot(page, '/app/?chapter=electrical:sheet', errors);
+    await openSheets(page);
+    await gotoStep(page, 'panel');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'panel');
+    await page.waitForTimeout(600);
+    expect(await apart()).toMatchObject({ apart: true });
+    expect(errors).toEqual([]);
+  });
+
   test('the voltage-drop row warns at the default load and clears at the scheduled one', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];

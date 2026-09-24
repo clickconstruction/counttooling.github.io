@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '9a1f3d8356ed';
+const CACHE_VERSION = 'e20ca44cf452';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -209,7 +209,7 @@ const PRECACHE_SHA256 = {
   '/app/': 'b950fa0e3dedce9b7010865ec5e49d85b80e348605bdd4d3cb9174b7395404dd',
   '/app/index.html': 'b950fa0e3dedce9b7010865ec5e49d85b80e348605bdd4d3cb9174b7395404dd',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '9cbe3239fb8846373263f18e9bc026a89778b8ce090b9495c487b4279d26700d',
+  '/styles.css': 'a32a16700f671c575343b501ffb16d53366d509bbd79ae4bd5da831cc2aeff8f',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '3a39bf7154a26d8dc6a54c25820bc4ca7b0148a17b6ed81ae616b84f806fb3dd',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -243,7 +243,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': '981aa3e990f7ab52b9ff93046f274aaf7e43b867ec4b6532005a5a24e9cd5711',
   '/save-engine.js': 'f404367950efe5f0d593c78a5da687f7af6f4e329c4c7434c8ea37672c890cb1',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': 'e606f84f95eb37e7d6e78a6cc3821659da10b5badf1c445876ff9a510e5d867c',
+  '/app.js': '8d0d3674e5ac1154fdace088620e83dc859916d4e18895c3387c2bd744329102',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
@@ -332,8 +332,8 @@ const PRECACHE_SHA256 = {
   '/features/duct-bidcheck.js': 'de82bed1f1c357fa21bd9864ff417a99d4949a7b4e6833a6690cdcf47dc0ece1',
   '/features/rules.js': '01e86c4f75ee125c375265b33566364603a9056780716841f487b4a323be8192',
   '/features/tag-reader.js': 'c74c1ca9508963670e3dd554838fe5018e3d285026c924fc7352f6217de509f0',
-  '/features/tutorial.js': '77f1bb499cde599a53880352ab00c3c6e76b144efc86bfc4913d5fc07ea2cb67',
-  '/features/lessons.js': '320aebd7a1a02646cea34689805b1b4e248ddac61255e53dbc87e62e97164c64',
+  '/features/tutorial.js': '6c60a23e6b40e6e917f4153dd9fcc412d3da7a1fdeda19f79ba7ebdacaaba54c',
+  '/features/lessons.js': 'ffdf3e4ada8344786f270c21457b0a84f7688db2cbdfac5b19765a4837416088',
   '/features/course-plumbing.js': '2aa90dca74cefa9f5cf2df2a0f7def4f16e8c1f349242d8943c077d36efde592',
   '/features/course-electrical.js': '40046380180ed539ce62d7279a9e24a594f7eeb9c3118d1fedf179c6ec152fb5',
   '/features/course-hvac.js': 'eddbe04574fe35474582a673e377a85ca99f86a6a87d7e47346ec8a7b7ed9646',

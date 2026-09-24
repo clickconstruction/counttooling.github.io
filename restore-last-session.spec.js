@@ -380,7 +380,9 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await waitForStep('scale');
     await page.evaluate(() => window.App.tutorialDoStep());   // scale
     await waitForStep('measure');
-    await page.evaluate(() => window.App.tutorialDoStep());   // prove it
+    await page.evaluate(() => window.App.tutorialDoStep());   // prove it: the card holds on the reading
+    await page.waitForFunction(() => document.getElementById('tourNext').classList.contains('tour-next-ready'), null, { timeout: 15000 });
+    await page.click('#tourNext');
     await waitForStep('trade');
     await page.evaluate(() => window.App.tutorialDoStep());   // trade
     await waitForStep('counter');

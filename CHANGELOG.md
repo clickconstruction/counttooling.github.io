@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(sample-plan): the corridor's dimension string reads what the corridor measures (2026-09-23)
+
+SAMPLE-A hand-off, one polish item done. On the design-build sample plan (A-101, candidate A in
+scripts/sample-plan-candidates.js) the corridor between the two office rows is drawn 44 px at
+12 px/ft, which is 3'-8", and its dimension string said 5'-0". The hand-off offered widening the
+corridor or relabelling; 44 inches is the IBC 1020.2 minimum corridor width, so the drawing was
+right and the string was wrong. Relabelled to 3'-8" and samples/sample-plan.pdf regenerated. No
+wall moved, so features/tutorial.js's targets and the sheet-reading specs are untouched
+(copy-tooling-feet and scale-modal-clamp re-run green on the new PDF). The guide screenshots that
+show the string pick it up at the next manual `build:screenshots` pass. The rest of the SAMPLE-A
+row (door swings, Break 104, fixture counts against IPC 403.1, room names) still wants the trade
+eye and stays open.
+
+
 ## feat(water): rung 6, Bid Check rows, the gate, the guide and the tour (2026-09-23)
 
 Punch row P4-WATER, the last rung of [WATER-PLAN.md](journeys/plans/WATER-PLAN.md) §6,

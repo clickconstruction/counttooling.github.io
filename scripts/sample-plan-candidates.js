@@ -286,7 +286,7 @@ function candidateAPlan() {
   <!-- dimensions -->
   ${dimH(L, 84, 420, "24'-0\"")}${dimH(420, 84, 640, "18'-4\"")}${dimH(640, 84, R, "25'-0\"")}
   ${dimH(L, 622, R, "67'-4\"")}
-  ${dimV(112, T, COR_T, "20'-0\"")}${dimV(112, COR_T, COR_B, "5'-0\"")}${dimV(112, COR_B, B, "18'-0\"")}
+  ${dimV(112, T, COR_T, "20'-0\"")}${dimV(112, COR_T, COR_B, "3'-8\"")}${dimV(112, COR_B, B, "18'-0\"")}
 
   ${northArrow(990, 132)}
   ${scaleBar(L, 648)}`;

@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## style(tour): the click zones on the sheet are orange, not the accent yellow (2026-09-24)
+
+The circles and drag boundaries a tour, lesson or course step draws on the plan (`.tour-zone*`,
+features/tutorial.js `#tourZones`) were the app's accent yellow `#e8c547`. Walked on the plumbing
+tour: under the spotlight's gray dimming the yellow boundary nearly vanished (about 1.1:1 against the
+dimmed sheet, 1.6:1 on white); yellow already means an app control (the armed tool, Export PDFs,
+the card's step numbers) and the default counter; and a scale zone is dashed gold `#c9a227`, so the
+Scale lesson's boundary and the zone the reader draws inside it looked alike. The zones now read two
+new `:root` tokens in styles.css, `--zone` `#f97316` (about 2.8:1 on white) and `--zone-ink`
+`#9a3412` for a boundary's label; the tag numbers stay near-black (about 7:1). The done state stays
+green, and the spotlight ring around a control stays the accent yellow, so yellow means a control
+and orange means a spot on your plan (the owner's call: zones only). A deeper `#ea580c` was tried
+and passed over, too close to the lessons' red counters. `guides/img/lesson-targets.png`
+regenerated. No spec reads the colour (they count zones).
+
 ## fix(lessons): a lesson clears the sidebar search boxes when its set opens, and types them back when it stops (2026-09-24)
 
 The second half of wendi's report: the Counters search box still held "FD" from her last bid (the

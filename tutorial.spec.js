@@ -46,6 +46,17 @@ async function doAndGo(page) {
 }
 
 test.describe('Interactive walkthrough', () => {
+  // A paragraph between two actions splits the numbered list; the second part keeps counting.
+  // The size step read 1, 2, 1, 1 until 2026-09-24.
+  test('a step\'s actions number straight through a paragraph between them', async ({ page }) => {
+    await page.goto('/app/?tour=plumbing');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialGoTo('size'));
+    await waitForStep(page, 'size');
+    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => o.start))).toEqual([1, 3, 4]);
+  });
+
   test('the do-it-for-me path builds a real takeoff and the tour advances on real state', async ({ page }) => {
     test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
@@ -116,8 +127,10 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.locator('#tourNext').textContent()).toBe('Next');
     await page.click('#tourNext');
     expect(await stepId(page)).toBe('bidcheck');
-    // 11. bid check opens
-    await page.evaluate(() => window.App.tutorialDoStep());
+    // 11. bid check arrives folded (the reader opens it: 2026-09-24, it stayed open and the step
+    // passed untouched), opens, and the card holds on what it says until Next
+    expect(await page.evaluate(() => window.state.bidCheckCollapsed)).toBe(true);
+    await doAndGo(page);
     await waitForStep(page, 'handoff');
     expect(await page.locator('#bidCheckList').isVisible()).toBe(true);
     // 12 + 13: reading, then Finish marks it done and the link goes away
@@ -414,7 +427,7 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.locator('#tourNext').textContent()).toBe('Next');
     await page.click('#tourNext');
     await waitForStep(page, 'bidcheck');
-    await page.evaluate(() => window.App.tutorialDoStep());
+    await doAndGo(page);
     await waitForStep(page, 'handoff');
     expect(await page.evaluate(() => window.state.bidCheck.manual['duct-fits-roof'])).toBe(true);
     await page.click('#tourNext');

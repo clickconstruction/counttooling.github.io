@@ -658,7 +658,7 @@
     },
     {
       id: 'bidcheck', title: 'Sidebar: Bid Check', kind: 'do',
-      body: '1. In the left sidebar, click BID CHECK to expand it.\nThe rows the app can judge (a scale on every sheet, marks reached by runs, fill, air) judge themselves; the rest are yours to tick. It never blocks an export; it says what is still open.',
+      onEnter: () => K().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe rows the app can judge (a scale on every sheet, marks reached by runs, fill, air) judge themselves; the rest are yours to tick. It never blocks an export; it says what is still open.',
       target: ['#bidCheckSectionTitle'],
       check: () => S().bidCheckCollapsed === false,
       action: { label: 'Open it', run: ACT.bidcheck },

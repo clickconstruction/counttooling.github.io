@@ -151,6 +151,8 @@
     return zs;
   }
   const allDone = (zs) => zs.length > 0 && zs.every((z) => z.done);
+  // The onEnter of a step that says "click BID CHECK to expand it": folded, so the click is the reader's.
+  function foldBidCheck() { state().bidCheckCollapsed = true; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); }
   const stepZones = (step) => { try { return (step && step.zones && step.zones()) || []; } catch (_) { return []; } };
   // Only the targets a reader clicks or drags count toward "N of M done"; a span is a guide.
   const countedZones = (zs) => zs.filter((z) => z.kind !== 'span');
@@ -318,7 +320,7 @@
     },
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
-      body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. It has also caught something: the receptacles you counted first were never wired, so they read as not reached by a run. Voltage drop to the farthest device and the panel cross-check wake up once a run is flagged as the homerun and the panel is on the plan. Below them are the calls only you can tick. It never blocks an export; it tells you what is open.',
+      onEnter: foldBidCheck, hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. It has also caught something: the receptacles you counted first were never wired, so they read as not reached by a run. Voltage drop to the farthest device and the panel cross-check wake up once a run is flagged as the homerun and the panel is on the plan. Below them are the calls only you can tick. It never blocks an export; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
@@ -480,7 +482,7 @@
     },
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
-      body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. Under [[Fixture units]], the app has read 2 WSFU for a public lavatory. Leave it, or type your own.\nThe chip names the row it read; its public word flips one counter to the private column.',
+      body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the row it read; its public word flips one counter to the private column.',
       target: ['#counterLineTypeDetailsWsfuGroup', '#countersList .edit-btn', '#countersSectionTitle'],
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
       action: { label: 'Read the table for me', run: giveLavFixtureUnits },
@@ -491,7 +493,7 @@
       target: ['#waterSizePopover', '#waterHintCard', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
       check: () => waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
-      hint: () => (waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? 'The main is traced but still one size. Press S while tracing and take the 3/4″ the card offers' : ''),
+      hint: () => (!state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? 'The main is traced but still one size. Press S while tracing and take the 3/4″ the card offers' : ''),
       action: { label: 'Trace and size it for me', run: traceAndSizeMain },
     },
     {
@@ -625,7 +627,7 @@
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
-      body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Fits the roof to tick it.',
+      onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Fits the roof to tick it.',
       target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
       check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-fits-roof']),
       action: { label: 'Tick it for me', run: tickFitsTheRoof },
@@ -996,8 +998,10 @@
   };
   const bodyHtml = (rawBody) => {
     const body = isTouch() ? forTouch(rawBody) : rawBody;
-    const out = []; let items = [];
-    const flush = () => { if (items.length) { out.push('<ol class="tour-steps">' + items.map((t) => '<li>' + chips(t) + '</li>').join('') + '</ol>'); items = []; } };
+    const out = []; let items = [], counted = 0;
+    // A paragraph between two actions splits the list; the second part keeps counting (it read
+    // 1, 2, 1, 1 on the size step, 2026-09-24), because the actions are one sequence.
+    const flush = () => { if (items.length) { out.push('<ol class="tour-steps"' + (counted ? ' start="' + (counted + 1) + '"' : '') + '>' + items.map((t) => '<li>' + chips(t) + '</li>').join('') + '</ol>'); counted += items.length; items = []; } };
     String(body).split('\n').forEach((line) => {
       const m = line.match(/^\s*\d+\.\s+(.*)$/);
       if (m) items.push(m[1]); else { flush(); if (line.trim()) out.push('<p>' + chips(line) + '</p>'); }
@@ -1260,6 +1264,10 @@
     lastSheetClick = null;
     revealed = false;
     closeStrayDialogs(STEPS[stepIdx]);
+    // A step that asks the reader to open something first gets it closed on the way in, or it
+    // passes before they touch it (Bid Check stayed open across chapters, 2026-09-24). Only
+    // moving forward: a step the reader came Back to keeps what they left.
+    if (!heldByBack && STEPS[stepIdx].onEnter) { try { STEPS[stepIdx].onEnter(); } catch (_) { /* a step's setup never breaks a move */ } }
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     const def = TOURS[tourId];
@@ -1376,7 +1384,7 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, allDone, grow, norm, inCircle, markersOf };
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

@@ -534,7 +534,7 @@
       seed() { seedBranch(); mark(P101, makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'), KITCHEN_FDS); },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
-          body: 'The lesson chained three fixtures on 1/2in PEX and counted the kitchen drains.\n1. In the left sidebar, click BID CHECK to expand it.\nThe badge beside it counts what is still open. Rows marked AUTO are judged by the app. The rest are yours to tick.',
+          onEnter: () => K().foldBidCheck(), hold: true, body: 'The lesson chained three fixtures on 1/2in PEX and counted the kitchen drains.\n1. In the left sidebar, click BID CHECK to expand it.\nThe badge beside it counts what is still open. Rows marked AUTO are judged by the app. The rest are yours to tick.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false,
           action: { label: 'Open it', run: () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); } } },
         { id: 'fix', title: 'Close an open row', kind: 'do',

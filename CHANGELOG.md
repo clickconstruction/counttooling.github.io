@@ -13,6 +13,16 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(status-bar): Measure and Line say "Click" to a mouse, "Tap" to a finger (2026-09-24)
+
+The status bar already chose its verb by the device in hand (B9: `App.isCoarsePointer`), but the
+Measure hint ("Tap first point (or hold to aim)" / "Tap second point…") and the Line hint ("Tap
+start point" / "Tap end point") were written with "Tap" and skipped the switch, so a mouse read
+touch wording; it is the one line a new estimator reads mid-way through the tours' Prove the scale.
+Both now use the same `press` word as Set Scale and Polyline. "(or hold to aim)" stays: holding
+aims with a mouse too (`enterAiming`'s mouse path). footer-hint.spec.js reads "Click" on its mouse
+runs and pins both verbs for both tools.
+
 ## style(tour): the click zones on the sheet are orange, not the accent yellow (2026-09-24)
 
 The circles and drag boundaries a tour, lesson or course step draws on the plan (`.tour-zone*`,

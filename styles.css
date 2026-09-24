@@ -7,6 +7,8 @@
       --border2: #3a3a44;
       --accent: #e8c547;
       --accent2: #c9a82e;
+      --zone: #f97316;       /* tour / lesson click zones on the sheet: orange, apart from the yellow accent and the gold scale zones */
+      --zone-ink: #9a3412;   /* a zone's text label */
       --text: #f0ede8;
       --text2: #9e9b96;
       --text3: #5e5c58;
@@ -1728,13 +1730,13 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-link { color: var(--accent); }
 /* On-sheet targets (features/tutorial.js): circles and boundaries drawn over the plan. */
 .tour-zones { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; pointer-events: none; overflow: visible; }
-.tour-zone { fill: rgba(232, 197, 71, 0.13); stroke: #e8c547; stroke-width: 2.5; stroke-dasharray: 8 6; }
-.tour-zone-inner { fill: none; stroke: #e8c547; stroke-width: 1.5; stroke-dasharray: 3 4; opacity: 0.8; }
+.tour-zone { fill: rgba(249, 115, 22, 0.14); stroke: var(--zone); stroke-width: 2.5; stroke-dasharray: 8 6; }
+.tour-zone-inner { fill: none; stroke: var(--zone); stroke-width: 1.5; stroke-dasharray: 3 4; opacity: 0.8; }
 .tour-zone.is-done { fill: rgba(71, 200, 142, 0.18); stroke: #2fa873; stroke-dasharray: none; }
 .tour-zone-tag { font: 600 12px 'DM Sans', system-ui, sans-serif; fill: #111; }
-.tour-zone-tag-bg { fill: #e8c547; }
+.tour-zone-tag-bg { fill: var(--zone); }
 .tour-zone-tag-bg.is-done { fill: #47c88e; }
-.tour-zone-label { font: 600 12px 'DM Sans', system-ui, sans-serif; fill: #6b5200; paint-order: stroke; stroke: rgba(255,255,255,0.85); stroke-width: 3px; }
+.tour-zone-label { font: 600 12px 'DM Sans', system-ui, sans-serif; fill: var(--zone-ink); paint-order: stroke; stroke: rgba(255,255,255,0.85); stroke-width: 3px; }
 @keyframes tourZonePulse { 0% { stroke-width: 2.5; } 50% { stroke-width: 9; } 100% { stroke-width: 2.5; } }
 .tour-zones.is-pulsing .tour-zone:not(.is-done) { animation: tourZonePulse 0.7s ease-in-out 3; }
 @keyframes tourSpotPulse { 0% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 2px var(--accent); } 50% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 9px var(--accent); } 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 2px var(--accent); } }

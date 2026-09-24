@@ -56,6 +56,10 @@
 
   // ----- the sheet, in points (y down, like every annotation) --------------------------
   const DIM = [{ x: 120, y: 120 }, { x: 300, y: 120 }];                       // 180 pt = 20'-0"
+  // The measure step's proof (features/tutorial.js measureProof), built on first use: the line drawn
+  // between its circles, a circle that ticks as its click lands, a hint that names the miss.
+  let proveDimMemo = null;
+  const proveDim = () => proveDimMemo || (proveDimMemo = K().measureProof({ page: 0, ends: DIM, r: 14, ft: 20, tol: 0.6, stated: '20\'-0"' }));
   const FIX = [{ x: 200, y: 240 }, { x: 290, y: 240 }, { x: 380, y: 240 }];   // three marks, far enough apart to stay circles at fit zoom
   const KEY = { x: 490, y: 240 };                                              // the quick-key mark
   const LINE = [{ x: 200, y: 330 }, { x: 420, y: 330 }];                       // a Quick Line, 220 pt = 24.4 ft
@@ -423,11 +427,14 @@
     },
     {
       id: 'measure', title: 'Header: Measure', kind: 'do',
-      body: '1. In the header, click [[Measure]] (or press D).\n2. Click the tick at one end of the 20\'-0" line, inside the circle.\n3. Click the tick at the other end.\nThe footer reads the distance. Do this on every real sheet before you trust a number: a plan printed to the wrong paper size looks right and measures short.',
+      hold: true,   // the reading is the lesson: the card shows it and waits for Next
+      body: () => (proveDim().check()
+        ? proveDim().verdict() + ': the scale is right.\nDo this on every real sheet before you trust a number: a plan printed to the wrong paper size looks right and measures short.\n1. Click [[Next]].'
+        : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 20\'-0" line.\n3. Click inside circle 2, at its right end.'),
       target: ['#measureBtn', '#measureBtnSidebar'], page: 0,
-      zones: () => { const ft = K().measuredFeet(); const ok = ft != null && Math.abs(ft - 20) <= 0.6; return DIM.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: 14, done: ok })); },
-      check: () => { const ft = K().measuredFeet(); return ft != null && Math.abs(ft - 20) <= 0.6; },
-      hint: () => { const ft = K().measuredFeet(); const lm = S().lastMeasure; return ft == null ? '' : 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Try the two ticks again, or go Back and set the scale'; },
+      zones: () => proveDim().zones(),
+      check: () => proveDim().check(),
+      hint: () => proveDim().hint(),
       action: { label: 'Measure the 20\'-0" line', run: ACT.measure },
     },
     {

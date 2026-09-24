@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(lessons): the courses' Prove it steps and the blank tour's Measure on measureProof (2026-09-24)
+
+The six course steps that prove a sheet's scale (the plumbing course's P-101, P-601 and P-401, the
+electrical course's E-101, the HVAC course's M-101 and M-601) and the blank-sheet tour's Measure
+step now use the kit's `measureProof`, as the tours' Prove the scale and the Scale lesson already
+do: the dimension drawn as a dashed line between its two circles, a circle that ticks as its click
+lands, a reading that counts only from a click in each circle, a hint that names the miss (Measure
+not on, a click outside a circle, or the scale itself), and the card holding on "You measured
+31'-8", the same as the drawing" until Next. Their hints had said "Try the two tick marks again"
+for every miss. The electrical and HVAC courses' first Prove it opened with "the same string" as
+the plumbing course, which a reader who started there had not seen; they now say what the string
+is. The course steps that measure a run rather than prove a scale keep their own checks: a wrong
+reading there is the wrong points, not the scale. Each course builds its proofs on first use
+(`proof(key, make)`), because the tour kit registers after the course files load.
+
 ## fix(lessons): the stalls from the 2026-09-24 read of the courses and the plumbing tour (2026-09-24)
 
 A read of every course step against the sheets and the code, and a live walk of the plumbing tour,

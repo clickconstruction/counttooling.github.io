@@ -689,8 +689,7 @@ test.describe('Every button, on a blank sheet', () => {
     await waitForStep(page, 'scale');
     for (const id of ['scale', 'measure', 'move', 'counter', 'count', 'quickkeys', 'linetype', 'snap', 'polyline']) {
       await waitForStep(page, id);
-      await page.evaluate(() => window.App.tutorialDoStep());
-      await page.waitForFunction((want) => window.App.tutorialStepId() !== want, id, { timeout: 8000 });
+      await doAndGo(page);   // the measure step holds on its reading
     }
     await waitForStep(page, 'chain');
     expect(await page.evaluate(() => localStorage.getItem('clickcount-tour-blank-step'))).toBe('10');

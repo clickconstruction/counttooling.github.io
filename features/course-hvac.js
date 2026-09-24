@@ -107,6 +107,13 @@
     'SD-1': ['Supply Diffuser', '#e8c547', 150], 'SD-2': ['Supply Diffuser', '#4a9eff', 100], 'SD-3': ['Supply Diffuser', '#47c88e', 200],
     'RG-1': ['Return Grille', '#8a4bb0', 0], 'EG-1': ['Exhaust Grille', '#c8963a', 75], 'MA-1': ['Supply Diffuser', '#e85447', 2000],
   };
+  // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
+  // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
+  // on the card. Built on first use: the tour kit registers after this file loads.
+  const proofs = {};
+  const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
+  const proveM101 = () => proof('M101', () => ({ page: M101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
+  const proveM601 = () => proof('M601', () => ({ page: M601, ends: raw(SECTION.prove), r: 13, ft: 12, tol: 0.4, stated: '12\'-0"' }));
   const AIR_TAGS = ['SD-1', 'SD-2', 'SD-3', 'EG-1', 'MA-1'];   // the counters the schedule gives a CFM
   function pickTag(tag) {
     const have = byTag(tag);
@@ -300,10 +307,11 @@
           body: 'The title block says 1/8" = 1\'-0".\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(M101, 9),
           action: { label: 'Use 1/8" = 1\'-0"', run: async () => { K().goPage(M101); await T().applyScalePreset('1/8" = 1\'', 9); } } },
-        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: M101, zones: () => guide(pts(G.dim318), 13, K().measured(M101, 31.67, 0.4)),
-          body: 'The same building as the plumbing and electrical sets, the same string to prove it on.\n1. In the header, click [[Measure]] (or press D).\n2. Click the tick mark at one end of the 31\'-8" string over the kitchen half: it is circled.\n3. Click the tick mark in the other circle.',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(M101, 31.67, 0.4),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === M101 && T().measuredFeet() != null ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Try the two tick marks again' : ''; },
+        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: M101, hold: true,
+          body: () => (proveM101().check()
+            ? proveM101().verdict() + ': the scale is right.\n1. Click [[Next]].'
+            : 'The engineer wrote 31\'-8" over the kitchen half of the building. A dimension like that is the only thing that proves the scale: a PDF printed down keeps its scale bar and measures short.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 31\'-8" string over the kitchen half.\n3. Click inside circle 2, at its right end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM101().check(), hint: () => proveM101().hint(), zones: () => proveM101().zones(),
           action: { label: 'Measure the 31\'-8" string', run: async () => { K().goPage(M101); if (!K().scaleIs(M101, 9)) await T().applyScalePreset('1/8" = 1\'', 9); const d = pts(G.dim318); K().measure(d[0], d[1]); } } },
         { id: 'unit', title: 'Which unit moves the most air?', kind: 'do', cardAt: 'tl',
           body: 'Four roof keys, each with a CFM.\n1. Under COUNTERS, click [[+ Add]]. The project is HVAC, so the [[Quick]] tab offers Size, Type and Mounting.\n2. Set Type to RTU and click [[Add Counter]].\n3. Click the roof key of the unit that moves the most air.',
@@ -454,9 +462,11 @@
           body: 'M-601 cuts through the dining ceiling at 1/2" = 1\'-0".\n1. Click [[Set Scale]] (or press S), the [[Architectural & Engineering]] tab, and [[1/2" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(M601, 36),
           action: { label: 'Use 1/2" = 1\'-0"', run: async () => { K().goPage(M601); await T().applyScalePreset('1/2" = 1\'', 36); } } },
-        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: M601, zones: () => guide(raw(SECTION.prove), 13, K().measured(M601, 12, 0.4)),
-          body: '1. Click [[Measure]] (or press D) and click both ends of the 12\'-0" string, floor to deck.',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(M601, 12, 0.4),
+        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: M601, hold: true,
+          body: () => (proveM601().check()
+            ? proveM601().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 12\'-0" string, floor to deck.\n3. Click inside circle 2, at the other end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM601().check(), hint: () => proveM601().hint(), zones: () => proveM601().zones(),
           action: { label: 'Measure it for me', run: async () => { K().goPage(M601); if (!K().scaleIs(M601, 36)) await T().applyScalePreset('1/2" = 1\'', 36); const d = raw(SECTION.prove); K().measure(d[0], d[1]); } } },
         { id: 'depth', title: 'How deep is the main with its wrap?', kind: 'do', cardAt: 'br', page: M601, zones: () => guide(raw(SECTION.depth), 12, K().measured(M601, 1.33, 0.15)),
           body: 'The plenum is the 3\'-0" between the ceiling and the deck. Inside it, the 24x12 main with its 2" wrap.\n1. Click [[Measure]] again and click both ends of the dimension on the duct\'s right side.',

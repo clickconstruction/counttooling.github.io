@@ -141,6 +141,14 @@
     { name: '0.75in Copper', re: /(^|[^.\d])0?\.75\s*in.*copper(?!.*hwr)/i },
   ];
   const copperStillToMake = () => COPPER_SIZES.filter((c) => !(S().lineTypes || []).some((lt) => c.re.test(lt.name || ''))).map((c) => c.name);
+  // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
+  // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
+  // on the card. Built on first use: the tour kit registers after this file loads.
+  const proofs = {};
+  const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
+  const proveP101 = () => proof('P101', () => ({ page: K().P101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
+  const proveP601 = () => proof('P601', () => ({ page: K().P601, ends: raw(R.prove), r: 13, ft: 14, tol: 0.4, stated: '14\'-0"' }));
+  const proveP401 = () => proof('P401', () => ({ page: K().P401, ends: K().DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
   const pick = (tag) => { const t = TAGS[tag]; return counter(t[0]) || K().makeCounter(t[1], t[2], t[3]); };
   // Marks a counter at the spots it does not yet cover (the seam run twice adds nothing).
   function markMissing(c, spots, pageIdx) {
@@ -345,10 +353,11 @@
           body: 'The title block says 1/8" = 1\'-0", and the graphic scale bar at the bottom left says the same.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(K().P101, 9),
           action: { label: 'Use 1/8" = 1\'-0"', run: async () => { K().goPage(K().P101); await T().applyScalePreset('1/8" = 1\'', 9); } } },
-        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: 0, zones: () => guide(pts(G.dim318), 13, K().measured(K().P101, 31.67, 0.4)),
-          body: 'A PDF printed down to letter size keeps its title block and its scale bar and measures short. Only a dimension the engineer wrote can prove the scale.\n1. In the header, click [[Measure]] (or press D).\n2. Click the tick mark at one end of the 31\'-8" string above the kitchen half of the building: it is circled.\n3. Click the tick mark in the other circle.\nThe footer should read 31\'-8". Do this on every sheet, every time.',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P101, 31.67, 0.4),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === K().P101 && T().measuredFeet() != null ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Try the two tick marks again' : ''; },
+        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: 0, hold: true,
+          body: () => (proveP101().check()
+            ? proveP101().verdict() + ': the scale is right.\nDo this on every sheet, every time.\n1. Click [[Next]].'
+            : 'A PDF printed down to letter size keeps its title block and its scale bar and measures short. Only a dimension the engineer wrote can prove the scale.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 31\'-8" string above the kitchen half of the building.\n3. Click inside circle 2, at its right end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP101().check(), hint: () => proveP101().hint(), zones: () => proveP101().zones(),
           action: { label: 'Measure the 31\'-8" string', run: async () => { K().goPage(K().P101); if (!K().scaleIs(K().P101, 9)) await T().applyScalePreset('1/8" = 1\'', 9); const d = pts(G.dim318); K().measure(d[0], d[1]); } } },
         { id: 'keynotes', title: 'Find the fixture the eye skips', kind: 'do', cardAt: 'bl',
           body: 'Every hexagon on the plan, WC, HS, FD, CO, VTR, is a keynote, and the column at the right spells each one out. One of them is a fixture with no room around it.\n1. Read the keynote column for HB.\n2. In the left sidebar, under COUNTERS, click [[+ Add]], and on the [[Create]] tab make a counter named HB Hose Bibb.\n3. Find the HB tag on the plan and click the fixture beside it.',
@@ -543,9 +552,11 @@
           body: 'Most risers are not to scale. This one is, at 1/4", so the verticals can be measured.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(K().P601, 18),
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { K().goPage(K().P601); await T().applyScalePreset('1/4" = 1\'', 18); } } },
-        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: 3, zones: () => guide(raw(R.prove), 13, K().measured(K().P601, 14, 0.4)),
-          body: '1. Click [[Measure]] (or press D).\n2. Click both ends of the 14\'-0" string at the left, floor to roof.',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P601, 14, 0.4),
+        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: 3, hold: true,
+          body: () => (proveP601().check()
+            ? proveP601().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 14\'-0" string at the left, floor to roof.\n3. Click inside circle 2, at the other end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP601().check(), hint: () => proveP601().hint(), zones: () => proveP601().zones(),
           action: { label: 'Measure the 14\'-0" string', run: async () => { const k = K(); k.goPage(k.P601); if (!k.scaleIs(k.P601, 18)) await T().applyScalePreset('1/4" = 1\'', 18); const d = raw(R.prove); k.measure(d[0], d[1]); } } },
         { id: 'traparm', title: 'How long is the lavatory\'s trap arm?', kind: 'do', cardAt: 'br', page: 3, zones: () => guide(raw(R.lavArm), 12, K().measured(K().P601, 4, 0.3)),
           body: 'The trap arm is the run from a fixture\'s trap to its vent. The lavatory\'s is dimensioned, in the wall at 18" above the floor.\n1. Click [[Measure]] again.\n2. Click both ends of the lavatory\'s trap arm, from the stack to the trap.',
@@ -629,9 +640,11 @@
           body: 'P-101 is at 1/8". This sheet is drawn at 1/4" and has no scale yet: its badge under PAGES is not outlined.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(K().P401, 18),
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { K().goPage(K().P401); await T().applyScalePreset('1/4" = 1\'', 18); } } },
-        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: 1, zones: () => guide(K().DETAIL.prove, 16, K().measured(K().P401, 12, 0.4)),
-          body: '1. Click [[Measure]] (or press D).\n2. Click both ends of the 12\'-0" string over WOMEN: the tick marks are circled.\nIt should read 12\'-0".',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P401, 12, 0.4),
+        { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: 1, hold: true,
+          body: () => (proveP401().check()
+            ? proveP401().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 12\'-0" string over WOMEN.\n3. Click inside circle 2, at its right end.'),
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP401().check(), hint: () => proveP401().hint(), zones: () => proveP401().zones(),
           action: { label: 'Measure the 12\'-0" string', run: async () => { const k = K(); k.goPage(k.P401); if (!k.scaleIs(k.P401, 18)) await T().applyScalePreset('1/4" = 1\'', 18); k.measure(k.DETAIL.prove[0], k.DETAIL.prove[1]); } } },
         { id: 'zone', title: 'A detail at another scale', kind: 'do', cardAt: 'bl', page: 1, zones: () => [T().boxZone(rectsOf(K().P401, 'scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 36) < 0.1), DETAIL_INNER(), DETAIL_OUTER(), 'Drag your box around detail 2, anywhere in here')],
           hint: () => T().boxMiss(rectsOf(K().P401, 'scaleZones'), DETAIL_INNER(), DETAIL_OUTER()),

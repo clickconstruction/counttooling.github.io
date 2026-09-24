@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'eb85f2b0e2a8';
+const CACHE_VERSION = '079a3a7ef3bb';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -334,10 +334,10 @@ const PRECACHE_SHA256 = {
   '/features/tag-reader.js': 'c74c1ca9508963670e3dd554838fe5018e3d285026c924fc7352f6217de509f0',
   '/features/tutorial.js': '522722276b7aae8bbffddae7f96857198dc2ffc0a2aa56a229fababf17118ec8',
   '/features/lessons.js': '49ede09e41dc2e5580322d81254e1c94db4c407f1617ef052ba8adcea5db34c7',
-  '/features/course-plumbing.js': 'b88be4f502ea1b2e6a1c903ad05bf1915b51d4f02846e1f33220f2a55cf6129d',
-  '/features/course-electrical.js': 'f119aa96452b19fdd09d3ebfd4ea4b24658da53ce5f64ee35b0bb0e4239d850e',
-  '/features/course-hvac.js': '48d8d7809bdc50e662ee6ed9239f5bdd4563961c8fcc6d43843f82014479d725',
-  '/features/tour-blank.js': '1a5e98e717ef88721c2b2565d7102128c7636f8d3d73ef8add6ba32bcff0f876',
+  '/features/course-plumbing.js': 'bc33fdb52401c45a963e0759e09b4b97bbe1af8db8004d9bacec20bb94ea4239',
+  '/features/course-electrical.js': '7c8184f3784c7b5e6ab0cecd0146cd7282e60c1ddb2ea590b358f23dbf38935c',
+  '/features/course-hvac.js': 'ea7560bada11233049d970338d3ba6c9edba005db4619b95cfadf88bd8f50ec9',
+  '/features/tour-blank.js': '2c105635c958de185e3df6407501c55d65edd1b1c43a2b57bfc13fd0a8281378',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
   '/report.js': '2279bf02b07467ff8eeaa108d607963cb32298a61e0858b8f958970cb199989e',

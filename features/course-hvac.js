@@ -77,7 +77,7 @@
 
   // ----- readers -------------------------------------------------------------------------------------
   const counter = (re) => K().counterNamed(re);
-  const byTag = (tag) => (S().counters || []).find((c) => String(c.tag || '').toUpperCase() === tag) || (S().counters || []).find((c) => new RegExp('^' + tag + '( ·|$)', 'i').test(c.name || ''));
+  const byTag = (tag) => (S().counters || []).find((c) => String(c.tag || '').toUpperCase() === tag) || (S().counters || []).find((c) => new RegExp('(^|\\s)' + tag + '( ·|$)', 'i').test(c.name || ''));   // "(^|\s)": the Quick tab names one 6" Fire Damper
   const pageAnn = (i) => K().pageAnn(i);
   const marksOf = (c, pageIdx) => { const a = pageAnn(pageIdx); return c && a ? (a.counterMarkers[c.id] || []) : []; };
   const markNear = (c, spot, d, pageIdx) => marksOf(c, pageIdx).some((m) => K().near(m, spot, d));
@@ -107,6 +107,7 @@
     'SD-1': ['Supply Diffuser', '#e8c547', 150], 'SD-2': ['Supply Diffuser', '#4a9eff', 100], 'SD-3': ['Supply Diffuser', '#47c88e', 200],
     'RG-1': ['Return Grille', '#8a4bb0', 0], 'EG-1': ['Exhaust Grille', '#c8963a', 75], 'MA-1': ['Supply Diffuser', '#e85447', 2000],
   };
+  const AIR_TAGS = ['SD-1', 'SD-2', 'SD-3', 'EG-1', 'MA-1'];   // the counters the schedule gives a CFM
   function pickTag(tag) {
     const have = byTag(tag);
     const t = TAGS[tag];
@@ -311,7 +312,7 @@
           hint: () => (counter(RE.rtu) && marksOf(counter(RE.rtu), M101).length ? (markNear(counter(RE.rtu), pts(G.ef1)[0], 26, M101) ? 'EF-1 pulls 2,400 CFM out of the hood, and that is a lot, but one key says 3,000' : 'Read the CFM in each dashed box') : (counter(RE.rtu) ? 'The counter is armed: click the roof key' : '')),
           action: { label: 'Find it for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickUnit(RE.rtu, 'RTU-1', 'RTU', '#2e86de'), pts(G.rtu), M101); K().dirty(); } } },
         { id: 'schedule', title: 'The room that breathes hardest', kind: 'do', cardAt: 'br',
-          body: 'RTU-1: 3,000 CFM, 7.5 tons of cooling, 1.0 in of static pressure to push it through the duct. Every other number on the set hangs off it.\n1. Under PAGES, click M-501.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts more air than the whole unit supplies. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
+          body: 'RTU-1: 3,000 CFM, 7.5 tons of cooling, 1.0 in of static pressure to push it through the duct. Every other number on the set hangs off it.\n1. Under PAGES, click M-501.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts the most air, nearly as much as the whole unit supplies. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
           target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn', '#pagesList'],
           check: () => { const a = pageAnn(M501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 300 && Math.max(h.x1, h.x2) >= 300 && Math.min(h.y1, h.y2) <= 619 && Math.max(h.y1, h.y2) >= 619); },
           hint: () => { const a = pageAnn(M501); return a && (a.highlights || []).length ? 'Not that row. Read down the EXHAUST column for the biggest number' : ''; },
@@ -362,10 +363,10 @@
       seed() { scaleM101(); seedRooms(); },
       steps: [
         { id: 'schedule', title: 'The palette from the schedule', kind: 'do',
-          body: 'Every diffuser on M-101 carries a tag, and M-501 says what each one is.\n1. Under PAGES, click M-501.\n2. Under COUNTERS, click [[+ Add]], then the [[Create]] tab, then [[Read a schedule from the sheet…]].\n3. Drag a box over the DIFFUSER AND GRILLE SCHEDULE.\n4. Click [[Create counters]].\n5. For each supply counter, click its pencil and type its CFM from the schedule: SD-1 150, SD-2 100, SD-3 200, EG-1 75, MA-1 2000.',
+          body: 'Every diffuser on M-101 carries a tag, and M-501 says what each one is.\n1. Under PAGES, click M-501.\n2. Under COUNTERS, click [[+ Add]], then the [[Create]] tab, then [[Read a schedule from the sheet…]].\n3. Drag a box over the DIFFUSER AND GRILLE SCHEDULE.\n4. Click [[Create counters]].\n5. Click each one\'s pencil and type its CFM from the schedule: SD-1 150, SD-2 100, SD-3 200, EG-1 75, MA-1 2000. RG-1 returns air and takes none.',
           target: ['#counterLineTypeDetailsCfm', '#schedulePaletteCreate', '#counterReadSchedule', '#counterModal .counter-tab[data-tab="create"]', '#addCounter', '#pagesList'],
-          check: () => ['SD-1', 'SD-2', 'SD-3'].every((t) => { const c = byTag(t); return !!(c && c.cfm === TAGS[t][2]); }),
-          hint: () => (byTag('SD-1') ? ['SD-1', 'SD-2', 'SD-3'].filter((t) => !(byTag(t) && byTag(t).cfm === TAGS[t][2])).map((t) => t + ' wants ' + TAGS[t][2] + ' CFM').join(' · ') : ''),
+          check: () => AIR_TAGS.every((t) => { const c = byTag(t); return !!(c && c.cfm === TAGS[t][2]); }),
+          hint: () => (byTag('SD-1') ? AIR_TAGS.filter((t) => !(byTag(t) && byTag(t).cfm === TAGS[t][2])).map((t) => t + ' wants ' + TAGS[t][2] + ' CFM').join(' · ') : ''),
           action: { label: 'Read the schedule for me', run: readDiffuserSchedule } },
         { id: 'dining', title: 'Fill the dining room', kind: 'do', cardAt: 'bl', page: M101, zones: () => circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(0, 8)),
           body: '1. Under PAGES, click M-101.\n2. In the sidebar, click SD-1 to arm it, and click the eight circled diffusers in the dining room.\nWatch ROOMS as you go: served climbs by 150 a click, and the warning goes at 1,200.',
@@ -433,9 +434,9 @@
           target: ['#ductCreateStart', '#ductBtn', '#annCanvas'], check: () => !!runWith(['16x10']),
           action: { label: 'Trace it for me', run: () => { if (runWith(['16x10'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' }); K().dirty(); } } },
         { id: 'attach', title: 'Hang the diffusers on the runs', kind: 'do', cardAt: 'bl',
-          body: 'The dining diffusers sit five or six feet off the main, on flex. To the app they are strays until they hang on a run, and a stray counts toward no system.\n1. Right-click a dining diffuser.\n2. Click [[Attach to nearest run]].\n3. Do the same for the rest of the dining, hall and kitchen diffusers.\nEach moves onto its run and draws its leader; the flex drop, five feet by default, joins the schedule.',
+          body: 'The dining diffusers sit five or six feet off the main, on flex. To the app they are strays until they hang on a run, and a stray counts toward no system.\n1. Right-click a dining diffuser.\n2. Click [[Attach to nearest run]].\n3. Do the same for the rest: the dining, the hall, the kitchen, and the two easy to miss, the dish pit\'s and the storage room\'s.\nEach moves onto its run and draws its leader; the flex drop, five feet by default, joins the schedule.',
           target: ['#ctxAttachToRun', '#annCanvas'], check: () => mainDone() && strays() <= 2,
-          hint: () => { const n = strays(); return n > 2 ? (n - 2) + ' diffuser' + (n === 3 ? '' : 's') + ' still hanging off nothing' : ''; },
+          hint: () => { const n = strays(); return n > 2 ? (n - 2) + ' diffuser' + (n === 3 ? '' : 's') + ' still hanging off nothing. Look in the dish pit and the storage room too' : ''; },
           action: { label: 'Hang them for me', run: () => { K().goPage(M101); attachAll(); } } },
         { id: 'fittings', title: 'What the run counted for itself', kind: 'read',
           body: 'Two strays left, the pair along the bar: their branch comes with the whole set in chapter 8. The DUCT header now reads the designed air the main and the kitchen branch reach, 2,350 of RTU-1\'s 3,000.\n1. In the left sidebar, under DUCT, click [[Schedule]].\nElbows, transitions, a tap and its volume damper, none of them clicked; the flex drops by system; straight duct by size with its gauge and lb/ft from the SMACNA table; seam and waste on its own line; and the number a sheet-metal bid is built on: Bid weight.',
@@ -463,7 +464,7 @@
           hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === M601 && T().measuredFeet() != null && Math.abs(T().measuredFeet() - 12) > 0.4 && Math.abs(T().measuredFeet() - 1.33) > 0.15 ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. The short string beside the duct, wrap to wrap' : ''; },
           action: { label: 'Measure it for me', run: () => { K().goPage(M601); const d = raw(SECTION.depth); K().measure(d[0], d[1]); } } },
         { id: 'fits', title: 'Let the app say it fits', kind: 'do',
-          body: '1\'-4": twelve inches of duct and two of wrap each side, under a 3\'-0" plenum. The section says it fits; the app can say it too, because chapter 2 gave every room a ceiling and a deck and chapter 5 gave the main its wrap.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1\'-4": twelve inches of duct and two of wrap each side, under a 3\'-0" plenum. The section says it fits; the app can say it too, because chapter 2 gave every room a ceiling and a deck and chapter 5 gave the main its wrap.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.',
           target: ['#bidCheckSectionTitle', '#pagesList'],
           check: () => { K().goPage; const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
           hint: () => { const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },
@@ -523,7 +524,7 @@
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'The rooms with their air, every diffuser and grille, RTU-1 as a system, the main and its four branches, the restroom exhaust, the make-up duct, the grease duct in black steel, the two fire dampers. Do as much as you like by hand; the button lays whatever is left.\n1. Count and trace until the status line stops naming what is missing.',
+          body: 'The rooms with their air, every diffuser and grille, RTU-1 as a system, the main and its branches, the restroom exhaust, the make-up duct, the grease duct in black steel, the two fire dampers. Earlier chapters taught each of them; this is all of them on the sheets, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo see the finished sheets instead, click Skip this step: the next card compares against the reference.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
@@ -543,7 +544,7 @@
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
-          body: '1. In the left sidebar, click BID CHECK to expand it.\nThe duct rows: Every room served, Systems within capacity, Flex drops within max and Scale set are judged from your takeoff; Fits the roof and Static path judge themselves once they know enough; the rest are yours.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe duct rows: Every room served, Systems within capacity, Flex drops within max and Scale set are judged from your takeoff; Fits the roof and Static path judge themselves once they know enough; the rest are yours.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: openBidCheck } },
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           body: 'Fire dampers at rated walls, OA meets code, Curb & power coordinated, Controls and stat locations set.\nWhich of them did this set already answer?',

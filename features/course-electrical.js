@@ -79,7 +79,9 @@
   // ----- readers ---------------------------------------------------------------------------------
   const counter = (re) => K().counterNamed(re);
   const byTag = (tag) => (S().counters || []).find((c) => String(c.tag || '').toUpperCase() === tag) || (S().counters || []).find((c) => new RegExp('^(type )?' + tag + '( ·|$)', 'i').test(c.name || ''));
-  const lineType = (re) => K().lineTypeNamed(re);
+  // The homerun is the type with Homerun on, whatever the reader named it (the Quick tab cannot add
+  // "HR", so a reader who used it had a homerun the course never found, 2026-09-24); by name otherwise.
+  const lineType = (re) => (re === RE.hr ? ((S().lineTypes || []).filter((l) => l.homerun).pop() || K().lineTypeNamed(re)) : K().lineTypeNamed(re));
   const pageAnn = (i) => K().pageAnn(i);
   const marksOf = (c, pageIdx) => { const a = pageAnn(pageIdx); return c && a ? (a.counterMarkers[c.id] || []) : []; };
   const markNear = (c, spot, d, pageIdx) => marksOf(c, pageIdx).some((m) => K().near(m, spot, d));
@@ -393,7 +395,7 @@
     {
       id: 'conduit', title: 'Chapter 4: Conduit, wire and the vertical', short: 'a circuit, traced', minutes: 12, page: E101, noun: 'chapter', set: ESET,
       intro: 'A line type that knows its raceway and its conductors, why #12 goes with a 20 A breaker, the ceiling height that turns a chain into verticals, and the fill the app checks against the table.',
-      seed() { scaleE101(); markMissing(pick('duplex'), pts(G.duplex), E101); markMissing(pick('gfci'), pts(G.gfci), E101); },
+      seed() { scaleE101(); markMissing(pick('duplex'), pts(G.duplex).slice(4), E101); markMissing(pick('gfci'), pts(G.gfci), E101); },   // not the west wall's four: the reader's chain places them (seeded, the chain doubled them to 15)
       steps: [
         { id: 'linetype', title: 'A line type that knows what is in it', kind: 'do',
           body: 'The keynotes say 3 #12 CU THHN + 1 #12 G in 3/4" EMT.\n1. Under LINE TYPES, click [[+ Add]]. On the [[Quick]] tab pick 0.75in and, beside Material, add EMT with [[+]] if it is not there. Click [[Add Line Type]].\n2. Click the pencil beside it. Set the raceway to EMT, 3/4".\n3. In Conductors, type 3 #12 THHN + 1 #12 G, and click [[Done]].',
@@ -413,7 +415,7 @@
           target: ['#chainPanel', '#chainBtn'], check: () => { const a = pageAnn(E101); return !!a && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 3; },
           action: { label: 'Chain the four for me', run: chainWestWall } },
         { id: 'fill', title: 'Conduit fill', kind: 'do',
-          body: '1. In the left sidebar, click BID CHECK to expand it.\nThe first row is judged already: Conduit fill within the table limit, 3 #12 and a ground in 3/4" EMT, about a tenth of the conduit, with the § chip naming the rule. Three or more conductors may fill 40% of a raceway (NEC Chapter 9, Table 1); the app does the areas.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe first row is judged already: Conduit fill within the table limit, 3 #12 and a ground in 3/4" EMT, about a tenth of the conduit, with the § chip naming the rule. Three or more conductors may fill 40% of a raceway (NEC Chapter 9, Table 1); the app does the areas.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
           action: { label: 'Open it', run: openBidCheck } },
         { id: 'straps', title: 'A support row of your own', kind: 'do',
@@ -440,18 +442,20 @@
           hint: () => (circuit1() ? 'The circuit exists: now put the west-wall receptacles and their runs in it' : ''),
           action: { label: 'Make LP-1 · 1 and assign the west wall', run: circuitOne } },
         { id: 'homerun', title: 'The homerun', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.hr, pts(G.homerun1), E101),
-          body: 'The arrow at the top receptacle says LP-1-1: from there the conduit goes up into the ceiling and across to the panel.\n1. Under LINE TYPES, make 0.75in EMT HR the same way as the first type, with the same conductors, and in its details turn on [[Homerun]].\n2. With it active, click [[Polyline]] and trace: the top receptacle, straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.',
+          body: 'The arrow at the top receptacle says LP-1-1: from there the conduit goes up into the ceiling and across to the panel.\n1. Under LINE TYPES, click [[+ Add]]. On the [[Create]] tab, name it 0.75in EMT HR and click [[Create]].\n2. Click the pencil beside it: set the same raceway and conductors as 0.75in EMT, and turn on [[Homerun]].\n3. With it active, click [[Polyline]] and trace: the top receptacle, straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.',
           target: ['#lineTypeHomerunBtn', '#polylineBtn', '#polylineBtnSidebar', '#addLineType'],
           check: () => { const lt = lineType(RE.hr); return !!(lt && lt.homerun && allDone(traceZones(RE.hr, pts(G.homerun1), E101))); },
           hint: () => { const lt = lineType(RE.hr); return lt && !lt.homerun ? 'The type exists: open its details and turn on Homerun' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeHomerun(); if (!polylinesOn(RE.hr, E101).length) tracePlan(lt, G.homerun1, 'Homerun, circuit 1', E101); const g = circuitOne(); void g; } } },
         { id: 'panelpoles', title: 'The panel knows its schedule', kind: 'do',
-          body: 'Bid Check can compare the circuits you draw against the panel\'s schedule once the panel counter knows how many poles it has.\n1. In the sidebar, click the pencil beside Panelboard LP-1.\n2. In Panel name, type LP-1. In Poles, type 42. Click [[Done]].',
+          // the chapter's own Panelboard came with 42 poles (TAGS), which passed this step on arrival
+          onEnter: () => { const c = counter(RE.panel); if (c && c.lesson && c.poles === 42) { delete c.poles; App.updateUI(); } },
+          body: 'Bid Check can compare the circuits you draw against the panel\'s schedule once the panel counter knows how many poles it has.\n1. In the sidebar, click the pencil beside Panelboard LP-1.\n2. Panel name already reads LP-1, off the plan\'s tag. In Poles, type 42. Click [[Done]].',
           target: ['#panelPoles', '#panelName', '#counterLineTypeDetailsModal .modal-card', '#countersList .edit-btn', '#countersSection'],
           check: () => { const c = counter(RE.panel); return !!(c && c.panelName && c.poles === 42); },
           action: { label: 'Set LP-1 · 42 poles', run: () => { const c = pick('panel'); App.pushUndoSnapshot(); c.panelName = 'LP-1'; c.poles = 42; K().dirty(); } } },
         { id: 'vd', title: 'What the voltage-drop row says', kind: 'do',
-          body: '1. In the left sidebar, click BID CHECK to expand it.\nVoltage drop within 3% to the farthest device: the app walked the homerun and the chain to the receptacle farthest from LP-1, assumed 12 A on the circuit, and warns, naming the gauge that would pass. The Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note), and the rulebook chip carries the K constant it used.\nIs the engineer wrong?',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nVoltage drop within 3% to the farthest device: the app walked the homerun and the chain to the receptacle farthest from LP-1, assumed 12 A on the circuit, and warns, naming the gauge that would pass. The Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note), and the rulebook chip carries the K constant it used.\nIs the engineer wrong?',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!bidRow('voltage-drop') && bidRow('voltage-drop').verdict !== 'na',
           action: { label: 'Open it', run: openBidCheck } },
         { id: 'load', title: 'The load the engineer scheduled', kind: 'do',
@@ -516,7 +520,7 @@
           target: ['#dropPanel', '#dropBtn'], check: () => polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0),
           action: { label: 'Add the 5 ft rise for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); dropAt(pts(G.feeder)[0], 5, E101); } } },
         { id: 'fill', title: 'Fill on the feeder', kind: 'do',
-          body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill within the table limit now judges the feeder too: four 3/0 and a #6 in 2" EMT, about a third of the raceway, under the 40% the table allows for three or more conductors (NEC Chapter 9, Table 1). Had the engineer written 1-1/2", the row would say so and name the size that fits.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill within the table limit now judges the feeder too: four 3/0 and a #6 in 2" EMT, about a third of the raceway, under the 40% the table allows for three or more conductors (NEC Chapter 9, Table 1). Had the engineer written 1-1/2", the row would say so and name the size that fits.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
           action: { label: 'Open it', run: openBidCheck } },
         { id: 'gear', title: 'Count the gear', kind: 'do', cardAt: 'br', page: E101, zones: () => circlesOn(E101, counter(RE.meter), [pts(G.meter)[0]], 12).concat(circlesOn(E101, counter(RE.disc), [pts(G.mdp)[0]], 12)),
@@ -533,7 +537,7 @@
       seed() { scaleE101(); K().setScale(E201, 9, '1/8" = 1\''); setCeiling(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Every receptacle, J-box, fixture and switch on the two plans, the panel, the meter and the main, the west-wall chain and its homerun, the feeder with its rise. Do as much as you like by hand; the button lays whatever is left.\n1. Count and trace until the status line stops naming what is missing.',
+          body: 'Every receptacle, J-box, fixture and switch on the two plans, the panel, the meter and the main, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each of them; this is all of them on the sheets, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo see the finished sheets instead, click Skip this step: the next card compares against the reference.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
@@ -556,7 +560,7 @@
       seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), pts(G.gfci), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); const g = circuitOne(); g.loadAmps = 6; if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101); circuitOne(); },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
-          body: '1. In the left sidebar, click BID CHECK to expand it.\nFour rows marked AUTO the app judges from your runs: conduit fill, voltage drop, circuits against the panel schedule, every device on a circuit. The rest are yours.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nFour rows marked AUTO the app judges from your runs: conduit fill, voltage drop, circuits against the panel schedule, every device on a circuit. The rest are yours.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: openBidCheck } },
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           body: 'The manual rows read: fire alarm devices at rated corridors and doors, lighting controls meet the energy code, equipment connections coordinated with HVAC and plumbing, temporary power and lighting included, pull points within 360° of bends on every run.\nWhich of them did this set already answer?',

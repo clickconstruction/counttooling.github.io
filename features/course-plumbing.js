@@ -134,6 +134,13 @@
     rpz: [RE.rpz, 'RPZ Backflow Preventer', 'Floor Drain', '#e85447'], co: [RE.co, 'CO Cleanout', 'Floor Drain', '#2e86de'],
     vtr: [RE.vtr, 'VTR Vent Through Roof', 'Floor Drain', '#e8c547'], gasDrop: [RE.gasDrop, 'Gas Drop w/ Shutoff', 'Floor Drain', '#c8963a'],
   };
+  // The chapter 3 line types the chain and the traces need, by the name the Quick tab gives them.
+  const COPPER_SIZES = [
+    { name: '1.5in Copper', re: /(^|[^.\d])1\.5\s*in.*copper/i },
+    { name: '1.25in Copper', re: /1\.25\s*in.*copper/i },
+    { name: '0.75in Copper', re: /(^|[^.\d])0?\.75\s*in.*copper(?!.*hwr)/i },
+  ];
+  const copperStillToMake = () => COPPER_SIZES.filter((c) => !(S().lineTypes || []).some((lt) => c.re.test(lt.name || ''))).map((c) => c.name);
   const pick = (tag) => { const t = TAGS[tag]; return counter(t[0]) || K().makeCounter(t[1], t[2], t[3]); };
   // Marks a counter at the spots it does not yet cover (the seam run twice adds nothing).
   function markMissing(c, spots, pageIdx) {
@@ -420,7 +427,7 @@
     {
       id: 'water', title: 'Chapter 3: Water, cold and hot', short: 'the water side, traced', minutes: 12, page: 0, noun: 'chapter',
       intro: 'From the meter through the backflow preventer, up the trunk and round the hot loop: the sizes the engineer wrote, the return line most bids miss, and the pipe, hangers and fittings the app counts from your trace.',
-      seed() { scaleP101(); const s = SPOTS(); markMissing(pick('wc'), s.wc); markMissing(pick('fd'), s.fdRestrooms); },
+      seed() { scaleP101(); const s = SPOTS(); markMissing(pick('wc'), s.wc); markMissing(pick('fd'), s.fdRestrooms); pick('lav'); },   // L-1 for the chain step: chapter 2's is swept with the last set
       steps: [
         { id: 'service', title: 'Follow the cold water in', kind: 'do', cardAt: 'tl',
           body: 'Start at WM, the meter on the city main below the building, and follow the solid line into STORAGE.\n1. Under COUNTERS, click [[+ Add]] and make a counter named RPZ Backflow Preventer.\n2. Click the first thing the service meets inside the wall.',
@@ -434,7 +441,8 @@
         { id: 'linetypes', title: 'Line types by size and material', kind: 'do',
           body: 'The general notes say Type L copper. The material belongs in the name: the hanger rule reads it.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. On the [[Quick]] tab, pick 1.5in and Copper (if Copper is not in your list, [[+]] beside Material adds it).\n3. Click [[Add Line Type]].\n4. Again for 1.25in Copper (the hot supply) and 0.75in Copper (the branches).',
           target: ['#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#addLineType'],
-          check: () => (S().lineTypes || []).filter((lt) => RE.copperAny.test(lt.name || '')).length >= 2,
+          check: () => !copperStillToMake().length,
+          hint: () => { const left = copperStillToMake(); return left.length && left.length < 3 ? 'Still to make: ' + left.join(', ') : ''; },
           action: { label: 'Make the three copper types', run: () => { App.pushUndoSnapshot(); const k = K(); const cw = k.makeLineType('1.5in Copper CW', '#4a9eff'); k.makeLineType('1.25in Copper HW', '#e85447'); k.makeLineType('0.75in Copper CW', '#47c88e'); S().activeLineTypeId = cw.id; K().dirty(); } } },
         { id: 'trace', title: 'Trace the cold trunk', kind: 'do', cardAt: 'bl', page: 0, zones: () => traceZones(RE.copper15, pts(G.cwTrunk), K().P101),
           body: '1. In the left sidebar, click 1.5in Copper to make it the active line type.\n2. In the header, click [[Polyline]] (or press P).\n3. Click inside each circle in turn: where the trunk leaves the south-wall run, the corner at the top wall, the corner at the east wall, its end at the exit hand sink.\n4. Press Enter.\nFour clicks, and the app has the plan length of the whole trunk.',
@@ -443,7 +451,7 @@
         { id: 'hot', title: 'Which line is the return?', kind: 'do', cardAt: 'tl', page: 0, zones: () => traceZones(RE.hwr, pts(G.hwReturn), K().P101),
           body: 'The hot water leaves the WH in STORAGE as a dashed line and rides beside the cold all the way round. A second line, dotted, comes back down the east wall through the RECIRC PUMP into the heater.\n1. Under LINE TYPES, make 0.75in Copper HWR (on the [[Create]] tab, or the Quick tab with HWR added to the name).\n2. With it active, click [[Polyline]] and trace the return: the top-right corner, down the east wall, and into the pump.\n3. Press Enter.',
           target: ['#polylineBtn', '#polylineBtnSidebar', '#addLineType'], check: () => allDone(traceZones(RE.hwr, pts(G.hwReturn), K().P101)),
-          hint: () => (lineType(RE.hwr) ? 'Trace the DOTTED line, the legend\'s HWR, not the dashed supply' : ''),
+          hint: () => (!S().drawingPolyline && polylinesOn(RE.hwr, K().P101).length && !allDone(traceZones(RE.hwr, pts(G.hwReturn), K().P101)) ? 'Trace the DOTTED line, the legend\'s HWR, not the dashed supply' : ''),
           action: { label: 'Trace the return for me', run: () => { const lt = lineType(RE.hwr) || K().makeLineType('0.75in Copper HWR', '#e8c547'); if (polylinesOn(RE.hwr).length) return; tracePlan(lt, G.hwReturn, 'Hot water return'); } } },
         { id: 'chain', title: 'Chain the fixtures off the top-wall run', kind: 'do', cardAt: 'bl', page: 0, zones: () => circlesOn(K().P101, RE.lav, K().LAVS, 14),
           body: 'Forty feet of 3/4" pipe, insulated, plus the pump, a check valve and a balancing valve, that most bids miss because it looks like the supply. Without the loop the mop sink, forty feet from the heater, runs cold for a minute every time it is opened, and the health code wants hot water at every hand sink now (FDA Food Code 5-202.12, at least 100°F).\nBoth lavatories hang off the top-wall run on 3/4" branches, lav to lav.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose L-1 and 0.75in Copper.\n3. Click the lavatory in MEN, then the one in WOMEN.\n4. Press Enter.\nEvery click places the fixture AND draws the branch back to the last one. (The mop sink has its own counter, so it is not on this chain.)',
@@ -483,8 +491,8 @@
         { id: 'two', title: 'Which fixture must never drain through the interceptor?', kind: 'do', cardAt: 'tl',
           body: 'Twenty-nine feet at 1/8" per foot (IPC 704.1 for 3" and larger): the far end sits 3-5/8" higher than the wall. Every foot of horizontal waste is a foot of trench, priced by the foot and the depth, and the engineer runs the drains the short way to the sewer to keep it shallow.\nThere are two waste lines, 4" SS and 3" GW, and they leave the building separately.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click a fixture whose waste must never go through the GI, and type why.',
           target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
-          check: () => { const k = K(); const spots = k.WCS.concat(k.LAVS, [k.MOP]); return spots.some((pt) => notesNear(pt, 30).length); },
-          hint: () => { const a = ann(); if (!a || !(a.notes || []).length) return ''; const k = K(); const grease = k.HAND_SINKS.concat(SPOTS().tcs, SPOTS().fs, Object.keys(k.FD).map((n) => k.FD[n])); return grease.some((pt) => notesNear(pt, 30).length) ? 'That fixture carries grease: the interceptor is exactly where it should go' : 'Put the note on the fixture itself'; },
+          check: () => { const k = K(); const spots = k.WCS.concat(k.LAVS, [k.MOP], SPOTS().fdRestrooms); return spots.some((pt) => notesNear(pt, 30).length); },
+          hint: () => { const a = ann(); if (!a || !(a.notes || []).length) return ''; const k = K(); const grease = k.HAND_SINKS.concat(SPOTS().tcs, SPOTS().fs, SPOTS().fdRest); /* the restroom FDs go to the sewer: a right answer */ return grease.some((pt) => notesNear(pt, 30).length) ? 'That fixture carries grease: the interceptor is exactly where it should go' : 'Put the note on the fixture itself'; },
           action: { label: 'Note the water closet for me', run: () => K().addNote(K().WCS[0], 'Sewage never enters the interceptor: the restrooms go straight to the sewer', '#e85447') } },
         { id: 'layer', title: 'Waste on its own layer', kind: 'do',
           body: 'A water closet, a lavatory or the mop sink. Every kitchen, dish and bar fixture drains through the 3" grease line to the GI outside, where grease floats, cools and is pumped out; the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste and the code keeps everything else out (IPC 1003.3). The red note says it in nine words.\nA plumber reads water and waste as two drawings. Keep them apart.\n1. In the footer, beside the layer name, click [[Add canvas]], the + button.\n2. Click [[New empty layer]], name it Waste, and click [[Create]].\nThe up and down arrow keys switch layers; each layer has its own totals.',
@@ -515,7 +523,7 @@
           hint: () => missing(RE.vtr, SPOTS().vtr, VTR_LABELS, 8),
           action: { label: 'Count both for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('vtr'), SPOTS().vtr); K().dirty(); } } },
         { id: 'open', title: 'Open Bid Check', kind: 'do',
-          body: 'Two VTRs, each a roof penetration: a flashing, a boot, and a roofer to coordinate (IPC 903 puts the terminal above the roof and away from air intakes).\n1. In the left sidebar, click BID CHECK to expand it.\nThe row Hangers on every supported run is open: 4in PVC and 3in PVC count no hangers.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: 'Two VTRs, each a roof penetration: a flashing, a boot, and a roofer to coordinate (IPC 903 puts the terminal above the roof and away from air intakes).\n1. In the left sidebar, click BID CHECK to expand it.\nThe row Hangers on every supported run is open: 4in PVC and 3in PVC count no hangers.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false,
           action: { label: 'Open it', run: () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); } } },
         { id: 'underslab', title: 'Hangers under the slab?', kind: 'read',
@@ -650,7 +658,7 @@
       seed() { scaleP101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Every fixture under its tag, every run by size and material: the service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas. Do as much as you like by hand; the button lays whatever is left.\n1. Count and trace until the status line stops naming what is missing.',
+          body: 'Every fixture under its tag, every run by size and material: the service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas. Chapters 2 to 7 taught each of them; this is all of them on one sheet, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo see the finished sheet instead, click Skip this step: the next card compares against the reference.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
@@ -676,12 +684,14 @@
         b.cu.childCounts = [K().hangerRuleFor(b.cu)];
         const k = K();
         markMissing(pick('fd'), [k.FD.kitchen1, k.FD.kitchen2, k.FD.kitchen3]);
+        // chapter 6's flag, so the Notes ledger has something to list (it hides with no notes)
+        k.addNote(pts(G.hoodValve)[0], 'RFI: Who furnishes and sets the gas shutoff valve the hood suppression system trips?', '#e85447');
         const ss = k.makeLineType('4in PVC', '#8a4bb0');
         if (!polylinesOn(RE.pvc4).length) tracePlan(ss, G.ssRun, 'Sanitary');
       },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
-          body: '1. In the left sidebar, click BID CHECK to expand it.\nRows marked AUTO are judged by the app from your runs. The rest are questions only you can answer.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nRows marked AUTO are judged by the app from your runs. The rest are questions only you can answer.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false,
           action: { label: 'Open it', run: () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); } } },
         { id: 'rows', title: 'What the rows mean', kind: 'read',

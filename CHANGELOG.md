@@ -13,6 +13,51 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(lessons): the stalls from the 2026-09-24 read of the courses and the plumbing tour (2026-09-24)
+
+A read of every course step against the sheets and the code, and a live walk of the plumbing tour,
+found steps a reader could not finish, steps that passed on their own, and red hints shown to a
+reader doing it right. The trade questions went to PC/EC/HC-TRADE and the card wording to
+COURSE-WORDING (PUNCHLIST.md); this is the rest.
+
+**The engine** (features/tutorial.js):
+- **Actions number straight through** a paragraph between them (`bodyHtml` gives the next `<ol>` a
+  `start`): the size step read 1, 2, 1, 1.
+- **`onEnter`**, run when a step is entered moving forward (never on Back), and the kit's
+  `foldBidCheck`. Bid Check stayed open from one chapter to the next, so every "click BID CHECK to
+  expand it" step after the first passed untouched, and the click the card asked for closed it. The
+  twelve such steps (the electrical and HVAC tours, the blank tour, the Bid Check lesson, the three
+  courses) now fold it on the way in and `hold` on what the rows say.
+
+**The plumbing tour**: `wsfu` said the app "has read 2 WSFU… Leave it", but the box is empty and
+the 2 is a suggestion under it, so a reader who left it waited forever; it now says type 2, then
+Done. `size`'s "still one size" hint waited for nothing: it showed in red after the first two right
+clicks, and now waits until the run is finished.
+
+**The plumbing course**: chapter 3's seed makes L-1 for the chain step (chapter 2's is swept with
+its set); `linetypes` waits for all three copper types (it passed at two, and the chain then wanted
+the third) and names the ones left; `hot`'s hint waits for a finished trace that misses; `two`
+takes a restroom floor drain as a right answer (it was told "that fixture carries grease");
+chapter 9's seed carries chapter 6's RFI so the Notes ledger button it asks for is on screen.
+
+**The electrical course**: the homerun is the type with Homerun on, whatever its name (the Quick tab
+cannot write "HR", so a reader who used it had a homerun the course never found), and the card says
+to name it on the Create tab; `panelpoles` clears the 42 poles the chapter's own Panelboard came
+with (the step passed on arrival); chapter 4 no longer seeds the four west-wall receptacles the
+reader's chain places (Summary read 15).
+
+**The HVAC course**: a Quick-made `6" Fire Damper` counts as a fire damper; the diffuser schedule
+waits for all five CFMs it lists; "Hang the diffusers" names the dish pit's and the storage room's
+too (the check waited for them); the schedule question asked for a room that exhausts more than the
+unit supplies (none does) and now asks for the most.
+
+**All three "Finish the takeoff" steps** promised "the button lays whatever is left", and no button
+shows (a lesson never does a step for the reader); they now say it is by hand, and that Skip this
+step goes to the reference.
+
+tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
+specs walk green (80).
+
 ## fix(tag-reader): two counters carrying one tag, the armed one takes the click (2026-09-24)
 
 Found by hand on the electrical course's J-box step, on a device with a standing palette: the

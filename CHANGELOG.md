@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tour): prove the scale shows what to measure, ticks as you click, says what went wrong, and shows the reading (2026-09-24)
+
+A new estimator got lost on the tours' "Prove the scale" step (the plumbing, electrical and HVAC
+tours share it). Walked on the sample plan, five things were wrong: circle 1 sits where the 24'-0"
+and 20'-0" strings meet and circle 2 where the 20'-0" meets the 3'-8", so "the tick mark" named two;
+a click in a circle before pressing Measure did nothing and the card said nothing; "0 of 2 done"
+did not move on the first click (both circles lit only on a finished 20 ft reading); a right
+reading advanced the tour within a second, so the "footer should read 20'-0"" the card asked the
+reader to check was never shown on the card; and a wrong reading always said to set the scale
+again, even when the clicks had missed the circles and the scale was fine.
+
+The step is now built by a kit helper, `measureProof` (features/tutorial.js, on `App.tourKit`):
+- **The dimension is drawn**: a new `span` zone, a dashed orange line from circle to circle over
+  the drawing's own dimension line (the drawing's written length sits beside it, so the span has
+  no label). A guide, never counted in "N of M done".
+- **A circle ticks as its click lands**: the first click of a measure under way (`scalePointA`)
+  lights its circle, so the card reads 1 of 2.
+- **The reading counts only from the circles**: `state.lastMeasure` now carries the two clicks
+  (`a`, `b`; in memory only), and the check wants one in each circle.
+- **The hint names the miss**: "Measure is not on yet" (the engine records the last click on the
+  sheet with the tool armed at the time, `lastSheetClick`, cleared per step); "a click missed a
+  circle"; or, with both clicks in, "the scale is off. Click Back and set it again".
+- **It holds on the result** (`hold: true`): the card says "You measured 20'-0", the same as the
+  drawing: the scale is right" (or "within a click of the drawing's 20'-0"" for a 20'-1" hand
+  click), then the real-sheet advice, and Next lights.
+- **The body is three actions**: Measure, circle 1 at the top of the dimension, circle 2 at its bottom.
+
+The Scale lesson's "Prove it" (features/lessons.js) uses the same helper for the 12'-0" string on
+P-401. The course chapters' measuring steps keep their own code for now. tutorial.spec.js pins the
+three hints, the first-click tick, the span and the hold; the specs that walk a tour through the
+step click Next there (`doAndGo`).
+
 ## style(tour): the click zones on the sheet are orange, not the accent yellow (2026-09-24)
 
 The circles and drag boundaries a tour, lesson or course step draws on the plan (`.tour-zone*`,

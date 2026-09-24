@@ -106,6 +106,8 @@
   // step's check only counts work done INSIDE them. They are gracious on purpose: a
   // circle is a couple of feet of plan wide and never under TARGET_MIN_PX on screen.
   //   circle: { kind: 'circle', x, y, r, done }        box: { kind: 'box', outer, inner, done, label? }
+  //   span: { kind: 'span', a, b, r, done, outer } — a dimension drawn between two circles, a
+  //   guide only (never counted in "N of M done"); `outer` is its box for the card and the focus zoom.
   // A step declares `zones: () => [...]` (evaluated live) and `page` (the sheet they are on).
   const TARGET_MIN_PX = 26;
   const norm = (r) => ({ x1: Math.min(r.x1, r.x2), y1: Math.min(r.y1, r.y2), x2: Math.max(r.x1, r.x2), y2: Math.max(r.y1, r.y2) });
@@ -150,6 +152,60 @@
   }
   const allDone = (zs) => zs.length > 0 && zs.every((z) => z.done);
   const stepZones = (step) => { try { return (step && step.zones && step.zones()) || []; } catch (_) { return []; } };
+  // Only the targets a reader clicks or drags count toward "N of M done"; a span is a guide.
+  const countedZones = (zs) => zs.filter((z) => z.kind !== 'span');
+
+  // The last click on the sheet while a tour runs, in sheet points, with the tool that was armed
+  // when it landed: how a step knows the reader clicked its circle with the wrong tool (or none),
+  // which the app itself answers with silence. Cleared on every step change.
+  let lastSheetClick = null;
+  document.addEventListener('pointerdown', (e) => {
+    if (!active || !e.target || !e.target.closest || !e.target.closest('.canvas-wrapper')) return;
+    const b = sheetBox(); if (!b) return;
+    lastSheetClick = { x: (e.clientX - b.left) / b.k, y: (e.clientY - b.top) / b.k, tool: state().tool, page: state().currentPage };
+  }, true);
+
+  // Prove a scale by measuring a dimension the drawing gives (2026-09-24, a new estimator lost on
+  // the tour's step). The dimension is drawn as a span between its two circles, so it is plain
+  // WHICH string is measured where two meet at a tick; a circle ticks as the click in it lands;
+  // the reading only counts with a click in each circle; and the hint names which of three things
+  // went wrong: Measure is not on, a click missed a circle, or the clicks were right and the
+  // scale is not. Once it reads true the card says so and holds for Next (the step's `hold`),
+  // because the reading IS the lesson. `ends` are the dimension's two ticks in sheet points.
+  function measureProof({ page, ends, r, ft, tol, stated }) {
+    const circles = () => ends.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: false }));
+    const nearestIn = (zs, pt) => { let best = null, bd = Infinity; zs.forEach((z) => { const d = Math.hypot(pt.x - z.x, pt.y - z.y); if (d < bd) { bd = d; best = z; } }); return best && inCircle(pt, best) ? best : null; };
+    const pending = () => { const s = state(); return s.currentPage === page && s.tool === App.TOOL.MEASURE && s.scaleMode === App.SCALE_MODES.POINT_B && s.scalePointA ? s.scalePointA : null; };
+    const reading = () => { const lm = state().lastMeasure; return lm && lm.pageIdx === page && lm.a && lm.b ? lm : null; };
+    const readText = (lm) => String(lm.text || '').replace(/^Distance:\s*/, '');
+    // the circles the reader's clicks sit in: the first click of a measure under way, else both ends of the last one
+    const hits = () => {
+      const zs = circles(), p = pending(), lm = p ? null : reading();
+      (p ? [p] : lm ? [lm.a, lm.b] : []).forEach((pt) => { const z = nearestIn(zs, pt); if (z) z.done = true; });
+      return zs;
+    };
+    const inBoth = () => !pending() && !!reading() && hits().every((z) => z.done);
+    const right = () => { const v = measuredFeet(); return v != null && Math.abs(v - ft) <= tol; };
+    const check = () => inBoth() && right();
+    const zones = () => {
+      const zs = hits(), ok = check(), lo = norm({ x1: ends[0].x, y1: ends[0].y, x2: ends[1].x, y2: ends[1].y });
+      // the span rides LAST so a caller's zs[0] / zs[1] are still the two circles
+      return zs.concat([{ kind: 'span', a: ends[0], b: ends[1], r, done: ok, outer: grow(lo, r) }]);
+    };
+    const hint = () => {
+      if (pending()) return '';   // the first click is in: "1 of 2 done" says so
+      const c = lastSheetClick, lm = reading();
+      if (c && c.page === page && c.tool !== App.TOOL.MEASURE && state().tool !== App.TOOL.MEASURE && circles().some((z) => inCircle(c, z))) return 'Measure is not on yet. Click Measure in the header first (or press D)';
+      if (!lm) return '';
+      if (!inBoth()) return 'That read ' + readText(lm) + ', but a click missed a circle. Click inside circle 1, then inside circle 2';
+      if (!right()) return 'Read ' + readText(lm) + ' with both clicks in the circles, so the scale is off. Click Back and set it again';
+      return '';
+    };
+    // What the card says once it reads true. A hand click lands a few inches either side of a
+    // tick, so 20'-1" is right too, and the card says so rather than calling it "the same".
+    const verdict = () => { const got = reading() ? readText(reading()) : ''; return 'You measured ' + got + (got === stated ? ', the same as the drawing' : ', within a click of the drawing\'s ' + stated); };
+    return { zones, check, hint, verdict };
+  }
 
   // ===== steps both tours share ==============================================================
   // Sample-plan geometry in PDF points: the drawing is candidate A's 12 px/ft SVG
@@ -172,14 +228,18 @@
     const v = lm.pts / lm.scale.pixelsPerUnit;
     return App.convertUnitValue ? App.convertUnitValue(v, lm.scale.unit || 'ft', 'ft') : v;
   };
+  const PROOF_20FT = measureProof({ page: 0, ends: DIM_20FT, r: 13, ft: PROVE_FT, tol: PROVE_TOL_FT, stated: '20\'-0"' });
   const PROVE_STEP = {
     id: 'measure', title: 'Prove the scale', kind: 'do',
-    body: '1. In the header, click [[Measure]] (or press D).\n2. Click the tick mark at one end of the 20\'-0" dimension on the left edge: it is circled.\n3. Click the tick mark in the other circle.\nThe footer should read 20\'-0". If it reads anything else, click [[Back]] and set the scale again. Do this on every real sheet: a PDF printed to a smaller sheet looks right and measures short.',
+    hold: true,   // the reading is the lesson: the card shows it and waits for Next
+    body: () => (PROOF_20FT.check()
+      ? PROOF_20FT.verdict() + ': the scale is right.\nOn a real sheet, measure one dimension like this every time you set a scale. A PDF printed to a smaller sheet looks right and measures short.\n1. Click [[Next]].'
+      : 'Measure a dimension the drawing gives, and the scale proves itself.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the top of the 20\'-0" dimension on the left edge.\n3. Click inside circle 2, at its bottom.'),
     target: ['#measureBtn', '#measureBtnSidebar'],
     page: 0,
-    zones: () => { const ft = measuredFeet(); const ok = ft != null && Math.abs(ft - PROVE_FT) <= PROVE_TOL_FT; return DIM_20FT.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: 13, done: ok })); },
-    check: () => { const ft = measuredFeet(); return ft != null && Math.abs(ft - PROVE_FT) <= PROVE_TOL_FT; },
-    hint: () => { const ft = measuredFeet(); const lm = state().lastMeasure; return ft == null ? '' : 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Go Back and set the scale again'; },
+    zones: PROOF_20FT.zones,
+    check: PROOF_20FT.check,
+    hint: PROOF_20FT.hint,
     action: { label: 'Measure the 20\'-0" wall', run: measureTwentyFeet },
   };
 
@@ -978,7 +1038,8 @@
     el('tourSkip').style.display = (!ready && stepIdx < STEPS.length - 1) ? '' : 'none';
     el('tourBack').style.visibility = stepIdx === 0 ? 'hidden' : '';
     const wrongPage = zones.length && step.page != null && state().currentPage !== step.page;
-    const progress = zones.length > 1 ? zones.filter((z) => z.done).length + ' of ' + zones.length + ' done' : '';
+    const counted = countedZones(zones);
+    const progress = counted.length > 1 ? counted.filter((z) => z.done).length + ' of ' + counted.length + ' done' : '';
     el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || (wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '') || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
     el('tourStatus').classList.toggle('tour-status-miss', step.kind === 'do' && !done && !!(step.hint && safeHint(step)));
     el('tourDots').innerHTML = STEPS.map((s, i) => '<span class="tour-dot' + (i < stepIdx ? ' past' : i === stepIdx ? ' now' : '') + '"></span>').join('');
@@ -1094,13 +1155,23 @@
     const X = (x) => box.left + x * box.k, Y = (y) => box.top + y * box.k;
     let html = '<defs><clipPath id="tourZonesClip"><rect x="' + w.left + '" y="' + w.top + '" width="' + w.width + '" height="' + w.height + '"/></clipPath></defs><g clip-path="url(#tourZonesClip)">';
     let n = 0;
-    zones.forEach((z) => {
+    const many = countedZones(zones).length > 1;
+    // a span draws first so its circles sit on top of it
+    zones.filter((z) => z.kind === 'span').concat(zones.filter((z) => z.kind !== 'span')).forEach((z) => {
       const d = z.done ? ' is-done' : '';
-      if (z.kind === 'circle') {
+      if (z.kind === 'span') {
+        // the dimension between two circles: a dashed line from rim to rim, over the drawing's own
+        // dimension line (whose written length sits beside it, so the span carries no label)
+        const ax = X(z.a.x), ay = Y(z.a.y), bx = X(z.b.x), by = Y(z.b.y), len = Math.hypot(bx - ax, by - ay), rr = zoneR(z) * box.k;
+        if (len > rr * 2 + 8) {
+          const ux = (bx - ax) / len, uy = (by - ay) / len;
+          html += '<line class="tour-zone-span' + d + '" x1="' + (ax + ux * rr) + '" y1="' + (ay + uy * rr) + '" x2="' + (bx - ux * rr) + '" y2="' + (by - uy * rr) + '"/>';
+        }
+      } else if (z.kind === 'circle') {
         n++;
         const cx = X(z.x), cy = Y(z.y), r = zoneR(z) * box.k;
         html += '<circle class="tour-zone' + d + '" cx="' + cx + '" cy="' + cy + '" r="' + r + '"/>';
-        if (zones.length > 1 || z.done) html += '<circle class="tour-zone-tag-bg' + d + '" cx="' + (cx + r * 0.72) + '" cy="' + (cy - r * 0.72) + '" r="9"/><text class="tour-zone-tag" text-anchor="middle" x="' + (cx + r * 0.72) + '" y="' + (cy - r * 0.72 + 4) + '">' + (z.done ? '✓' : n) + '</text>';
+        if (many || z.done) html += '<circle class="tour-zone-tag-bg' + d + '" cx="' + (cx + r * 0.72) + '" cy="' + (cy - r * 0.72) + '" r="9"/><text class="tour-zone-tag" text-anchor="middle" x="' + (cx + r * 0.72) + '" y="' + (cy - r * 0.72 + 4) + '">' + (z.done ? '✓' : n) + '</text>';
       } else {
         const o = z.outer, i = z.inner;
         html += '<rect class="tour-zone' + d + '" rx="10" x="' + X(o.x1) + '" y="' + Y(o.y1) + '" width="' + (o.x2 - o.x1) * box.k + '" height="' + (o.y2 - o.y1) * box.k + '"/>';
@@ -1186,6 +1257,7 @@
     heldByBack = next < stepIdx;
     stepIdx = next;
     doneAt = 0;
+    lastSheetClick = null;
     revealed = false;
     closeStrayDialogs(STEPS[stepIdx]);
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
@@ -1304,14 +1376,14 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, allDone, grow, norm, inCircle, markersOf };
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, allDone, grow, norm, inCircle, markersOf };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.
   App.tutorialDoStep = async () => { const st = active ? STEPS[stepIdx] : null; if (st && st.action) { await st.action.run(); render(); } };
   App.tutorialZones = () => (active ? stepZones(STEPS[stepIdx]) : []);
   // the current targets in CLIENT pixels, where a spec (or a person) would click
-  App.tutorialZoneScreen = () => { const b = sheetBox(); if (!active || !b) return []; const X = (x) => b.left + x * b.k, Y = (y) => b.top + y * b.k; const R = (r) => ({ x1: X(r.x1), y1: Y(r.y1), x2: X(r.x2), y2: Y(r.y2) }); return stepZones(STEPS[stepIdx]).map((z) => (z.kind === 'circle' ? { kind: 'circle', cx: X(z.x), cy: Y(z.y), r: zoneR(z) * b.k, done: z.done } : { kind: 'box', outer: R(z.outer), inner: R(z.inner), done: z.done })); };
+  App.tutorialZoneScreen = () => { const b = sheetBox(); if (!active || !b) return []; const X = (x) => b.left + x * b.k, Y = (y) => b.top + y * b.k; const R = (r) => ({ x1: X(r.x1), y1: Y(r.y1), x2: X(r.x2), y2: Y(r.y2) }); return stepZones(STEPS[stepIdx]).map((z) => (z.kind === 'circle' ? { kind: 'circle', cx: X(z.x), cy: Y(z.y), r: zoneR(z) * b.k, done: z.done } : z.kind === 'span' ? { kind: 'span', a: { x: X(z.a.x), y: Y(z.a.y) }, b: { x: X(z.b.x), y: Y(z.b.y) }, done: z.done } : { kind: 'box', outer: R(z.outer), inner: R(z.inner), done: z.done })); };
   App.tutorialStepInfo = () => { const st = active ? STEPS[stepIdx] : null; return st ? { id: st.id, kind: st.kind, done: st.kind === 'read' || safeCheck(st), hasAction: !!st.action } : null; };
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake

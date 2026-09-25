@@ -228,9 +228,12 @@
   };
   // The reading the tour expects, and how far off is still "20 ft".
   const PROVE_FT = 20, PROVE_TOL_FT = 0.6;
+  // The last measure in feet, at the scale it was taken at (stored with it). It read null once the
+  // reader went to another sheet, and a proof passed a moment before turned into "the scale is off"
+  // (by hand, 2026-09-25); every caller checks lm.pageIdx itself.
   const measuredFeet = () => {
     const lm = state().lastMeasure;
-    if (!lm || lm.pageIdx !== state().currentPage || !(lm.pts > 0) || !lm.scale || !(lm.scale.pixelsPerUnit > 0)) return null;
+    if (!lm || !(lm.pts > 0) || !lm.scale || !(lm.scale.pixelsPerUnit > 0)) return null;
     const v = lm.pts / lm.scale.pixelsPerUnit;
     return App.convertUnitValue ? App.convertUnitValue(v, lm.scale.unit || 'ft', 'ft') : v;
   };
@@ -1275,10 +1278,18 @@
   // light depends on the form. The create-a-counter steps light Name until a name is typed, then
   // Create Counter: a 900-px-tall window scrolled the dialog down to the button the moment it
   // opened, and the Name field the card asks for first sat out of sight (by hand, 2026-09-25).
+  // Wherever a step lights the pages list, the PAGES ▶ follows it: arming a counter folds PAGES,
+  // its heading opens Page Settings rather than the list, and "Under PAGES, click M-501" had
+  // nothing to click (by hand, 2026-09-25).
   function targetsOf(step) {
-    if (typeof step.target !== 'function') return step.target || [];
-    try { return step.target() || []; } catch (_) { return []; }
+    let list;
+    if (typeof step.target !== 'function') list = step.target || [];
+    else { try { list = step.target() || []; } catch (_) { list = []; } }
+    const i = list.indexOf('#pagesList');
+    return i < 0 ? list : list.slice(0, i + 1).concat(['#pagesCollapseIcon'], list.slice(i + 1));
   }
+  // The status line for a step that sends the reader to another sheet while PAGES is folded.
+  const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? 'PAGES is folded: click the ▶ beside it, then ' + label : ''; };
   function otherControlBoxes(step, pointed, within) {
     const out = [];
     targetsOf(step).forEach((sel) => {
@@ -1533,7 +1544,7 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf };
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

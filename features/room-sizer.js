@@ -311,7 +311,10 @@
       const name = parseRoomNameCallout(it.str);
       if (!name) return;
       const d = Math.hypot(ix - cx, iy - cy);
-      if (!best || it.h > best.h + 0.5 || (Math.abs(it.h - best.h) <= 0.5 && d < best.d)) best = { name, h: it.h, d };
+      // print size is the box's short side for a word set sideways: a vertical "FRYER" on the cook
+      // line is 17.7 pt tall and beat "KITCHEN 105" at 9.75 (by hand, 2026-09-25)
+      const size = String(it.str || '').trim().length >= 2 && it.h > it.w ? it.w : it.h;
+      if (!best || size > best.h + 0.5 || (Math.abs(size - best.h) <= 0.5 && d < best.d)) best = { name, h: size, d };
     });
     return best ? best.name : null;
   }

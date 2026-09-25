@@ -326,9 +326,10 @@
   }
   function renderTagReaderUI() {
     const link = document.getElementById('counterReadSchedule');
-    // Offered on electrical projects, on any project with a tagged counter, and on plumbing
-    // projects, whose fixture schedules carry tags too (the plumbing course reads P-501 with it).
-    if (link) link.style.display = (active() || App.state.trade === 'plumbing') && App.state.pages && App.state.pages.length ? '' : 'none';
+    // Offered on electrical projects, on any project with a tagged counter, and on plumbing and
+    // HVAC projects, whose fixture and diffuser schedules carry tags too (the plumbing course reads
+    // P-501 with it; the HVAC course's chapter 3 asked for it on M-501 and it was hidden, by hand 2026-09-25).
+    if (link) link.style.display = (active() || App.state.trade === 'plumbing' || App.state.trade === 'hvac') && App.state.pages && App.state.pages.length ? '' : 'none';
   }
 
   App.pageTextItems = pageTextItems;

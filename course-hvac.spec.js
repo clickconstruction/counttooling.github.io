@@ -229,3 +229,105 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// Walked by hand on a returning estimator's device (2026-09-25): a standing "RTU Roof" in the
+// palette, the mouse and keyboard on every step, never the step's own button.
+test.describe('The HVAC course, by hand', () => {
+  const zones = (page) => page.evaluate(() => window.App.tutorialZoneScreen());
+  const lit = (page, sel) => page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const a = e.getBoundingClientRect(), b = document.getElementById('tourSpot').getBoundingClientRect(); return b.width > 0 && Math.abs(a.left - 6 - b.left) < 3 && Math.abs(a.top - 6 - b.top) < 3; }, sel);
+  const dragBox = async (page, z) => {
+    const a = { x: (z.outer.x1 + z.inner.x1) / 2, y: (z.outer.y1 + z.inner.y1) / 2 }, b = { x: (z.outer.x2 + z.inner.x2) / 2, y: (z.outer.y2 + z.inner.y2) / 2 };
+    await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(b.x, b.y, { steps: 8 }); await page.mouse.up();
+  };
+
+  test('chapter 1: a standing "RTU Roof" is not an armed counter; a folded PAGES lights its ▶ and says so', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:sheet', errors);
+    await page.evaluate(() => { window.state.counters.push({ id: 'st-rtu', name: 'RTU Roof', icon: window.App.getOrderedIcons()[0].value, color: '#8a4bb0' }); });
+    await openSheets(page);
+    await gotoStep(page, 'unit');
+    await page.waitForTimeout(600);
+    await expect(page.locator('#tourStatus')).not.toContainText('armed');
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'RTU-1', icon: window.App.getOrderedIcons()[0].value, color: '#2e86de', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(998, 328)]); k.dirty(); });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule', null, { timeout: 5000 });
+    await page.evaluate(() => { if (!document.getElementById('pagesSection').classList.contains('collapsed')) document.getElementById('pagesCollapseIcon').click(); });
+    await page.waitForTimeout(600);
+    await expect(page.locator('#tourStatus')).toContainText('PAGES is folded');
+    expect(await lit(page, '#pagesCollapseIcon')).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('chapter 2: the kitchen box is named KITCHEN, not the sideways FRYER; the ring goes Room type, Target CFM, Save', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:rooms', errors);
+    await openSheets(page);
+    await gotoStep(page, 'kitchen');
+    await page.waitForTimeout(800);
+    await page.keyboard.press('v');
+    await dragBox(page, (await zones(page))[0]);
+    await expect(page.locator('#roomBoxModal')).toHaveClass(/visible/);
+    await expect(page.locator('#roomBoxNewRoomName')).toHaveValue('KITCHEN');
+    await page.fill('#roomBoxHeight', '9'); await page.fill('#roomBoxDeck', '12');
+    await page.click('#roomBoxApply');
+    await page.locator('#roomsList .room-row', { hasText: 'KITCHEN' }).click();
+    await page.waitForTimeout(600);
+    expect(await lit(page, '#roomEditType')).toBe(true);
+    await page.selectOption('#roomEditType', 'custom'); await page.waitForTimeout(600);
+    expect(await lit(page, '#roomEditTargetCfm')).toBe(true);
+    await page.fill('#roomEditTargetCfm', '800'); await page.waitForTimeout(600);
+    expect(await lit(page, '#roomEditSave')).toBe(true);
+    await page.click('#roomEditSave');
+    await expect(page.locator('#tourStatus')).toContainText('Now the hall', { timeout: 3000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('chapter 3: Read a schedule is offered on an HVAC project, and a drag over M-501 proposes the six counters', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:diffusers', errors);
+    await openSheets(page);
+    await page.waitForTimeout(600);
+    expect(await lit(page, '#pagesList')).toBe(true);   // M-501 first, the card's line 1
+    await page.locator('#pagesList .sidebar-item', { hasText: 'M-501' }).first().click({ position: { x: 80, y: 10 } });
+    await page.waitForTimeout(800);
+    await page.click('#addCounter');
+    await page.click('#counterModal .counter-tab[data-tab="create"]');
+    await expect(page.locator('#counterReadSchedule')).toBeVisible();
+    await page.click('#counterReadSchedule');
+    await page.waitForTimeout(700);
+    const z = (await zones(page))[0];
+    expect(z && z.kind).toBe('box');   // the boundary the drag goes in, and the card keeps off it
+    await dragBox(page, z);
+    await expect(page.locator('#schedulePaletteModal')).toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#schedulePaletteList .schedule-palette-row')).toHaveCount(6);
+    await page.click('#schedulePaletteCreate');
+    await page.waitForTimeout(600);
+    const sd1 = await page.evaluate(() => window.state.counters.find((c) => c.tag === 'SD-1').id);
+    expect(await lit(page, '#countersList [data-counter-id="' + sd1 + '"] .edit-btn')).toBe(true);   // the next CFM to type
+    expect(errors).toEqual([]);
+  });
+
+  test('chapter 6: the depth proof ticks per click and holds when the reader moves to M-101 before Next', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:plenum', errors);
+    await openSheets(page);
+    await page.evaluate(() => window.App.tutorialDoStep());   // (spec seam) M-601's 1/2", the chapter's first step
+    await page.waitForFunction(() => window.App.getPageScale(2), null, { timeout: 5000 });
+    await gotoStep(page, 'depth');
+    await page.waitForTimeout(800);
+    await expect(page.locator('#tourStatus')).toHaveText('0 of 2 done');
+    const z = await zones(page);
+    await page.click('#measureBtn');
+    await page.mouse.click(z[0].cx + 1, z[0].cy + 1);
+    await expect(page.locator('#tourStatus')).toHaveText('1 of 2 done');
+    await page.mouse.click(z[1].cx - 1, z[1].cy - 1);
+    await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    await page.evaluate(() => { window.state.currentPage = 0; window.App.updateUI(); });   // a sheet change before Next
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => window.App.tutorialStepInfo().done || window.App.tutorialStepId() !== 'depth')).toBe(true);
+    expect(errors).toEqual([]);
+  });
+});

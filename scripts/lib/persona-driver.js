@@ -166,9 +166,31 @@ function installHelpers() {
     const x1 = Math.max(0, r.left + 6), y1 = Math.max(0, r.top + 6), x2 = Math.min(window.innerWidth, r.right - 6), y2 = Math.min(window.innerHeight, r.bottom - 6);
     return under ? { el: toActionable(under), box: [Math.round(x1), Math.round(y1), Math.round(x2 - x1), Math.round(y2 - y1)] } : null;
   };
+  // The headings a person reads a section by: the sidebar's section titles, a dialog's heading, a
+  // `.section-rule` group heading, a fieldset's legend. The "COUNTERS + Add" form splits only on one.
+  const HEADINGS = 'h1, h2, h3, h4, legend, .section-rule b';
+  const sectionOf = (h) => h.closest('.sidebar-section, fieldset, section, .modal-card, .form-group') || (h.parentElement && h.parentElement.parentElement) || h.parentElement;
+  const headingSections = (words) => {
+    const want = norm(words);
+    return Array.from(document.querySelectorAll(HEADINGS)).filter((h) => shown(h) && !excluded(h) && !h.closest('#tourCard') && (norm(h.innerText) === want || norm(ownText(h)) === want)).map(sectionOf).filter(Boolean);
+  };
+  // Controls whose names share a word with the label, for a not-found answer to offer instead.
+  const suggest = (label) => {
+    const words = norm(label).split(' ').filter((w) => w.length > 2 && !/^(the|and|for|add)$/.test(w));
+    if (!words.length) return [];
+    const out = [], seen = new Set();
+    scopes().forEach((sc) => sc.els.forEach((root) => root.querySelectorAll(ACTIONABLE).forEach((el) => {
+      if (seen.has(el) || !shown(el) || excluded(el)) return;
+      const names = namesOf(el).join(' ');
+      const score = words.filter((w) => names.includes(w)).length;
+      if (score) { seen.add(el); out.push({ score, label: labelOf(el), scope: sc.name, near: near(el) }); }
+    })));
+    return out.sort((a, b) => b.score - a.score).slice(0, 6).map(({ label: l, scope, near: n }) => ({ label: l, scope, near: n }));
+  };
   // Resolve a label to ONE element: the first scope (dialog, panel, card, header, sidebar, page)
-  // with a match wins; inside it, several matches are ambiguous unless `within` (a section's
-  // words, "COUNTERS") or `nth` picks one, or exactly one of them is the lit control.
+  // with a match wins; inside it, several matches are an error listing them (the lit one marked
+  // `lit`) unless `within` (a section's words, "COUNTERS"), `nth`, or `preferLit` (take the lit
+  // one) picks one. Never a guess: the confusion is what the persona pass is there to find.
   function find(label, opts) {
     const o = opts || {};
     const want = norm(label);
@@ -183,6 +205,7 @@ function installHelpers() {
         let uniq = Array.from(new Set(hits)).filter((el) => shown(el) && !excluded(el));
         uniq = uniq.filter((el) => !uniq.some((o2) => o2 !== el && el.contains(o2)));   // innermost control
         if (o.field) uniq = uniq.filter((el) => FIELD.test(el.tagName));
+        if (o.sections) uniq = uniq.filter((el) => o.sections.some((sec) => sec.contains(el)));
         if (within) {
           const depth = (el) => { for (let p = el.parentElement, i = 1; p && p !== document.body && i <= 6; p = p.parentElement, i++) if (norm(p.innerText).includes(within)) return i; return 99; };
           const ds = uniq.map(depth), best = Math.min(...ds);
@@ -194,24 +217,35 @@ function installHelpers() {
     };
     let found = tryScopes((el) => namesOf(el).includes(want)), how = 'exact';
     if (!found) { found = tryScopes((el) => actionable(el) && namesOf(el).some((n) => n.startsWith(want + ' ') || n.startsWith(want + ':') || n.startsWith(want + ' ('))); how = 'starts-with'; }
-    // "COUNTERS + Add": the section's words, then the control's
+    // "COUNTERS + Add": a section heading's words, then the control's, and only when the leading
+    // words ARE a heading on screen (else "Water Closet counter" would press the header's Counter)
     if (!found && !within && !o.field) {
       const words = String(label).trim().split(/\s+/);
-      for (let k = 1; k < words.length && !found; k++) {
-        const r = find(words.slice(k).join(' '), Object.assign({}, o, { within: words.slice(0, k).join(' ') }));
-        if (r.ok) return Object.assign(r, { how: 'split "' + words.slice(0, k).join(' ') + '" + "' + words.slice(k).join(' ') + '"' });
+      for (let k = 1; k < words.length; k++) {
+        const lead = words.slice(0, k).join(' ');
+        const sections = headingSections(lead);
+        if (!sections.length) continue;
+        const r = find(words.slice(k).join(' '), Object.assign({}, o, { within: lead, sections }));
+        if (r.ok) return Object.assign(r, { how: 'split "' + lead + '" + "' + words.slice(k).join(' ') + '"' });
+        if (r.candidates) return r;   // ambiguous inside the section: say so, do not try a shorter split
       }
     }
-    if (!found) return { ok: false, error: 'no control named "' + label + '"' + (within ? ' under "' + o.within + '"' : '') + ' is on screen' };
+    if (!found) {
+      const err = { ok: false, error: 'no control named "' + label + '"' + (within ? ' under "' + o.within + '"' : '') + ' is on screen' };
+      const c = o.sections ? [] : suggest(label);
+      if (c.length) err.candidates = c;
+      return err;
+    }
     let els = found.els, note = '';
     if (o.nth != null) {
       if (!els[o.nth - 1]) return { ok: false, error: 'only ' + els.length + ' controls named "' + label + '"' };
       els = [els[o.nth - 1]];
     } else if (els.length > 1) {
       const lit = spotTarget();
-      const litOne = lit && els.filter((el) => el === lit.el || el.contains(lit.el) || lit.el.contains(el));
-      if (litOne && litOne.length === 1) { els = litOne; note = 'ambiguous: ' + found.els.length + ' in the ' + found.scope + ', took the lit one'; }
-      else return { ok: false, error: 'ambiguous: ' + els.length + ' controls named "' + label + '" in the ' + found.scope + ' (add "within" or "nth")', candidates: els.slice(0, 6).map((el, i) => ({ nth: i + 1, label: labelOf(el), near: near(el) })) };
+      const isLit = (el) => !!lit && (el === lit.el || el.contains(lit.el) || lit.el.contains(el));
+      const litOne = els.filter(isLit);
+      if (o.preferLit && litOne.length === 1) { els = litOne; note = found.els.length + ' in the ' + found.scope + ', took the lit one (preferLit)'; }
+      else return { ok: false, error: 'ambiguous: ' + els.length + ' controls named "' + label + '" in the ' + found.scope + ' (add "within" or "nth"' + (litOne.length === 1 ? ', or "preferLit"' : '') + ')', candidates: els.slice(0, 6).map((el, i) => Object.assign({ nth: i + 1, label: labelOf(el), near: near(el) }, isLit(el) ? { lit: true } : {})) };
     }
     const el = els[0];
     const tag = 'p' + Math.random().toString(36).slice(2, 8);
@@ -373,9 +407,11 @@ async function setIds(page) {
   });
 }
 
-// Start a set the way its own door does. Returns false when the app refused.
+// Start a set the way its own door does. Returns false when the app refused. A tour id the app
+// does not know is refused here: App.startTutorial falls back to the electrical tour for one and
+// still says yes, so a typo would work the wrong tour under the name it asked for.
 async function startRaw(page, set) {
-  return page.evaluate((s) => {
+  return page.evaluate(([s, trades]) => {
     const A = window.App;
     const cap = (w) => w[0].toUpperCase() + w.slice(1);
     if (s.startsWith('lesson:')) return !!A.startLesson(s.slice(7));
@@ -384,8 +420,16 @@ async function startRaw(page, set) {
       const fn = course === 'plumbing' ? A.startChapter : (A['startChapter' + cap(course)] || null);
       return typeof fn === 'function' ? !!fn(ch) : false;
     }
-    return !!A.startTutorial(s);
-  }, set);
+    const known = typeof A.tutorialIds === 'function' ? A.tutorialIds() : trades;
+    if (!known.includes(s)) return false;
+    if (!A.startTutorial(s)) return false;
+    return !A.tutorialId || A.tutorialId() === s;
+  }, [set, TRADE_TOURS]);
+}
+// A set id this app does not have, as an error that lists the ones it does; null when it is fine.
+async function unknownSet(page, set) {
+  const ids = await setIds(page);
+  return ids.includes(set) ? null : 'no set "' + set + '" (the sets: ' + ids.join(', ') + ')';
 }
 const nextIfStill = (page, was) => page.evaluate((w) => { if (window.App.tutorialStepId() !== w) return true; const b = document.getElementById('tourNext'); if (b && !b.disabled) { b.click(); return true; } return false; }, was);
 const stepId = (page) => page.evaluate(() => (window.App.tutorialStepId ? window.App.tutorialStepId() : null));
@@ -458,14 +502,18 @@ async function observe(page) {
 
 // ---------------------------------------------------------------- the manifest
 const MANIFEST_KEYS = ['i', 'id', 'kind', 'title', 'body', 'reveal', 'targets', 'zones', 'page', 'hint', 'progress', 'action', 'handsOff', 'hold', 'rules', 'rulesExempt'];
-// One step in the stable key order, false / empty optional fields dropped.
+// One step in the stable key order, the omission rule the engine's manifestOf keeps: i, id, kind,
+// title, body, targets (an array) and zones (a number) are always there; reveal and page only when
+// the step has them; the flags only when true; rules only when not empty.
 function compactStep(st) {
   const out = {};
   const always = ['i', 'id', 'kind', 'title', 'body'];
   MANIFEST_KEYS.forEach((k) => {
-    const v = st[k];
+    let v = st[k];
+    if (k === 'targets') v = Array.isArray(v) ? v : [];
+    if (k === 'zones') v = Number.isFinite(v) ? v : 0;
     if (v === undefined || v === null) return;
-    if (!always.includes(k) && (v === false || v === '' || v === 0 || (Array.isArray(v) && !v.length))) return;
+    if (!always.includes(k) && k !== 'targets' && k !== 'zones' && (v === false || v === '' || (Array.isArray(v) && !v.length))) return;
     out[k] = v;
   });
   // anything the engine adds beyond the contract rides at the end, in its own order
@@ -532,7 +580,7 @@ async function act(page, action, ctx) {
   const a = action || {};
   const res = await (async () => {
     if (a.click != null) {
-      const r = await page.evaluate(([l, o]) => window.__persona.find(l, o), [String(a.click), { within: a.within, nth: a.nth }]);
+      const r = await page.evaluate(([l, o]) => window.__persona.find(l, o), [String(a.click), { within: a.within, nth: a.nth, preferLit: !!a.preferLit }]);
       if (!r.ok) return { ok: false, error: r.error, candidates: r.candidates };
       const c = await realClick(page, r.tag);
       await page.evaluate(() => window.__persona.untag());
@@ -631,4 +679,4 @@ async function settle(page, before) {
   await page.waitForTimeout(150);
 }
 
-module.exports = { serveRepo, launch, newSession, boot, setIds, startSet, startRaw, clearOpening, fastForward, observe, manifestOf, walkManifest, compactStep, act, settle, stepId, installHelpers, TRADE_TOURS };
+module.exports = { serveRepo, launch, newSession, boot, setIds, unknownSet, startSet, startRaw, clearOpening, fastForward, observe, manifestOf, walkManifest, compactStep, act, settle, stepId, installHelpers, TRADE_TOURS };

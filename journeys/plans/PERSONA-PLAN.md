@@ -203,12 +203,15 @@ npm run persona:harness -- --port 3490 --app http://localhost:3457 --out <scratc
 | `POST /close` | `{ id }` | `{ ok }` |
 
 Actions: `{click:"+ Add"}` (with `within:"COUNTERS"` or `nth` when two controls share a name;
-"COUNTERS + Add" also works), `{clickZone:n}`, `{dragZone:n}`, `{clickAt:[x,y]}`,
+"COUNTERS + Add" also works when the leading words are a section heading on screen),
+`{clickZone:n}`, `{dragZone:n}`, `{clickAt:[x,y]}`,
 `{drag:[[x,y],[x,y]]}`, `{type:"text"}`, `{fill:["Name","Water Closet"]}`,
 `{select:["Size","1in"]}`, `{key:"U"}`, `{scroll:[x,y,dy]}`, `{screenshot:true}`, `{wait:ms}`,
 `{giveUp:"why"}`. A click by label looks in the open dialog, then a floating panel, the tour
 card, the header, the sidebar and the page; several matches in one place come back as an
-error listing them, unless exactly one is the lit control. A control under the card or a
+error listing them, the lit one marked `lit:true` (`preferLit:true` takes it); a label that
+matches nothing lists the controls sharing a word with it. An unknown set or device is a 400
+listing the valid ones. A control under the card or a
 dialog is reported as covered, not clicked. Each episode appends JSONL to
 `<out>/<id>.jsonl`; idle episodes close after 10 minutes.
 

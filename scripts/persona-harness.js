@@ -15,7 +15,10 @@
 //   POST /act {id, action}            { obs, ok, error?, events }
 //   POST /close {id}                  { ok }
 //
-// Actions: {click:"<label>", within?, nth?}, {clickZone:n}, {dragZone:n}, {clickAt:[x,y]},
+// An unknown set or device is a 400 that lists the valid ones (App.startTutorial would otherwise
+// run the electrical tour for a typo).
+//
+// Actions: {click:"<label>", within?, nth?, preferLit?}, {clickZone:n}, {dragZone:n}, {clickAt:[x,y]},
 // {drag:[[x,y],[x,y]]}, {type:"text"}, {fill:["<field label>","text"]},
 // {select:["<field label>","<option>"]}, {key:"U"}, {scroll:[x,y,dy]}, {screenshot:true},
 // {wait:ms}, {giveUp:"why"}. There is no action for the step's own button (tutorialDoStep).
@@ -54,10 +57,16 @@ async function utilPage() {
   return util.page;
 }
 
+// A request the harness turns away with a 400 (a bad set or device), not a 500.
+class BadRequest extends Error {}
+
 async function openEpisode({ set, step, device }) {
-  if (!set) throw new Error('set is required (GET /sets)');
+  if (!set) throw new BadRequest('set is required (GET /sets)');
+  const bad = await D.unknownSet(await utilPage(), set);
+  if (bad) throw new BadRequest(bad);
   const devName = device || 'first-timer';
-  const dev = deviceOf(devName);
+  let dev;
+  try { dev = deviceOf(devName); } catch (e) { throw new BadRequest(e.message); }
   const target = step == null ? null : (typeof step === 'number' || /^\d+$/.test(String(step)) ? +step : String(step));
   const t0 = Date.now();
   const s = await D.newSession(browser, dev);
@@ -124,6 +133,8 @@ async function route(req, res) {
   if (req.method === 'GET' && p === '/manifest') {
     const set = url.searchParams.get('set');
     if (!set) return send(res, 400, { error: 'set is required' });
+    const bad = await D.unknownSet(await utilPage(), set);
+    if (bad) return send(res, 400, { error: bad });
     if (!manifests.has(set)) {
       // the engine answers on the shared page; a walk needs a fresh context of its own
       const engine = await (await utilPage()).evaluate(() => typeof window.App.tutorialManifest === 'function');
@@ -153,7 +164,7 @@ async function main() {
   fs.mkdirSync(OUT, { recursive: true });
   if (!APP) { staticServer = await D.serveRepo(0); APP = staticServer.url; }
   browser = await D.launch({ headed: HEADED });
-  const server = http.createServer((req, res) => { route(req, res).catch((e) => send(res, 500, { error: String(e.message || e).split('\n')[0] })); });
+  const server = http.createServer((req, res) => { route(req, res).catch((e) => send(res, e instanceof BadRequest ? 400 : 500, { error: String(e.message || e).split('\n')[0] })); });
   await new Promise((resolve) => server.listen(PORT, '127.0.0.1', resolve));
   console.log('persona harness on http://127.0.0.1:' + PORT + ' · app ' + APP + ' · logs ' + OUT);
   const sweep = setInterval(() => { const now = Date.now(); episodes.forEach((ep, id) => { if (now - ep.last > IDLE_MS) closeEpisode(id, 'idle 10 min'); }); }, 30000);

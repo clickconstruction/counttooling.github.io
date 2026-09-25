@@ -31,7 +31,10 @@ the sheet placed whatever counter was already active. The palette now shows at e
 fits a phone. On a 768 px tablet it covered the first lavatory's circle, so the engine now moves
 the sheet out from under a shown palette, once per palette per step, the same way it does for the
 card. The card says where the palette opens and to name the new counter Lavatory. While `+ New
-counter`'s dialog is open, the ring lights Name before Create Counter.
+counter`'s dialog is open, the ring lights Name before Create Counter. The palettes sit above the
+dialogs (z-index 300 over 200), so once they showed on a phone the Counter dialog opened under the
+Chain palette, and on a tablet a tap on Name changed the chain's line type: every palette (Chain,
+Drop, Highlights) now steps aside while a dialog is open and comes back when it closes.
 
 **C3 and C9, the riser.** With Drop armed and a size picked, a click where no line ends did
 nothing. The Drop tool now shows a toast: "No line end here. Click one of the ringed line ends to
@@ -43,12 +46,15 @@ title it shows, the Drop size palette, and says it opens at the top left.
 **C4, sizing by touch.** On touch the engine drops "Press …" lines, so the size step lost its
 only instruction. There was also no way to open the sizes by touch. The water card had the duct
 card's `pointer-events: none`, and its own tap handler was wired only on the first S. The card
-now has a Pipe size button (`#waterHintSize`), and a tap anywhere on the card opens the popover
-too. The card is wired the first time it shows. It keeps its presses to itself: the canvas
+now has a Pipe size button (`#waterHintSize`), and on a touch screen a tap anywhere on the card
+opens the popover too; with a mouse the rest of the card still lets a click through to the sheet,
+and its text wraps rather than cutting off the size it suggests. The card is wired the first time it shows. It keeps its presses to itself: the canvas
 wrapper had read a tap on the card as a click on the sheet, and on touch its touchend handler
 re-sent the tap to the sheet and swallowed the button's own click. On touch the card hides the
 "S accepts" key. The step now says: Pipe size on the card, or S; inside a water trace S opens the
-sizes rather than Set Scale; 3/4″; the second circle; then Finish (or Enter). Below 769 px it
+sizes rather than Set Scale; 3/4″; the second circle; then Finish (or Enter). Finish is lit only
+once the second circle is in, and the step is done only when the run is finished (it had passed on
+the second circle with the 3/4in run still a draft). Below 769 px it
 says Polyline is behind ☰. A hint now reads like a card body on touch, so its "(or press …)"
 goes too. One more cause was in the engine. On a narrow screen the card is docked by the
 stylesheet, but the sheet nudge measured it where it would have been placed. Once the ring moved
@@ -61,7 +67,8 @@ uses, so with a Water Closet already in the palette it opened on the Water Fount
 "Water Closet" created there got the fountain icon. The symbol now follows the typed name while
 nothing has been picked (features/counter.js `nameIconPath`). The match is on an icon's exact
 name. A CFM, a click in the grid, or words in Search icon still take precedence. The card says
-the toilet is the lit symbol and that the Search icon box finds another.
+the toilet lights as the name is typed and that the Search icon box finds another, as a statement
+between the numbered actions rather than a numbered "see that".
 
 **C21 and C23.** The hangers step spells out the International Plumbing Code (IPC), the first
 place any step says IPC. The proof step no longer says "open SUMMARY". The list is already open,
@@ -74,9 +81,9 @@ Settings the same way), so whether the heading should fold the list is left for 
 Pinned by real clicks and taps: tutorial.spec.js ("The plumbing tour's persona calibration
 findings": the palette and the card at 1280 x 720, the lav battery chained by touch on a tablet,
 the size step by touch through Finish, the drop miss and its code, the returning device's toilet,
-the SUMMARY heading's dialog and its ×), chain.spec.js (the palette at 768 and 375 px),
-drop-mode.spec.js (both toasts), water-size.spec.js (Pipe size by touch, no vertex under the
-card) and counter.spec.js (the symbol follows the name until a pick).
+the SUMMARY heading's dialog and its ×), chain.spec.js (the palette at 768 and 375 px, and the Counter
+dialog over it), drop-mode.spec.js (both toasts), water-size.spec.js (Pipe size by touch, no vertex
+under the card, the card's text whole at 768 px, a mouse click through the card body) and counter.spec.js (the symbol follows the name until a pick).
 
 ---
 

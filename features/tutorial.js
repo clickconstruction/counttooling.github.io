@@ -18,6 +18,11 @@
  * sheet; the answer waits behind the action button, "Show the engineer's answer" or the
  * step's own revealLabel, and Next is lit throughout. The plumbing course's teaching mode,
  * journeys/plans/PLUMBING-COURSE.md)
+ * (rules: the rulebook ids, from rules/rules.json, whose values the step teaches, and
+ * rulesExempt: why a step that cites a code section names none, usually a section the
+ * rulebook has no entry for yet. Neither changes the tour; scripts/check-lesson-rules.js, in
+ * npm run check, fails a step that states a rule's number or cites a code without one, or
+ * whose number is not its rule's. PERSONA-PLAN item 7, 2026-09-25)
  * (hint() is the status line while a doing-step's check is failing for a reason
  * worth naming — the prove-the-scale step says what it read; it renders as a miss.
  * progress() is the same line for GUIDANCE on a step with several parts — "Bound.
@@ -286,6 +291,7 @@
     },
     {
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
+      rules: ['elec.mount-height.defaults'],
       body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", the number the Chain tool turns into vertical conduit in a moment.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
@@ -319,6 +325,7 @@
     },
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
+      rules: ['elec.vertical.make-up', 'elec.mount-height.defaults'],
       body: '1. In the header, click the gear ([[Project Settings]]).\n2. In Ceiling height, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws: 9.5 ft per receptacle nobody has to type.',
       target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => state().ceilingHeightFt > 0,
@@ -350,6 +357,7 @@
     },
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
+      rules: ['elec.conduit.fill-limit'],
       onEnter: foldBidCheck, hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. It has also caught something: the receptacles you counted first were never wired, so they read as not reached by a run. Voltage drop to the farthest device and the panel cross-check wake up once a run is flagged as the homerun and the panel is on the plan. Below them are the calls only you can tick. It never blocks an export; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
@@ -505,6 +513,7 @@
     },
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
+      rules: ['plumb.hanger.pex'],
       body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
       target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
@@ -522,6 +531,7 @@
     },
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
+      rules: ['plumb.wsfu.fixtures'],
       body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the row it read; its public word flips one counter to the private column.',
       target: () => ladder('#counterLineTypeDetailsWsfuGroup', pencilOf('counter', pLav()), '#countersSectionTitle'),
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
@@ -529,6 +539,7 @@
     },
     {
       id: 'size', title: 'Size the branch at S', kind: 'do',
+      rules: ['plumb.water.velocity', 'plumb.wsfu.demand'],
       body: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n1. In the header, click [[⋯]], then [[Polyline]] (or press P). Pick 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card above the sheet reads the fixture units still to serve and the size that keeps the water under 8 fps: 1in holds, 3/4in would do.\n3. Press S and click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click.\n4. Click inside the second circle, then press Enter.',
       target: ['#waterSizePopover', '#waterHintCard', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
@@ -645,6 +656,7 @@
     },
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
+      rules: ['hvac.duct.schedule-factors'],
       body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click inside the first circle, then the second, working across the office. The chip under the cursor reads the air still to serve (600 CFM downstream) and suggests a size for it at 0.08″ per 100′.\n4. Press S and tap the suggestion (spiral first, then the rectangular twin).\n5. Click inside the third circle.\n6. Press Enter.\nThe elbows and the transition count themselves.',
       target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => pathZones(MAIN_VERTICES, 16, mainPaths()),
@@ -662,12 +674,14 @@
     },
     {
       id: 'schedule', title: 'Pounds, not feet', kind: 'read',
+      rules: ['hvac.duct.gauge-schedule', 'hvac.duct.sheet-weight', 'hvac.duct.schedule-factors'],
       body: '1. In the left sidebar, under DUCT, click [[Schedule]].\nStraight duct by size with its gauge and lb/ft from the SMACNA table, the fittings you did not have to count, seam & waste on its own line, and the number a sheet-metal bid is built on: Bid weight.\n2. Click [[Copy Schedule]] to put it on the clipboard.',
       target: ['#ductScheduleBtn', '#ductSectionTitle'],
       check: () => true,
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
+      rules: ['hvac.room.airflow-defaults'],
       onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Curb & power coordinated to tick it: who sets the RTU\'s curb and runs its power is yours to settle with the GC and the electrician.',
       target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
       // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,

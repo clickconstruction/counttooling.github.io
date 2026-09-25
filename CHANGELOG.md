@@ -46,6 +46,52 @@ Close project, the reader's own counter stays, the next plan opens with their pa
 project loaded over a second lesson's sheets keeps its own palette. tutorial.spec.js pins the tour:
 the plumbing tour's Water Closet goes on Close project, the reader's own counter stays.
 
+## feat(persona): the seams simulated readers run on, and the rules a lesson teaches named (2026-09-25)
+
+PERSONA-PLAN build items 1 to 7 ([journeys/plans/PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)):
+personas find gaps cheaply, and what decides whether a gap is real is never a persona. Built on
+three branches at once and merged here.
+
+**The engine** (features/tutorial.js). `App.tutorialIds()` lists every registered tour (44: the
+three tours, the blank sheet, 13 lessons, 27 course chapters). `App.tutorialManifest(id)` gives
+each step as one compact record (the raw card text with its `[[chips]]`, the lit controls by
+label, how many sheet targets, which of hint / progress / action / hold it has, its `rules`). All
+44 come to 373 steps, about 190 KB. `App.tutorialObserve()` is the card and the screen as a few
+hundred characters of JSON (title, card text, status, the miss and its reason code, Next, the
+lit control and its box, the open dialog, the sheet targets in screen pixels). A hint may now
+return `{ code, text }`, with codes not-armed, outside-zone, wrong-page, wrong-scale, wrong-item,
+wrong-value, dialog-closed, not-yet, other. The card shows the same text as before. The first
+time a code shows on a step it rides the existing `tour_step` event as `hint`, so real readers'
+stalls can be counted the same way as the personas'. The plumbing tour and the shared helpers
+(measureProof, boxMiss, pagesFoldedHint) carry codes. The other sets still return strings and
+move over one set at a time. lessons.js's Prove the zone step read the proof's hint with a
+regex, and now reads its code.
+
+**The harness** (scripts/persona-harness.js, scripts/lib/persona-driver.js,
+scripts/persona-devices.js, scripts/persona-manifest.js, scripts/persona-merge.js). The harness
+runs one headless Chromium with an isolated context per episode, behind a localhost JSON
+endpoint. An episode fast-forwards to its step through the specs' seam, and after that every
+action is a real mouse or key event. A click by label reports ambiguity rather than guessing.
+Every engine seam is feature-detected, so the harness can also drive a commit from before them:
+it reads the card's DOM and walks the manifest with Skip. The named devices (first-timer,
+returning, laptop, tablet) are the fixture tutorial.spec.js's returning-estimator tests now seed
+from. teaching-labels.test.js's label reader moved to scripts/lib/shell-labels.js.
+persona-merge groups findings by set + step + control + code and ranks them by how many
+independent persona kinds hit the same spot; `--score` measures recall against a known list.
+
+**The lesson rules check** (scripts/check-lesson-rules.js, step twelve of `npm run check`). A
+step that teaches a rulebook value names it (`rules: ['plumb.hanger.pex']`) or says why not
+(`rulesExempt`). espree reads the six teaching files. The check fails when a rules id does not
+exist, when a card cites a code or states a value in a rule's unit about that rule's subject
+without naming a rule, or when the number differs from every value the named rule holds. 37
+steps name rules, and the 36 numbers they state all agree. `--gaps` lists the 29 course steps
+that cite a code section the rulebook has no entry for: the RULEBOOK-GAPS row.
+
+Found and sent on: the course-plumbing `stack` and `rows` steps cite IPC Table 1002.2 for the
+trap arm, and PC-TRADE already asks a tester about that citation. On the plumbing tour's
+`counter` step, the Icon tab's symbols carry no names, so "Pick the Toilet symbol" can only be
+found by name on Custom Icons. That goes to the persona triage.
+
 ## fix(lessons): the card wording that did not match the screen (2026-09-24)
 
 COURSE-WORDING, from the same read as the stalls: step cards that described the screen wrongly or

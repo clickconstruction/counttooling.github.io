@@ -369,7 +369,34 @@ function installHelpers() {
     c.querySelectorAll('.tour-ui').forEach((s) => s.replaceWith('[[' + s.textContent + ']]'));
     return Array.from(c.children).map((ch) => (ch.tagName === 'OL' ? Array.from(ch.children).map((li, k) => (k + 1) + '. ' + li.textContent.replace(/\s+/g, ' ').trim()).join('\n') : ch.textContent.replace(/\s+/g, ' ').trim())).join('\n');
   }
-  window.__persona = { find, findField, point, untag, hitAt, toasts, observe, readCard, revealText, labelOf };
+  // Every dialog's controls by name, for labels.json (PERSONA-PROBER item 4: the text pass's false
+  // "control not on screen" leads were controls that live only in a dialog, several of them built
+  // by script, like the Set Scale preset grid). shownOnly: the dialogs on screen now (a walk's
+  // look); else every dialog in the DOM, hidden ones read by their text.
+  function dialogControls(shownOnly) {
+    const out = {};
+    const txt = (el) => String(el.textContent || '').replace(/\s+/g, ' ').trim();
+    Array.from(document.querySelectorAll('.modal-overlay')).forEach((ov) => {
+      if (shownOnly && !(ov.classList.contains('visible') && shown(ov))) return;
+      const h = ov.querySelector('.modal-card-header h2, .modal-card-header h3, h2, h3');
+      const name = (h && txt(h)) || ov.getAttribute('aria-label') || ov.id || 'dialog';
+      const labels = new Set();
+      ov.querySelectorAll(ACTIONABLE).forEach((el) => {
+        if (shownOnly && !shown(el)) return;
+        if (FIELD.test(el.tagName)) {
+          const t = (el.type || '').toLowerCase();
+          if (t === 'hidden') return;
+          const f = /^(button|submit|reset)$/.test(t) ? el.value : (el.getAttribute('aria-label') || fieldLabel(el) || el.placeholder);
+          if (f && String(f).trim()) labels.add(String(f).replace(/\s+/g, ' ').trim());
+          return;
+        }
+        [txt(el), el.getAttribute('aria-label'), el.getAttribute('title')].forEach((n) => { const v = String(n || '').trim(); if (v && v.length <= 60) labels.add(v); });
+      });
+      if (labels.size) out[name] = Array.from(new Set((out[name] || []).concat(Array.from(labels))));
+    });
+    return out;
+  }
+  window.__persona = { find, findField, point, untag, hitAt, toasts, observe, readCard, revealText, labelOf, dialogControls };
 }
 
 // ---------------------------------------------------------------- sessions
@@ -473,7 +500,9 @@ async function fastForward(page, target) {
   for (let k = 0; k < 120; k++) {
     const cur = await at();
     if (!cur.id) throw new Error('the set ended before step "' + target + '"');
-    if (hit(cur)) { await page.waitForTimeout(700); return { skipped }; }
+    // `landed`: the step as the fast-forward found it, before the beat (a step that is Done on
+    // arrival moves itself on inside that beat, and the harness's no-work check needs to know)
+    if (hit(cur)) { const landed = Object.assign({ id: cur.id, i: cur.i }, await stepInfo(page)); await page.waitForTimeout(700); return { skipped, landed }; }
     if (typeof target === 'number' && cur.i > target) throw new Error('step ' + target + ' was passed (the set is at ' + cur.i + ')');
     const info = await stepInfo(page);
     if (info && info.kind === 'do' && !info.done && info.hasAction) {
@@ -528,8 +557,16 @@ async function walkManifest(page, set) {
   await page.waitForFunction(() => window.App.tutorialStepId && window.App.tutorialStepId(), null, { timeout: 10000 });
   await helpers(page);
   const steps = [];
+  const seen = { dialogs: {}, card: new Set() };   // what the walk saw on screen, for labels.json
+  const look = async () => {
+    const r = await page.evaluate(() => ({ d: window.__persona.dialogControls(true), o: window.__persona.observe() })).catch(() => null);
+    if (!r) return;
+    Object.entries(r.d).forEach(([name, ls]) => { seen.dialogs[name] = Array.from(new Set((seen.dialogs[name] || []).concat(ls))); });
+    ((r.o && r.o.buttons) || []).forEach((b) => seen.card.add(b));
+  };
   for (let k = 0; k < 120; k++) {
     await page.waitForTimeout(250);
+    await look();
     const c = await page.evaluate(() => window.__persona.readCard());
     const last = c.last;
     delete c.last;
@@ -546,7 +583,38 @@ async function walkManifest(page, set) {
     if (!(await page.evaluate(() => window.App.isTutorialActive()))) break;
   }
   await page.evaluate(() => window.App.stopTutorial && window.App.stopTutorial(false));
-  return { id: set, source: 'walk', steps };
+  return { id: set, source: 'walk', steps, seen: { dialogs: seen.dialogs, card: Array.from(seen.card) } };
+}
+// Every dialog's controls in the booted page, hidden ones included, plus the Set Scale presets,
+// which the dialog builds only when its tab shows (the calibration's C11: "1/8\" = 1'" was not
+// on any list).
+async function dialogLabels(page) {
+  await helpers(page);
+  return page.evaluate(() => {
+    const out = window.__persona.dialogControls(false);
+    const presets = (window.App.SCALE_PRESETS || []).map((p) => p.label).filter(Boolean);
+    if (presets.length) { const k = Object.keys(out).find((n) => /set scale/i.test(n)) || 'Set Scale'; out[k] = Array.from(new Set((out[k] || []).concat(presets))); }
+    return out;
+  });
+}
+// The tour card's buttons as each set's first step shows them (an opening step's button is named
+// by the step: "Open the sample plan"), for an engine manifest, which a walk reads by itself.
+// Starts each set and stops it; the page is left with no tour running.
+async function cardLabels(page, sets) {
+  await helpers(page);
+  // the buttons every doing / reading step can show, named the way observe() names them
+  const out = new Set(['Show me where', 'Skip this step', 'Back', 'Next', 'Finish', 'Leave the tour']);
+  for (const set of sets) {
+    try {
+      if (!(await startRaw(page, set))) continue;
+      await page.waitForFunction(() => window.App.tutorialStepId && window.App.tutorialStepId(), null, { timeout: 5000 });
+      await page.waitForTimeout(120);
+      const bs = await page.evaluate(() => { const o = typeof window.App.tutorialObserve === 'function' ? window.App.tutorialObserve() : window.__persona.observe(); return (o && o.buttons) || []; });
+      bs.forEach((b) => out.add(b));
+    } catch (_) { /* a set that will not start here is the walk's to report */ }
+    await page.evaluate(() => window.App.stopTutorial && window.App.stopTutorial(false)).catch(() => {});
+  }
+  return Array.from(out);
 }
 async function manifestOf(page, set) {
   const engine = await page.evaluate((s) => (typeof window.App.tutorialManifest === 'function' ? window.App.tutorialManifest(s) : null), set);
@@ -586,7 +654,7 @@ async function act(page, action, ctx) {
       await page.evaluate(() => window.__persona.untag());
       if (!c.ok) return { ok: false, error: '"' + r.label + '" (' + r.scope + ') is ' + c.error };
       events.push('clicked "' + r.label + '" in the ' + r.scope + (r.how !== 'exact' ? ' (' + r.how + ')' : '') + (r.note ? ', ' + r.note : '') + (c.scrolled ? ', scrolled into view' : ''));
-      return { ok: true };
+      return { ok: true, clicked: { label: r.label, scope: r.scope } };   // the no-work detector reads which button it was
     }
     if (a.fill || a.select) {
       const [label, value] = a.fill || a.select;
@@ -679,4 +747,4 @@ async function settle(page, before) {
   await page.waitForTimeout(150);
 }
 
-module.exports = { serveRepo, launch, newSession, boot, setIds, unknownSet, startSet, startRaw, clearOpening, fastForward, observe, manifestOf, walkManifest, compactStep, act, settle, stepId, installHelpers, TRADE_TOURS };
+module.exports = { serveRepo, launch, newSession, boot, setIds, unknownSet, startSet, startRaw, clearOpening, fastForward, observe, manifestOf, walkManifest, dialogLabels, cardLabels, compactStep, act, settle, stepId, installHelpers, TRADE_TOURS };

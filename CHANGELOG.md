@@ -13,6 +13,58 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(persona): the prober and the cheaper live pass (2026-09-25)
+
+PERSONA-PROBER, the harness changes the calibration asked for ([PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)
+"Calibration results" and "Harness"). No app file changed.
+
+**One step, one call.** The calibration's live personas walked the whole tour in one context and read
+about forty times the text pass's input. `POST /act` now takes `{"id", "actions": [...]}`: the list
+runs in order and stops at the first error or when the step changes (the reader reads the new card
+first) unless `"through": true`, and the answer is ONE compact result: the final snapshot, a line per
+action (`3. fill "Name" = "Lavatory": ok · typed "Lavatory" into "Name"`), the step transitions and
+where it stopped. `{"action": ...}` still works. `"obsMode": "diff"` (on `/episode` for the episode,
+or on one `/act`) sends, after the first snapshot, only the fields that changed; the card text only
+when it changed. Measured on the plumbing tour's chain step, ten actions on a first-timer: the
+calibration's way is eleven calls answering 11,205 bytes, the new way two calls answering 2,392
+(1,377 of them the list's answer), and one model turn in place of eleven.
+
+**The no-work detector.** No model: a cooperative reader never notices a false pass, so the harness
+does. A doing step that turns Done or moves on while the reader's actions since entering it were
+none, or only Next / Back / Skip / Show me where / wait / screenshot / scroll, comes back as
+`passedWithoutWork: [{ step, i, why, actions }]` in the answer and the episode's JSONL. `/episode`
+gives the landed step ~1.5 s with no action first. Against b312145 (the calibration's commit) the
+returning device's `counter` (K4) and `linetype` (K5) episodes come back flagged, and a Skip into
+`linetype` flags it at `/act` ("done on arrival"); against main none of them is, and no first-timer
+episode is. The logic is pure (scripts/lib/persona-batch.js) and pinned by persona-harness.test.js.
+
+**The prober.** `scripts/persona-prompts/prober.md`: per doing step, up to three probes on fresh
+episodes, each with exactly one thing wrong (nothing at all, the wrong item, a value off by one, a
+click just outside the circle, half the work, a stray mark), and a `false-pass` finding when the
+step accepts it. `false-pass` is a kind in persona-merge.js. Scripted through `/act`, a ×2 Multiply
+Zone around Women 108 passes the zone step on b312145 (zone -> rfi, K12) and is held on main with
+`wrong-value`. The text-pass and live-pass prompts moved out of the calibration's workflow script
+into `text.md` and `live.md` beside it (the live one now works one step with a list and diff
+snapshots), with the persona kinds, seeds and finding format in the folder's README.md;
+`node scripts/lib/persona-prompts.js` renders any of them and refuses one with a hole in it.
+
+**The text pass's dialogs.** labels.json is now `{ sources, labels: [[label, source, ...]] }`: `shell`
+(read from the served app's own index.html, so an `--app` at another commit is listed with its
+labels, not this checkout's), `target` (the engine manifest's resolved targets), `dialog:<name>`
+(every dialog's controls in the booted page, the Set Scale presets its tab builds, and on a walk
+every dialog the walk saw open) and `card` (the tour card's buttons). The calibration's false
+"control not on screen" leads were `Open the sample plan` (C10, a card button) and `1/8" = 1'`
+(C11, a script-built preset); both are on the list now, on b312145 and on main.
+
+**The merge.** `persona:merge -- <dir> --manifest <file>` renames a step written as a number (the
+manifest's 0-based `i`, also "step 3") or as its title to its id, per set, before grouping. On the
+calibration's 247 findings it renames the same 11 the hand fix did and gives the same 173 groups.
+
+Found while measuring, not fixed here: on main, the Chain panel's `+ New counter` makes the counter
+and leaves the plain counter tool armed with the panel closed, so the three circles tick "3 of 3
+done" while the chain step stays undone with no hint (pressing T again and clicking them passes it).
+A lead for PERSONA-FIXES' triage.
+
 ## feat(persona): the seams simulated readers run on, and the rules a lesson teaches named (2026-09-25)
 
 PERSONA-PLAN build items 1 to 7 ([journeys/plans/PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)):

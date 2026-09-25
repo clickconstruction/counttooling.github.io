@@ -4,11 +4,14 @@
 // them, and ranks the groups by how many INDEPENDENT persona kinds hit the same spot, because
 // one persona's complaint is a lead and five kinds stalling on one control is a finding.
 //
-//   node scripts/persona-merge.js <findings dir> [--out <dir>] [--score known.json]
+//   node scripts/persona-merge.js <findings dir> [--out <dir>] [--score known.json] [--manifest <file>]
 //
 // Writes <out>/digest.json and <out>/digest.md (out defaults to the findings folder). With
 // --score it also prints calibration numbers against a known list (below) and writes nothing
-// new beyond the digest.
+// new beyond the digest. With --manifest (persona-out/manifest.jsonl, or one set's manifest as
+// GET /manifest returns it) a finding whose step is a number (the manifest's 0-based i, also
+// "step 3") or a step's title is renamed to the step's id before grouping, the calibration's
+// hand fix: personas write "3" or "Make a Water Closet counter" as often as "counter".
 //
 // ---- The finding schema (the persona agents write this; one JSON object per line) ----------
 //   persona   string, required. "<kind>#<seed>": the persona's point on the axes, then which
@@ -16,7 +19,11 @@
 //             "#" is the persona KIND (what the ranking counts); the seed tells runs apart.
 //   kind      required: 'stall' (could not go on) | 'wording' (the card said something the
 //             screen did not match) | 'gap' (a term or step the reader was assumed to know) |
-//             'code-claim' (a statement about a code or trade value) | 'suggestion'.
+//             'code-claim' (a statement about a code or trade value) | 'suggestion' |
+//             'false-pass' (the prober's: it did the wrong thing on purpose, a wrong line type,
+//             a value off by one, a click outside the circle, nothing at all, and the step passed
+//             anyway; scripts/persona-prompts/prober.md). The harness's own no-work flag
+//             (passedWithoutWork in an episode's JSONL) is the same kind of defect.
 //   set       required: the set id, as GET /sets lists it ("plumbing", "lesson:counting",
 //             "course:plumbing:fixtures").
 //   step      required: the step id inside the set ("counter").
@@ -41,7 +48,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const KINDS = ['stall', 'wording', 'gap', 'code-claim', 'suggestion'];
+const KINDS = ['stall', 'wording', 'gap', 'code-claim', 'suggestion', 'false-pass'];
 const REQUIRED = ['persona', 'kind', 'set', 'step', 'tried', 'expected', 'evidence', 'severity'];
 
 // "[[+ Add]]", "the '+ Add' button", "+ add" all name one control.
@@ -89,6 +96,41 @@ function readFolder(dir) {
   files.forEach((f) => { const r = parseFindings(fs.readFileSync(path.join(dir, f), 'utf8'), f); out.findings.push(...r.findings); out.rejected.push(...r.rejected); });
   return out;
 }
+// ---- --manifest: numbers and titles back to step ids ------------------------------------------
+// The manifest as step lists per set: persona-out/manifest.jsonl (a line per step, each with its
+// set), one set's manifest JSON ({ id, steps: [...] }, GET /manifest), or an array of those.
+function manifestSets(text) {
+  const t = String(text).trim();
+  const sets = new Map();
+  const add = (set, st) => { if (!st || st.id == null) return; if (!sets.has(set)) sets.set(set, []); sets.get(set).push(st); };
+  let whole = null;
+  try { whole = JSON.parse(t); } catch (_) { /* JSONL */ }
+  if (whole != null) {
+    (Array.isArray(whole) ? whole : [whole]).forEach((m) => { if (m && Array.isArray(m.steps)) m.steps.forEach((st) => add(m.id, st)); else if (m && m.set) add(m.set, m); });
+  } else {
+    t.split('\n').forEach((line) => { if (!line.trim()) return; let o; try { o = JSON.parse(line); } catch (_) { return; } if (o && o.set) add(o.set, o); });
+  }
+  return sets;
+}
+const normTitle = (s) => String(s == null ? '' : s).replace(/[“”"']/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+// The finding with its step renamed to an id when it was a number or a title; untouched when its
+// step is already an id, or nothing matches. A finding's set picks the step list; a manifest of one
+// set also serves a finding whose set is missing from it.
+function renameStep(f, sets) {
+  const list = sets.get(f.set) || (sets.size === 1 ? Array.from(sets.values())[0] : null);
+  if (!list) return f;
+  const st = String(f.step == null ? '' : f.step).trim();
+  if (list.some((x) => x.id === st)) return f;
+  const m = st.match(/^(?:step\s*)?#?(\d+)$/i);
+  const hit = m ? list.find((x, k) => (x.i != null ? x.i : k) === +m[1]) : list.find((x) => normTitle(x.title) === normTitle(st));
+  return hit ? Object.assign({}, f, { step: hit.id, stepWas: st }) : f;
+}
+function renameSteps(findings, sets) {
+  let renamed = 0;
+  const out = findings.map((f) => { const g = renameStep(f, sets); if (g !== f) renamed++; return g; });
+  return { findings: out, renamed };
+}
+
 const groupKey = (f) => [f.set, f.step, normalizeControl(f.control), String(f.code || '').toLowerCase(), f.kind].join('|');
 // Group, count, rank: persona kinds first (independent hits), then the worst severity, then
 // how many findings, then the key (a stable order for equal groups).
@@ -119,16 +161,18 @@ function groupFindings(findings) {
 }
 function buildDigest(read, generated) {
   const groups = groupFindings(read.findings);
+  const inputs = { files: read.files.length, findings: read.findings.length, rejected: read.rejected.length, personaKinds: new Set(read.findings.map((f) => splitPersona(f.persona).personaKind)).size };
+  if (read.renamed != null) inputs.renamed = read.renamed;
   return {
     generated: generated || new Date().toISOString(),
-    inputs: { files: read.files.length, findings: read.findings.length, rejected: read.rejected.length, personaKinds: new Set(read.findings.map((f) => splitPersona(f.persona).personaKind)).size },
+    inputs,
     rejected: read.rejected,
     groups: groups.map((g) => { const o = Object.assign({}, g); delete o.text; return o; }),
   };
 }
 const cell = (s) => String(s == null ? '' : s).replace(/\|/g, '\\|').replace(/\s+/g, ' ').trim();
 function renderMarkdown(d) {
-  const out = ['# Persona digest', '', d.inputs.findings + ' findings from ' + d.inputs.files + ' files, ' + d.inputs.personaKinds + ' persona kinds, ' + d.groups.length + ' groups' + (d.inputs.rejected ? ' (' + d.inputs.rejected + ' lines rejected, listed at the end)' : '') + '. Ranked by how many persona kinds hit the spot, then the worst severity.', '',
+  const out = ['# Persona digest', '', d.inputs.findings + ' findings from ' + d.inputs.files + ' files, ' + d.inputs.personaKinds + ' persona kinds, ' + d.groups.length + ' groups' + (d.inputs.rejected ? ' (' + d.inputs.rejected + ' lines rejected, listed at the end)' : '') + (d.inputs.renamed ? '; steps renamed to ids by the manifest: ' + d.inputs.renamed : '') + '. Ranked by how many persona kinds hit the spot, then the worst severity.', '',
     '| # | Kinds | Sev | N | Set · step | Kind | Control | Code | What they tried → saw |', '|---|---|---|---|---|---|---|---|---|'];
   d.groups.forEach((g) => { const s = g.samples[0] || {}; out.push('| ' + [g.rank, g.personaKinds, g.severity, g.count, cell(g.set + ' · ' + g.step), g.kind, cell(g.control), cell(g.code), cell(s.tried) + ' → ' + cell(s.evidence)].join(' | ') + ' |'); });
   if (d.rejected.length) { out.push('', '## Rejected lines', ''); d.rejected.forEach((r) => out.push('- ' + r.file + ':' + r.line + ': ' + r.why)); }
@@ -147,15 +191,21 @@ function score(groups, known) {
 function main() {
   const argv = process.argv.slice(2);
   const flag = (n) => { const i = argv.indexOf('--' + n); return i > -1 ? argv[i + 1] : null; };
-  const dir = argv.find((a, i) => !a.startsWith('--') && !['--out', '--score'].includes(argv[i - 1]));
-  if (!dir || !fs.existsSync(dir)) { console.error('usage: node scripts/persona-merge.js <findings dir> [--out <dir>] [--score known.json]'); process.exit(2); }
+  const dir = argv.find((a, i) => !a.startsWith('--') && !['--out', '--score', '--manifest'].includes(argv[i - 1]));
+  if (!dir || !fs.existsSync(dir)) { console.error('usage: node scripts/persona-merge.js <findings dir> [--out <dir>] [--score known.json] [--manifest <file>]'); process.exit(2); }
   const out = flag('out') || dir;
   const read = readFolder(dir);
+  const manifestFile = flag('manifest');
+  if (manifestFile) {
+    const r = renameSteps(read.findings, manifestSets(fs.readFileSync(manifestFile, 'utf8')));
+    read.findings = r.findings;
+    read.renamed = r.renamed;
+  }
   const digest = buildDigest(read);
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, 'digest.json'), JSON.stringify(digest, null, 1) + '\n');
   fs.writeFileSync(path.join(out, 'digest.md'), renderMarkdown(digest));
-  console.log(read.findings.length + ' findings -> ' + digest.groups.length + ' groups · ' + path.join(out, 'digest.md') + (read.rejected.length ? ' · ' + read.rejected.length + ' lines rejected' : ''));
+  console.log(read.findings.length + ' findings -> ' + digest.groups.length + ' groups · ' + path.join(out, 'digest.md') + (read.rejected.length ? ' · ' + read.rejected.length + ' lines rejected' : '') + (read.renamed ? ' · ' + read.renamed + ' steps renamed to ids' : ''));
   const knownFile = flag('score');
   if (knownFile) {
     const s = score(groupFindings(read.findings), JSON.parse(fs.readFileSync(knownFile, 'utf8')));
@@ -168,4 +218,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { KINDS, normalizeControl, splitPersona, invalid, parseFindings, readFolder, groupFindings, buildDigest, renderMarkdown, score };
+module.exports = { KINDS, normalizeControl, splitPersona, invalid, parseFindings, readFolder, manifestSets, renameStep, renameSteps, groupFindings, buildDigest, renderMarkdown, score };

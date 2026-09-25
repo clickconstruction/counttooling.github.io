@@ -448,7 +448,7 @@
     {
       id: 'counter', title: 'Header: Counter', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Fixture.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe [[Quick]] tab builds the name from your trade\'s pickers instead. Either way the Counter tool arms itself; [[Counter]] in the header (or C) is how you come back to it. The funnel beside the search box narrows a long palette to what this sheet uses.',
-      target: ['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      target: () => K().counterFormTargets(/fixture/i),
       check: () => !!counter(),
       action: { label: 'Create it for me', run: ACT.counter },
     },

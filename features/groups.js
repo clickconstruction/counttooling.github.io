@@ -68,8 +68,10 @@
       s.classList.add('selected');
     });
     if (deleteBtn) deleteBtn.style.display = g ? '' : 'none';
-    nameEl.focus();
     App.showModal('groupModal');
+    // after showModal: focusing a field in a hidden dialog does nothing, and "In Name, type Kitchen"
+    // typed into the page as hotkeys (by hand, 2026-09-25)
+    requestAnimationFrame(() => { if (!nameEl.offsetParent) return; nameEl.focus(); if (!g) nameEl.select(); });
   }
 
   function refreshGroupAssignButtons() {

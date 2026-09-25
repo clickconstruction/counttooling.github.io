@@ -275,6 +275,7 @@
       addCanvasModalNew.classList.add('selected');
       if (addCanvasModalDuplicate) addCanvasModalDuplicate.classList.remove('selected');
       updateAddCanvasModalForMode();
+      if (addCanvasModalName) addCanvasModalName.focus();   // choosing the kind of layer leads to naming it (by hand, 2026-09-25)
     };
   }
   if (addCanvasModalDuplicate) {
@@ -283,6 +284,7 @@
       addCanvasModalDuplicate.classList.add('selected');
       if (addCanvasModalNew) addCanvasModalNew.classList.remove('selected');
       updateAddCanvasModalForMode();
+      if (addCanvasModalName) { addCanvasModalName.focus(); addCanvasModalName.select(); }
     };
   }
   if (addCanvasModalCancel) addCanvasModalCancel.onclick = () => App.hideModal('addCanvasModal');

@@ -482,14 +482,14 @@
     },
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
-      body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the row it read; its public word flips one counter to the private column.',
+      body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the IPC table row it read. The table has two columns, public (a restaurant, an office) and private (a house, a hotel room); click the word public in the chip to move this one counter to the private column.',
       target: ['#counterLineTypeDetailsWsfuGroup', '#countersList .edit-btn', '#countersSectionTitle'],
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
       action: { label: 'Read the table for me', run: giveLavFixtureUnits },
     },
     {
       id: 'size', title: 'Size the branch at S', kind: 'do',
-      body: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n1. In the header, click [[⋯]], then [[Polyline]] (or press P). Pick 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card above the sheet reads the fixture units still to serve and the size that keeps the water under 8 fps: 1in holds, 3/4in would do.\n3. Press S and click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click.\n4. Click inside the second circle, then press Enter.',
+      body: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n1. In the header, click [[⋯]], then [[Polyline]] (or press P). It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n3. Press S and click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n4. Click inside the second circle, then press Enter.',
       target: ['#waterSizePopover', '#waterHintCard', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
       check: () => waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),

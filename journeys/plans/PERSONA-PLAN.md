@@ -200,8 +200,10 @@ hangers: PT-TRADE), 3 real and fixed since, and **7 real and still open on main*
 walks missed all seven. They are C2 (the Chain palette under the card, missing on tablet), C3 (a
 Drop click with no run end does nothing), C4 (touch loses the size step's only instruction), C7
 ("the plumbing set" does not exist), C9 (the drop palette is never named), C21 (IPC never spelled
-out) and C23 (the SUMMARY heading opens the legend settings). They are being fixed on
-`claude/persona-fixes` (row PERSONA-FIXES).
+out) and C23 (the SUMMARY heading opens the legend settings). All seven were fixed on
+`claude/persona-fixes`, closing row PERSONA-FIXES: CHANGELOG.md, "fix(tour): the plumbing tour's
+findings from the persona calibration". The heading's own click, a trap outside the tour too, is
+the HEADING-CLICK call.
 
 **Cost.** Text pass: 15 agents, 53 model calls, 2.6M cached input tokens read, 0.7M written,
 146k output. Live pass: 15 agents, 1,238 calls, 104M cached read, 1.2M written, 306k output. The

@@ -264,6 +264,50 @@ test.describe('Chain tool', () => {
     await page.evaluate(() => document.getElementById('counterLineTypeDetailsClose').click());
   });
 
+  // + New in the palette made the item but left the create surface's own tool armed (the Counter
+  // tool; the Line tool for a line type), so the next clicks were plain marks with no branch: the
+  // plumbing tour's chain step read 3 of 3 done and never passed (persona harness, 2026-09-25).
+  test('+ New counter and + New line type hand the new item back to Chain, the pair kept, and the next clicks chain', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await setupChainProject(page);
+    await page.locator('#chainBtn').click();
+    await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').click();
+    await page.locator('#chainCounterList .chain-new-row').click();
+    await expect(page.locator('#counterModal')).toHaveClass(/visible/);
+    await page.locator('#counterName').fill('Lavatory');
+    await page.locator('#counterCreate').click();
+    await expect(page.locator('#counterModal')).not.toHaveClass(/visible/);
+    await expect.poll(() => page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)).toBe(true);
+    const after = await page.evaluate(() => {
+      const lav = window.state.counters.find((c) => c.name === 'Lavatory');
+      return { picked: window.state.activeCounterType === (lav && lav.id), lineType: window.state.activeLineTypeId, panel: document.getElementById('chainPanel').style.display !== 'none' };
+    });
+    expect(after).toEqual({ picked: true, lineType: 'lt-chain-1', panel: true });
+    // the next clicks chain: marks AND the branch between them
+    const box = await page.locator('#annCanvas').boundingBox();
+    for (const dx of [0, 80, 160]) await page.mouse.click(box.x + 120 + dx, box.y + 120);
+    const placed = await page.evaluate(() => {
+      const lav = window.state.counters.find((c) => c.name === 'Lavatory');
+      const ann = window.state.pages[0].canvases[0].annotations;
+      return { marks: (ann.counterMarkers[lav.id] || []).length, lines: ann.quickLines.length };
+    });
+    expect(placed).toEqual({ marks: 3, lines: 2 });
+    // and a line type made from the palette comes back the same way, the counter kept
+    await page.locator('#chainLineTypeList .chain-new-row').click();
+    await expect(page.locator('#lineTypeModal')).toHaveClass(/visible/);
+    await page.locator('#lineTypeName').fill('3/4in PEX');
+    await page.locator('#lineTypeCreate').click();
+    await expect.poll(() => page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)).toBe(true);
+    const lt = await page.evaluate(() => {
+      const made = window.state.lineTypes.find((l) => l.name === '3/4in PEX');
+      const lav = window.state.counters.find((c) => c.name === 'Lavatory');
+      return { picked: window.state.activeLineTypeId === (made && made.id), counterKept: window.state.activeCounterType === lav.id };
+    });
+    expect(lt).toEqual({ picked: true, counterKept: true });
+    expect(errors).toEqual([]);
+  });
+
   test('scale gate: unscaled page toasts and does not activate', async ({ page }) => {
     await page.goto('/app/');
     await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
@@ -278,4 +322,59 @@ test.describe('Chain tool', () => {
     expect(state.tool).toBe(0);
     expect(state.panelHidden).toBe(true);
   });
+
+  // Persona calibration C2 (2026-09-25): the palette was display:none below 769 px while the Chain
+  // button sat in the header strip, so a tablet or phone could arm Chain but never pick the counter
+  // or the line type. It shows at every width now and takes a tap.
+  for (const [w, h] of [[768, 1024], [375, 812]]) {
+    test.describe(`at ${w} px`, () => {
+      test.use({ viewport: { width: w, height: h }, hasTouch: true });
+      test('arming Chain shows the palette on screen, and a tap picks a row', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (err) => { errors.push(err.message); });
+        await setupChainProject(page);
+        await page.tap('#chainBtn');
+        expect(await page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)).toBe(true);
+        const panel = page.locator('#chainPanel');
+        await expect(panel).toBeVisible();
+        const box = await panel.boundingBox();
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(w);
+        await page.locator('#chainCounterList .chain-row[data-id="c-chain-1"]').tap();
+        await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').tap();
+        expect(await page.evaluate(() => [window.state.activeCounterType, window.state.activeLineTypeId])).toEqual(['c-chain-1', 'lt-chain-1']);
+        expect(errors).toEqual([]);
+      });
+
+      // The palette sits above .modal-overlay (300 over 200): + New counter opened the Counter
+      // dialog UNDER it, and a tap on the Name field landed on a palette row and changed the
+      // chain's line type (persona calibration review, 2026-09-25). It steps aside while a
+      // dialog shows and comes back when the dialog closes.
+      test('+ New counter opens the Counter dialog over the palette, not under it', async ({ page }) => {
+        await setupChainProject(page);
+        await page.tap('#chainBtn');
+        await expect(page.locator('#chainPanel')).toBeVisible();
+        await page.locator('#chainCounterList .chain-new-row').tap();
+        await expect(page.locator('#counterModal')).toHaveClass(/visible/);
+        await expect(page.locator('#chainPanel')).toBeHidden();
+        const hit = await page.evaluate(() => {
+          // The left edge of the Name field and the first tab are where the palette used to sit.
+          const hits = (el) => {
+            const r = el.getBoundingClientRect();
+            const at = document.elementFromPoint(r.left + 8, r.top + r.height / 2);
+            return !!at && (at === el || el.contains(at));
+          };
+          return {
+            name: hits(document.getElementById('counterName')),
+            tab: hits(document.querySelector('#counterModal .counter-tab')),
+          };
+        });
+        expect(hit).toEqual({ name: true, tab: true });
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#counterModal')).not.toHaveClass(/visible/);
+        await expect(page.locator('#chainPanel')).toBeVisible();
+        expect(await page.evaluate(() => window.state.activeLineTypeId)).toBe(null);
+      });
+    });
+  }
 });

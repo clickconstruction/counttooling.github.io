@@ -361,8 +361,8 @@
     },
     {
       id: 'summary', title: 'Read what the drawing knows', kind: 'read',
-      body: '1. In the left sidebar, open SUMMARY.\nIt lists the receptacles, the 3/4" EMT feet with the verticals inside them, and the derived rows: #12 THHN by the foot, the green its own row. Wire is never a mark; it can never drift from the runs.',
-      target: ['#summarySectionTitle'],
+      body: 'In the left sidebar, SUMMARY sits above EXPORT OPTIONS with its list already open (its heading opens the legend\'s settings, not the list).\nIt lists the receptacles, the 3/4" EMT feet with the verticals inside them, and the derived rows: #12 THHN by the foot, the green its own row. Wire is never a mark; it can never drift from the runs.',
+      target: ['#summaryList', '#summaryCollapseIcon'],
       check: () => true,
     },
     {
@@ -413,6 +413,17 @@
   // a rise or fall written on the run END that sits inside the circle at `spot`
   const dropAt = (spot, r) => { const a = ann(); if (!a) return false; const z = { x: spot.x, y: spot.y, r }; return (a.quickLines || []).some((l) => ((l.startDrop || 0) > 0 && inCircle({ x: l.x1, y: l.y1 }, z)) || ((l.endDrop || 0) > 0 && inCircle({ x: l.x2, y: l.y2 }, z))); };
   const rfiAt = (spot, r) => { const a = ann(); return !!a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')) && inCircle({ x: n.x, y: n.y }, { x: spot.x, y: spot.y, r })); };
+  // A line end (a node the Drop tool rings) inside the circle at `spot`: none means the run the drop
+  // goes on is not there, the Chain step before was skipped or undone (persona calibration C3).
+  const runEndAt = (spot, r) => { const a = ann(); if (!a || !App.collectDropNodes) return false; const z = { x: spot.x, y: spot.y, r }; return App.collectDropNodes(a).some((n) => inCircle(n, z)); };
+  function riserHint() {
+    const z = { x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14 };
+    if (anyDrop() && !dropAt(LAV_SPOTS[0], 14)) return { code: 'outside-zone', text: 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' };
+    const c = lastSheetClick, clickedIn = !!c && c.page === 0 && inCircle(c, z), armed = state().tool === App.TOOL.DROP;
+    if (!runEndAt(LAV_SPOTS[0], 14) && (clickedIn || armed)) return { code: 'not-yet', text: 'No run ends in the circle, so Drop has nothing to add to. Click Back, chain the three lavatories, then click the run\'s end here' };
+    if (clickedIn && !armed && c.tool !== App.TOOL.DROP) return { code: 'not-armed', text: 'Drop is not on yet. Click Drop in the header first (or press B)' };
+    return '';
+  }
   const anyDrop = () => { const a = ann(); if (!a) return false; const has = (l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0; return (a.quickLines || []).some(has) || (a.polylines || []).some(has); };
 
   // WATER-PLAN rung 6 (2026-09-23): the fourth step set, "Size the branch at S". The lav
@@ -482,7 +493,7 @@
     PROVE_STEP,
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
-      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet.\n4. Pick the Toilet symbol from the plumbing set.\n5. Pick a colour.\n6. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
+      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet, unless it reads that already.\nUnder [[Icon]] the toilet lights as you type the name: the symbol follows it. Another symbol is a search away, in the Search icon box.\n4. Pick a colour.\n5. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
       target: () => counterFormTargets(/water closet|toilet|\bwc\b/i),
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
@@ -506,25 +517,27 @@
     },
     {
       id: 'chain', title: 'Chain the lav battery', kind: 'do',
-      body: 'The three lavatories on the north wall of Women 108 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose a Lavatory counter ([[+ New counter]] makes one right there) and 1in PEX.\n3. Click inside the circle on the first lavatory.\n4. Click inside the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
-      target: ['#counterCreate', '#counterQuickCountAdd', '#chainPanel', '#chainBtn'], page: 0,
+      body: 'The three lavatories on the north wall of Women 108 sit on one 1in PEX branch that runs lav to lav, so count them the other way.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel that opens at the top left, choose a Lavatory counter ([[+ New counter]] makes one right there: name it Lavatory) and 1in PEX.\n3. Click inside the circle on the first lavatory.\n4. Click inside the second, then the third.\nEvery click places the fixture AND draws the branch back to the last one: three clicks instead of nine.',
+      // + New counter opens Create: Name until it reads Lavatory, then Create Counter (the ring sat on
+      // Create Counter over a prefilled Water Fountain)
+      target: () => ladder(...(document.querySelector('#counterModal.visible') ? counterFormTargets(/lav|sink/i).slice(0, 2) : []), '#counterQuickCountAdd', '#chainPanel', '#chainBtn'), page: 0,
       zones: () => { const c = pLav(); return markZones(0, c ? c.id : '-', LAV_SPOTS, 12); },
       check: () => { const a = ann(); return !!a && allDone(markZones(0, (pLav() || {}).id || '-', LAV_SPOTS, 12)) && (a.quickLines || []).length >= 2; },
       action: { label: 'Chain the three lavs for me', run: chainThreeLavs },
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft, or type 3 and click [[Add]] when it is not among the recent sizes.\n3. Click the end of the run inside the circle, at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
+      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the Drop size palette that opens at the top left, click 3 ft. When 3 ft is not listed, type 3 in its box and click [[Add]].\n3. Click the end of the run inside the circle, at the first lavatory. Every line end wears a ring while Drop is on.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
       target: ['#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
       check: () => dropAt(LAV_SPOTS[0], 14),
-      hint: () => (anyDrop() && !dropAt(LAV_SPOTS[0], 14) ? { code: 'outside-zone', text: 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' } : ''),
+      hint: riserHint,
       action: { label: 'Add a 3 ft riser for me', run: addRiserDrop },
     },
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
       rules: ['plumb.hanger.pex'],
-      body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
+      body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the International Plumbing Code (IPC) spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
       target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
       check: () => { const lt = pLineType(); return !!lt && (lt.childCounts || []).length > 0; },
@@ -550,11 +563,26 @@
     {
       id: 'size', title: 'Size the branch at S', kind: 'do',
       rules: ['plumb.water.velocity', 'plumb.wsfu.demand'],
-      body: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n1. In the header, click [[⋯]], then [[Polyline]] (or press P). It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n3. Press S and click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n4. Click inside the second circle, then press Enter.',
-      target: ['#waterSizePopover', '#waterHintCard', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
+      // The sizes open from the card's Pipe size button as well as S, and the run ends at Finish as well
+      // as Enter: a tablet has neither key, and the touch card lost its only instruction, "Press S and
+      // click 3/4″" (persona calibration C4, 2026-09-25). Below 769 px Polyline sits in the sidebar drawer.
+      body: () => 'The battery comes off a cold main. Trace it and let the fixture units size it.\n'
+        + (isNarrow() ? '1. Tap ☰ at the top left, then [[Polyline]] among the sidebar\'s tools.' : '1. In the header, click [[⋯]], then [[Polyline]] (or press P).')
+        + ' It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n3. On that card, click [[Pipe size]] (or press S: while you trace a water pipe, S opens its sizes instead of Set Scale).\n4. In the list of sizes, click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n5. Click inside the second circle.\n6. Click [[Finish]] under the sheet (or press Enter).',
+      // the card's order: the size list while it is open, Pipe size on the water card; once the main is two
+      // sizes, no control until the second circle is in (the circle is the target), then Finish. The step
+      // is done only when the run is FINISHED: it used to pass on the second circle with the 3/4in run still
+      // a live draft, so line 6 was never reached, Finish was lit ahead of the circle, and the next tool
+      // could drop the draft (review of the persona fixes, 2026-09-25).
+      target: () => (state().drawingPolyline && coldSizes().size >= 2
+        ? ladder('#waterSizePopover', allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())) ? '#finishPolyline' : null)
+        : ladder('#waterSizePopover', '#waterHintSize', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn')), page: 0,
       zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
-      check: () => waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
-      hint: () => (!state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? { code: 'not-yet', text: 'The main is traced but still one size. Press S while tracing and take the 3/4″ the card offers' } : ''),
+      check: () => !state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
+      hint: () => {
+        if (state().drawingPolyline && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()))) return { code: 'not-yet', text: 'Both circles are in. Click Finish under the sheet to keep the 3/4in run' };
+        return !state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? { code: 'not-yet', text: 'The main is traced but still one size. Trace it again, and on the card at the bottom of the sheet click Pipe size (or press S), then 3/4″' } : '';
+      },
       action: { label: 'Trace and size it for me', run: traceAndSizeMain },
     },
     {
@@ -577,8 +605,10 @@
     },
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
-      body: '1. In the left sidebar, open SUMMARY.\n2. Click the Water Closet total.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
-      target: () => ladder(summaryRowOf('counter', pCounter()), '#summarySectionTitle'),
+      body: 'In the left sidebar, SUMMARY sits above EXPORT OPTIONS with its list already open (its heading opens the legend\'s settings, not the list).\n1. In the SUMMARY list, click the Water Closet row.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
+      // a folded list lights its ▶, never the heading, which opens the Summary Legend settings (C23)
+      target: () => ladder('#legendSettingsModal.visible [data-modal-close]', summaryRowOf('counter', pCounter()), state().summaryListCollapsed ? '#summaryCollapseIcon' : null, '#summaryList'),
+      hint: () => { const lg = el('legendSettingsModal'); if (lg && lg.classList.contains('visible')) return { code: 'wrong-item', text: 'That is the Summary Legend, which the SUMMARY heading opens. Close it with ×, then click the Water Closet row in the list' }; return state().summaryListCollapsed ? { code: 'not-yet', text: 'SUMMARY is folded: click the ▶ beside it (not the heading), then the Water Closet row' } : ''; },
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
       hold: true,   // the step IS the dialog: the reader leaves it with Next, which closes it
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
@@ -1041,6 +1071,7 @@
   function el(id) { return document.getElementById(id); }
   let zoomedForZones = false;   // focusOnZones moved the view for the current step's circles
   let nudgedFor = -1;     // the step whose card has already moved the sheet once
+  let panelNudged = new Set();   // the floating palettes (FLOATING) that have moved the sheet once this step
   let dragPos = null;      // where the reader dragged the card to, this step
   let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
@@ -1214,12 +1245,17 @@
       // circles out from under the card, sideways first, then up or down. Found by hand
       // 2026-09-25: the kitchen step's card kept off FD-1 in the sidebar and sat on the
       // kitchen-exit hand sink and the east floor drain, so both clicks landed on the card.
-      if (!dragPos && zs.length && nudgedFor !== stepIdx) nudgeSheetFromCard(zs, { x1: place.left - 12, y1: place.top - 12, x2: place.left + cw + 12, y2: place.top + ch + 12 }, place.left > vw / 2, place.top > vh / 2);
       const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
       // A phone docks the card to an edge (styles.css, max-width 767px): the far
       // one from the control, so the card never covers what it is pointing at.
       card.classList.toggle('tour-card-top', isNarrow() && (r.top + r.height / 2) > window.innerHeight / 2);
+      // Docked, the card is where the stylesheet put it, not at `place`: the sheet moves out from under
+      // THAT box. On a tablet the size step lights the water card at the foot of the sheet, the tour
+      // card docks at the top, and it sat on the main's second circle (persona calibration C4, 2026-09-25).
+      const cb = isNarrow() ? card.getBoundingClientRect() : { left: place.left, top: place.top, right: place.left + cw, bottom: place.top + ch };
+      if (!dragPos && zs.length && nudgedFor !== stepIdx) nudgeSheetFromCard(zs, { x1: cb.left - 12, y1: cb.top - 12, x2: cb.right + 12, y2: cb.bottom + 12 }, cb.left > vw / 2, (cb.top + cb.bottom) / 2 > vh / 2);
+      if (zs.length) nudgeSheetFromPanels(zs);
     } else {
       card.classList.remove('tour-card-top');
       spot.style.display = 'none';
@@ -1363,9 +1399,14 @@
   }
   // The status line for a step that sends the reader to another sheet while PAGES is folded.
   const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? { code: 'wrong-page', text: 'PAGES is folded: click the ▶ beside it, then ' + label } : ''; };
+  // The app's floating tool surfaces: the Chain and Drop palettes, the water size popover and the
+  // water card at the foot of the sheet. Whatever a step names, the card keeps off one that shows:
+  // the reader works in it (found in the persona calibration, 2026-09-25: the card sat on the Chain
+  // palette's pickers at 1280 x 720).
+  const FLOATING = ['#chainPanel', '#dropPanel', '#waterSizePopover', '#waterHintCard'];
   function otherControlBoxes(step, pointed, within) {
     const out = [];
-    targetsOf(step).forEach((sel) => {
+    targetsOf(step).concat(within ? [] : FLOATING).forEach((sel) => {
       let els = [];
       try { els = Array.from(document.querySelectorAll(sel)); } catch (_) { return; }
       els.forEach((el) => {
@@ -1379,11 +1420,30 @@
     return out;
   }
   function nudgeSheetFromCard(zs, cardBox, cardRight, cardLow) {
+    panFromBox(zs, cardBox, cardRight, cardLow, () => { nudgedFor = stepIdx; });
+  }
+  // A shown Chain or Drop palette sits over the top left of the sheet, and the step's circles can
+  // be under it (circle 1 of the lav battery on a 768 px tablet): the sheet moves out from under
+  // it, once per palette per step, the way it moves out from under the card.
+  function nudgeSheetFromPanels(zs) {
+    ['chainPanel', 'dropPanel'].forEach((id) => {
+      const p = el(id);
+      if (!p || panelNudged.has(id) || p.style.display === 'none' || !shown(p)) return;
+      const r = p.getBoundingClientRect();
+      if (!r.width || !r.height) return;
+      const box = { x1: r.left - 12, y1: r.top - 12, x2: r.right + 12, y2: r.bottom + 12 };
+      panFromBox(zs, box, r.left + r.width / 2 > window.innerWidth / 2, r.top + r.height / 2 > window.innerHeight / 2, () => panelNudged.add(id));
+    });
+  }
+  // Pan the sheet so the boxes `zs` (screen) leave `box`. `spent` marks the move as made BEFORE the
+  // pan: the pan's updateUI renders the card again, and a mark set after it recursed until the
+  // stack ran out.
+  function panFromBox(zs, cardBox, cardRight, cardLow, spent) {
     const under = (dx, dy) => zs.filter((b) => b.x1 + dx < cardBox.x2 && b.x2 + dx > cardBox.x1 && b.y1 + dy < cardBox.y2 && b.y2 + dy > cardBox.y1).length;
-    if (!under(0, 0)) return;
-    nudgedFor = stepIdx;
+    if (!under(0, 0)) return false;
+    spent();
     const wrap = document.querySelector('.canvas-wrapper');
-    if (!wrap || !state().pan) return;
+    if (!wrap || !state().pan) return false;
     const w = wrap.getBoundingClientRect(), m = 12;
     const zx1 = Math.min(...zs.map((b) => b.x1)), zx2 = Math.max(...zs.map((b) => b.x2));
     const zy1 = Math.min(...zs.map((b) => b.y1)), zy2 = Math.max(...zs.map((b) => b.y2));
@@ -1398,10 +1458,11 @@
       if (!cardLow && zy2 + dy > w.bottom - m) dy = Math.max(0, w.bottom - m - zy2);
       if (under(dx, dy) >= under(dx, 0)) dy = 0;
     }
-    if (under(dx, dy) >= under(0, 0) || (Math.abs(dx) < 2 && Math.abs(dy) < 2)) return;
+    if (under(dx, dy) >= under(0, 0) || (Math.abs(dx) < 2 && Math.abs(dy) < 2)) return false;
     state().pan = { x: state().pan.x + dx, y: state().pan.y + dy };
     zoomedForZones = true;
     App.renderPdf(); App.updateUI();
+    return true;
   }
   function zoneScreenBoxes(step) {
     const b = sheetBox(); if (!b) return [];
@@ -1442,7 +1503,7 @@
     const z = Math.max(fit, Math.min(max, Math.max(Math.min(want, max), Math.min(need, want))));
     state().zoom = z;
     state().pan = { x: W / 2 - ((x1 + x2) / 2) * z, y: H / 2 - ((y1 + y2) / 2) * z };
-    nudgedFor = -1;   // the zoom moved the circles: the card gets one more look
+    nudgedFor = -1; panelNudged = new Set();   // the zoom moved the circles: the card and the palettes get one more look
     zoomedForZones = true;
     App.renderPdf(); App.updateUI();
   }
@@ -1463,8 +1524,10 @@
     if (!step || !step.hint) return { text: '', code: null };
     let h;
     try { h = step.hint(); } catch (_) { return { text: '', code: null }; }
-    if (h && typeof h === 'object') { const text = String(h.text || ''); return { text, code: text ? (h.code || 'other') : null }; }
-    return { text: h ? String(h) : '', code: null };
+    // A hint reads like a body on touch: "(or press B)" goes where there are no keys.
+    const say = (t) => (t && isTouch() ? forTouch(t) : t);
+    if (h && typeof h === 'object') { const text = say(String(h.text || '')); return { text, code: text ? (h.code || 'other') : null }; }
+    return { text: h ? say(String(h)) : '', code: null };
   }
   function safeProgress(step) { try { return step.progress() || ''; } catch (_) { return ''; } }
   // A dialog the last step opened (the proof breakdown, the Duct Schedule) must
@@ -1499,7 +1562,7 @@
     });
   }
   function goTo(i) {
-    dragPos = null; nudgedFor = -1;
+    dragPos = null; nudgedFor = -1; panelNudged = new Set();
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;

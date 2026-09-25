@@ -490,6 +490,7 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` / `clickcount-tour-done-plumbing` / `clickcount-tour-done-hvac` (the electrical / plumbing / HVAC walkthrough was finished on this device — hides that tour's empty-canvas link; the whole offer goes when all three are set),
 `clickcount-lessons-done` (Learn: `{ <lessonId>: ISO }`, the lessons finished on this device; features/lessons.js),
 `clickcount-lesson-device-before` (the reader's sidebar filter, Snap and search words as a lesson found them; written when a lesson starts, removed when it stops, and put back on the next load when a reload or a closed tab skipped the stop; features/lessons.js),
+`clickcount-tour-searches-before` (the same for a TOUR's sidebar search words: cleared while the five-minute or blank tour runs, typed back when it stops or on the next load; features/tutorial.js),
 `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,

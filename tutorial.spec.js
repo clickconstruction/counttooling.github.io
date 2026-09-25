@@ -433,7 +433,7 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'bidcheck');
     await doAndGo(page);
     await waitForStep(page, 'handoff');
-    expect(await page.evaluate(() => window.state.bidCheck.manual['duct-fits-roof'])).toBe(true);
+    expect(await page.evaluate(() => window.state.bidCheck.manual['duct-curb-power'])).toBe(true);   // Fits the roof is AUTO once the room has a deck
     await page.click('#tourNext');
     expect(await stepId(page)).toBe('legend');
     await page.click('#tourNext');
@@ -658,7 +658,10 @@ test.describe('Every button, on a blank sheet', () => {
     await walk(page, 'summary', async () => { await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/); });
     await walk(page, 'bidcheck', async () => { expect(await page.evaluate(() => window.state.bidCheckCollapsed)).toBe(false); });
     await walk(page, 'settings', async () => { await expect(page.locator('#settingsModal')).toHaveClass(/visible/); });
-    await walk(page, 'savestatus', async () => { await expect(page.locator('#saveStatusModal')).toHaveClass(/visible/); });
+    // signed out there is no bell to open: the card reads the status bar instead, and nothing waits on a dialog (by hand, 2026-09-25)
+    await waitForStep(page, 'savestatus');
+    await expect(page.locator('#tourBody')).toContainText('status bar at the bottom');
+    await walk(page, 'savestatus');
     await walk(page, 'exportmenu');
     await walk(page, 'share');
     await walk(page, 'exports');
@@ -791,5 +794,126 @@ test.describe('Every button, on a blank sheet', () => {
       expect(seen.close.lit).toEqual({ onScreen: true, under: 'headerBurger' });
       expect(errors).toEqual([]);
     });
+  });
+});
+
+// The tours walked by hand on a returning estimator's device (2026-09-25): a standing palette that
+// shares the tours' names, words left in the sidebar searches, real clicks on the step's controls.
+test.describe('The tours, by hand on a returning estimator\'s device', () => {
+  const lit = (page, sel) => page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const a = e.getBoundingClientRect(), b = document.getElementById('tourSpot').getBoundingClientRect(); return b.width > 0 && Math.abs(a.left - 6 - b.left) < 3 && Math.abs(a.top - 6 - b.top) < 3; }, sel);
+  async function startWithPalette(page, tour) {
+    await page.goto('/app/');
+    await ready(page);
+    await page.evaluate((t) => {
+      const s = window.state, A = window.App, icon = A.getOrderedIcons()[0].value;
+      s.counters.push({ id: 'st-wc', name: 'Water Closet', icon, color: '#4a9eff' }, { id: 'st-dup', name: 'Duplex Receptacle', icon, color: '#e85447', mountHeightIn: 18 });
+      s.lineTypes.push({ id: 'st-gas', name: 'Gas 1in', color: '#e8c547', curveStyle: 'straight' });
+      [['counterSearch', 'counterSearchInput', 'FD'], ['lineTypeSearch', 'lineTypeSearchInput', 'PEX']].forEach(([f, id, v]) => { s[f] = v; localStorage.setItem(f, v); document.getElementById(id).value = v; });
+      A.updateUI();
+      A.startTutorial(t);
+    }, tour);
+    await page.waitForFunction(() => window.App.tutorialStepId(), null, { timeout: 10000 });
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() !== 'welcome' && window.state.pages.length > 0, null, { timeout: 30000 });
+  }
+
+  test('plumbing: the reader\'s own Water Closet and Gas 1in pass no step; the searches clear and come back; Quick is the link; the typical floor is ×3', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await startWithPalette(page, 'plumbing');
+    expect(await page.evaluate(() => [window.state.counterSearch, window.state.lineTypeSearch])).toEqual(['', '']);
+    await page.evaluate(() => window.App.tutorialGoTo('counter'));
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('counter');   // the standing Water Closet is not the reader's new counter
+    await page.evaluate(() => window.App.tutorialGoTo('linetype'));
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('linetype');   // nor is the palette's first line type
+    await page.click('#addLineType');
+    await page.waitForTimeout(600);
+    expect(await lit(page, '#lineTypeQuickLink')).toBe(true);
+    await page.click('#lineTypeQuickLink');
+    await page.waitForTimeout(600);
+    expect(await lit(page, '#quickLineSize')).toBe(true);   // the picker the card names first, not Add
+    await page.selectOption('#quickLineSize', '1in');
+    await page.selectOption('#quickLineMaterial', 'PEX');
+    await page.click('#quickLineAdd');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'chain', null, { timeout: 8000 });
+    // a zone left at the dialog's 2 is named; ×3 passes
+    await page.evaluate(() => window.App.tutorialGoTo('zone'));
+    await page.waitForTimeout(800);
+    const z = (await page.evaluate(() => window.App.tutorialZoneScreen()))[0];
+    const box = async () => {
+      await page.keyboard.press('x');
+      const a = { x: (z.outer.x1 + z.inner.x1) / 2, y: (z.outer.y1 + z.inner.y1) / 2 }, b = { x: (z.outer.x2 + z.inner.x2) / 2, y: (z.outer.y2 + z.inner.y2) / 2 };
+      await page.mouse.move(a.x, a.y); await page.mouse.down(); await page.mouse.move(b.x, b.y, { steps: 8 }); await page.mouse.up();
+      await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'multiplyZoneMultiplier', null, { timeout: 3000 });
+    };
+    await box();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#tourStatus')).toContainText('the number is ×2', { timeout: 3000 });
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.waitForTimeout(400);
+    await box();
+    await page.keyboard.type('3'); await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'rfi', null, { timeout: 8000 });
+    await page.evaluate(() => window.App.stopTutorial());
+    expect(await page.evaluate(() => [window.state.counterSearch, window.state.lineTypeSearch, localStorage.getItem('clickcount-tour-searches-before')])).toEqual(['FD', 'PEX', null]);
+    expect(errors).toEqual([]);
+  });
+
+  test('electrical: Groups off, the circuit card says turn them on and the ring lights the gear; the chain takes the reader\'s own receptacle', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await startWithPalette(page, 'electrical');
+    await page.evaluate(() => window.App.tutorialGoTo('circuit'));
+    await page.waitForTimeout(800);
+    await expect(page.locator('#tourBody')).toContainText('Use groups');
+    expect(await lit(page, '#settingsGearBtn')).toBe(true);
+    // the chain: the standing "Duplex Receptacle" is the first row of that name, and its marks count
+    await page.evaluate(() => window.App.tutorialGoTo('chain'));
+    await page.waitForTimeout(800);
+    const zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+    expect(zs.length).toBe(3);
+    await page.evaluate(() => { const s = window.state; s.activeCounterType = 'st-dup'; s.tool = window.App.TOOL.COUNTER; window.App.updateUI(); });
+    for (const c of zs) { await page.mouse.click(c.cx, c.cy); await page.waitForTimeout(200); }
+    const status = await page.locator('#tourStatus').textContent();
+    expect(status).not.toMatch(/0 of 3/);   // the twin's marks tick the circles (the run is the chain tool's; its drops finish the step)
+    expect(errors).toEqual([]);
+  });
+
+  test('HVAC: Fits the roof judges itself once the room has a deck, so the sign-off ticks Curb & power by hand', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await startWithPalette(page, 'hvac');
+    for (let i = 0; i < 12 && (await stepId(page)) !== 'bidcheck'; i++) await doAndGo(page);
+    await waitForStep(page, 'bidcheck');
+    await expect(page.locator('#tourBody')).toContainText('Curb & power coordinated');
+    await page.click('#bidCheckSectionTitle');
+    await page.getByText('Curb & power coordinated').first().click();
+    await expect(page.locator('#tourStatus')).toHaveText('✓ Done', { timeout: 3000 });
+    expect(await page.evaluate(() => window.state.bidCheck.manual['duct-curb-power'])).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('the blank tour: Groups already on is not turned off by the card; Close project is in Project Settings', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await startWithPalette(page, 'blank');
+    await page.evaluate(() => { window.App.turnOnGroups && window.App.turnOnGroups(); window.App.tutorialGoTo('groups'); });   // the Duct step turned them on
+    await page.waitForTimeout(600);
+    await expect(page.locator('#tourBody')).toContainText('If GROUPS is not in');
+    await page.evaluate(() => window.App.tutorialGoTo('close'));
+    await page.waitForTimeout(600);
+    await page.click('#settingsGearBtn');
+    await page.waitForTimeout(600);
+    expect(await lit(page, '#settingsCloseProject')).toBe(true);
+    await page.click('#settingsCloseProject');
+    await page.click('#confirmOk');
+    await waitForStep(page, 'done');
+    expect(errors).toEqual([]);
   });
 });

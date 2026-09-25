@@ -98,7 +98,16 @@
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
-  const findCounter = (id, re) => (state().counters || []).find((c) => c.id === id) || (state().counters || []).find((c) => re.test(c.name || ''));
+  // The reader's palette as the tour found it. A step names the tour's own item, or a standing one
+  // only once the reader has used it: the plumbing tour's "Make a Water Closet counter" ticked itself on a
+  // standing "Water Closet", and "A line type in two clicks" on the palette's first line type, before
+  // the reader had done anything (by hand, 2026-09-25). Set when a tour starts.
+  let standingIds = new Set();
+  let standingSnap = {};   // the standing line types' settings as the tour found them
+  const isFresh = (x) => !!x && !standingIds.has(x.id);
+  const lineTypeUsed = (lt) => (state().pages || []).some((p) => { const a = App.getActiveAnnotations(p); return !!a && (a.polylines || []).concat(a.quickLines || []).some((l) => l.lineTypeId === lt.id); });
+  const findCounter = (id, re) => { const all = (state().counters || []).filter((c) => re.test(c.name || '')); return (state().counters || []).find((c) => c.id === id) || all.find(isFresh) || all.filter((c) => markCount(c.id) > 0).pop(); };
+  const findLineType = (id, test) => { const all = (state().lineTypes || []).filter((lt) => { try { return !!test(lt); } catch (_) { return false; } }); return (state().lineTypes || []).find((lt) => lt.id === id) || all.filter(isFresh).pop() || all.filter(lineTypeUsed).pop(); };
   const customIcon = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
   const firstIcon = () => customIcon('Toilet') || App.getOrderedIcons()[0].value;
 
@@ -254,7 +263,8 @@
 
   // ===== the electrical tour ===============================================================
   const eCounter = () => findCounter(tourCounterId, /receptacle/i);
-  const eLineType = () => (state().lineTypes || []).find((lt) => lt.id === tourLineTypeId) || (state().lineTypes || []).find((lt) => lt.raceway && lt.conductors && lt.conductors.length);
+  const receptacleIds = () => { const ids = (state().counters || []).filter((c) => /receptacle/i.test(c.name || '')).map((c) => c.id); return ids.length ? ids : ['-']; };
+  const eLineType = () => findLineType(tourLineTypeId, (lt) => lt.raceway && lt.conductors && lt.conductors.length);
 
   const ELECTRICAL_STEPS = [
     {
@@ -278,7 +288,7 @@
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
       body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", the number the Chain tool turns into vertical conduit in a moment.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
-      check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number'); if (c) tourCounterId = c.id; return !!c; },
+      check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Add it for me', run: addReceptacle },
     },
     {
@@ -293,7 +303,17 @@
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
       body: '1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type 3/4" EMT, and add it.\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 3 #12 THHN + 1 #12 G.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
-      target: ['#childCountsGroup', '#createLineTypeName', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'],
+      // the card's five lines in order: Name and Create in the + Add dialog, the new type's pencil, then
+      // the raceway and the conductors in its details (the ring named another dialog's fields and lit
+      // nothing; by hand, 2026-09-25)
+      target: () => {
+        const val = (id) => (el(id) || {}).value || '';
+        const emt = (state().lineTypes || []).filter((l) => /emt/i.test(l.name || '') && isFresh(l)).pop();
+        return ladder(
+          val('racewayKind') !== 'EMT' ? '#racewayKind' : null, !/3\/4/.test(val('racewaySize')) ? '#racewaySize' : null, !String(val('conductorsSpec')).trim() ? '#conductorsSpec' : null,
+          !/emt/i.test(val('lineTypeName')) ? '#lineTypeName' : '#lineTypeCreate',
+          emt ? pencilOf('lineType', emt) : null, '#addLineType');
+      },
       check: () => { const lt = eLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 3/4" EMT · 3 #12 + G', run: addEmtLineType },
     },
@@ -308,14 +328,17 @@
       id: 'chain', title: 'Chain a run', kind: 'do',
       body: '1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall.\n4. Click inside the second, then the third.\nEvery click places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
       target: ['#chainPanel', '#chainBtn'], page: 0,
-      zones: () => { const c = eCounter(); return markZones(0, c ? c.id : '-', CHAIN_SPOTS, 15); },
-      check: () => { const a = ann(); return !!a && allDone(markZones(0, (eCounter() || {}).id || '-', CHAIN_SPOTS, 15)) && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
+      // any receptacle counter: the reader's own "Duplex Receptacle", left by an earlier tour, sits first in
+      // the Chain panel under the same name (by hand, 2026-09-25)
+      zones: () => markZones(0, receptacleIds(), CHAIN_SPOTS, 15),
+      check: () => { const a = ann(); return !!a && allDone(markZones(0, receptacleIds(), CHAIN_SPOTS, 15)) && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
       action: { label: 'Chain three for me', run: chainThreeReceptacles },
     },
     {
       id: 'circuit', title: 'Make it a circuit', kind: 'do',
-      body: '1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type a name.\n3. In Panel, type LP-1. In Circuit, type 7.\n4. Click [[Done]].\nA group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
-      target: ['#groupModal .modal-card', '#addGroup', '#groupsSectionTitle'],
+      body: '1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type a name.\n4. In Panel, type LP-1. In Circuit, type 7.\n5. Click [[Done]].\nA group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
+      // Groups are off on the sample plan: the section, and its + Add, only show once they are on (by hand, 2026-09-25)
+      target: () => { const empty = ['#groupModalName', '#groupModalPanel', '#groupModalCircuit'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },
       check: () => (state().groups || []).some((g) => g.panel),
       action: { label: 'Create LP-1 / 7 and assign the run', run: makeCircuit },
     },
@@ -355,13 +378,19 @@
   const LAV_SPOTS = [{ x: 688.5, y: 369 }, { x: 717, y: 369 }, { x: 745.5, y: 369 }];
   const WOMEN_ROOM = { x1: 628, y1: 356, x2: 767, y2: 522 };
   const WOMEN_INNER = { x1: 638, y1: 364, x2: 757, y2: 514 };   // the room's fixtures: what a typical-floor box must hold
-  const typicalZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => (z.multiplier || 1) > 1); };
+  // three floors is ×3: a zone left at the dialog's 2 passed, and the proof step's "×3 already applied" read ×2 (by hand, 2026-09-25)
+  const typicalZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => z.multiplier === 3); };
+  const otherZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => z.multiplier !== 3); };
   const RFI_SPOT = { x: 690, y: 425 };
   const RFI_TEXT = 'RFI: ADA clearance at the end stall in Women 108?';
 
   const pCounter = () => findCounter(tourCounterId, /water closet|toilet|\bwc\b/i);
   const pLav = () => findCounter(tourSecondCounterId, /lav|sink/i);
-  const pLineType = () => (state().lineTypes || []).find((lt) => lt.id === tourLineTypeId) || (state().lineTypes || [])[0];
+  const pLineType = () => findLineType(tourLineTypeId, () => true);
+  // A second line type with the branch's name (the reader's own, left by an earlier tour) took the
+  // setting instead of the branch's: say which one the ring is on. Only a change made in this tour: a
+  // twin an earlier tour left set that way is not the reader's slip now.
+  const twinHint = (did) => { const lt = pLineType(); if (!lt || did(lt)) return ''; const twin = (state().lineTypes || []).find((x) => x.id !== lt.id && x.name === lt.name && did(x) && !(standingSnap[x.id] && did(standingSnap[x.id]))); return twin ? 'Two line types read ' + lt.name + '. That went on the other one: open the pencil lit in the sidebar, the one the branch is drawn with' : ''; };
   const anyNoteRfi = () => (state().pages || []).some((p) => (p.canvases || []).some((cv) => ((cv.annotations && cv.annotations.notes) || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')))));
   // a rise or fall written on the run END that sits inside the circle at `spot`
   const dropAt = (spot, r) => { const a = ann(); if (!a) return false; const z = { x: spot.x, y: spot.y, r }; return (a.quickLines || []).some((l) => ((l.startDrop || 0) > 0 && inCircle({ x: l.x1, y: l.y1 }, z)) || ((l.endDrop || 0) > 0 && inCircle({ x: l.x2, y: l.y2 }, z))); };
@@ -451,8 +480,9 @@
     },
     {
       id: 'linetype', title: 'A line type in two clicks', kind: 'do',
-      body: 'The cold-water branch that feeds the lav battery needs a line type.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Quick]] tab.\n3. Pick 1in, then PEX.\n4. Click [[Add Line Type]].\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
-      target: ['#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#addLineType'],
+      body: 'The cold-water branch that feeds the lav battery needs a line type.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. At the top of the dialog, click [[Quick]] (Size, material and colour in one row).\n3. Pick 1in, then PEX.\n4. Click [[Add Line Type]].\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
+      // the pickers the card names, in its order, then Add (the ring sat on Add over a 0.5in Size; by hand, 2026-09-25)
+      target: () => { const sz = el('quickLineSize'), mat = el('quickLineMaterial'); const pickNext = sz && sz.value !== '1in' ? '#quickLineSize' : (mat && mat.value !== 'PEX' ? '#quickLineMaterial' : null); return ladder(pickNext, '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', '#addLineType'); },
       check: () => { const lt = pLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 1in PEX', run: addPexLineType },
     },
@@ -466,7 +496,7 @@
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the run inside the circle, at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
+      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft, or type 3 and click [[Add]] when it is not among the recent sizes.\n3. Click the end of the run inside the circle, at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
       target: ['#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
       check: () => dropAt(LAV_SPOTS[0], 14),
@@ -477,7 +507,9 @@
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
       body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
       target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
-      check: () => (state().lineTypes || []).some((lt) => (lt.childCounts || []).length),
+      // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
+      check: () => { const lt = pLineType(); return !!lt && (lt.childCounts || []).length > 0; },
+      hint: () => twinHint((lt) => (lt.childCounts || []).length > 0),
       action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
     {
@@ -485,6 +517,7 @@
       body: 'The branch carries cold water, and the app can size cold water from the fixtures on it once the pipe says so.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under Water, click [[Cold]].\nEvery run of the type is now a cold-water run, and the three lavatories chained on it tie to it with a dashed leader.',
       target: () => ladder('#counterLineTypeDetailsWaterGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       check: () => { const lt = pLineType(); return !!(lt && lt.waterSide === 'cold'); },
+      hint: () => twinHint((lt) => lt.waterSide === 'cold'),
       action: { label: 'Make it cold water', run: setBranchCold },
     },
     {
@@ -509,7 +542,7 @@
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26), 'Drag your box around Women 108, anywhere in here')],
       check: () => boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)).done,
-      hint: () => boxMiss(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)),
+      hint: () => boxMiss(typicalZones().concat(otherZones()), WOMEN_INNER, grow(WOMEN_ROOM, 26)) || (!typicalZones().length && otherZones().length ? 'The box is there, the number is ×' + (otherZones()[0].multiplier || 1) + '. Right-click the zone\'s label, Edit multiplier, and type 3' : ''),
       action: { label: 'Wrap Women 108 in a ×3 zone', run: addTypicalFloorZone },
     },
     {
@@ -579,7 +612,8 @@
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
       body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end inside the shaded boundary.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
-      target: ['#roomBoxApply', '#roomBoxType', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'],
+      // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'); },
       page: 0,
       zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
       hint: () => boxMiss(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)),
@@ -604,8 +638,8 @@
     },
     {
       id: 'system', title: 'Name the system', kind: 'do',
-      body: 'A group with an equipment tag is a system.\n1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type RTU-1.\n3. In Equipment tag, type RTU-1.\n4. In Capacity, type 2000.\n5. Click [[Done]].\n6. Click RTU-1 in the sidebar to select it, so the main you trace next belongs to it.\nThe header will read the system\'s designed air against its capacity.',
-      target: ['#groupModalDone', '#groupModalCapacityCfm', '#addGroup', '#groupsSectionTitle'],
+      body: 'A group with an equipment tag is a system.\n1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type RTU-1.\n4. In Equipment tag, type RTU-1.\n5. In Capacity, type 2000.\n6. Click [[Done]].\nRTU-1 is now selected, lit in the sidebar, so the main you trace next belongs to it. Clicking it again would put it down.\nThe header will read the system\'s designed air against its capacity.',
+      target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },   // Groups are off on the sample plan (by hand, 2026-09-25)
       check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
       action: { label: 'Make RTU-1 for me', run: makeSystem },
     },
@@ -634,10 +668,12 @@
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
-      onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Fits the roof to tick it.',
+      onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Curb & power coordinated to tick it: who sets the RTU\'s curb and runs its power is yours to settle with the GC and the electrician.',
       target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
-      check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-fits-roof']),
-      action: { label: 'Tick it for me', run: tickFitsTheRoof },
+      // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,
+      // and the step waited for a tick nobody could give it (by hand, 2026-09-25)
+      check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-curb-power']),
+      action: { label: 'Tick it for me', run: tickCurbAndPower },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
@@ -966,15 +1002,15 @@
     s.ctxTarget = null;
     if (moved) { App.markProjectDirty(); App.renderAnnotations(); App.updateUI(); }
   }
-  function tickFitsTheRoof() {
+  function tickCurbAndPower() {
     const s = state();
     s.bidCheck = s.bidCheck || { manual: {} };
     s.bidCheck.manual = s.bidCheck.manual || {};
-    if (s.bidCheck.manual['duct-fits-roof']) return;
+    if (s.bidCheck.manual['duct-curb-power']) return;
     App.pushUndoSnapshot();
-    s.bidCheck.manual['duct-fits-roof'] = true;
+    s.bidCheck.manual['duct-curb-power'] = true;
     App.markProjectDirty(); App.updateUI();
-    App.logUserEvent && App.logUserEvent('bid_check_row_state', s.currentProjectId || null, { row: 'duct-fits-roof', kind: 'manual', state: true, surface: 'tour' });
+    App.logUserEvent && App.logUserEvent('bid_check_row_state', s.currentProjectId || null, { row: 'duct-curb-power', kind: 'manual', state: true, surface: 'tour' });
   }
 
   function el(id) { return document.getElementById(id); }
@@ -1394,7 +1430,10 @@
   function closeStrayDialogs(step) {
     document.querySelectorAll('.modal-overlay.visible').forEach((ov) => {
       if (KEEP_OPEN.includes(ov.id)) return;
-      const holdsTarget = targetsOf(step).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t); });
+      // a control the step names that SHOWS in it: the fixture-units step names the details dialog's
+      // WSFU field, hidden for a line type, and kept the 1in PEX details open over the lavatory's pencil
+      // (by hand, 2026-09-25)
+      const holdsTarget = targetsOf(step).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t) && shown(t); });
       if (holdsTarget) return;
       const x = ov.querySelector('[data-modal-close]');
       if (x) x.click();
@@ -1434,6 +1473,41 @@
     if (def && def.onStep) { try { def.onStep(STEPS[stepIdx].id, stepIdx); } catch (_) { /* a tour's own bookkeeping never breaks a move */ } }
     render();
   }
+  // The sidebar search words ride a TOUR the way the lessons carry them for themselves: cleared when a
+  // tour starts, typed back when it stops, and put back on the next load when a reload skipped the stop.
+  // A word left in COUNTERS hid the Water Closet the plumbing tour had the reader make (by hand,
+  // 2026-09-25, the lesson bug wendi found, in the five-minute tours). A lesson or a course ("x:y")
+  // handles its own.
+  const TOUR_SEARCH_KEY = 'clickcount-tour-searches-before';
+  const SEARCH_FIELDS = [ ['counterSearch', 'counterSearchInput'], ['lineTypeSearch', 'lineTypeSearchInput'], ['linesSearch', 'linesSearchInput']];
+  function setSearchWords(vals) {
+    SEARCH_FIELDS.forEach(([f, id]) => {
+      const v = (vals && vals[f]) || '';
+      state()[f] = v;
+      try { if (v) localStorage.setItem(f, v); else localStorage.removeItem(f); } catch (_) { /* storage may be unavailable */ }
+      if (el(id)) el(id).value = v;
+    });
+  }
+  function clearSearchesForTour() {
+    let held = null;
+    try { held = localStorage.getItem(TOUR_SEARCH_KEY); } catch (_) { /* noop */ }
+    if (held) { setSearchWords({}); return; }   // a second tour on top keeps the first snapshot, the reader's own
+    const before = {};
+    SEARCH_FIELDS.forEach(([f]) => { if (state()[f]) before[f] = state()[f]; });
+    if (!Object.keys(before).length) return;
+    try { localStorage.setItem(TOUR_SEARCH_KEY, JSON.stringify(before)); } catch (_) { /* this session's stop still restores */ }
+    tourSearchesBefore = before;
+    setSearchWords({});
+  }
+  let tourSearchesBefore = null;
+  function restoreSearchesAfterTour() {
+    let snap = tourSearchesBefore;
+    try { const raw = localStorage.getItem(TOUR_SEARCH_KEY); if (raw) snap = JSON.parse(raw); localStorage.removeItem(TOUR_SEARCH_KEY); } catch (_) { /* noop */ }
+    tourSearchesBefore = null;
+    if (!snap) return;
+    setSearchWords(snap);
+    if (App.updateUI) App.updateUI();
+  }
   function startTutorial(id) {
     const s = state();
     if (s.currentProjectId) { App.showToast('Close the cloud project first — the tour runs on the sample plan'); return false; }
@@ -1441,6 +1515,9 @@
     STEPS = TOURS[tourId].steps;
     active = true;
     stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    standingIds = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
+    standingSnap = {}; (s.lineTypes || []).forEach((l) => { standingSnap[l.id] = { waterSide: l.waterSide, childCounts: (l.childCounts || []).slice() }; });
+    if (!String(tourId).includes(':')) clearSearchesForTour();
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
@@ -1464,6 +1541,7 @@
     // A "Project from Last Session" offer that arrived mid-tour waited for
     // this moment (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
+    if (!String(tourId).includes(':')) restoreSearchesAfterTour();
     const def = TOURS[tourId];
     if (def && def.onStop) { try { def.onStop(!!finished); } catch (_) { /* a lesson's own bookkeeping never breaks the stop */ } }
   }
@@ -1540,6 +1618,19 @@
   // drive the same engine. A registered tour has no empty-canvas link and no done key
   // of its own; `onStop(finished)` is where it keeps its books.
   App.registerTour = (id, def) => { TOURS[id] = def; };
+  // A tour left by a reload: once the app has booted and no tour is running, the words go back.
+  (() => {
+    let held = null;
+    try { held = localStorage.getItem(TOUR_SEARCH_KEY); } catch (_) { /* noop */ }
+    if (!held) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      if (++tries > 600) { clearInterval(t); return; }
+      if (!App.bootSettled) return;
+      clearInterval(t);
+      setTimeout(() => { if (!active && !pending) restoreSearchesAfterTour(); }, 1500);
+    }, 100);
+  })();
   App.setTutorialPending = (v) => { pending = !!v; };
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.

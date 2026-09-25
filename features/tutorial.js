@@ -1752,10 +1752,13 @@
     const onSheet = !openModal && (st.page == null || state().currentPage === st.page);
     const zs = onSheet ? countedZones(stepZones(st)) : [];
     const b = zs.length ? sheetBox() : null;
-    const zones = !b ? [] : zs.map((z, k) => {
-      if (z.kind === 'circle') return { n: k + 1, kind: 'circle', done: !!z.done, cx: R(b.left + z.x * b.k), cy: R(b.top + z.y * b.k), r: R(zoneR(z) * b.k) };
+    // n is the number drawZones tags the circle with: circles count among themselves, a boundary
+    // box carries no number (the blank tour's ghost step draws a box, then circle 1)
+    let circles = 0;
+    const zones = !b ? [] : zs.map((z) => {
+      if (z.kind === 'circle') return { n: ++circles, kind: 'circle', done: !!z.done, cx: R(b.left + z.x * b.k), cy: R(b.top + z.y * b.k), r: R(zoneR(z) * b.k) };
       const o = z.outer;
-      return { n: k + 1, kind: z.kind, done: !!z.done, box: [R(b.left + o.x1 * b.k), R(b.top + o.y1 * b.k), R((o.x2 - o.x1) * b.k), R((o.y2 - o.y1) * b.k)] };
+      return { n: null, kind: z.kind, done: !!z.done, box: [R(b.left + o.x1 * b.k), R(b.top + o.y1 * b.k), R((o.x2 - o.x1) * b.k), R((o.y2 - o.y1) * b.k)] };
     });
     const next = el('tourNext');
     return {

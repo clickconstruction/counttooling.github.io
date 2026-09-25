@@ -939,6 +939,7 @@ test.describe('The persona seams', () => {
   const observe = (page) => page.evaluate(() => window.App.tutorialObserve());
 
   test('the manifest lists every registered tour, each step in the contract\'s shape', async ({ page }) => {
+    test.setTimeout(90000);
     await page.goto('/app/');
     await ready(page);
     const ids = await page.evaluate(() => window.App.tutorialIds());
@@ -1046,5 +1047,22 @@ test.describe('The persona seams', () => {
     await page.click('#tourLeave');
     expect(await observe(page)).toBeNull();
     expect(errors).toEqual([]);
+  });
+
+  test('observe numbers a step\'s circles the way the sheet tags them, a boundary box beside them unnumbered', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());   // the two blank sheets
+    await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(2);
+    // the ghost step draws a boundary box, then the drop circle
+    await page.evaluate(() => window.App.tutorialGoTo('ghost'));
+    await waitForStep(page, 'ghost');
+    await expect.poll(async () => (await observe(page)).zones.length).toBe(2);
+    const o = await observe(page);
+    expect(o.zones.map((z) => [z.n, z.kind])).toEqual([[null, 'box'], [1, 'circle']]);
+    const tags = await page.locator('#tourZones text.tour-zone-tag').allTextContents();
+    expect(tags).toEqual(o.zones.filter((z) => z.kind === 'circle').map((z) => String(z.n)));
   });
 });

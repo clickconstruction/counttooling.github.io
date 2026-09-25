@@ -13,6 +13,73 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tour): the plumbing tour's findings from the persona calibration (2026-09-25)
+
+The persona calibration replayed each finding by real clicks on the old app and the current one.
+Seven still held on the current app: C2, C3, C4, C7, C9, C21 and C23. Each was re-verified on this
+branch with the harness, on the device the finding names and at 1440 x 900, and fixed where it
+starts. C6, C24 and C25 are trade questions for a person, and this change leaves them alone.
+
+**C2, the Chain palette.** At 1280 x 720 the card already kept off the palette, because the step
+names `#chainPanel` and lights it. It now keeps off a palette the step does not name as well: the
+Chain and Drop palettes, the water size popover and the water card are keep-off boxes for every
+step (`FLOATING` in features/tutorial.js). On a tablet no palette showed at all. The cause was one
+line in styles.css from the Chain tool's first commit, when the palette was a centred two-column
+dialog: `display: none !important` below 769 px. The Chain button stayed in the header strip, so
+a tablet or phone could arm Chain but could not pick the counter or the line type, and a tap on
+the sheet placed whatever counter was already active. The palette now shows at every width and
+fits a phone. On a 768 px tablet it covered the first lavatory's circle, so the engine now moves
+the sheet out from under a shown palette, once per palette per step, the same way it does for the
+card. The card says where the palette opens and to name the new counter Lavatory. While `+ New
+counter`'s dialog is open, the ring lights Name before Create Counter.
+
+**C3 and C9, the riser.** With Drop armed and a size picked, a click where no line ends did
+nothing. The Drop tool now shows a toast: "No line end here. Click one of the ringed line ends to
+drop 3 ft.", or "No runs on this sheet yet…" when the sheet has no runs. The drop step has a hint,
+`not-yet`, for a circle with no run end in it: click Back and chain the lavatories first. It also
+has `not-armed` for a click in the circle while Drop is off. The card names the palette by the
+title it shows, the Drop size palette, and says it opens at the top left.
+
+**C4, sizing by touch.** On touch the engine drops "Press …" lines, so the size step lost its
+only instruction. There was also no way to open the sizes by touch. The water card had the duct
+card's `pointer-events: none`, and its own tap handler was wired only on the first S. The card
+now has a Pipe size button (`#waterHintSize`), and a tap anywhere on the card opens the popover
+too. The card is wired the first time it shows. It keeps its presses to itself: the canvas
+wrapper had read a tap on the card as a click on the sheet, and on touch its touchend handler
+re-sent the tap to the sheet and swallowed the button's own click. On touch the card hides the
+"S accepts" key. The step now says: Pipe size on the card, or S; inside a water trace S opens the
+sizes rather than Set Scale; 3/4″; the second circle; then Finish (or Enter). Below 769 px it
+says Polyline is behind ☰. A hint now reads like a card body on touch, so its "(or press …)"
+goes too. One more cause was in the engine. On a narrow screen the card is docked by the
+stylesheet, but the sheet nudge measured it where it would have been placed. Once the ring moved
+to the water card at the foot of the sheet, the card docked at the top, sat on the main's second
+circle, and the tap landed on the card. The nudge now measures the card where it is docked.
+
+**C7, the toilet.** "Pick the Toilet symbol from the plumbing set" named no set on screen. On a
+returning device it was also wrong. The Create tab selects the first icon whose name no counter
+uses, so with a Water Closet already in the palette it opened on the Water Fountain, and a
+"Water Closet" created there got the fountain icon. The symbol now follows the typed name while
+nothing has been picked (features/counter.js `nameIconPath`). The match is on an icon's exact
+name. A CFM, a click in the grid, or words in Search icon still take precedence. The card says
+the toilet is the lit symbol and that the Search icon box finds another.
+
+**C21 and C23.** The hangers step spells out the International Plumbing Code (IPC), the first
+place any step says IPC. The proof step no longer says "open SUMMARY". The list is already open,
+and the heading opens the Summary Legend settings. The card says so, and the ring skips the
+heading. If the list is folded, the ring lights the ▶. If the heading's dialog is open, the ring
+lights its × and the hint is `wrong-item`. The electrical tour's summary step had the same words
+and gets the same wording. The heading opening settings is the house pattern (PAGES opens Page
+Settings the same way), so whether the heading should fold the list is left for a product call.
+
+Pinned by real clicks and taps: tutorial.spec.js ("The plumbing tour's persona calibration
+findings": the palette and the card at 1280 x 720, the lav battery chained by touch on a tablet,
+the size step by touch through Finish, the drop miss and its code, the returning device's toilet,
+the SUMMARY heading's dialog and its ×), chain.spec.js (the palette at 768 and 375 px),
+drop-mode.spec.js (both toasts), water-size.spec.js (Pipe size by touch, no vertex under the
+card) and counter.spec.js (the symbol follows the name until a pick).
+
+---
+
 ## feat(persona): the seams simulated readers run on, and the rules a lesson teaches named (2026-09-25)
 
 PERSONA-PLAN build items 1 to 7 ([journeys/plans/PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)):

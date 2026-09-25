@@ -132,4 +132,44 @@ test.describe('The S moment for water (rung 4)', () => {
     await expect(page.locator('#waterSizePopover')).toBeHidden();
     await expect(page.locator('#scaleModal')).toHaveClass(/visible/);
   });
+
+  // Persona calibration C4 (2026-09-25): S was the only way to the sizes, and a tablet has no S.
+  // The card's Pipe size opens the same popover (before S was ever pressed: the card's own tap was
+  // wired only on the first S), takes a tap, and never drops a vertex under the card.
+  test.describe('by touch', () => {
+    test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true });
+    test('Pipe size on the card opens the popover, a size takes a tap, and the card eats no vertex', async ({ page }) => {
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await load(page);
+      await page.evaluate(() => {
+        const s = window.state;
+        s.lineTypes.push({ id: 'lt-cold', name: '1in PEX cold', color: '#4a9eff', curveStyle: 'straight', waterSide: 'cold' });
+        s.counters.push({ id: 'c-lav', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#47c88e', wsfu: 2 });
+        s.pages[0].canvases[0].annotations.counterMarkers['c-lav'] = [{ x: 250, y: 210 }, { x: 300, y: 210 }, { x: 350, y: 210 }];
+        s.activeLineTypeId = 'lt-cold';
+        s.tool = window.App.TOOL.POLYLINE;
+        s.drawingPolyline = { id: 'draft-t', name: 'Cold main', color: '#4a9eff', points: [{ x: 100, y: 200 }, { x: 200, y: 200 }], closed: false, lineTypeId: 'lt-cold', group: null };
+        window.App.updateUI();
+        window.App.renderAnnotations();
+      });
+      const card = page.locator('#waterHintCard');
+      await expect(card).toBeVisible();
+      await expect(page.locator('#waterHintSize')).toHaveText('Pipe size');
+      await expect(card.locator('kbd')).toBeHidden();   // no key on a touch screen
+      await page.locator('#waterHintSize').tap();
+      await expect(page.locator('#waterSizePopover')).toBeVisible();
+      expect(await page.evaluate(() => window.state.drawingPolyline.points.length)).toBe(2);
+      await page.locator('.water-size-step', { hasText: '3/4″' }).tap();
+      await expect(page.locator('#waterSizePopover')).toBeHidden();
+      const after = await page.evaluate(() => ({ names: window.state.lineTypes.map((l) => l.name), draft: window.state.drawingPolyline.points }));
+      expect(after.names).toEqual(['1in PEX cold', '3/4in PEX cold']);
+      expect(after.draft).toEqual([{ x: 200, y: 200 }]);
+      // a tap on the card's text opens it too, still without a vertex
+      await card.locator('#waterHintText').tap();
+      await expect(page.locator('#waterSizePopover')).toBeVisible();
+      expect(await page.evaluate(() => window.state.drawingPolyline.points.length)).toBe(1);
+      expect(errors).toEqual([]);
+    });
+  });
 });

@@ -1832,15 +1832,18 @@ body.tour-active .canvas-empty-hint { display: none; }
 .scale-check-sheet-hint { margin-top: 8px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-size: 0.8rem; }
 .chain-panel-foot { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--text2); font-size: 0.72rem; flex-shrink: 0; }
 .chain-panel-foot b { color: var(--accent); font-weight: 600; }
-@media (max-width: 768px) { .chain-panel:not(.drop-panel) { display: none !important; } }
+/* The Chain palette shows at every width: the tool is in the header strip on a tablet and a phone,
+   and with the palette hidden there was no way to pick the counter and the line type (it hid them
+   below 769 px since the palette was a centred two-column dialog; found in the persona
+   calibration, 2026-09-25). On a phone it fits the width and still closes to the header chip. */
+@media (max-width: 768px) { .chain-panel:not(.drop-panel) { width: min(300px, calc(100vw - 24px)); } }
 
 /* ---- Drop tool (features/drop-mode.js) ----
    The palette reuses the .chain-panel shell (position/drag/head/foot); the
    pieces below are its own body. Chips in the Line Properties modal share the
    Room Sizer recent-chip look but carry the accent (they are commit buttons,
-   not suggestions). The drop panel stays available on mobile — unlike Chain's
-   two-column picker it is a thin single column, and taps on rings are the
-   tool's whole mobile story — hence the :not(.drop-panel) carve-out above. */
+   not suggestions). Both palettes show on mobile; the Drop palette is the
+   thinner one, a single column. */
 .drop-panel { width: 200px; }
 .drop-size-list { padding: 10px 12px 2px; display: flex; flex-direction: column; gap: 5px; overflow-y: auto; }
 .drop-size-btn { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.85rem; padding: 7px 10px; cursor: pointer; text-align: center; }
@@ -1956,7 +1959,14 @@ body.tour-active .canvas-empty-hint { display: none; }
 /* WATER-PLAN rung 3: the water side and the fixture units a run serves, under a line type or a line row */
 .sidebar-item-line-type .line-water-meta { font-size: 0.72rem; color: var(--text2); font-family: 'DM Mono', monospace; margin-top: 2px; margin-left: 24px; }
 /* WATER-PLAN rung 4: the water size popover's ladder, every size of the material with its velocity */
-.water-hint-card { cursor: pointer; }
+/* The water card takes taps (the duct card it twins lets the pointer through): Pipe size, or the card
+   itself, opens the size popover, the touch way to S. */
+.water-hint-card { cursor: pointer; pointer-events: auto; white-space: normal; }
+.water-hint-card:not([hidden]) { display: flex; align-items: center; gap: 10px; }
+.water-hint-text { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.water-hint-size { flex-shrink: 0; min-height: 32px; padding: 4px 12px; background: var(--surface2); border: 1px solid var(--accent); border-radius: 6px; color: var(--text); font: inherit; font-weight: 600; cursor: pointer; }
+.water-hint-size:hover { background: var(--accent); color: var(--bg); }
+@media (pointer: coarse) { .water-hint-size { min-height: 40px; } .water-hint-key { display: none; } }
 .water-size-ladder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .water-size-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 4px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; cursor: pointer; }
 .water-size-step:hover { border-color: var(--accent); }

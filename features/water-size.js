@@ -21,7 +21,8 @@
  * the cap (WATER_VELOCITY_CAP_FPS, or the project's own knob once rung 5 adds
  * state.waterSettings.capFps[side]).
  *
- * S (or a tap on the card) opens #waterSizePopover (the duct size popover's
+ * S (or the card's Pipe size button, or a tap anywhere on the card: the touch way,
+ * since a tablet has no S; persona calibration C4, 2026-09-25) opens #waterSizePopover (the duct size popover's
  * markup and classes): the suggested size as a chip, the material's whole
  * ladder with each size's velocity (✓ / ⚠), the flow and the column, and the
  * note that a size change starts a new run. Taking a size is WATER-PLAN Q1's
@@ -106,17 +107,34 @@
   }
 
   // --- the card ------------------------------------------------------------------
+  // The card keeps its Pipe size button; the text rides #waterHintText beside it.
   function syncWaterHintCard(sug) {
     const el = document.getElementById('waterHintCard');
     if (!el) return;
-    if (!sug) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; } return; }
+    wireCard();
+    const out = document.getElementById('waterHintText') || el;
+    if (!sug) { if (!el.hidden) { el.hidden = true; out.innerHTML = ''; } return; }
     let text = sug.chipText, tail = '';
     const m = text.match(/\s*[.—-]\s*S accepts\.?\s*$/);
-    if (m) { text = text.slice(0, m.index); tail = ' · <kbd>S</kbd> accepts'; }
+    if (m) { text = text.slice(0, m.index); tail = '<span class="water-hint-key"> · <kbd>S</kbd> accepts</span>'; }
     const parts = text.split(' · ');
     const html = (parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> · ' + esc(parts.slice(1).join(' · ')) : esc(text)) + tail;
-    if (el.innerHTML !== html) el.innerHTML = html;
+    if (out.innerHTML !== html) out.innerHTML = html;
     if (el.hidden) el.hidden = false;
+  }
+  // Wired the first time the card shows, not the first time S opens the popover: a tap on the card
+  // did nothing until S had been pressed once, and a tablet has no S (C4, 2026-09-25).
+  let cardWired = false;
+  function wireCard() {
+    if (cardWired) return;
+    const card = document.getElementById('waterHintCard');
+    if (!card) return;
+    cardWired = true;
+    // The card sits inside the canvas wrapper, whose handlers would read a tap on it as a click on
+    // the sheet (a vertex under the card; on touch, touchend re-dispatches the tap to the wrapper and
+    // swallows the button's own click). The card keeps its presses to itself.
+    ['mousedown', 'mouseup', 'touchstart', 'touchend', 'dblclick', 'contextmenu'].forEach((t) => card.addEventListener(t, (e) => e.stopPropagation(), { passive: true }));
+    card.addEventListener('click', (e) => { e.stopPropagation(); toggleWaterSizePopover(); });
   }
   // Called by renderAnnotations after the duct overlay: paints nothing, syncs the card.
   function drawWaterOverlay() {
@@ -213,8 +231,7 @@
     wired = true;
     const close = document.getElementById('waterSizePopoverClose');
     if (close) close.onclick = closeWaterSizePopover;
-    const card = document.getElementById('waterHintCard');
-    if (card) card.onclick = () => toggleWaterSizePopover();
+    wireCard();
   }
 
   // --- telemetry (WATER-PLAN §8), behind the water-telemetry flag until the allowlist

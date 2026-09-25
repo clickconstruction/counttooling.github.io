@@ -363,6 +363,34 @@ test.describe('T2-05 counter-modal create ergonomics', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // Persona calibration C7 (2026-09-25): the prefill takes the first icon whose name no counter
+  // uses, so with a Water Closet already in the palette the Create tab opened on the Water Fountain,
+  // and a "Water Closet" typed there wore the fountain. The symbol follows the typed name until the
+  // estimator picks one herself.
+  test('the symbol follows a typed name that is an icon\'s, until an icon is picked by hand', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+    const wcPath = await page.evaluate(() => { const App = window.App; const ic = App.getOrderedIcons().find((i) => App.getIconName(i.value) === 'Water Closet'); window.state.counters.push({ id: 'seed-wc', name: 'Water Closet', icon: ic.value, color: '#123456' }); return ic.value; });
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    const selected = () => page.evaluate(() => { const c = document.querySelector('#counterIconGrid .icon-cell.selected'); return c ? c.dataset.path : null; });
+    const prefill = await selected();
+    expect(prefill).not.toBe(wcPath);   // the next unused icon, as before
+    await page.locator('#counterName').fill('Water Closet');
+    expect(await selected()).toBe(wcPath);
+    await page.locator('#counterName').fill('Mop sink by the door');
+    expect(await selected()).toBe(prefill);   // no icon of that name: back to the prefill
+    // a pick by hand wins over the name from then on
+    await page.locator('#counterIconGrid .icon-cell').nth(5).click();
+    const picked = await selected();
+    await page.locator('#counterName').fill('Water Closet');
+    expect(await selected()).toBe(picked);
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => !document.getElementById('counterModal')?.classList.contains('visible'), { timeout: 5000 });
+    expect(await page.evaluate(() => window.state.counters[window.state.counters.length - 1].icon)).toBe(picked);
+    expect(errors).toEqual([]);
+  });
 });
 
 // T2-13 — the Manage Icons opener re-homed from Settings → Advanced to a

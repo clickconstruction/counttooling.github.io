@@ -130,8 +130,25 @@
     if (createIconPicked) { syncCreateCfmChip(); return; }
     const v = parseFloat(document.getElementById('counterCfm')?.value);
     const cfmIcon = Number.isFinite(v) && v > 0 && App.cfmDefaultIcon ? App.cfmDefaultIcon() : null;
-    selectCreateIconCell(cfmIcon || createPrefillPath);
+    selectCreateIconCell(cfmIcon || nameIconPath() || createPrefillPath);
     syncCreateCfmChip();
+  }
+  // The symbol follows the name while nothing was picked: typing Water Closet lights the toilet.
+  // The prefill takes the first icon whose name no counter uses, so on a device that already has a
+  // Water Closet the Create tab opened on the Water Fountain, and a "Water Closet" made there wore
+  // the fountain (persona calibration C7, 2026-09-25). An exact name only (the icon's name as the
+  // grid names it, case aside); a CFM, a click in the grid or words in Search icon still win.
+  function nameIconPath() {
+    const n = (document.getElementById('counterName')?.value || '').trim().toLowerCase();
+    if (!n) return null;
+    const hit = App.getOrderedIcons().find((ic) => App.getIconName(ic.value).trim().toLowerCase() === n);
+    return hit ? hit.value : null;
+  }
+  function syncCreateIconToName() {
+    if (createIconPicked || (document.getElementById('counterIconSearch')?.value || '').trim()) return;
+    const v = parseFloat(document.getElementById('counterCfm')?.value);
+    if (Number.isFinite(v) && v > 0) return;
+    selectCreateIconCell(nameIconPath() || createPrefillPath);
   }
 
   // D18 (B19 ratchet, J19 #11): the inline icon chip beside a CFM field —
@@ -284,7 +301,10 @@
       App.registerWsfuForm('create', { inputId: 'counterWsfu', chipId: 'counterWsfuChip', groupId: 'counterWsfuGroup', name: () => document.getElementById('counterName').value });
       App.resetWsfuForm('create');
       const nameEl = document.getElementById('counterName');
-      if (nameEl) nameEl.oninput = () => App.syncWsfuForm('create');
+      if (nameEl) nameEl.oninput = () => { syncCreateIconToName(); App.syncWsfuForm('create'); };
+    } else {
+      const nameEl = document.getElementById('counterName');
+      if (nameEl) nameEl.oninput = syncCreateIconToName;
     }
     syncCreateCfmChip();   // a fresh panel: CFM empty → chip hidden
     applyCounterAirMore('counterAirMoreToggle', 'counterAirMoreFields');

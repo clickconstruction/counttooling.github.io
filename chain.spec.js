@@ -278,4 +278,29 @@ test.describe('Chain tool', () => {
     expect(state.tool).toBe(0);
     expect(state.panelHidden).toBe(true);
   });
+
+  // Persona calibration C2 (2026-09-25): the palette was display:none below 769 px while the Chain
+  // button sat in the header strip, so a tablet or phone could arm Chain but never pick the counter
+  // or the line type. It shows at every width now and takes a tap.
+  for (const [w, h] of [[768, 1024], [375, 812]]) {
+    test.describe(`at ${w} px`, () => {
+      test.use({ viewport: { width: w, height: h }, hasTouch: true });
+      test('arming Chain shows the palette on screen, and a tap picks a row', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (err) => { errors.push(err.message); });
+        await setupChainProject(page);
+        await page.tap('#chainBtn');
+        expect(await page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)).toBe(true);
+        const panel = page.locator('#chainPanel');
+        await expect(panel).toBeVisible();
+        const box = await panel.boundingBox();
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(w);
+        await page.locator('#chainCounterList .chain-row[data-id="c-chain-1"]').tap();
+        await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').tap();
+        expect(await page.evaluate(() => [window.state.activeCounterType, window.state.activeLineTypeId])).toEqual(['c-chain-1', 'lt-chain-1']);
+        expect(errors).toEqual([]);
+      });
+    });
+  }
 });

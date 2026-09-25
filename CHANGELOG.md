@@ -13,6 +13,28 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): the reader's own PDF uploaded onto the sample sheets opens as their own plan (LESSON-UPLOAD, 2026-09-25)
+
+Found building LEARN-LEAK: with a lesson's, course's or tour's sample sheets open, Upload PDF (or a
+drop) added the reader's drawing to the sample project as another page. It lived in
+"sample-lessons" under the sample's name; the next lesson, which resets a sample project without
+asking, cleared it and any marks on it; and LEARN-LEAK counted everything made for it as made in
+the lesson.
+
+features/pdf-intake.js now treats an upload onto open sample sheets as leaving them: it asks
+features/lessons.js (`App.leaveTeachingSheetsForUpload`), which closes the sample, and the upload
+opens as the reader's own new plan under its own name. While a lesson, chapter or tour is still
+running the reader is asked first, "Leave the lesson?" (or chapter, or tour), with Open my plan and
+Cancel (the owner's call); Cancel keeps the lesson and its sheets. A lesson that is no longer
+running just closes. The app's own sample opens (features/tutorial.js `openPlanFile`, which the
+lessons and courses use too, and tour-blank.js `openBlankSheet`) mark their upload with
+`App.markTeachingOpen()`, a one-shot flag the dispatcher clears, so they are never taken for the
+reader's. And as a backstop, a sample project holding more pages than its set came with is no
+longer reset silently by the next lesson or the blank tour: it goes through Close project, which
+asks. Pinned by lessons.spec.js (a running lesson asks, Cancel keeps it, Open my plan opens the PDF
+alone with the reader's palette; a lesson no longer running closes without asking) and
+tutorial.spec.js (a running tour asks "Leave the tour?").
+
 ## feat(persona): the prober and the cheaper live pass (2026-09-25)
 
 PERSONA-PROBER, the harness changes the calibration asked for ([PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)

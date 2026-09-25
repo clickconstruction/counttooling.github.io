@@ -288,7 +288,7 @@
     if (modalUp('preparePdfModal')) { el('preparePdfDone').click(); return; }
     const s = S();
     if (s.pages && s.pages.length) {
-      if (KNOWN_SETS.includes(s.currentProjectName)) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
+      if (KNOWN_SETS.includes(s.currentProjectName) && !teachingSetGrown()) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
       else if (!(await App.closeProject({ route: 'lesson' }))) return;   // their own plan: the app's one Close project, which asks first
     }
     sweepLessonPalette();
@@ -851,6 +851,31 @@
     }
   } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
 
+  // LESSON-UPLOAD (2026-09-25). The reader's own PDF uploaded onto the sample sheets used to become
+  // another page of the sample project: their drawing lived in "sample-lessons", the next lesson
+  // cleared it without asking, and LEARN-LEAK swept what they made for it. features/pdf-intake.js
+  // now asks here first, and the upload opens as their own new plan. A running lesson or tour asks
+  // before it stops (the owner's call); finished, the sample just closes.
+  const SET_PAGES = { 'sample-lessons': 4, 'sample-electrical': 4, 'sample-hvac': 3, 'blank-sheet': 2, 'sample-plan': 1 };
+  const teachingSetOpen = () => TRACKED_SETS.concat(['sample-plan-advanced']).includes(S().currentProjectName || '') && !!(S().pages && S().pages.length);
+  // More pages than the set came with: something of the reader's is on it, so no silent reset.
+  function teachingSetGrown() { const n = SET_PAGES[S().currentProjectName || '']; return !!n && (S().pages || []).length > n; }
+  async function leaveTeachingSheetsForUpload() {
+    if (App.isTutorialActive && App.isTutorialActive()) {
+      const id = (App.tutorialId && App.tutorialId()) || '';
+      const what = /^lesson:/.test(id) ? 'lesson' : /^course:/.test(id) ? 'chapter' : 'tour';
+      const ok = await App.confirmDialog({ title: 'Leave the ' + what + '?', body: 'Your PDF opens as your own plan, and the ' + what + ' stops here. What the ' + what + ' made stays with its sample sheets.', confirmLabel: 'Open my plan' });
+      if (!ok) return false;
+      App.stopTutorial(false);
+    }
+    App.resetLocalSessionState({ keepArtboard: true });
+    App.updateUI();   // the sheets are left: LEARN-LEAK sweeps here
+    App.renderPdf();
+    return true;
+  }
+  App.isTeachingSetOpen = teachingSetOpen;
+  App.isTeachingSetGrown = teachingSetGrown;
+  App.leaveTeachingSheetsForUpload = leaveTeachingSheetsForUpload;
   App.onLessonPaletteSync = syncLessonPalette;   // app.js updateUI, before the sidebar draws
   App.beginTeachingPalette = beginTeachingPalette;   // a tour opening its sheet (features/tutorial.js, tour-blank.js)
   App.openLearnMenu = openLearnMenu;

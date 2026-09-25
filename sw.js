@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'e226258ca37d';
+const CACHE_VERSION = 'a85a2797d1f6';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -247,7 +247,7 @@ const PRECACHE_SHA256 = {
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
-  '/features/pdf-intake.js': '187fccf693629336868b60db1744d2aca6427936dcbab7b1cbb6cf7526b18c71',
+  '/features/pdf-intake.js': 'd850dd9be7688cbda83b946f8e1c6928b7a9ab5de9d8951870c8daf0fa594911',
   '/features/line-color.js': '2fd4c7594f1a3686fd9323b7bc4d97f5b9c151b32475d5a4428062a075378ecb',
   '/features/custom-icon-upload.js': '24e2add3e3703bec15a947aaa4b8bc0b52f5a3d7c0927955aa0a980113a1e375',
   '/features/note.js': 'b7cc88aa00ac8a2450c59299959108ae3bd5b18b0e420fd61264533c23347d6b',
@@ -332,12 +332,12 @@ const PRECACHE_SHA256 = {
   '/features/duct-bidcheck.js': 'de82bed1f1c357fa21bd9864ff417a99d4949a7b4e6833a6690cdcf47dc0ece1',
   '/features/rules.js': '01e86c4f75ee125c375265b33566364603a9056780716841f487b4a323be8192',
   '/features/tag-reader.js': '18e33828734558fdbb99f63eb82ca05b595757f70eb8e22aeb5e2c42e6e630fc',
-  '/features/tutorial.js': '4a910c2b186acb6355d6ab9ba2744edbfdfe2513505009a291a6bc9350957410',
-  '/features/lessons.js': '2279f356cf52fc6149d1ac013051da9653eb96b97fedd1a5611da923a4f562e8',
+  '/features/tutorial.js': 'c2370b3e3b3281f087ca2a40b17b64f62c0d6bae2b58113b1309973e46efe6df',
+  '/features/lessons.js': '948062d2f7edb2b6d4872ba2aa434e608e939beaae84808d0c07879f44889254',
   '/features/course-plumbing.js': 'bee7160e4f2e91af7a83e8504566d518201fe18c28edd29d92cfd973c609732e',
   '/features/course-electrical.js': '2909ee2d23d4671b53388ac7224e1b304f46397c7bfe3ae39f51730cbfdacc3a',
   '/features/course-hvac.js': 'aa3a9f3936cba10ad70c039f414ebb72189e0af2ee7023ebd5a9c48489e5fd40',
-  '/features/tour-blank.js': '20895ab1c185088846eb4d4469b0eb0a6cb5b0f419457a98e6ee68e875b0e7c6',
+  '/features/tour-blank.js': '6c89e914f202f1456e02f246710c84fe7ab3a5ab77f90c60a71ac63979ad935e',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
   '/report.js': '2279bf02b07467ff8eeaa108d607963cb32298a61e0858b8f958970cb199989e',

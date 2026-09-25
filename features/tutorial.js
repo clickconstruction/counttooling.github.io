@@ -743,6 +743,7 @@
       dt.items.add(file);
       const inp = document.getElementById('pdfInput');
       inp.files = dt.files;
+      if (App.markTeachingOpen) App.markTeachingOpen();   // a sample the app opens, not the reader's own (LESSON-UPLOAD)
       inp.dispatchEvent(new Event('change', { bubbles: true }));
     } catch (e) { App.showToast('Could not load the sample plan. Upload PDF works the same way.'); }
   }

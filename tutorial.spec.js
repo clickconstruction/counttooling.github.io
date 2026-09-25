@@ -70,6 +70,21 @@ test.describe('Interactive walkthrough', () => {
     await expect(page.locator('body')).toContainText('made in the lesson or tour');
   });
 
+  // LESSON-UPLOAD: the reader's own PDF onto a running tour's sample plan asks "Leave the tour?" first.
+  test('an upload onto a running tour\'s sample plan asks to leave the tour, then opens as the reader\'s own plan', async ({ page }) => {
+    test.setTimeout(60000);
+    await page.goto('/app/?tour=plumbing');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await doAndGo(page);   // the sample plan
+    await waitForStep(page, 'scale');
+    await page.locator('#pdfInput').setInputFiles('test-page.pdf');
+    await expect(page.locator('#confirmTitle')).toHaveText('Leave the tour?', { timeout: 5000 });
+    await page.click('#confirmOk');
+    await page.waitForFunction(() => window.state.currentProjectName === 'test-page', null, { timeout: 15000 });
+    expect(await page.evaluate(() => [window.state.pages.length, window.App.tutorialStepId()])).toEqual([1, null]);
+  });
+
   // A paragraph between two actions splits the numbered list; the second part keeps counting.
   // The size step read 1, 2, 1, 1 until 2026-09-24.
   test('a step\'s actions number straight through a paragraph between them', async ({ page }) => {

@@ -524,6 +524,7 @@
     },
     {
       id: 'duct', title: 'Header: Duct', kind: 'do',
+      rules: ['hvac.duct.gauge-schedule', 'hvac.duct.sheet-weight'],
       body: () => 'The sheet-metal run: drawn at its size, weighed by the foot.\n1. In the header, click [[Duct]] (or press U).' + (narrow() ? '' : MORE) + '\n2. Leave the size and click [[Start Tracing]].\n3. Click inside the first circle, then the second.\n4. ' + (narrow() ? 'Tap [[Finish Duct Run]].' : 'Press Enter.') + '\nThe DUCT section in the sidebar gets a Schedule: pounds, gauge and fittings from the SMACNA tables.',
       target: ['#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => K().pathZones(DUCT, 18, ductPaths(true)),

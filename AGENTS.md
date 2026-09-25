@@ -491,6 +491,7 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `clickcount-lessons-done` (Learn: `{ <lessonId>: ISO }`, the lessons finished on this device; features/lessons.js),
 `clickcount-lesson-device-before` (the reader's sidebar filter, Snap and search words as a lesson found them; written when a lesson starts, removed when it stops, and put back on the next load when a reload or a closed tab skipped the stop; features/lessons.js),
 `clickcount-tour-searches-before` (the same for a TOUR's sidebar search words: cleared while the five-minute or blank tour runs, typed back when it stops or on the next load; features/tutorial.js),
+`clickcount-lesson-palette` (LEARN-LEAK: `{ standing, made }`, the palette ids that stood when a lesson's sheets opened and the ones made while they were open; the made ones are removed when the reader leaves the sheets, even after a reload mid-lesson; features/lessons.js),
 `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,

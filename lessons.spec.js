@@ -191,6 +191,50 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     expect(errors).toEqual([]);
   });
 
+  // LEARN-LEAK (the owner's call, 2026-09-25: sweep all of it). Before, a reader's hand-made "HB Hose Bibb"
+  // and "1.5in Copper" rode into their next real bid, and the lesson's own counters did too until another
+  // lesson opened.
+  test('what a lesson made, by the lesson or by hand, leaves with its sheets; the palette that stood, and a loaded project\'s own, stay', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/', errors);
+    await page.evaluate(() => { window.state.counters.push({ id: 'mine', name: 'My Counter', icon: window.App.getOrderedIcons()[0].value, color: '#fff' }); window.App.updateUI(); });
+    const palette = () => page.evaluate(() => [window.state.counters.map((c) => c.name), window.state.lineTypes.map((l) => l.name)]);
+    const handMade = (n) => page.evaluate((k) => { const s = window.state; const ic = window.App.getOrderedIcons()[0].value; s.counters.push({ id: 'hand-c' + k, name: 'HB Hose Bibb ' + k, icon: ic, color: '#e85447' }); s.lineTypes.push({ id: 'hand-l' + k, name: '1.5in Copper ' + k, color: '#47c88e', curveStyle: 'straight' }); window.App.updateUI(); }, n);
+    // 1. the lesson's own Floor Drain and the reader's own + Add, then the reader's own plan
+    expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await handMade(1);
+    expect((await palette())[0]).toEqual(['My Counter', 'Floor Drain', 'HB Hose Bibb 1']);
+    await page.click('#tourLeave');
+    await page.waitForTimeout(300);
+    expect((await palette())[0]).toEqual(['My Counter', 'Floor Drain', 'HB Hose Bibb 1']);   // still on the lesson sheets: nothing goes yet
+    // the way off the sheets is the app's Close project (an upload onto them adds a page to the set)
+    const closing = page.evaluate(() => window.App.closeProject({ route: 'spec' }));
+    await page.click('#confirmOk');
+    await closing;
+    expect(await palette()).toEqual([['My Counter'], []]);
+    await expect(page.locator('body')).toContainText('Removed 3 counters and line types made in the lesson');
+    expect(await page.evaluate(() => localStorage.getItem('clickcount-lesson-palette'))).toBe(null);
+    // and the reader's own plan opens with their palette alone
+    await page.locator('#pdfInput').setInputFiles('test-page.pdf');
+    await page.waitForFunction(() => window.state.currentProjectName === 'test-page' && window.state.pages.length === 1, null, { timeout: 15000 });
+    expect(await palette()).toEqual([['My Counter'], []]);
+    // 2. a project loaded over the lesson sheets brings its own palette: only what the lesson made goes
+    expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
+    await page.click('#tourShow');
+    await page.click('#confirmOk');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'note', null, { timeout: 30000 });
+    await handMade(2);
+    await page.click('#tourLeave');
+    await page.evaluate(() => { const s = window.state; const ic = window.App.getOrderedIcons()[0].value; s.currentProjectName = 'Real Bid'; s.counters = [{ id: 'mine', name: 'My Counter', icon: ic, color: '#fff' }, { id: 'cloud-1', name: 'Cloud WC', icon: ic, color: '#4a9eff' }]; s.lineTypes = [{ id: 'cloud-2', name: '2in PVC', color: '#8a4bb0', curveStyle: 'straight' }]; window.App.updateUI(); });
+    expect(await palette()).toEqual([['My Counter', 'Cloud WC'], ['2in PVC']]);
+    expect(errors).toEqual([]);
+  });
+
   test('the card never sits on the control it points at, takes the corner a step asks for, and drags', async ({ page }) => {
     test.setTimeout(90000);
     const errors = [];

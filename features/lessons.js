@@ -206,13 +206,62 @@
   // The palette standing when a set opens: the reader's own counters and line types, which a
   // lesson may use but never adopts as the one its card names (see `named`).
   let standing = new Set();
-  function sweepLessonPalette() {
+  // Remove palette items (counters and line types) by test, and the Quick Keys bound to them.
+  function dropFromPalette(test) {
     const s = S();
     const gone = new Set();
-    s.counters = (s.counters || []).filter((c) => { if (c.lesson) gone.add(c.id); return !c.lesson; });
-    s.lineTypes = (s.lineTypes || []).filter((l) => { if (l.lesson) gone.add(l.id); return !l.lesson; });
+    s.counters = (s.counters || []).filter((c) => { if (test(c)) { gone.add(c.id); return false; } return true; });
+    s.lineTypes = (s.lineTypes || []).filter((l) => { if (test(l)) { gone.add(l.id); return false; } return true; });
     Object.keys(s.numberKeyBindings || {}).forEach((slot) => { if (gone.has(s.numberKeyBindings[slot].id)) delete s.numberKeyBindings[slot]; });
-    standing = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
+    return gone.size;
+  }
+  const paletteIds = () => (S().counters || []).map((c) => c.id).concat((S().lineTypes || []).map((l) => l.id));
+  function sweepLessonPalette() {
+    // the lesson's own items, and whatever the reader made on the last lesson's sheets (LEARN-LEAK)
+    const made = new Set(track ? track.made : []);
+    dropFromPalette((x) => x.lesson || made.has(x.id));
+    standing = track ? new Set(track.standing) : new Set(paletteIds());
+    track = { standing: [...standing], made: [] };
+    opening = true;
+    saveTrack();
+  }
+
+  // LEARN-LEAK (the owner's call, 2026-09-25: sweep all of it). Every counter and line type added
+  // to the palette while a lesson's sheets are open, by the lesson or by the reader's own + Add,
+  // Quick or Create tab, leaves with the sheets: when the open plan stops being a lesson set (the
+  // reader uploads or loads their own, or closes the project), the ones MADE meanwhile are removed.
+  // Only those ids, recorded as they appear: loading a cloud project replaces the palette with its
+  // own, which is never touched, and neither is the palette that stood when the sheets opened. The
+  // record rides localStorage so a reload mid-lesson still sweeps on the way out. Before this, a
+  // reader's "HB Hose Bibb" and "1.5in Copper" rode into their next real bid (by hand, 2026-09-25),
+  // and the lesson's own items did too until another lesson opened.
+  const TRACK_KEY = 'clickcount-lesson-palette';
+  let track = (() => { try { return JSON.parse(localStorage.getItem(TRACK_KEY) || 'null'); } catch (_) { return null; } })();
+  // A set on its way in is not a set being left: the reset before it has no name, and Trim your set
+  // rebuilds the pages under "Untitled" once the set's name is already up (seen, 2026-09-25). The set
+  // is IN once it has settled, the moment seedIfReady lays the lesson's seed (seededFor).
+  let opening = false;
+  // After a reload mid-lesson the boot shows no plan at all while it offers to restore one; only a
+  // plan that is not a set, or a set left again, counts as leaving.
+  let fromStorage = !!track;
+  function saveTrack() { try { if (track) localStorage.setItem(TRACK_KEY, JSON.stringify(track)); else localStorage.removeItem(TRACK_KEY); } catch (_) { /* private mode: this session still sweeps */ } }
+  function syncLessonPalette() {
+    if (!track) return;
+    const name = S().currentProjectName || '';
+    if (name) fromStorage = false;
+    if (KNOWN_SETS.includes(name)) {
+      if (seededFor && seededFor === openingFor) opening = false;
+      const had = new Set(track.standing.concat(track.made));
+      const fresh = paletteIds().filter((id) => !had.has(id));
+      if (fresh.length) { track.made = track.made.concat(fresh); saveTrack(); }
+      return;
+    }
+    if (opening || fromStorage || !App.bootSettled) return;
+    const made = new Set(track.made);
+    track = null;
+    saveTrack();
+    const n = dropFromPalette((x) => x.lesson || made.has(x.id));
+    if (n && App.showToast) App.showToast('Removed ' + n + (n === 1 ? ' counter or line type' : ' counters and line types') + ' made in the lesson. Your own palette is as it was.', 5000);
   }
   // A PDF with several sheets goes through Trim your set (Prepare PDF) like any upload.
   // The Sheets lesson leaves that dialog to the reader, because it IS the lesson; every
@@ -781,6 +830,7 @@
     }
   } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
 
+  App.onLessonPaletteSync = syncLessonPalette;   // app.js updateUI, before the sidebar draws
   App.openLearnMenu = openLearnMenu;
   App.startLesson = startLesson;
   // A lesson left by a reload or a closed tab: once the app has booted, put the reader's device

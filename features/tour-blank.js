@@ -128,6 +128,7 @@
   let base = null;   // { counters, lineTypes, groups }: ids on the sheet when it opened
   const fresh = (list, key) => (list || []).find((x) => base && !base[key].has(x.id)) || null;
   const counter = () => fresh(S().counters, 'counters');
+  const bellShown = () => { const b = el('saveStatusBtnHeader'); return !!b && b.getClientRects().length > 0 && getComputedStyle(b).display !== 'none'; };
   const lineType = () => fresh(S().lineTypes, 'lineTypes');
   const group = () => fresh(S().groups, 'groups');
   const cid = () => (counter() ? counter().id : '-');
@@ -513,7 +514,7 @@
     },
     {
       id: 'drop', title: 'Header: Drop, and Drop sizes', kind: 'do',
-      body: () => 'Plan view never shows the vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the chained run inside the circle.\n4. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Drop sizes]],' : 'In the header, click [[Drop sizes]]') + ' so every drop wears its number on the sheet.\nThe 3 ft joins the run\'s footage in the sidebar.',
+      body: () => 'Plan view never shows the vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft, or type 3 and click [[Add]] when it is not among the recent sizes.\n3. Click the end of the chained run inside the circle.\n4. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Drop sizes]],' : 'In the header, click [[Drop sizes]]') + ' so every drop wears its number on the sheet.\nThe 3 ft joins the run\'s footage in the sidebar.',
       target: ['#dropSizesBtn', '#dropPanel', '#dropBtn', '#headerBurger'], page: 0,
       zones: () => [{ kind: 'circle', x: CHAIN[0].x, y: CHAIN[0].y, r: 16, done: dropAt(CHAIN[0], 16) }],
       check: () => dropAt(CHAIN[0], 16) && !!S().showDropSizes,
@@ -640,17 +641,17 @@
       id: 'sidebar', title: 'Header: the sidebar', kind: 'do',
       body: () => (narrow()
         ? 'On a tablet the sidebar is a drawer, so the sheet has the whole screen.\n1. Tap ☰ at the top left: the sidebar slides over the sheet.\n2. Tap the sheet to put it away.'
-        : 'The whole screen for the sheet when you need it.\n1. Click the CountTooling logo at the top left (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.'),
+        : 'The whole screen for the sheet when you need it.\n1. At the top left of the header, click the panel button, Show or hide the sidebar (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.'),
       target: ['#headerSidebarToggle', '#headerLogo', '#hamburger'],
       check: () => (narrow()
         ? latch('drawer', drawerOpen()) && !drawerOpen()
         : latch('collapsed', document.body.classList.contains('sidebar-collapsed')) && !document.body.classList.contains('sidebar-collapsed')),
-      progress: () => (narrow() ? (seen.drawer && drawerOpen() ? 'Open. Now tap the sheet to put it away' : '') : (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the logo again' : '')),
+      progress: () => (narrow() ? (seen.drawer && drawerOpen() ? 'Open. Now tap the sheet to put it away' : '') : (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the panel button again' : '')),
       action: { label: 'Fold and unfold it', run: ACT.sidebar },
     },
     {
       id: 'groups', title: 'Sidebar: Groups', kind: 'do',
-      body: () => 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. ' + (narrow() ? 'Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]), and turn on [[Use groups]]. Close the dialog.' : 'In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]]. Close the dialog.') + '\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; ' + (narrow() ? 'press and hold' : 'right-click') + ' a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
+      body: () => 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. ' + (narrow() ? 'If GROUPS is not in the sidebar: tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]), and turn on [[Use groups]]. Close the dialog.' : 'If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) in the header and turn on [[Use groups]]. Close the dialog.') + '\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; ' + (narrow() ? 'press and hold' : 'right-click') + ' a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
       target: ['#groupModalDone', '#settingsUseGroupsBtn', '#addGroup', '#groupsSectionTitle', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => !!group(),
       progress: () => (S().groupsEnabled ? 'Groups are on. Now + Add under GROUPS' : ''),
@@ -679,9 +680,13 @@
     },
     {
       id: 'savestatus', title: 'Header: Save status', kind: 'do', hold: true,
-      body: () => '1. ' + (narrow() ? 'Open [[Project Settings]] again (☰, then the gear) and tap [[Save status]].' : 'In the header, click the bell ([[Save status]]).') + '\nIt says where your work is: the backup this device keeps every few seconds, and the cloud copy once you sign in and save. Green is safe.\n2. Close it.',
-      target: ['#saveStatusBtn', '#saveStatusBtnHeader', '#settingsGearBtn', '#sidebarLogoGear'],
-      check: () => latch('savestatus', modalUp('saveStatusModal')),
+      // The bell shows only signed in, and this sheet stays on the device: signed out there was nothing
+      // to click, and the step waited for a dialog only its seam could open (by hand, 2026-09-25).
+      body: () => (bellShown()
+        ? '1. ' + (narrow() ? 'Open [[Project Settings]] again (☰, then the gear) and tap [[Save status]].' : 'In the header, click the bell ([[Save status]]).') + '\nIt says where your work is: the backup this device keeps every few seconds, and the cloud copy once you sign in and save. Green is safe.\n2. Close it.'
+        : '1. Read the status bar at the bottom of the screen: it says where your work is, saved on this device, and when.\nThe app keeps a backup on this device every few seconds and offers it back the next time you open the app. Signed in, a bell in the header opens the full save log and the cloud copy.\n2. Click [[Next]].'),
+      target: () => (bellShown() ? ['#saveStatusBtn', '#saveStatusBtnHeader', '#settingsGearBtn', '#sidebarLogoGear'] : ['#statusBar', '.status-bar']),
+      check: () => !bellShown() || latch('savestatus', modalUp('saveStatusModal')),
       action: { label: 'Open it for me', run: ACT.savestatus },
     },
     {
@@ -714,8 +719,10 @@
     },
     {
       id: 'close', title: 'Header: Close this project', kind: 'do',
-      body: () => '1. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Close project]].' : 'In the header, click the × ([[Close this project]]).') + '\n2. Confirm.\nThe sheet closes and the empty canvas comes back. A real project would still be in its local backup, and in the cloud if you had saved it.',
-      target: ['#confirmOk', '#headerCloseProjectBtn', '#headerBurger'],
+      body: () => '1. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Close project]].' : 'In the header, click the gear ([[Project Settings]]), then [[Close project]].') + '\n2. Confirm.\nThe sheet closes and the empty canvas comes back. A real project would still be in its local backup, and in the cloud if you had saved it.',
+      // the header's [Close] shows only on a cloud project being viewed: on this device-only sheet the way
+      // out is Project Settings' Close project (by hand, 2026-09-25)
+      target: ['#confirmOk', '#headerCloseProjectBtn', '#settingsCloseProject', '#settingsGearBtn', '#headerBurger'],
       check: () => !(S().pages || []).length,
       action: { label: 'Close it for me', run: ACT.close },
     },

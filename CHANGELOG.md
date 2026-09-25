@@ -73,6 +73,42 @@ step goes to the reference.
 tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
 specs walk green (80).
 
+## fix(tour): the by-hand walk of the four tours (2026-09-25)
+
+The sixth and last round: the electrical, plumbing and HVAC five-minute tours and the blank-sheet
+tour, on the returning estimator's device, by real clicks. Pinned in tutorial.spec.js ("The tours,
+by hand on a returning estimator's device").
+
+**The engine.** The tours had no idea of the reader's palette: the plumbing tour's Make a Water
+Closet counter ticked itself on a standing Water Closet, and A line type in two clicks on the
+palette's first line type. A tour now snapshots the palette when it starts; a step names the tour's
+own item, or a standing one once the reader has used it. The tours clear the sidebar search words
+while they run and type them back when they stop or on the next load (a word in COUNTERS hid the
+reader's new counter, the lesson bug wendi found, now in the tours). A dialog the step names is kept
+open only when one of its named controls shows in it (the fixture-units step kept the 1in PEX details
+open over the lavatory's pencil).
+
+**Plumbing.** Quick is a link at the top of the + Add dialog, not a tab; the ring goes Size, Material,
+Add. The drop palette's 3 ft may not be among the recents: choose or type. Hangers wanted a rule on any
+line type; now the branch's. A second "1in PEX" left by an earlier tour is named when it took the
+setting. The typical floor wants ×3 (a ×2 zone passed, and the proof card said ×3).
+
+**Electrical.** The conduit step's ring named another dialog's fields and lit nothing: it goes Name,
+Create Line Type, the new type's pencil, raceway, size, conductors. Make it a circuit sent the reader
+to a GROUPS section that is not there with Groups off: it says to turn them on. The chain takes the
+reader's own twin of the receptacle.
+
+**HVAC.** Sign off asked for a tick on Fits the roof, which the room's deck height makes an AUTO row
+with no box: it ticks Curb & power coordinated. Name the system told the reader to click RTU-1 to
+select it, which put down the selection Done had made. The room dialog's ring follows its fields and
+the group dialog's too, and Groups get the same turn-them-on line.
+
+**Blank sheet.** The Duct step turns Groups on, so the Groups card's "turn on Use groups" turned them
+off: it says if GROUPS is not there. Save status waited for a bell that only shows signed in: signed
+out it reads the status bar. Close this project is in Project Settings on a device-only sheet (the
+header's Close shows only on a cloud project being viewed). The sidebar card named a logo; the control
+is the header's panel button.
+
 ## fix(learn): the by-hand walk of the HVAC course, chapters 1 to 9 (2026-09-25)
 
 The fifth round of the by-hand walk: the HVAC course on the returning estimator's device, real mouse

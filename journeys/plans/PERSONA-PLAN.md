@@ -164,3 +164,57 @@ worth running at all.
 
 - Whether a round of persona fixes lands as one PR per round (the by-hand walks' pattern) or
   one per set. Default: one per round.
+
+## Harness
+
+Built 2026-09-25 (build items 2, 5 and 6). Four scripts, all Node tooling, none in the shell:
+
+- `scripts/persona-devices.js`: the named devices, `first-timer` (1440 × 900, clean),
+  `returning` (1440 × 900, the standing palette and sidebar search words), `laptop`
+  (1280 × 720, returning) and `tablet` (768 × 1024, touch, returning). tutorial.spec.js's
+  returning-estimator tests seed from the same module.
+- `scripts/lib/persona-driver.js`: the Playwright half (boot on `App.bootSettled`, decline the
+  restore offer, start a set by its own door, clear the opening step with its own card button,
+  fast-forward through the specs' seam, observe, one action with real mouse and keys). Every
+  engine seam (`tutorialIds`, `tutorialManifest`, `tutorialObserve`) is feature-detected; on a
+  commit without them the ids come from the feature files' doors, the snapshot from the card's
+  DOM (its `code` is null), and the manifest from walking the set with Skip / Next
+  (`"source":"walk"`).
+- `npm run build:persona-manifest -- --app <url>`: `persona-out/manifest.jsonl` (one line per
+  step) and `persona-out/labels.json` (every label the shell shows, the list
+  teaching-labels.test.js checks chips against). About 15 minutes as a walk, four sets at a time.
+- `npm run persona:merge -- <findings dir> [--score known.json]`: `digest.json` + `digest.md`,
+  ranked by persona kinds, then severity. The finding schema and the known-list format are at
+  the top of `scripts/persona-merge.js`.
+
+Start the harness against a running app server (no `--app` serves this checkout itself):
+
+```
+npm run persona:harness -- --port 3490 --app http://localhost:3457 --out <scratch>/persona
+```
+
+| Endpoint | Body / query | Returns |
+|---|---|---|
+| `GET /health` | | `{ ok, episodes, app, devices }` |
+| `GET /sets` | | `{ sets: [ids] }` |
+| `GET /manifest?set=plumbing` | | the set's manifest |
+| `POST /episode` | `{ set, step, device }` (step: id or index) | `{ id, obs }` |
+| `POST /act` | `{ id, action }` | `{ obs, ok, error?, events }` |
+| `POST /close` | `{ id }` | `{ ok }` |
+
+Actions: `{click:"+ Add"}` (with `within:"COUNTERS"` or `nth` when two controls share a name;
+"COUNTERS + Add" also works), `{clickZone:n}`, `{dragZone:n}`, `{clickAt:[x,y]}`,
+`{drag:[[x,y],[x,y]]}`, `{type:"text"}`, `{fill:["Name","Water Closet"]}`,
+`{select:["Size","1in"]}`, `{key:"U"}`, `{scroll:[x,y,dy]}`, `{screenshot:true}`, `{wait:ms}`,
+`{giveUp:"why"}`. A click by label looks in the open dialog, then a floating panel, the tour
+card, the header, the sidebar and the page; several matches in one place come back as an
+error listing them, unless exactly one is the lit control. A control under the card or a
+dialog is reported as covered, not clicked. Each episode appends JSONL to
+`<out>/<id>.jsonl`; idle episodes close after 10 minutes.
+
+```
+$ curl -s -XPOST localhost:3490/episode -d '{"set":"plumbing","step":"counter","device":"returning"}'
+{"id":"e1-h08t","obs":{"tour":"plumbing","i":3,"n":17,"id":"counter","kind":"do","title":"Make a Water Closet counter","card":"1. In the left sidebar, under COUNTERS, click + Add.\n…","status":"Waiting for you…","miss":false,"code":null,"done":false,"next":false,"buttons":["Leave the tour","Show me where","Skip this step","Back","Next"],"lit":{"label":"+ Add","box":[122,236,59,27]},"dialog":null,"zones":[],"page":0,"stepPage":null}}
+$ curl -s -XPOST localhost:3490/act -d '{"id":"e1-h08t","action":{"click":"COUNTERS + Add"}}'
+{"obs":{…},"ok":true,"events":["clicked \"+ Add\" in the sidebar (split \"COUNTERS\" + \"+ Add\")","dialog opened: Create tab"]}
+```

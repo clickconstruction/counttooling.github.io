@@ -96,6 +96,10 @@ device's default trade.
 
 ## Card wording that does not match the screen (the 2026-09-24 read)
 
+> **Done 2026-09-24** (COURSE-WORDING closed; CHANGELOG "fix(lessons): the card wording…"). Every
+> item below was checked against the shell or walked, then fixed as listed. The list is kept as the
+> record of what was wrong.
+
 From the same read that found the courses' trade items (their plan files) and the stalls (fixed
 separately): step cards that describe the screen wrongly or not at all. None stops the reader for
 good, and each is an edit to a step body or hint. Items marked *suspect* were read in code, not

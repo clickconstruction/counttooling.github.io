@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(lessons): the card wording that did not match the screen (2026-09-24)
+
+COURSE-WORDING, from the same read as the stalls: step cards that described the screen wrongly or
+gave no hint for a common miss (the list, with where each came from, is in LEARN-PLAN.md "Card
+wording that does not match the screen"). Every claim was checked against app/index.html, the
+feature code or a walk before it changed.
+
+**The plumbing tour** `size`: the water card is at the bottom of the sheet, not "above" it; "Pick
+1in PEX" says it is the active line type and where to click if not; "1in holds, 3/4in would do"
+says the smaller pipe that still holds is the one to bid; the card says the size list closes before
+it sends the reader to circle 2. `wsfu`: the chip's public word is explained (the IPC table's
+public and private columns) and named as the thing to click.
+
+**The HVAC course**: the Quick tab offers Size, Type and Material (not Mounting); the room schedule
+step says to open PAGES if it is folded (the Quick Add Counter a step before folds it); a room is
+edited by clicking its row under ROOMS (there is no pencil), in the body and the hint; the group
+field is Static available (the schedule's ESP); designed air is on RTU-1's row under GROUPS, not
+the DUCT header, in both cards that sent the reader there; the Duct dialog's select is Insulation;
+the kitchen branch says to check the size reads 16x10 (it fills from the printed size nearest the
+last click) and gets a hint for a branch committed at another size; the main's hint no longer goes
+quiet once a run at the wrong sizes is committed; chapter 9 seeds the two fire dampers its Bid
+Check reveal cites; the hand-off no longer promises a hood RFI no step writes.
+
+**The electrical course**: `RE.panel` is `/panelboard|\blp-/i`, because the Quick tab names the
+meter "Meter Panel" and `/panel/i` took it for the panel; chapter 9 lays chapter 7's shunt-trip
+RFI (`flagShuntTrip`, shared with that step) so Copy RFI Flags has the question the hand-off names;
+`gear` says when the Meter landed on the MDP or the Disconnect on the meter (17 pt apart);
+`conduit:chain` says why a chain wrote no verticals (no ceiling, or a counter with no mount height).
+
+The tour, lesson, course and tag-reader specs walk green (78).
+
 ## fix(lessons): the courses' Prove it steps and the blank tour's Measure on measureProof (2026-09-24)
 
 The six course steps that prove a sheet's scale (the plumbing course's P-101, P-601 and P-401, the

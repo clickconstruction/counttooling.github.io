@@ -92,7 +92,8 @@
   const bidRow = (id) => { const bc = App.getBidCheck ? App.getBidCheck() : null; return bc ? (bc.auto || []).find((r) => r.id === id) : null; };
   const manual = (id) => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual[id]);
   const RE = {
-    duplex: /duplex/i, gfci: /gfci/i, jbox: /j-?box|junction/i, panel: /panel/i, meter: /\bmeter\b/i, disc: /disconnect/i, os: /occupancy|\bos\b/i,
+    duplex: /duplex/i, gfci: /gfci/i, jbox: /j-?box|junction/i, panel: /panelboard|\blp-/i,   // not /panel/: the Quick tab names the meter "Meter Panel"
+    meter: /\bmeter\b/i, disc: /disconnect/i, os: /occupancy|\bos\b/i,
     emt75: /0?\.75\s*in.*emt(?!.*hr)|3\/4.*emt(?!.*hr)/i, hr: /\bhr\b|homerun/i, emt2: /\b2\s*in.*emt/i, emtAny: /emt/i,
   };
 
@@ -150,6 +151,8 @@
     return todo.length;
   }
   const scaleE101 = () => K().setScale(E101, 9, '1/8" = 1\'');
+  // Chapter 7's RFI on the hood's shunt trip, and chapter 9 lays it again so Copy RFI Flags has it.
+  function flagShuntTrip() { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.hood)[0]; if (a.notes.some((n) => /^\s*RFI/i.test(n.text) && K().near(n, spot, 60))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Who furnishes the shunt-trip breaker on circuit 12 and wires it to the hood suppression?', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); }
   const setCeiling = () => { const s = S(); if (!(s.ceilingHeightFt > 0)) { s.ceilingHeightFt = CEILING_FT; s.makeUpFt = MAKE_UP_FT; } };
   // The schedule reader over E-501's fixture schedule: five counters named by their letter.
   async function readFixtureSchedule() {
@@ -426,6 +429,8 @@
         { id: 'chain', title: 'Chain the west wall', kind: 'do', cardAt: 'br', page: E101, zones: () => circlesOn(E101, counter(RE.duplex), pts(G.diningW), 12),
           body: 'Circuit 1 is the four receptacles on the dining room\'s west wall.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose Duplex and 0.75in EMT.\n3. Click the four circled receptacles, top to bottom.\n4. Press Enter.\nEvery click draws the run back to the last one and writes the vertical on it: 9.5 ft per receptacle. The footer shows the drop before you click.',
           target: ['#chainPanel', '#chainBtn'], check: () => { const a = pageAnn(E101); return !!a && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 3; },
+          // a chain with no ceiling, or a counter with no mount height, writes no verticals and the card just waited
+          hint: () => { const a = pageAnn(E101); if (!a || !(a.quickLines || []).length || (a.quickLines || []).some((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0)) return ''; if (!(S().ceilingHeightFt > 0)) return 'No verticals: the project has no ceiling. Set it in Project Settings (the step before), then chain again'; const c = counter(RE.duplex); return c && !(c.mountHeightIn > 0) ? 'No verticals: the Duplex counter has no mount height. Give it 18 in its details, then chain again' : ''; },
           action: { label: 'Chain the four for me', run: chainWestWall } },
         { id: 'fill', title: 'Conduit fill', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe first row is judged already: Conduit fill within the table limit, 3 #12 and a ground in 3/4" EMT, about a tenth of the conduit, with the § chip naming the rule. Three or more conductors may fill 40% of a raceway (NEC Chapter 9, Table 1); the app does the areas.',
@@ -505,7 +510,7 @@
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.hood)[0], 60, E101).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
           hint: () => { const a = pageAnn(E101); return a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))) ? 'Move it beside the cook line receptacles, under HOOD ABOVE' : ''; },
-          action: { label: 'Flag it for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.hood)[0]; if (a.notes.some((n) => /^\s*RFI/i.test(n.text) && K().near(n, spot, 60))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Who furnishes the shunt-trip breaker on circuit 12 and wires it to the hood suppression?', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
+          action: { label: 'Flag it for me', run: () => flagShuntTrip() } },
         { id: 'dedicated', title: 'One circuit each', kind: 'read',
           body: 'The dishwasher, the pump, the fan, the ice machine, the heater\'s controls and the rooftop unit each have a circuit to themselves.\nWhy not share?',
           reveal: 'A fixed appliance on its own branch circuit cannot be tripped by anything else (NEC 210.23 limits what shares a circuit with fixed equipment), and a kitchen that loses its dishwasher because someone plugged in a toaster is a kitchen that calls the electrician. Each dedicated circuit is a breaker, a homerun the whole way back to the panel, and a disconnect or a cord-and-plug at the unit.\nOn the bid that homerun is the cost: six pieces of equipment, six runs to LP-1, and the app\'s homerun flag keeps them apart from the device-to-device conduit in the report.',
@@ -540,6 +545,8 @@
         { id: 'gear', title: 'Count the gear', kind: 'do', cardAt: 'br', page: E101, zones: () => circlesOn(E101, counter(RE.meter), [pts(G.meter)[0]], 12).concat(circlesOn(E101, counter(RE.disc), [pts(G.mdp)[0]], 12)),
           body: 'The service is gear the bid carries at a price nothing else on the sheet approaches.\n1. Make a Meter counter (Category Panel, Variant Meter) and click the meter, the M outside the south wall.\n2. Make a Disconnect counter (Category Disconnect, Variant Disconnect) and click the MDP beside it.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => markNear(counter(RE.meter), pts(G.meter)[0], 12, E101) && markNear(counter(RE.disc), pts(G.mdp)[0], 12, E101),
+          // the two circles are 17 pt apart, so a click with the other counter armed is easy
+          hint: () => { const m = counter(RE.meter), d = counter(RE.disc); if (m && markNear(m, pts(G.mdp)[0], 12, E101)) return 'The Meter counter landed on the MDP. Press Ctrl+Z, arm the Disconnect, and click the MDP'; if (d && markNear(d, pts(G.meter)[0], 12, E101)) return 'The Disconnect landed on the meter. Press Ctrl+Z, arm the Meter, and click the M'; return ''; },
           action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('meter'), pts(G.meter), E101); markMissing(pick('disc'), pts(G.mdp), E101); K().dirty(); } } },
       ],
       done: 'The service from the street to the panel, a feeder traced with its rise and judged for fill, the gear counted.\nNext: [[Learn]] → Chapter 8, the whole set.',
@@ -571,7 +578,7 @@
     {
       id: 'bid', title: 'Chapter 9: Check it, prove it, hand it off', short: 'a bid you can defend', minutes: 8, page: E101, noun: 'chapter', set: ESET,
       intro: 'What the electrical rows of Bid Check mean in the trade, which the set already answers, where a number came from, and the hand-off to the electrical bid.',
-      seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), pts(G.gfci), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); const g = circuitOne(); g.loadAmps = 6; if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101); circuitOne(); },
+      seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), pts(G.gfci), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); const g = circuitOne(); g.loadAmps = 6; if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101); circuitOne(); flagShuntTrip(); },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nFour rows marked AUTO the app judges from your runs: conduit fill, voltage drop, circuits against the panel schedule, every device on a circuit. The rest are yours.',

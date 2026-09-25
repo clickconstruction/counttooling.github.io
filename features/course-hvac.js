@@ -434,6 +434,7 @@
           hint: () => [row('SD-1', pts(G.SD1).slice(8), ['the bar (west)', 'the bar (east)', 'the dish pit']), row('SD-2', pts(G.SD2), ['the hall', 'storage']), row('SD-3', pts(G.SD3), ['the kitchen (west)', 'the kitchen', 'the kitchen', 'the kitchen (east)'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); seedDiffusers(); K().dirty(); } } },
         { id: 'neck', title: 'Why the kitchen diffusers are bigger', kind: 'read', cardAt: 'tl',
+          rulesExempt: 'no rulebook entry: the 400 to 600 fpm neck velocity the neck-size suggestion reads (hvac.duct.schedule-factors caps the main at 1200)',
           body: 'SD-1 and SD-3 are both 24x24 lay-in diffusers, but SD-3 carries 200 CFM on a 10" neck where SD-1 carries 150 on an 8".\nWhat sets the neck?',
           reveal: 'Velocity. Air through an 8" neck at 150 CFM moves about 430 feet a minute; push 200 through it and it whistles. The engineer steps the neck up to 10" to keep the noise down (the trade\'s rule of thumb runs 400 to 600 fpm at a neck). The app carries the same rule: a counter with a CFM suggests its neck size, and the flex that feeds it follows the neck.\nOn the bid the neck size is the flex size and the tap size, so the diffuser schedule prices the branch.',
           target: [], check: () => true },

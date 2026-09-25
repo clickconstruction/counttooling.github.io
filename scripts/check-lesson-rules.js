@@ -18,14 +18,21 @@
  *   (a) a rules id is not in rules/rules.json;
  *   (b) a sentence cites a code (IPC, UPC, NEC, IMC, SMACNA, NFPA 96, a §, a Table N, or
  *       a code family a rule's source names), or a clause states a number in a unit some
- *       rule carries AND names that rule's subject (the words of its title, less the
- *       generic ones), and the step carries neither rules nor rulesExempt;
+ *       rule carries AND (names that rule's subject: the words of its title, less the
+ *       generic ones; or is a unit the rulebook gives that rule alone: WSFU, fps, gpm...;
+ *       or is the number of a row the clause names: "duplex receptacles at 18 in"), and
+ *       the step carries neither rules nor rulesExempt;
  *   (c) a step names a rule, and a clause that names the rule's subject or one of its
- *       rows' conditions ("a GFCI at a counter"), or states a number in a unit no other
- *       named rule carries and the rulebook gives only to this rule, states a number in
- *       one of the rule's units that none of the named rules holds in that unit (the rows
- *       the clause names, when it names some) nor states in a `when` condition ("1 in and
- *       smaller"). A decimal in the text may round the value ("0.91" for 0.906).
+ *       rows' conditions ("a GFCI at a counter"), or states a number in a unit the
+ *       rulebook gives only to this rule, states a number in one of the rule's units that
+ *       none of the named rules holds in that unit (the rows the clause names, when it
+ *       names some) nor states in a `when` condition ("1 in and smaller"). A decimal in
+ *       the text may round the value ("0.91" for 0.906).
+ * In (b) and (c) a clause that is only a value ("45%", "32 in horizontal") is read with
+ * its label, the clause before it ("Conduit fill limit: 45%", "Hanger spacing for PEX,
+ * 36 in"), and a value may be named by a short appositive after it ("44 in, the counter
+ * height"). A clause that says more than its value is read on its own words, so a
+ * derived reading ("9.5 ft per receptacle" after "the vertical") is not held to a rule.
  * The unit set is the rulebook's: each distinct unit in rules.json, spelled the ways a
  * card writes it (SPELLINGS; a unit with no entry matches its own literal text).
  *
@@ -176,7 +183,7 @@ function parseNum(t) {
 
 // How a card writes each rulebook unit. The KEY is the unit as rules.json spells it; a
 // unit the rulebook adds with no entry here is matched by its own literal text.
-const IN = '(?:in\\b(?!\\s+(?:the|a|an|each|every|this|that|these|those|its|their|your|all|both|any|one|two|three|four|[A-Z]{2,})\\b)|inch(?:es)?\\b|"|″)';
+const IN = '(?:in\\s+AFF\\b|in\\b(?!\\s+(?:the|a|an|each|every|this|that|these|those|its|their|your|all|both|any|one|two|three|four|[A-Z]{2,})\\b)|inch(?:es)?\\b|"|″)';
 const SPELLINGS = {
   'in w.g. per 100 ft': '(?:in\\.?|"|″|inch(?:es)?)\\s*(?:w\\.?\\s?g\\.?\\s*|of water\\s*)?per 100\\s*(?:ft\\b|feet\\b|′|\')',
   'in w.g.': '(?:in\\.?|"|″|inch(?:es)?)\\s*(?:w\\.?\\s?g\\b\\.?|of water)|inches of water',
@@ -190,7 +197,7 @@ const SPELLINGS = {
   ga: 'ga\\b\\.?|gauge\\b|gage\\b',
   '%': '%|\\s?percent\\b',
   ft: '(?:ft\\b|feet\\b|foot\\b|′|\'(?![-\\w]))',
-  in: IN + '(?:\\s*AFF\\b)?',
+  in: IN + '(?:\\s*AFF\\b)?',   // "18 in AFF" (rules.json's own spelling), 18" AFF, 18 inches AFF
 };
 // Units the rulebook qualifies but a card writes plainly: compared as their base unit.
 const BASE_UNIT = { 'in AFF': 'in' };
@@ -279,19 +286,64 @@ function buildIndex(rules) {
     byId.set(r.id, { rule: r, units, subjects: subjectWords(r) });
   }
   const allUnits = compileUnits([...unitOwners.keys()]);
-  return { byId, unitOwners, allUnits, citation: citationRe(rules) };
+  // unit -> every row condition word of the rules carrying it ("horizontal" for in)
+  const rowWords = new Map([...unitOwners.keys()].map((u) => [u, new Set([...unitOwners.get(u)]
+    .flatMap((id) => byId.get(id).units.get(u).rows.flatMap((row) => row.words)))]));
+  return { byId, unitOwners, allUnits, rowWords, citation: citationRe(rules) };
 }
 const hasWord = (clause, w) => new RegExp('\\b' + w.replace(/-/g, '[- ]?'), 'i').test(clause);
 const namesSubject = (clause, subjects) => subjects.some((w) => hasWord(clause, w));
 // The numbers a rule accepts in a unit for this clause: when the clause names a row's
-// condition ("a public lavatory"), only the rows it names best; else every row. The
-// numbers its conditions state are always accepted.
-function accepted(entry, unit, clause) {
+// condition ("a public lavatory"), only the rows it names best; when it names none, the
+// rows its label names ("Public lavatory: 2 WSFU"); else every row. The numbers its
+// conditions state are always accepted.
+function accepted(entry, unit, clause, label) {
   const u = entry.units.get(unit);
-  const scored = u.rows.map((row) => ({ row, score: row.words.filter((w) => hasWord(clause, w)).length }));
-  const best = Math.max(0, ...scored.map((x) => x.score));
-  return [...new Set(scored.filter((x) => x.score === best).map((x) => x.row.value).concat(u.when))];
+  const pick = (text) => {
+    if (!text) return null;
+    const scored = u.rows.map((row) => ({ row, score: row.words.filter((w) => hasWord(text, w)).length }));
+    const best = Math.max(0, ...scored.map((x) => x.score));
+    return best ? scored.filter((x) => x.score === best).map((x) => x.row.value) : null;
+  };
+  const rows = pick(clause) || pick(label) || u.rows.map((row) => row.value);
+  return [...new Set(rows.concat(u.when))];
 }
+// A clause that is only a value ("45%", "32 in horizontal", "2 WSFU"): its quantities and,
+// besides them, nothing but small words and the conditions of rows in the quantities' units
+// ("9.5 ft per receptacle" says more: no feet rule has a receptacle row).
+const BARE_STOP = new Set('a an the is are be of at to per each every about and or up down'.split(' '));
+function isBare(clause, idx) {
+  const qs = quantities(clause, idx.allUnits);
+  if (!qs.length) return false;
+  let rest = normalize(clause);
+  for (const q of qs) rest = rest.replace(q.text, ' ');
+  return rest.split(/[^A-Za-z]+/).filter(Boolean).map((w) => w.toLowerCase())
+    .every((w) => BARE_STOP.has(w) || qs.some((q) => idx.rowWords.get(q.unit).has(stem(w))));
+}
+// The label a bare value clause answers: the nearest clause before it that is not a bare
+// value itself ("Conduit fill limit: 45%", "Hanger spacing for PEX, 32 in, 10 ft").
+// A clause that says more than its value has no label: its own words are its subject.
+// A value may also be named after it, by a short appositive after a comma with no number
+// of its own ("It arrives at 44 in, the counter height"; not "1.25in Copper (the hot supply)").
+const esc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function labelOf(cls, i, idx, sentence) {
+  if (isBare(cls[i], idx)) {
+    for (let j = i - 1; j >= 0; j--) if (!isBare(cls[j], idx)) return cls[j];
+  }
+  const next = cls[i + 1];
+  if (next && /^the\s/i.test(next) && next.split(/\s+/).length <= 4 && !quantities(next, idx.allUnits).length
+    && new RegExp(esc(cls[i]) + '\\s*,\\s*' + esc(next)).test(sentence)) return next;
+  return null;
+}
+// A rule speaks to a number when its clause, or the label the clause answers, names the
+// rule's subject or one of its rows' conditions ("a GFCI at a counter"), or when the
+// rulebook gives the number's unit to this rule alone (WSFU, fps, gpm, fpm, CFM/sq ft).
+const namesRow = (entry, unit, text) => !!text && entry.units.has(unit)
+  && entry.units.get(unit).rows.some((row) => row.words.some((w) => hasWord(text, w)));
+const speaksTo = (idx, entry, unit, clause, label) => namesSubject(clause, entry.subjects)
+  || (!!label && namesSubject(label, entry.subjects))
+  || namesRow(entry, unit, clause) || namesRow(entry, unit, label)
+  || idx.unitOwners.get(unit).size === 1;
 // A decimal may round the value to its own places, within 5% ("0.91" for 0.906, not "0.1" for 0.08).
 function agrees(q, nums) {
   return nums.some((a) => Math.abs(a - q.value) <= 1e-9 * Math.max(1, Math.abs(a))
@@ -330,17 +382,27 @@ function checkSteps(steps, rules, opts = {}) {
             problems.push({ kind: 'b', msg: `${at(step, piece.line)}: cites ${cite[0].trim()} with no rules (or rulesExempt): "${short(sentence)}"${hint.length ? ` (rule: ${hint.join(', ')})` : ''}` });
             continue;
           }
-          for (const clause of clauses(sentence)) {
+          const cls = clauses(sentence);
+          for (let i = 0; i < cls.length; i++) {
+            const clause = cls[i];
+            const label = labelOf(cls, i, idx, sentence);
             const qs = quantities(clause, idx.allUnits);
             const hit = [];
             for (const q of qs) {
               for (const id of idx.unitOwners.get(q.unit) || []) {
-                if (namesSubject(clause, idx.byId.get(id).subjects) && !hit.includes(id)) hit.push(id);
+                const e = idx.byId.get(id);
+                // its subject, a unit it alone carries, or the number of the row the clause
+                // names ("plain duplex receptacles at 18 in" is the duplex row's 18)
+                const rowSays = () => (namesRow(e, q.unit, clause) || namesRow(e, q.unit, label))
+                  && agrees(q, accepted(e, q.unit, clause, label).filter((v) => !e.units.get(q.unit).when.includes(v)));
+                const says = namesSubject(clause, e.subjects) || (!!label && namesSubject(label, e.subjects))
+                  || idx.unitOwners.get(q.unit).size === 1 || rowSays();
+                if (says && !hit.includes(id)) hit.push(id);
               }
             }
             if (hit.length) {
               // name first the rules that hold the number said
-              const holding = hit.filter((id) => qs.some((q) => idx.byId.get(id).units.has(q.unit) && agrees(q, accepted(idx.byId.get(id), q.unit, clause))));
+              const holding = hit.filter((id) => qs.some((q) => idx.byId.get(id).units.has(q.unit) && agrees(q, accepted(idx.byId.get(id), q.unit, clause, label))));
               problems.push({ kind: 'b', msg: `${at(step, piece.line)}: states ${qs.map((q) => q.text).join(', ')} beside the subject of ${(holding.length ? holding : hit).join(', ')}, with no rules (or rulesExempt): "${short(sentence)}"` });
               break;
             }
@@ -348,19 +410,20 @@ function checkSteps(steps, rules, opts = {}) {
         }
         // (c) a named rule's number that is not the rule's
         if (named.length) {
-          for (const clause of clauses(sentence)) {
+          const cls = clauses(sentence);
+          for (let i = 0; i < cls.length; i++) {
+            const clause = cls[i];
+            const label = labelOf(cls, i, idx, sentence);
             for (const q of quantities(clause, idx.allUnits)) {
               const holders = named.filter((n) => n.units.has(q.unit));
-              const judges = holders.filter((n) => namesSubject(clause, n.subjects)
-                || n.units.get(q.unit).rows.some((row) => row.words.some((w) => hasWord(clause, w)))
-                || (holders.length === 1 && idx.unitOwners.get(q.unit).size === 1));
+              const judges = holders.filter((n) => speaksTo(idx, n, q.unit, clause, label));
               if (!judges.length) continue;
               // judged by the rules whose subject is here, answered by any named rule in the unit
               // ("16 gauge" in a clause about the gauge table is the grease duct's 16)
-              const ok = holders.some((n) => agrees(q, accepted(n, q.unit, clause)));
+              const ok = holders.some((n) => agrees(q, accepted(n, q.unit, clause, label)));
               if (opts.trace) opts.trace(step, q, holders.map((n) => n.rule.id), ok);
               if (ok) continue;
-              const vals = [...new Set(holders.flatMap((n) => accepted(n, q.unit, clause)))].join(', ');
+              const vals = [...new Set(holders.flatMap((n) => accepted(n, q.unit, clause, label)))].join(', ');
               problems.push({ kind: 'c', msg: `${at(step, piece.line)}: says ${q.text}, but ${holders.map((n) => n.rule.id).join(' / ')} holds ${vals} ${q.unit}: "${short(sentence)}"` });
             }
           }

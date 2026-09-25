@@ -208,6 +208,73 @@ test.describe('The electrical course: a question is answered with a click', () =
     await page.waitForFunction(() => window.App.tutorialStepId() === 'panel');
     await page.waitForTimeout(600);
     expect(await apart()).toMatchObject({ apart: true });
+    // chapter 4's strap row: "the pencil beside 0.75in EMT" is the sixth pencil on a device with five standing line types
+    await boot(page, '/app/?course=electrical', errors);
+    await page.evaluate(() => { const s = window.state; ['Gas 1in', '1/2in EMT old', '1/2in PEX', '2in EMT feeder old', '1in EMT old'].forEach((name) => s.lineTypes.push({ id: window.App.uid(), name, color: '#888888' })); window.App.updateUI(); });
+    await page.evaluate(() => window.App.startChapterElectrical('conduit'));
+    await openSheets(page);
+    await page.evaluate(() => window.App.tutorialDoStep());   // makes 0.75in EMT, the type the strap step names
+    await page.waitForFunction(() => window.state.lineTypes.some((l) => /0\.75in EMT/.test(l.name)), null, { timeout: 10000 });
+    await gotoStep(page, 'straps');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'straps');
+    await page.waitForTimeout(600);
+    const pencil = await page.evaluate(() => { const row = Array.from(document.querySelectorAll('#lineTypesList .sidebar-item')).find((el) => el.textContent.includes('0.75in EMT')); row.scrollIntoView({ block: 'center' }); const b = row.querySelector('.edit-btn').getBoundingClientRect(), c = document.getElementById('tourCard').getBoundingClientRect(); return { apart: c.right <= b.left || c.left >= b.right || c.bottom <= b.top || c.top >= b.bottom }; });
+    expect(pencil).toEqual({ apart: true });
+    expect(errors).toEqual([]);
+  });
+
+  test('by hand on E-201: a click on a 2x4 troffer with A armed lands on B, and the card keeps off the counter row a long palette pushes down (2026-09-24)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?course=electrical', errors);
+    // a returning estimator's palette: sixteen standing counters ahead of the chapter's
+    await page.evaluate(() => { const s = window.state; const icon = window.App.getOrderedIcons()[0].value; ['Panel Schedule Box', 'Type A', 'Floor Drain 4in', 'Duplex 15A', 'GFCI Bath', 'J-Box 4x4', 'Water Meter', 'Diffuser 24x24', 'RTU Roof', 'Hose Bibb', 'Lavatory', 'Exhaust Fan', 'Occupancy Sensor', 'Disconnect 60A', 'Water Closet', 'Meter Base'].forEach((name) => s.counters.push({ id: window.App.uid(), name, icon, color: '#888888' })); window.App.updateUI(); });
+    await page.evaluate(() => window.App.startChapterElectrical('lighting'));
+    await openSheets(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule');
+    await page.evaluate(() => window.App.tutorialDoStep());   // the schedule reader; the by-hand box is the tag-reader spec's
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'plan', null, { timeout: 15000 });
+    await page.evaluate(() => { window.App.goPage ? window.App.goPage(1) : window.App.lessonKit.goPage(1); });
+    await page.waitForFunction(() => window.state.currentPage === 1 && window.App.pageTextItems(1).length > 0, null, { timeout: 15000 });
+    await page.waitForTimeout(600);
+    // the card is off the Type A row the step says to click
+    const apart = await page.evaluate(() => { const row = Array.from(document.querySelectorAll('#countersList .sidebar-item')).find((el) => /Type A/.test(el.textContent)); const c = document.getElementById('tourCard').getBoundingClientRect(), a = row.getBoundingClientRect(); return { apart: c.right <= a.left || c.left >= a.right || c.bottom <= a.top || c.top >= a.bottom, under: (document.elementFromPoint(a.left + 30, a.top + a.height / 2) || {}).id || (document.elementFromPoint(a.left + 30, a.top + a.height / 2) || {}).className }; });
+    expect(apart.apart).toBe(true);
+    // A armed, a click on the center of a B troffer: the plan's letter, 20 pt away, wins
+    await page.evaluate(() => { const s = window.state; s.activeCounterType = s.counters.find((c) => c.name === 'Type A').id; s.tool = window.App.TOOL.COUNTER; window.App.updateUI(); });
+    await page.evaluate(() => window.App.handleCanvasClick(null, window.App.lessonKit.P(640, 380)));
+    await page.evaluate(() => window.App.handleCanvasClick(null, window.App.lessonKit.P(665, 272)));
+    expect(await page.evaluate(() => { const s = window.state; const m = window.App.getActiveAnnotations(s.pages[1]).counterMarkers; const n = (re) => { const c = s.counters.find((x) => re.test(x.name)); return c ? (m[c.id] || []).length : -1; }; return { a: n(/^Type A$/), b: n(/^B · /), c: n(/^C · /) }; })).toEqual({ a: 0, b: 1, c: 1 });
+    expect(errors).toEqual([]);
+  });
+
+  test('a step change closes the Drop palette the rise step left open, so it never sits on the next step\'s + Add (by hand, 2026-09-24)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=electrical:service', errors);
+    await openSheets(page);
+    await gotoStep(page, 'feeder');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'feeder');
+    await page.evaluate(() => window.App.tutorialDoStep());   // the feeder the rise goes on
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'rise', null, { timeout: 8000 });
+    await page.mouse.click(700, 400);   // focus on the sheet, then the Drop hotkey
+    await page.keyboard.press('b');
+    await page.waitForFunction(() => document.getElementById('dropPanel').style.display !== 'none', null, { timeout: 3000 });
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction(() => window.App.tutorialStepId() !== 'rise', null, { timeout: 8000 });
+    await gotoStep(page, 'gear');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'gear');
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => document.getElementById('dropPanel').style.display)).toBe('none');
+    // the Chain step keeps its own palette
+    await boot(page, '/app/?chapter=electrical:conduit', errors);
+    await openSheets(page);
+    await gotoStep(page, 'chain');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'chain');
+    await page.keyboard.press('t');
+    await page.waitForFunction(() => document.getElementById('chainPanel').style.display !== 'none', null, { timeout: 3000 });
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => document.getElementById('chainPanel').style.display)).not.toBe('none');
     expect(errors).toEqual([]);
   });
 

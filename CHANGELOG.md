@@ -104,6 +104,236 @@ step goes to the reference.
 tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
 specs walk green (80).
 
+## fix(tour): the by-hand walk of the four tours (2026-09-25)
+
+The sixth and last round: the electrical, plumbing and HVAC five-minute tours and the blank-sheet
+tour, on the returning estimator's device, by real clicks. Pinned in tutorial.spec.js ("The tours,
+by hand on a returning estimator's device").
+
+**The engine.** The tours had no idea of the reader's palette: the plumbing tour's Make a Water
+Closet counter ticked itself on a standing Water Closet, and A line type in two clicks on the
+palette's first line type. A tour now snapshots the palette when it starts; a step names the tour's
+own item, or a standing one once the reader has used it. The tours clear the sidebar search words
+while they run and type them back when they stop or on the next load (a word in COUNTERS hid the
+reader's new counter, the lesson bug wendi found, now in the tours). A dialog the step names is kept
+open only when one of its named controls shows in it (the fixture-units step kept the 1in PEX details
+open over the lavatory's pencil).
+
+**Plumbing.** Quick is a link at the top of the + Add dialog, not a tab; the ring goes Size, Material,
+Add. The drop palette's 3 ft may not be among the recents: choose or type. Hangers wanted a rule on any
+line type; now the branch's. A second "1in PEX" left by an earlier tour is named when it took the
+setting. The typical floor wants ×3 (a ×2 zone passed, and the proof card said ×3).
+
+**Electrical.** The conduit step's ring named another dialog's fields and lit nothing: it goes Name,
+Create Line Type, the new type's pencil, raceway, size, conductors. Make it a circuit sent the reader
+to a GROUPS section that is not there with Groups off: it says to turn them on. The chain takes the
+reader's own twin of the receptacle.
+
+**HVAC.** Sign off asked for a tick on Fits the roof, which the room's deck height makes an AUTO row
+with no box: it ticks Curb & power coordinated. Name the system told the reader to click RTU-1 to
+select it, which put down the selection Done had made. The room dialog's ring follows its fields and
+the group dialog's too, and Groups get the same turn-them-on line.
+
+**Blank sheet.** The Duct step turns Groups on, so the Groups card's "turn on Use groups" turned them
+off: it says if GROUPS is not there. Save status waited for a bell that only shows signed in: signed
+out it reads the status bar. Close this project is in Project Settings on a device-only sheet (the
+header's Close shows only on a cloud project being viewed). The sidebar card named a logo; the control
+is the header's panel button.
+
+## fix(learn): the by-hand walk of the HVAC course, chapters 1 to 9 (2026-09-25)
+
+The fifth round of the by-hand walk: the HVAC course on the returning estimator's device, real mouse
+and keyboard, never the step's own button. Wording that PR #201 already rewrites (Quick's Material,
+the PAGES heading, Edit Room, the DUCT header, the kitchen branch's size) was left to it. Pinned in
+course-hvac.spec.js ("The HVAC course, by hand"), room-labels.spec.js and tag-reader.spec.js.
+
+**The app.**
+- The Schedule tool took only clicks, though its toast, its status and the chapter say drag: it was
+  missing from the press-drag tools. A drag over a schedule now draws the box.
+- Read a schedule from the sheet was hidden on HVAC projects until some counter carried a tag, so
+  chapter 3's first step could not be done by hand. It is offered on HVAC like plumbing.
+- A room boxed around the kitchen was named FRYER: the room-name reader ranks by print size, and it
+  measured a word printed sideways along its length. It measures across.
+
+**The tour engine.** Wherever a step lights the pages list, PAGES' ▶ follows it when PAGES is
+folded (its heading opens Page Settings, not the list), with a `pagesFoldedHint` status. The last
+measure reads at the scale it was taken at on any sheet: a proof passed a moment before read "the
+scale is off" once the reader changed sheets before Next.
+
+**The course.** Chapter 1's RTU hint said the counter was armed before the reader had made one (the
+standing "RTU Roof"), and so did the plumbing course's hose bibb and RPZ and the electrical course's
+panel: `armedNamed` asks what is actually armed. The ring follows each form the card walks through:
+Edit Room (Room type, Target CFM, Save, on the room's own row, not a pencil), Add Group (Name,
+Equipment tag, Capacity, ESP, Done), the Duct dialog (shape, size, airside, material, then Start
+Tracing), the diffuser schedule (M-501, a boundary on the table while the box is drawn, which also keeps
+the card off it at 1280 × 720, then the pencil of the next counter short of its CFM), and the SD-1 total. The M-501 highlight and the dining and Bid Check steps
+send the reader to the sheet first. Arm the Duct tool says how the dialog comes to read the plan's
+size (the pointer on it as U is pressed; from the header it is the default). SD-1 "again" became
+SD-1 is still armed. The depth measure is a measure proof. The make-up air's register has its
+circle. The schedule copy says why there is no DUCT section after a skipped takeoff.
+
+Found and left alone: the Quick tab's Size has no "none", so an RTU or a fire damper made there is
+named 6" RTU. A Quick-creator question for every trade, not the course's.
+
+## fix(learn): the by-hand walk of the thirteen Learn lessons (2026-09-25)
+
+The fourth round of the by-hand walk: every Learn lesson, on the returning estimator's device (a
+standing palette with some of the lessons' own names in it, words left in the sidebar searches),
+with real mouse and keyboard events and never the step's own button. Pinned in lessons.spec.js
+("a returning estimator walks the lessons by hand"), restore-last-session.spec.js,
+bid-check.spec.js, bend-fittings.spec.js and summary-detail.spec.js.
+
+**The app.**
+- Discarding the "Project from Last Session" offer left the declined session's project settings in
+  memory (the boot pre-applies the backup under the offer): groups, Groups on, trade, codes, Bid Check
+  ticks, rooms, Quick Keys, the ceiling. The next PDF opened inherited them; a lesson set opened with
+  Groups already on and its switch locked. Discard now takes them back out, and a backup with no PDF
+  (no offer at all) lends only its palette. The palette stays either way.
+- Bid Check's "Hangers on every supported run" and "Fittings counted on every pipe run" read every
+  palette line type, so an Artboard's unused "4in PVC old" held both rows open forever. They read the
+  types with a run in scope.
+- A Quick Key or a sidebar row deselected a counter (line type) that was selected but not armed:
+  after M, pressing 1 left nothing armed. A second press puts down only what is armed.
+- The Multiply Zone dialog opened with 2 in its box and no caret, so "type 4" typed into nothing. It
+  opens with the multiplier selected (mouse opens; touch keeps the keyboard away), and Enter applies.
+- Groups turned on from Project Settings left the GROUPS section collapsed at the foot of the sidebar,
+  its + Add hidden; it opens like the duct tool's turn-on. The group dialog's Name took no focus (it
+  was focused before the dialog showed). Choosing New empty layer or Duplicate moves the caret to Name.
+- The count breakdown captioned every thumbnail "document.pdf" once sheets carry real names; it shows
+  the project's name.
+
+**The tour engine.** A step's target may be a function. The Create Counter steps (Counting, the
+plumbing and HVAC tours, the blank tour) light Name until the name is typed, then Create Counter:
+on a 900-px window the tour scrolled the dialog to the button and hid Name. "In view" now respects a
+scrolling box around the target. `pencilOf` / `summaryRowOf` light the pencil or the Summary total the
+card names, not the first in the list (Measuring, Chain, Fixing, Check; the plumbing tour; the
+plumbing and electrical courses). A card for a top-bar control goes below it, off the rest of the bar.
+Circles take an array of counters.
+
+**The lessons.** Scale: Prove the zone ticks per click and no longer passes on a 4'-0" read anywhere
+on the sheet, and says nothing about the last step's 12'-0" on arrival. Counting: Make a counter
+waits for the reader's own (the standing "Floor Drain 4in" passed it); the key card names the
+counter the reader made ("Floor Drain 2" beside a standing "Floor Drain") and says so when a key holds
+the other. Chain: the circles take the reader's own Lavatory; the hanger steps (Chain, Check) follow
+the PEX the runs are on. Repeats: TYP. OF 4 wants ×4, and a ×2 zone is named. Organizing: the Groups
+step reads the app's own gate; Assign to group, then Kitchen, then Done (the Done was missing, here
+and in the electrical course); the Urinal is "a counter nothing on this sheet uses". Fixing: Undo
+counts a mark made with any floor drain counter; the right-click menu no longer claims to move a mark
+to another counter. Notes: every note step here, in the plumbing tour and in the plumbing and
+electrical courses says to click Done and lights it; the ledger step points at the open drawer, and
+says what the ledger does (sheet by sheet, an RFI chip; its badge counts open flags). Working faster:
+the status bar's shortcuts opens Keyboard Shortcuts, and the step waited for the standalone Keyboard
+Map only its seam opened. A reload mid-lesson puts the reader's filter, snap and searches back (the
+snapshot rides localStorage; the first lesson's snapshot wins over a second started on top).
+
+The HVAC course's note steps have the same missing Done; they are left for the open wording PR (#201).
+
+## fix(learn): the by-hand walk of the plumbing course, chapters 2 to 9 (2026-09-25)
+
+The third round of the by-hand walk, on the same returning estimator's device, driven in a
+headless Chromium with real mouse and keyboard events (the browser pane was hidden). Findings,
+each fixed and pinned in course-plumbing.spec.js ("by hand on a returning estimator's device"),
+which fails on main's code:
+
+- **The sheet moves its circles out from under the card** ([features/tutorial.js](features/tutorial.js)
+  `nudgeSheetFromCard`): the kitchen step's card kept off FD-1 in the sidebar and sat on the
+  kitchen-exit hand sink and the east floor drain, so both clicks landed on the card. Once per
+  step, when the placed card covers circles, the sheet pans sideways (then up or down) to clear
+  them.
+- **A question after a zoomed step gets the whole sheet back**: the interceptor question opened
+  on the east wall the downhill step had zoomed to, with the restrooms off screen. A step with
+  no circles of its own now fits the sheet when the last step's circles moved the view.
+- **Fixed-position panels count as shown** (`shown` in the engine): the Chain and Drop panels
+  have no offsetParent, so the ladder skipped them and the card sat on the Chain panel.
+- **The lesson's own counter wins over the reader's standing one**
+  ([features/lessons.js](features/lessons.js) `named`, `isStanding`): chapter 3's setup adopted
+  the standing "Lavatory" instead of making L-1, and the card's "choose L-1" named nothing.
+  The kit records the palette standing when a set opens; lookups prefer a fresh match, and the
+  courses' `pick` never adopts a standing counter.
+- **The Quick Keys steps wait for both keys and the closed dialog**, with a hint naming what is
+  missing (both courses): on key 1 alone the step advanced and the engine closed the dialog
+  under a reader who had not reached key 2.
+- **The cleanout and vent questions keep their answers quiet** until the first mark: the status
+  line listed all four cleanout places before a click.
+- **Layer cards say Layers, then + Add layer**: on desktop the footer's "+" is hidden by the
+  stylesheet (it always was), so three cards (plumbing, the lessons, the blank tour) named a
+  button that is not on screen. Their specs passed because the action clicks the hidden button
+  in code.
+- **Cards match the dialogs**: the hot-water return is made in the plain Create Line Type
+  dialog (it has no Create tab); plumbing's and HVAC's chapter 8 say what Skip does; the "Arm X"
+  and "click X in the sidebar" steps name their list so the card keeps off it.
+
+- **The circles come back after a dialog closes** (`drawZones`): the zone layer cached its last
+  drawing and, emptied while a dialog was up, kept the cache, so the same circles compared equal
+  when the dialog closed and were never redrawn. The gas drops lost their circles after Create
+  Counter; any step lost them after any dialog until the view moved.
+- **A run or a setting on any same-named line type counts** (the kit's `lineTypesMatching` /
+  `someLineType`; the trace collectors and the line-type setting checks in both courses and the
+  lessons): a reader whose palette already has "4in PVC" sees two once the chapter seeds its own,
+  and the riser's stack traced with the reader's read "0 of 2 done".
+- **The gas trace card no longer tells the reader to click the type the last step left active**:
+  a sidebar click on the active type turns it off, and P then opens New Polyline preset to another
+  type. The stack step names the line-types list, so the card keeps off its row.
+
+- **Export PDFs does not hold a reader who skipped the takeoff**: chapter 8's Export PDFs button
+  shows only once the sheet carries a mark, so after the takeoff step's Skip the step asked for a
+  hidden button. It passes on an empty sheet and the card says why.
+
+Chapters 1, 7 and 9 walked clean. Found and set aside: counters a reader makes by hand inside a
+lesson are never swept and stay in the palette for the next bid (punch row LEARN-LEAK, a product
+call).
+
+## fix(learn): the by-hand walk of the electrical course, chapters 3 to 9, on a returning estimator's device (2026-09-24)
+
+The second round of the walk that found wendi's panel-step bug: every step of chapters 3 to 9
+done with the real controls, never the action button, on a device with sixteen standing
+counters, five line types and a group from an old job, and words left in the sidebar searches.
+Eleven findings, each pinned where its code lives:
+
+- **The tag reader's reach** ([features/tag-reader.js](features/tag-reader.js)): `HINT_RADIUS_PT`
+  18 → 24. A 2x4 troffer at 1/8" is 36 pt wide and its letter sits 20 pt from the centre the
+  reader clicks; at 18 the ten B troffers on E-201 read no tag and landed on the armed A.
+- **The tag on the click's line wins** ([tag-model.js](tag-model.js) `nearestTag`): among the
+  candidates in reach, the ranking distance doubles the vertical offset, because a tag is
+  written beside its symbol. The emergency light 12 pt above a troffer had its EM 18 pt from
+  the click and the troffer's own B 22 pt; by plain distance the click read EM. Pinned in
+  tag-model.test.js.
+- **The card keeps off every element a target matches** ([features/tutorial.js](features/tutorial.js)
+  `otherControlBoxes`): `#lineTypesList .edit-btn` names the pencil beside the type the step
+  talks about, the sixth pencil on a standing palette, and the card beside the first sat on it.
+  When no corner is clear, the corner covering the fewest named controls wins, then the fewest
+  sheet targets (a control cannot be moved out from under the card, a sheet target can be
+  panned; at 1280 × 720 nothing was clear and the card stayed on the row).
+- **Steps that say "click X in the sidebar" name the list** (the five "arm it" steps across the
+  three courses now carry `#countersList`, hvac's `designed` carries `#groupsList`, and the four
+  electrical steps that say "the pencil beside" carry `.edit-btn`), so the card keeps off them.
+- **A step change closes the Chain and Drop palettes** the last step left open unless the new
+  step names them (`closeStrayDialogs`): the Drop palette from the rise step sat on COUNTERS
+  + Add, which the gear step asks for.
+- **The plain Create Line Type dialog has a door to the Quick creator** (app/index.html
+  `#lineTypeQuickLink`, Shift+Q from that dialog too): six cards send the reader to the
+  sidebar's + Add and then to a Quick tab it never had, and with exactly one line type the
+  header's Quick Line arms it instead of opening the chooser (T2-08), so the Quick tab had no
+  door at all. The six cards now say "+ Add, then Quick"; the two that said "the Create tab"
+  say what the dialog shows. Pinned in choose-create-line-type.spec.js.
+- **The Quick tabs keep what was picked when a size, type or material is added** with +
+  (features/quick-line.js, features/quick-modals.js): the repopulate reset every select, so
+  0.75in picked before EMT was added made "0.5in EMT". Pinned in both Quick specs.
+- **A word that repeats its neighbour is said once** in the Quick counter's name
+  (`composeName`): Category Disconnect + Variant Disconnect named "Disconnect Disconnect".
+- **Chapter 5** ([features/course-electrical.js](features/course-electrical.js)): the panel step
+  covers a device whose own panel counter the chapter adopted; the homerun step says to click
+  the circuit first so the run joins it; the voltage-drop step has a hint while the row reads
+  "not applicable" (a held step with Next dark and no word was the by-hand stall: the homerun
+  never joined the circuit).
+- **Chapter 8**: the takeoff card says what Skip does and how to have the app lay the sheets;
+  the report card says Show Report appears once the sheets carry a mark (after a Skip it is
+  hidden).
+
+Walked green afterwards: chapters 3 to 9 by hand on the dirty device, the searches cleared on
+open and typed back at every Finish. The full spec set for the changed files (courses, lessons,
+tour, tag reader, the two Quick tabs, chain, water runs, footer hint) is green.
+
 ## fix(tag-reader): two counters carrying one tag, the armed one takes the click (2026-09-24)
 
 Found by hand on the electrical course's J-box step, on a device with a standing palette: the

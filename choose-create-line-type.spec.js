@@ -15,6 +15,46 @@ const { test, expect } = require('@playwright/test');
 const path = require('path');
 
 test.describe('window.App registry pilot - Choose/Create Line Type modal', () => {
+  test('the sidebar + Add dialog has a door to the Quick creator, by click and by Shift+Q, even with exactly one line type (by hand, 2026-09-24)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.text().includes('config.local.js')) errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    // exactly one line type: the header's Quick Line arms it instead of opening the chooser (T2-08)
+    await page.evaluate(() => { window.state.lineTypes.push({ id: 'only', name: 'Only One', color: '#47c88e' }); window.state.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1 ft' }; window.App.updateUI(); });
+    await page.click('#quickLine');
+    expect(await page.locator('#chooseLineTypeModal.visible').count()).toBe(0);
+    expect(await page.evaluate(() => window.state.activeLineTypeId)).toBe('only');
+    // the sidebar's + Add: the plain dialog, whose Quick link opens the chooser on its Quick tab
+    await page.click('#addLineType');
+    await page.waitForSelector('#lineTypeModal.visible');
+    await page.click('#lineTypeQuickLink');
+    await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 3000 });
+    expect(await page.locator('#lineTypeModal.visible').count()).toBe(0);
+    expect(await page.evaluate(() => document.querySelector('#chooseLineTypeModal .line-type-tab.active')?.dataset.tab)).toBe('quick');
+    await expect(page.locator('#quickLineAdd')).toBeVisible();
+    // a size picked before a material is added survives the repopulate
+    await page.selectOption('#quickLineSize', '0.75in');
+    await page.click('#quickLineAddMaterial');
+    await page.waitForSelector('#confirmModal.visible');
+    await page.fill('#confirmInput', 'EMT');
+    await page.click('#confirmOk');
+    await page.waitForFunction(() => !document.querySelector('#confirmModal.visible'));
+    expect(await page.evaluate(() => [document.getElementById('quickLineSize').value, document.getElementById('quickLineMaterial').value])).toEqual(['0.75in', 'EMT']);
+    await page.evaluate(() => window.App.hideModal('chooseLineTypeModal'));
+    await page.waitForFunction(() => !document.querySelector('#chooseLineTypeModal.visible'), null, { timeout: 3000 });
+    // and Shift+Q from the plain dialog does the same
+    await page.click('#addLineType');
+    await page.waitForSelector('#lineTypeModal.visible');
+    await page.keyboard.press('Shift+Q');
+    await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 3000 });
+    expect(await page.evaluate(() => document.querySelector('#chooseLineTypeModal .line-type-tab.active')?.dataset.tab)).toBe('quick');
+    expect(errors).toEqual([]);
+  });
+
   test('registry wired; create + choose flows work with no errors', async ({ page }) => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });

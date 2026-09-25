@@ -930,6 +930,10 @@
   <div class="modal-overlay" id="lineTypeModal">
     <div class="modal-card">
       <div class="modal-card-header"><h2>Create Line Type</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
+      <!-- The Quick creator (size · material · colour in one row, features/quick-modals.js) lives on the
+           Choose Line Type dialog's Quick tab; this is its door from here, the one the sidebar's + Add
+           reaches (a project with exactly one line type has no other: Quick Line arms it directly). -->
+      <div class="modal-card-sub">Size, material and colour in one row: <button type="button" class="link" id="lineTypeQuickLink" title="Quick (Shift+Q)">Quick</button></div>
       <div class="form-group">
         <label>Name</label>
         <input type="text" id="lineTypeName" placeholder="e.g. Pipe">

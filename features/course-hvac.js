@@ -114,6 +114,10 @@
   const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
   const proveM101 = () => proof('M101', () => ({ page: M101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
   const proveM601 = () => proof('M601', () => ({ page: M601, ends: raw(SECTION.prove), r: 13, ft: 12, tol: 0.4, stated: '12\'-0"' }));
+  // the depth string beside the wrapped main, on the same proof: its circles tick as each click lands
+  // and a 1'-4" read off anywhere else does not pass (by hand, 2026-09-25)
+  const depthM601 = () => proof('M601depth', () => ({ page: M601, ends: raw(SECTION.depth), r: 12, ft: 1.33, tol: 0.15, stated: '1\'-4"' }));
+  let depthEntryMeasure = null;   // the 12'-0" read on the step before is still the sheet's last measure
   const AIR_TAGS = ['SD-1', 'SD-2', 'SD-3', 'EG-1', 'MA-1'];   // the counters the schedule gives a CFM
   function pickTag(tag) {
     const have = byTag(tag);
@@ -170,6 +174,34 @@
     if (App.setDuctDeckHeight && !(App.getDuctSettings && App.getDuctSettings().deckHeightFt > 0)) App.setDuctDeckHeight(12);
     S().tool = App.TOOL.NONE; K().dirty();
   }
+  // Where the ring goes on a Room Sizer step: the box tools until the room exists, then its row under
+  // ROOMS and Edit Room's fields (the row, not a pencil: the ⋯ stayed lit after Apply while the
+  // card said to open the room, by hand 2026-09-25). `todo` is the rooms the step still needs.
+  // The Duct dialog's ring in the card's order: each setting until it reads what the card asks, then
+  // Start Tracing (the ring sat on Start Tracing over an unset shape, size, airside and material; by hand,
+  // 2026-09-25). `want`: { shape, d } or { w, h }, airside, material.
+  function ductFormLadder(want) {
+    const q = (sel) => document.querySelector(sel);
+    const on = (sel) => { const b = q(sel); return !!b && b.classList.contains('active'); };
+    const num = (sel) => Number((q(sel) || {}).value);
+    const todo = [];
+    if (want.shape && !on('#ductCreateShapeToggle [data-shape="' + want.shape + '"]')) todo.push('#ductCreateShapeToggle [data-shape="' + want.shape + '"]');
+    if (want.d && num('#ductCreateD') !== want.d) todo.push('#ductCreateD');
+    if (want.w && (num('#ductCreateW') !== want.w || num('#ductCreateH') !== want.h)) todo.push(num('#ductCreateW') !== want.w ? '#ductCreateW' : '#ductCreateH');
+    if (want.airside && !on('#ductCreateAirside [data-airside="' + want.airside + '"]')) todo.push('#ductCreateAirside [data-airside="' + want.airside + '"]');
+    if (want.material != null && (q('#ductCreateMaterial') || {}).value !== want.material) todo.push('#ductCreateMaterial');
+    return todo.slice(0, 1).concat(['#ductCreateStart']);
+  }
+  const roomRowSel = (name) => { const rows = Array.from(document.querySelectorAll('#roomsList .room-row')); const i = rows.findIndex((r) => new RegExp(name, 'i').test((r.querySelector('.room-row-name') || {}).textContent || '')); return i < 0 ? null : '#roomsList .room-row-wrap:nth-child(' + (i + 1) + ') .room-row'; };
+  const ROOM_BOX_LADDER = ['#roomEditSave', '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn', '#roomsSectionTitle'];
+  const roomLadder = (todo) => {
+    const next = todo.find((room) => !roomReady(room));
+    if (!next || !roomNamed(new RegExp(next.name, 'i'))) return ROOM_BOX_LADDER;
+    // inside Edit Room, the field the card asks for next: Room type (Target CFM shows only for Custom), the CFM, Save
+    const type = document.getElementById('roomEditType'), cfm = document.getElementById('roomEditTargetCfm');
+    const field = type && type.value !== 'custom' ? '#roomEditType' : (cfm && !(Number(cfm.value) > 0) ? '#roomEditTargetCfm' : '#roomEditSave');
+    return T().ladder(field, roomRowSel(next.name), '#roomsSectionTitle');
+  };
   const roomReady = (room) => { const r = roomNamed(new RegExp(room.name, 'i')); return !!(r && r.targetCfmOverride === room.cfm && roomBoxZone(room).done); };
   function makeSystem() {
     const s = S();
@@ -317,13 +349,13 @@
           body: 'Four roof keys, each with a CFM.\n1. Under COUNTERS, click [[+ Add]]. The project is HVAC, so the [[Quick]] tab offers Size, Type and Material.\n2. Set Type to RTU and click [[Add Counter]].\n3. Click the roof key of the unit that moves the most air.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
           check: () => markNear(counter(RE.rtu), pts(G.rtu)[0], 26, M101),
-          hint: () => (counter(RE.rtu) && marksOf(counter(RE.rtu), M101).length ? (markNear(counter(RE.rtu), pts(G.ef1)[0], 26, M101) ? 'EF-1 pulls 2,400 CFM out of the hood, and that is a lot, but one key says 3,000' : 'Read the CFM in each dashed box') : (counter(RE.rtu) ? 'The counter is armed: click the roof key' : '')),
+          hint: () => (counter(RE.rtu) && marksOf(counter(RE.rtu), M101).length ? (markNear(counter(RE.rtu), pts(G.ef1)[0], 26, M101) ? 'EF-1 pulls 2,400 CFM out of the hood, and that is a lot, but one key says 3,000' : 'Read the CFM in each dashed box') : (K().armedNamed(RE.rtu) ? 'The counter is armed: click the roof key' : '')),
           action: { label: 'Find it for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickUnit(RE.rtu, 'RTU-1', 'RTU', '#2e86de'), pts(G.rtu), M101); K().dirty(); } } },
         { id: 'schedule', title: 'The room that breathes hardest', kind: 'do', cardAt: 'br',
           body: 'RTU-1: 3,000 CFM, 7.5 tons of cooling, 1.0 in of static pressure to push it through the duct. Every other number on the set hangs off it.\n1. Under PAGES (click the heading to open it if it is folded), click M-501.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts the most air, nearly as much as the whole unit supplies. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
-          target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn', '#pagesList'],
+          target: () => (K().onPage(M501) ? ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'] : ['#pagesList']),
           check: () => { const a = pageAnn(M501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 300 && Math.max(h.x1, h.x2) >= 300 && Math.min(h.y1, h.y2) <= 619 && Math.max(h.y1, h.y2) >= 619); },
-          hint: () => { const a = pageAnn(M501); return a && (a.highlights || []).length ? 'Not that row. Read down the EXHAUST column for the biggest number' : ''; },
+          hint: () => { if (!K().onPage(M501)) return T().pagesFoldedHint('M-501'); const a = pageAnn(M501); return a && (a.highlights || []).length ? 'Not that row. Read down the EXHAUST column for the biggest number' : ''; },
           action: { label: 'Highlight the kitchen for me', run: () => { K().goPage(M501); const a = App.ensureActiveCanvas(S().pages[M501]).annotations; if (!a.highlights) a.highlights = []; if (a.highlights.length) return; App.pushUndoSnapshotCurrentPage(); a.highlights.push(Object.assign({ color: '#e8c547', opacity: 0.25, id: App.uid() }, KITCHEN_ROW)); S().tool = App.TOOL.NONE; K().dirty(); } } },
         { id: 'balance', title: 'Why the kitchen', kind: 'read', cardAt: 'br',
           body: 'KITCHEN 105: 800 CFM of supply, 2,400 CFM of exhaust. The hood pulls out nearly as much air as RTU-1 makes.\nWhere does that air come from, and what happens if the engineer got it wrong?',
@@ -344,7 +376,7 @@
           target: [], check: () => true },
         { id: 'dining', title: 'Box the dining room', kind: 'do', cardAt: 'bl', page: M101, zones: () => [roomBoxZone(ROOMS.dining)],
           body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around DINING 100, anywhere inside the shaded boundary. The name fills in from the plan.\n3. In Ceiling, type 9. In Deck height, type 12. Click [[Apply]].\n4. Under ROOMS in the left sidebar, click DINING to open Edit Room. Set Room type to Custom and Target CFM to 1200, the schedule\'s number, and save.',
-          target: ['#roomEditSave', '#roomEditTargetCfm', '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn', '#roomsSectionTitle'],
+          target: () => roomLadder([ROOMS.dining]),
           check: () => roomReady(ROOMS.dining),
           hint: () => { const r = roomNamed(/dining/i); if (!r) return T().boxMiss(rectsOf(M101, 'roomBoxes'), rect(ROOMS.dining.inner), rect(ROOMS.dining.outer)); return r.targetCfmOverride === 1200 ? '' : 'The box is there: now give the room its 1,200 CFM (click DINING under ROOMS: Room type Custom, Target CFM 1200)'; },
           action: { label: 'Box it for me', run: () => boxRoom(ROOMS.dining) } },
@@ -353,7 +385,7 @@
           target: ['#roomsSection', '#roomsSectionTitle'], check: () => true },
         { id: 'kitchen', title: 'Box the kitchen and the hall', kind: 'do', cardAt: 'tl', page: M101, zones: () => [roomBoxZone(ROOMS.kitchen), roomBoxZone(ROOMS.hall)],
           body: 'The same for the rooms the main runs through, so the app knows the ceiling under every foot of it.\n1. Box KITCHEN 105: ceiling 9, deck 12, Custom, 800 CFM.\n2. Box HALL 107: ceiling 9, deck 12, Custom, 100 CFM.',
-          target: ['#roomEditSave', '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn', '#roomsSectionTitle'],
+          target: () => roomLadder([ROOMS.kitchen, ROOMS.hall]),
           check: () => roomReady(ROOMS.kitchen) && roomReady(ROOMS.hall),
           hint: () => (roomReady(ROOMS.kitchen) ? (roomNamed(/hall/i) ? 'HALL needs its 100 CFM' : 'Now the hall') : (roomNamed(/kitchen/i) ? 'KITCHEN needs its 800 CFM' : '')),
           action: { label: 'Box both for me', run: async () => { await boxRoom(ROOMS.kitchen); await boxRoom(ROOMS.hall); } } },
@@ -372,18 +404,31 @@
       steps: [
         { id: 'schedule', title: 'The palette from the schedule', kind: 'do',
           body: 'Every diffuser on M-101 carries a tag, and M-501 says what each one is.\n1. Under PAGES, click M-501.\n2. Under COUNTERS, click [[+ Add]], then the [[Create]] tab, then [[Read a schedule from the sheet…]].\n3. Drag a box over the DIFFUSER AND GRILLE SCHEDULE.\n4. Click [[Create counters]].\n5. Click each one\'s pencil and type its CFM from the schedule: SD-1 150, SD-2 100, SD-3 200, EG-1 75, MA-1 2000. RG-1 returns air and takes none.',
-          target: ['#counterLineTypeDetailsCfm', '#schedulePaletteCreate', '#counterReadSchedule', '#counterModal .counter-tab[data-tab="create"]', '#addCounter', '#pagesList'],
+          // the ring follows the card (by hand, 2026-09-25): the sheet, then the Create tab's link, the
+          // sheet itself while the box is drawn, then the pencil of the next counter still short of its CFM
+          // the drag's boundary, once the Schedule tool is armed on M-501: it guides the box and keeps the
+          // card off the table (at 1280 x 720 the card sat on the table's corner and swallowed the press)
+          zones: () => (S().tool === App.TOOL.SCHEDULE && K().onPage(M501) && !AIR_TAGS.some((t) => byTag(t)) ? [{ kind: 'box', inner: { x1: 118, y1: 316, x2: 566, y2: 422 }, outer: { x1: 95, y1: 278, x2: 790, y2: 445 }, done: false, label: 'Drag your box over the schedule\'s rows, inside here' }] : []),
+          target: () => {
+            const tagged = AIR_TAGS.filter((t) => byTag(t));
+            if (!tagged.length && !K().onPage(M501)) return ['#pagesList'];
+            if (!tagged.length && S().tool === App.TOOL.SCHEDULE) return ['#schedulePaletteCreate', '#annCanvas'];
+            const next = AIR_TAGS.find((t) => byTag(t) && byTag(t).cfm !== TAGS[t][2]);
+            if (next) return T().ladder('#counterLineTypeDetailsCfm', T().pencilOf('counter', byTag(next)), '#countersSection');
+            return ['#schedulePaletteCreate', '#counterReadSchedule', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'];
+          },
           check: () => AIR_TAGS.every((t) => { const c = byTag(t); return !!(c && c.cfm === TAGS[t][2]); }),
           hint: () => (byTag('SD-1') ? AIR_TAGS.filter((t) => !(byTag(t) && byTag(t).cfm === TAGS[t][2])).map((t) => t + ' wants ' + TAGS[t][2] + ' CFM').join(' · ') : ''),
           action: { label: 'Read the schedule for me', run: readDiffuserSchedule } },
         { id: 'dining', title: 'Fill the dining room', kind: 'do', cardAt: 'bl', page: M101, zones: () => circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(0, 8)),
           body: '1. Under PAGES, click M-101.\n2. In the sidebar, click SD-1 to arm it, and click the eight circled diffusers in the dining room.\nWatch ROOMS as you go: served climbs by 150 a click, and the warning goes at 1,200.',
-          target: ['#annCanvas', '#pagesList'], check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(0, 8))),
-          hint: () => (byTag('SD-1') ? missing(byTag('SD-1'), pts(G.SD1).slice(0, 8), ['north-west', 'north', 'north', 'north-east', 'south-west', 'south', 'south', 'south-east'].map((d) => 'the dining room, ' + d), 10, M101) : ''),
+          target: () => (K().onPage(M101) ? ['#annCanvas', '#countersList'] : ['#pagesList']), check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(0, 8))),
+          // on M-501 still (the schedule step left the reader there): the way back, not eight rooms away
+          hint: () => (!K().onPage(M101) ? T().pagesFoldedHint('M-101') : byTag('SD-1') ? missing(byTag('SD-1'), pts(G.SD1).slice(0, 8), ['north-west', 'north', 'north', 'north-east', 'south-west', 'south', 'south', 'south-east'].map((d) => 'the dining room, ' + d), 10, M101) : ''),
           action: { label: 'Count the eight for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('SD-1'), pts(G.SD1).slice(0, 8), M101); K().dirty(); } } },
         { id: 'rest', title: 'The rest of the supply', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8)).concat(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10), circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
-          body: '1,200 served, and the row reads ✓. Now the rest.\n1. SD-1 again: the two in the bar and the one in the dish pit.\n2. Arm SD-2 and click the hall and storage diffusers.\n3. Arm SD-3 and click the four in the kitchen.',
-          target: ['#annCanvas'], check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8))) && allDone(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10)) && allDone(circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
+          body: '1,200 served, and the row reads ✓. Now the rest.\n1. SD-1 is still armed from the dining room (clicking it in the sidebar would put it down): click the two in the bar and the one in the dish pit.\n2. Arm SD-2 and click the hall and storage diffusers.\n3. Arm SD-3 and click the four in the kitchen.',
+          target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8))) && allDone(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10)) && allDone(circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
           hint: () => [row('SD-1', pts(G.SD1).slice(8), ['the bar (west)', 'the bar (east)', 'the dish pit']), row('SD-2', pts(G.SD2), ['the hall', 'storage']), row('SD-3', pts(G.SD3), ['the kitchen (west)', 'the kitchen', 'the kitchen', 'the kitchen (east)'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); seedDiffusers(); K().dirty(); } } },
         { id: 'neck', title: 'Why the kitchen diffusers are bigger', kind: 'read', cardAt: 'tl',
@@ -392,7 +437,7 @@
           target: [], check: () => true },
         { id: 'grilles', title: 'Return and exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, byTag('RG-1'), pts(G.RG1)).concat(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10)),
           body: 'The plenum return: no duct, just a grille in the ceiling and the space above it.\n1. Arm RG-1 and click the three return grilles.\n2. Arm EG-1 and click the three exhaust grilles in the restrooms and the mop room.',
-          target: ['#annCanvas'], check: () => allDone(circlesOn(M101, byTag('RG-1'), pts(G.RG1))) && allDone(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10)),
+          target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(M101, byTag('RG-1'), pts(G.RG1))) && allDone(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10)),
           hint: () => [row('RG-1', pts(G.RG1), ['the dining room (west)', 'the dining room (east)', 'the kitchen']), row('EG-1', pts(G.EG1), ['MEN', 'WOMEN', 'the mop room'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); K().dirty(); } } },
       ],
@@ -406,14 +451,15 @@
       steps: [
         { id: 'group', title: 'Make RTU-1 a system', kind: 'do',
           body: 'The equipment schedule: RTU-1, 3,000 CFM, 1.0" ESP.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]] if it is off.\n2. Under GROUPS, click [[+ Add]]. In Name, type RTU-1. In Equipment tag, type RTU-1. In Capacity, type 3000. In Static available, type 1.0 (the schedule\'s ESP). Click [[Done]].\n3. Make an RTU counter (Quick: Type RTU) and click RTU-1\'s roof key, so the system knows where its unit is.',
-          target: ['#groupModalDone', '#groupModalEspInWg', '#groupModalCapacityCfm', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn'],
+          // inside Add Group, the field the card names next, then Done (the ring sat on Done over four empty boxes; by hand, 2026-09-25)
+          target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm', '#groupModalEspInWg'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return T().ladder(empty, '#groupModalDone', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn'); },
           check: () => { const g = system(); return !!(g && g.capacityCfm === 3000 && g.espInWg === 1 && markNear(counter(RE.rtu), pts(G.rtu)[0], 26, M101)); },
           hint: () => { const g = system(); if (!g) return ''; if (g.capacityCfm !== 3000) return 'Capacity: 3000, from the schedule'; if (g.espInWg !== 1) return 'ESP: 1.0, the static pressure the schedule gives the unit'; return 'The system exists: now count RTU-1 on its roof key'; },
           action: { label: 'Make RTU-1 for me', run: makeSystem } },
         { id: 'designed', title: 'How much of RTU-1 is spoken for?', kind: 'read',
           body: '1. In the left sidebar, under GROUPS, look at RTU-1\'s row.\nIt reads the system\'s designed air against its capacity. It reads 0 of 3,000 for now: a diffuser counts toward a system once a run of that system reaches it, and the main is chapter 5. The schedule already says where it ends: 2,650.\nWhy would an engineer buy a 3,000 CFM unit for 2,650 CFM of diffusers?',
           reveal: 'Note 2 on M-501 says it: the rest is future. Rooftop units come in sizes, a kitchen grows, and a unit run at its limit on the hottest day is a callback. The margin is the engineer\'s, and the estimator prices the unit the schedule names, not the one the arithmetic would allow.\nBid Check\'s Systems within capacity row does the same sum and warns when the diffusers outrun the unit, which happens on the third addendum.',
-          target: ['#groupsSectionTitle', '#ductSectionTitle'], check: () => true },
+          target: ['#groupsList', '#groupsSectionTitle', '#ductSectionTitle'], check: () => true },
       ],
       done: 'A system with its unit, its capacity and its pressure, and the designed air read against them.\nNext: [[Learn]] → Chapter 5, the main.',
     },
@@ -424,7 +470,7 @@
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); },
       steps: [
         { id: 'arm', title: 'Arm the Duct tool', kind: 'do',
-          body: 'Every size on this plan is printed beside its run, and the app reads them.\n1. In the header, click [[Duct]] (or press U).\nThe dialog opens with the size already filled from the plan, 24x12, and says where it came from. Set Insulation to Wrap.\n2. Click [[Start Tracing]].',
+          body: 'Every size on this plan is printed beside its run, and the app reads them.\n1. Point at the 24x12 printed at the RTU-1 drop, at the kitchen\'s east wall, and press U (or click [[Duct]] in the header).\nPressed over a printed size, the dialog fills it from the plan and says so under the size; from the header it starts at 24x12 anyway.\n2. Set Insulation to Wrap.\n3. Click [[Start Tracing]].',
           target: ['#ductCreateStart', '#ductCreateLiner', '#ductBtn', '#headerMoreBtn'],
           check: () => { const d = S().drawingDuct; return !!(d && d.segments && d.segments[0] && sizeKey(d.segments[0].size) === '24x12') || mainDone(); },
           action: { label: 'Arm it at 24x12 for me', run: async () => { K().goPage(M101); if (mainDone() || S().drawingDuct) return; if (el('ductBtn')) el('ductBtn').click(); await wait(100); if (App.setDuctCreateSize) App.setDuctCreateSize(RS(24, 12)); if (el('ductCreateLiner')) el('ductCreateLiner').value = 'wrap'; if (el('ductCreateStart')) el('ductCreateStart').click(); await wait(50); if (S().drawingDuct) { S().drawingDuct.linerType = 'wrap'; S().drawingDuct.linerThicknessIn = 2; } } } },
@@ -445,7 +491,7 @@
           target: [], check: () => true },
         { id: 'kitchen', title: 'The kitchen branch', kind: 'do', cardAt: 'br', page: M101, zones: () => traceZones(pts(G.kitchen), M101),
           body: 'A 16x10 branch taps the main at the kitchen wall and runs down the west wall and across to the four kitchen diffusers.\n1. Click [[Duct]] again. The size fills from the printed size nearest your last click: check it reads 16x10, and set it if not. [[Start Tracing]].\n2. Click the tap at the main, the corner at the kitchen\'s south wall, and the far end. Press Enter.\nThe tap counts itself, with a volume damper.',
-          target: ['#ductCreateStart', '#ductBtn', '#annCanvas'], check: () => !!runWith(['16x10']),
+          target: () => ductFormLadder({ shape: 'rect', w: 16, h: 10 }).concat(['#ductBtn', '#annCanvas']), check: () => !!runWith(['16x10']),   // the dialog fills the size nearest the last click (12x10 after the main): the ring asks for 16x10
           hint: () => { if (runWith(['16x10']) || S().drawingDuct) return ''; const other = ductRuns(M101).filter((r) => !mainDone() || runSizes(r).join(' ') !== MAIN_SIZES.join(' ')).pop(); return other ? 'That branch went in at ' + runSizes(other).join(', ') + '. Press Ctrl+Z and start it again at 16x10' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['16x10'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' }); K().dirty(); } } },
         { id: 'attach', title: 'Hang the diffusers on the runs', kind: 'do', cardAt: 'bl',
@@ -475,16 +521,17 @@
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 12\'-0" string, floor to deck.\n3. Click inside circle 2, at the other end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM601().check(), hint: () => proveM601().hint(), zones: () => proveM601().zones(),
           action: { label: 'Measure it for me', run: async () => { K().goPage(M601); if (!K().scaleIs(M601, 36)) await T().applyScalePreset('1/2" = 1\'', 36); const d = raw(SECTION.prove); K().measure(d[0], d[1]); } } },
-        { id: 'depth', title: 'How deep is the main with its wrap?', kind: 'do', cardAt: 'br', page: M601, zones: () => guide(raw(SECTION.depth), 12, K().measured(M601, 1.33, 0.15)),
+        { id: 'depth', title: 'How deep is the main with its wrap?', kind: 'do', cardAt: 'br', page: M601, zones: () => depthM601().zones(),
           body: 'The plenum is the 3\'-0" between the ceiling and the deck. Inside it, the 24x12 main with its 2" wrap.\n1. Click [[Measure]] again and click both ends of the dimension on the duct\'s right side.',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(M601, 1.33, 0.15),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === M601 && T().measuredFeet() != null && Math.abs(T().measuredFeet() - 12) > 0.4 && Math.abs(T().measuredFeet() - 1.33) > 0.15 ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. The short string beside the duct, wrap to wrap' : ''; },
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => depthM601().check(),
+          onEnter: () => { depthEntryMeasure = S().lastMeasure; },
+          hint: () => (S().lastMeasure && S().lastMeasure === depthEntryMeasure ? '' : depthM601().hint()),
           action: { label: 'Measure it for me', run: () => { K().goPage(M601); const d = raw(SECTION.depth); K().measure(d[0], d[1]); } } },
         { id: 'fits', title: 'Let the app say it fits', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1\'-4": twelve inches of duct and two of wrap each side, under a 3\'-0" plenum. The section says it fits; the app can say it too, because chapter 2 gave every room a ceiling and a deck and chapter 5 gave the main its wrap.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.',
-          target: ['#bidCheckSectionTitle', '#pagesList'],
-          check: () => { K().goPage; const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
-          hint: () => { const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },
+          target: () => (K().onPage(M101) ? ['#bidCheckSectionTitle'] : ['#pagesList']),   // the card's first line is M-101 (by hand, 2026-09-25)
+          check: () => { const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
+          hint: () => { if (!K().onPage(M101)) return T().pagesFoldedHint('M-101'); const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },
           action: { label: 'Open it for me', run: () => { K().goPage(M101); seedMain(); if (App.setDuctDeckHeight) App.setDuctDeckHeight(12); openBidCheck(); } } },
         { id: 'static', title: 'Will it blow?', kind: 'read',
           body: 'Beside it, Static path within unit ESP turned from a question into a number the moment RTU-1 had its 1.0" of static and a run to walk: the app found the longest path from the unit to a diffuser, in equivalent feet, straight duct and every elbow and transition on the way, and priced it in inches of water against the unit.\nWhat is the estimator supposed to do with that row?',
@@ -501,7 +548,7 @@
       steps: [
         { id: 'grease', title: 'Which duct must not be galvanized?', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.grease), M101),
           body: 'Every supply and return duct on this plan is galvanized sheet at the gauge the SMACNA table gives its size. One duct on the plan cannot be, and the legend draws it darker.\n1. Click [[Duct]] (or press U). Round, 18, the airside chip Exhaust, and Material: Welded black steel. [[Start Tracing]].\n2. Click the hood collar, the elbow, and the curb where it rises to EF-1. Press Enter.',
-          target: ['#ductCreateStart', '#ductCreateMaterial', '#ductCreateAirside', '#ductBtn', '#annCanvas'], check: () => !!greaseRun(),
+          target: () => ductFormLadder({ shape: 'round', d: 18, airside: 'exhaust', material: 'black-steel' }).concat(['#ductBtn', '#annCanvas']), check: () => !!greaseRun(),
           hint: () => { const r = runWith(['18"ø']); if (r) return r.material === 'black-steel' ? '' : 'The run is there, but galvanized: right-click it and set its Material to Black steel'; const bs = ductRuns(M101).find((x) => x.material === 'black-steel'); return bs ? 'Black steel, but the hood duct is 18 inch round: check the size' : ''; },
           action: { label: 'Trace it for me', run: () => { if (greaseRun()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust' }); K().dirty(); } } },
         { id: 'why', title: 'Grease duct', kind: 'read', cardAt: 'bl',
@@ -520,12 +567,12 @@
           target: [], check: () => true },
         { id: 'restroom', title: 'Trace the restroom exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.exhaust), M101),
           body: 'The three EG-1 grilles run to EF-2 on 8" round.\n1. Click [[Duct]] (or press U). Set the shape to round, the size to 8, the airside chip to Exhaust, and [[Start Tracing]].\n2. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
-          target: ['#ductCreateStart', '#ductCreateAirside', '#ductBtn', '#annCanvas'], check: () => { const r = runWith(['8"ø']); return !!(r && r.airside === 'exhaust'); },
+          target: () => ductFormLadder({ shape: 'round', d: 8, airside: 'exhaust' }).concat(['#ductBtn', '#annCanvas']), check: () => { const r = runWith(['8"ø']); return !!(r && r.airside === 'exhaust'); },
           hint: () => { const r = runWith(['8"ø']); return r && r.airside !== 'exhaust' ? 'The run is there but marked supply: right-click it and set its airside to Exhaust' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['8"ø'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust' }); K().dirty(); } } },
-        { id: 'makeup', title: 'The make-up air', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.makeup), M101),
+        { id: 'makeup', title: 'The make-up air', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.makeup), M101).concat(runWith(['20x16']) ? circlesOn(M101, byTag('MA-1'), pts(G.MA1), 12) : []),   // line 2 is on the sheet too: its circle (by hand, 2026-09-25)
           body: 'Spiral round in ten-foot sticks: the schedule counts the joints. Now the air that replaces what the hood takes.\n1. [[Duct]] again: 20x16, supply, [[Start Tracing]]. Click the MAU-1 drop at the east wall and the register MA-1. Press Enter.\n2. Arm MA-1 and click the register.',
-          target: ['#ductCreateStart', '#ductBtn', '#annCanvas'], check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
+          target: () => ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList']), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
           action: { label: 'Trace and count it for me', run: () => { K().goPage(M101); if (!runWith(['20x16'])) { if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air' }); } App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('MA-1'), pts(G.MA1), M101); K().dirty(); } } },
         { id: 'interlock', title: 'Why make-up air', kind: 'read',
           body: 'MAU-1: 2,000 CFM of tempered outside air, interlocked with EF-1.\nWhat goes wrong without it, and who owns the interlock?',
@@ -541,7 +588,7 @@
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'The rooms with their air, every diffuser and grille, RTU-1 as a system, the main and its branches, the restroom exhaust, the make-up duct, the grease duct in black steel, the two fire dampers. Earlier chapters taught each of them; this is all of them on the sheets, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo see the finished sheets instead, click Skip this step: the next card compares against the reference.',
+          body: 'The rooms with their air, every diffuser and grille, RTU-1 as a system, the main and its branches, the restroom exhaust, the make-up duct, the grease duct in black steel, the two fire dampers. Earlier chapters taught each of them; this is all of them on the sheets, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo have the app lay it all instead, click [[Show me where]] and then its button; Skip this step moves on with the sheets as they are, and the next card compares them against the reference.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
@@ -550,6 +597,8 @@
         { id: 'copy', title: 'The schedule, copied', kind: 'do', hold: true,
           body: '1. Under DUCT, click [[Schedule]].\n2. Click [[Copy Schedule]].\nStraight duct by size and gauge, the fittings, the flex drops by system, the wrap in square feet, seam and waste, and the bid weight, as text for the bid.',
           target: ['#ductScheduleCopy', '#ductScheduleBtn', '#ductSectionTitle'], check: () => K().modalUp('ductScheduleModal'),
+          // skipped past Finish the takeoff with nothing traced: there is no DUCT section to click (by hand, 2026-09-25)
+          hint: () => (ductRuns(M101).length ? '' : 'No duct is traced yet, so there is no DUCT section. Click Back and finish the takeoff, or Skip this step'),
           action: { label: 'Open the schedule', run: () => { if (App.openDuctScheduleModal) App.openDuctScheduleModal(); else if (el('ductScheduleBtn')) el('ductScheduleBtn').click(); } } },
       ],
       done: 'The whole set, counted and traced, checked against the reference, and a schedule in pounds.\nNext: [[Learn]] → Chapter 9, the bid.',
@@ -573,7 +622,7 @@
           action: { label: 'Tick them for me', run: () => { tick('scale-verified'); tick('duct-oa-code'); tick('duct-fire-dampers'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the SD-1 total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits. This is what you open when the GC questions the number.',
-          target: ['#summaryCountDetailModal .modal-card', '#summaryList .summary-item-clickable', '#summarySectionTitle'], check: () => K().modalUp('summaryCountDetailModal'),
+          target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', byTag('SD-1')), '#summarySectionTitle'), check: () => K().modalUp('summaryCountDetailModal'),
           action: { label: 'Open the breakdown', run: () => { const c = byTag('SD-1'); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'handoff', title: 'Hand it off', kind: 'read',
           body: '1. Under EXPORT OPTIONS, [[Copy to /Tooling]] puts the whole takeoff on the clipboard, and its Duct block at the end carries the pounds. With an open Bid Check row the gate asks first; [[Export anyway]] remembers your answer until something changes.\n2. [[Copy RFI Flags]] puts every note that starts with RFI: beside it, for the GC. This set has none yet; the make-up air interlock with the hood is the first you would write.\n3. [[Export PDFs]] makes the marked-up set.\nMore: [Doing an HVAC takeoff](/guides/hvac-takeoff/) and [Duct takeoff by the pound](/guides/duct-takeoff-by-the-pound/).',

@@ -53,6 +53,13 @@ test.describe('Summary count detail (features/summary-detail.js)', () => {
     await expect(page.locator('#summaryCountDetailList .summary-count-detail-count')).toHaveText('3');
     // Thumbnail renders (async pdf.js render into a data-URL img).
     await expect(page.locator('#summaryCountDetailList img')).toHaveCount(1, { timeout: 15000 });
+    // the caption names the document: a sheet named off its title block names none, so the
+    // project's name, never a made-up "document.pdf" (by hand, 2026-09-25)
+    const caption = await page.locator('#summaryCountDetailList .summary-count-detail-doc').allTextContents();
+    expect(caption.join(' ')).not.toContain('document.pdf');
+    await page.evaluate(() => { window.App.hideModal('summaryCountDetailModal'); window.state.pages[0].label = 'P-101 · Plumbing Plan'; window.state.currentProjectName = 'Main St Restaurant'; });
+    await page.evaluate(() => window.App.openSummaryCountDetailModal('counter', 'c1'));
+    await expect(page.locator('#summaryCountDetailList .summary-count-detail-doc')).toHaveText('Main St Restaurant', { timeout: 15000 });
     await page.evaluate(() => window.App.hideModal('summaryCountDetailModal'));
 
     // Line-type path: 1 run, 120pt @ 10pt/ft = 12.00 ft.

@@ -81,6 +81,16 @@ test.describe('D24 — room names from the plan (X4 option D)', () => {
     await page.locator('#roomBoxCancel').click();
   });
 
+  test('a word set sideways is measured across, not along: a tall vertical "FRYER" does not outrank the room\'s name (by hand, 2026-09-25)', async ({ page }) => {
+    errors = []; await bootWithPlan(page, errors);
+    // the HVAC set's cook line prints FRYER vertically inside KITCHEN 105: its box is 17.7 pt tall, 5.25 wide
+    const pushed = await page.evaluate(() => { const items = window.App.pageTextItems(0); items.push({ str: 'FRYER', x: 420, y: 150, w: 8, h: 40 }); return window.App.pageTextItems(0).some((i) => i.str === 'FRYER'); });
+    expect(pushed).toBe(true);
+    await openBox(page, ROOM_B);
+    await expect(page.locator('#roomBoxNewRoomName')).toHaveValue('MECH');
+    await page.locator('#roomBoxCancel').click();
+  });
+
   test('a plan-named room is labelled once with a totals tag placed off the printed text', async ({ page }) => {
     errors = []; await bootWithPlan(page, errors);
     await openBox(page, ROOM_A);

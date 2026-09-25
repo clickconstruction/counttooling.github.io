@@ -121,9 +121,15 @@
     // Plumbing (rulebook slice 3): every line type whose name declares a
     // supported material should count its hangers from the rulebook spacing.
     if (trade === 'plumbing' && window.SupportModel) {
-      const row = window.SupportModel.hangerCoverage(state.lineTypes);
+      // Only the types with a run in scope: a palette type nobody drew on this bid (the Artboard's
+      // "4in PVC old") has nothing to hang or fit, and with a standing palette both rows stayed open
+      // however many hangers the bid's own pipe counted (by hand, 2026-09-25).
+      const drawn = new Set();
+      pageIndices.forEach((pi) => { const ann = getAnn(pi); if (!ann) return; (ann.polylines || []).concat(ann.quickLines || []).forEach((l) => { if (l && l.lineTypeId) drawn.add(l.lineTypeId); }); });
+      const runTypes = (state.lineTypes || []).filter((lt) => drawn.has(lt.id));
+      const row = window.SupportModel.hangerCoverage(runTypes);
       // BEND-FITTINGS: the fittings row rides beside the hangers row.
-      const fit = window.SupportModel.bendFittingCoverage ? window.SupportModel.bendFittingCoverage(state.lineTypes) : null;
+      const fit = window.SupportModel.bendFittingCoverage ? window.SupportModel.bendFittingCoverage(runTypes) : null;
       const rows = [row, fit].filter(Boolean);
       if (rows.length) auto = auto.concat(rows);
     }

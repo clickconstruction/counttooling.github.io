@@ -3160,8 +3160,11 @@
     document.getElementById('pagesSection').classList.add('collapsed');
     document.getElementById('pagesCollapseIcon').textContent = '▶';
   }
+  // A second press deselects only what is ARMED: after M (Move) the counter is still the
+  // selected one but its tool is down, and the lesson's "press M, then 1" left nothing armed
+  // (by hand, 2026-09-25). Same for a line type under the Line or Polyline tool.
   function setActiveCounterType(id) {
-    state.activeCounterType = state.activeCounterType === id ? null : id;
+    state.activeCounterType = state.activeCounterType === id && state.tool === TOOL.COUNTER ? null : id;
     state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE;
     // B9 (J1 J15): arming closes the mobile drawer (the next tap belongs on
     // the plan); toggling OFF keeps it open — the user is managing the list.
@@ -3169,7 +3172,7 @@
     updateUI();
   }
   function setActiveLineType(id) {
-    state.activeLineTypeId = state.activeLineTypeId === id ? null : id;
+    state.activeLineTypeId = state.activeLineTypeId === id && (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) ? null : id;
     state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE;
     if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); closeMobileSidebar(); }
     updateUI();
@@ -4265,6 +4268,14 @@
     if (App.registerWaterSideForm) { App.registerWaterSideForm('add', { radioName: 'lineTypeWaterSide', groupId: 'lineTypeWaterGroup', nameInputId: 'lineTypeName', name: () => document.getElementById('lineTypeName').value }); App.resetWaterSideForm('add'); }
     showModal('lineTypeModal');
   };
+  // The plain dialog's door to the Quick creator (size · material · colour): the sidebar's + Add
+  // is the one place every card can send a reader, and with exactly one line type Quick Line
+  // arms it instead of opening the chooser (T2-08), so the Quick tab needs a way in from here.
+  document.getElementById('lineTypeQuickLink').onclick = () => {
+    hideModal('lineTypeModal');
+    App.showChooseLineTypeModal();
+    App.showLineTypeTab('quick');
+  };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
   document.getElementById('lineTypeCreate').onclick = () => {
     const name = document.getElementById('lineTypeName').value.trim() || nextLineTypeName(state.lineTypes);
@@ -4311,7 +4322,10 @@
   if (settingsUseGroupsBtn) {
     settingsUseGroupsBtn.onclick = () => {
       if ((state.groups || []).length > 0) return; // locked on while groups exist
-      state.groupsEnabled = !state.groupsEnabled;
+      // On goes through turnOnGroups, which also opens the sidebar section: a GROUPS heading
+      // left collapsed at the foot of the sidebar hid the + Add the next move needs (by hand, 2026-09-25).
+      if (!state.groupsEnabled) { turnOnGroups(); return; }
+      state.groupsEnabled = false;
       markProjectDirty();
       updateUI();
     };
@@ -5703,6 +5717,7 @@
     if (previewEl) previewEl.textContent = 'Change the multiplier for this zone.';
     if (titleEl) titleEl.textContent = 'Edit zone multiplier';
     showModal('multiplyZoneModal');
+    if (App.focusMultiplyZoneInput) App.focusMultiplyZoneInput();
     state.ctxTarget = null;
   };
   document.getElementById('ctxEditScaleZone').onclick = () => {
@@ -6133,6 +6148,7 @@
             document.getElementById('multiplyZonePreview').textContent = multiplyZonePreviewText(counts, lenStr);
             document.getElementById('multiplyZoneMultiplier').value = String(state.pendingMultiplyZoneValue);
             showModal('multiplyZoneModal');
+            if (App.focusMultiplyZoneInput) App.focusMultiplyZoneInput();
           }
         }
         state.multiplyZoneStart = null;
@@ -6352,6 +6368,7 @@
       case TOOL.SCALE_ZONE:
       case TOOL.DELETE_ZONE:
       case TOOL.ROOM:
+      case TOOL.SCHEDULE:   // a rect tool like the zones: a drag draws its box (it took only clicks; by hand, 2026-09-25)
       case TOOL.NOTE:
       case TOOL.CHAIN:
       case TOOL.DROP:
@@ -7442,6 +7459,11 @@
         e.preventDefault();
         return;
       }
+      if (document.getElementById('lineTypeModal').classList.contains('visible')) {
+        document.getElementById('lineTypeQuickLink').click();
+        e.preventDefault();
+        return;
+      }
     }
     // (a dialog's × re-dispatches Escape on `document`, which has no matches())
     if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
@@ -8476,7 +8498,26 @@
     // pre-apply-to-offer stretch below must stay free of awaits (see the offer's comment).
     await shellScriptsReady();
     const bootSessionBusy = state.pages.length > 0 || saveEngine.getAutoSaveDirty() || !!(App.isTutorialActive && App.isTutorialActive()) || !!(App.isTutorialPending && App.isTutorialPending());
-    if (backupToApply && !bootSessionBusy) applyTakeoffBackupToState(backupToApply);
+    if (backupToApply && !bootSessionBusy) {
+      // Discard must undo this pre-apply for everything that belongs to the PROJECT, or the next
+      // PDF opened inherits the declined session's groups, trade, codes, Bid Check ticks, rooms and
+      // Quick Keys (by hand, 2026-09-25: a lesson set opened with Groups already on, the switch
+      // locked). The palette stays: signed out, the backup may be the only copy of it.
+      const PRE_APPLY_PROJECT_FIELDS = ['groups', 'groupsEnabled', 'trade', 'ceilingHeightFt', 'makeUpFt', 'codes', 'bidCheck', 'rooms', 'activeCanvasIdByPage', 'numberKeyBindings', 'legendSettings', 'ductSettings', 'waterSettings', 'multiplyZoneSettings', 'scaleZoneSettings', 'showGridOverlay', 'gridSettings'];
+      const beforePreApply = {};
+      PRE_APPLY_PROJECT_FIELDS.forEach((k) => { beforePreApply[k] = state[k]; });
+      applyTakeoffBackupToState(backupToApply);
+      App.undoBootPreApply = () => {
+        App.undoBootPreApply = null;
+        if (state.pages.length) return false;   // a plan is open: whatever is on screen is the reader's now
+        PRE_APPLY_PROJECT_FIELDS.forEach((k) => { state[k] = beforePreApply[k]; });
+        return true;
+      };
+      // No PDF in the backup, so no offer and no project to go back to: only the palette rides
+      // into the next bid. Uploading the same PDF again re-applies the whole backup
+      // (features/pdf-intake.js maybeReapplyLocalBackupMarks), project fields and all.
+      if (!bootRestorePromptable) App.undoBootPreApply();
+    }
     if (!state.supabaseSession?.user && canUseDevAuth() && urlParams.get('devAuth') === '1') {
       const ok = await devAuthSignIn();
       if (ok && window.history?.replaceState) {

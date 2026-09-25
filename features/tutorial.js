@@ -91,11 +91,23 @@
   // On a tablet the header's tool strip scrolls sideways, so a tool can be shown yet past the
   // edge; it still counts (render scrolls it into view), where a tool that is display:none does not.
   const inStrip = (el) => !!el.closest('.header-tools-scroll');
-  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && (onScreenX(el) || inStrip(el)) && (!within || within.contains(el))) return el; } return null; };
+  // Shown: laid out and not hidden. offsetParent is null for a position:fixed element even when it
+  // is on screen, which hid the Chain and Drop panels from the ladder and the card (2026-09-25).
+  const shown = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && shown(el) && (onScreenX(el) || inStrip(el)) && (!within || within.contains(el))) return el; } return null; };
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
-  const findCounter = (id, re) => (state().counters || []).find((c) => c.id === id) || (state().counters || []).find((c) => re.test(c.name || ''));
+  // The reader's palette as the tour found it. A step names the tour's own item, or a standing one
+  // only once the reader has used it: the plumbing tour's "Make a Water Closet counter" ticked itself on a
+  // standing "Water Closet", and "A line type in two clicks" on the palette's first line type, before
+  // the reader had done anything (by hand, 2026-09-25). Set when a tour starts.
+  let standingIds = new Set();
+  let standingSnap = {};   // the standing line types' settings as the tour found them
+  const isFresh = (x) => !!x && !standingIds.has(x.id);
+  const lineTypeUsed = (lt) => (state().pages || []).some((p) => { const a = App.getActiveAnnotations(p); return !!a && (a.polylines || []).concat(a.quickLines || []).some((l) => l.lineTypeId === lt.id); });
+  const findCounter = (id, re) => { const all = (state().counters || []).filter((c) => re.test(c.name || '')); return (state().counters || []).find((c) => c.id === id) || all.find(isFresh) || all.filter((c) => markCount(c.id) > 0).pop(); };
+  const findLineType = (id, test) => { const all = (state().lineTypes || []).filter((lt) => { try { return !!test(lt); } catch (_) { return false; } }); return (state().lineTypes || []).find((lt) => lt.id === id) || all.filter(isFresh).pop() || all.filter(lineTypeUsed).pop(); };
   const customIcon = (name) => ((App.getEffectiveCustomIcons() || []).find((i) => i.name === name) || {}).value;
   const firstIcon = () => customIcon('Toilet') || App.getOrderedIcons()[0].value;
 
@@ -116,7 +128,8 @@
   const zoneR = (z) => Math.max(z.r, TARGET_MIN_PX / Math.max(0.05, state().zoom || 1));   // the radius that COUNTS, in sheet points
   const inCircle = (pt, z) => Math.hypot(pt.x - z.x, pt.y - z.y) <= zoneR(z);
   const pageAnnOf = (i) => { const p = state().pages && state().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
-  const markersOf = (pageIdx, counterId) => { const a = pageAnnOf(pageIdx); if (!a) return []; const m = a.counterMarkers || {}; return counterId ? (m[counterId] || []) : Object.keys(m).reduce((all, k) => all.concat(m[k] || []), []); };
+  // `counterId`: one id, several (an array: the lesson's Lavatory and the reader's own twin of it), or null for any counter.
+  const markersOf = (pageIdx, counterId) => { const a = pageAnnOf(pageIdx); if (!a) return []; const m = a.counterMarkers || {}; const ids = Array.isArray(counterId) ? counterId : counterId ? [counterId] : Object.keys(m); return ids.reduce((all, k) => all.concat(m[k] || []), []); };
   // One circle per spot, each done once a mark of `counterId` (any counter when null) sits
   // in it. Close spots share a mark to the NEAREST circle only, so two circles never both
   // light from one click.
@@ -224,9 +237,12 @@
   };
   // The reading the tour expects, and how far off is still "20 ft".
   const PROVE_FT = 20, PROVE_TOL_FT = 0.6;
+  // The last measure in feet, at the scale it was taken at (stored with it). It read null once the
+  // reader went to another sheet, and a proof passed a moment before turned into "the scale is off"
+  // (by hand, 2026-09-25); every caller checks lm.pageIdx itself.
   const measuredFeet = () => {
     const lm = state().lastMeasure;
-    if (!lm || lm.pageIdx !== state().currentPage || !(lm.pts > 0) || !lm.scale || !(lm.scale.pixelsPerUnit > 0)) return null;
+    if (!lm || !(lm.pts > 0) || !lm.scale || !(lm.scale.pixelsPerUnit > 0)) return null;
     const v = lm.pts / lm.scale.pixelsPerUnit;
     return App.convertUnitValue ? App.convertUnitValue(v, lm.scale.unit || 'ft', 'ft') : v;
   };
@@ -247,7 +263,8 @@
 
   // ===== the electrical tour ===============================================================
   const eCounter = () => findCounter(tourCounterId, /receptacle/i);
-  const eLineType = () => (state().lineTypes || []).find((lt) => lt.id === tourLineTypeId) || (state().lineTypes || []).find((lt) => lt.raceway && lt.conductors && lt.conductors.length);
+  const receptacleIds = () => { const ids = (state().counters || []).filter((c) => /receptacle/i.test(c.name || '')).map((c) => c.id); return ids.length ? ids : ['-']; };
+  const eLineType = () => findLineType(tourLineTypeId, (lt) => lt.raceway && lt.conductors && lt.conductors.length);
 
   const ELECTRICAL_STEPS = [
     {
@@ -271,7 +288,7 @@
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
       body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", the number the Chain tool turns into vertical conduit in a moment.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
-      check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number'); if (c) tourCounterId = c.id; return !!c; },
+      check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Add it for me', run: addReceptacle },
     },
     {
@@ -286,7 +303,17 @@
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
       body: '1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type 3/4" EMT, and add it.\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 3 #12 THHN + 1 #12 G.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
-      target: ['#childCountsGroup', '#createLineTypeName', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'],
+      // the card's five lines in order: Name and Create in the + Add dialog, the new type's pencil, then
+      // the raceway and the conductors in its details (the ring named another dialog's fields and lit
+      // nothing; by hand, 2026-09-25)
+      target: () => {
+        const val = (id) => (el(id) || {}).value || '';
+        const emt = (state().lineTypes || []).filter((l) => /emt/i.test(l.name || '') && isFresh(l)).pop();
+        return ladder(
+          val('racewayKind') !== 'EMT' ? '#racewayKind' : null, !/3\/4/.test(val('racewaySize')) ? '#racewaySize' : null, !String(val('conductorsSpec')).trim() ? '#conductorsSpec' : null,
+          !/emt/i.test(val('lineTypeName')) ? '#lineTypeName' : '#lineTypeCreate',
+          emt ? pencilOf('lineType', emt) : null, '#addLineType');
+      },
       check: () => { const lt = eLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 3/4" EMT · 3 #12 + G', run: addEmtLineType },
     },
@@ -301,14 +328,17 @@
       id: 'chain', title: 'Chain a run', kind: 'do',
       body: '1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall.\n4. Click inside the second, then the third.\nEvery click places the device, draws the run back to the previous one and writes the vertical drop. The footer tells you the drop before you click.',
       target: ['#chainPanel', '#chainBtn'], page: 0,
-      zones: () => { const c = eCounter(); return markZones(0, c ? c.id : '-', CHAIN_SPOTS, 15); },
-      check: () => { const a = ann(); return !!a && allDone(markZones(0, (eCounter() || {}).id || '-', CHAIN_SPOTS, 15)) && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
+      // any receptacle counter: the reader's own "Duplex Receptacle", left by an earlier tour, sits first in
+      // the Chain panel under the same name (by hand, 2026-09-25)
+      zones: () => markZones(0, receptacleIds(), CHAIN_SPOTS, 15),
+      check: () => { const a = ann(); return !!a && allDone(markZones(0, receptacleIds(), CHAIN_SPOTS, 15)) && (a.quickLines || []).filter((l) => (l.endDrop || 0) > 0 || (l.startDrop || 0) > 0).length >= 2; },
       action: { label: 'Chain three for me', run: chainThreeReceptacles },
     },
     {
       id: 'circuit', title: 'Make it a circuit', kind: 'do',
-      body: '1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type a name.\n3. In Panel, type LP-1. In Circuit, type 7.\n4. Click [[Done]].\nA group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
-      target: ['#groupModal .modal-card', '#addGroup', '#groupsSectionTitle'],
+      body: '1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type a name.\n4. In Panel, type LP-1. In Circuit, type 7.\n5. Click [[Done]].\nA group with a panel tag is a circuit: the report gets a circuit schedule, and the checks know which devices belong together.',
+      // Groups are off on the sample plan: the section, and its + Add, only show once they are on (by hand, 2026-09-25)
+      target: () => { const empty = ['#groupModalName', '#groupModalPanel', '#groupModalCircuit'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },
       check: () => (state().groups || []).some((g) => g.panel),
       action: { label: 'Create LP-1 / 7 and assign the run', run: makeCircuit },
     },
@@ -348,13 +378,19 @@
   const LAV_SPOTS = [{ x: 688.5, y: 369 }, { x: 717, y: 369 }, { x: 745.5, y: 369 }];
   const WOMEN_ROOM = { x1: 628, y1: 356, x2: 767, y2: 522 };
   const WOMEN_INNER = { x1: 638, y1: 364, x2: 757, y2: 514 };   // the room's fixtures: what a typical-floor box must hold
-  const typicalZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => (z.multiplier || 1) > 1); };
+  // three floors is ×3: a zone left at the dialog's 2 passed, and the proof step's "×3 already applied" read ×2 (by hand, 2026-09-25)
+  const typicalZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => z.multiplier === 3); };
+  const otherZones = () => { const a = ann(); return ((a && a.multiplyZones) || []).filter((z) => z.multiplier !== 3); };
   const RFI_SPOT = { x: 690, y: 425 };
   const RFI_TEXT = 'RFI: ADA clearance at the end stall in Women 108?';
 
   const pCounter = () => findCounter(tourCounterId, /water closet|toilet|\bwc\b/i);
   const pLav = () => findCounter(tourSecondCounterId, /lav|sink/i);
-  const pLineType = () => (state().lineTypes || []).find((lt) => lt.id === tourLineTypeId) || (state().lineTypes || [])[0];
+  const pLineType = () => findLineType(tourLineTypeId, () => true);
+  // A second line type with the branch's name (the reader's own, left by an earlier tour) took the
+  // setting instead of the branch's: say which one the ring is on. Only a change made in this tour: a
+  // twin an earlier tour left set that way is not the reader's slip now.
+  const twinHint = (did) => { const lt = pLineType(); if (!lt || did(lt)) return ''; const twin = (state().lineTypes || []).find((x) => x.id !== lt.id && x.name === lt.name && did(x) && !(standingSnap[x.id] && did(standingSnap[x.id]))); return twin ? 'Two line types read ' + lt.name + '. That went on the other one: open the pencil lit in the sidebar, the one the branch is drawn with' : ''; };
   const anyNoteRfi = () => (state().pages || []).some((p) => (p.canvases || []).some((cv) => ((cv.annotations && cv.annotations.notes) || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')))));
   // a rise or fall written on the run END that sits inside the circle at `spot`
   const dropAt = (spot, r) => { const a = ann(); if (!a) return false; const z = { x: spot.x, y: spot.y, r }; return (a.quickLines || []).some((l) => ((l.startDrop || 0) > 0 && inCircle({ x: l.x1, y: l.y1 }, z)) || ((l.endDrop || 0) > 0 && inCircle({ x: l.x2, y: l.y2 }, z))); };
@@ -429,7 +465,7 @@
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet.\n4. Pick the Toilet symbol from the plumbing set.\n5. Pick a colour.\n6. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
-      target: ['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      target: () => counterFormTargets(/water closet|toilet|\bwc\b/i),
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
     },
@@ -444,8 +480,9 @@
     },
     {
       id: 'linetype', title: 'A line type in two clicks', kind: 'do',
-      body: 'The cold-water branch that feeds the lav battery needs a line type.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Quick]] tab.\n3. Pick 1in, then PEX.\n4. Click [[Add Line Type]].\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
-      target: ['#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#addLineType'],
+      body: 'The cold-water branch that feeds the lav battery needs a line type.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. At the top of the dialog, click [[Quick]] (Size, material and colour in one row).\n3. Pick 1in, then PEX.\n4. Click [[Add Line Type]].\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
+      // the pickers the card names, in its order, then Add (the ring sat on Add over a 0.5in Size; by hand, 2026-09-25)
+      target: () => { const sz = el('quickLineSize'), mat = el('quickLineMaterial'); const pickNext = sz && sz.value !== '1in' ? '#quickLineSize' : (mat && mat.value !== 'PEX' ? '#quickLineMaterial' : null); return ladder(pickNext, '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', '#addLineType'); },
       check: () => { const lt = pLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
       action: { label: 'Create 1in PEX', run: addPexLineType },
     },
@@ -459,7 +496,7 @@
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the run inside the circle, at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
+      body: 'The branch comes up from below the slab.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft, or type 3 and click [[Add]] when it is not among the recent sizes.\n3. Click the end of the run inside the circle, at the first lavatory.\nThe riser\'s 3 ft joins the footage: plan view never shows it, the bid needs it. Clicking the same end again clears it.',
       target: ['#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
       check: () => dropAt(LAV_SPOTS[0], 14),
@@ -469,21 +506,24 @@
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
       body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
-      target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-      check: () => (state().lineTypes || []).some((lt) => (lt.childCounts || []).length),
+      target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
+      // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
+      check: () => { const lt = pLineType(); return !!lt && (lt.childCounts || []).length > 0; },
+      hint: () => twinHint((lt) => (lt.childCounts || []).length > 0),
       action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
     {
       id: 'waterside', title: 'Give the pipe its water', kind: 'do',
       body: 'The branch carries cold water, and the app can size cold water from the fixtures on it once the pipe says so.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under Water, click [[Cold]].\nEvery run of the type is now a cold-water run, and the three lavatories chained on it tie to it with a dashed leader.',
-      target: ['#counterLineTypeDetailsWaterGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
+      target: () => ladder('#counterLineTypeDetailsWaterGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       check: () => { const lt = pLineType(); return !!(lt && lt.waterSide === 'cold'); },
+      hint: () => twinHint((lt) => lt.waterSide === 'cold'),
       action: { label: 'Make it cold water', run: setBranchCold },
     },
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
       body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the IPC table row it read. The table has two columns, public (a restaurant, an office) and private (a house, a hotel room); click the word public in the chip to move this one counter to the private column.',
-      target: ['#counterLineTypeDetailsWsfuGroup', '#countersList .edit-btn', '#countersSectionTitle'],
+      target: () => ladder('#counterLineTypeDetailsWsfuGroup', pencilOf('counter', pLav()), '#countersSectionTitle'),
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
       action: { label: 'Read the table for me', run: giveLavFixtureUnits },
     },
@@ -502,13 +542,13 @@
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26), 'Drag your box around Women 108, anywhere in here')],
       check: () => boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)).done,
-      hint: () => boxMiss(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)),
+      hint: () => boxMiss(typicalZones().concat(otherZones()), WOMEN_INNER, grow(WOMEN_ROOM, 26)) || (!typicalZones().length && otherZones().length ? 'The box is there, the number is ×' + (otherZones()[0].multiplier || 1) + '. Right-click the zone\'s label, Edit multiplier, and type 3' : ''),
       action: { label: 'Wrap Women 108 in a ×3 zone', run: addTypicalFloorZone },
     },
     {
       id: 'rfi', title: 'Flag a question', kind: 'do',
-      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
-      target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
+      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question, and click [[Done]].\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
+      target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: RFI_SPOT.x, y: RFI_SPOT.y, r: 42, done: rfiAt(RFI_SPOT, 42) }],
       check: () => rfiAt(RFI_SPOT, 42),
       hint: () => (anyNoteRfi() && !rfiAt(RFI_SPOT, 42) ? 'That flag is outside the circle. Drag the note into the circle' : ''),
@@ -517,7 +557,7 @@
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
       body: '1. In the left sidebar, open SUMMARY.\n2. Click the Water Closet total.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
-      target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
+      target: () => ladder(summaryRowOf('counter', pCounter()), '#summarySectionTitle'),
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
       hold: true,   // the step IS the dialog: the reader leaves it with Next, which closes it
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
@@ -572,7 +612,8 @@
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
       body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end inside the shaded boundary.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
-      target: ['#roomBoxApply', '#roomBoxType', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'],
+      // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'); },
       page: 0,
       zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
       hint: () => boxMiss(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)),
@@ -582,7 +623,7 @@
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip beside the field shows the symbol it will take.\n5. Click [[Create Counter]].\nThe counter tool arms itself.',
-      target: ['#counterCreate', '#counterCfm', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      target: () => counterFormTargets(/diffuser/i, ['#counterCfm']),
       check: () => { const c = hCounter(); if (c) tourCounterId = c.id; return !!(c && c.cfm > 0); },
       action: { label: 'Create it for me', run: addDiffuser },
     },
@@ -597,8 +638,8 @@
     },
     {
       id: 'system', title: 'Name the system', kind: 'do',
-      body: 'A group with an equipment tag is a system.\n1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type RTU-1.\n3. In Equipment tag, type RTU-1.\n4. In Capacity, type 2000.\n5. Click [[Done]].\n6. Click RTU-1 in the sidebar to select it, so the main you trace next belongs to it.\nThe header will read the system\'s designed air against its capacity.',
-      target: ['#groupModalDone', '#groupModalCapacityCfm', '#addGroup', '#groupsSectionTitle'],
+      body: 'A group with an equipment tag is a system.\n1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type RTU-1.\n4. In Equipment tag, type RTU-1.\n5. In Capacity, type 2000.\n6. Click [[Done]].\nRTU-1 is now selected, lit in the sidebar, so the main you trace next belongs to it. Clicking it again would put it down.\nThe header will read the system\'s designed air against its capacity.',
+      target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },   // Groups are off on the sample plan (by hand, 2026-09-25)
       check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
       action: { label: 'Make RTU-1 for me', run: makeSystem },
     },
@@ -627,10 +668,12 @@
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
-      onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Fits the roof to tick it.',
+      onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Curb & power coordinated to tick it: who sets the RTU\'s curb and runs its power is yours to settle with the GC and the electrician.',
       target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
-      check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-fits-roof']),
-      action: { label: 'Tick it for me', run: tickFitsTheRoof },
+      // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,
+      // and the step waited for a tick nobody could give it (by hand, 2026-09-25)
+      check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-curb-power']),
+      action: { label: 'Tick it for me', run: tickCurbAndPower },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
@@ -959,18 +1002,20 @@
     s.ctxTarget = null;
     if (moved) { App.markProjectDirty(); App.renderAnnotations(); App.updateUI(); }
   }
-  function tickFitsTheRoof() {
+  function tickCurbAndPower() {
     const s = state();
     s.bidCheck = s.bidCheck || { manual: {} };
     s.bidCheck.manual = s.bidCheck.manual || {};
-    if (s.bidCheck.manual['duct-fits-roof']) return;
+    if (s.bidCheck.manual['duct-curb-power']) return;
     App.pushUndoSnapshot();
-    s.bidCheck.manual['duct-fits-roof'] = true;
+    s.bidCheck.manual['duct-curb-power'] = true;
     App.markProjectDirty(); App.updateUI();
-    App.logUserEvent && App.logUserEvent('bid_check_row_state', s.currentProjectId || null, { row: 'duct-fits-roof', kind: 'manual', state: true, surface: 'tour' });
+    App.logUserEvent && App.logUserEvent('bid_check_row_state', s.currentProjectId || null, { row: 'duct-curb-power', kind: 'manual', state: true, surface: 'tour' });
   }
 
   function el(id) { return document.getElementById(id); }
+  let zoomedForZones = false;   // focusOnZones moved the view for the current step's circles
+  let nudgedFor = -1;     // the step whose card has already moved the sheet once
   let dragPos = null;      // where the reader dragged the card to, this step
   let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
@@ -1051,16 +1096,17 @@
     // dialog (only a control inside it qualifies there)
     const openModal = document.querySelector('.modal-overlay.visible');
     const modalOpen = !!openModal;
-    let target = step.target.length ? q(step.target, openModal) : null;
+    const ladder = targetsOf(step);
+    let target = ladder.length ? q(ladder, openModal) : null;
     // On a phone the sidebar is a drawer: when the step's control sits in it and
     // nothing of the ladder is on screen, light the ☰ that opens it.
-    if (!target && !modalOpen && isNarrow() && step.target.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
+    if (!target && !modalOpen && isNarrow() && ladder.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
     const spot = el('tourSpot');
     const card = el('tourCard');
     if (target) {
       if (target !== lastTarget) scrollSettled = false;
       let r = target.getBoundingClientRect();
-      const inView = r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+      const inView = seen(target, r);
       if (!inView && (!scrollSettled || inStrip(target))) { try { target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
       else if (inView) scrollSettled = true;
       lastTarget = target;
@@ -1083,6 +1129,9 @@
         { left: r.left - gap - cw, top: clampY(r.top) },
         { left: clampX(r.left), top: r.top - gap - ch },
       ];
+      // A control in the top bar: beside it is the rest of the bar, the tools a card goes on to
+      // name ("line type settings on the line tools"), so below comes first (by hand, 2026-09-25).
+      if (r.bottom <= 64) spots.unshift(spots.splice(1, 1)[0]);
       const fits = (c) => c.left >= edge && c.top >= edge && c.left + cw <= vw - edge && c.top + ch <= vh - edge;
       let place = spots.find(fits);
       if (!place) place = { left: (r.left + r.width / 2 > vw / 2) ? edge : vw - cw - edge, top: (r.top + r.height / 2 > vh / 2) ? edge : vh - ch - edge };
@@ -1108,14 +1157,27 @@
       // that button. The first corner clear of every box wins; none clear, it stays.
       const ctl = otherControlBoxes(step, target, openModal);
       if (ctl.length) {
-        const keep = zs.concat(ctl, r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }]);
-        const clearOf = (c) => !keep.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
-        if (!clearOf(place)) {
+        const controls = ctl.concat(r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }]);
+        const hits = (c, boxes) => boxes.filter((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12).length;
+        if (hits(place, controls) || hits(place, zs)) {
+          // The corner covering the fewest named controls, then the fewest sheet targets: a
+          // control cannot be moved out from under the card, a sheet target can be panned
+          // (at 1280 × 720 no corner was clear of both, and the card stayed on the row).
           const corners = [{ left: edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: 56 }, { left: edge, top: 56 }];
-          place = corners.find(clearOf) || place;
+          const cost = (c) => hits(c, controls) * 1000 + hits(c, zs);
+          const mine = cost(place);
+          let best = place, bestCost = mine;
+          corners.forEach((c) => { const k = cost(c); if (k < bestCost) { best = c; bestCost = k; } });
+          place = best;
         }
       }
       if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
+      // When no corner leaves the sheet targets clear (a named sidebar list on one side, circles
+      // on the other), the sheet moves instead of the card: once per step, a pan that brings the
+      // circles out from under the card, sideways first, then up or down. Found by hand
+      // 2026-09-25: the kitchen step's card kept off FD-1 in the sidebar and sat on the
+      // kitchen-exit hand sink and the east floor drain, so both clicks landed on the card.
+      if (!dragPos && zs.length && nudgedFor !== stepIdx) nudgeSheetFromCard(zs, { x1: place.left - 12, y1: place.top - 12, x2: place.left + cw + 12, y2: place.top + ch + 12 }, place.left > vw / 2, place.top > vh / 2);
       const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
       // A phone docks the card to an edge (styles.css, max-width 767px): the far
@@ -1167,7 +1229,10 @@
     const step = active ? STEPS[stepIdx] : null;
     const zones = step && !document.querySelector('.modal-overlay.visible') && (step.page == null || state().currentPage === step.page) ? stepZones(step) : [];
     const box = zones.length ? sheetBox() : null;
-    if (!box) { if (svg.childNodes.length) svg.textContent = ''; return; }
+    // Emptied, the cache goes too: a dialog on a step hid the circles and, when it closed, the same
+    // drawing matched the cache and was never put back (the gas drops after Create Counter, by
+    // hand 2026-09-25).
+    if (!box) { if (svg.childNodes.length) svg.textContent = ''; svg.__last = ''; return; }
     const wrap = document.querySelector('.canvas-wrapper');
     const w = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     const X = (x) => box.left + x * box.k, Y = (y) => box.top + y * box.k;
@@ -1202,17 +1267,104 @@
   }
   // The step's named controls other than the one pointed at, on screen and not the sheet
   // (inside the open dialog when one is up), as screen boxes the card must keep off.
+  // Every element a selector matches, not the first: "#lineTypesList .edit-btn" names the pencil
+  // beside the type the step talks about, which is the sixth pencil on a device with a
+  // standing palette, and the card beside the first sat on it (by hand, 2026-09-24).
+  // On screen AND not clipped out by a scrolling box around it: Create Counter at the foot of a
+  // tall dialog sits inside the window but under the panel's scroll edge (by hand, 2026-09-25).
+  // Its centre must show.
+  function seen(t, r) {
+    if (!(r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth)) return false;
+    const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    for (let p = t.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (!/(auto|scroll|hidden)/.test(cs.overflowY + ' ' + cs.overflowX)) continue;
+      const b = p.getBoundingClientRect();
+      if (!b.width || !b.height) continue;   // a zero box clips nothing that shows (#annCanvas's wrapper: the canvas is positioned out of it)
+      if (cy < b.top || cy > b.bottom || cx < b.left || cx > b.right) return false;
+    }
+    return true;
+  }
+  // The pencil beside ONE palette row. "#lineTypesList .edit-btn" alone lights the first pencil in
+  // the list: the reader's own 1.5in Copper on a device with a standing palette, while the card said
+  // the pencil beside 1-1/4in Gas (by hand, 2026-09-25). Null when the item is not there yet.
+  function pencilOf(kind, item) {
+    if (!item || !item.id) return null;
+    const id = window.CSS && CSS.escape ? CSS.escape(item.id) : item.id;
+    return kind === 'counter' ? '#countersList [data-counter-id="' + id + '"] .edit-btn' : '#lineTypesList [data-line-type-id="' + id + '"] .edit-btn';
+  }
+  const ladder = (...sels) => sels.filter(Boolean);
+  // One SUMMARY row, the way pencilOf names one palette row: the card says the Floor Drain total
+  // and the bare selector lit the first total, Lavatory (by hand, 2026-09-25).
+  function summaryRowOf(kind, item) {
+    if (!item || !item.id) return null;
+    const id = window.CSS && CSS.escape ? CSS.escape(item.id) : item.id;
+    return '#summaryList .summary-item-clickable[data-type="' + kind + '"][data-id="' + id + '"]';
+  }
+  // The Create Counter form's ladder, in the order the card asks: Name until it reads what the
+  // step says to type, then each of `fields` still empty (the HVAC diffuser's CFM), then the
+  // Create Counter button; the Create tab and + Add when the form is not up yet.
+  function counterFormTargets(nameRe, fields) {
+    const n = document.getElementById('counterName');
+    const todo = (n && nameRe.test(n.value || '') ? [] : ['#counterName'])
+      .concat((fields || []).filter((sel) => { const f = document.querySelector(sel); return !!f && !String(f.value || '').trim(); }));
+    return todo.slice(0, 1).concat(['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter']);
+  }
+  // A step's target ladder: an array of selectors, or a function returning one when what to
+  // light depends on the form. The create-a-counter steps light Name until a name is typed, then
+  // Create Counter: a 900-px-tall window scrolled the dialog down to the button the moment it
+  // opened, and the Name field the card asks for first sat out of sight (by hand, 2026-09-25).
+  // Wherever a step lights the pages list, the PAGES ▶ follows it: arming a counter folds PAGES,
+  // its heading opens Page Settings rather than the list, and "Under PAGES, click M-501" had
+  // nothing to click (by hand, 2026-09-25).
+  function targetsOf(step) {
+    let list;
+    if (typeof step.target !== 'function') list = step.target || [];
+    else { try { list = step.target() || []; } catch (_) { list = []; } }
+    const i = list.indexOf('#pagesList');
+    return i < 0 ? list : list.slice(0, i + 1).concat(['#pagesCollapseIcon'], list.slice(i + 1));
+  }
+  // The status line for a step that sends the reader to another sheet while PAGES is folded.
+  const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? 'PAGES is folded: click the ▶ beside it, then ' + label : ''; };
   function otherControlBoxes(step, pointed, within) {
     const out = [];
-    (step.target || []).forEach((sel) => {
-      const el = document.querySelector(sel);
-      if (!el || el === pointed || el.offsetParent === null || (within && !within.contains(el))) return;
-      const r = el.getBoundingClientRect();
-      if (!r.width || !r.height || r.width * r.height > window.innerWidth * window.innerHeight * 0.4) return;
-      if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return;
-      out.push({ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom });
+    targetsOf(step).forEach((sel) => {
+      let els = [];
+      try { els = Array.from(document.querySelectorAll(sel)); } catch (_) { return; }
+      els.forEach((el) => {
+        if (el === pointed || !shown(el) || (within && !within.contains(el))) return;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height || r.width * r.height > window.innerWidth * window.innerHeight * 0.4) return;
+        if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return;
+        out.push({ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom });
+      });
     });
     return out;
+  }
+  function nudgeSheetFromCard(zs, cardBox, cardRight, cardLow) {
+    const under = (dx, dy) => zs.filter((b) => b.x1 + dx < cardBox.x2 && b.x2 + dx > cardBox.x1 && b.y1 + dy < cardBox.y2 && b.y2 + dy > cardBox.y1).length;
+    if (!under(0, 0)) return;
+    nudgedFor = stepIdx;
+    const wrap = document.querySelector('.canvas-wrapper');
+    if (!wrap || !state().pan) return;
+    const w = wrap.getBoundingClientRect(), m = 12;
+    const zx1 = Math.min(...zs.map((b) => b.x1)), zx2 = Math.max(...zs.map((b) => b.x2));
+    const zy1 = Math.min(...zs.map((b) => b.y1)), zy2 = Math.max(...zs.map((b) => b.y2));
+    // sideways: every circle to the free side of the card, as far as the sheet's edge allows
+    let dx = cardRight ? Math.min(0, cardBox.x1 - zx2) : Math.max(0, cardBox.x2 - zx1);
+    if (cardRight && zx1 + dx < w.left + m) dx = Math.min(0, w.left + m - zx1);
+    if (!cardRight && zx2 + dx > w.right - m) dx = Math.max(0, w.right - m - zx2);
+    let dy = 0;
+    if (under(dx, 0)) {
+      dy = cardLow ? Math.min(0, cardBox.y1 - zy2) : Math.max(0, cardBox.y2 - zy1);
+      if (cardLow && zy1 + dy < w.top + m) dy = Math.min(0, w.top + m - zy1);
+      if (!cardLow && zy2 + dy > w.bottom - m) dy = Math.max(0, w.bottom - m - zy2);
+      if (under(dx, dy) >= under(dx, 0)) dy = 0;
+    }
+    if (under(dx, dy) >= under(0, 0) || (Math.abs(dx) < 2 && Math.abs(dy) < 2)) return;
+    state().pan = { x: state().pan.x + dx, y: state().pan.y + dy };
+    zoomedForZones = true;
+    App.renderPdf(); App.updateUI();
   }
   function zoneScreenBoxes(step) {
     const b = sheetBox(); if (!b) return [];
@@ -1253,6 +1405,8 @@
     const z = Math.max(fit, Math.min(max, Math.max(Math.min(want, max), Math.min(need, want))));
     state().zoom = z;
     state().pan = { x: W / 2 - ((x1 + x2) / 2) * z, y: H / 2 - ((y1 + y2) / 2) * z };
+    nudgedFor = -1;   // the zoom moved the circles: the card gets one more look
+    zoomedForZones = true;
     App.renderPdf(); App.updateUI();
   }
   function showMeWhere() {
@@ -1276,15 +1430,28 @@
   function closeStrayDialogs(step) {
     document.querySelectorAll('.modal-overlay.visible').forEach((ov) => {
       if (KEEP_OPEN.includes(ov.id)) return;
-      const holdsTarget = (step.target || []).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t); });
+      // a control the step names that SHOWS in it: the fixture-units step names the details dialog's
+      // WSFU field, hidden for a line type, and kept the 1in PEX details open over the lavatory's pencil
+      // (by hand, 2026-09-25)
+      const holdsTarget = targetsOf(step).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t) && shown(t); });
       if (holdsTarget) return;
       const x = ov.querySelector('[data-modal-close]');
       if (x) x.click();
       if (ov.classList.contains('visible') && App.hideModal) App.hideModal(ov.id);
     });
+    // The floating tool palettes (Chain, Drop) the same way: the Drop palette the rise step
+    // left open sat on COUNTERS + Add, which the next step asks for (by hand, 2026-09-24).
+    ['dropPanel', 'chainPanel'].forEach((id) => {
+      const p = document.getElementById(id);
+      if (!p || p.style.display === 'none') return;   // the palettes are fixed-position: offsetParent is null even when shown
+      const holdsTarget = targetsOf(step).some((sel) => { let t = null; try { t = document.querySelector(sel); } catch (_) { return false; } return !!t && p.contains(t); });
+      if (holdsTarget) return;
+      const x = document.getElementById(id + 'Close') || p.querySelector('.chain-panel-close, .drop-panel-close');
+      if (x) x.click();
+    });
   }
   function goTo(i) {
-    dragPos = null;
+    dragPos = null; nudgedFor = -1;
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;
@@ -1296,11 +1463,50 @@
     // passes before they touch it (Bid Check stayed open across chapters, 2026-09-24). Only
     // moving forward: a step the reader came Back to keeps what they left.
     if (!heldByBack && STEPS[stepIdx].onEnter) { try { STEPS[stepIdx].onEnter(); } catch (_) { /* a step's setup never breaks a move */ } }
+    // The last step's circles zoomed the sheet onto their corner; a step with none of its own
+    // (a question about the sheet) gets the whole sheet back, or its answer can sit off screen
+    // (the interceptor question opened on the east wall, the restrooms out of view, 2026-09-25).
+    if (!heldByBack && zoomedForZones && !stepZones(STEPS[stepIdx]).length && App.fitZoom) { zoomedForZones = false; App.fitZoom(); App.updateUI(); }
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     const def = TOURS[tourId];
     if (def && def.onStep) { try { def.onStep(STEPS[stepIdx].id, stepIdx); } catch (_) { /* a tour's own bookkeeping never breaks a move */ } }
     render();
+  }
+  // The sidebar search words ride a TOUR the way the lessons carry them for themselves: cleared when a
+  // tour starts, typed back when it stops, and put back on the next load when a reload skipped the stop.
+  // A word left in COUNTERS hid the Water Closet the plumbing tour had the reader make (by hand,
+  // 2026-09-25, the lesson bug wendi found, in the five-minute tours). A lesson or a course ("x:y")
+  // handles its own.
+  const TOUR_SEARCH_KEY = 'clickcount-tour-searches-before';
+  const SEARCH_FIELDS = [ ['counterSearch', 'counterSearchInput'], ['lineTypeSearch', 'lineTypeSearchInput'], ['linesSearch', 'linesSearchInput']];
+  function setSearchWords(vals) {
+    SEARCH_FIELDS.forEach(([f, id]) => {
+      const v = (vals && vals[f]) || '';
+      state()[f] = v;
+      try { if (v) localStorage.setItem(f, v); else localStorage.removeItem(f); } catch (_) { /* storage may be unavailable */ }
+      if (el(id)) el(id).value = v;
+    });
+  }
+  function clearSearchesForTour() {
+    let held = null;
+    try { held = localStorage.getItem(TOUR_SEARCH_KEY); } catch (_) { /* noop */ }
+    if (held) { setSearchWords({}); return; }   // a second tour on top keeps the first snapshot, the reader's own
+    const before = {};
+    SEARCH_FIELDS.forEach(([f]) => { if (state()[f]) before[f] = state()[f]; });
+    if (!Object.keys(before).length) return;
+    try { localStorage.setItem(TOUR_SEARCH_KEY, JSON.stringify(before)); } catch (_) { /* this session's stop still restores */ }
+    tourSearchesBefore = before;
+    setSearchWords({});
+  }
+  let tourSearchesBefore = null;
+  function restoreSearchesAfterTour() {
+    let snap = tourSearchesBefore;
+    try { const raw = localStorage.getItem(TOUR_SEARCH_KEY); if (raw) snap = JSON.parse(raw); localStorage.removeItem(TOUR_SEARCH_KEY); } catch (_) { /* noop */ }
+    tourSearchesBefore = null;
+    if (!snap) return;
+    setSearchWords(snap);
+    if (App.updateUI) App.updateUI();
   }
   function startTutorial(id) {
     const s = state();
@@ -1309,6 +1515,9 @@
     STEPS = TOURS[tourId].steps;
     active = true;
     stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    standingIds = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
+    standingSnap = {}; (s.lineTypes || []).forEach((l) => { standingSnap[l.id] = { waterSide: l.waterSide, childCounts: (l.childCounts || []).slice() }; });
+    if (!String(tourId).includes(':')) clearSearchesForTour();
     document.body.classList.add('tour-active');
     if (timer) clearInterval(timer);
     timer = setInterval(render, 400);
@@ -1332,6 +1541,7 @@
     // A "Project from Last Session" offer that arrived mid-tour waited for
     // this moment (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
+    if (!String(tourId).includes(':')) restoreSearchesAfterTour();
     const def = TOURS[tourId];
     if (def && def.onStop) { try { def.onStop(!!finished); } catch (_) { /* a lesson's own bookkeeping never breaks the stop */ } }
   }
@@ -1408,11 +1618,24 @@
   // drive the same engine. A registered tour has no empty-canvas link and no done key
   // of its own; `onStop(finished)` is where it keeps its books.
   App.registerTour = (id, def) => { TOURS[id] = def; };
+  // A tour left by a reload: once the app has booted and no tour is running, the words go back.
+  (() => {
+    let held = null;
+    try { held = localStorage.getItem(TOUR_SEARCH_KEY); } catch (_) { /* noop */ }
+    if (!held) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      if (++tries > 600) { clearInterval(t); return; }
+      if (!App.bootSettled) return;
+      clearInterval(t);
+      setTimeout(() => { if (!active && !pending) restoreSearchesAfterTour(); }, 1500);
+    }, 100);
+  })();
   App.setTutorialPending = (v) => { pending = !!v; };
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf };
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

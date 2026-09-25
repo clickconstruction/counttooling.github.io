@@ -132,7 +132,7 @@ test.describe('Electrical, First-Class S5 — Bid Check', () => {
     expect(await page.evaluate(() => 'scale-verified' in window.state.bidCheck.manual)).toBe(false);
     await expect(page.locator('#bidCheckBadge')).toHaveText('7');
     // Auto rows carry no box and a click on their label changes nothing.
-    await page.evaluate(() => { window.state.lineTypes.push({ id: 'pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); window.App.updateUI(); });
+    await page.evaluate(() => { window.state.lineTypes.push({ id: 'pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); window.App.ensureActiveCanvas(window.state.pages[0]).annotations.quickLines.push({ x1: 0, y1: 300, x2: 400, y2: 300, id: 'qpex', lineTypeId: 'pex', color: '#47c88e', group: null }); window.App.updateUI(); });
     const autoRow = page.locator('#bidCheckList .bid-check-row[data-row-id="hangers"]');
     await expect(autoRow).toHaveClass(/auto/);
     await expect(autoRow.locator('.bid-check-box')).toHaveCount(0);
@@ -162,9 +162,12 @@ test.describe('Electrical, First-Class S5 — Bid Check', () => {
     expect(bc.manual.map((r) => r.id)).toEqual(['scope-vs-drawings', 'addenda', 'scale-verified', 'fixture-units', 'trap-arms', 'waste-slope', 'backflow-venting']);
     expect(await page.locator('#bidCheckBadge').textContent()).toBe('7');
     // a PEX line type without a hanger count turns the hanger-coverage row on and warns; a stamped count clears it
-    await page.evaluate(() => { window.state.lineTypes.push({ id: 'pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); window.App.updateUI(); });
+    await page.evaluate(() => { window.state.lineTypes.push({ id: 'pex', name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); window.App.ensureActiveCanvas(window.state.pages[0]).annotations.quickLines.push({ x1: 0, y1: 300, x2: 400, y2: 300, id: 'qpex', lineTypeId: 'pex', color: '#47c88e', group: null }); window.App.updateUI(); });
+    // a standing palette type nobody drew on this bid is not a run to hang (by hand, 2026-09-25)
+    await page.evaluate(() => { window.state.lineTypes.push({ id: 'old', name: '4in PVC old', color: '#4a9eff', curveStyle: 'straight' }); window.App.updateUI(); });
     let hang = (await page.evaluate(() => window.App.getBidCheck())).auto.find((r) => r.id === 'hangers');
     expect(hang.verdict).toBe('warn');
+    expect(hang.detail).not.toContain('4in PVC old');
     expect(hang.rule).toBe('plumb.hanger.pex');
     expect(hang.detail).toContain('1in PEX has no hanger count');
     expect(await page.locator('#bidCheckBadge').textContent()).toBe('8');
@@ -172,7 +175,7 @@ test.describe('Electrical, First-Class S5 — Bid Check', () => {
     hang = (await page.evaluate(() => window.App.getBidCheck())).auto.find((r) => r.id === 'hangers');
     expect(hang.verdict).toBe('ok');
     expect(await page.locator('#bidCheckBadge').textContent()).toBe('7');
-    await page.evaluate(() => { window.state.lineTypes = window.state.lineTypes.filter((l) => l.id !== 'pex'); window.App.updateUI(); });
+    await page.evaluate(() => { window.state.lineTypes = window.state.lineTypes.filter((l) => l.id !== 'pex'); const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.quickLines = a.quickLines.filter((l) => l.id !== 'qpex'); window.App.updateUI(); });
     // no advisory when nothing is at ⚠
     await page.evaluate(() => window.App.showBidCheckAdvisory('copy'));
     expect(await page.locator('#bidCheckAdvisoryModal.visible').count()).toBe(0);

@@ -235,6 +235,125 @@ test.describe('The plumbing course: a question is answered with a click', () => 
   });
 });
 
+// A returning estimator's device: a standing palette whose names share words with the course's
+// counters, set BEFORE the chapter starts (the lesson remembers it), at a desktop size.
+const seedStanding = (page) => page.evaluate(() => { const s = window.state, A = window.App; const icon = A.getOrderedIcons()[0].value; ['Panel Schedule Box', 'Floor Drain 4in', 'Lavatory', 'Water Closet', 'Hose Bibb', 'Duplex 15A', 'J-Box 4x4', 'Water Meter', 'RTU Roof', 'Exhaust Fan', 'Occupancy Sensor', 'Meter Base', 'Disconnect 60A', 'Diffuser 24x24', 'GFCI Bath', 'Type A'].forEach((name) => s.counters.push({ id: A.uid(), name, icon, color: '#888888' })); ['Gas 1in', '1/2in PEX', '4in PVC old'].forEach((name) => s.lineTypes.push({ id: A.uid(), name, color: '#888888' })); A.updateUI(); });
+async function startOnDevice(page, chapter, errors) {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await boot(page, '/app/', errors);
+  await page.waitForFunction(() => window.App.bootSettled === true);
+  await page.waitForTimeout(1200);   // the restore offer for the last lesson's sheets arrives on a poll; a returning reader answers it first
+  if (await page.locator('#lastSessionRestoreModal.visible').count()) await page.click('#lastSessionRestoreDiscard');
+  await seedStanding(page);
+  await page.evaluate((id) => window.App.startChapter(id), chapter);
+  await openSheets(page);
+}
+const seam = async (page, until) => { for (let i = 0; i < 20; i++) { const id = await stepId(page); if (id === until) return; const info = await page.evaluate(() => window.App.tutorialStepInfo()); if (info.kind === 'do' && !info.done && info.hasAction) { await page.evaluate(() => window.App.tutorialDoStep()); await page.waitForFunction((was) => window.App.tutorialStepId() !== was || (window.App.tutorialStepInfo() || {}).done, id, { timeout: 15000 }).catch(() => {}); } if (await stepId(page) === id) await page.click('#tourNext'); await page.waitForTimeout(200); } };
+// the card's box against an element's, and the step's circles under the card
+const cardOver = (page, sel, text) => page.evaluate(([sel, text]) => { const el = Array.from(document.querySelectorAll(sel)).find((e) => !text || e.textContent.includes(text)); if (!el) return 'missing'; el.scrollIntoView({ block: 'nearest' }); const a = el.getBoundingClientRect(), c = document.getElementById('tourCard').getBoundingClientRect(); return !(c.right <= a.left || c.left >= a.right || c.bottom <= a.top || c.top >= a.bottom); }, [sel, text]);
+const circlesUnderCard = (page) => page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(); return Array.from(document.querySelectorAll('#tourZones circle.tour-zone')).filter((z) => { const b = z.getBoundingClientRect(); return b.right > c.left && b.left < c.right && b.bottom > c.top && b.top < c.bottom; }).length; });
+
+test.describe('The plumbing course by hand on a returning estimator\'s device (2026-09-25)', () => {
+  test('the kitchen card keeps off FD-1 and the sheet moves its circles out from under it; the Quick Keys step waits for both keys and the closed dialog', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'fixtures', errors);
+    await seam(page, 'kitchen');
+    await page.waitForTimeout(1200);
+    expect(await cardOver(page, '#countersList .sidebar-item', 'FD-1')).toBe(false);
+    expect(await circlesUnderCard(page)).toBe(0);
+    await seam(page, 'keys');
+    await page.click('#statusBarQuickKeys');
+    await page.waitForSelector('#quickKeysModal.visible');
+    const val = (re) => page.evaluate((src) => { const o = Array.from(document.querySelector('#quickKeysModal select').options).find((x) => new RegExp(src).test(x.textContent)); return o && o.value; }, re);
+    await page.locator('#quickKeysModal select').nth(0).selectOption(await val('^FD-1'));
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('keys');
+    await expect(page.locator('#tourStatus')).toHaveText(/Now key 2: HS-1/);
+    await page.locator('#quickKeysModal select').nth(1).selectOption(await val('^HS-1'));
+    await expect(page.locator('#tourStatus')).toHaveText(/Close the dialog/);
+    await page.click('#quickKeysDone');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'done', null, { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('the water chapter makes L-1 beside a standing Lavatory, and the card keeps off the Chain panel', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'water', errors);
+    expect(await page.evaluate(() => window.state.counters.filter((c) => /lav/i.test(c.name)).map((c) => [c.name, !!c.lesson]))).toEqual([['Lavatory', false], ['L-1 Lavatory', true]]);
+    await seam(page, 'chain');
+    await page.mouse.move(700, 400);
+    await page.keyboard.press('t');
+    await page.waitForFunction(() => document.getElementById('chainPanel').style.display !== 'none');
+    await page.waitForTimeout(900);
+    expect(await cardOver(page, '#chainPanel')).toBe(false);
+    expect(errors).toEqual([]);
+  });
+
+  test('the circles come back after a dialog closes on their step (the gas drops after Create Counter), and a trace counts with the reader\'s own same-named type', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'gas', errors);
+    await seam(page, 'drops');
+    await page.waitForTimeout(600);
+    const circles = () => page.evaluate(() => document.querySelectorAll('#tourZones circle.tour-zone').length);
+    expect(await circles()).toBe(4);
+    await page.click('#addCounter');
+    await page.waitForSelector('#counterModal.visible');
+    expect(await circles()).toBe(0);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#counterModal.visible'));
+    await page.waitForTimeout(400);
+    expect(await circles()).toBe(4);
+    // the riser's stack: a "4in PVC" of the reader's own beside the chapter's, the trace made with the reader's
+    await startOnDevice(page, 'riser', errors);
+    await page.evaluate(() => { window.state.lineTypes.unshift({ id: 'mine-pvc', name: '4in PVC', color: '#888888' }); window.App.updateUI(); });
+    await seam(page, 'stack');
+    await page.waitForTimeout(800);
+    const mine = page.locator('#lineTypesList .sidebar-item .line-type-name', { hasText: /^4in PVC$/ }).first();
+    await mine.scrollIntoViewIfNeeded();
+    await mine.click();
+    expect(await page.evaluate(() => window.state.activeLineTypeId)).toBe('mine-pvc');
+    await page.mouse.move(700, 400);
+    await page.keyboard.press('p');
+    const zs = await page.evaluate(() => Array.from(document.querySelectorAll('#tourZones circle.tour-zone')).map((c) => { const b = c.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; }));
+    expect(zs.length).toBe(2);
+    for (const z of zs) { await page.mouse.click(z.x, z.y); await page.waitForTimeout(150); }
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'why', null, { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
+  test('after the whole-sheet takeoff is skipped, the Export PDFs step does not hold the reader on a hidden button', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'whole', errors);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await page.click('#tourSkip');
+    await seam(page, 'pdfs');
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => getComputedStyle(document.getElementById('specificPages')).display)).toBe('none');
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    expect(errors).toEqual([]);
+  });
+
+  test('a question after a zoomed step gets the whole sheet back, and the cleanout question does not name its answers before the first mark', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'waste', errors);
+    await seam(page, 'two');
+    await page.waitForTimeout(600);
+    const zoom = await page.evaluate(() => window.state.zoom);
+    await page.evaluate(() => window.App.fitZoom());
+    expect(Math.abs(zoom - await page.evaluate(() => window.state.zoom))).toBeLessThan(0.01);
+    await seam(page, 'cleanouts');
+    await page.waitForTimeout(500);
+    await expect(page.locator('#tourStatus')).not.toHaveText(/under MEN/);
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe('The plumbing course: the doors and the reveal', () => {
   test('the doors: the empty-canvas link, Project Settings, ?course=plumbing; the list and its progress', async ({ page }) => {
     const errors = [];

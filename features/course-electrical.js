@@ -85,7 +85,9 @@
   const pageAnn = (i) => K().pageAnn(i);
   const marksOf = (c, pageIdx) => { const a = pageAnn(pageIdx); return c && a ? (a.counterMarkers[c.id] || []) : []; };
   const markNear = (c, spot, d, pageIdx) => marksOf(c, pageIdx).some((m) => K().near(m, spot, d));
-  const polylinesOn = (re, pageIdx) => { const a = pageAnn(pageIdx); const lt = lineType(re); return a && lt ? (a.polylines || []).filter((pl) => pl.lineTypeId === lt.id) : []; };
+  // every type the word names, and for the homerun every type flagged homerun (see the kit's lineTypesMatching)
+  const typeIds = (re) => new Set(K().lineTypesMatching(re).concat(re === RE.hr ? (S().lineTypes || []).filter((l) => l.homerun) : []).map((l) => l.id));
+  const polylinesOn = (re, pageIdx) => { const a = pageAnn(pageIdx); const ids = typeIds(re); return a ? (a.polylines || []).filter((pl) => ids.has(pl.lineTypeId)) : []; };
   const notesNear = (spot, d, pageIdx) => { const a = pageAnn(pageIdx); return a ? (a.notes || []).filter((n) => K().near(n, spot, d)) : []; };
   const bidRow = (id) => { const bc = App.getBidCheck ? App.getBidCheck() : null; return bc ? (bc.auto || []).find((r) => r.id === id) : null; };
   const manual = (id) => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual[id]);
@@ -99,7 +101,7 @@
   const ZR = 14;
   const circlesOn = (pageIdx, c, spots, r) => T().markZones(pageIdx, (c || {}).id || '__none__', spots, r || ZR);
   const guide = (spots, r, done) => spots.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: !!done }));
-  const runsOn = (re, pageIdx) => { const lt = lineType(re); const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && lt && d.lineTypeId === lt.id ? pls.concat([d.points]) : pls; };
+  const runsOn = (re, pageIdx) => { const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && typeIds(re).has(d.lineTypeId) ? pls.concat([d.points]) : pls; };
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
   const missing = (c, spots, labels, d, pageIdx) => { const ms = marksOf(c, pageIdx); const out = []; spots.forEach((pt, i) => { if (!ms.some((m) => K().near(m, pt, d || 8))) out.push(labels[i]); }); return out.length ? out.length + ' more: ' + out.join(', ') : ''; };
@@ -128,7 +130,7 @@
   function pick(tag) {
     const t = TAGS[tag];
     const have = counter(t[0]);
-    if (have) return have;
+    if (have && !K().isStanding(have.id)) return have;   // never adopts the reader's standing counter
     const c = Object.assign({ id: App.uid(), name: t[1], icon: icon(t[2]), color: t[3], lesson: true }, t[4]);
     S().counters.push(c);
     return c;
@@ -307,7 +309,7 @@
           body: 'Every homerun arrow on the plan points at one thing. Find it.\n1. In the left sidebar, under COUNTERS, click [[+ Add]]. The project is electrical, so the [[Quick]] tab offers Category, Variant and Rating.\n2. Set Category to Panel and Variant to Panelboard, and click [[Add Counter]].\n3. Click the panel on the plan.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
           check: () => markNear(counter(RE.panel), pts(G.panel)[0], 14, E101),
-          hint: () => (counter(RE.panel) && marksOf(counter(RE.panel), E101).length ? 'Not there. Follow any homerun arrow: LP-1 is on the west wall of STORAGE' : (counter(RE.panel) ? 'The counter is armed: click LP-1' : '')),
+          hint: () => (counter(RE.panel) && marksOf(counter(RE.panel), E101).length ? 'Not there. Follow any homerun arrow: LP-1 is on the west wall of STORAGE' : (K().armedNamed(RE.panel) ? 'The counter is armed: click LP-1' : '')),
           action: { label: 'Find it for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('panel'), pts(G.panel), E101); K().dirty(); } } },
         { id: 'clearance', title: 'The space in front of it', kind: 'do', cardAt: 'tl', page: E101, zones: () => guide(pts(G.clearance), 12, K().measured(E101, 3, 0.3)),
           body: 'LP-1, on the west wall of STORAGE, with a mount height the counter already carries: 78 in to the top, the rule the app applies. The engineer drew a dashed box in front of it.\n1. Click [[Measure]] (or press D).\n2. Click the two circled ends of the box, wall to its outer edge.\nHow deep is it?',
@@ -316,9 +318,9 @@
           action: { label: 'Measure it for me', run: () => { K().goPage(E101); const d = pts(G.clearance); K().measure(d[0], d[1]); } } },
         { id: 'schedule', title: 'The panel schedule', kind: 'do', cardAt: 'br',
           body: 'Three feet. Working space: someone has to stand in front of a live panel and work on it, so the code keeps 36 in clear in front, 30 in wide, to 6 ft 6 in high (NEC 110.26). A panel behind the ice machine is a violation the estimator flags before the bid, because moving it later is a change order.\nNow the answer key.\n1. Under PAGES, click E-501.\n2. Find the one circuit on LP-1 that is 208 V and two-pole. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
-          target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn', '#pagesList'],
+          target: () => (K().onPage(E501) ? ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'] : ['#pagesList']),
           check: () => { const a = pageAnn(E501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 400 && Math.max(h.x1, h.x2) >= 400 && Math.min(h.y1, h.y2) <= 549 && Math.max(h.y1, h.y2) >= 549); },
-          hint: () => { const a = pageAnn(E501); return a && (a.highlights || []).length ? 'Not that row. Read down the P column for a 2, and the description for 208V' : ''; },
+          hint: () => { if (!K().onPage(E501)) return T().pagesFoldedHint('E-501'); const a = pageAnn(E501); return a && (a.highlights || []).length ? 'Not that row. Read down the P column for a 2, and the description for 208V' : ''; },
           action: { label: 'Highlight the dishwasher for me', run: () => { K().goPage(E501); const a = App.ensureActiveCanvas(S().pages[E501]).annotations; if (!a.highlights) a.highlights = []; if (a.highlights.length) return; App.pushUndoSnapshotCurrentPage(); a.highlights.push(Object.assign({ color: '#e8c547', opacity: 0.25, id: App.uid() }, DW_ROW)); S().tool = App.TOOL.NONE; K().dirty(); } } },
         { id: 'row', title: 'Read a row', kind: 'read', cardAt: 'br',
           body: 'Circuits 2 and 4: the dishwasher, 4800 VA at 208 V, two poles, a 30 A breaker, #10 wire. Every column is a decision the estimator prices.\nWhy #10 for the dishwasher when every other circuit is #12?',
@@ -340,8 +342,8 @@
           hint: () => { const c = counter(RE.gfci); if (!c) return ''; const wrong = plainDuplex().find((pt) => markNear(c, pt, 10, E101)); if (wrong) return 'That one is in the dining room or storage, with no sink within 6 ft: a plain duplex. Press Ctrl+Z'; return missing(c, pts(G.gfci), GFCI_LABELS, 10, E101); },
           action: { label: 'Click the ten for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('gfci'), pts(G.gfci), E101); K().dirty(); } } },
         { id: 'missed', title: 'The one the engineer missed', kind: 'do', cardAt: 'tl',
-          body: 'Ten with GFI beside them: the bar and the kitchen (a sink and food preparation, NEC 210.8(B)(2)), the restrooms (210.8(B)(1)), the mop room, whose receptacle sits within 6 ft of the mop sink (210.8(B)(5)), the dish pit.\nThe engineer drew one more receptacle in a room the code wants protected, and left the GFI off it.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that receptacle and type RFI: and why it should be a GFCI.',
-          target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
+          body: 'Ten with GFI beside them: the bar and the kitchen (a sink and food preparation, NEC 210.8(B)(2)), the restrooms (210.8(B)(1)), the mop room, whose receptacle sits within 6 ft of the mop sink (210.8(B)(5)), the dish pit.\nThe engineer drew one more receptacle in a room the code wants protected, and left the GFI off it.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that receptacle, type RFI: and why it should be a GFCI, and click [[Done]].',
+          target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.missed)[0], 26, E101).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
           hint: () => { const a = pageAnn(E101); if (!a || !(a.notes || []).length) return ''; const rfi = (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))); if (!rfi) return 'Start the note with RFI:'; return pts(G.gfci).some((pt) => notesNear(pt, 26, E101).length) ? 'That one already says GFI. Look for a plain duplex in a room where every receptacle must be protected' : 'Not that room. Where does the code protect every receptacle?'; },
           action: { label: 'Flag it for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.missed)[0]; if (a.notes.some((n) => K().near(n, spot, 26))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Kitchen receptacle drawn as a plain duplex; every receptacle in a commercial kitchen is GFCI (NEC 210.8(B)(2)). Bid it as GFCI?', id: App.uid(), width: 160, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
@@ -362,7 +364,10 @@
         { id: 'keys', title: 'Put the counters on the number row', kind: 'do',
           body: '1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose Duplex. Beside key 2, GFCI.\n3. Close the dialog.\nOn a real E-sheet the rhythm is 1, click, click, 2, click, and the hand never leaves the plan.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
-          check: () => { const c = counter(RE.duplex); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); },
+          // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
+          // engine closed the dialog under a reader who had not reached key 2 (by hand, 2026-09-25)
+          check: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); }; return bound(RE.duplex) && bound(RE.gfci) && !K().modalUp('quickKeysModal'); },
+          hint: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((x) => x && x.id === c.id); }; if (!bound(RE.duplex)) return ''; if (!bound(RE.gfci)) return 'Key 1 is Duplex. Now key 2: GFCI'; return K().modalUp('quickKeysModal') ? 'Both keys are set. Close the dialog' : ''; },
           action: { label: 'Bind 1 and 2 for me', run: () => { if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: pick('duplex').id }; S().numberKeyBindings[2] = { kind: 'counter', id: pick('gfci').id }; K().dirty(); } } },
       ],
       done: 'Twenty-one receptacles sorted by what the code wants, one of them the engineer\'s miss flagged, six equipment connections, and heights the app already knew.\nNext: [[Learn]] → Chapter 3, the lighting.',
@@ -380,12 +385,12 @@
           action: { label: 'Read the schedule for me', run: readFixtureSchedule } },
         { id: 'plan', title: 'The plan says which', kind: 'do', cardAt: 'bl', page: E201, zones: () => Object.keys(LIGHT_TYPES).reduce((zs, t) => zs.concat(circlesOn(E201, byTag(t), pts(G[t]), 12)), []),
           body: 'Five counters, one per letter, each carrying its tag.\n1. Under PAGES, click E-201.\n2. In the sidebar, click A to arm it, and click every circled fixture, whatever its letter. As the cursor nears a letter the status bar reads Plan says B, and the click lands on B: one tool for every type.\nThirty-six fixtures.',
-          target: ['#annCanvas', '#pagesList'], check: () => Object.keys(LIGHT_TYPES).every((t) => allDone(circlesOn(E201, byTag(t), pts(G[t]), 12))),
+          target: ['#annCanvas', '#countersList', '#pagesList'], check: () => Object.keys(LIGHT_TYPES).every((t) => allDone(circlesOn(E201, byTag(t), pts(G[t]), 12))),
           hint: () => Object.keys(LIGHT_TYPES).map((t) => { const c = byTag(t); const m = c ? missing(c, pts(G[t]), pts(G[t]).map(() => 'type ' + t), 10, E201) : ''; return m ? m.replace(/:.*$/, ' of type ' + t) : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(E201); App.pushUndoSnapshotCurrentPage(); Object.keys(LIGHT_TYPES).forEach((t) => markMissing(pickLight(t), pts(G[t]), E201)); K().dirty(); } } },
         { id: 'power', title: 'Which fixtures stay lit when the power fails?', kind: 'do', cardAt: 'bl',
-          body: 'Thirty-six fixtures, four circuits. When the building loses power, most go dark.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click a fixture that stays lit, and say why.',
-          target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
+          body: 'Thirty-six fixtures, four circuits. When the building loses power, most go dark.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click a fixture that stays lit, say why, and click [[Done]].',
+          target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => pts(G.X).concat(pts(G.EM)).some((pt) => notesNear(pt, 24, E201).length),
           hint: () => { const a = pageAnn(E201); if (!a || !(a.notes || []).length) return ''; return pts(G.A).concat(pts(G.B), pts(G.C)).some((pt) => notesNear(pt, 24, E201).length) ? 'That one goes dark: it is on a normal lighting circuit. Look for the fixtures with a battery' : 'Put the note on the fixture itself'; },
           action: { label: 'Note an exit sign for me', run: () => { K().goPage(E201); const page = S().pages[E201]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.X)[0]; if (a.notes.some((n) => K().near(n, spot, 24))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'Exit sign: battery backed, stays lit 90 minutes', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
@@ -408,9 +413,10 @@
       seed() { scaleE101(); markMissing(pick('duplex'), pts(G.duplex).slice(4), E101); markMissing(pick('gfci'), pts(G.gfci), E101); },   // not the west wall's four: the reader's chain places them (seeded, the chain doubled them to 15)
       steps: [
         { id: 'linetype', title: 'A line type that knows what is in it', kind: 'do',
-          body: 'The keynotes say 3 #12 CU THHN + 1 #12 G in 3/4" EMT.\n1. Under LINE TYPES, click [[+ Add]]. On the [[Quick]] tab pick 0.75in and, beside Material, add EMT with [[+]] if it is not there. Click [[Add Line Type]].\n2. Click the pencil beside it. Set the raceway to EMT, 3/4".\n3. In Conductors, type 3 #12 THHN + 1 #12 G, and click [[Done]].',
-          target: ['#conductorsSpec', '#racewayKind', '#counterLineTypeDetailsModal .modal-card', '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#addLineType'],
-          check: () => { const lt = lineType(RE.emt75); return !!(lt && lt.raceway && lt.raceway.kind === 'EMT' && (lt.conductors || []).length >= 2); },
+          body: 'The keynotes say 3 #12 CU THHN + 1 #12 G in 3/4" EMT.\n1. Under LINE TYPES, click [[+ Add]], then [[Quick]]. Pick 0.75in and, beside Material, add EMT with [[+]] if it is not there. Click [[Add Line Type]].\n2. Click the pencil beside it. Set the raceway to EMT, 3/4".\n3. In Conductors, type 3 #12 THHN + 1 #12 G, and click [[Done]].',
+          // once the reader's own 0.75in EMT exists, its pencil (line 2) outranks + Add (line 1); never the standing "3/4in EMT old"
+          target: () => { const lt = lineType(RE.emt75); return T().ladder('#conductorsSpec', '#racewayKind', '#counterLineTypeDetailsModal .modal-card', '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', lt && !K().isStanding(lt.id) ? T().pencilOf('lineType', lt) : null, '#addLineType'); },
+          check: () => K().someLineType(RE.emt75, (lt) => lt.raceway && lt.raceway.kind === 'EMT' && (lt.conductors || []).length >= 2),
           action: { label: 'Make 0.75in EMT · 3 #12 + G', run: () => { App.pushUndoSnapshot(); const lt = makeEmt(); S().activeLineTypeId = lt.id; K().dirty(); } } },
         { id: 'why12', title: 'Why #12', kind: 'read', cardAt: 'tl',
           body: 'Every 20 A circuit on the schedule is #12 copper.\nWhy that gauge, and what would #14 or #10 mean?',
@@ -432,8 +438,8 @@
           action: { label: 'Open it', run: openBidCheck } },
         { id: 'straps', title: 'A support row of your own', kind: 'do',
           body: 'EMT is fastened within 3 ft of every box and every 10 ft along the run (NEC 358.30). The rulebook has no strap row for conduit yet, so write one.\n1. Click the pencil beside 0.75in EMT.\n2. Under [[Child counts]], add a row: Strap, 1 per 10 ft.\n3. Click [[Done]].',
-          target: ['#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineType(RE.emt75); return !!(lt && (lt.childCounts || []).some((ch) => ch.per === 'ft')); },
+          target: () => T().ladder('#childCountsGroup', T().pencilOf('lineType', lineType(RE.emt75)), '#lineTypesSectionTitle'),
+          check: () => K().someLineType(RE.emt75, (lt) => (lt.childCounts || []).some((ch) => ch.per === 'ft')),
           action: { label: 'Add Strap · 1 per 10 ft', run: () => { const lt = makeEmt(); if ((lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [{ name: 'Strap', qty: 1, per: 'ft', ftInterval: 10 }]; K().dirty(); } } },
         { id: 'read', title: 'What the drawing knows now', kind: 'read',
           body: '1. In the left sidebar, look at SUMMARY.\nFeet of 0.75in EMT with the four verticals inside, the straps under it, and the derived rows: #12 THHN by the foot, the green ground its own row. Wire is never a mark. Delete a run and its wire goes with it.',
@@ -448,31 +454,32 @@
       seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), pts(G.gfci), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); },
       steps: [
         { id: 'group', title: 'Make it a circuit', kind: 'do',
-          body: 'The chain on the west wall is circuit 1 on LP-1.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]] if it is off.\n2. In the left sidebar, under GROUPS, click [[+ Add]]. In Name, type Dining receptacles, west wall. In Panel, type LP-1. In Circuit, type 1. Click [[Done]].\n3. Right-click a west-wall receptacle, [[Assign to group]], and pick it; do the same for the runs, or click the group first next time and everything placed after joins it.',
-          target: ['#groupModalDone', '#groupModalPanel', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn'],
+          body: 'The chain on the west wall is circuit 1 on LP-1.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]] if it is off.\n2. In the left sidebar, under GROUPS, click [[+ Add]]. In Name, type Dining receptacles, west wall. In Panel, type LP-1. In Circuit, type 1. Click [[Done]].\n3. Right-click a west-wall receptacle, [[Assign to group]], pick it and click [[Done]]; do the same for the runs, or click the group first next time and everything placed after joins it.',
+          target: ['#groupAssignDone', '#groupModalDone', '#groupModalPanel', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn'],
           check: () => { const g = circuit1(); const a = pageAnn(E101); return !!(g && a && (a.quickLines || []).some((l) => l.group === g.id)); },
           hint: () => (circuit1() ? 'The circuit exists: now put the west-wall receptacles and their runs in it' : ''),
           action: { label: 'Make LP-1 · 1 and assign the west wall', run: circuitOne } },
         { id: 'homerun', title: 'The homerun', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.hr, pts(G.homerun1), E101),
-          body: 'The arrow at the top receptacle says LP-1-1: from there the conduit goes up into the ceiling and across to the panel.\n1. Under LINE TYPES, click [[+ Add]]. On the [[Create]] tab, name it 0.75in EMT HR and click [[Create]].\n2. Click the pencil beside it: set the same raceway and conductors as 0.75in EMT, and turn on [[Homerun]].\n3. With it active, click [[Polyline]] and trace: the top receptacle, straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.',
-          target: ['#lineTypeHomerunBtn', '#polylineBtn', '#polylineBtnSidebar', '#addLineType'],
-          check: () => { const lt = lineType(RE.hr); return !!(lt && lt.homerun && allDone(traceZones(RE.hr, pts(G.homerun1), E101))); },
+          body: 'The arrow at the top receptacle says LP-1-1: from there the conduit goes up into the ceiling and across to the panel.\n1. Under LINE TYPES, click [[+ Add]]. In Name, type 0.75in EMT HR and click [[Create Line Type]].\n2. Click the pencil beside it: set the same raceway and conductors as 0.75in EMT, and turn on [[Homerun]].\n3. Under GROUPS, click the circuit, so the run you draw joins it. With the type active, click [[Polyline]] and trace: the top receptacle, straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.',
+          target: () => T().ladder('#lineTypeHomerunBtn', '#polylineBtn', '#polylineBtnSidebar', '#lineTypeCreate', '#addLineType', T().pencilOf('lineType', lineType(RE.hr))),
+          check: () => (S().lineTypes || []).some((l) => l.homerun) && allDone(traceZones(RE.hr, pts(G.homerun1), E101)),
           hint: () => { const lt = lineType(RE.hr); return lt && !lt.homerun ? 'The type exists: open its details and turn on Homerun' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeHomerun(); if (!polylinesOn(RE.hr, E101).length) tracePlan(lt, G.homerun1, 'Homerun, circuit 1', E101); const g = circuitOne(); void g; } } },
         { id: 'panelpoles', title: 'The panel knows its schedule', kind: 'do',
           // the chapter's own Panelboard came with 42 poles (TAGS), which passed this step on arrival
           onEnter: () => { const c = counter(RE.panel); if (c && c.lesson && c.poles === 42) { delete c.poles; App.updateUI(); } },
-          body: 'Bid Check can compare the circuits you draw against the panel\'s schedule once the panel counter knows how many poles it has.\n1. In the sidebar, click the pencil beside Panelboard LP-1.\n2. Panel name already reads LP-1, off the plan\'s tag. In Poles, type 42. Click [[Done]].',
-          target: ['#panelPoles', '#panelName', '#counterLineTypeDetailsModal .modal-card', '#countersList .edit-btn', '#countersSection'],
+          body: 'Bid Check can compare the circuits you draw against the panel\'s schedule once the panel counter knows how many poles it has.\n1. In the sidebar, click the pencil beside the panel counter: Panelboard LP-1, or your own panel counter if the chapter used it.\n2. Panel name reads LP-1 off the plan\'s tag when the chapter made the counter; type LP-1 if it is blank. In Poles, type 42. Click [[Done]].',
+          target: () => T().ladder('#panelPoles', '#panelName', '#counterLineTypeDetailsModal .modal-card', T().pencilOf('counter', counter(RE.panel)), '#countersSection'),
           check: () => { const c = counter(RE.panel); return !!(c && c.panelName && c.poles === 42); },
           action: { label: 'Set LP-1 · 42 poles', run: () => { const c = pick('panel'); App.pushUndoSnapshot(); c.panelName = 'LP-1'; c.poles = 42; K().dirty(); } } },
         { id: 'vd', title: 'What the voltage-drop row says', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nVoltage drop within 3% to the farthest device: the app walked the homerun and the chain to the receptacle farthest from LP-1, assumed 12 A on the circuit, and warns, naming the gauge that would pass. The Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note), and the rulebook chip carries the K constant it used.\nIs the engineer wrong?',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!bidRow('voltage-drop') && bidRow('voltage-drop').verdict !== 'na',
+          hint: () => { const r = bidRow('voltage-drop'); return S().bidCheckCollapsed === false && r && r.verdict === 'na' ? 'Not judged yet. ' + r.detail + ' Right-click the homerun and a west-wall receptacle, Assign to group, and pick the circuit' : ''; },
           action: { label: 'Open it', run: openBidCheck } },
         { id: 'load', title: 'The load the engineer scheduled', kind: 'do',
           body: 'Not yet. The app assumed 12 A because you did not say. E-501 schedules circuit 1 at 720 VA, which is 6 A at 120 V.\n1. Under GROUPS, click the pencil beside the circuit.\n2. In Load, type 6. Click [[Done]].\nThe row turns to a tick: at 6 A the drop is under 3% on #12. When the schedule gives a load, use it; when it does not, the default is the honest warning.',
-          target: ['#groupModalLoadAmps', '#groupModalDone', '#groupsSectionTitle'],
+          target: ['#groupModalLoadAmps', '#groupModalDone', '#groupsSectionTitle', '#groupsList .edit-btn'],
           check: () => { const g = circuit1(); return !!(g && g.loadAmps === 6 && bidRow('voltage-drop') && bidRow('voltage-drop').verdict === 'ok'); },
           hint: () => { const g = circuit1(); return g && g.loadAmps && g.loadAmps !== 6 ? 'Read circuit 1 on E-501: 720 VA at 120 V' : ''; },
           action: { label: 'Set 6 A', run: () => { const g = circuitOne(); App.pushUndoSnapshot(); g.loadAmps = 6; K().dirty(); } } },
@@ -489,8 +496,8 @@
       seed() { scaleE101(); markMissing(pick('jbox'), pts(G.jbox), E101); },
       steps: [
         { id: 'three', title: 'Which equipment is three phase?', kind: 'do', cardAt: 'tl',
-          body: 'Six J-boxes, six circuits on the schedule. One of them takes three poles.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that J-box and write what it feeds.',
-          target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
+          body: 'Six J-boxes, six circuits on the schedule. One of them takes three poles.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that J-box, write what it feeds, and click [[Done]].',
+          target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.rtu)[0], 26, E101).length > 0,
           hint: () => { const a = pageAnn(E101); if (!a || !(a.notes || []).length) return ''; return pts(G.jbox).some((pt) => notesNear(pt, 26, E101).length) ? 'That one is single phase: one or two circuit numbers beside it. Look for three' : 'Put the note on the J-box itself'; },
           action: { label: 'Note RTU-1 for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.rtu)[0]; if (a.notes.some((n) => K().near(n, spot, 26))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RTU-1 on the roof: 208 V three phase, circuits 18, 20, 22', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e8c547' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
@@ -499,8 +506,8 @@
           reveal: 'Motors. A three-phase motor is smaller, cheaper and smoother than a single-phase one of the same power, so rooftop units, walk-in compressors and exhaust fans want it, and a 208Y/120 V service gives 120 V to the receptacles from any phase to neutral at the same time. The one-line on E-601 says it: 208Y/120V, 3Φ, 4W.\nOn the bid a three-pole circuit is three conductors and a ground in the conduit, a three-pole breaker, and a disconnect within sight of the unit (NEC 440.14), on the roof.',
           target: [], check: () => true },
         { id: 'hood', title: 'The breaker the hood trips', kind: 'do', cardAt: 'bl',
-          body: 'Circuit 12 feeds the receptacles under the hood, and the keynote says it is on a shunt-trip breaker interlocked with the hood suppression. When the hood\'s system fires, that breaker opens and the appliances lose power (NFPA 96). The plumbing course met the same rule on the gas.\nThe schedule says shunt trip; nothing says who wires the interlock.\n1. Press N and click beside the cook line receptacles.\n2. Type RFI: and the question: who furnishes the shunt-trip breaker and wires it to the hood suppression?',
-          target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
+          body: 'Circuit 12 feeds the receptacles under the hood, and the keynote says it is on a shunt-trip breaker interlocked with the hood suppression. When the hood\'s system fires, that breaker opens and the appliances lose power (NFPA 96). The plumbing course met the same rule on the gas.\nThe schedule says shunt trip; nothing says who wires the interlock.\n1. Press N and click beside the cook line receptacles.\n2. Type RFI: and the question: who furnishes the shunt-trip breaker and wires it to the hood suppression? Click [[Done]].',
+          target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.hood)[0], 60, E101).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
           hint: () => { const a = pageAnn(E101); return a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))) ? 'Move it beside the cook line receptacles, under HOOD ABOVE' : ''; },
           action: { label: 'Flag it for me', run: () => flagShuntTrip() } },
@@ -523,8 +530,8 @@
           target: [], check: () => true },
         { id: 'feeder', title: 'Trace the feeder', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.emt2, pts(G.feeder), E101),
           body: 'On E-101 the feeder is the heavy line from the main disconnect outside the south wall up to LP-1.\n1. Under PAGES, click E-101.\n2. Under LINE TYPES, make 2in EMT, and in its details set the raceway to EMT 2" and the conductors to 4 #3/0 THHN + 1 #6 G.\n3. With it active, click [[Polyline]], click the two circled ends, and press Enter.',
-          target: ['#polylineBtn', '#polylineBtnSidebar', '#addLineType', '#pagesList'],
-          check: () => { const lt = lineType(RE.emt2); return !!(lt && (lt.conductors || []).length >= 2 && allDone(traceZones(RE.emt2, pts(G.feeder), E101))); },
+          target: () => T().ladder('#polylineBtn', '#polylineBtnSidebar', '#addLineType', '#pagesList', T().pencilOf('lineType', lineType(RE.emt2))),
+          check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)),
           hint: () => { const lt = lineType(RE.emt2); return lt && !(lt.conductors || []).length ? 'The type exists: give it the conductors, 4 #3/0 THHN + 1 #6 G' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeFeeder(); if (!polylinesOn(RE.emt2, E101).length) tracePlan(lt, G.feeder, 'Feeder', E101); } } },
         { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => guide([pts(G.feeder)[0]], 14, polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0)),
@@ -551,14 +558,14 @@
       seed() { scaleE101(); K().setScale(E201, 9, '1/8" = 1\''); setCeiling(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Every receptacle, J-box, fixture and switch on the two plans, the panel, the meter and the main, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each of them; this is all of them on the sheets, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo see the finished sheets instead, click Skip this step: the next card compares against the reference.',
+          body: 'Every receptacle, J-box, fixture and switch on the two plans, the panel, the meter and the main, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each of them; this is all of them on the sheets, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo have the app lay it all instead, click [[Show me where]] and then its button; Skip this step moves on with the sheets as they are, and the next card compares them against the reference.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
           body: compareBody,
           target: [], check: () => true },
         { id: 'report', title: 'The circuit schedule', kind: 'read',
-          body: '1. Under EXPORT OPTIONS, click [[Show Report]].\nBesides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule: each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel. It is the estimator\'s copy of E-501, built from what was drawn.',
+          body: '1. Under EXPORT OPTIONS, click [[Show Report]] (it appears once the sheets carry a mark).\nBesides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule: each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel. It is the estimator\'s copy of E-501, built from what was drawn.',
           target: ['#printReport', '#exportOptionsSectionTitle'], check: () => true },
         { id: 'legend', title: 'The legend on the sheet', kind: 'do', hold: true,
           body: '1. In the left sidebar, click the SUMMARY heading.\nOn an electrical project the on-sheet legend draws as a compact ruled block, the way an E-sheet draws its own, with a mount-height column and the panel in its footer.',
@@ -586,7 +593,7 @@
           action: { label: 'Tick the three for me', run: () => { tick('scale-verified'); tick('lighting-controls'); tick('equipment-connections'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the GFCI total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits. This is what you open when the GC questions the number.',
-          target: ['#summaryCountDetailModal .modal-card', '#summaryList .summary-item-clickable', '#summarySectionTitle'], check: () => K().modalUp('summaryCountDetailModal'),
+          target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', counter(RE.gfci)), '#summarySectionTitle'), check: () => K().modalUp('summaryCountDetailModal'),
           action: { label: 'Open the breakdown', run: () => { const c = counter(RE.gfci); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'handoff', title: 'Hand it off', kind: 'read',
           body: '1. [[Open in TakeoffTooling]] hands the devices, runs, verticals, wire and cable to the electrical pricing app, where each device explodes into its box, ring, plate and connectors and every row picks up labor from your book.\n2. [[Copy RFI Flags]] puts the shunt-trip question beside it.\n3. [[Export PDFs]] makes the marked-up set.\nMore: [Doing an electrical takeoff](/guides/electrical-takeoff/).',

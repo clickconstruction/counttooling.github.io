@@ -128,6 +128,7 @@
   let base = null;   // { counters, lineTypes, groups }: ids on the sheet when it opened
   const fresh = (list, key) => (list || []).find((x) => base && !base[key].has(x.id)) || null;
   const counter = () => fresh(S().counters, 'counters');
+  const bellShown = () => { const b = el('saveStatusBtnHeader'); return !!b && b.getClientRects().length > 0 && getComputedStyle(b).display !== 'none'; };
   const lineType = () => fresh(S().lineTypes, 'lineTypes');
   const group = () => fresh(S().groups, 'groups');
   const cid = () => (counter() ? counter().id : '-');
@@ -448,7 +449,7 @@
     {
       id: 'counter', title: 'Header: Counter', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Fixture.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe [[Quick]] tab builds the name from your trade\'s pickers instead. Either way the Counter tool arms itself; [[Counter]] in the header (or C) is how you come back to it. The funnel beside the search box narrows a long palette to what this sheet uses.',
-      target: ['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      target: () => K().counterFormTargets(/fixture/i),
       check: () => !!counter(),
       action: { label: 'Create it for me', run: ACT.counter },
     },
@@ -475,8 +476,8 @@
     },
     {
       id: 'linetype', title: 'Header: Quick Line', kind: 'do',
-      body: 'A line type is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Create]] tab. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage is measured between your two clicks, so these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
-      target: ['#createLineTypeCreate', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'], page: 0,
+      body: 'A line type is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage is measured between your two clicks, so these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
+      target: ['#lineTypeCreate', '#addLineType'], page: 0,
       zones: () => LINE.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: LINE_R, done: lineClose() })),
       check: () => !!lineType() && lineClose(),
       hint: () => { const l = lineRun(); if (!l || lineClose()) return ''; return 'That run reads ' + feetText(lineFeet(l)) + ', not ' + feetText(LINE_FT) + '. Press Ctrl+Z and land closer to the centres'; },
@@ -513,7 +514,7 @@
     },
     {
       id: 'drop', title: 'Header: Drop, and Drop sizes', kind: 'do',
-      body: () => 'Plan view never shows the vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft.\n3. Click the end of the chained run inside the circle.\n4. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Drop sizes]],' : 'In the header, click [[Drop sizes]]') + ' so every drop wears its number on the sheet.\nThe 3 ft joins the run\'s footage in the sidebar.',
+      body: () => 'Plan view never shows the vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose 3 ft, or type 3 and click [[Add]] when it is not among the recent sizes.\n3. Click the end of the chained run inside the circle.\n4. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Drop sizes]],' : 'In the header, click [[Drop sizes]]') + ' so every drop wears its number on the sheet.\nThe 3 ft joins the run\'s footage in the sidebar.',
       target: ['#dropSizesBtn', '#dropPanel', '#dropBtn', '#headerBurger'], page: 0,
       zones: () => [{ kind: 'circle', x: CHAIN[0].x, y: CHAIN[0].y, r: 16, done: dropAt(CHAIN[0], 16) }],
       check: () => dropAt(CHAIN[0], 16) && !!S().showDropSizes,
@@ -612,7 +613,7 @@
     },
     {
       id: 'layers', title: 'Footer: layers', kind: 'do',
-      body: () => 'One sheet can carry several layers, an alternate or an addendum kept apart from the base bid, each with its own totals.\n1. ' + (narrow() ? 'In the footer, tap [[Layers]] beside the layer name, then [[+ Add layer]].' : 'In the footer, beside the layer name, click [[Add canvas]], the + button.') + '\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\n5. ' + (narrow() ? 'Tap [[Layers]] again and pick Main.' : 'Press the up or down arrow key until the footer reads Main again.') + '\n' + (narrow() ? '' : 'The layers button beside the name lists them, and the one beside it shows every layer at once.'),
+      body: () => 'One sheet can carry several layers, an alternate or an addendum kept apart from the base bid, each with its own totals.\n1. ' + (narrow() ? 'In the footer, tap [[Layers]] beside the layer name, then [[+ Add layer]].' : 'In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].') + '\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\n5. ' + (narrow() ? 'Tap [[Layers]] again and pick Main.' : 'Press the up or down arrow key until the footer reads Main again.') + '\n' + (narrow() ? '' : 'The layers button beside the name lists them, and the one beside it shows every layer at once.'),
       target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#addCanvasBtn', '#canvasLayersBtn'],
       check: () => { const p = page0(); return !!p && (p.canvases || []).length >= 2 && activeCanvasIsMain(); },
       progress: () => { const p = page0(); return p && (p.canvases || []).length >= 2 && !activeCanvasIsMain() ? (narrow() ? 'Layer made. Now Layers, then Main' : 'Layer made. Now press the up or down arrow until the footer reads Main') : ''; },
@@ -640,17 +641,17 @@
       id: 'sidebar', title: 'Header: the sidebar', kind: 'do',
       body: () => (narrow()
         ? 'On a tablet the sidebar is a drawer, so the sheet has the whole screen.\n1. Tap ☰ at the top left: the sidebar slides over the sheet.\n2. Tap the sheet to put it away.'
-        : 'The whole screen for the sheet when you need it.\n1. Click the CountTooling logo at the top left (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.'),
+        : 'The whole screen for the sheet when you need it.\n1. At the top left of the header, click the panel button, Show or hide the sidebar (or press the spacebar): the sidebar folds away.\n2. Click it again to bring the sidebar back.'),
       target: ['#headerSidebarToggle', '#headerLogo', '#hamburger'],
       check: () => (narrow()
         ? latch('drawer', drawerOpen()) && !drawerOpen()
         : latch('collapsed', document.body.classList.contains('sidebar-collapsed')) && !document.body.classList.contains('sidebar-collapsed')),
-      progress: () => (narrow() ? (seen.drawer && drawerOpen() ? 'Open. Now tap the sheet to put it away' : '') : (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the logo again' : '')),
+      progress: () => (narrow() ? (seen.drawer && drawerOpen() ? 'Open. Now tap the sheet to put it away' : '') : (seen.collapsed && document.body.classList.contains('sidebar-collapsed') ? 'Folded. Click the panel button again' : '')),
       action: { label: 'Fold and unfold it', run: ACT.sidebar },
     },
     {
       id: 'groups', title: 'Sidebar: Groups', kind: 'do',
-      body: () => 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. ' + (narrow() ? 'Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]), and turn on [[Use groups]]. Close the dialog.' : 'In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]]. Close the dialog.') + '\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; ' + (narrow() ? 'press and hold' : 'right-click') + ' a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
+      body: () => 'A group subtotals whatever you put in it: a room, a floor, a circuit, a system.\n1. ' + (narrow() ? 'If GROUPS is not in the sidebar: tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]), and turn on [[Use groups]]. Close the dialog.' : 'If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) in the header and turn on [[Use groups]]. Close the dialog.') + '\n2. In the left sidebar, under GROUPS, click [[+ Add]].\n3. In Name, type Area A. Click [[Done]].\nClick a group in the sidebar and everything you place after that joins it; ' + (narrow() ? 'press and hold' : 'right-click') + ' a mark to move it. [[Show group colors]] paints every mark in its group\'s colour.',
       target: ['#groupModalDone', '#settingsUseGroupsBtn', '#addGroup', '#groupsSectionTitle', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => !!group(),
       progress: () => (S().groupsEnabled ? 'Groups are on. Now + Add under GROUPS' : ''),
@@ -679,9 +680,13 @@
     },
     {
       id: 'savestatus', title: 'Header: Save status', kind: 'do', hold: true,
-      body: () => '1. ' + (narrow() ? 'Open [[Project Settings]] again (☰, then the gear) and tap [[Save status]].' : 'In the header, click the bell ([[Save status]]).') + '\nIt says where your work is: the backup this device keeps every few seconds, and the cloud copy once you sign in and save. Green is safe.\n2. Close it.',
-      target: ['#saveStatusBtn', '#saveStatusBtnHeader', '#settingsGearBtn', '#sidebarLogoGear'],
-      check: () => latch('savestatus', modalUp('saveStatusModal')),
+      // The bell shows only signed in, and this sheet stays on the device: signed out there was nothing
+      // to click, and the step waited for a dialog only its seam could open (by hand, 2026-09-25).
+      body: () => (bellShown()
+        ? '1. ' + (narrow() ? 'Open [[Project Settings]] again (☰, then the gear) and tap [[Save status]].' : 'In the header, click the bell ([[Save status]]).') + '\nIt says where your work is: the backup this device keeps every few seconds, and the cloud copy once you sign in and save. Green is safe.\n2. Close it.'
+        : '1. Read the status bar at the bottom of the screen: it says where your work is, saved on this device, and when.\nThe app keeps a backup on this device every few seconds and offers it back the next time you open the app. Signed in, a bell in the header opens the full save log and the cloud copy.\n2. Click [[Next]].'),
+      target: () => (bellShown() ? ['#saveStatusBtn', '#saveStatusBtnHeader', '#settingsGearBtn', '#sidebarLogoGear'] : ['#statusBar', '.status-bar']),
+      check: () => !bellShown() || latch('savestatus', modalUp('saveStatusModal')),
       action: { label: 'Open it for me', run: ACT.savestatus },
     },
     {
@@ -714,8 +719,10 @@
     },
     {
       id: 'close', title: 'Header: Close this project', kind: 'do',
-      body: () => '1. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Close project]].' : 'In the header, click the × ([[Close this project]]).') + '\n2. Confirm.\nThe sheet closes and the empty canvas comes back. A real project would still be in its local backup, and in the cloud if you had saved it.',
-      target: ['#confirmOk', '#headerCloseProjectBtn', '#headerBurger'],
+      body: () => '1. ' + (narrow() ? 'Tap the ☰ at the top right ([[More actions]]), then [[Close project]].' : 'In the header, click the gear ([[Project Settings]]), then [[Close project]].') + '\n2. Confirm.\nThe sheet closes and the empty canvas comes back. A real project would still be in its local backup, and in the cloud if you had saved it.',
+      // the header's [Close] shows only on a cloud project being viewed: on this device-only sheet the way
+      // out is Project Settings' Close project (by hand, 2026-09-25)
+      target: ['#confirmOk', '#headerCloseProjectBtn', '#settingsCloseProject', '#settingsGearBtn', '#headerBurger'],
       check: () => !(S().pages || []).length,
       action: { label: 'Close it for me', run: ACT.close },
     },

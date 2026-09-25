@@ -91,8 +91,10 @@
       const mods = App.getLineModifiers();
       mods.sizes.push(v.trim());
       App.saveLineModifiers(mods);
+      const material = document.getElementById('quickLineMaterial').value;   // the repopulate resets every select; keep what was picked (by hand, 2026-09-24)
       populateQuickLineModal();
       document.getElementById('quickLineSize').value = v.trim();
+      if (material) document.getElementById('quickLineMaterial').value = material;
       updateQuickLineNamePreview();
     }
   };
@@ -102,8 +104,10 @@
       const mods = App.getLineModifiers();
       mods.materials.push(v.trim());
       App.saveLineModifiers(mods);
+      const size = document.getElementById('quickLineSize').value;   // the reader picked 0.75in, added EMT, and got "0.5in EMT" (by hand, 2026-09-24)
       populateQuickLineModal();
       document.getElementById('quickLineMaterial').value = v.trim();
+      if (size) document.getElementById('quickLineSize').value = size;
       updateQuickLineNamePreview();
     }
   };

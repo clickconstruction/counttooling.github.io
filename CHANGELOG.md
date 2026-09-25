@@ -73,6 +73,61 @@ step goes to the reference.
 tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
 specs walk green (80).
 
+## fix(learn): the by-hand walk of the plumbing course, chapters 2 to 9 (2026-09-25)
+
+The third round of the by-hand walk, on the same returning estimator's device, driven in a
+headless Chromium with real mouse and keyboard events (the browser pane was hidden). Findings,
+each fixed and pinned in course-plumbing.spec.js ("by hand on a returning estimator's device"),
+which fails on main's code:
+
+- **The sheet moves its circles out from under the card** ([features/tutorial.js](features/tutorial.js)
+  `nudgeSheetFromCard`): the kitchen step's card kept off FD-1 in the sidebar and sat on the
+  kitchen-exit hand sink and the east floor drain, so both clicks landed on the card. Once per
+  step, when the placed card covers circles, the sheet pans sideways (then up or down) to clear
+  them.
+- **A question after a zoomed step gets the whole sheet back**: the interceptor question opened
+  on the east wall the downhill step had zoomed to, with the restrooms off screen. A step with
+  no circles of its own now fits the sheet when the last step's circles moved the view.
+- **Fixed-position panels count as shown** (`shown` in the engine): the Chain and Drop panels
+  have no offsetParent, so the ladder skipped them and the card sat on the Chain panel.
+- **The lesson's own counter wins over the reader's standing one**
+  ([features/lessons.js](features/lessons.js) `named`, `isStanding`): chapter 3's setup adopted
+  the standing "Lavatory" instead of making L-1, and the card's "choose L-1" named nothing.
+  The kit records the palette standing when a set opens; lookups prefer a fresh match, and the
+  courses' `pick` never adopts a standing counter.
+- **The Quick Keys steps wait for both keys and the closed dialog**, with a hint naming what is
+  missing (both courses): on key 1 alone the step advanced and the engine closed the dialog
+  under a reader who had not reached key 2.
+- **The cleanout and vent questions keep their answers quiet** until the first mark: the status
+  line listed all four cleanout places before a click.
+- **Layer cards say Layers, then + Add layer**: on desktop the footer's "+" is hidden by the
+  stylesheet (it always was), so three cards (plumbing, the lessons, the blank tour) named a
+  button that is not on screen. Their specs passed because the action clicks the hidden button
+  in code.
+- **Cards match the dialogs**: the hot-water return is made in the plain Create Line Type
+  dialog (it has no Create tab); plumbing's and HVAC's chapter 8 say what Skip does; the "Arm X"
+  and "click X in the sidebar" steps name their list so the card keeps off it.
+
+- **The circles come back after a dialog closes** (`drawZones`): the zone layer cached its last
+  drawing and, emptied while a dialog was up, kept the cache, so the same circles compared equal
+  when the dialog closed and were never redrawn. The gas drops lost their circles after Create
+  Counter; any step lost them after any dialog until the view moved.
+- **A run or a setting on any same-named line type counts** (the kit's `lineTypesMatching` /
+  `someLineType`; the trace collectors and the line-type setting checks in both courses and the
+  lessons): a reader whose palette already has "4in PVC" sees two once the chapter seeds its own,
+  and the riser's stack traced with the reader's read "0 of 2 done".
+- **The gas trace card no longer tells the reader to click the type the last step left active**:
+  a sidebar click on the active type turns it off, and P then opens New Polyline preset to another
+  type. The stack step names the line-types list, so the card keeps off its row.
+
+- **Export PDFs does not hold a reader who skipped the takeoff**: chapter 8's Export PDFs button
+  shows only once the sheet carries a mark, so after the takeoff step's Skip the step asked for a
+  hidden button. It passes on an empty sheet and the card says why.
+
+Chapters 1, 7 and 9 walked clean. Found and set aside: counters a reader makes by hand inside a
+lesson are never swept and stay in the palette for the next bid (punch row LEARN-LEAK, a product
+call).
+
 ## fix(learn): the by-hand walk of the electrical course, chapters 3 to 9, on a returning estimator's device (2026-09-24)
 
 The second round of the walk that found wendi's panel-step bug: every step of chapters 3 to 9

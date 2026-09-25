@@ -89,12 +89,22 @@
   // set, so a standing palette counter with the word in its name and no marks ("Panel …"
   // ahead of the reader's fresh "Panelboard Panel", wendi, 2026-09-24) shadowed the counter
   // the reader made, and a right click read as an armed counter never used.
+  // A match made in this lesson (not in the palette standing when the set opened) wins over the
+  // reader's standing one: the plumbing chain step named L-1 while the setup had adopted the
+  // standing "Lavatory" (by hand, 2026-09-25).
   const named = (list, re, armedId, used) => {
-    const hits = (list || []).filter((x) => re.test(x.name || ''));
+    const all = (list || []).filter((x) => re.test(x.name || ''));
+    const fresh = all.filter((x) => !standing.has(x.id));
+    const hits = fresh.length ? fresh : all;
     return hits.find((x) => x.lesson) || hits.find((x) => x.id === armedId) || hits.find(used) || hits[hits.length - 1];
   };
   const counterNamed = (re) => named(S().counters, re, S().activeCounterType, (c) => K().markCount(c.id) > 0);
   const lineTypeNamed = (re) => named(S().lineTypes, re, S().activeLineTypeId, (l) => (S().pages || []).some((p) => { const a = App.getActiveAnnotations(p); return !!a && (a.polylines || []).concat(a.quickLines || []).some((ln) => ln.lineTypeId === l.id); }));
+  // Every line type a step's word names: a reader whose own palette already has "4in PVC" sees two
+  // after the chapter seeds its own, and a run or a setting on either is the step done (by hand,
+  // 2026-09-25: the stack traced with the reader's own 4in PVC read "0 of 2 done").
+  const lineTypesMatching = (re) => (S().lineTypes || []).filter((l) => re.test(l.name || ''));
+  const someLineType = (re, pred) => lineTypesMatching(re).some((l) => { try { return !!pred(l); } catch (_) { return false; } });
   const marksOf = (c) => (c ? K().markCount(c.id) : 0);
   const scaleIs = (i, ppu) => { const sc = App.getPageScale && App.getPageScale(i); return !!sc && Math.abs(sc.pixelsPerUnit - ppu) < 0.05; };
   const inRect = (pt, r) => pt.x >= r.x1 && pt.x <= r.x2 && pt.y >= r.y1 && pt.y <= r.y2;
@@ -178,12 +188,16 @@
   // ----- opening the sheets, fresh, without costing anyone their work ----------------------
   let seededFor = null;   // the lesson whose seed is on the open sheets
   let openingFor = null;  // the lesson that asked for the sheets now opening
+  // The palette standing when a set opens: the reader's own counters and line types, which a
+  // lesson may use but never adopts as the one its card names (see `named`).
+  let standing = new Set();
   function sweepLessonPalette() {
     const s = S();
     const gone = new Set();
     s.counters = (s.counters || []).filter((c) => { if (c.lesson) gone.add(c.id); return !c.lesson; });
     s.lineTypes = (s.lineTypes || []).filter((l) => { if (l.lesson) gone.add(l.id); return !l.lesson; });
     Object.keys(s.numberKeyBindings || {}).forEach((slot) => { if (gone.has(s.numberKeyBindings[slot].id)) delete s.numberKeyBindings[slot]; });
+    standing = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
   }
   // A PDF with several sheets goes through Trim your set (Prepare PDF) like any upload.
   // The Sheets lesson leaves that dialog to the reader, because it IS the lesson; every
@@ -359,7 +373,7 @@
         { id: 'bends', title: 'Let the run count its elbows', kind: 'do',
           body: '1. In the left sidebar, under LINE TYPES, click the pencil beside 1-1/4in Gas.\n2. Turn on [[Fittings from bends]].\n3. Click [[Done]].\nEach bend now counts the fitting nearer its angle, a 45 or a 90, and a small chip at the corner shows what the tally will say. Where a jog only routes around text, right-click that corner while editing the run and choose No fitting here.',
           target: ['#counterLineTypeDetailsModal .modal-card', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineTypeNamed(/gas/i); return !!(lt && lt.bendFittings && lt.bendFittings.enabled); },
+          check: () => someLineType(/gas/i, (lt) => lt.bendFittings && lt.bendFittings.enabled),
           action: { label: 'Turn it on for me', run: () => { const lt = lineTypeNamed(/gas/i); if (!lt) return; App.pushUndoSnapshot(); const fm = window.FittingModel; lt.bendFittings = Object.assign(fm && fm.normalizeBendFittings ? fm.normalizeBendFittings(lt) : { bend45: { name: lt.name + ' 45° elbow', qty: 1 }, bend90: { name: lt.name + ' 90° elbow', qty: 1 }, drop: { name: lt.name + ' 90° elbow', qty: 1 } }, { enabled: true }); dirty(); } } },
         { id: 'drop', cardAt: 'bl', title: 'Add the riser', kind: 'do',
           body: 'The main comes up 4 ft out of the ground at the meter.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose or type 4 ft.\n3. Click the end of the run inside the circle, at the meter.\nThose 4 ft join the run\'s footage, and with Fittings from bends on, the drop counts a 90 too. Click the same end again to clear it.',
@@ -388,7 +402,7 @@
         { id: 'hangers', title: 'Hangers from the rule', kind: 'do',
           body: '1. In the left sidebar, under LINE TYPES, click the pencil beside 1/2in PEX.\n2. Under [[Child counts]], the app offers the hanger spacing for that pipe, read off its name.\n3. Click [[Add]].\n4. Click [[Done]].\nEvery run of this type now counts its hangers into the Summary and every export. Delete a run and its hangers go with it.',
           target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineTypeNamed(/pex/i); return !!(lt && (lt.childCounts || []).length); },
+          check: () => someLineType(/pex/i, (lt) => (lt.childCounts || []).length),
           action: { label: 'Add the hanger rule', run: () => { const lt = lineTypeNamed(/pex/i); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [hangerRuleFor(lt)]; dirty(); } } },
         { id: 'rule', title: 'Where the number came from', kind: 'read',
           body: '1. In the left sidebar, look at SUMMARY: under 1/2in PEX, the Hanger row carries a § chip.\nThe chip names the rule the spacing came from and opens it in the public [rulebook](/rules/). Project Settings picks the code edition your jurisdiction is on. Your own child counts work the same way: a row per run, or one every so many feet, on a line type; a row per count on a counter (a carrier under every water closet).',
@@ -454,8 +468,8 @@
           target: ['#counterShowOnlyOnPageInlineBtn', '#countersSection'], check: () => (App.getCounterListFilterScope ? App.getCounterListFilterScope() === 'page' : false),
           action: { label: 'Filter to this page', run: () => { App.setCounterListFilterScope('page'); App.updateUI(); } } },
         { id: 'layer', title: 'An alternate on its own layer', kind: 'do',
-          body: 'An alternate, an addendum, or waste kept apart from water: same sheet, its own layer, its own totals.\n1. In the footer, beside the layer name, click [[Add canvas]], the + button.\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\nThe up and down arrow keys switch layers. The button beside Layers shows every layer at once.',
-          target: ['#addCanvasModalCreate', '#addCanvasBtn'], check: () => ((S().pages[P101] || {}).canvases || []).length >= 2,
+          body: 'An alternate, an addendum, or waste kept apart from water: same sheet, its own layer, its own totals.\n1. In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\nThe up and down arrow keys switch layers. The button beside Layers shows every layer at once.',
+          target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#canvasLayersBtn'], check: () => ((S().pages[P101] || {}).canvases || []).length >= 2,
           action: { label: 'Add the layer for me', run: async () => { if (((S().pages[P101] || {}).canvases || []).length >= 2) return; goPage(P101); el('addCanvasBtn').click(); await wait(80); if (el('addCanvasModalNew')) el('addCanvasModalNew').click(); if (el('addCanvasModalName')) el('addCanvasModalName').value = 'Alternate 1'; if (el('addCanvasModalCreate')) el('addCanvasModalCreate').click(); await wait(80); } } },
         { id: 'hide', title: 'Read the bare drawing', kind: 'do',
           body: '1. In the header, click the eye, [[Hide marks]].\n2. Read the drawing under your marks.\n3. Click it again to bring them back.\nNothing is deleted. It is the fastest way to check whether a fixture is already counted.',
@@ -540,7 +554,7 @@
         { id: 'fix', title: 'Close an open row', kind: 'do',
           body: 'The row Hangers on every supported run is open: the PEX has no hanger rule.\n1. Under LINE TYPES, click the pencil beside 1/2in PEX.\n2. Under [[Child counts]], click [[Add]] on the suggested hanger.\n3. Click [[Done]].\nThe row turns to a tick by itself.',
           target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineTypeNamed(/pex/i); return !!(lt && (lt.childCounts || []).length); },
+          check: () => someLineType(/pex/i, (lt) => (lt.childCounts || []).length),
           action: { label: 'Add the hanger rule', run: () => { const lt = lineTypeNamed(/pex/i); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [hangerRuleFor(lt)]; dirty(); } } },
         { id: 'tick', title: 'Sign what only you can', kind: 'do',
           body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\nYour ticks are saved with the bid. Hand off with a row still open and the app asks once, then remembers your answer until something changes. It never blocks you.',
@@ -743,7 +757,7 @@
   // the device bookkeeping a lesson does around a run. Read at call time, never captured.
   App.lessonKit = {
     SET_NAME, LESSON_SET, P101, P401, P501, P601, P, FD, KITCHEN_FDS, BAR, STRAY, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, GI, NOTE_SPOT, RFI_SPOT, DETAIL,
-    pageAnn, onPage, isSetOpen, counterNamed, lineTypeNamed, marksOf, scaleIs, inRect, near, modalUp, measured,
+    pageAnn, onPage, isSetOpen, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), marksOf, scaleIs, inRect, near, modalUp, measured,
     dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, arm, hangerRuleFor, addNote, openStep, doneStep,
     beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); },
     restoreDevice,

@@ -91,7 +91,10 @@
   // On a tablet the header's tool strip scrolls sideways, so a tool can be shown yet past the
   // edge; it still counts (render scrolls it into view), where a tool that is display:none does not.
   const inStrip = (el) => !!el.closest('.header-tools-scroll');
-  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && el.offsetParent !== null && (onScreenX(el) || inStrip(el)) && (!within || within.contains(el))) return el; } return null; };
+  // Shown: laid out and not hidden. offsetParent is null for a position:fixed element even when it
+  // is on screen, which hid the Chain and Drop panels from the ladder and the card (2026-09-25).
+  const shown = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+  const q = (sels, within) => { for (const s of [].concat(sels)) { const el = document.querySelector(s); if (el && shown(el) && (onScreenX(el) || inStrip(el)) && (!within || within.contains(el))) return el; } return null; };
   const state = () => App.state;
   const ann = () => (state().pages && state().pages.length ? App.getActiveAnnotations(state().pages[state().currentPage]) : null);
   const markCount = (cid) => { let n = 0; (state().pages || []).forEach((p) => { const a = App.getActiveAnnotations(p); n += ((a && a.counterMarkers && a.counterMarkers[cid]) || []).length; }); return n; };
@@ -971,6 +974,8 @@
   }
 
   function el(id) { return document.getElementById(id); }
+  let zoomedForZones = false;   // focusOnZones moved the view for the current step's circles
+  let nudgedFor = -1;     // the step whose card has already moved the sheet once
   let dragPos = null;      // where the reader dragged the card to, this step
   let lastTarget = null;   // the element last spotlighted — a new one is scrolled into view
   let scrollSettled = false; // …until it has actually been on screen once (a dialog's scroll
@@ -1123,6 +1128,12 @@
         }
       }
       if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
+      // When no corner leaves the sheet targets clear (a named sidebar list on one side, circles
+      // on the other), the sheet moves instead of the card: once per step, a pan that brings the
+      // circles out from under the card, sideways first, then up or down. Found by hand
+      // 2026-09-25: the kitchen step's card kept off FD-1 in the sidebar and sat on the
+      // kitchen-exit hand sink and the east floor drain, so both clicks landed on the card.
+      if (!dragPos && zs.length && nudgedFor !== stepIdx) nudgeSheetFromCard(zs, { x1: place.left - 12, y1: place.top - 12, x2: place.left + cw + 12, y2: place.top + ch + 12 }, place.left > vw / 2, place.top > vh / 2);
       const left = place.left, top = place.top;
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
       // A phone docks the card to an edge (styles.css, max-width 767px): the far
@@ -1174,7 +1185,10 @@
     const step = active ? STEPS[stepIdx] : null;
     const zones = step && !document.querySelector('.modal-overlay.visible') && (step.page == null || state().currentPage === step.page) ? stepZones(step) : [];
     const box = zones.length ? sheetBox() : null;
-    if (!box) { if (svg.childNodes.length) svg.textContent = ''; return; }
+    // Emptied, the cache goes too: a dialog on a step hid the circles and, when it closed, the same
+    // drawing matched the cache and was never put back (the gas drops after Create Counter, by
+    // hand 2026-09-25).
+    if (!box) { if (svg.childNodes.length) svg.textContent = ''; svg.__last = ''; return; }
     const wrap = document.querySelector('.canvas-wrapper');
     const w = wrap ? wrap.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     const X = (x) => box.left + x * box.k, Y = (y) => box.top + y * box.k;
@@ -1218,7 +1232,7 @@
       let els = [];
       try { els = Array.from(document.querySelectorAll(sel)); } catch (_) { return; }
       els.forEach((el) => {
-        if (el === pointed || el.offsetParent === null || (within && !within.contains(el))) return;
+        if (el === pointed || !shown(el) || (within && !within.contains(el))) return;
         const r = el.getBoundingClientRect();
         if (!r.width || !r.height || r.width * r.height > window.innerWidth * window.innerHeight * 0.4) return;
         if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return;
@@ -1226,6 +1240,31 @@
       });
     });
     return out;
+  }
+  function nudgeSheetFromCard(zs, cardBox, cardRight, cardLow) {
+    const under = (dx, dy) => zs.filter((b) => b.x1 + dx < cardBox.x2 && b.x2 + dx > cardBox.x1 && b.y1 + dy < cardBox.y2 && b.y2 + dy > cardBox.y1).length;
+    if (!under(0, 0)) return;
+    nudgedFor = stepIdx;
+    const wrap = document.querySelector('.canvas-wrapper');
+    if (!wrap || !state().pan) return;
+    const w = wrap.getBoundingClientRect(), m = 12;
+    const zx1 = Math.min(...zs.map((b) => b.x1)), zx2 = Math.max(...zs.map((b) => b.x2));
+    const zy1 = Math.min(...zs.map((b) => b.y1)), zy2 = Math.max(...zs.map((b) => b.y2));
+    // sideways: every circle to the free side of the card, as far as the sheet's edge allows
+    let dx = cardRight ? Math.min(0, cardBox.x1 - zx2) : Math.max(0, cardBox.x2 - zx1);
+    if (cardRight && zx1 + dx < w.left + m) dx = Math.min(0, w.left + m - zx1);
+    if (!cardRight && zx2 + dx > w.right - m) dx = Math.max(0, w.right - m - zx2);
+    let dy = 0;
+    if (under(dx, 0)) {
+      dy = cardLow ? Math.min(0, cardBox.y1 - zy2) : Math.max(0, cardBox.y2 - zy1);
+      if (cardLow && zy1 + dy < w.top + m) dy = Math.min(0, w.top + m - zy1);
+      if (!cardLow && zy2 + dy > w.bottom - m) dy = Math.max(0, w.bottom - m - zy2);
+      if (under(dx, dy) >= under(dx, 0)) dy = 0;
+    }
+    if (under(dx, dy) >= under(0, 0) || (Math.abs(dx) < 2 && Math.abs(dy) < 2)) return;
+    state().pan = { x: state().pan.x + dx, y: state().pan.y + dy };
+    zoomedForZones = true;
+    App.renderPdf(); App.updateUI();
   }
   function zoneScreenBoxes(step) {
     const b = sheetBox(); if (!b) return [];
@@ -1266,6 +1305,8 @@
     const z = Math.max(fit, Math.min(max, Math.max(Math.min(want, max), Math.min(need, want))));
     state().zoom = z;
     state().pan = { x: W / 2 - ((x1 + x2) / 2) * z, y: H / 2 - ((y1 + y2) / 2) * z };
+    nudgedFor = -1;   // the zoom moved the circles: the card gets one more look
+    zoomedForZones = true;
     App.renderPdf(); App.updateUI();
   }
   function showMeWhere() {
@@ -1307,7 +1348,7 @@
     });
   }
   function goTo(i) {
-    dragPos = null;
+    dragPos = null; nudgedFor = -1;
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;
@@ -1319,6 +1360,10 @@
     // passes before they touch it (Bid Check stayed open across chapters, 2026-09-24). Only
     // moving forward: a step the reader came Back to keeps what they left.
     if (!heldByBack && STEPS[stepIdx].onEnter) { try { STEPS[stepIdx].onEnter(); } catch (_) { /* a step's setup never breaks a move */ } }
+    // The last step's circles zoomed the sheet onto their corner; a step with none of its own
+    // (a question about the sheet) gets the whole sheet back, or its answer can sit off screen
+    // (the interceptor question opened on the east wall, the restrooms out of view, 2026-09-25).
+    if (!heldByBack && zoomedForZones && !stepZones(STEPS[stepIdx]).length && App.fitZoom) { zoomedForZones = false; App.fitZoom(); App.updateUI(); }
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     const def = TOURS[tourId];

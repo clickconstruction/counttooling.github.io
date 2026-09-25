@@ -96,7 +96,16 @@
   `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`, and water-model.js's `WSFU_LOADS`,
   `DEMAND_CURVE`, `WATER_VELOCITY_CAP_FPS`, `PIPE_ID_IN`, `FIXTURE_SUPPLY_MIN_IN`,
   `WATER_SERVICE_MIN_IN`), change the rule in the same
-  commit. `build:guides` owns `sitemap.xml` and lists the rule pages too.
+  commit. And a tour, lesson or course step that teaches a rule names it: `rules:
+  ['plumb.hanger.pex']` on the step object (ids from `rules/rules.json`), or
+  `rulesExempt: 'no rulebook entry: <section, subject>'` when it cites a section the
+  rulebook does not hold yet. [scripts/check-lesson-rules.js](scripts/check-lesson-rules.js)
+  (in `npm run check`, espree over features/tutorial.js, tour-blank.js, lessons.js and
+  the three course files) fails an unknown id, a citation or a rule's number beside its
+  subject with neither key, and a named rule's number the rule does not hold, so a card,
+  its rule and the code cannot disagree unnoticed; `--gaps` lists the exemptions (the
+  sections the rulebook still lacks), `--trace` every number it judged.
+  [check-lesson-rules.test.js](check-lesson-rules.test.js) pins it. `build:guides` owns `sitemap.xml` and lists the rule pages too.
   [rules.test.js](rules.test.js) (Node, CI) pins the parser, the pointers, the pages and
   the JSON.
 - **PWA / offline**: the app is an installable PWA (scoped to `/app/`). Third-party libs (pdf.js + worker,
@@ -241,7 +250,10 @@
   + `build:sw --check`
   + `check-brand-tokens` (the styles.css ↔ marketing.css ↔ manifest token
   mirror) + `check-punchlist` (PUNCHLIST.md row shape + every `Detail` link
-  resolves) — eleven steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  resolves) + `check-lesson-rules` (a tour, lesson or course step that states a
+  rulebook number or cites a code section names the rule, `rules: ['<id>']`, or says
+  why not, `rulesExempt: '<why>'`, and its number is the rule's; see the rulebook
+  bullet) — twelve steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is

@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '3f6fdbbf2f58';
+const CACHE_VERSION = '3b3866cee95c';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -332,12 +332,12 @@ const PRECACHE_SHA256 = {
   '/features/duct-bidcheck.js': 'de82bed1f1c357fa21bd9864ff417a99d4949a7b4e6833a6690cdcf47dc0ece1',
   '/features/rules.js': '01e86c4f75ee125c375265b33566364603a9056780716841f487b4a323be8192',
   '/features/tag-reader.js': '18e33828734558fdbb99f63eb82ca05b595757f70eb8e22aeb5e2c42e6e630fc',
-  '/features/tutorial.js': '42c19b9cdd04b13e1fb5fb66fd7572fbbeadbb4eb18c7029a7e380bdebbe8a94',
-  '/features/lessons.js': '404beee642b03aa5da7e0df50f6dd66379c13d32ede65953347048076c822a6c',
-  '/features/course-plumbing.js': '16e67c8278a39b0c9423bd890c662e02b9ff0614504f87e6712532a7e5f7a2ff',
-  '/features/course-electrical.js': '383860392b78fc3c734bf161bf5a47d96e97c597bc5ed2bf989e94703cfbf2c5',
-  '/features/course-hvac.js': '78318b19de6433e13d6d3d809eb729d8a51a5517090d2213cc342b7e417806ea',
-  '/features/tour-blank.js': '751fe485552f551e8584d8c535b0cae2b941cd71112ae2b4cd14de2f4c9c4ea9',
+  '/features/tutorial.js': '3e9fc87df9b4f95969458babb6de8909cc5120952863b29b7953fdb696cb8f3b',
+  '/features/lessons.js': '6fb2c85436fe452a7c9e5c2d088e33484f451842a2f98c53da7a1aa85c81d334',
+  '/features/course-plumbing.js': 'bee7160e4f2e91af7a83e8504566d518201fe18c28edd29d92cfd973c609732e',
+  '/features/course-electrical.js': '2909ee2d23d4671b53388ac7224e1b304f46397c7bfe3ae39f51730cbfdacc3a',
+  '/features/course-hvac.js': 'aa3a9f3936cba10ad70c039f414ebb72189e0af2ee7023ebd5a9c48489e5fd40',
+  '/features/tour-blank.js': '32bce0e0451bd6d3d5303046a27f0f19fecf1f2835188da2a2784bc89d54706e',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
   '/report.js': '2279bf02b07467ff8eeaa108d607963cb32298a61e0858b8f958970cb199989e',

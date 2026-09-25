@@ -11,16 +11,9 @@ const path = require('node:path');
 
 const ROOT = __dirname;
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
-const decode = (s) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
-
-// Everything the shell can show as a control's name.
-function shellLabels() {
-  const html = read('app/index.html');
-  const out = new Set();
-  decode(html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, '\n')).split('\n').forEach((s) => { const t = s.trim(); if (t) out.add(t); });
-  for (const m of html.matchAll(/(?:title|aria-label)="([^"]*)"/g)) out.add(decode(m[1]).trim());
-  return out;
-}
+// Everything the shell can show as a control's name (scripts/lib/shell-labels.js, shared with
+// the persona manifest's labels.json).
+const { shellLabels } = require('./scripts/lib/shell-labels.js');
 
 // Labels a feature file renders at run time: label -> [file, the literal that proves it].
 const RENDERED_IN_JS = {

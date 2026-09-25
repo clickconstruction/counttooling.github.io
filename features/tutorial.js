@@ -18,8 +18,14 @@
  * sheet; the answer waits behind the action button, "Show the engineer's answer" or the
  * step's own revealLabel, and Next is lit throughout. The plumbing course's teaching mode,
  * journeys/plans/PLUMBING-COURSE.md)
+ * (rules: the rulebook ids, from rules/rules.json, whose values the step teaches, and
+ * rulesExempt: why a step that cites a code section names none, usually a section the
+ * rulebook has no entry for yet. Neither changes the tour; scripts/check-lesson-rules.js, in
+ * npm run check, fails a step that states a rule's number or cites a code without one, or
+ * whose number is not its rule's. PERSONA-PLAN item 7, 2026-09-25)
  * (hint() is the status line while a doing-step's check is failing for a reason
  * worth naming — the prove-the-scale step says what it read; it renders as a miss.
+ * It returns a string, or { code, text } with a reason code (see hintOf); the card shows the text.
  * progress() is the same line for GUIDANCE on a step with several parts — "Bound.
  * Now press 1 and click inside the circle" — and renders neutral, like "1 of 3 done".)
  * The overlay spotlights the target (a box-shadow cutout that never intercepts
@@ -58,7 +64,12 @@
  *
  * Registrations: startTutorial(id), stopTutorial(), isTutorialActive(),
  * onTutorialTick() (updateUI + a 400 ms interval re-evaluate the step),
- * tutorialStepId() / tutorialId() / tutorialGoTo(id) (specs).
+ * tutorialStepId() / tutorialId() / tutorialGoTo(id) (specs), registerTour(id, def) (lessons,
+ * courses, the blank tour), tourKit (their shared helpers), tutorialDoStep() / tutorialZones() /
+ * tutorialZoneScreen() / tutorialStepInfo() (spec and screenshot seams), and the persona seams
+ * (PERSONA-PLAN, 2026-09-25): tutorialIds() (every registered tour), tutorialManifest(id) (each
+ * step as one compact record: raw body, lit controls by label, zone count, what it carries) and
+ * tutorialObserve() (the running step as its reader sees it, with the status line's reason code).
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
@@ -81,6 +92,9 @@
   let tourLineTypeId = null;
   let tourSecondCounterId = null;
   let placedOnce = false;   // the HVAC diffusers were placed in their circles (the Attach step moves them afterwards)
+  let statusCode = null;    // the reason code of the status line on show (render), for App.tutorialObserve
+  let hintsLogged = new Set();   // the codes already logged on this step's tour_step (once per step per code)
+  let litEl = null;         // the control the spotlight is on (render), for App.tutorialObserve
 
   // First visible match of the ladder. While a dialog is open only a control
   // inside it qualifies — the header and sidebar sit under the backdrop.
@@ -151,7 +165,7 @@
   function boxMiss(rects, inner, outer) {
     const last = (rects || [])[(rects || []).length - 1];
     if (!last || (holds(last, inner) && holds(outer, last))) return '';
-    return !holds(outer, last) ? 'Part of that box is outside the boundary. Undo it and drag inside the shaded area' : 'That box misses part of what it should wrap. Undo it and drag around all of it';
+    return { code: 'outside-zone', text: !holds(outer, last) ? 'Part of that box is outside the boundary. Undo it and drag inside the shaded area' : 'That box misses part of what it should wrap. Undo it and drag around all of it' };
   }
   // A traced run: a corner inside each circle, in order (extra corners between are fine).
   function pathZones(spots, r, runs) {
@@ -185,7 +199,8 @@
   // WHICH string is measured where two meet at a tick; a circle ticks as the click in it lands;
   // the reading only counts with a click in each circle; and the hint names which of three things
   // went wrong: Measure is not on, a click missed a circle, or the clicks were right and the
-  // scale is not. Once it reads true the card says so and holds for Next (the step's `hold`),
+  // scale is not (codes not-armed, outside-zone, wrong-scale: a caller reads the code, never the
+  // words). Once it reads true the card says so and holds for Next (the step's `hold`),
   // because the reading IS the lesson. `ends` are the dimension's two ticks in sheet points.
   function measureProof({ page, ends, r, ft, tol, stated }) {
     const circles = () => ends.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: false }));
@@ -210,10 +225,10 @@
     const hint = () => {
       if (pending()) return '';   // the first click is in: "1 of 2 done" says so
       const c = lastSheetClick, lm = reading();
-      if (c && c.page === page && c.tool !== App.TOOL.MEASURE && state().tool !== App.TOOL.MEASURE && circles().some((z) => inCircle(c, z))) return 'Measure is not on yet. Click Measure in the header first (or press D)';
+      if (c && c.page === page && c.tool !== App.TOOL.MEASURE && state().tool !== App.TOOL.MEASURE && circles().some((z) => inCircle(c, z))) return { code: 'not-armed', text: 'Measure is not on yet. Click Measure in the header first (or press D)' };
       if (!lm) return '';
-      if (!inBoth()) return 'That read ' + readText(lm) + ', but a click missed a circle. Click inside circle 1, then inside circle 2';
-      if (!right()) return 'Read ' + readText(lm) + ' with both clicks in the circles, so the scale is off. Click Back and set it again';
+      if (!inBoth()) return { code: 'outside-zone', text: 'That read ' + readText(lm) + ', but a click missed a circle. Click inside circle 1, then inside circle 2' };
+      if (!right()) return { code: 'wrong-scale', text: 'Read ' + readText(lm) + ' with both clicks in the circles, so the scale is off. Click Back and set it again' };
       return '';
     };
     // What the card says once it reads true. A hand click lands a few inches either side of a
@@ -286,6 +301,7 @@
     },
     {
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
+      rules: ['elec.mount-height.defaults'],
       body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", the number the Chain tool turns into vertical conduit in a moment.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
@@ -319,6 +335,7 @@
     },
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
+      rules: ['elec.vertical.make-up', 'elec.mount-height.defaults'],
       body: '1. In the header, click the gear ([[Project Settings]]).\n2. In Ceiling height, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws: 9.5 ft per receptacle nobody has to type.',
       target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
       check: () => state().ceilingHeightFt > 0,
@@ -350,6 +367,7 @@
     },
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
+      rules: ['elec.conduit.fill-limit'],
       onEnter: foldBidCheck, hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. It has also caught something: the receptacles you counted first were never wired, so they read as not reached by a run. Voltage drop to the farthest device and the panel cross-check wake up once a run is flagged as the homerun and the panel is on the plan. Below them are the calls only you can tick. It never blocks an export; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
@@ -390,7 +408,7 @@
   // A second line type with the branch's name (the reader's own, left by an earlier tour) took the
   // setting instead of the branch's: say which one the ring is on. Only a change made in this tour: a
   // twin an earlier tour left set that way is not the reader's slip now.
-  const twinHint = (did) => { const lt = pLineType(); if (!lt || did(lt)) return ''; const twin = (state().lineTypes || []).find((x) => x.id !== lt.id && x.name === lt.name && did(x) && !(standingSnap[x.id] && did(standingSnap[x.id]))); return twin ? 'Two line types read ' + lt.name + '. That went on the other one: open the pencil lit in the sidebar, the one the branch is drawn with' : ''; };
+  const twinHint = (did) => { const lt = pLineType(); if (!lt || did(lt)) return ''; const twin = (state().lineTypes || []).find((x) => x.id !== lt.id && x.name === lt.name && did(x) && !(standingSnap[x.id] && did(standingSnap[x.id]))); return twin ? { code: 'wrong-item', text: 'Two line types read ' + lt.name + '. That went on the other one: open the pencil lit in the sidebar, the one the branch is drawn with' } : ''; };
   const anyNoteRfi = () => (state().pages || []).some((p) => (p.canvases || []).some((cv) => ((cv.annotations && cv.annotations.notes) || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')))));
   // a rise or fall written on the run END that sits inside the circle at `spot`
   const dropAt = (spot, r) => { const a = ann(); if (!a) return false; const z = { x: spot.x, y: spot.y, r }; return (a.quickLines || []).some((l) => ((l.startDrop || 0) > 0 && inCircle({ x: l.x1, y: l.y1 }, z)) || ((l.endDrop || 0) > 0 && inCircle({ x: l.x2, y: l.y2 }, z))); };
@@ -475,7 +493,7 @@
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = pCounter(); return markZones(0, c ? c.id : '-', WC_SPOTS, 13); },
       check: () => allDone(markZones(0, (pCounter() || {}).id || '-', WC_SPOTS, 13)),
-      hint: () => { const c = pCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13)) : 0; return n ? 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' : ''; },
+      hint: () => { const c = pCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13)) : 0; return n ? { code: 'outside-zone', text: 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' } : ''; },
       action: { label: 'Count three for me', run: placeThreeWcs },
     },
     {
@@ -500,11 +518,12 @@
       target: ['#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
       check: () => dropAt(LAV_SPOTS[0], 14),
-      hint: () => (anyDrop() && !dropAt(LAV_SPOTS[0], 14) ? 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' : ''),
+      hint: () => (anyDrop() && !dropAt(LAV_SPOTS[0], 14) ? { code: 'outside-zone', text: 'That drop is on another end. Click the same end again to clear it, then click the end inside the circle' } : ''),
       action: { label: 'Add a 3 ft riser for me', run: addRiserDrop },
     },
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
+      rules: ['plumb.hanger.pex'],
       body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
       target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
@@ -522,6 +541,7 @@
     },
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
+      rules: ['plumb.wsfu.fixtures'],
       body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the IPC table row it read. The table has two columns, public (a restaurant, an office) and private (a house, a hotel room); click the word public in the chip to move this one counter to the private column.',
       target: () => ladder('#counterLineTypeDetailsWsfuGroup', pencilOf('counter', pLav()), '#countersSectionTitle'),
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
@@ -529,11 +549,12 @@
     },
     {
       id: 'size', title: 'Size the branch at S', kind: 'do',
+      rules: ['plumb.water.velocity', 'plumb.wsfu.demand'],
       body: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n1. In the header, click [[⋯]], then [[Polyline]] (or press P). It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n3. Press S and click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n4. Click inside the second circle, then press Enter.',
       target: ['#waterSizePopover', '#waterHintCard', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
       check: () => waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
-      hint: () => (!state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? 'The main is traced but still one size. Press S while tracing and take the 3/4″ the card offers' : ''),
+      hint: () => (!state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? { code: 'not-yet', text: 'The main is traced but still one size. Press S while tracing and take the 3/4″ the card offers' } : ''),
       action: { label: 'Trace and size it for me', run: traceAndSizeMain },
     },
     {
@@ -542,7 +563,7 @@
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26), 'Drag your box around Women 108, anywhere in here')],
       check: () => boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)).done,
-      hint: () => boxMiss(typicalZones().concat(otherZones()), WOMEN_INNER, grow(WOMEN_ROOM, 26)) || (!typicalZones().length && otherZones().length ? 'The box is there, the number is ×' + (otherZones()[0].multiplier || 1) + '. Right-click the zone\'s label, Edit multiplier, and type 3' : ''),
+      hint: () => boxMiss(typicalZones().concat(otherZones()), WOMEN_INNER, grow(WOMEN_ROOM, 26)) || (!typicalZones().length && otherZones().length ? { code: 'wrong-value', text: 'The box is there, the number is ×' + (otherZones()[0].multiplier || 1) + '. Right-click the zone\'s label, Edit multiplier, and type 3' } : ''),
       action: { label: 'Wrap Women 108 in a ×3 zone', run: addTypicalFloorZone },
     },
     {
@@ -551,7 +572,7 @@
       target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: RFI_SPOT.x, y: RFI_SPOT.y, r: 42, done: rfiAt(RFI_SPOT, 42) }],
       check: () => rfiAt(RFI_SPOT, 42),
-      hint: () => (anyNoteRfi() && !rfiAt(RFI_SPOT, 42) ? 'That flag is outside the circle. Drag the note into the circle' : ''),
+      hint: () => (anyNoteRfi() && !rfiAt(RFI_SPOT, 42) ? { code: 'outside-zone', text: 'That flag is outside the circle. Drag the note into the circle' } : ''),
       action: { label: 'Drop the RFI note for me', run: addRfiNote },
     },
     {
@@ -645,6 +666,7 @@
     },
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
+      rules: ['hvac.duct.schedule-factors'],
       body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click inside the first circle, then the second, working across the office. The chip under the cursor reads the air still to serve (600 CFM downstream) and suggests a size for it at 0.08″ per 100′.\n4. Press S and tap the suggestion (spiral first, then the rectangular twin).\n5. Click inside the third circle.\n6. Press Enter.\nThe elbows and the transition count themselves.',
       target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => pathZones(MAIN_VERTICES, 16, mainPaths()),
@@ -662,12 +684,14 @@
     },
     {
       id: 'schedule', title: 'Pounds, not feet', kind: 'read',
+      rules: ['hvac.duct.gauge-schedule', 'hvac.duct.sheet-weight', 'hvac.duct.schedule-factors'],
       body: '1. In the left sidebar, under DUCT, click [[Schedule]].\nStraight duct by size with its gauge and lb/ft from the SMACNA table, the fittings you did not have to count, seam & waste on its own line, and the number a sheet-metal bid is built on: Bid weight.\n2. Click [[Copy Schedule]] to put it on the clipboard.',
       target: ['#ductScheduleBtn', '#ductSectionTitle'],
       check: () => true,
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
+      rules: ['hvac.room.airflow-defaults'],
       onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Curb & power coordinated to tick it: who sets the RTU\'s curb and runs its power is yours to settle with the GC and the electrician.',
       target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
       // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,
@@ -1089,8 +1113,19 @@
     const wrongPage = zones.length && step.page != null && state().currentPage !== step.page;
     const counted = countedZones(zones);
     const progress = counted.length > 1 ? counted.filter((z) => z.done).length + ' of ' + counted.length + ' done' : '';
-    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : ((step.hint && safeHint(step)) || (wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '') || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
-    el('tourStatus').classList.toggle('tour-status-miss', step.kind === 'do' && !done && !!(step.hint && safeHint(step)));
+    const miss = step.kind === 'do' && !done ? hintOf(step) : { text: '', code: null };
+    const pageLine = wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '';
+    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
+    el('tourStatus').classList.toggle('tour-status-miss', !!miss.text);
+    // The reason code of the line on show (the engine's own sheet line is wrong-page), logged on the
+    // tour_step event the first time it shows on this step, so real readers' stalls are counted on
+    // the same yardstick the persona runs use (PERSONA-PLAN item 3, 2026-09-25). A plain-string hint
+    // has no code and logs nothing new.
+    statusCode = miss.text ? miss.code : (step.kind === 'do' && !done && pageLine ? 'wrong-page' : null);
+    if (statusCode && !hintsLogged.has(statusCode)) {
+      hintsLogged.add(statusCode);
+      App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: step.id, index: stepIdx, hint: statusCode });
+    }
     el('tourDots').innerHTML = STEPS.map((s, i) => '<span class="tour-dot' + (i < stepIdx ? ' past' : i === stepIdx ? ' now' : '') + '"></span>').join('');
     // spotlight + card placement: the ladder follows the reader into an open
     // dialog (only a control inside it qualifies there)
@@ -1101,6 +1136,7 @@
     // On a phone the sidebar is a drawer: when the step's control sits in it and
     // nothing of the ladder is on screen, light the ☰ that opens it.
     if (!target && !modalOpen && isNarrow() && ladder.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
+    litEl = target;
     const spot = el('tourSpot');
     const card = el('tourCard');
     if (target) {
@@ -1325,7 +1361,7 @@
     return i < 0 ? list : list.slice(0, i + 1).concat(['#pagesCollapseIcon'], list.slice(i + 1));
   }
   // The status line for a step that sends the reader to another sheet while PAGES is folded.
-  const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? 'PAGES is folded: click the ▶ beside it, then ' + label : ''; };
+  const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? { code: 'wrong-page', text: 'PAGES is folded: click the ▶ beside it, then ' + label } : ''; };
   function otherControlBoxes(step, pointed, within) {
     const out = [];
     targetsOf(step).forEach((sel) => {
@@ -1417,7 +1453,18 @@
     [el('tourZones'), el('tourSpot')].forEach((n) => { if (!n) return; n.classList.remove('is-pulsing'); void n.getBoundingClientRect(); n.classList.add('is-pulsing'); });
   }
   function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
-  function safeHint(step) { try { return step.hint() || ''; } catch (_) { return ''; } }
+  // A hint is a string, or { code, text } when it names why the step is not done yet: not-armed,
+  // outside-zone, wrong-page, wrong-scale, wrong-item, wrong-value, dialog-closed, not-yet, other
+  // (PERSONA-PLAN item 3, 2026-09-25). The card shows the text either way; the code rides the
+  // tour_step event and App.tutorialObserve(). Steps move over a set at a time: the plumbing tour
+  // and the kit helpers (measureProof, boxMiss, pagesFoldedHint) first.
+  function hintOf(step) {
+    if (!step || !step.hint) return { text: '', code: null };
+    let h;
+    try { h = step.hint(); } catch (_) { return { text: '', code: null }; }
+    if (h && typeof h === 'object') { const text = String(h.text || ''); return { text, code: text ? (h.code || 'other') : null }; }
+    return { text: h ? String(h) : '', code: null };
+  }
   function safeProgress(step) { try { return step.progress() || ''; } catch (_) { return ''; } }
   // A dialog the last step opened (the proof breakdown, the Duct Schedule) must
   // not sit over the next step's control: the ladder only lights a target INSIDE
@@ -1458,6 +1505,7 @@
     doneAt = 0;
     lastSheetClick = null;
     revealed = false;
+    hintsLogged = new Set(); statusCode = null;
     closeStrayDialogs(STEPS[stepIdx]);
     // A step that asks the reader to open something first gets it closed on the way in, or it
     // passes before they touch it (Bid Check stayed open across chapters, 2026-09-24). Only
@@ -1515,6 +1563,7 @@
     STEPS = TOURS[tourId].steps;
     active = true;
     stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    hintsLogged = new Set(); statusCode = null; litEl = null;
     standingIds = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
     standingSnap = {}; (s.lineTypes || []).forEach((l) => { standingSnap[l.id] = { waterSide: l.waterSide, childCounts: (l.childCounts || []).slice() }; });
     if (!String(tourId).includes(':')) clearSearchesForTour();
@@ -1644,6 +1693,105 @@
   // the current targets in CLIENT pixels, where a spec (or a person) would click
   App.tutorialZoneScreen = () => { const b = sheetBox(); if (!active || !b) return []; const X = (x) => b.left + x * b.k, Y = (y) => b.top + y * b.k; const R = (r) => ({ x1: X(r.x1), y1: Y(r.y1), x2: X(r.x2), y2: Y(r.y2) }); return stepZones(STEPS[stepIdx]).map((z) => (z.kind === 'circle' ? { kind: 'circle', cx: X(z.x), cy: Y(z.y), r: zoneR(z) * b.k, done: z.done } : z.kind === 'span' ? { kind: 'span', a: { x: X(z.a.x), y: Y(z.a.y) }, b: { x: X(z.b.x), y: Y(z.b.y) }, done: z.done } : { kind: 'box', outer: R(z.outer), inner: R(z.inner), done: z.done })); };
   App.tutorialStepInfo = () => { const st = active ? STEPS[stepIdx] : null; return st ? { id: st.id, kind: st.kind, done: st.kind === 'read' || safeCheck(st), hasAction: !!st.action } : null; };
+  // ===== the persona seams (PERSONA-PLAN items 1 and 4, 2026-09-25) =========================
+  // Read-only views for the persona harness and the manifest dump: what every tour asks for, and
+  // what the reader of the running one sees, as text. They never do a step (tutorialDoStep does,
+  // and a persona never uses it).
+  // (a section heading's fold arrow is not part of its name: "SUMMARY", not "SUMMARY ▼")
+  const clean = (t) => String(t == null ? '' : t).replace(/\s+/g, ' ').trim().replace(/^[▶▼▲◀►]\s*|\s*[▶▼▲◀►]$/g, '');
+  // A control's name the way a reader would say it: its words on screen, else its aria-label or
+  // title (the gear, the ×); a field goes by its label. Empty when it has none (the sheet itself).
+  function labelOf(node) {
+    if (!node || !node.tagName) return '';
+    const named = clean(node.getAttribute('aria-label')) || clean(node.getAttribute('title'));
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName)) {
+      let byFor = null;
+      try { byFor = node.id ? document.querySelector('label[for="' + (window.CSS && CSS.escape ? CSS.escape(node.id) : node.id) + '"]') : null; } catch (_) { /* an odd id */ }
+      const wrap = node.closest('label');
+      const group = node.closest('.form-group, .setting-row, .range-label');
+      const lab = group && group.querySelector('label, .setting-label');
+      return clean(node.getAttribute('aria-label')) || clean(byFor && byFor.textContent) || clean(wrap && wrap.textContent) || clean(lab && lab.textContent) || clean(node.getAttribute('placeholder')) || clean(node.getAttribute('title'));
+    }
+    const text = clean(node.innerText != null ? node.innerText : node.textContent);
+    if (text && text.length <= 48 && /[A-Za-z0-9]/.test(text)) return text;
+    if (named) return named;
+    const head = node.querySelector && node.querySelector('h1, h2, h3, h4, legend');
+    if (head && clean(head.textContent)) return clean(head.textContent);
+    return text.length > 48 ? text.slice(0, 48) + '…' : text;
+  }
+  // A step's lit controls by name, in ladder order: a selector with nothing in the DOM (a dialog's
+  // control before it is built, the pencil of an item not made yet) stays a selector.
+  function targetLabels(step) {
+    const out = [];
+    targetsOf(step).forEach((sel) => {
+      let node = null;
+      try { node = document.querySelector(sel); } catch (_) { /* not a selector */ }
+      const label = labelOf(node) || sel;
+      if (!out.includes(label)) out.push(label);
+    });
+    return out;
+  }
+  const stepText = (b) => { if (typeof b !== 'function') return b == null ? '' : String(b); try { const v = b(); return v == null ? '' : String(v); } catch (_) { return '(dynamic)'; } };
+  // One line per step, fields in a fixed order, false and empty left out: the parent's main read.
+  function manifestOf(id) {
+    const def = TOURS[id];
+    if (!def) return null;
+    return {
+      id,
+      steps: (def.steps || []).map((st, i) => {
+        const m = { i, id: st.id, kind: st.kind, title: st.title, body: stepText(st.body) };
+        if (st.reveal) m.reveal = stepText(st.reveal);
+        m.targets = targetLabels(st);
+        m.zones = countedZones(stepZones(st)).length;
+        if (st.page != null) m.page = st.page;
+        ['hint', 'progress', 'action', 'handsOff', 'hold'].forEach((k) => { if (st[k]) m[k] = true; });
+        if (Array.isArray(st.rules) && st.rules.length) m.rules = st.rules.slice();
+        if (st.rulesExempt) m.rulesExempt = String(st.rulesExempt);
+        return m;
+      }),
+    };
+  }
+  const CARD_BUTTONS = ['tourShow', 'tourAlt', 'tourReveal', 'tourSkip', 'tourBack', 'tourNext', 'tourLeave'];
+  // The running step as its reader sees it, from the last render: the card, the status line and its
+  // reason code, the lit control and the sheet targets in screen pixels (rounded), the open dialog.
+  function observe() {
+    if (!active) return null;
+    const st = STEPS[stepIdx];
+    const R = Math.round;
+    const openModal = document.querySelector('.modal-overlay.visible');
+    let dialog = null;
+    // a dialog with no heading (the counter and line type pickers) goes by its tab on show
+    if (openModal) { const h = openModal.querySelector('.modal-card-header h2, h2, h3'); const tab = openModal.querySelector('.counter-tab.active, .line-type-tab.active'); dialog = { id: openModal.id, title: clean(h && h.textContent) || clean(tab && tab.textContent) }; }
+    const lit = litEl && litEl.isConnected && shown(litEl) ? (() => { const r = litEl.getBoundingClientRect(); return { label: labelOf(litEl) || (litEl.id ? '#' + litEl.id : litEl.tagName.toLowerCase()), box: [R(r.left), R(r.top), R(r.width), R(r.height)] }; })() : null;
+    const onSheet = !openModal && (st.page == null || state().currentPage === st.page);
+    const zs = onSheet ? countedZones(stepZones(st)) : [];
+    const b = zs.length ? sheetBox() : null;
+    // n is the number drawZones tags the circle with: circles count among themselves, a boundary
+    // box carries no number (the blank tour's ghost step draws a box, then circle 1)
+    let circles = 0;
+    const zones = !b ? [] : zs.map((z) => {
+      if (z.kind === 'circle') return { n: ++circles, kind: 'circle', done: !!z.done, cx: R(b.left + z.x * b.k), cy: R(b.top + z.y * b.k), r: R(zoneR(z) * b.k) };
+      const o = z.outer;
+      return { n: null, kind: z.kind, done: !!z.done, box: [R(b.left + o.x1 * b.k), R(b.top + o.y1 * b.k), R((o.x2 - o.x1) * b.k), R((o.y2 - o.y1) * b.k)] };
+    });
+    const next = el('tourNext');
+    return {
+      tour: tourId, i: stepIdx, n: STEPS.length, id: st.id, kind: st.kind, title: st.title,
+      card: String((el('tourBody') || {}).innerText || '').trim(),
+      status: clean((el('tourStatus') || {}).textContent),
+      miss: !!(el('tourStatus') && el('tourStatus').classList.contains('tour-status-miss')),
+      code: statusCode,
+      done: st.kind === 'read' || safeCheck(st),
+      next: !!next && !next.disabled,
+      buttons: CARD_BUTTONS.map(el).filter((n) => n && shown(n)).map((n) => labelOf(n) || n.id),
+      lit, dialog, zones,
+      page: state().currentPage,
+      stepPage: st.page == null ? null : st.page,
+    };
+  }
+  App.tutorialIds = () => Object.keys(TOURS);
+  App.tutorialManifest = manifestOf;
+  App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
   App.stopTutorial = stopTutorial;

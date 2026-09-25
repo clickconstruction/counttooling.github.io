@@ -917,3 +917,152 @@ test.describe('The tours, by hand on a returning estimator\'s device', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// PERSONA-PLAN items 1, 3 and 4 (2026-09-25): the read-only seams the persona harness drives the
+// tours through. The manifest lists every registered tour, a step's hint may carry a reason code
+// that the card never shows and the tour_step event does, and observe() is the running step as
+// text, small enough to read after every action.
+test.describe('The persona seams', () => {
+  // The plumbing tour's card text as it read BEFORE the hints took reason codes (captured on the
+  // untouched engine, 2026-09-25): the codes must not change a character the reader sees.
+  const CARD_BEFORE = {
+    measure: 'Measure a dimension the drawing gives, and the scale proves itself.\n\nIn the header, click Measure (or press D).\nClick inside circle 1, at the top of the 20\'-0" dimension on the left edge.\nClick inside circle 2, at its bottom.',
+    place: 'The counter tool is armed, and the three water closets in the stalls of Women 108 are circled.\n\nClick inside the first circle.\nClick inside the second.\nClick inside the third.\n\nAnywhere in a circle counts. One click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
+    hangers: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n\nIn the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\nUnder Child counts, find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\nClick Add.\n\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
+    size: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n\nIn the header, click ⋯, then Polyline (or press P). Pick 1in PEX.\nClick the riser at the first lavatory, then inside the circle below it.\n\nThe card above the sheet reads the fixture units still to serve and the size that keeps the water under 8 fps: 1in holds, 3/4in would do.\n\nPress S and click 3/4″.\n\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click.\n\nClick inside the second circle, then press Enter.',
+    zone: 'This restroom core repeats on three floors.\n\nIn the header, click ⋯, then Multiply Zone (or press X).\nDrag a box around Women 108: start and end anywhere inside the shaded boundary.\nType 3.\nClick Apply.\n\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
+    rfi: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n\nIn the header, click ⋯, then Note (or press N).\nClick inside the circle in Women 108.\nType RFI: and then the question, and click Done.\n\nUnder EXPORT OPTIONS, Copy RFI Flags collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
+  };
+  // The tour_step events the engine sends, recorded in the page (there is no cloud session here).
+  const recordEvents = (page) => page.evaluate(() => { window.__events = []; window.App.logUserEvent = (type, _pid, meta) => { window.__events.push({ type, meta }); }; });
+  const hintEvents = (page) => page.evaluate(() => window.__events.filter((e) => e.type === 'tour_step' && e.meta && e.meta.hint).map((e) => e.meta.step + ':' + e.meta.hint));
+  const observe = (page) => page.evaluate(() => window.App.tutorialObserve());
+
+  test('the manifest lists every registered tour, each step in the contract\'s shape', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/app/');
+    await ready(page);
+    const ids = await page.evaluate(() => window.App.tutorialIds());
+    for (const id of ['electrical', 'plumbing', 'hvac', 'blank']) expect(ids).toContain(id);
+    expect(ids.filter((id) => id.startsWith('lesson:')).length).toBe(13);
+    for (const c of ['plumbing', 'electrical', 'hvac']) expect(ids.filter((id) => id.startsWith('course:' + c + ':')).length).toBe(9);
+    const all = await page.evaluate((list) => list.map((id) => window.App.tutorialManifest(id)), ids);
+    const FLAGS = ['hint', 'progress', 'action', 'handsOff', 'hold'];
+    let steps = 0;
+    all.forEach((m, k) => {
+      expect(m.id).toBe(ids[k]);
+      expect(m.steps.length).toBeGreaterThan(0);
+      m.steps.forEach((st, i) => {
+        steps++;
+        expect(st.i).toBe(i);
+        expect(typeof st.id).toBe('string');
+        expect(['do', 'read']).toContain(st.kind);
+        expect(typeof st.title).toBe('string');
+        expect(typeof st.body).toBe('string');
+        expect(st.body.length).toBeGreaterThan(0);
+        expect(Array.isArray(st.targets)).toBe(true);
+        expect(typeof st.zones).toBe('number');
+        // compact: a flag is there only when true, rules only when there are some
+        FLAGS.forEach((f) => { if (f in st) expect(st[f]).toBe(true); });
+        if ('rules' in st) expect(st.rules.length).toBeGreaterThan(0);
+      });
+    });
+    expect(steps).toBeGreaterThan(300);
+    expect(await page.evaluate(() => window.App.tutorialManifest('no-such-tour'))).toBeNull();
+    // the plumbing tour's prove step: the raw body keeps its chips, the lit control goes by its name
+    const plumbing = all[ids.indexOf('plumbing')];
+    const measure = plumbing.steps.find((s) => s.id === 'measure');
+    expect(measure.body).toContain('[[Measure]]');
+    expect(measure.targets[0]).toBe('Measure');
+    expect(measure).toMatchObject({ zones: 2, page: 0, hint: true, action: true, hold: true });
+    expect(plumbing.steps[0].handsOff).toBe(true);
+    expect('hint' in plumbing.steps.find((s) => s.id === 'handoff')).toBe(false);
+    expect(Object.keys(measure).slice(0, 5)).toEqual(['i', 'id', 'kind', 'title', 'body']);
+    // a course question with its answer behind the reveal button carries it
+    expect(all.some((m) => m.steps.some((s) => typeof s.reveal === 'string' && s.reveal.length > 0))).toBe(true);
+  });
+
+  test('observe is the running step as text; a real miss on prove-the-scale reports its code once; the card text is unchanged', async ({ page }) => {
+    test.setTimeout(90000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/?tour=plumbing');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await recordEvents(page);
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'measure');
+    await page.waitForTimeout(900);   // the step's focus zoom onto its circles
+
+    let o = await observe(page);
+    expect(Object.keys(o)).toEqual(['tour', 'i', 'n', 'id', 'kind', 'title', 'card', 'status', 'miss', 'code', 'done', 'next', 'buttons', 'lit', 'dialog', 'zones', 'page', 'stepPage']);
+    expect(o).toMatchObject({ tour: 'plumbing', i: 2, id: 'measure', kind: 'do', title: 'Prove the scale', status: '0 of 2 done', miss: false, code: null, done: false, next: false, dialog: null, page: 0, stepPage: 0 });
+    expect(o.n).toBeGreaterThan(10);
+    expect(o.card).toBe(CARD_BEFORE.measure);
+    expect(o.buttons).toEqual(['Show me where', 'Skip this step', 'Back', 'Next', 'Leave the tour']);
+    expect(o.lit.label).toBe('Measure');
+    expect(o.lit.box.length).toBe(4);
+    expect(o.zones.map((z) => [z.n, z.kind, z.done])).toEqual([[1, 'circle', false], [2, 'circle', false]]);
+    expect(JSON.stringify(o).length).toBeLessThan(2500);
+
+    // (a) a circle clicked with Measure off: not-armed
+    await page.mouse.click(o.zones[0].cx, o.zones[0].cy);
+    await expect.poll(async () => (await observe(page)).code).toBe('not-armed');
+    await expect(page.locator('#tourStatus')).toHaveText('Measure is not on yet. Click Measure in the header first (or press D)');
+    expect((await observe(page)).miss).toBe(true);
+    // (b) Measure on, circle 1, then a second click well outside circle 2: outside-zone
+    await page.keyboard.press('d');
+    o = await observe(page);
+    await page.mouse.click(o.zones[0].cx, o.zones[0].cy);
+    await expect.poll(async () => (await observe(page)).status).toBe('1 of 2 done');
+    expect((await observe(page)).code).toBeNull();   // guidance, not a miss
+    const z2 = o.zones[1];
+    await page.mouse.click(z2.cx + z2.r * 5, z2.cy);
+    await expect.poll(async () => (await observe(page)).code).toBe('outside-zone');
+    await expect(page.locator('#tourStatus')).toContainText(', but a click missed a circle. Click inside circle 1, then inside circle 2');
+    await page.waitForTimeout(1200);   // three more ticks of the engine: each code is logged once on the step
+    expect(await hintEvents(page)).toEqual(['measure:not-armed', 'measure:outside-zone']);
+
+    // the cards read exactly as they did before the codes
+    for (const id of ['place', 'hangers', 'size', 'zone', 'rfi']) {
+      await page.evaluate((s) => window.App.tutorialGoTo(s), id);
+      await waitForStep(page, id);
+      expect(await page.evaluate(() => document.getElementById('tourBody').innerText)).toBe(CARD_BEFORE[id]);
+    }
+    // a coded hint of the plumbing tour's own shows its text as before: a typical floor left at ×2
+    await page.evaluate(() => window.App.tutorialGoTo('zone'));
+    await waitForStep(page, 'zone');
+    await page.evaluate(() => {
+      const page0 = window.state.pages[0];
+      const a = window.App.ensureActiveCanvas(page0).annotations;
+      a.multiplyZones = (a.multiplyZones || []).concat([{ x1: 628, y1: 356, x2: 767, y2: 522, multiplier: 2, id: 'persona-z2' }]);
+      window.App.updateUI();
+    });
+    await expect.poll(async () => (await observe(page)).code).toBe('wrong-value');
+    await expect(page.locator('#tourStatus')).toHaveText('The box is there, the number is ×2. Right-click the zone\'s label, Edit multiplier, and type 3');
+    expect((await hintEvents(page)).slice(-1)).toEqual(['zone:wrong-value']);
+    // no tour, no observation
+    await page.click('#tourLeave');
+    expect(await observe(page)).toBeNull();
+    expect(errors).toEqual([]);
+  });
+
+  test('observe numbers a step\'s circles the way the sheet tags them, a boundary box beside them unnumbered', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());   // the two blank sheets
+    await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(2);
+    // the ghost step draws a boundary box, then the drop circle
+    await page.evaluate(() => window.App.tutorialGoTo('ghost'));
+    await waitForStep(page, 'ghost');
+    await expect.poll(async () => (await observe(page)).zones.length).toBe(2);
+    const o = await observe(page);
+    expect(o.zones.map((z) => [z.n, z.kind])).toEqual([[null, 'box'], [1, 'circle']]);
+    const tags = await page.locator('#tourZones text.tour-zone-tag').allTextContents();
+    expect(tags).toEqual(o.zones.filter((z) => z.kind === 'circle').map((z) => String(z.n)));
+  });
+});

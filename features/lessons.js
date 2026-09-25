@@ -331,7 +331,7 @@
           // the 12'-0" read on the last step is still the sheet's last measure: no verdict on it (by hand, 2026-09-25)
           onEnter: () => { zoneEntryMeasure = S().lastMeasure; },
           // read at the sheet's 1/4" it doubles: say which scale won, not just that it is off
-          hint: () => { if (S().lastMeasure && S().lastMeasure === zoneEntryMeasure) return ''; const h = proveZoneP401().hint(); const v = K().measuredFeet(); return /scale is off/.test(h) && v != null && Math.abs(v - 8) < 0.5 ? 'That read ' + String(S().lastMeasure.text || '').replace(/^Distance:\s*/, '') + ', the sheet\'s 1/4", so the zone missed it. Click Back and box detail 2 at 1/2"' : h; },
+          hint: () => { if (S().lastMeasure && S().lastMeasure === zoneEntryMeasure) return ''; const h = proveZoneP401().hint(); const v = K().measuredFeet(); return h && h.code === 'wrong-scale' && v != null && Math.abs(v - 8) < 0.5 ? 'That read ' + String(S().lastMeasure.text || '').replace(/^Distance:\s*/, '') + ', the sheet\'s 1/4", so the zone missed it. Click Back and box detail 2 at 1/2"' : h; },
           action: { label: 'Measure the 4\'-0" string', run: () => { goPage(P401); measure(DETAIL.proveZone[0], DETAIL.proveZone[1]); } } },
         { id: 'more', title: 'When the title block gives no scale', kind: 'read',
           body: 'The Set Scale dialog can also take two clicks on a known dimension and the length you type, and it warns when a sheet\'s size says the PDF was printed down.\nBoth walks: [Setting the scale](/guides/setting-the-scale/) and [Is your scale lying to you?](/guides/verifying-your-scale/).',

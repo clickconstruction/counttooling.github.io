@@ -365,6 +365,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R18. Counter and line display settings persist; table-driven settings binders
 
+**Decided 2026-09-25: per device.** The settings persist in localStorage (the Hide marks / Drop sizes / sidebar filter pattern), are wiped by the sign-out key list like the other device preferences, and never ride the project payload. The IndexedDB backup may keep writing them but is not the restore path. Once Snap survives a reload, tour-blank.js must restore the reader's Snap across a reload the way lessons.js does with its persisted BEFORE_KEY (the defect refuted in this run only because Snap never persisted). PUNCHLIST `MAP-SETTINGS`.
+
 *Risk low, yield ~110.* AGENTS.md promises persistence that does not happen. Needs a product call on scope.
 
 - **`core-render-ui:settings-modal-binders`** (dedupe, high confidence; check: confirmed) Table-driven binders for legend and counter settings, plus one ensureLegendSettings

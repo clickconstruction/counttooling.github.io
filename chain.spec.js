@@ -264,6 +264,50 @@ test.describe('Chain tool', () => {
     await page.evaluate(() => document.getElementById('counterLineTypeDetailsClose').click());
   });
 
+  // + New in the palette made the item but left the create surface's own tool armed (the Counter
+  // tool; the Line tool for a line type), so the next clicks were plain marks with no branch: the
+  // plumbing tour's chain step read 3 of 3 done and never passed (persona harness, 2026-09-25).
+  test('+ New counter and + New line type hand the new item back to Chain, the pair kept, and the next clicks chain', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await setupChainProject(page);
+    await page.locator('#chainBtn').click();
+    await page.locator('#chainLineTypeList .chain-row[data-id="lt-chain-1"]').click();
+    await page.locator('#chainCounterList .chain-new-row').click();
+    await expect(page.locator('#counterModal')).toHaveClass(/visible/);
+    await page.locator('#counterName').fill('Lavatory');
+    await page.locator('#counterCreate').click();
+    await expect(page.locator('#counterModal')).not.toHaveClass(/visible/);
+    await expect.poll(() => page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)).toBe(true);
+    const after = await page.evaluate(() => {
+      const lav = window.state.counters.find((c) => c.name === 'Lavatory');
+      return { picked: window.state.activeCounterType === (lav && lav.id), lineType: window.state.activeLineTypeId, panel: document.getElementById('chainPanel').style.display !== 'none' };
+    });
+    expect(after).toEqual({ picked: true, lineType: 'lt-chain-1', panel: true });
+    // the next clicks chain: marks AND the branch between them
+    const box = await page.locator('#annCanvas').boundingBox();
+    for (const dx of [0, 80, 160]) await page.mouse.click(box.x + 120 + dx, box.y + 120);
+    const placed = await page.evaluate(() => {
+      const lav = window.state.counters.find((c) => c.name === 'Lavatory');
+      const ann = window.state.pages[0].canvases[0].annotations;
+      return { marks: (ann.counterMarkers[lav.id] || []).length, lines: ann.quickLines.length };
+    });
+    expect(placed).toEqual({ marks: 3, lines: 2 });
+    // and a line type made from the palette comes back the same way, the counter kept
+    await page.locator('#chainLineTypeList .chain-new-row').click();
+    await expect(page.locator('#lineTypeModal')).toHaveClass(/visible/);
+    await page.locator('#lineTypeName').fill('3/4in PEX');
+    await page.locator('#lineTypeCreate').click();
+    await expect.poll(() => page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN)).toBe(true);
+    const lt = await page.evaluate(() => {
+      const made = window.state.lineTypes.find((l) => l.name === '3/4in PEX');
+      const lav = window.state.counters.find((c) => c.name === 'Lavatory');
+      return { picked: window.state.activeLineTypeId === (made && made.id), counterKept: window.state.activeCounterType === lav.id };
+    });
+    expect(lt).toEqual({ picked: true, counterKept: true });
+    expect(errors).toEqual([]);
+  });
+
   test('scale gate: unscaled page toasts and does not activate', async ({ page }) => {
     await page.goto('/app/');
     await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });

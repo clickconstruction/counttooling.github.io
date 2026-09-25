@@ -37,6 +37,10 @@
 
   let counterQuery = '';
   let lineTypeQuery = '';
+  // While a "+ New" dialog opened from the palette is up: { kind, known (the ids before),
+  // counter, lineType (the pair as it stood), at }. Cleared once the item exists (Chain
+  // re-armed with it) or the dialog closed without one.
+  let returnToChain = null;
   let wired = false;
   // Palette lifecycle (2026-08-15): the panel is CLOSABLE without leaving the
   // tool — panelCollapsed hides it while TOOL.CHAIN stays active, and the
@@ -178,8 +182,11 @@
   // Every list ends with a "+ New" action row that drives the REAL sidebar
   // create button (field review 2026-08-15: a fresh project dead-ended here —
   // "create one in the sidebar" sent the user away from the tool they just
-  // picked). Creating keeps TOOL.CHAIN active, so the panel re-syncs with the
-  // new item already selected.
+  // picked). Creating hands the new item back to Chain, selected (`returnToChain`
+  // below): the create surfaces arm their own tool (the Counter tool, the Line
+  // tool, T2-08), which used to drop Chain, so the next three clicks were plain
+  // marks with no branch (the persona harness, 2026-09-25: the plumbing tour's
+  // chain step read 3 of 3 done and never passed).
   function newRowHtml(kind) {
     return '<div class="chain-new-row" data-new="' + kind + '">+ New ' + (kind === 'counter' ? 'counter' : 'line type') + '</div>';
   }
@@ -263,6 +270,7 @@
     const panel = document.getElementById('chainPanel');
     if (!panel) return;
     wire();
+    if (returnToChain && handBackNewItem()) return;
     const active = state.tool === App.TOOL.CHAIN && !state.isViewer && state.pages.length > 0;
     if (!active) panelCollapsed = false;   // fresh activation always opens the picker
     panel.style.display = active && !panelCollapsed ? '' : 'none';
@@ -272,6 +280,32 @@
     renderCounterList();
     renderLineTypeList();
     renderFoot();
+  }
+
+  // A "+ New" from the palette made its item: Chain comes back armed with it, the other half
+  // of the pair kept. True when it re-armed (the caller's sync is stale; a fresh one follows).
+  function handBackNewItem() {
+    const state = App.state, r = returnToChain;
+    const list = (r.kind === 'counter' ? state.counters : state.lineTypes) || [];
+    const made = list.find((x) => !r.known.has(x.id));
+    if (!made) {
+      // cancelled: the dialog is gone and nothing was made (a beat of grace for the dialog to open)
+      if (!document.querySelector('.modal-overlay.visible') && Date.now() - r.at > 1000) returnToChain = null;
+      return false;
+    }
+    returnToChain = null;
+    state.tool = App.TOOL.CHAIN;
+    state.activeCounterType = r.kind === 'counter' ? made.id : r.counter;
+    state.activeLineTypeId = r.kind === 'lineType' ? made.id : r.lineType;
+    panelCollapsed = false;
+    setTimeout(() => App.updateUI(), 0);
+    return true;
+  }
+  function beginNew(kind) {
+    const state = App.state;
+    const list = (kind === 'counter' ? state.counters : state.lineTypes) || [];
+    returnToChain = { kind, known: new Set(list.map((x) => x.id)), counter: state.activeCounterType, lineType: state.activeLineTypeId, at: Date.now() };
+    document.getElementById(kind === 'counter' ? 'addCounter' : 'addLineType').click();
   }
 
   function closeChainPanel() {
@@ -314,7 +348,7 @@
     // are reachable without leaving Chain. Its edits call updateUI, which
     // re-syncs the rows, footer, and chip live; tool stays CHAIN throughout.
     document.getElementById('chainCounterList').addEventListener('click', (e) => {
-      if (e.target.closest('.chain-new-row')) { document.getElementById('addCounter').click(); return; }
+      if (e.target.closest('.chain-new-row')) { beginNew('counter'); return; }
       const row = e.target.closest('.chain-row');
       if (!row) return;
       App.state.activeCounterType = row.dataset.id;
@@ -325,7 +359,7 @@
       App.updateUI();
     });
     document.getElementById('chainLineTypeList').addEventListener('click', (e) => {
-      if (e.target.closest('.chain-new-row')) { document.getElementById('addLineType').click(); return; }
+      if (e.target.closest('.chain-new-row')) { beginNew('lineType'); return; }
       const row = e.target.closest('.chain-row');
       if (!row) return;
       App.state.activeLineTypeId = row.dataset.id;

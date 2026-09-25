@@ -35,6 +35,12 @@ counter`'s dialog is open, the ring lights Name before Create Counter. The palet
 dialogs (z-index 300 over 200), so once they showed on a phone the Counter dialog opened under the
 Chain palette, and on a tablet a tap on Name changed the chain's line type: every palette (Chain,
 Drop, Highlights) now steps aside while a dialog is open and comes back when it closes.
+The palette's own `+ New counter` then made the counter but left the Counter tool armed (the
+create surfaces arm their own tool), so the three clicks placed plain marks and no branch: the
+circles read 3 of 3 done and the step never passed, with no hint. The PERSONA-PROBER build found
+this through the harness. A `+ New` from the palette now hands the new item back to Chain, selected,
+with the other half of the pair kept (features/chain.js `returnToChain`), as the palette's comment
+always said it did. chain.spec.js pins both the counter and the line type.
 
 **C3 and C9, the riser.** With Drop armed and a size picked, a click where no line ends did
 nothing. The Drop tool now shows a toast: "No line end here. Click one of the ringed line ends to

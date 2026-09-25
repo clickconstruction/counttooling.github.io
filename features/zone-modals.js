@@ -38,7 +38,14 @@
     if (inputEl) {
       inputEl.oninput = inputEl.onchange = sync;
       inputEl.onblur = sync;
+      // Enter applies, the way the dialog's one field asks to be used
+      inputEl.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); sync(); document.getElementById('multiplyZoneApply').click(); } };
     }
+    // The multiplier is the one thing the dialog asks: it opens with the caret in it and the
+    // default selected, so typing 4 makes it 4. It opened unfocused, and the Repeats lesson's
+    // "Type 4" typed into nothing (by hand, 2026-09-25). Mouse opens only: on touch the
+    // on-screen keyboard would cover the preview.
+    App.focusMultiplyZoneInput = () => requestAnimationFrame(() => { if (!inputEl || !inputEl.offsetParent) return; inputEl.focus(); inputEl.select(); });
   })();
   document.getElementById('multiplyZoneApply').onclick = (e) => {
     const state = App.state;

@@ -117,7 +117,8 @@ test.describe('Fittings from bends', () => {
   test('Bid Check: informational while the option is off everywhere, a warning when some pipe types count and others do not, green when all do', async ({ page }) => {
     await setupProject(page);
     const row = () => page.evaluate(() => { const bc = window.App.getBidCheck(); return bc.auto.find((r) => r.id === 'bend-fittings') || null; });
-    await page.evaluate(() => { window.state.trade = 'plumbing'; window.App.updateUI(); });
+    // the row reads the types with a run on the bid: give the PEX one
+    await page.evaluate(() => { window.state.trade = 'plumbing'; window.state.pages[0].canvases[0].annotations.quickLines.push({ x1: 100, y1: 600, x2: 220, y2: 600, color: '#4a9eff', id: 'qpex', lineTypeId: 'lt-pex' }); window.App.updateUI(); });
     // 2in Cu counts, 3/4in PEX does not: warn, naming both sides
     let r = await row();
     expect(r.verdict).toBe('warn');

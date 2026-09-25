@@ -250,6 +250,44 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
   });
 
+  // The boot pre-applies the backup quietly, project settings and all. A declined session's
+  // settings must not ride into the next PDF (by hand, 2026-09-25: a lesson set opened with
+  // Groups already on, its switch locked, and the last bid's Bid Check ticks set). The palette stays.
+  test('Discard takes the declined session\'s project settings back out; a backup with no PDF never lends them to the next plan', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const seed = (withPdf) => page.evaluate(async (pdf) => {
+      const blob = pdf ? await (await fetch('/test-page.pdf')).blob() : null;
+      const data = {
+        counters: [{ id: 'c1', name: 'WC', icon: 'M0 0h10v10H0z', color: '#e8c547' }], lineTypes: [],
+        groups: [{ id: 'g1', name: 'Old job circuit 7', color: '#888888' }], groupsEnabled: true, trade: 'electrical',
+        bidCheck: { manual: { 'scale-verified': true } }, ceilingHeightFt: 10,
+        pageCanvases: [[{ id: 'cv1', name: 'Main', annotations: { counterMarkers: { c1: [{ x: 10, y: 10, id: 'm1' }] } } }]], pageScales: [null], pageRotations: [0],
+      };
+      await window.__takeoffBackupPutForTest('local', data, blob, null, Date.now(), 'old-bid', null);
+    }, withPdf);
+    const project = () => page.evaluate(() => ({ groups: window.state.groups.length, on: window.state.groupsEnabled, trade: window.state.trade, ticks: Object.keys(window.state.bidCheck.manual), ceiling: window.state.ceilingHeightFt, palette: window.state.counters.map((c) => c.name) }));
+    const clean = { groups: 0, on: false, trade: null, ticks: [], ceiling: null, palette: ['WC'] };
+    await seed(true);
+    await page.reload();
+    await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
+    expect((await project()).trade).toBe('electrical');   // pre-applied under the offer
+    await page.click('#lastSessionRestoreDiscard');
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    expect(await project()).toEqual(clean);
+    // no PDF in the backup: no offer, and only the palette comes through
+    await seed(false);
+    await page.reload();
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await page.waitForTimeout(1000);
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+    const { palette, ...fields } = await project();   // (the page's own backup writes can replace the palette before the reload)
+    void palette;
+    const { palette: _p, ...cleanFields } = clean;
+    void _p;
+    expect(fields).toEqual(cleanFields);
+  });
+
   // --- The offer waits its turn (2026-09-10) ------------------------------
 
   const promptState = () => ({

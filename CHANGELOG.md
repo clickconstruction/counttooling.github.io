@@ -73,6 +73,59 @@ step goes to the reference.
 tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
 specs walk green (80).
 
+## fix(learn): the by-hand walk of the thirteen Learn lessons (2026-09-25)
+
+The fourth round of the by-hand walk: every Learn lesson, on the returning estimator's device (a
+standing palette with some of the lessons' own names in it, words left in the sidebar searches),
+with real mouse and keyboard events and never the step's own button. Pinned in lessons.spec.js
+("a returning estimator walks the lessons by hand"), restore-last-session.spec.js,
+bid-check.spec.js, bend-fittings.spec.js and summary-detail.spec.js.
+
+**The app.**
+- Discarding the "Project from Last Session" offer left the declined session's project settings in
+  memory (the boot pre-applies the backup under the offer): groups, Groups on, trade, codes, Bid Check
+  ticks, rooms, Quick Keys, the ceiling. The next PDF opened inherited them; a lesson set opened with
+  Groups already on and its switch locked. Discard now takes them back out, and a backup with no PDF
+  (no offer at all) lends only its palette. The palette stays either way.
+- Bid Check's "Hangers on every supported run" and "Fittings counted on every pipe run" read every
+  palette line type, so an Artboard's unused "4in PVC old" held both rows open forever. They read the
+  types with a run in scope.
+- A Quick Key or a sidebar row deselected a counter (line type) that was selected but not armed:
+  after M, pressing 1 left nothing armed. A second press puts down only what is armed.
+- The Multiply Zone dialog opened with 2 in its box and no caret, so "type 4" typed into nothing. It
+  opens with the multiplier selected (mouse opens; touch keeps the keyboard away), and Enter applies.
+- Groups turned on from Project Settings left the GROUPS section collapsed at the foot of the sidebar,
+  its + Add hidden; it opens like the duct tool's turn-on. The group dialog's Name took no focus (it
+  was focused before the dialog showed). Choosing New empty layer or Duplicate moves the caret to Name.
+- The count breakdown captioned every thumbnail "document.pdf" once sheets carry real names; it shows
+  the project's name.
+
+**The tour engine.** A step's target may be a function. The Create Counter steps (Counting, the
+plumbing and HVAC tours, the blank tour) light Name until the name is typed, then Create Counter:
+on a 900-px window the tour scrolled the dialog to the button and hid Name. "In view" now respects a
+scrolling box around the target. `pencilOf` / `summaryRowOf` light the pencil or the Summary total the
+card names, not the first in the list (Measuring, Chain, Fixing, Check; the plumbing tour; the
+plumbing and electrical courses). A card for a top-bar control goes below it, off the rest of the bar.
+Circles take an array of counters.
+
+**The lessons.** Scale: Prove the zone ticks per click and no longer passes on a 4'-0" read anywhere
+on the sheet, and says nothing about the last step's 12'-0" on arrival. Counting: Make a counter
+waits for the reader's own (the standing "Floor Drain 4in" passed it); the key card names the
+counter the reader made ("Floor Drain 2" beside a standing "Floor Drain") and says so when a key holds
+the other. Chain: the circles take the reader's own Lavatory; the hanger steps (Chain, Check) follow
+the PEX the runs are on. Repeats: TYP. OF 4 wants ×4, and a ×2 zone is named. Organizing: the Groups
+step reads the app's own gate; Assign to group, then Kitchen, then Done (the Done was missing, here
+and in the electrical course); the Urinal is "a counter nothing on this sheet uses". Fixing: Undo
+counts a mark made with any floor drain counter; the right-click menu no longer claims to move a mark
+to another counter. Notes: every note step here, in the plumbing tour and in the plumbing and
+electrical courses says to click Done and lights it; the ledger step points at the open drawer, and
+says what the ledger does (sheet by sheet, an RFI chip; its badge counts open flags). Working faster:
+the status bar's shortcuts opens Keyboard Shortcuts, and the step waited for the standalone Keyboard
+Map only its seam opened. A reload mid-lesson puts the reader's filter, snap and searches back (the
+snapshot rides localStorage; the first lesson's snapshot wins over a second started on top).
+
+The HVAC course's note steps have the same missing Done; they are left for the open wording PR (#201).
+
 ## fix(learn): the by-hand walk of the plumbing course, chapters 2 to 9 (2026-09-25)
 
 The third round of the by-hand walk, on the same returning estimator's device, driven in a

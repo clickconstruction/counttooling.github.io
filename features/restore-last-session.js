@@ -272,6 +272,7 @@
   }
 
   document.getElementById('lastSessionRestoreKeep').onclick = async () => {
+    App.undoBootPreApply = null;   // kept: the pre-applied settings are the session's own
     const state = App.state;
     const p = pendingRestore;
     if (!p) { App.hideModal('lastSessionRestoreModal'); return; }
@@ -362,6 +363,9 @@
     if (!p) { App.hideModal('lastSessionRestoreModal'); return; }
     const projectId = p.cloudLast ? p.cloudLast.projectId : (p.proj && p.proj.id);
     pendingRestore = null;
+    // the declined session's project settings came in with the boot's quiet pre-apply: take them
+    // back out before anything awaits, so the app is clean the moment the offer closes
+    if (App.undoBootPreApply) App.undoBootPreApply();
     App.hideModal('lastSessionRestoreModal');
     try { localStorage.removeItem('clickcount-last-project'); } catch (_) { /* noop */ }
     if (projectId) {

@@ -73,11 +73,14 @@
       const it = items[i];
       const page = App.state.pages[it.pageIdx];
       const fullLabel = it.pageLabel || 'Page ' + (it.pageIdx + 1);
-      let docName = 'document.pdf';
+      // the document a legacy "file.pdf, p1" label names; a sheet named off its title block
+      // ("P-101 · Plumbing Plan") names none, and the caption read a made-up "document.pdf"
+      // (by hand, 2026-09-25): the project's name then, or no caption
+      let docName = null;
       let pagePart = 'p' + (it.pageIdx + 1);
       const sepAt = Math.max(fullLabel.lastIndexOf(', p'), fullLabel.indexOf(' — '));
       if (sepAt >= 0) {
-        docName = (fullLabel.slice(0, sepAt) || 'document.pdf').trim();
+        docName = (fullLabel.slice(0, sepAt) || '').trim() || null;
         pagePart = (fullLabel.slice(sepAt).replace(/^(, | — )/, '') || pagePart).trim();
       } else if (fullLabel.toLowerCase().endsWith('.pdf')) {
         docName = fullLabel;
@@ -122,8 +125,8 @@
           previewWrap.appendChild(img);
           const docSpan = document.createElement('span');
           docSpan.className = 'summary-count-detail-doc';
-          docSpan.textContent = docName;
-          previewWrap.appendChild(docSpan);
+          docSpan.textContent = docName || App.state.currentProjectName || '';
+          if (docSpan.textContent) previewWrap.appendChild(docSpan);
           row.appendChild(previewWrap);
         } catch (e) {
           if (gen !== detailRenderGen) return;   // cancelled: expected rejection, not an error

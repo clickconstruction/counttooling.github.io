@@ -119,7 +119,8 @@
   const zoneR = (z) => Math.max(z.r, TARGET_MIN_PX / Math.max(0.05, state().zoom || 1));   // the radius that COUNTS, in sheet points
   const inCircle = (pt, z) => Math.hypot(pt.x - z.x, pt.y - z.y) <= zoneR(z);
   const pageAnnOf = (i) => { const p = state().pages && state().pages[i]; return p ? App.getActiveAnnotations(p) : null; };
-  const markersOf = (pageIdx, counterId) => { const a = pageAnnOf(pageIdx); if (!a) return []; const m = a.counterMarkers || {}; return counterId ? (m[counterId] || []) : Object.keys(m).reduce((all, k) => all.concat(m[k] || []), []); };
+  // `counterId`: one id, several (an array: the lesson's Lavatory and the reader's own twin of it), or null for any counter.
+  const markersOf = (pageIdx, counterId) => { const a = pageAnnOf(pageIdx); if (!a) return []; const m = a.counterMarkers || {}; const ids = Array.isArray(counterId) ? counterId : counterId ? [counterId] : Object.keys(m); return ids.reduce((all, k) => all.concat(m[k] || []), []); };
   // One circle per spot, each done once a mark of `counterId` (any counter when null) sits
   // in it. Close spots share a mark to the NEAREST circle only, so two circles never both
   // light from one click.
@@ -432,7 +433,7 @@
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet.\n4. Pick the Toilet symbol from the plumbing set.\n5. Pick a colour.\n6. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
-      target: ['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      target: () => counterFormTargets(/water closet|toilet|\bwc\b/i),
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
     },
@@ -472,21 +473,21 @@
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
       body: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\n3. Click [[Add]].\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
-      target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
+      target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       check: () => (state().lineTypes || []).some((lt) => (lt.childCounts || []).length),
       action: { label: 'Add Hanger · 1 per 32 in', run: addHangerRule },
     },
     {
       id: 'waterside', title: 'Give the pipe its water', kind: 'do',
       body: 'The branch carries cold water, and the app can size cold water from the fixtures on it once the pipe says so.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under Water, click [[Cold]].\nEvery run of the type is now a cold-water run, and the three lavatories chained on it tie to it with a dashed leader.',
-      target: ['#counterLineTypeDetailsWaterGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
+      target: () => ladder('#counterLineTypeDetailsWaterGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       check: () => { const lt = pLineType(); return !!(lt && lt.waterSide === 'cold'); },
       action: { label: 'Make it cold water', run: setBranchCold },
     },
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
       body: 'A fixture loads the water supply in fixture units, from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2. The app reads 2 WSFU for a public lavatory off the IPC table and shows it under the box; the box stays empty until you type.\n3. Click [[Done]].\nThe chip names the row it read; its public word flips one counter to the private column.',
-      target: ['#counterLineTypeDetailsWsfuGroup', '#countersList .edit-btn', '#countersSectionTitle'],
+      target: () => ladder('#counterLineTypeDetailsWsfuGroup', pencilOf('counter', pLav()), '#countersSectionTitle'),
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
       action: { label: 'Read the table for me', run: giveLavFixtureUnits },
     },
@@ -510,8 +511,8 @@
     },
     {
       id: 'rfi', title: 'Flag a question', kind: 'do',
-      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
-      target: ['#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
+      body: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question, and click [[Done]].\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
+      target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: RFI_SPOT.x, y: RFI_SPOT.y, r: 42, done: rfiAt(RFI_SPOT, 42) }],
       check: () => rfiAt(RFI_SPOT, 42),
       hint: () => (anyNoteRfi() && !rfiAt(RFI_SPOT, 42) ? 'That flag is outside the circle. Drag the note into the circle' : ''),
@@ -520,7 +521,7 @@
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
       body: '1. In the left sidebar, open SUMMARY.\n2. Click the Water Closet total.\nThe breakdown shows the count per sheet with a thumbnail of where every mark sits, the zone\'s ×3 already applied. This is the page you open when someone asks where the number came from.',
-      target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
+      target: () => ladder(summaryRowOf('counter', pCounter()), '#summarySectionTitle'),
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
       hold: true,   // the step IS the dialog: the reader leaves it with Next, which closes it
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
@@ -585,7 +586,7 @@
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip beside the field shows the symbol it will take.\n5. Click [[Create Counter]].\nThe counter tool arms itself.',
-      target: ['#counterCreate', '#counterCfm', '#counterModal .counter-tab[data-tab="create"]', '#addCounter'],
+      target: () => counterFormTargets(/diffuser/i, ['#counterCfm']),
       check: () => { const c = hCounter(); if (c) tourCounterId = c.id; return !!(c && c.cfm > 0); },
       action: { label: 'Create it for me', run: addDiffuser },
     },
@@ -1056,16 +1057,17 @@
     // dialog (only a control inside it qualifies there)
     const openModal = document.querySelector('.modal-overlay.visible');
     const modalOpen = !!openModal;
-    let target = step.target.length ? q(step.target, openModal) : null;
+    const ladder = targetsOf(step);
+    let target = ladder.length ? q(ladder, openModal) : null;
     // On a phone the sidebar is a drawer: when the step's control sits in it and
     // nothing of the ladder is on screen, light the ☰ that opens it.
-    if (!target && !modalOpen && isNarrow() && step.target.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
+    if (!target && !modalOpen && isNarrow() && ladder.some((sel) => { const t = document.querySelector(sel); return !!t && !!t.closest('#sidebar, .sidebar'); })) target = q(['#hamburger']);
     const spot = el('tourSpot');
     const card = el('tourCard');
     if (target) {
       if (target !== lastTarget) scrollSettled = false;
       let r = target.getBoundingClientRect();
-      const inView = r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+      const inView = seen(target, r);
       if (!inView && (!scrollSettled || inStrip(target))) { try { target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
       else if (inView) scrollSettled = true;
       lastTarget = target;
@@ -1088,6 +1090,9 @@
         { left: r.left - gap - cw, top: clampY(r.top) },
         { left: clampX(r.left), top: r.top - gap - ch },
       ];
+      // A control in the top bar: beside it is the rest of the bar, the tools a card goes on to
+      // name ("line type settings on the line tools"), so below comes first (by hand, 2026-09-25).
+      if (r.bottom <= 64) spots.unshift(spots.splice(1, 1)[0]);
       const fits = (c) => c.left >= edge && c.top >= edge && c.left + cw <= vw - edge && c.top + ch <= vh - edge;
       let place = spots.find(fits);
       if (!place) place = { left: (r.left + r.width / 2 > vw / 2) ? edge : vw - cw - edge, top: (r.top + r.height / 2 > vh / 2) ? edge : vh - ch - edge };
@@ -1226,9 +1231,57 @@
   // Every element a selector matches, not the first: "#lineTypesList .edit-btn" names the pencil
   // beside the type the step talks about, which is the sixth pencil on a device with a
   // standing palette, and the card beside the first sat on it (by hand, 2026-09-24).
+  // On screen AND not clipped out by a scrolling box around it: Create Counter at the foot of a
+  // tall dialog sits inside the window but under the panel's scroll edge (by hand, 2026-09-25).
+  // Its centre must show.
+  function seen(t, r) {
+    if (!(r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth)) return false;
+    const cx = (r.left + r.right) / 2, cy = (r.top + r.bottom) / 2;
+    for (let p = t.parentElement; p && p !== document.body; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (!/(auto|scroll|hidden)/.test(cs.overflowY + ' ' + cs.overflowX)) continue;
+      const b = p.getBoundingClientRect();
+      if (!b.width || !b.height) continue;   // a zero box clips nothing that shows (#annCanvas's wrapper: the canvas is positioned out of it)
+      if (cy < b.top || cy > b.bottom || cx < b.left || cx > b.right) return false;
+    }
+    return true;
+  }
+  // The pencil beside ONE palette row. "#lineTypesList .edit-btn" alone lights the first pencil in
+  // the list: the reader's own 1.5in Copper on a device with a standing palette, while the card said
+  // the pencil beside 1-1/4in Gas (by hand, 2026-09-25). Null when the item is not there yet.
+  function pencilOf(kind, item) {
+    if (!item || !item.id) return null;
+    const id = window.CSS && CSS.escape ? CSS.escape(item.id) : item.id;
+    return kind === 'counter' ? '#countersList [data-counter-id="' + id + '"] .edit-btn' : '#lineTypesList [data-line-type-id="' + id + '"] .edit-btn';
+  }
+  const ladder = (...sels) => sels.filter(Boolean);
+  // One SUMMARY row, the way pencilOf names one palette row: the card says the Floor Drain total
+  // and the bare selector lit the first total, Lavatory (by hand, 2026-09-25).
+  function summaryRowOf(kind, item) {
+    if (!item || !item.id) return null;
+    const id = window.CSS && CSS.escape ? CSS.escape(item.id) : item.id;
+    return '#summaryList .summary-item-clickable[data-type="' + kind + '"][data-id="' + id + '"]';
+  }
+  // The Create Counter form's ladder, in the order the card asks: Name until it reads what the
+  // step says to type, then each of `fields` still empty (the HVAC diffuser's CFM), then the
+  // Create Counter button; the Create tab and + Add when the form is not up yet.
+  function counterFormTargets(nameRe, fields) {
+    const n = document.getElementById('counterName');
+    const todo = (n && nameRe.test(n.value || '') ? [] : ['#counterName'])
+      .concat((fields || []).filter((sel) => { const f = document.querySelector(sel); return !!f && !String(f.value || '').trim(); }));
+    return todo.slice(0, 1).concat(['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter']);
+  }
+  // A step's target ladder: an array of selectors, or a function returning one when what to
+  // light depends on the form. The create-a-counter steps light Name until a name is typed, then
+  // Create Counter: a 900-px-tall window scrolled the dialog down to the button the moment it
+  // opened, and the Name field the card asks for first sat out of sight (by hand, 2026-09-25).
+  function targetsOf(step) {
+    if (typeof step.target !== 'function') return step.target || [];
+    try { return step.target() || []; } catch (_) { return []; }
+  }
   function otherControlBoxes(step, pointed, within) {
     const out = [];
-    (step.target || []).forEach((sel) => {
+    targetsOf(step).forEach((sel) => {
       let els = [];
       try { els = Array.from(document.querySelectorAll(sel)); } catch (_) { return; }
       els.forEach((el) => {
@@ -1330,7 +1383,7 @@
   function closeStrayDialogs(step) {
     document.querySelectorAll('.modal-overlay.visible').forEach((ov) => {
       if (KEEP_OPEN.includes(ov.id)) return;
-      const holdsTarget = (step.target || []).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t); });
+      const holdsTarget = targetsOf(step).some((sel) => { const t = document.querySelector(sel); return !!t && ov.contains(t); });
       if (holdsTarget) return;
       const x = ov.querySelector('[data-modal-close]');
       if (x) x.click();
@@ -1341,7 +1394,7 @@
     ['dropPanel', 'chainPanel'].forEach((id) => {
       const p = document.getElementById(id);
       if (!p || p.style.display === 'none') return;   // the palettes are fixed-position: offsetParent is null even when shown
-      const holdsTarget = (step.target || []).some((sel) => { let t = null; try { t = document.querySelector(sel); } catch (_) { return false; } return !!t && p.contains(t); });
+      const holdsTarget = targetsOf(step).some((sel) => { let t = null; try { t = document.querySelector(sel); } catch (_) { return false; } return !!t && p.contains(t); });
       if (holdsTarget) return;
       const x = document.getElementById(id + 'Close') || p.querySelector('.chain-panel-close, .drop-panel-close');
       if (x) x.click();
@@ -1480,7 +1533,7 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf };
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

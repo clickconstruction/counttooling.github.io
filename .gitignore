@@ -10,3 +10,5 @@ test-results/
 .cursor/
 samples/candidates/
 contact-sheet*/
+# npm run build:projectmap output (regenerated on demand; DECOMPOSITION_MAP.md is the committed reading)
+project-map/

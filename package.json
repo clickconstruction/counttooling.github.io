@@ -18,6 +18,7 @@
     "build:rules": "node scripts/build-rules.js",
     "build:toc": "node scripts/build-toc.js",
     "build:filemap": "node scripts/build-filemap.js",
+    "build:projectmap": "node scripts/build-projectmap.js",
     "build:macros": "node scripts/build-macros.js",
     "build:sw": "node scripts/build-sw.js",
     "lint": "eslint . --max-warnings 0",

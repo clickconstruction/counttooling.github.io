@@ -493,7 +493,7 @@
     PROVE_STEP,
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
-      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet, unless it reads that already.\n4. Under [[Icon]], see that the toilet is the symbol lit: it follows the name. For another, type its name in the Search icon box and click it.\n5. Pick a colour.\n6. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
+      body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet, unless it reads that already.\nUnder [[Icon]] the toilet lights as you type the name: the symbol follows it. Another symbol is a search away, in the Search icon box.\n4. Pick a colour.\n5. Click [[Create Counter]].\nThe app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself.',
       target: () => counterFormTargets(/water closet|toilet|\bwc\b/i),
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
@@ -569,11 +569,20 @@
       body: () => 'The battery comes off a cold main. Trace it and let the fixture units size it.\n'
         + (isNarrow() ? '1. Tap ☰ at the top left, then [[Polyline]] among the sidebar\'s tools.' : '1. In the header, click [[⋯]], then [[Polyline]] (or press P).')
         + ' It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\n2. Click the riser at the first lavatory, then inside the circle below it.\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n3. On that card, click [[Pipe size]] (or press S: while you trace a water pipe, S opens its sizes instead of Set Scale).\n4. In the list of sizes, click 3/4″.\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n5. Click inside the second circle.\n6. Click [[Finish]] under the sheet (or press Enter).',
-      // the card's order: the size list while it is open, Pipe size on the water card, then Finish once the main is two sizes
-      target: () => ladder('#waterSizePopover', state().drawingPolyline && coldSizes().size >= 2 ? '#finishPolyline' : '#waterHintSize', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn'), page: 0,
+      // the card's order: the size list while it is open, Pipe size on the water card; once the main is two
+      // sizes, no control until the second circle is in (the circle is the target), then Finish. The step
+      // is done only when the run is FINISHED: it used to pass on the second circle with the 3/4in run still
+      // a live draft, so line 6 was never reached, Finish was lit ahead of the circle, and the next tool
+      // could drop the draft (review of the persona fixes, 2026-09-25).
+      target: () => (state().drawingPolyline && coldSizes().size >= 2
+        ? ladder('#waterSizePopover', allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())) ? '#finishPolyline' : null)
+        : ladder('#waterSizePopover', '#waterHintSize', '#polylineBtn', '#polylineBtnSidebar', '#headerMoreBtn')), page: 0,
       zones: () => pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()),
-      check: () => waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
-      hint: () => (!state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? { code: 'not-yet', text: 'The main is traced but still one size. Trace it again, and on the card at the bottom of the sheet click Pipe size (or press S), then 3/4″' } : ''),
+      check: () => !state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths())),
+      hint: () => {
+        if (state().drawingPolyline && coldSizes().size >= 2 && allDone(pathZones([MAIN_MID, MAIN_END], 14, waterPolyPaths()))) return { code: 'not-yet', text: 'Both circles are in. Click Finish under the sheet to keep the 3/4in run' };
+        return !state().drawingPolyline && waterPolyPaths().some((pts) => pts.length >= 2) && coldSizes().size < 2 ? { code: 'not-yet', text: 'The main is traced but still one size. Trace it again, and on the card at the bottom of the sheet click Pipe size (or press S), then 3/4″' } : '';
+      },
       action: { label: 'Trace and size it for me', run: traceAndSizeMain },
     },
     {

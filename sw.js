@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'eaf194226d10';
+const CACHE_VERSION = '5140f6641948';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -209,7 +209,7 @@ const PRECACHE_SHA256 = {
   '/app/': 'f14e60b9801b71d47fa1aa699eb6deea64a687dd91c9fd7f6db80376802deb25',
   '/app/index.html': 'f14e60b9801b71d47fa1aa699eb6deea64a687dd91c9fd7f6db80376802deb25',
   '/config.js': '455a751857efe37a6c08d3922448bca7f57767b923e39826239a6f187608b05a',
-  '/styles.css': '84628f14391481faee64ea235cdb488605f38f1b8e24a3397910701c54b38682',
+  '/styles.css': 'e99862b291e3d0ab8e2bd3441e2dc4b7a88b67c6703ca795c0b5a1a051080397',
   '/manifest.webmanifest': '91c2a30960da9245e4472fb4b3c2ba818a505179d0c4cd58a35e53ae3c0722df',
   '/rules/rules.json': '3a39bf7154a26d8dc6a54c25820bc4ca7b0148a17b6ed81ae616b84f806fb3dd',
   '/icons.js': 'bb3c3506a859d25685287d0c1d3afb3231601754555aea403505e7ca8d68779b',
@@ -318,7 +318,7 @@ const PRECACHE_SHA256 = {
   '/features/duct-suggest.js': 'e0961d484412ed6684439419752fc6ba9d68eda46575903c290a7bb30103209e',
   '/features/water-fixtures.js': 'bc7480a8869ec98efab4a9b01654cb1d43b57073522a2b83cb194780020f32c3',
   '/features/water-runs.js': '7cdb6339f56f474389e66d99fba1e9d6953b7af0df22aa0a02a24a9ee4012d8a',
-  '/features/water-size.js': '49e96589c94695fd2b93991b080416ecd9281ca1b171cfaedd37b6bd47628f1b',
+  '/features/water-size.js': '228c010f6c4d29d25dc86fe7ae49e17d6c1c7af8e89b47df4a22583f8a290e30',
   '/features/water-schedule.js': '6950eaea800f44ec56aa949300392e39b4bf1c2e2fbd3c38cd113513afcb8f40',
   '/features/water-bidcheck.js': 'de66353620a924f006e1cf4411f93a90f559a2810adcd48e4a8a6de06bbce1e2',
   '/features/duct-callouts.js': 'db36b2ad7773a3cfe0f1c3d890ad0d24a70a8d058d156d272ec3cd149a2a4eaa',
@@ -332,7 +332,7 @@ const PRECACHE_SHA256 = {
   '/features/duct-bidcheck.js': 'de82bed1f1c357fa21bd9864ff417a99d4949a7b4e6833a6690cdcf47dc0ece1',
   '/features/rules.js': '01e86c4f75ee125c375265b33566364603a9056780716841f487b4a323be8192',
   '/features/tag-reader.js': '18e33828734558fdbb99f63eb82ca05b595757f70eb8e22aeb5e2c42e6e630fc',
-  '/features/tutorial.js': '39a4d91ce10053e194805f210df7fab4b7f9d287cc1d9cc7d72d11db35d3e0d0',
+  '/features/tutorial.js': 'fcb592715a089159cad65c1a31b2e088a6ea3b0478a5b7dbef690236978e8c52',
   '/features/lessons.js': '6fb2c85436fe452a7c9e5c2d088e33484f451842a2f98c53da7a1aa85c81d334',
   '/features/course-plumbing.js': 'bee7160e4f2e91af7a83e8504566d518201fe18c28edd29d92cfd973c609732e',
   '/features/course-electrical.js': '2909ee2d23d4671b53388ac7224e1b304f46397c7bfe3ae39f51730cbfdacc3a',

@@ -1163,8 +1163,12 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       // the tour card docks at the top and the second circle is out from under it
       zs = await page.evaluate(() => window.App.tutorialZoneScreen());
       expect(overlaps(circleBox(zs[1]), await rectOf(page, '#tourCard'))).toBe(false);
+      // Finish lights only once the second circle is in, and the step waits for it: the circle alone
+      // used to end the step with the 3/4in run still a draft (review of the persona fixes, 2026-09-25)
+      expect(await litIs(page, '#finishPolyline')).toBe(false);
       await page.touchscreen.tap(zs[1].cx, zs[1].cy);
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(1500);
+      expect(await stepId(page)).toBe('size');
       expect(await litIs(page, '#finishPolyline')).toBe(true);
       await page.tap('#finishPolyline');
       await waitForStep(page, 'zone');
@@ -1203,7 +1207,9 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
     await page.evaluate(() => window.App.tutorialGoTo('counter'));
     const body = await page.locator('#tourBody').textContent();
     expect(body).not.toContain('plumbing set');
-    expect(body).toContain('Under Icon, see that the toilet is the symbol lit: it follows the name');
+    // a statement between the actions, not a numbered 'see that' (review of the persona fixes, 2026-09-25)
+    expect(body).toContain('Under Icon the toilet lights as you type the name: the symbol follows it');
+    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => [o.start, o.children.length]))).toEqual([[1, 3], [4, 2]]);
     await page.click('#addCounter');
     await page.click('#counterModal .counter-tab[data-tab="create"]');
     const sel = () => page.evaluate(() => { const c = document.querySelector('#counterIconGrid .icon-cell.selected'); return c ? window.App.getIconName(c.dataset.path) : null; });

@@ -52,6 +52,19 @@ test('analyzeJs: state reads vs writes, DOM ids, functions', () => {
   assert.ok(fn && fn.lines > 5 && fn.depth === 1);
 });
 
+test('analyzeJs: state aliases (a getter, an identifier alias, ctx.getState())', () => {
+  const src = `(function () {
+    const App = window.App;
+    const S = () => App.state;
+    function a() { S().tool = 1; return S().zoom; }
+    function b() { const st = App.state; st.pages.push({}); }
+    function c(ctx) { ctx.getState().dirty = true; return ctx.getState().currentPage; }
+  })();`;
+  const r = analyzeJs('features/alias.js', src, 1);
+  assert.deepStrictEqual(Object.keys(r.stateWrites).sort(), ['dirty', 'pages', 'tool']);
+  assert.deepStrictEqual(Object.keys(r.stateReads).sort(), ['currentPage', 'zoom']);
+});
+
 test('shellModals: ids belong to the modal-overlay that encloses them', () => {
   const html = [
     '<div id="chrome"><button id="openBtn"></button></div>',

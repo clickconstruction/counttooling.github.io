@@ -124,11 +124,30 @@ function isApp(e) {
   return e.type === 'MemberExpression' && !e.computed && e.object.type === 'Identifier'
     && e.object.name === 'window' && e.property.name === 'App';
 }
-// Is `e` the state object? `state` or `App.state`.
-function isState(e) {
+// Is `e` the state object? `state`, `App.state`, a seam module's
+// `ctx.getState()`, or a file's own alias of one of those: `const st = App.state`
+// (an identifier alias) or `const S = () => App.state` (a getter, used as `S()`).
+function isStateBase(e) {
   if (!e) return false;
-  if (e.type === 'Identifier' && e.name === 'state') return true;
-  return e.type === 'MemberExpression' && !e.computed && isApp(e.object) && e.property.name === 'state';
+  if (e.type === 'MemberExpression' && !e.computed && isApp(e.object) && e.property.name === 'state') return true;
+  return e.type === 'CallExpression' && !e.arguments.length && e.callee.type === 'MemberExpression' && !e.callee.computed
+    && e.callee.object.type === 'Identifier' && e.callee.object.name === 'ctx' && e.callee.property.name === 'getState';
+}
+function stateAliases(ast) {
+  const names = new Set(['state']);
+  const getters = new Set();
+  walk(ast, (node) => {
+    if (node.type !== 'VariableDeclarator' || node.id.type !== 'Identifier' || !node.init) return;
+    if (isStateBase(node.init)) names.add(node.id.name);
+    else if (node.init.type === 'ArrowFunctionExpression' && !node.init.params.length && isStateBase(node.init.body)) getters.add(node.id.name);
+  }, null, []);
+  return { names, getters };
+}
+function isState(e, aliases) {
+  if (!e) return false;
+  if (e.type === 'Identifier') return aliases ? aliases.names.has(e.name) : e.name === 'state';
+  if (isStateBase(e)) return true;
+  return !!aliases && e.type === 'CallExpression' && !e.arguments.length && e.callee.type === 'Identifier' && aliases.getters.has(e.callee.name);
 }
 
 // Nearest ancestor chain root: walk up through member/call chains and see
@@ -189,6 +208,7 @@ function fnName(node, parent) {
 function analyzeJs(file, src, fnFloor) {
   const ast = parse(src, file);
   const iife = isIifeFile(ast);
+  const aliases = stateAliases(ast);
   const loadDepth = iife ? 1 : 0;
   const registers = new Map();      // name -> first line
   const reads = new Map();          // name -> { n, guarded, loadTime:boolean, lines:[] }
@@ -237,7 +257,7 @@ function analyzeJs(file, src, fnFloor) {
           reads.set(k, v);
         }
       }
-      if (isState(node.object)) {
+      if (isState(node.object, aliases)) {
         const k = node.property.name;
         bump(isWriteChain(node, stack) ? stateWrites : stateReads, k, line);
       }

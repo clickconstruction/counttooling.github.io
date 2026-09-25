@@ -8,6 +8,12 @@
   `app/index.html`), the per-file "Files" table (the **single source of truth**
   for what each file owns), and the full feature catalog ("Features Beyond
   Spec").
+- [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) — **where to decompose next**: the
+  ranked refactor shortlist, per-area verdicts, and the defects found while mapping.
+  It is a dated reading of `npm run build:projectmap`, which regenerates the measured
+  skeleton under it (`project-map/`, gitignored: registry graph, state writes, modal
+  ownership, big functions, near-duplicate blocks, churn since the last map) in a
+  few seconds. Run it before planning a split; don't hand-count.
 - [CHANGELOG.md](CHANGELOG.md) — implementation history (the sync-hardening PRs and
   other detail). Consult when you need the "why" behind the save/sync machinery.
 - [PUNCHLIST.md](PUNCHLIST.md) — **every open item, one line each**. An index, not
@@ -232,6 +238,11 @@
   the "N `features/*.js` registry files" figure above — between its
   `<!-- feature-count -->` markers — are generated; see
   [scripts/build-filemap.js](scripts/build-filemap.js))
+  + `build:projectmap --check` (three structural invariants, not counts: every
+  shell script and `features/*.js` has an ARCHITECTURE.md Files row, no `App.*`
+  read at LOAD time names something a later script registers, no unguarded
+  `App.*` read names something nothing registers; see
+  [scripts/build-projectmap.js](scripts/build-projectmap.js))
   + `build:macros --check` (the Macros table rows in app/index.html are
   generated from `HOTKEYS` in constants.js — edit the table there, then run
   `npm run build:macros` AND `npm run build:sw`)
@@ -241,7 +252,7 @@
   + `build:sw --check`
   + `check-brand-tokens` (the styles.css ↔ marketing.css ↔ manifest token
   mirror) + `check-punchlist` (PUNCHLIST.md row shape + every `Detail` link
-  resolves) — eleven steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  resolves) — twelve steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is

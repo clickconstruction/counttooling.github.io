@@ -301,6 +301,36 @@ test.describe('Chain tool', () => {
         expect(await page.evaluate(() => [window.state.activeCounterType, window.state.activeLineTypeId])).toEqual(['c-chain-1', 'lt-chain-1']);
         expect(errors).toEqual([]);
       });
+
+      // The palette sits above .modal-overlay (300 over 200): + New counter opened the Counter
+      // dialog UNDER it, and a tap on the Name field landed on a palette row and changed the
+      // chain's line type (persona calibration review, 2026-09-25). It steps aside while a
+      // dialog shows and comes back when the dialog closes.
+      test('+ New counter opens the Counter dialog over the palette, not under it', async ({ page }) => {
+        await setupChainProject(page);
+        await page.tap('#chainBtn');
+        await expect(page.locator('#chainPanel')).toBeVisible();
+        await page.locator('#chainCounterList .chain-new-row').tap();
+        await expect(page.locator('#counterModal')).toHaveClass(/visible/);
+        await expect(page.locator('#chainPanel')).toBeHidden();
+        const hit = await page.evaluate(() => {
+          // The left edge of the Name field and the first tab are where the palette used to sit.
+          const hits = (el) => {
+            const r = el.getBoundingClientRect();
+            const at = document.elementFromPoint(r.left + 8, r.top + r.height / 2);
+            return !!at && (at === el || el.contains(at));
+          };
+          return {
+            name: hits(document.getElementById('counterName')),
+            tab: hits(document.querySelector('#counterModal .counter-tab')),
+          };
+        });
+        expect(hit).toEqual({ name: true, tab: true });
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#counterModal')).not.toHaveClass(/visible/);
+        await expect(page.locator('#chainPanel')).toBeVisible();
+        expect(await page.evaluate(() => window.state.activeLineTypeId)).toBe(null);
+      });
     });
   }
 });

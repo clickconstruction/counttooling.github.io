@@ -21,8 +21,9 @@
  * the cap (WATER_VELOCITY_CAP_FPS, or the project's own knob once rung 5 adds
  * state.waterSettings.capFps[side]).
  *
- * S (or the card's Pipe size button, or a tap anywhere on the card: the touch way,
- * since a tablet has no S; persona calibration C4, 2026-09-25) opens #waterSizePopover (the duct size popover's
+ * S (or the card's Pipe size button, or on a touch screen a tap anywhere on the card: the
+ * touch way, since a tablet has no S; persona calibration C4, 2026-09-25; with a mouse the
+ * card body lets clicks through to the sheet, styles.css) opens #waterSizePopover (the duct size popover's
  * markup and classes): the suggested size as a chip, the material's whole
  * ladder with each size's velocity (✓ / ⚠), the flow and the column, and the
  * note that a size change starts a new run. Taking a size is WATER-PLAN Q1's

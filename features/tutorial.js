@@ -722,7 +722,8 @@
       inp.dispatchEvent(new Event('change', { bubbles: true }));
     } catch (e) { App.showToast('Could not load the sample plan. Upload PDF works the same way.'); }
   }
-  async function openSamplePlan() { return openPlanFile(SAMPLE_PLAN, 'sample-plan.pdf'); }
+  // LEARN-LEAK: what the tour makes leaves with the sample plan (features/lessons.js)
+  async function openSamplePlan() { if (App.beginTeachingPalette) App.beginTeachingPalette(); return openPlanFile(SAMPLE_PLAN, 'sample-plan.pdf'); }
   async function openAdvancedSamplePlan() { return openPlanFile(ADVANCED_PLAN, 'sample-plan-advanced.pdf'); }
   // Through the real dialog when it is there — the estimator sees the presets tab
   // and the 1/8" row get picked, the way they will do it on a real sheet — with a

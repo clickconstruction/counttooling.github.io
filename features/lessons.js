@@ -217,12 +217,19 @@
   }
   const paletteIds = () => (S().counters || []).map((c) => c.id).concat((S().lineTypes || []).map((l) => l.id));
   function sweepLessonPalette() {
-    // the lesson's own items, and whatever the reader made on the last lesson's sheets (LEARN-LEAK)
+    dropFromPalette((x) => x.lesson);   // the last lesson's own items
+    beginTeachingPalette();
+  }
+  // A lesson, course or tour opening its sheets: whatever was made on the last teaching sheets goes,
+  // and the palette standing now is the one the sweep will leave alone (the FIRST one, when a lesson
+  // follows a lesson: the reader's own, not the last lesson's).
+  function beginTeachingPalette() {
     const made = new Set(track ? track.made : []);
-    dropFromPalette((x) => x.lesson || made.has(x.id));
+    if (made.size) dropFromPalette((x) => made.has(x.id));
     standing = track ? new Set(track.standing) : new Set(paletteIds());
     track = { standing: [...standing], made: [] };
     opening = true;
+    settle = { page: null, at: 0 };
     saveTrack();
   }
 
@@ -241,6 +248,10 @@
   // rebuilds the pages under "Untitled" once the set's name is already up (seen, 2026-09-25). The set
   // is IN once it has settled, the moment seedIfReady lays the lesson's seed (seededFor).
   let opening = false;
+  let settle = { page: null, at: 0 };
+  // The sheets the palette is watched on: the lesson and course sets, the blank tour's sheet, and the
+  // five-minute tours' sample plan (features/tutorial.js).
+  const TRACKED_SETS = KNOWN_SETS.concat(['sample-plan']);
   // After a reload mid-lesson the boot shows no plan at all while it offers to restore one; only a
   // plan that is not a set, or a set left again, counts as leaving.
   let fromStorage = !!track;
@@ -249,8 +260,15 @@
     if (!track) return;
     const name = S().currentProjectName || '';
     if (name) fromStorage = false;
-    if (KNOWN_SETS.includes(name)) {
+    if (TRACKED_SETS.includes(name)) {
+      // IN once settled: the lesson laid its seed, or (a tour has none) the first sheet is drawn, no
+      // Trim your set is up, and it has stayed so for half a second, the lessons' own settle test
+      const first = S().pages && S().pages[0];
       if (seededFor && seededFor === openingFor) opening = false;
+      else if (opening && first && first.pdfPage && !modalUp('preparePdfModal')) {
+        if (settle.page !== first) settle = { page: first, at: Date.now() };
+        else if (Date.now() - settle.at >= 500) opening = false;
+      } else settle = { page: null, at: 0 };
       const had = new Set(track.standing.concat(track.made));
       const fresh = paletteIds().filter((id) => !had.has(id));
       if (fresh.length) { track.made = track.made.concat(fresh); saveTrack(); }
@@ -261,7 +279,7 @@
     track = null;
     saveTrack();
     const n = dropFromPalette((x) => x.lesson || made.has(x.id));
-    if (n && App.showToast) App.showToast('Removed ' + n + (n === 1 ? ' counter or line type' : ' counters and line types') + ' made in the lesson. Your own palette is as it was.', 5000);
+    if (n && App.showToast) App.showToast('Removed ' + n + (n === 1 ? ' counter or line type' : ' counters and line types') + ' made in the lesson or tour. Your own palette is as it was.', 5000);
   }
   // A PDF with several sheets goes through Trim your set (Prepare PDF) like any upload.
   // The Sheets lesson leaves that dialog to the reader, because it IS the lesson; every
@@ -831,6 +849,7 @@
   } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
 
   App.onLessonPaletteSync = syncLessonPalette;   // app.js updateUI, before the sidebar draws
+  App.beginTeachingPalette = beginTeachingPalette;   // a tour opening its sheet (features/tutorial.js, tour-blank.js)
   App.openLearnMenu = openLearnMenu;
   App.startLesson = startLesson;
   // A lesson left by a reload or a closed tab: once the app has booted, put the reader's device

@@ -13,7 +13,7 @@ expired recovery UX" work occupies that slot).
 
 ---
 
-## fix(learn): what a lesson made leaves with its sheets (LEARN-LEAK, 2026-09-25)
+## fix(learn): what a lesson or tour made leaves with its sheets (LEARN-LEAK, 2026-09-25)
 
 The owner's call on LEARN-LEAK: sweep all of it. A reader who made counters and line types by
 hand inside a lesson or course ("HB Hose Bibb", "1.5in Copper") kept them in the palette after
@@ -30,13 +30,21 @@ recorded ids go, which is why it records as they appear rather than diffing on t
 record rides localStorage (`clickcount-lesson-palette`), so a reload mid-lesson still sweeps on the
 way out; a boot with no plan yet, while the restore offer is up, does not count as leaving.
 
+**The tours too**, at the owner's ask in review: the three five-minute tours' sample plan and the
+blank tour's sheet are watched the same way. `openSamplePlan` (features/tutorial.js) and
+`openBlankSheet` (tour-blank.js) call `App.beginTeachingPalette()` when they open their sheet, the
+same entry the lessons' `openSheetsFor` uses; the tour's "Water Closet" and "1in PEX" leave with the
+sample plan. A tour has no seed, so its sheet counts as in once the first page is drawn with no
+Trim your set up for half a second, the lessons' own settle test.
+
 Two things found building it: Trim your set rebuilds the pages under "Untitled" after the set's name
 is already up, so the set only counts as open once it has settled (the moment the lesson lays its
 seed, `seededFor`); and an upload onto the lesson sheets adds a page to the set rather than opening
 a new plan, so Close project is the way off them. Pinned by lessons.spec.js ("what a lesson made…
 leaves with its sheets"): the lesson's Floor Drain and a hand-made counter and line type go on
 Close project, the reader's own counter stays, the next plan opens with their palette alone, and a
-project loaded over a second lesson's sheets keeps its own palette.
+project loaded over a second lesson's sheets keeps its own palette. tutorial.spec.js pins the tour:
+the plumbing tour's Water Closet goes on Close project, the reader's own counter stays.
 
 ## fix(lessons): the card wording that did not match the screen (2026-09-24)
 

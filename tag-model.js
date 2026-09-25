@@ -41,17 +41,25 @@ function tagOfCounter(counter) {
 }
 
 // items: [{ str, x, y, w, h }] in app PDF-space (y down; x,y = top-left of the
-// text box). Returns the nearest tag token within `radius` of `pt`, measured
-// to the box's center — { str, x, y, w, h, dist } — or null.
+// text box). Returns the tag token within `radius` of `pt` (measured to the box's
+// center) that is most plausibly the symbol's own — { str, x, y, w, h, dist } — or
+// null. A tag is written BESIDE its symbol, on its line, so among the candidates the
+// one nearest the click's baseline wins: the ranking distance doubles the vertical
+// offset. Found by hand 2026-09-24 on E-201: a 2x4 troffer's B sits 22 pt to the
+// right of its center, and the emergency light 12 pt above it has its EM 18 pt away
+// up and to the right; by plain distance the click on the troffer read EM.
 function nearestTag(items, pt, radius) {
   const r = typeof radius === 'number' && radius > 0 ? radius : 40;
-  let best = null;
+  let best = null, bestRank = Infinity;
   (items || []).forEach((it) => {
     const s = String(it.str || '').trim().toUpperCase();
     if (!isTagToken(s)) return;
     const cx = it.x + (it.w || 0) / 2, cy = it.y + (it.h || 0) / 2;
-    const d = Math.hypot(cx - pt.x, cy - pt.y);
-    if (d <= r && (!best || d < best.dist)) best = { ...it, str: s, dist: d };
+    const dx = cx - pt.x, dy = cy - pt.y;
+    const d = Math.hypot(dx, dy);
+    if (d > r) return;
+    const rank = Math.hypot(dx, 2 * dy);
+    if (rank < bestRank) { bestRank = rank; best = { ...it, str: s, dist: d }; }
   });
   return best;
 }

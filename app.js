@@ -4265,6 +4265,14 @@
     if (App.registerWaterSideForm) { App.registerWaterSideForm('add', { radioName: 'lineTypeWaterSide', groupId: 'lineTypeWaterGroup', nameInputId: 'lineTypeName', name: () => document.getElementById('lineTypeName').value }); App.resetWaterSideForm('add'); }
     showModal('lineTypeModal');
   };
+  // The plain dialog's door to the Quick creator (size · material · colour): the sidebar's + Add
+  // is the one place every card can send a reader, and with exactly one line type Quick Line
+  // arms it instead of opening the chooser (T2-08), so the Quick tab needs a way in from here.
+  document.getElementById('lineTypeQuickLink').onclick = () => {
+    hideModal('lineTypeModal');
+    App.showChooseLineTypeModal();
+    App.showLineTypeTab('quick');
+  };
   document.getElementById('lineTypeCancel').onclick = () => hideModal('lineTypeModal');
   document.getElementById('lineTypeCreate').onclick = () => {
     const name = document.getElementById('lineTypeName').value.trim() || nextLineTypeName(state.lineTypes);
@@ -7439,6 +7447,11 @@
       }
       if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
         App.showLineTypeTab('quick');
+        e.preventDefault();
+        return;
+      }
+      if (document.getElementById('lineTypeModal').classList.contains('visible')) {
+        document.getElementById('lineTypeQuickLink').click();
         e.preventDefault();
         return;
       }

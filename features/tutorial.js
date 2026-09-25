@@ -1108,11 +1108,18 @@
       // that button. The first corner clear of every box wins; none clear, it stays.
       const ctl = otherControlBoxes(step, target, openModal);
       if (ctl.length) {
-        const keep = zs.concat(ctl, r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }]);
-        const clearOf = (c) => !keep.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
-        if (!clearOf(place)) {
+        const controls = ctl.concat(r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }]);
+        const hits = (c, boxes) => boxes.filter((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12).length;
+        if (hits(place, controls) || hits(place, zs)) {
+          // The corner covering the fewest named controls, then the fewest sheet targets: a
+          // control cannot be moved out from under the card, a sheet target can be panned
+          // (at 1280 × 720 no corner was clear of both, and the card stayed on the row).
           const corners = [{ left: edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: vh - ch - 40 }, { left: vw - cw - edge, top: 56 }, { left: edge, top: 56 }];
-          place = corners.find(clearOf) || place;
+          const cost = (c) => hits(c, controls) * 1000 + hits(c, zs);
+          const mine = cost(place);
+          let best = place, bestCost = mine;
+          corners.forEach((c) => { const k = cost(c); if (k < bestCost) { best = c; bestCost = k; } });
+          place = best;
         }
       }
       if (dragPos) place = { left: clampX(dragPos.left), top: clampY(dragPos.top) };
@@ -1202,15 +1209,21 @@
   }
   // The step's named controls other than the one pointed at, on screen and not the sheet
   // (inside the open dialog when one is up), as screen boxes the card must keep off.
+  // Every element a selector matches, not the first: "#lineTypesList .edit-btn" names the pencil
+  // beside the type the step talks about, which is the sixth pencil on a device with a
+  // standing palette, and the card beside the first sat on it (by hand, 2026-09-24).
   function otherControlBoxes(step, pointed, within) {
     const out = [];
     (step.target || []).forEach((sel) => {
-      const el = document.querySelector(sel);
-      if (!el || el === pointed || el.offsetParent === null || (within && !within.contains(el))) return;
-      const r = el.getBoundingClientRect();
-      if (!r.width || !r.height || r.width * r.height > window.innerWidth * window.innerHeight * 0.4) return;
-      if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return;
-      out.push({ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom });
+      let els = [];
+      try { els = Array.from(document.querySelectorAll(sel)); } catch (_) { return; }
+      els.forEach((el) => {
+        if (el === pointed || el.offsetParent === null || (within && !within.contains(el))) return;
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height || r.width * r.height > window.innerWidth * window.innerHeight * 0.4) return;
+        if (r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) return;
+        out.push({ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom });
+      });
     });
     return out;
   }
@@ -1281,6 +1294,16 @@
       const x = ov.querySelector('[data-modal-close]');
       if (x) x.click();
       if (ov.classList.contains('visible') && App.hideModal) App.hideModal(ov.id);
+    });
+    // The floating tool palettes (Chain, Drop) the same way: the Drop palette the rise step
+    // left open sat on COUNTERS + Add, which the next step asks for (by hand, 2026-09-24).
+    ['dropPanel', 'chainPanel'].forEach((id) => {
+      const p = document.getElementById(id);
+      if (!p || p.style.display === 'none') return;   // the palettes are fixed-position: offsetParent is null even when shown
+      const holdsTarget = (step.target || []).some((sel) => { let t = null; try { t = document.querySelector(sel); } catch (_) { return false; } return !!t && p.contains(t); });
+      if (holdsTarget) return;
+      const x = document.getElementById(id + 'Close') || p.querySelector('.chain-panel-close, .drop-panel-close');
+      if (x) x.click();
     });
   }
   function goTo(i) {

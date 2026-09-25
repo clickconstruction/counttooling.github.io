@@ -152,6 +152,21 @@ test.describe('Quick Count no-twin create', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a size picked before a type is added survives the panel repopulate (by hand, 2026-09-24)', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.text().includes('config.local.js')) errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await openQuickCountWithSeed(page);
+    const picked = await page.evaluate(() => { const sel = document.getElementById('counterQuickCountSize'); sel.value = sel.options[sel.options.length - 1].value; sel.dispatchEvent(new Event('change')); return sel.value; });
+    await page.locator('#counterQuickCountAddType').click();
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmInput').fill('Cleanout Tee');
+    await page.locator('#confirmOk').click();
+    await page.waitForFunction(() => document.getElementById('counterQuickCountType')?.value === 'Cleanout Tee', { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('counterQuickCountSize').value)).toBe(picked);
+    expect(errors).toEqual([]);
+  });
+
   test('a user-added custom type still gets the no-twin rotation (no stock-name dependence)', async ({ page }) => {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });

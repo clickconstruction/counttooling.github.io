@@ -73,6 +73,57 @@ step goes to the reference.
 tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
 specs walk green (80).
 
+## fix(learn): the by-hand walk of the electrical course, chapters 3 to 9, on a returning estimator's device (2026-09-24)
+
+The second round of the walk that found wendi's panel-step bug: every step of chapters 3 to 9
+done with the real controls, never the action button, on a device with sixteen standing
+counters, five line types and a group from an old job, and words left in the sidebar searches.
+Eleven findings, each pinned where its code lives:
+
+- **The tag reader's reach** ([features/tag-reader.js](features/tag-reader.js)): `HINT_RADIUS_PT`
+  18 → 24. A 2x4 troffer at 1/8" is 36 pt wide and its letter sits 20 pt from the centre the
+  reader clicks; at 18 the ten B troffers on E-201 read no tag and landed on the armed A.
+- **The tag on the click's line wins** ([tag-model.js](tag-model.js) `nearestTag`): among the
+  candidates in reach, the ranking distance doubles the vertical offset, because a tag is
+  written beside its symbol. The emergency light 12 pt above a troffer had its EM 18 pt from
+  the click and the troffer's own B 22 pt; by plain distance the click read EM. Pinned in
+  tag-model.test.js.
+- **The card keeps off every element a target matches** ([features/tutorial.js](features/tutorial.js)
+  `otherControlBoxes`): `#lineTypesList .edit-btn` names the pencil beside the type the step
+  talks about, the sixth pencil on a standing palette, and the card beside the first sat on it.
+  When no corner is clear, the corner covering the fewest named controls wins, then the fewest
+  sheet targets (a control cannot be moved out from under the card, a sheet target can be
+  panned; at 1280 × 720 nothing was clear and the card stayed on the row).
+- **Steps that say "click X in the sidebar" name the list** (the five "arm it" steps across the
+  three courses now carry `#countersList`, hvac's `designed` carries `#groupsList`, and the four
+  electrical steps that say "the pencil beside" carry `.edit-btn`), so the card keeps off them.
+- **A step change closes the Chain and Drop palettes** the last step left open unless the new
+  step names them (`closeStrayDialogs`): the Drop palette from the rise step sat on COUNTERS
+  + Add, which the gear step asks for.
+- **The plain Create Line Type dialog has a door to the Quick creator** (app/index.html
+  `#lineTypeQuickLink`, Shift+Q from that dialog too): six cards send the reader to the
+  sidebar's + Add and then to a Quick tab it never had, and with exactly one line type the
+  header's Quick Line arms it instead of opening the chooser (T2-08), so the Quick tab had no
+  door at all. The six cards now say "+ Add, then Quick"; the two that said "the Create tab"
+  say what the dialog shows. Pinned in choose-create-line-type.spec.js.
+- **The Quick tabs keep what was picked when a size, type or material is added** with +
+  (features/quick-line.js, features/quick-modals.js): the repopulate reset every select, so
+  0.75in picked before EMT was added made "0.5in EMT". Pinned in both Quick specs.
+- **A word that repeats its neighbour is said once** in the Quick counter's name
+  (`composeName`): Category Disconnect + Variant Disconnect named "Disconnect Disconnect".
+- **Chapter 5** ([features/course-electrical.js](features/course-electrical.js)): the panel step
+  covers a device whose own panel counter the chapter adopted; the homerun step says to click
+  the circuit first so the run joins it; the voltage-drop step has a hint while the row reads
+  "not applicable" (a held step with Next dark and no word was the by-hand stall: the homerun
+  never joined the circuit).
+- **Chapter 8**: the takeoff card says what Skip does and how to have the app lay the sheets;
+  the report card says Show Report appears once the sheets carry a mark (after a Skip it is
+  hidden).
+
+Walked green afterwards: chapters 3 to 9 by hand on the dirty device, the searches cleared on
+open and typed back at every Finish. The full spec set for the changed files (courses, lessons,
+tour, tag reader, the two Quick tabs, chain, water runs, footer hint) is green.
+
 ## fix(tag-reader): two counters carrying one tag, the armed one takes the click (2026-09-24)
 
 Found by hand on the electrical course's J-box step, on a device with a standing palette: the

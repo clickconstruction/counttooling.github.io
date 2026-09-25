@@ -55,7 +55,9 @@
   }
   function composeName() {
     const v = fieldValues();
-    return profile().nameOrder.map((k) => v[k]).filter(Boolean).join(' ');
+    // a word that repeats its neighbour is said once: Category Disconnect + Variant Disconnect
+    // named a counter "Disconnect Disconnect" (by hand, 2026-09-24)
+    return profile().nameOrder.map((k) => v[k]).filter(Boolean).filter((w, i, arr) => i === 0 || w.toLowerCase() !== arr[i - 1].toLowerCase()).join(' ');
   }
 
   function removeModifier(kind, qcSelectId) {
@@ -359,8 +361,12 @@
       const m = mods();
       m[kind].push(v.trim());
       saveMods(m);
+      // The repopulate resets every select: keep the other two the way the reader set them
+      // (the line Quick tab lost a picked 0.75in on adding EMT, by hand 2026-09-24).
+      const keep = ['counterQuickCountSize', 'counterQuickCountType', 'counterQuickCountMaterial'].filter((id) => id !== selectId).map((id) => [id, (document.getElementById(id) || {}).value]);
       populateCounterQuickCountPanel();
       document.getElementById(selectId).value = v.trim();
+      keep.forEach(([id, val]) => { const el = document.getElementById(id); if (el && val && Array.from(el.options).some((o) => o.value === val)) el.value = val; });
       updateCounterQuickCountNamePreview();
       if (kind !== 'materials') updateCounterQuickCountMount(true);
     }

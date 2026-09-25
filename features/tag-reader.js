@@ -47,7 +47,12 @@
   'use strict';
   const App = (window.App = window.App || {});
   const TM = () => window.TagModel;
-  const HINT_RADIUS_PT = 18;   // ~1/4" on the sheet: the tag sits right beside its symbol
+  // A tag sits beside its symbol, and the widest common symbol decides the reach: a 2x4
+  // troffer at 1/8" is 36 pt wide, its letter about 20 pt from the center the reader clicks.
+  // At 18 the ten B troffers on E-201 read no tag and landed on the armed A (by hand,
+  // 2026-09-24); the nearest tag still wins, so a neighbor's letter (a fixture pitch away,
+  // 45 pt and more) never outranks the symbol's own.
+  const HINT_RADIUS_PT = 24;
 
   // --- the text layer, in app PDF-space --------------------------------------
   const textCache = new Map();   // pageIdx -> { pdfPage, rotation, items: [] | null (loading), promise }

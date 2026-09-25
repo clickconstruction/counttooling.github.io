@@ -202,7 +202,8 @@ Drop click with no run end does nothing), C4 (touch loses the size step's only i
 ("the plumbing set" does not exist), C9 (the drop palette is never named), C21 (IPC never spelled
 out) and C23 (the SUMMARY heading opens the legend settings). All seven were fixed on
 `claude/persona-fixes`, closing row PERSONA-FIXES: CHANGELOG.md, "fix(tour): the plumbing tour's
-findings from the persona calibration".
+findings from the persona calibration". The heading's own click, a trap outside the tour too, is
+the HEADING-CLICK call.
 
 **Cost.** Text pass: 15 agents, 53 model calls, 2.6M cached input tokens read, 0.7M written,
 146k output. Live pass: 15 agents, 1,238 calls, 104M cached read, 1.2M written, 306k output. The
@@ -210,7 +211,8 @@ live pass read about 40 times the text pass's input, because each agent walked t
 one context, averaging about 84k tokens a call by the end. The replay stage (38 agents, a stronger
 model) was where the yield was.
 
-**What changes for PERSONA-PASS** (row PERSONA-PROBER):
+**What changes for PERSONA-PASS** (built 2026-09-25 as PERSONA-PROBER, CHANGELOG "feat(persona): the
+prober and the cheaper live pass"; how it came out is in the Harness section below):
 1. **One step per episode**, as the plan first said, and `POST /act` takes a list of actions, so a
    plain step is one call. The whole-tour walk is what made the live pass forty times the text
    pass.
@@ -257,11 +259,27 @@ Built 2026-09-25 (build items 2, 5 and 6). Four scripts, all Node tooling, none 
   DOM (its `code` is null), and the manifest from walking the set with Skip / Next
   (`"source":"walk"`).
 - `npm run build:persona-manifest -- --app <url>`: `persona-out/manifest.jsonl` (one line per
-  step) and `persona-out/labels.json` (every label the shell shows, the list
-  teaching-labels.test.js checks chips against). About 15 minutes as a walk, four sets at a time.
-- `npm run persona:merge -- <findings dir> [--score known.json]`: `digest.json` + `digest.md`,
-  ranked by persona kinds, then severity. The finding schema and the known-list format are at
+  step) and `persona-out/labels.json`, every control label a reader can meet, marked by where it
+  comes from: `{"sources":{…},"labels":[["Apply","shell","target","dialog:Multiply Zone"], …]}`.
+  `shell` is the served app's own index.html (the list teaching-labels.test.js checks chips
+  against), `target` a step's lit control as the engine manifest named it, `dialog:<name>` a
+  control inside that dialog (every dialog in the booted page, hidden ones too, the Set Scale
+  presets the dialog builds only when its tab shows, and on a walk every dialog the walk saw open),
+  `card` the tour card's own buttons ("Open the sample plan"). The calibration's text-pass false
+  leads C10 and C11 were exactly these. About 15 minutes as a walk, four sets at a time.
+- `npm run persona:merge -- <findings dir> [--score known.json] [--manifest <file>]`:
+  `digest.json` + `digest.md`, ranked by persona kinds, then severity. `--manifest` (the JSONL
+  dump or one set's manifest JSON) renames a step written as a number (the manifest's 0-based
+  `i`, also "step 3") or as its title to the step's id, the calibration's hand fix (11 of its 247
+  findings). Only a finding on a set the manifest holds is renamed (a one-set manifest also takes
+  that set written loosely, "Plumbing tour", or none); it prints the count, and a file with no
+  step lists in it is an error. The finding schema, `false-pass` among its kinds, and the known-list format are at
   the top of `scripts/persona-merge.js`.
+- `scripts/persona-prompts/`: the prompts, the single source. `text.md` (the text pass),
+  `live.md` (a persona on ONE step through the harness), `prober.md` (the wrong thing each doing
+  step should reject), and `README.md` with the persona kinds, the seeds and the finding format.
+  `node scripts/lib/persona-prompts.js <role> --persona <kind> --seed <n> --var NAME=value`
+  renders one and refuses to print a prompt with an unfilled placeholder.
 
 Start the harness against a running app server (no `--app` serves this checkout itself):
 
@@ -274,9 +292,45 @@ npm run persona:harness -- --port 3490 --app http://localhost:3457 --out <scratc
 | `GET /health` | | `{ ok, episodes, app, devices }` |
 | `GET /sets` | | `{ sets: [ids] }` |
 | `GET /manifest?set=plumbing` | | the set's manifest |
-| `POST /episode` | `{ set, step, device }` (step: id or index) | `{ id, obs }` |
-| `POST /act` | `{ id, action }` | `{ obs, ok, error?, events }` |
+| `POST /episode` | `{ set, step, device, obsMode? }` (step: id or index) | `{ id, obs, skipped?, passedWithoutWork? }` |
+| `POST /act` | `{ id, action, obsMode? }` | `{ obs, ok, error?, events, passedWithoutWork? }` |
+| `POST /act` | `{ id, actions: [...], through?, obsMode? }` | `{ obs, ok, ran, results, stopped?, steps?, passedWithoutWork? }` |
 | `POST /close` | `{ id }` | `{ ok }` |
+
+**The cheaper live pass** (PERSONA-PROBER). The calibration's live personas walked the whole tour
+in one context and read about forty times the text pass. Now an episode is one step, and a step
+is one call:
+
+- `"actions"`: a list, run in order, stopping at the first error or when the step changes (the
+  reader reads the new card first) unless `"through":true`, at most 40. One answer: the final
+  snapshot, one line per action run (`"3. fill \"Name\" = \"Lavatory\": ok · typed …"`), the
+  step transitions (`[{ after, from, to }]`) and where it stopped. `{"action":…}` still works.
+- `"obsMode":"diff"` (on `/episode` for the whole episode, or on one `/act`): after the first
+  snapshot, only the fields that changed since the last answer; the card text only when it
+  changed, a field gone as null, `obs: null` when the set ended.
+- Measured on the chain step (first-timer, ten actions: T, + New counter, Name, Create Counter,
+  T, a screenshot, the three circles, a wait): the calibration's way, eleven calls answering
+  11,205 bytes; one list with diff snapshots, two calls answering 2,392 bytes (1,377 of it the
+  list's answer), and one model turn instead of eleven, each of which re-read the growing context.
+
+**The no-work detector** (no model). A doing step that turns Done, or moves on, while the reader's
+actions since entering it were none, or only Next / Back / Skip / Show me where / wait /
+screenshot / scroll, is flagged `passedWithoutWork: [{ step, i, why, actions }]` in the answer
+and in the episode's JSONL (`why`: done on arrival, turned done, moved on, done with no action).
+Skip, Back, and Next on a step that was not Done are the reader leaving, never a pass. A step
+reached by Back, or one the reader already did work on, is never flagged either. `/episode`
+gives the landed step ~1.5 s with no action first. On b312145 (the calibration's commit)
+`{"set":"plumbing","step":"counter","device":"returning"}` comes back flagged (K4: the standing
+Water Closet ticks it and it moves itself on) and so does `linetype` (K5); on main neither is,
+and a first-timer is never flagged. The logic is scripts/lib/persona-batch.js, pinned by
+persona-harness.test.js.
+
+**The prober** (`scripts/persona-prompts/prober.md`). Per doing step, up to three probes, each on a
+fresh episode with exactly one thing wrong: nothing at all, the wrong item, a value off by one, a
+click just outside the circle, half the work, a stray mark. A probe the step accepts is a
+`false-pass` finding. Scripted through `/act` (no model), a ×2 Multiply Zone around Women 108 on
+b312145 passes the zone step (zone -> rfi: K12), and on main the step holds with
+`wrong-value: The box is there, the number is ×2`.
 
 Actions: `{click:"+ Add"}` (with `within:"COUNTERS"` or `nth` when two controls share a name;
 "COUNTERS + Add" also works when the leading words are a section heading on screen),
@@ -296,4 +350,14 @@ $ curl -s -XPOST localhost:3490/episode -d '{"set":"plumbing","step":"counter","
 {"id":"e1-h08t","obs":{"tour":"plumbing","i":3,"n":17,"id":"counter","kind":"do","title":"Make a Water Closet counter","card":"1. In the left sidebar, under COUNTERS, click + Add.\n…","status":"Waiting for you…","miss":false,"code":null,"done":false,"next":false,"buttons":["Leave the tour","Show me where","Skip this step","Back","Next"],"lit":{"label":"+ Add","box":[122,236,59,27]},"dialog":null,"zones":[],"page":0,"stepPage":null}}
 $ curl -s -XPOST localhost:3490/act -d '{"id":"e1-h08t","action":{"click":"COUNTERS + Add"}}'
 {"obs":{…},"ok":true,"events":["clicked \"+ Add\" in the sidebar (split \"COUNTERS\" + \"+ Add\")","dialog opened: Create tab"]}
+```
+
+One step in one call, and the no-work flag, on b312145 (a harness from this branch with `--app` at
+that commit's server):
+
+```
+$ curl -s -XPOST localhost:3576/episode -d '{"set":"plumbing","step":"counter","device":"returning","obsMode":"diff"}'
+{"id":"e1-ikp3","obs":{…,"id":"place",…},"passedWithoutWork":[{"step":"counter","i":3,"why":"moved on","actions":[]}]}
+$ curl -s -XPOST localhost:3576/act -d '{"id":"e4-dvok","actions":[{"key":"X"},{"dragZone":1},{"fill":["Enter multiplier","2"]},{"click":"Apply"}],"through":true}'
+{"obs":{"i":13,"id":"rfi",…},"ok":true,"ran":4,"results":["1. key X: ok · pressed X","2. dragZone 1: ok · dragged across zone 1 · dialog opened: Multiply Zone","3. fill \"Enter multiplier\" = \"2\": ok · typed \"2\" into \"Enter multiplier\"","4. click \"Apply\": ok · clicked \"Apply\" in the dialog · step zone -> rfi · dialog closed · toast: Zone added. …"],"steps":[{"after":4,"from":"zone","to":"rfi"}]}
 ```

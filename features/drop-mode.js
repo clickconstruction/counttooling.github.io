@@ -117,7 +117,15 @@
     const ann = page ? App.getActiveAnnotations(page) : null;
     if (!ann) return;
     const node = nearestNode(ann, pdf);
-    if (!node) return;
+    // A click where no line ends used to do nothing at all (persona calibration C3, 2026-09-25):
+    // say what Drop needs, and where.
+    if (!node) {
+      const size = App.formatDropLabel ? App.formatDropLabel(selected.value, selected.unit) : '';
+      App.showToast(App.collectDropNodes(ann).length
+        ? 'No line end here. Click one of the ringed line ends to drop ' + size + '.'
+        : 'No runs on this sheet yet. Drop adds its size to the end of a line: draw a run, then click its end.', 3200);
+      return;
+    }
     const clearing = node.value > 0 && sameSize({ value: node.value, unit: node.unit }, selected);
     const value = clearing ? 0 : selected.value;
     if (!App.applyDropToNode(ann, node, value, selected.unit, true)) return;

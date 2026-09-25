@@ -10,3 +10,5 @@ test-results/
 .cursor/
 samples/candidates/
 contact-sheet*/
+# the persona pass writes here (scripts/persona-manifest.js, persona-harness.js, persona-merge.js): findings and dumps never land in the repo
+persona-out/

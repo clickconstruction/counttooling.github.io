@@ -73,6 +73,41 @@ step goes to the reference.
 tutorial.spec.js pins the numbering and the folded Bid Check; the tour, lesson, course and restore
 specs walk green (80).
 
+## fix(learn): the by-hand walk of the HVAC course, chapters 1 to 9 (2026-09-25)
+
+The fifth round of the by-hand walk: the HVAC course on the returning estimator's device, real mouse
+and keyboard, never the step's own button. Wording that PR #201 already rewrites (Quick's Material,
+the PAGES heading, Edit Room, the DUCT header, the kitchen branch's size) was left to it. Pinned in
+course-hvac.spec.js ("The HVAC course, by hand"), room-labels.spec.js and tag-reader.spec.js.
+
+**The app.**
+- The Schedule tool took only clicks, though its toast, its status and the chapter say drag: it was
+  missing from the press-drag tools. A drag over a schedule now draws the box.
+- Read a schedule from the sheet was hidden on HVAC projects until some counter carried a tag, so
+  chapter 3's first step could not be done by hand. It is offered on HVAC like plumbing.
+- A room boxed around the kitchen was named FRYER: the room-name reader ranks by print size, and it
+  measured a word printed sideways along its length. It measures across.
+
+**The tour engine.** Wherever a step lights the pages list, PAGES' ▶ follows it when PAGES is
+folded (its heading opens Page Settings, not the list), with a `pagesFoldedHint` status. The last
+measure reads at the scale it was taken at on any sheet: a proof passed a moment before read "the
+scale is off" once the reader changed sheets before Next.
+
+**The course.** Chapter 1's RTU hint said the counter was armed before the reader had made one (the
+standing "RTU Roof"), and so did the plumbing course's hose bibb and RPZ and the electrical course's
+panel: `armedNamed` asks what is actually armed. The ring follows each form the card walks through:
+Edit Room (Room type, Target CFM, Save, on the room's own row, not a pencil), Add Group (Name,
+Equipment tag, Capacity, ESP, Done), the Duct dialog (shape, size, airside, material, then Start
+Tracing), the diffuser schedule (M-501, a boundary on the table while the box is drawn, which also keeps
+the card off it at 1280 × 720, then the pencil of the next counter short of its CFM), and the SD-1 total. The M-501 highlight and the dining and Bid Check steps
+send the reader to the sheet first. Arm the Duct tool says how the dialog comes to read the plan's
+size (the pointer on it as U is pressed; from the header it is the default). SD-1 "again" became
+SD-1 is still armed. The depth measure is a measure proof. The make-up air's register has its
+circle. The schedule copy says why there is no DUCT section after a skipped takeoff.
+
+Found and left alone: the Quick tab's Size has no "none", so an RTU or a fire damper made there is
+named 6" RTU. A Quick-creator question for every trade, not the course's.
+
 ## fix(learn): the by-hand walk of the thirteen Learn lessons (2026-09-25)
 
 The fourth round of the by-hand walk: every Learn lesson, on the returning estimator's device (a

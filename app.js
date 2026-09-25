@@ -6368,6 +6368,7 @@
       case TOOL.SCALE_ZONE:
       case TOOL.DELETE_ZONE:
       case TOOL.ROOM:
+      case TOOL.SCHEDULE:   // a rect tool like the zones: a drag draws its box (it took only clicks; by hand, 2026-09-25)
       case TOOL.NOTE:
       case TOOL.CHAIN:
       case TOOL.DROP:

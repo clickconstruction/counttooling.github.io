@@ -134,6 +134,13 @@ test.describe('Electrical, First-Class S6 — read the tags', () => {
     expect(errors).toEqual([]);
   });
 
+  test('an HVAC project offers Read a schedule on the Create tab before any counter carries a tag (by hand, 2026-09-25)', async ({ page }) => {
+    await bootWithTextPdf(page, 'hvac');
+    await page.click('#addCounter');
+    await page.click('#counterModal .counter-tab[data-tab="create"]');
+    await expect(page.locator('#counterReadSchedule')).toBeVisible();
+  });
+
   test('a plumbing project reads nothing: no hint, no swap, the Create-tab link hidden', async ({ page }) => {
     await bootWithTextPdf(page, 'plumbing').catch(() => {});
     // the text cache never primes for a non-electrical project with untagged counters

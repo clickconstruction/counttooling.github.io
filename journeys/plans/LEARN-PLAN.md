@@ -36,6 +36,10 @@
 3. **Cloud features are a read-only chapter** that links into the guides. A tour refuses to
    run on a cloud project, and a faked sign-in would teach a screen nobody will see.
 4. **Desktop and tablet first.** Phones get wording that fits them, not a second design.
+5. **What a lesson made leaves with its sheets** (LEARN-LEAK, taken 2026-09-25: "sweep all of it").
+   Every counter and line type added while a lesson or course set is open, by the lesson or by the
+   reader's own hands, is removed when the reader leaves the sheets; the palette that stood before
+   is never touched. The alternatives were asking on the way out, or keeping what the reader made.
 
 ## Phases
 
@@ -95,6 +99,10 @@ pinned by spec. A lesson refuses to start over a cloud project, and never become
 device's default trade.
 
 ## Card wording that does not match the screen (the 2026-09-24 read)
+
+> **Done 2026-09-24** (COURSE-WORDING closed; CHANGELOG "fix(lessons): the card wording…"). Every
+> item below was checked against the shell or walked, then fixed as listed. The list is kept as the
+> record of what was wrong.
 
 From the same read that found the courses' trade items (their plan files) and the stalls (fixed
 separately): step cards that describe the screen wrongly or not at all. None stops the reader for

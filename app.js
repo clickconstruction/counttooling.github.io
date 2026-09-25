@@ -2523,6 +2523,9 @@
   // SECTION: UI Render Functions
   function updateUI() {
     const t0 = performance.now();
+    // LEARN-LEAK: a lesson's palette leaves with its sheets (features/lessons.js), before the
+    // sidebar draws the lists it would otherwise show.
+    App.onLessonPaletteSync && App.onLessonPaletteSync();
     recordCurrentBidAsRecent();
     updateUIInner();
     App.renderBidChip && App.renderBidChip();

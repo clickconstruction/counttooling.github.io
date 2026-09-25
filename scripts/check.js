@@ -7,7 +7,8 @@
  * Steps mirror the old chain exactly: lint, unit tests, the generator
  * `--check`s (toc, filemap, projectmap's structural invariants, macros, guides, rules, icons — D18 added
  * `build:icons --check`), the service-worker stamp check, the brand-token
- * verifier, and the punch-list link check.
+ * verifier, the punch-list link check, and the lesson rules check (a tour, lesson or
+ * course step that teaches a rulebook number names the rule and says its number).
  * Output for passing steps is suppressed to a status line; failing steps
  * replay their full output at the end. Exit code 1 when anything failed.
  */
@@ -29,6 +30,7 @@ const STEPS = [
   { name: 'build:sw --check', cmd: 'node', args: ['scripts/build-sw.js', '--check'] },
   { name: 'brand tokens', cmd: 'node', args: ['scripts/check-brand-tokens.js'] },
   { name: 'punch list', cmd: 'node', args: ['scripts/check-punchlist.js'] },
+  { name: 'lesson rules', cmd: 'node', args: ['scripts/check-lesson-rules.js'] },
 ];
 
 const failures = [];

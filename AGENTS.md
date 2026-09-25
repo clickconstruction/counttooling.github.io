@@ -102,7 +102,16 @@
   `DUCT_SETTINGS_DEFAULTS`, `ROOM_TYPE_CFM_PER_SQFT`, and water-model.js's `WSFU_LOADS`,
   `DEMAND_CURVE`, `WATER_VELOCITY_CAP_FPS`, `PIPE_ID_IN`, `FIXTURE_SUPPLY_MIN_IN`,
   `WATER_SERVICE_MIN_IN`), change the rule in the same
-  commit. `build:guides` owns `sitemap.xml` and lists the rule pages too.
+  commit. And a tour, lesson or course step that teaches a rule names it: `rules:
+  ['plumb.hanger.pex']` on the step object (ids from `rules/rules.json`), or
+  `rulesExempt: 'no rulebook entry: <section, subject>'` when it cites a section the
+  rulebook does not hold yet. [scripts/check-lesson-rules.js](scripts/check-lesson-rules.js)
+  (in `npm run check`, espree over features/tutorial.js, tour-blank.js, lessons.js and
+  the three course files) fails an unknown id, a citation or a rule's number beside its
+  subject with neither key, and a named rule's number the rule does not hold, so a card,
+  its rule and the code cannot disagree unnoticed; `--gaps` lists the exemptions (the
+  sections the rulebook still lacks), `--trace` every number it judged.
+  [check-lesson-rules.test.js](check-lesson-rules.test.js) pins it. `build:guides` owns `sitemap.xml` and lists the rule pages too.
   [rules.test.js](rules.test.js) (Node, CI) pins the parser, the pointers, the pages and
   the JSON.
 - **PWA / offline**: the app is an installable PWA (scoped to `/app/`). Third-party libs (pdf.js + worker,
@@ -252,7 +261,10 @@
   + `build:sw --check`
   + `check-brand-tokens` (the styles.css ↔ marketing.css ↔ manifest token
   mirror) + `check-punchlist` (PUNCHLIST.md row shape + every `Detail` link
-  resolves) — twelve steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  resolves) + `check-lesson-rules` (a tour, lesson or course step that states a
+  rulebook number or cites a code section names the rule, `rules: ['<id>']`, or says
+  why not, `rulesExempt: '<why>'`, and its number is the rule's; see the rulebook
+  bullet) — thirteen steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is
@@ -502,6 +514,7 @@ Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType
 `clickcount-lessons-done` (Learn: `{ <lessonId>: ISO }`, the lessons finished on this device; features/lessons.js),
 `clickcount-lesson-device-before` (the reader's sidebar filter, Snap and search words as a lesson found them; written when a lesson starts, removed when it stops, and put back on the next load when a reload or a closed tab skipped the stop; features/lessons.js),
 `clickcount-tour-searches-before` (the same for a TOUR's sidebar search words: cleared while the five-minute or blank tour runs, typed back when it stops or on the next load; features/tutorial.js),
+`clickcount-lesson-palette` (LEARN-LEAK: `{ standing, made }`, the palette ids that stood when a lesson's, course's or tour's sheets opened and the ones made while they were open; the made ones are removed when the reader leaves the sheets, even after a reload mid-lesson; features/lessons.js),
 `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
 mode), `clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,

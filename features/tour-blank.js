@@ -172,6 +172,7 @@
       if (TEACHING_SETS.includes(s.currentProjectName)) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
       else if (!(await App.closeProject({ route: 'tour' }))) return;   // their own plan: the app's one Close project, which asks
     }
+    if (App.beginTeachingPalette) App.beginTeachingPalette();   // LEARN-LEAK: what the tour makes leaves with the sheet (features/lessons.js)
     let bytes;
     try { bytes = await makeBlankSheet(); } catch (e) { App.showToast('Could not make the blank sheet. Upload any PDF and the tour carries on from there.'); return; }
     const file = new File([bytes], SHEET_NAME + '.pdf', { type: 'application/pdf' });
@@ -524,6 +525,7 @@
     },
     {
       id: 'duct', title: 'Header: Duct', kind: 'do',
+      rules: ['hvac.duct.gauge-schedule', 'hvac.duct.sheet-weight'],
       body: () => 'The sheet-metal run: drawn at its size, weighed by the foot.\n1. In the header, click [[Duct]] (or press U).' + (narrow() ? '' : MORE) + '\n2. Leave the size and click [[Start Tracing]].\n3. Click inside the first circle, then the second.\n4. ' + (narrow() ? 'Tap [[Finish Duct Run]].' : 'Press Enter.') + '\nThe DUCT section in the sidebar gets a Schedule: pounds, gauge and fittings from the SMACNA tables.',
       target: ['#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => K().pathZones(DUCT, 18, ductPaths(true)),

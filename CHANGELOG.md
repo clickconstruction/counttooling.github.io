@@ -24,7 +24,7 @@ few seconds: the `window.App` registry as a graph with guarded hooks, load-time 
 `state` reads and writes through every alias shape; DOM ids by owning modal; functions of 20+ lines by
 SECTION (anonymous listeners named, so the 327-line keydown handler shows); the specs that pin each file;
 churn since the map's head; near-duplicate blocks; unread registrations and hooks nothing registers.
-`--check` joins `npm run check` (twelve steps) with three invariants and no counts, so it never needs a
+`--check` joins `npm run check` (thirteen steps, with the lesson rules check that landed the same day) with three invariants and no counts, so it never needs a
 restamp: a Files row for every shell script and feature file, no load-time `App` read of a name a later
 script registers (the July prepare-pdf bug), no unguarded read of a name nothing registers.
 [project-map.test.js](project-map.test.js) drives each invariant red.
@@ -43,6 +43,118 @@ the estimate; the map says so, for the next refresh. It also turned up real bugs
 cloud restore, the RFI and Notes ledger sheet names, about sixteen dialogs Esc does not close, leftover
 rubber bands after M, a phantom duct transition, and more. The agents also listed where the skeleton
 misled them; most of those are fixed in the generator, and the rest are the map's last section.
+
+---
+
+## fix(learn): what a lesson or tour made leaves with its sheets (LEARN-LEAK, 2026-09-25)
+
+The owner's call on LEARN-LEAK: sweep all of it. A reader who made counters and line types by
+hand inside a lesson or course ("HB Hose Bibb", "1.5in Copper") kept them in the palette after
+leaving, and they rode into the next real bid. Worse than the row said: the lesson's OWN items did
+too, because they were only swept when the next lesson opened; closing the lesson project keeps the
+palette (the Artboard rides into the next plan), so every counter a course made went along.
+
+Now features/lessons.js records, by id, every counter and line type that appears while a lesson or
+course set is open (`syncLessonPalette`, which app.js `updateUI` calls first through
+`App.onLessonPaletteSync`), and removes exactly those when the open plan stops being a set: Close
+project, or a saved bid loaded over the sheets. A toast says how many went. The palette that stood
+when the sheets opened is never touched, and neither is a loaded project's own palette (only the
+recorded ids go, which is why it records as they appear rather than diffing on the way out). The
+record rides localStorage (`clickcount-lesson-palette`), so a reload mid-lesson still sweeps on the
+way out; a boot with no plan yet, while the restore offer is up, does not count as leaving.
+
+**The tours too**, at the owner's ask in review: the three five-minute tours' sample plan and the
+blank tour's sheet are watched the same way. `openSamplePlan` (features/tutorial.js) and
+`openBlankSheet` (tour-blank.js) call `App.beginTeachingPalette()` when they open their sheet, the
+same entry the lessons' `openSheetsFor` uses; the tour's "Water Closet" and "1in PEX" leave with the
+sample plan. A tour has no seed, so its sheet counts as in once the first page is drawn with no
+Trim your set up for half a second, the lessons' own settle test.
+
+Two things found building it: Trim your set rebuilds the pages under "Untitled" after the set's name
+is already up, so the set only counts as open once it has settled (the moment the lesson lays its
+seed, `seededFor`); and an upload onto the lesson sheets adds a page to the set rather than opening
+a new plan, so Close project is the way off them. Pinned by lessons.spec.js ("what a lesson made…
+leaves with its sheets"): the lesson's Floor Drain and a hand-made counter and line type go on
+Close project, the reader's own counter stays, the next plan opens with their palette alone, and a
+project loaded over a second lesson's sheets keeps its own palette. tutorial.spec.js pins the tour:
+the plumbing tour's Water Closet goes on Close project, the reader's own counter stays.
+
+## feat(persona): the seams simulated readers run on, and the rules a lesson teaches named (2026-09-25)
+
+PERSONA-PLAN build items 1 to 7 ([journeys/plans/PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)):
+personas find gaps cheaply, and what decides whether a gap is real is never a persona. Built on
+three branches at once and merged here.
+
+**The engine** (features/tutorial.js). `App.tutorialIds()` lists every registered tour (44: the
+three tours, the blank sheet, 13 lessons, 27 course chapters). `App.tutorialManifest(id)` gives
+each step as one compact record (the raw card text with its `[[chips]]`, the lit controls by
+label, how many sheet targets, which of hint / progress / action / hold it has, its `rules`). All
+44 come to 373 steps, about 190 KB. `App.tutorialObserve()` is the card and the screen as a few
+hundred characters of JSON (title, card text, status, the miss and its reason code, Next, the
+lit control and its box, the open dialog, the sheet targets in screen pixels). A hint may now
+return `{ code, text }`, with codes not-armed, outside-zone, wrong-page, wrong-scale, wrong-item,
+wrong-value, dialog-closed, not-yet, other. The card shows the same text as before. The first
+time a code shows on a step it rides the existing `tour_step` event as `hint`, so real readers'
+stalls can be counted the same way as the personas'. The plumbing tour and the shared helpers
+(measureProof, boxMiss, pagesFoldedHint) carry codes. The other sets still return strings and
+move over one set at a time. lessons.js's Prove the zone step read the proof's hint with a
+regex, and now reads its code.
+
+**The harness** (scripts/persona-harness.js, scripts/lib/persona-driver.js,
+scripts/persona-devices.js, scripts/persona-manifest.js, scripts/persona-merge.js). The harness
+runs one headless Chromium with an isolated context per episode, behind a localhost JSON
+endpoint. An episode fast-forwards to its step through the specs' seam, and after that every
+action is a real mouse or key event. A click by label reports ambiguity rather than guessing.
+Every engine seam is feature-detected, so the harness can also drive a commit from before them:
+it reads the card's DOM and walks the manifest with Skip. The named devices (first-timer,
+returning, laptop, tablet) are the fixture tutorial.spec.js's returning-estimator tests now seed
+from. teaching-labels.test.js's label reader moved to scripts/lib/shell-labels.js.
+persona-merge groups findings by set + step + control + code and ranks them by how many
+independent persona kinds hit the same spot; `--score` measures recall against a known list.
+
+**The lesson rules check** (scripts/check-lesson-rules.js, step twelve of `npm run check`). A
+step that teaches a rulebook value names it (`rules: ['plumb.hanger.pex']`) or says why not
+(`rulesExempt`). espree reads the six teaching files. The check fails when a rules id does not
+exist, when a card cites a code or states a value in a rule's unit about that rule's subject
+without naming a rule, or when the number differs from every value the named rule holds. 37
+steps name rules, and the 36 numbers they state all agree. `--gaps` lists the 29 course steps
+that cite a code section the rulebook has no entry for: the RULEBOOK-GAPS row.
+
+Found and sent on: the course-plumbing `stack` and `rows` steps cite IPC Table 1002.2 for the
+trap arm, and PC-TRADE already asks a tester about that citation. On the plumbing tour's
+`counter` step, the Icon tab's symbols carry no names, so "Pick the Toilet symbol" can only be
+found by name on Custom Icons. That goes to the persona triage.
+
+## fix(lessons): the card wording that did not match the screen (2026-09-24)
+
+COURSE-WORDING, from the same read as the stalls: step cards that described the screen wrongly or
+gave no hint for a common miss (the list, with where each came from, is in LEARN-PLAN.md "Card
+wording that does not match the screen"). Every claim was checked against app/index.html, the
+feature code or a walk before it changed.
+
+**The plumbing tour** `size`: the water card is at the bottom of the sheet, not "above" it; "Pick
+1in PEX" says it is the active line type and where to click if not; "1in holds, 3/4in would do"
+says the smaller pipe that still holds is the one to bid; the card says the size list closes before
+it sends the reader to circle 2. `wsfu`: the chip's public word is explained (the IPC table's
+public and private columns) and named as the thing to click.
+
+**The HVAC course**: the Quick tab offers Size, Type and Material (not Mounting); the room schedule
+step says to open PAGES if it is folded (the Quick Add Counter a step before folds it); a room is
+edited by clicking its row under ROOMS (there is no pencil), in the body and the hint; the group
+field is Static available (the schedule's ESP); designed air is on RTU-1's row under GROUPS, not
+the DUCT header, in both cards that sent the reader there; the Duct dialog's select is Insulation;
+the kitchen branch says to check the size reads 16x10 (it fills from the printed size nearest the
+last click) and gets a hint for a branch committed at another size; the main's hint no longer goes
+quiet once a run at the wrong sizes is committed; chapter 9 seeds the two fire dampers its Bid
+Check reveal cites; the hand-off no longer promises a hood RFI no step writes.
+
+**The electrical course**: `RE.panel` is `/panelboard|\blp-/i`, because the Quick tab names the
+meter "Meter Panel" and `/panel/i` took it for the panel; chapter 9 lays chapter 7's shunt-trip
+RFI (`flagShuntTrip`, shared with that step) so Copy RFI Flags has the question the hand-off names;
+`gear` says when the Meter landed on the MDP or the Disconnect on the meter (17 pt apart);
+`conduit:chain` says why a chain wrote no verticals (no ceiling, or a counter with no mount height).
+
+The tour, lesson, course and tag-reader specs walk green (78).
 
 ## fix(lessons): the courses' Prove it steps and the blank tour's Measure on measureProof (2026-09-24)
 

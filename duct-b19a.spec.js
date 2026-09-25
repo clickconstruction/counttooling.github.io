@@ -455,7 +455,7 @@ test.describe('B19 part 1 (D18)', () => {
     expect(errors).toEqual([]);
   });
 
-  test('7. build:icons --check exits 1 on a stale icons-custom.js and is the eleventh npm run check step', async () => {
+  test('7. build:icons --check exits 1 on a stale icons-custom.js and is an npm run check step', async () => {
     const script = path.join(__dirname, 'scripts', 'build-custom-icons.js');
     const clean = spawnSync(process.execPath, [script, '--check'], { cwd: __dirname, encoding: 'utf8' });
     expect(clean.status).toBe(0);
@@ -468,10 +468,11 @@ test.describe('B19 part 1 (D18)', () => {
     expect(stale.status).toBe(1);
     expect(stale.stderr).toMatch(/icons-custom\.js is stale vs my-counters\//);
     fs.rmSync(path.dirname(tmp), { recursive: true, force: true });
-    // The aggregate runner lists it (11 steps since the punch-list check, 2026-09-16).
+    // The aggregate runner lists it (13 steps since the project-map invariants, 2026-09-25; 12 since
+    // the lesson rules check, 2026-09-25; 11 since the punch-list check, 2026-09-16).
     const check = fs.readFileSync(path.join(__dirname, 'scripts', 'check.js'), 'utf8');
     const steps = check.match(/^\s*\{ name: '/gm) || [];
-    expect(steps.length).toBe(11);
+    expect(steps.length).toBe(13);
     expect(check).toMatch(/name: 'build:icons --check', cmd: 'node', args: \['scripts\/build-custom-icons\.js', '--check'\]/);
   });
 });

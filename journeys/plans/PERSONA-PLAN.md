@@ -101,10 +101,12 @@ accumulates across a tour.
 
 ## Build items, in order
 
-Each ships on its own branch with its spec, like any feature.
+**Built 2026-09-25**, all seven, on three branches merged as one (CHANGELOG "feat(persona)"). What
+follows is the plan as written; the Harness section below is how it came out.
+
 
 1. **Step manifest.** `App.tutorialManifest(setId)` and a dump script
-   (`npm run build:lesson-manifest`, manual like `build:screenshots`): per step, one compact
+   (`npm run build:persona-manifest`, manual like `build:screenshots`): per step, one compact
    line with id, title, rendered body text, target control labels, zones, and whether it has a
    hint / progress / action. Stable field order; this is the parent's main read, so size
    matters most here. Covers the three five-minute tours, the blank-sheet tour, the thirteen
@@ -164,6 +166,22 @@ worth running at all.
 
 - Whether a round of persona fixes lands as one PR per round (the by-hand walks' pattern) or
   one per set. Default: one per round.
+
+
+## Rulebook gaps
+
+Found by the lesson rules check the day it was built (2026-09-25): the courses teach code the
+rulebook does not hold. `node scripts/check-lesson-rules.js --gaps` lists them, each with the step
+and the section it cites. There are 29: eleven in the plumbing course (indirect waste and trap
+primers, drainage slope, grease interceptors, cleanouts and vents, trap arms, vent terminals, gas
+pipe sizing, appliance shutoffs, hood gas shutoff, steel pipe hangers, drainage fixture units),
+twelve in the electrical course (working space, conductor protection and ampacity, GFCI locations,
+emergency lighting, occupancy sensors, EMT supports, disconnects, the shunt trip, fixed-equipment
+circuits, feeder and grounding, bends between pull points) and six in the HVAC course (make-up
+air, the diffuser neck velocity, fire dampers, no dampers in a grease duct, outdoor air). This is
+the learning base's backlog. Each becomes a rule file with `status: draft` in the course's words,
+cited by section, never the code text reprinted (content/rules/README.md). A person with the
+trade signs it before it is `applied`, and the step then names it in `rules:`.
 
 ## Harness
 

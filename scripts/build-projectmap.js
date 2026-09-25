@@ -34,7 +34,7 @@ const arg = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1
 const ROOT = path.join(__dirname, '..');
 const fmt = (n) => n.toLocaleString('en-US');
 
-const map = build({ since: arg('--since'), skipDuplicates: argv.includes('--check') });
+const map = build({ since: arg('--since'), skipDuplicates: argv.includes('--check'), skipChurn: argv.includes('--check') });
 
 if (argv.includes('--check')) {
   const problems = invariants(map);
@@ -57,6 +57,7 @@ const md = [];
 const row = (cells) => '| ' + cells.join(' | ') + ' |';
 md.push('# Project map (generated)', '');
 md.push('HEAD `' + map.head.slice(0, 7) + '`, churn measured since `' + (map.baseline || 'n/a').slice(0, 7) + '` (the HEAD DECOMPOSITION_MAP.md was read at, unless `--since`). Regenerate with `npm run build:projectmap`; the JSON beside this file has every fact.', '');
+if (map.baselineMissing) md.push('**Churn unknown:** the baseline `' + map.baseline.slice(0, 7) + '` is not in this clone (a shallow checkout?). `git fetch --unshallow` and run again for the since-baseline columns.', '');
 
 const byKind = {};
 for (const r of Object.values(F)) { const k = byKind[r.kind] = byKind[r.kind] || { files: 0, lines: 0, grew: 0 }; k.files++; k.lines += r.lines; k.grew += r.lines - r.churn.linesAtBaseline; }
@@ -121,4 +122,5 @@ const problems = invariants(map);
 md.push('## Invariants', '', problems.length ? problems.map((p) => '- ' + p).join('\n') : 'All hold.', '');
 
 fs.writeFileSync(path.join(outDir, 'PROJECT-MAP.md'), md.join('\n'));
+if (map.baselineMissing) console.warn('Note: baseline ' + map.baseline.slice(0, 7) + ' is not in this clone; churn columns are empty (git fetch --unshallow).');
 console.log('Wrote ' + path.relative(ROOT, outDir) + '/project-map.json and PROJECT-MAP.md (' + Object.keys(F).length + ' files, ' + map.edges.length + ' registry edges, ' + map.duplicates.runs.length + ' duplicate runs, ' + problems.length + ' invariant problems).');

@@ -496,17 +496,22 @@ function duplicates(filesSrc, { W = 6, MIN = 8, MAX_OCC = 6 } = {}) {
 // The baseline is the commit the last map READ, which DECOMPOSITION_MAP.md
 // records as `<!-- project-map-head: <sha> -->`; a later typo fix to the map
 // must not move it. Without the marker, the last commit that touched the map.
+// A shallow clone (CI checks out depth 1) may not hold the baseline commit;
+// then churn is unknown, not an error: the caller reports baselineMissing.
+function commitExists(ref) {
+  return spawnSync('git', ['rev-parse', '--verify', '--quiet', ref + '^{commit}'], { cwd: ROOT, encoding: 'utf8' }).status === 0;
+}
 function baselineRef(explicit) {
   if (explicit) return git(['rev-parse', explicit]).trim();
   if (exists('DECOMPOSITION_MAP.md')) {
     const m = read('DECOMPOSITION_MAP.md').match(/<!-- project-map-head: ([0-9a-f]{7,40}) -->/);
-    if (m) return git(['rev-parse', m[1]]).trim();
+    if (m) return m[1];
   }
   const sha = git(['log', '-1', '--format=%H', '--', 'DECOMPOSITION_MAP.md']).trim();
   return sha || null;
 }
 function churn(baseline) {
-  if (!baseline) return {};
+  if (!baseline || !commitExists(baseline)) return {};
   const out = {};
   const numstat = git(['diff', '--numstat', '--no-renames', baseline, 'HEAD']);
   for (const l of numstat.split('\n')) {
@@ -526,11 +531,14 @@ function churn(baseline) {
 
 // ---------------------------------------------------------------- build
 
-function build({ since, fnFloor = 20, skipDuplicates = false } = {}) {
+function build({ since, fnFloor = 20, skipDuplicates = false, skipChurn = false } = {}) {
   const shell = shellScripts();
   const { js, other, edge } = listFiles();
-  const baseline = baselineRef(since);
-  const ch = churn(baseline);
+  // --check needs no history (the invariants are structural), so it never
+  // touches the baseline; that keeps it working in a shallow clone.
+  const baseline = skipChurn ? null : baselineRef(since);
+  const baselineMissing = !!baseline && !commitExists(baseline);
+  const ch = skipChurn ? {} : churn(baseline);
   const files = {};
   const srcs = {};
   for (const f of js) {
@@ -659,6 +667,7 @@ function build({ since, fnFloor = 20, skipDuplicates = false } = {}) {
     schema: 'clickcount-project-map/v1',
     head: git(['rev-parse', 'HEAD']).trim(),
     baseline,
+    baselineMissing,
     shellOrder: shell,
     files,
     registry,

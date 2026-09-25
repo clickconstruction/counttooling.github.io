@@ -475,8 +475,8 @@
     },
     {
       id: 'linetype', title: 'Header: Quick Line', kind: 'do',
-      body: 'A line type is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click the [[Create]] tab. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage is measured between your two clicks, so these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
-      target: ['#createLineTypeCreate', '#chooseLineTypeModal .line-type-tab[data-tab="create"]', '#addLineType'], page: 0,
+      body: 'A line type is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage is measured between your two clicks, so these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
+      target: ['#lineTypeCreate', '#addLineType'], page: 0,
       zones: () => LINE.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: LINE_R, done: lineClose() })),
       check: () => !!lineType() && lineClose(),
       hint: () => { const l = lineRun(); if (!l || lineClose()) return ''; return 'That run reads ' + feetText(lineFeet(l)) + ', not ' + feetText(LINE_FT) + '. Press Ctrl+Z and land closer to the centres'; },

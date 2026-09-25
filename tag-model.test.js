@@ -33,6 +33,18 @@ test('nearestTag: the closest tag token within the radius, by box center', () =>
   assert.strictEqual(tm.nearestTag([], { x: 0, y: 0 }), null);
 });
 
+test('nearestTag: among candidates in reach, the tag on the click\'s line wins over a nearer one above it (E-201 by hand, 2026-09-24)', () => {
+  // the click at the center of a 2x4 troffer: its B 22 pt to the right; the emergency light 12 pt
+  // above has its EM 18 pt away, up and to the right (box centers relative to the click)
+  const at = (str, dx, dy) => ({ str, x: 100 + dx - 2, y: 100 + dy - 3, w: 4, h: 6 });
+  const items = [at('B', 22.3, -0.6), at('EM', 13.2, -12.6), at('KITCHEN', 0, 10)];
+  assert.strictEqual(tm.nearestTag(items, { x: 100, y: 100 }, 24).str, 'B');
+  assert.strictEqual(tm.nearestTag(items, { x: 100, y: 97 }, 24).str, 'B');      // three points high, still the troffer's
+  assert.strictEqual(tm.nearestTag(items, { x: 113, y: 88 }, 24).str, 'EM');     // on the emergency light itself
+  assert.ok(Math.abs(tm.nearestTag(items, { x: 100, y: 100 }, 24).dist - 22.3) < 0.1);   // dist stays the true distance
+  assert.strictEqual(tm.nearestTag([at('B', 22.3, -0.6)], { x: 100, y: 100 }, 18), null);   // out of reach is still out of reach
+});
+
 test('rowsInBox + parseScheduleRows: a fixture schedule becomes tag + description rows', () => {
   const items = [
     { str: 'TYPE', x: 10, y: 10, w: 20, h: 8 }, { str: 'DESCRIPTION', x: 40, y: 10, w: 60, h: 8 },

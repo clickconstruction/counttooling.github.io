@@ -51,6 +51,25 @@ async function doAndGo(page) {
 }
 
 test.describe('Interactive walkthrough', () => {
+  // LEARN-LEAK, the tours too (2026-09-25): what a tour made leaves with its sample plan; the reader's own stays.
+  test('what the plumbing tour made leaves with the sample plan; the reader\'s own counter stays', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/app/');
+    await ready(page);
+    await page.evaluate(() => { window.state.counters.push({ id: 'mine', name: 'My Counter', icon: window.App.getOrderedIcons()[0].value, color: '#fff' }); window.App.updateUI(); window.App.startTutorial('plumbing'); });
+    await waitForStep(page, 'welcome');
+    await doAndGo(page);   // the sample plan
+    await waitForStep(page, 'scale');
+    for (const next of ['measure', 'counter', 'place']) { await doAndGo(page); await waitForStep(page, next); }
+    expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toEqual(['My Counter', 'Water Closet']);
+    await page.click('#tourLeave');
+    const closing = page.evaluate(() => window.App.closeProject({ route: 'spec' }));
+    await page.click('#confirmOk');
+    await closing;
+    expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toEqual(['My Counter']);
+    await expect(page.locator('body')).toContainText('made in the lesson or tour');
+  });
+
   // A paragraph between two actions splits the numbered list; the second part keeps counting.
   // The size step read 1, 2, 1, 1 until 2026-09-24.
   test('a step\'s actions number straight through a paragraph between them', async ({ page }) => {

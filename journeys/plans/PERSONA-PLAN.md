@@ -168,6 +168,64 @@ worth running at all.
   one per set. Default: one per round.
 
 
+## Calibration results (2026-09-25)
+
+Run on the five-minute plumbing tour at b312145, the commit before #199, against 17 known defects:
+the plumbing-tour findings of #199 and #207 and the tour's COURSE-WORDING items. The known list
+never entered a persona's context. Five persona kinds (none / apprentice / journeyman / estimator ×
+first-time / returning × desktop / laptop / tablet) ran with three seeds each, fifteen on the text
+pass and fifteen live through the harness, all on Haiku. A judge per step (a stronger model) then
+decided, known item by known item, which finding groups really describe it. The 28 groups no known
+item matched were clustered and replayed, each on the old app and on today's.
+
+**Recall.** The merge script's keyword score said 16 of 17, and it is not to be trusted: a keyword
+like "2" or "above" matches almost anything on the step. The judge's strict count is 6 of 17 (35%)
+for the personas alone: 3 from the text pass (K1 the 1, 2, 1, 1 numbering, K15 no reason to step
+down, K17 the public / private word), and 4 live (K1, K3 the early red hint, K9 no 3 ft chip, K16
+the popover over circle 2). With the replay stage it rises to 9, with a tenth seen as a symptom:
+the verifier took a symptom the testers blamed on something else and found the known mechanism
+(C18: the line type step Done on arrival (K5), the PEX search word hiding every row (K6); C5: the
+card "above" the sheet sits below it (K13); C15: the standing Water Closet taken for the tour's
+counter (K4)).
+
+**What no persona found, and why.** K10 (the hanger rule on any line type passes), K12 (a ×2
+zone passes), and in the first pass K4 and K5 are false passes. A cooperative reader never does
+the wrong thing on purpose, so a check that is too loose never shows. K2 (the WSFU box left
+empty) and K7 (a dialog left open over the pencil) are on steps the live testers mostly never
+reached: they stalled on chain and drop first. K8, K11 and K14 went unnoticed.
+
+**Precision.** Of the 28 claims that matched no known item: 13 false leads (46%), 2 opinions, 3
+trade questions (C6 the 8 fps cap, C24 2 WSFU as the total against the cold load, C25 32 in PEX
+hangers: PT-TRADE), 3 real and fixed since, and **7 real and still open on main**. The six by-hand
+walks missed all seven. They are C2 (the Chain palette under the card, missing on tablet), C3 (a
+Drop click with no run end does nothing), C4 (touch loses the size step's only instruction), C7
+("the plumbing set" does not exist), C9 (the drop palette is never named), C21 (IPC never spelled
+out) and C23 (the SUMMARY heading opens the legend settings). All seven were fixed on
+`claude/persona-fixes`, closing row PERSONA-FIXES: CHANGELOG.md, "fix(tour): the plumbing tour's
+findings from the persona calibration".
+
+**Cost.** Text pass: 15 agents, 53 model calls, 2.6M cached input tokens read, 0.7M written,
+146k output. Live pass: 15 agents, 1,238 calls, 104M cached read, 1.2M written, 306k output. The
+live pass read about 40 times the text pass's input, because each agent walked the whole tour in
+one context, averaging about 84k tokens a call by the end. The replay stage (38 agents, a stronger
+model) was where the yield was.
+
+**What changes for PERSONA-PASS** (row PERSONA-PROBER):
+1. **One step per episode**, as the plan first said, and `POST /act` takes a list of actions, so a
+   plain step is one call. The whole-tour walk is what made the live pass forty times the text
+   pass.
+2. **A prober and a no-work detector for false passes.** The harness flags a step that turns Done
+   with no reader action (K4, K5), with no model involved. A prober role does the wrong thing each
+   step should reject (the wrong line type, the wrong value, a click outside the circle) and
+   records when the step passes anyway (K10, K12).
+3. **The replay stage stays, on the stronger model.** It removed nearly half the leads as false,
+   and it turned wrongly blamed symptoms into the right mechanism.
+4. **The text pass gets the dialogs' labels** (the engine manifest's resolved targets as well as
+   the shell's). The "control not on screen" false leads (C10, C11) were controls that only exist
+   inside a dialog.
+5. **Keep returning devices in the grid.** Most of #207's findings exist only on a returning
+   device, and only returning personas saw their symptoms.
+
 ## Rulebook gaps
 
 Found by the lesson rules check the day it was built (2026-09-25): the courses teach code the

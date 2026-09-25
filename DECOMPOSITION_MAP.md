@@ -120,6 +120,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R05. Signed-in footer: decide, then lift the hint table into a pure helper
 
+**Decided 2026-09-25:** signed-in estimators see the tool hints and live readouts. The call is made; this is now a build item (PUNCHLIST `MAP-HINTS`).
+
 *Risk medium, yield ~60.* Every signed-in user loses tool hints and live readouts. Needs a ⚑ product call first.
 
 - **`core-render-ui:status-bar-hint-core`** (test-first, medium confidence; check: confirmed) Test-first: lift the tool-hint table out of updateStatus into a pure helper, and decide the signed-in footer

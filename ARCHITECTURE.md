@@ -1,10 +1,10 @@
 # ClickCount — Code Map for AI Navigation
 
 Use this file to locate code in the app. The HTML shell + every modal live in
-[app/index.html](app/index.html) (~2.4k lines, served at `/app/`; the repo-root
+[app/index.html](app/index.html) (~3.8k lines, served at `/app/`; the repo-root
 [index.html](index.html) is the static marketing landing); the bulk of the app
 logic (the main JS
-IIFE) lives in [app.js](app.js) (~6.5k lines, slimmed from ~16.2k as the pure
+IIFE) lives in [app.js](app.js) (~8.6k lines, slimmed from ~16.2k as the pure
 modules + the `window.App` feature-file splits were pulled out). The core data
 model and invariants live in [RECONSTITUTE.md](RECONSTITUTE.md); this file is the
 navigation map plus the catalog of features built on top of that core.
@@ -12,7 +12,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 [CHANGELOG.md](CHANGELOG.md).
 
 > Navigation philosophy: **do not rely on line numbers** — [app.js](app.js)
-> is ~6.5k lines and edits shift them constantly. Navigate by the `// SECTION:`
+> is ~8.6k lines and edits shift them constantly. Navigate by the `// SECTION:`
 > markers in the code and by the grep patterns in the Search Hints table below.
 
 ## Large-file map (decomposition status)
@@ -39,11 +39,15 @@ off — and where it doesn't.
 | [undo-stack.js](undo-stack.js) | 165 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 994 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (97 files) | 31,792 total | Healthy: largest after load-project are quick-modals (462), user-activity (459), user-admin (453), room-sizer (443), output (416), scale (412) — each single-feature scoped with its own Playwright spec. Leave. |
+| `features/*.js` (97 files) | 31,792 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons and the three courses 660 to 810; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
-The regions below account for a large share of the ~6.5k lines; every other section is
+> **Current ranking lives in [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md)** (2026-09-25, §1 and §7.1 / §7.2
+> for app.js). The table below is the July-era history of each region; `npm run build:projectmap` gives
+> today's SECTION sizes and the functions inside them.
+
+The regions below account for a large share of the ~8.6k lines; every other section is
 already <300 lines — wiring, boot, and thin wrappers over the extracted
 modules. Candidates in priority order:
 
@@ -60,10 +64,10 @@ modules. Candidates in priority order:
 
 | File | Purpose |
 |------|---------|
-| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~2.4k lines). Includes `#toastRegion` — the four toast surfaces (`#setScaleFirstModal`, `#outOfBoundsModal`, `#pipeToolingCopiedModal`, `#airboardToastModal`) are **non-blocking corner cards** at z-index 350 (above every modal, `pointer-events:none` on the region; `.toast-interactive` is the per-card opt-in for cards that carry a real control — `#setScaleFirstModal` uses it: its "Set Scale ⚖" words are a real button `#setScaleFirstLink` opening the Set Scale dialog, Tier-2 #23), plus `#turnInProgressModal`, turn-in's own deliberate blocking overlay (Tier-2 #15). Regression: [toast-region.spec.js](toast-region.spec.js) |
+| [app/index.html](app/index.html) | The app shell, served at `/app/`: HTML structure + every modal; `<head>` loads the CSS/config/module scripts via root-absolute refs, the body ends by loading `app.js`, the `features/*.js` splits, then `report.js`. No inline JS logic (~3.8k lines). Includes `#toastRegion` — the four toast surfaces (`#setScaleFirstModal`, `#outOfBoundsModal`, `#pipeToolingCopiedModal`, `#airboardToastModal`) are **non-blocking corner cards** at z-index 350 (above every modal, `pointer-events:none` on the region; `.toast-interactive` is the per-card opt-in for cards that carry a real control — `#setScaleFirstModal` uses it: its "Set Scale ⚖" words are a real button `#setScaleFirstLink` opening the Set Scale dialog, Tier-2 #23), plus `#turnInProgressModal`, turn-in's own deliberate blocking overlay (Tier-2 #15). Regression: [toast-region.spec.js](toast-region.spec.js) |
 | [toast-region.spec.js](toast-region.spec.js) | Playwright regression owning the toast-system contract (Tier-2 #15) — a live toast blocks nothing (canvas hit-testing + a real counter click land during the toast), toasts paint above open modals (paint-order proved through the `.toast-interactive` opt-in, since `elementFromPoint` skips `pointer-events:none` nodes), two simultaneous toasts flex-stack without overlap and dismiss on their own timers, the pointer-events contract (region `none`, cards inherit, `.toast-interactive` computes `auto` — the T2-06 hook), and Escape is never consumed by a toast (one press closes the open modal; the toast still self-dismisses). `npx playwright test toast-region.spec.js` |
 | [index.html](index.html) | The **static marketing landing** at `/` — plain HTML sharing `marketing.css`, no app JS, outside the SW scope; forwards old `/?t=`/`?devAuth=1` links to `/app/` |
-| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~6.5k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings). **B20 (X8, 2026-09-14): `confirmDialog(opts)` is the app's ONE confirm / prompt** — `#confirmModal` (z-index 340: above every other modal AND the tour overlay at 320, so a confirm asked mid-tour is never covered by the card), `{ title, body, confirmLabel, cancelLabel, danger, input: { placeholder, value }, infoOnly }` → `Promise<boolean \| string \| null>` (input mode resolves the trimmed text or null; info mode hides Cancel); Enter in the input submits, the Esc ladder's first rung cancels it, `resolveConfirm` is the spec seam. Zero native `alert()` / `confirm()` / `prompt()` calls remain — notices are `showToast`, questions are `await confirmDialog(...)` (closeProject, the Advanced cache/force-reload buttons, discard-local-edits, and every feature file's former call). Ctrl/Cmd+Y redoes (J6 #9; HOTKEYS bespoke row). Regression: [b20-patrol.spec.js](b20-patrol.spec.js). **Boot skew (2026-09-14, from claude/boot-skew-recovery):** the settings/macros wiring cluster is null-guarded (`wireClick`), so a stale service-worker shell paired with fresh JS degrades to one dead button instead of killing the boot IIFE; and the boot-guard's Reload in [app/index.html](app/index.html) unregisters every service worker and deletes every cache (best-effort, 4 s failsafe) before reloading, so the reload banner can never loop on a stale shell. |
+| [app.js](app.js) | The bulk of the app logic — the former inline `index.html` IIFE, extracted into a classic `<script src>` (`(function() { … })();`, ~8.6k lines, slimmed from ~16.2k as the pure modules + `window.App` feature files were pulled out). Resolves the sibling modules' values by bare name (including the [idb.js](idb.js) storage primitives); exposes its own helpers to `report.js` via `window.*` at the IIFE tail. Linted (`no-undef` as error, the rest of the recommended set as warnings). **B20 (X8, 2026-09-14): `confirmDialog(opts)` is the app's ONE confirm / prompt** — `#confirmModal` (z-index 340: above every other modal AND the tour overlay at 320, so a confirm asked mid-tour is never covered by the card), `{ title, body, confirmLabel, cancelLabel, danger, input: { placeholder, value }, infoOnly }` → `Promise<boolean \| string \| null>` (input mode resolves the trimmed text or null; info mode hides Cancel); Enter in the input submits, the Esc ladder's first rung cancels it, `resolveConfirm` is the spec seam. Zero native `alert()` / `confirm()` / `prompt()` calls remain — notices are `showToast`, questions are `await confirmDialog(...)` (closeProject, the Advanced cache/force-reload buttons, discard-local-edits, and every feature file's former call). Ctrl/Cmd+Y redoes (J6 #9; HOTKEYS bespoke row). Regression: [b20-patrol.spec.js](b20-patrol.spec.js). **Boot skew (2026-09-14, from claude/boot-skew-recovery):** the settings/macros wiring cluster is null-guarded (`wireClick`), so a stale service-worker shell paired with fresh JS degrades to one dead button instead of killing the boot IIFE; and the boot-guard's Reload in [app/index.html](app/index.html) unregisters every service worker and deletes every cache (best-effort, 4 s failsafe) before reloading, so the reload banner can never loop on a stale shell. |
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals **CUSTOM_ICONS moved out** to [icons-custom.js](icons-custom.js) (generated; loads right after this file) |
 | [icons-custom.js](icons-custom.js) | **The GENERATED bundled custom-icon data** — the `CUSTOM_ICONS` array (~163KB, `{value, viewBox, name, set, terms?}` literals sourced from `my-counters/*.svg` + the `electrical/` and `hvac/` set subfolders). `npm run build:icons` ([scripts/build-custom-icons.js](scripts/build-custom-icons.js)) overwrites the file wholesale — no more paste-into-icons.js step, and regenerations stop churning the 246KB icons.js. Classic `<script src>` loaded between [icons.js](icons.js) and [icon-render.js](icon-render.js) (which builds `CUSTOM_ICON_META` from `CUSTOM_ICONS` at parse time — the load-order constraint). Guarded CommonJS footer for the Node tests + the eslint derived-globals wiring D18: `npm run build:icons -- --check` (in `npm run check`) fails when this file is stale vs `my-counters/`. |
@@ -349,7 +353,7 @@ resolves `app.js`'s output via `window.*`.
 
 ### Feature files / `window.App` registry
 
-`app.js` is one ~6.5k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
+`app.js` is one ~8.6k-line IIFE: `state`, ~50 `let` flags, and ~100 functions
 are closure-locals, so a feature file in a separate `<script>` cannot see them
 by bare name. To split it incrementally without a build step, `app.js` publishes
 a small, named contract onto a shared global registry, and feature files read

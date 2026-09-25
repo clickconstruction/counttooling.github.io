@@ -133,7 +133,7 @@
   [ARCHITECTURE.md](ARCHITECTURE.md) "Files" table** — keep it there, don't
   re-duplicate it here. Load-order summary:
   - [app/index.html](app/index.html) — the app shell: HTML structure + every
-    modal (~2.3k lines; no inline JS logic except two deliberate snippets: the
+    modal (~3.8k lines; no inline JS logic except two deliberate snippets: the
     head supabase-enabled body-class stamp, and the body-tail boot sanity
     guard that surfaces the reload banner when app.js itself failed to load).
     Its `<script>`/`<link>` refs are root-absolute. Loads, in order:
@@ -178,7 +178,7 @@
     `createSaveEngine(ctx)`; app.js instantiates it with live-value
     accessors and keeps same-named wrappers; staged extraction, Stage 1:
     global force reload + checkout keep-alive).
-  - [app.js](app.js) — the main IIFE (~6.5k lines), the bulk of the app
+  - [app.js](app.js) — the main IIFE (~8.6k lines), the bulk of the app
     logic. Resolves the sibling modules' values by bare name, publishes the
     shared surface onto the `window.App` registry near its tail
     (`// SECTION: App feature registry`), and exposes its own helpers to
@@ -332,7 +332,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~6.5k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~8.6k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -425,7 +425,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~6.5k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~8.6k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").

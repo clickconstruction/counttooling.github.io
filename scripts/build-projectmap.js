@@ -95,6 +95,17 @@ md.push('', 'Reads of app.js-registered names by file (the core surface each fea
 for (const e of map.edges.filter((e) => e.to === 'app.js').slice(0, 25)) md.push(row([e.from, e.n]));
 md.push('');
 
+md.push('## Registry hygiene', '');
+const unread = Object.entries(map.registry).filter(([, e]) => e.unread);
+md.push('**Registered, read by no other browser file, spec or script (' + unread.length + ').** Dead, or a debug seam nobody uses yet:', '');
+const byOwner = {};
+for (const [n, e] of unread) for (const o of e.registeredBy) (byOwner[o] = byOwner[o] || []).push(n);
+for (const [o, ns] of Object.entries(byOwner).sort()) md.push('- ' + o + ': ' + ns.sort().join(', '));
+const orphanHooks = Object.entries(map.registry).filter(([, e]) => !e.registeredBy.length && e.guardedEverywhere);
+md.push('', '**Guarded hooks that nothing registers (' + orphanHooks.length + ').** The call is a no-op today:', '');
+for (const [n, e] of orphanHooks.sort()) md.push('- App.' + n + ' (called in ' + Object.keys(e.readBy).join(', ') + ')');
+md.push('');
+
 md.push('## Modals: size and who binds them', '', row(['Modal', 'Shell lines', 'CSS lines', 'Bound by (id refs)']), row(['---', '---:', '---:', '---']));
 for (const [id, m] of Object.entries(map.modals).sort((a, b) => (b[1].lines || 0) - (a[1].lines || 0))) {
   md.push(row(['#' + id, m.lines, m.cssLines, Object.entries(m.boundBy).sort((a, b) => b[1] - a[1]).map(([f, n]) => f + ' ' + n).join(', ') || '(none found)']));

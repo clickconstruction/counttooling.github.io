@@ -115,10 +115,13 @@ function walk(node, visit, parent, stack) {
 const FN_TYPES = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
 const MUTATORS = new Set(['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'set', 'delete', 'clear', 'add', 'fill']);
 
-// Is `e` the App registry object? `App` or `window.App`.
+// Is `e` the App registry object? `App`, `window.App`, or a local alias the
+// file under analysis declared (`const A = window.App;`), collected per file
+// into appAliases before the walk.
+let appAliases = new Set();
 function isApp(e) {
   if (!e) return false;
-  if (e.type === 'Identifier' && e.name === 'App') return true;
+  if (e.type === 'Identifier' && (e.name === 'App' || appAliases.has(e.name))) return true;
   // `(window.App = window.App || {}).x = …` — the self-bootstrapping publish.
   if (e.type === 'AssignmentExpression' && isApp(e.left)) return true;
   return e.type === 'MemberExpression' && !e.computed && e.object.type === 'Identifier'
@@ -168,10 +171,25 @@ function isWriteChain(node, stack) {
   return false;
 }
 
+// Does `expr` contain a read of App.<name>?
+function mentionsApp(expr, name) {
+  let hit = false;
+  walk(expr, (n) => { if (!hit && n.type === 'MemberExpression' && !n.computed && n.property.name === name && isApp(n.object)) hit = true; }, null, []);
+  return hit;
+}
 // Is this App.X read guarded (an optional hook)? `App.x && …`, `if (App.x)`,
-// `App.x ? … : …`, `typeof App.x`, `App.x?.()`, `App.x || fallback`.
-function isGuarded(node, parent) {
+// `App.x ? … : …`, `typeof App.x`, `App.x?.()`, `App.x || fallback`, and the
+// call under such a test: `A && A.x && A.x()`, `if (App.x) App.x()`.
+function isGuarded(node, parent, stack) {
   if (!parent) return false;
+  const name = node.property.name;
+  for (let i = stack.length - 1; i >= 0; i--) {
+    const a = stack[i];
+    const child = stack[i + 1] || node;
+    if (a.type === 'LogicalExpression' && (a.left === child || (a.operator === '&&' && mentionsApp(a.left, name)))) return true;
+    if ((a.type === 'IfStatement' || a.type === 'ConditionalExpression') && (a.test === child || (a.test !== child && mentionsApp(a.test, name)))) return true;
+    if (FN_TYPES.has(a.type)) break;
+  }
   if (parent.type === 'LogicalExpression' && parent.left === node) return true;
   if ((parent.type === 'IfStatement' || parent.type === 'ConditionalExpression') && parent.test === node) return true;
   if (parent.type === 'UnaryExpression' && (parent.operator === 'typeof' || parent.operator === '!')) return true;
@@ -191,14 +209,36 @@ function isIifeFile(ast) {
   return e.type === 'CallExpression' && FN_TYPES.has(e.callee.type);
 }
 
+// A readable name for an expression used as a handler's target:
+// `el` -> el, `a.b` -> b, `document.getElementById('x')` -> #x.
+function targetName(obj) {
+  if (!obj) return '?';
+  if (obj.type === 'Identifier') return obj.name;
+  if (obj.type === 'ThisExpression') return 'this';
+  if (obj.type === 'MemberExpression' && !obj.computed) return obj.property.name;
+  if (obj.type === 'ChainExpression') return targetName(obj.expression);
+  if (obj.type === 'LogicalExpression') return targetName(obj.left);   // (cWrapper || pdfCanvas)
+  if (obj.type === 'CallExpression' && obj.arguments[0] && obj.arguments[0].type === 'Literal') {
+    const a = String(obj.arguments[0].value);
+    const c = obj.callee.type === 'MemberExpression' && !obj.callee.computed ? obj.callee.property.name : (obj.callee.type === 'Identifier' ? obj.callee.name : '');
+    if (c === 'getElementById' || c === 'el') return '#' + a;
+    if (c === 'querySelector') return a;
+  }
+  return '?';
+}
 function fnName(node, parent) {
   if (node.id && node.id.name) return node.id.name;
   if (!parent) return null;
   if (parent.type === 'VariableDeclarator' && parent.id.type === 'Identifier') return parent.id.name;
   if (parent.type === 'AssignmentExpression' && parent.left.type === 'MemberExpression' && !parent.left.computed) {
-    const obj = parent.left.object;
-    const o = obj.type === 'Identifier' ? obj.name : (obj.type === 'MemberExpression' && !obj.computed ? obj.property.name : '?');
-    return o + '.' + parent.left.property.name;
+    return targetName(parent.left.object) + '.' + parent.left.property.name;
+  }
+  // el.addEventListener('keydown', () => { … }) -> "document:keydown"; the
+  // input layer's biggest handlers are anonymous listeners like this.
+  if (parent.type === 'CallExpression' && parent.arguments.includes(node) && parent.callee.type === 'MemberExpression'
+    && !parent.callee.computed && parent.callee.property.name === 'addEventListener'
+    && parent.arguments[0] && parent.arguments[0].type === 'Literal') {
+    return targetName(parent.callee.object) + ':' + parent.arguments[0].value;
   }
   if (parent.type === 'Property' && !parent.computed && parent.key) return parent.key.name || parent.key.value || null;
   if (parent.type === 'MethodDefinition' && parent.key) return parent.key.name || null;
@@ -207,6 +247,10 @@ function fnName(node, parent) {
 
 function analyzeJs(file, src, fnFloor) {
   const ast = parse(src, file);
+  appAliases = new Set();
+  walk(ast, (node) => {
+    if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && node.id.name !== 'App' && isApp(node.init)) appAliases.add(node.id.name);
+  }, null, []);
   const iife = isIifeFile(ast);
   const aliases = stateAliases(ast);
   const loadDepth = iife ? 1 : 0;
@@ -247,11 +291,14 @@ function analyzeJs(file, src, fnFloor) {
       if (isApp(node.object)) {
         const k = node.property.name;
         if (parent && parent.type === 'AssignmentExpression' && parent.left === node) {
-          if (!registers.has(k)) registers.set(k, line);
+          // `App.x = null` resets a slot someone else owns; it registers nothing.
+          const nullish = parent.right.type === 'Literal' && parent.right.value === null
+            || parent.right.type === 'Identifier' && parent.right.name === 'undefined';
+          if (!nullish && !registers.has(k)) registers.set(k, line);
         } else if (k !== 'state' || !(parent && parent.type === 'MemberExpression' && parent.object === node)) {
           const v = reads.get(k) || { n: 0, guarded: false, loadTime: false, lines: [] };
           v.n++;
-          if (isGuarded(node, parent)) v.guarded = true;
+          if (isGuarded(node, parent, stack)) v.guarded = true;
           if (fnDepth(stack) <= loadDepth) v.loadTime = true;
           if (v.lines.length < 3) v.lines.push(line);
           reads.set(k, v);
@@ -397,7 +444,9 @@ function duplicates(filesSrc, { W = 6, MIN = 8, MAX_OCC = 6 } = {}) {
       if (l.startsWith('/*')) { if (!l.includes('*/')) inBlock = true; return; }
       if (!l || l.startsWith('//') || l.startsWith('*')) return;
       if (/^[\s{}()[\];,]*$/.test(l)) return;
-      l = l.replace(/\s+/g, ' ');
+      // Copies that differ only in how they reach the state object are the
+      // same code: App.state.x / ctx.getState().x / S().x all read as state.x.
+      l = l.replace(/\s+/g, ' ').replace(/\b(?:App\.state|ctx\.getState\(\)|S\(\))\./g, 'state.');
       rows.push({ t: l, line: i + 1 });
     });
     norm[file] = rows;
@@ -512,6 +561,27 @@ function build({ since, fnFloor = 20, skipDuplicates = false } = {}) {
       if (!r.guarded) e.guardedEverywhere = false;
     }
   }
+  // Who else reads each name: specs (spec seams are live, not dead) and the
+  // Node drivers under scripts/ (build-screenshots, build-hero-video).
+  const nameReaders = (kind) => {
+    const out = {};
+    for (const f of Object.keys(files).filter((x) => files[x].kind === kind)) {
+      const re = /\bApp\.([A-Za-z_$][\w$]*)/g;
+      let mm;
+      const seen = new Set();
+      while ((mm = re.exec(srcs[f]))) seen.add(mm[1]);
+      for (const n of seen) (out[n] = out[n] || []).push(f);
+    }
+    return out;
+  };
+  const specReaders = nameReaders('spec');
+  const toolReaders = nameReaders('tooling');
+  for (const [name, e] of Object.entries(registry)) {
+    e.specReaders = (specReaders[name] || []).length;
+    e.toolReaders = (toolReaders[name] || []).length;
+    const others = Object.keys(e.readBy).filter((r) => !e.registeredBy.includes(r));
+    e.unread = e.registeredBy.length > 0 && !others.length && !e.specReaders && !e.toolReaders;
+  }
   const edges = {};
   for (const [name, e] of Object.entries(registry)) {
     for (const reader of Object.keys(e.readBy)) for (const owner of e.registeredBy) {
@@ -550,8 +620,10 @@ function build({ since, fnFloor = 20, skipDuplicates = false } = {}) {
   }
   for (const f of browser) {
     const owned = {};
+    const own = srcs[f];
     for (const k of Object.keys(files[f].domIds || {})) {
-      const o = k in idOwner ? (idOwner[k] || '(shell chrome)') : (modals[k] ? k : '(not in shell)');
+      const madeHere = own.includes('id="' + k + '"') || own.includes("id='" + k + "'") || own.includes(".id = '" + k + "'") || own.includes('.id = "' + k + '"');
+      const o = k in idOwner ? (idOwner[k] || '(shell chrome)') : (modals[k] ? k : (madeHere ? '(created at runtime)' : '(not in shell: ' + k + ')'));
       owned[o] = (owned[o] || 0) + 1;
     }
     files[f].domByModal = owned;

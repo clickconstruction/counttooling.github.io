@@ -65,6 +65,26 @@ test('analyzeJs: state aliases (a getter, an identifier alias, ctx.getState())',
   assert.deepStrictEqual(Object.keys(r.stateReads).sort(), ['currentPage', 'zoom']);
 });
 
+test('analyzeJs: App aliases, null resets, anonymous listeners get names', () => {
+  const src = `(function () {
+    const App = window.App;
+    function f() { const A = window.App; A && A.viaAlias && A.viaAlias(); }
+    App.ownedElsewhere = null;
+    (wrap || canvas).addEventListener('mousedown', (e) => {
+      f(); f(); f();
+    });
+    document.getElementById('goBtn').onclick = () => {
+      f(); f();
+    };
+  })();`;
+  const r = analyzeJs('features/names.js', src, 1);
+  assert.ok(r.reads.viaAlias && r.reads.viaAlias.guarded, 'a read through const A = window.App counts');
+  assert.ok(!('ownedElsewhere' in r.registers), 'App.x = null is a reset, not a registration');
+  const names = r.functions.map((fn) => fn.name);
+  assert.ok(names.includes('wrap:mousedown'), names.join(', '));
+  assert.ok(names.includes('#goBtn.onclick'), names.join(', '));
+});
+
 test('shellModals: ids belong to the modal-overlay that encloses them', () => {
   const html = [
     '<div id="chrome"><button id="openBtn"></button></div>',

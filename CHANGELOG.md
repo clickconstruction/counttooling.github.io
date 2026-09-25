@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(map): the decomposition map, remeasured, with the tool that measures it (2026-09-25)
+
+The July map said 44 feature files and an `app.js` on its way to 6.3k lines. By September there were
+97 feature files and `app.js` was back at 8.6k, and nothing had noticed, because the map was a document
+agents wrote by reading every file. Now the facts it rests on are measured: `npm run build:projectmap`
+([scripts/build-projectmap.js](scripts/build-projectmap.js) on
+[scripts/lib/project-map.js](scripts/lib/project-map.js), espree) writes `project-map/` (gitignored) in a
+few seconds: the `window.App` registry as a graph with guarded hooks, load-time reads and spec readers;
+`state` reads and writes through every alias shape; DOM ids by owning modal; functions of 20+ lines by
+SECTION (anonymous listeners named, so the 327-line keydown handler shows); the specs that pin each file;
+churn since the map's head; near-duplicate blocks; unread registrations and hooks nothing registers.
+`--check` joins `npm run check` (twelve steps) with three invariants and no counts, so it never needs a
+restamp: a Files row for every shell script and feature file, no load-time `App` read of a name a later
+script registers (the July prepare-pdf bug), no unguarded read of a name nothing registers.
+[project-map.test.js](project-map.test.js) drives each invariant red.
+
+The first run found six files with no Files row (bid-chip, hotkey-peek, recent-bids, zoom-ladder, hotkeys,
+child-counts; rows added) and an `app.js` SECTION marker (Recent bids) that had swallowed `updateUI` and
+`updateUIInner`; the UI Render Functions marker moved below it and a Placing selection marker opens the
+selection helpers.
+
+[DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) is rewritten from one run of it: eight agents judged one area
+each from a fact packet cut from the skeleton, a skeptic per area re-read the code behind every larger
+claim and every defect (one defect refuted, about thirty claims corrected), and a synthesis ranked 25
+moves with their evidence, recipes and sequencing. The run cost about 4.0M subagent tokens, several times
+the estimate; the map says so, for the next refresh. It also turned up real bugs, now `MAP-*` rows in
+[PUNCHLIST.md](PUNCHLIST.md): a line-type name written raw into the Line chooser, Quick Keys lost on a
+cloud restore, the RFI and Notes ledger sheet names, about sixteen dialogs Esc does not close, leftover
+rubber bands after M, a phantom duct transition, and more. The agents also listed where the skeleton
+misled them; most of those are fixed in the generator, and the rest are the map's last section.
+
 ## fix(lessons): the courses' Prove it steps and the blank tour's Measure on measureProof (2026-09-24)
 
 The six course steps that prove a sheet's scale (the plumbing course's P-101, P-601 and P-401, the

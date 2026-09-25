@@ -108,13 +108,20 @@ test('--manifest renames a numeric step or a step title to its id, per set', () 
   assert.strictEqual(step(one, { step: '"Set the scale"' }), 'scale');
   assert.strictEqual(step(one, { step: 'counter' }), 'counter');      // already an id
   assert.strictEqual(step(one, { step: '9' }), '9');                  // no such step: left alone
-  assert.strictEqual(step(one, { set: 'hvac', step: '1' }), 'scale'); // a one-set manifest serves any set
+  assert.strictEqual(step(one, { set: 'Plumbing tour', step: '1' }), 'scale');   // a one-set manifest serves its set written loosely
+  assert.strictEqual(step(one, { set: '', step: '1' }), 'scale');     // or a finding with no set
+  assert.strictEqual(step(one, { set: 'hvac', step: '1' }), '1');     // never another set's
+  assert.strictEqual(step(one, { set: 'lesson:counting', step: '3' }), '3');
+  assert.strictEqual(step(one, { set: 'course:plumbing:fixtures', step: '3' }), '3');
   assert.strictEqual(step(jsonl, { set: 'hvac', step: '1' }), 'duct');
   assert.strictEqual(step(arr, { set: 'lesson:scale', step: '1' }), '1');   // several sets, none this one
   assert.strictEqual(M.renameStep(f({ step: '3' }), one).stepWas, '3');
   const r = M.renameSteps([f({ step: '1' }), f({ step: 'counter' }), f({ step: 'Set the scale' })], one);
   assert.strictEqual(r.renamed, 2);
   assert.deepStrictEqual(r.findings.map((x) => x.step), ['scale', 'counter', 'scale']);
+  const o = M.renameSteps([f({ step: '1' }), f({ set: 'lesson:counting', step: '3' })], one);
+  assert.deepStrictEqual([o.renamed, o.otherSet], [1, 1]);
+  assert.strictEqual(M.manifestSets(JSON.stringify({ id: 'x1', obs: {} })).size, 0);   // an /episode answer is no manifest
 });
 
 test('the renamed steps group with the ids and the digest counts them', () => {

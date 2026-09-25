@@ -23,7 +23,8 @@
 // - "actions": a list run in order, stopping at the first error or at a step change (the caller
 //   reads the new card first) unless "through":true; one answer, with a line per action run
 //   ("3. fill \"Name\" = \"Water Closet\": ok · typed ..."), the step transitions
-//   ([{after, from, to}]) and the final snapshot. A plain step is one call.
+//   ([{after, from, to}]) and the final snapshot. A plain step is one call. "ok" means no action
+//   failed; a list that ended early at a step change is ok, with "stopped" saying why.
 // - "obsMode":"diff" (on /episode for the episode, or on one /act): after the first snapshot,
 //   only the fields that changed since the last one this episode sent (merge them into it; a field
 //   gone comes back null, the card text only when it changed; obs null = the set ended).
@@ -190,7 +191,9 @@ async function doActs(ep, actions, through, mode) {
     stopped = batchStop(one.r, one.before, one.obs, through);
     if (stopped) { if (k < actions.length - 1) stopped += ' after action ' + (k + 1) + ' of ' + actions.length; break; }
   }
-  const out = { obs: shape(ep, last ? last.obs : null, mode), ok: results.length === actions.length && !!(last && last.r.ok), ran: results.length, results };
+  // ok = no action failed (a list stops at the first error, so the last one says); a list that
+  // ended early at a step change is still ok, and "stopped" says why it ended
+  const out = { obs: shape(ep, last ? last.obs : null, mode), ok: !!(last && last.r.ok), ran: results.length, results };
   if (stopped && results.length < actions.length) out.stopped = stopped;
   if (steps.length) out.steps = steps;
   if (candidates && last && !last.r.ok) out.candidates = candidates;

@@ -100,17 +100,21 @@ function batchStop(r, before, after, through) {
 // describeAction phrases); `why` is 'done on arrival' | 'turned done' | 'moved on' |
 // 'done with no action' (idle: the /episode beat).
 class StepTracker {
-  constructor(obs) { this.flags = []; this.cur = null; this._enter(obs, 'start'); }
+  constructor(obs) { this.flags = []; this.cur = null; this.worked = new Set(); this._enter(obs, 'start'); }
+  // `how`: 'start' | 'forward' (a later step, reached by anything but Back) | 'back' (an earlier
+  // step, or Back). Only a forward arrival can be 'done on arrival': a step the reader goes Back
+  // into is Done because they did it, and a step they did work on never flags again.
   _enter(obs, how) {
+    if (this.cur && this.cur.work) this.worked.add(this.cur.id);
     this.cur = obs ? { id: obs.id, i: obs.i, kind: obs.kind, work: false, actions: [], done: !!obs.done, flagged: false } : null;
     // a doing step Done the moment it came up, reached by the reader's move (a start is the
     // fast-forward's: the harness gives it its beat before it judges, see openEpisode)
-    if (this.cur && how !== 'start' && obs.kind === 'do' && obs.done) return this._flag('done on arrival');
+    if (this.cur && how === 'forward' && obs.kind === 'do' && obs.done) return this._flag('done on arrival');
     return null;
   }
   _flag(why) {
     const c = this.cur;
-    if (!c || c.flagged || c.kind !== 'do' || c.work) return null;
+    if (!c || c.flagged || c.kind !== 'do' || c.work || this.worked.has(c.id)) return null;
     c.flagged = true;
     const f = { step: c.id, i: c.i, why, actions: c.actions.slice() };
     this.flags.push(f);
@@ -124,9 +128,10 @@ class StepTracker {
     if (!obs) return out;
     if (obs.id !== this.cur.id) {
       // it moved on with no action: the engine advanced a step that was Done
-      const f = obs.i > this.cur.i ? this._flag('moved on') : null;
+      const fwd = obs.i > this.cur.i;
+      const f = fwd ? this._flag('moved on') : null;
       if (f) out.push(f);
-      const g = this._enter(obs, 'moved');
+      const g = this._enter(obs, fwd ? 'forward' : 'back');
       if (g) out.push(g);
     } else if (obs.done && !this.cur.done) {
       const f = this._flag('turned done');
@@ -167,7 +172,7 @@ class StepTracker {
     // a step that was not Done is the reader skipping by another button.
     const forward = obs.i > c.i;
     if (forward && nav !== 'skip' && nav !== 'back' && !(nav === 'next' && !c.done)) { const f = this._flag('moved on'); if (f) out.push(f); }
-    const g = this._enter(obs, 'moved');
+    const g = this._enter(obs, forward && nav !== 'back' ? 'forward' : 'back');
     if (g) out.push(g);
     return out;
   }

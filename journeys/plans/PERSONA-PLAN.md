@@ -269,7 +269,9 @@ Built 2026-09-25 (build items 2, 5 and 6). Four scripts, all Node tooling, none 
   `digest.json` + `digest.md`, ranked by persona kinds, then severity. `--manifest` (the JSONL
   dump or one set's manifest JSON) renames a step written as a number (the manifest's 0-based
   `i`, also "step 3") or as its title to the step's id, the calibration's hand fix (11 of its 247
-  findings). The finding schema, `false-pass` among its kinds, and the known-list format are at
+  findings). Only a finding on a set the manifest holds is renamed (a one-set manifest also takes
+  that set written loosely, "Plumbing tour", or none); it prints the count, and a file with no
+  step lists in it is an error. The finding schema, `false-pass` among its kinds, and the known-list format are at
   the top of `scripts/persona-merge.js`.
 - `scripts/persona-prompts/`: the prompts, the single source. `text.md` (the text pass),
   `live.md` (a persona on ONE step through the harness), `prober.md` (the wrong thing each doing
@@ -313,7 +315,8 @@ is one call:
 actions since entering it were none, or only Next / Back / Skip / Show me where / wait /
 screenshot / scroll, is flagged `passedWithoutWork: [{ step, i, why, actions }]` in the answer
 and in the episode's JSONL (`why`: done on arrival, turned done, moved on, done with no action).
-Skip, Back, and Next on a step that was not Done are the reader leaving, never a pass. `/episode`
+Skip, Back, and Next on a step that was not Done are the reader leaving, never a pass. A step
+reached by Back, or one the reader already did work on, is never flagged either. `/episode`
 gives the landed step ~1.5 s with no action first. On b312145 (the calibration's commit)
 `{"set":"plumbing","step":"counter","device":"returning"}` comes back flagged (K4: the standing
 Water Closet ticks it and it moves itself on) and so does `linetype` (K5); on main neither is,

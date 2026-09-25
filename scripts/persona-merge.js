@@ -113,11 +113,25 @@ function manifestSets(text) {
   return sets;
 }
 const normTitle = (s) => String(s == null ? '' : s).replace(/[“”"']/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+// A finding's set written loosely for the one set a manifest holds: missing, or the set's id in
+// other words ("Plumbing tour", "plumbing-tour"). A lesson or course set never is.
+const setWords = (s) => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9:]+/g, ' ').replace(/\b(the|tour|walkthrough|set)\b/g, ' ').replace(/\s+/g, ' ').trim();
+function isAliasOf(set, id) {
+  const w = setWords(set);
+  return !w || w === setWords(id);
+}
+// The step list a finding's set picks: its own, or a one-set manifest's when the finding's set is
+// that set written loosely (never another set's: a lesson's "step 3" is not the tour's step 3).
+function listFor(f, sets) {
+  if (sets.has(f.set)) return sets.get(f.set);
+  if (sets.size !== 1) return null;
+  const [id, list] = Array.from(sets.entries())[0];
+  return isAliasOf(f.set, id) ? list : null;
+}
 // The finding with its step renamed to an id when it was a number or a title; untouched when its
-// step is already an id, or nothing matches. A finding's set picks the step list; a manifest of one
-// set also serves a finding whose set is missing from it.
+// step is already an id, nothing matches, or its set is not in the manifest.
 function renameStep(f, sets) {
-  const list = sets.get(f.set) || (sets.size === 1 ? Array.from(sets.values())[0] : null);
+  const list = listFor(f, sets);
   if (!list) return f;
   const st = String(f.step == null ? '' : f.step).trim();
   if (list.some((x) => x.id === st)) return f;
@@ -125,10 +139,15 @@ function renameStep(f, sets) {
   const hit = m ? list.find((x, k) => (x.i != null ? x.i : k) === +m[1]) : list.find((x) => normTitle(x.title) === normTitle(st));
   return hit ? Object.assign({}, f, { step: hit.id, stepWas: st }) : f;
 }
+// { findings, renamed, otherSet }: otherSet counts the findings whose set the manifest does not
+// hold (left as they were, so a number or a title there still groups on its own).
 function renameSteps(findings, sets) {
-  let renamed = 0;
-  const out = findings.map((f) => { const g = renameStep(f, sets); if (g !== f) renamed++; return g; });
-  return { findings: out, renamed };
+  let renamed = 0, otherSet = 0;
+  const out = findings.map((f) => {
+    if (!listFor(f, sets)) { otherSet++; return f; }
+    const g = renameStep(f, sets); if (g !== f) renamed++; return g;
+  });
+  return { findings: out, renamed, otherSet };
 }
 
 const groupKey = (f) => [f.set, f.step, normalizeControl(f.control), String(f.code || '').toLowerCase(), f.kind].join('|');
@@ -197,9 +216,12 @@ function main() {
   const read = readFolder(dir);
   const manifestFile = flag('manifest');
   if (manifestFile) {
-    const r = renameSteps(read.findings, manifestSets(fs.readFileSync(manifestFile, 'utf8')));
+    const sets = manifestSets(fs.readFileSync(manifestFile, 'utf8'));
+    if (!sets.size) { console.error(manifestFile + ' holds no step lists: pass persona-out/manifest.jsonl or one set\'s GET /manifest JSON'); process.exit(2); }
+    const r = renameSteps(read.findings, sets);
     read.findings = r.findings;
     read.renamed = r.renamed;
+    console.log('--manifest ' + manifestFile + ': ' + sets.size + ' set(s) · ' + r.renamed + ' steps renamed to ids' + (r.otherSet ? ' · ' + r.otherSet + ' findings on a set the manifest does not hold, left as written' : ''));
   }
   const digest = buildDigest(read);
   fs.mkdirSync(out, { recursive: true });

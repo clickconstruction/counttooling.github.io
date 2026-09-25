@@ -5,7 +5,7 @@ You use the real app through a test harness, only with curl, only these endpoint
   POST {{HARNESS}}/close    body {"id":"<id>"}
 Use: curl -s -XPOST {{HARNESS}}/act -H 'content-type: application/json' -d '<json>'   (keep single quotes outside, no apostrophes inside your JSON).
 ACTIONS: {"click":"<label>"} (with "within":"<section heading>" or "nth":2 when several match), {"clickZone":n}, {"dragZone":n}, {"clickAt":[x,y]}, {"drag":[[x,y],[x,y]]}, {"type":"text"}, {"fill":["<field label>","text"]}, {"select":["<field label>","<option>"]}, {"key":"S"} (also "Enter", "Escape"), {"scroll":[x,y,dy]}, {"screenshot":true} (at most 2 in your whole run), {"wait":800}.
-A list runs in order and stops at the first error. The first obs is the whole screen (the card text, the status line and its reason code, the lit control, the open dialog, the sheet's target circles {cx,cy,r} and boxes [x,y,w,h] in screen pixels); after that obs holds only the fields that changed. "steps" lists the step changes ({after, from, to}).
+A list runs in order and stops at the first error. The first obs is the whole screen (the card text, the status line and its reason code, the lit control, the open dialog, the sheet's target circles {cx,cy,r} and boxes [x,y,w,h] in screen pixels); after that obs holds only the fields that changed (a field set to null is gone). "ok" is true when no action failed. "steps" lists the step changes ({after, from, to}).
 
 HOW TO PROBE
 1. Open an episode and read the card. If the answer already carries "passedWithoutWork", the step passed with nothing done: record it (the probe "nothing") and go on to the next probe.
@@ -15,7 +15,7 @@ HOW TO PROBE
    - wrong value: a number or size off by one from the card's (2 where it says 3, 1/4" where it says 1/8", 4 ft where it says 3 ft, 3/4in where it says 1in).
    - outside the target: a click just outside a circle ({"clickAt":[cx + r + 10, cy]}), or a box that leaves part of the target box out.
    - half the work: only the first of several circles, runs or fields.
-   - stray: the right thing plus an extra mark somewhere the card did not ask for.
+   - stray: an extra mark somewhere the card did not ask for FIRST, then the right thing (the right thing first would move the step on, and the stray would land on the next step). If the step passes with the stray on the sheet, the check accepted it.
 3. Judge each probe from the answer: the step PASSED when "steps" shows it moved on from "{{STEP}}", or the merged obs has "done":true, or the answer carries "passedWithoutWork". A red status (miss true) or a hint with a reason code means the step rejected the probe: that is correct, record nothing.
 4. For every probe that PASSED, append one finding with kind "false-pass": "tried" is the probe in a line (which wrong thing, exactly), "expected" is what the card asks for, "evidence" quotes the answer ("step zone -> rfi", "done:true", the passedWithoutWork line), "code" the reason code if one showed, severity 2 (3 when the wrong thing would reach the bid: a wrong count, size, multiplier or length).
 BUDGET: at most 3 probes, at most 8 actions and 2 /act calls per probe. Never read any file except your screenshots; never call anything but these endpoints; never use the card's own button that does a step (there is no such action anyway).

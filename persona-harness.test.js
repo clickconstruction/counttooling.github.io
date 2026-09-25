@@ -108,6 +108,24 @@ test('the no-work detector: Skip, Back and Next on an undone step are the reader
   assert.deepStrictEqual(t.after({ click: 'Finish' }, card('Finish'), null).map((f) => f.why), ['moved on']);
 });
 
+test('the no-work detector: Back into a step the reader did is never a pass', () => {
+  // the counter step done for real, the place step done for real, then Back, Back
+  const t = new B.StepTracker(obs());
+  t.after({ click: 'Create Counter' }, ok({ label: 'Create Counter', scope: 'dialog' }), obs({ done: true }));
+  t.after({ wait: 900 }, ok(), obs({ id: 'place', i: 4 }));
+  t.after({ clickZone: 1 }, ok(), obs({ id: 'place', i: 4, done: true }));
+  assert.deepStrictEqual(t.after({ wait: 900 }, ok(), obs({ id: 'linetype', i: 5 })), []);
+  assert.deepStrictEqual(t.after({ click: 'Back' }, card('Back'), obs({ id: 'place', i: 4, done: true })), []);
+  assert.deepStrictEqual(t.after({ click: 'Back' }, card('Back'), obs({ done: true })), []);
+  // an earlier step seen between calls (a Back the engine made) is not an arrival either
+  assert.deepStrictEqual(t.before(obs({ id: 'place', i: 4, done: true })), []);
+  // and Next back into a step already done by the reader does not flag it
+  assert.deepStrictEqual(t.after({ click: 'Next' }, card('Next'), obs({ id: 'linetype', i: 5 })), []);
+  assert.deepStrictEqual(t.after({ click: 'Back' }, card('Back'), obs({ id: 'place', i: 4, done: true })), []);
+  assert.deepStrictEqual(t.after({ click: 'Next' }, card('Next'), obs({ id: 'linetype', i: 5 })), []);
+  assert.deepStrictEqual(t.flags, []);
+});
+
 test('labels.json: every label once, marked by where it comes from', () => {
   assert.strictEqual(isSelector('#noteModalDone'), true);
   assert.strictEqual(isSelector('#counterModal .counter-tab[data-tab="quickcount"]'), true);

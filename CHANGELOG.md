@@ -36,7 +36,8 @@ none, or only Next / Back / Skip / Show me where / wait / screenshot / scroll, c
 gives the landed step ~1.5 s with no action first. Against b312145 (the calibration's commit) the
 returning device's `counter` (K4) and `linetype` (K5) episodes come back flagged, and a Skip into
 `linetype` flags it at `/act` ("done on arrival"); against main none of them is, and no first-timer
-episode is. The logic is pure (scripts/lib/persona-batch.js) and pinned by persona-harness.test.js.
+episode is. A step reached by Back, or one the reader already did work on, is never flagged. The
+logic is pure (scripts/lib/persona-batch.js) and pinned by persona-harness.test.js.
 
 **The prober.** `scripts/persona-prompts/prober.md`: per doing step, up to three probes on fresh
 episodes, each with exactly one thing wrong (nothing at all, the wrong item, a value off by one, a

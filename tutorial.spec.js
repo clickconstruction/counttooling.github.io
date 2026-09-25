@@ -25,6 +25,7 @@
  * first run, a ×3 zone around Women 108, an RFI note, and the proof modal open.
  */
 const { test, expect } = require('@playwright/test');
+const { DEVICES } = require('./scripts/persona-devices.js');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 // "The app is ready" is the app's own signal, not a quiet network: every fresh context
@@ -804,14 +805,9 @@ test.describe('The tours, by hand on a returning estimator\'s device', () => {
   async function startWithPalette(page, tour) {
     await page.goto('/app/');
     await ready(page);
-    await page.evaluate((t) => {
-      const s = window.state, A = window.App, icon = A.getOrderedIcons()[0].value;
-      s.counters.push({ id: 'st-wc', name: 'Water Closet', icon, color: '#4a9eff' }, { id: 'st-dup', name: 'Duplex Receptacle', icon, color: '#e85447', mountHeightIn: 18 });
-      s.lineTypes.push({ id: 'st-gas', name: 'Gas 1in', color: '#e8c547', curveStyle: 'straight' });
-      [['counterSearch', 'counterSearchInput', 'FD'], ['lineTypeSearch', 'lineTypeSearchInput', 'PEX']].forEach(([f, id, v]) => { s[f] = v; localStorage.setItem(f, v); document.getElementById(id).value = v; });
-      A.updateUI();
-      A.startTutorial(t);
-    }, tour);
+    // the device is the persona harness's 'returning' (scripts/persona-devices.js): one fixture for both
+    await DEVICES.returning.seed(page);
+    await page.evaluate((t) => window.App.startTutorial(t), tour);
     await page.waitForFunction(() => window.App.tutorialStepId(), null, { timeout: 10000 });
     await page.click('#tourShow');
     await page.waitForFunction(() => window.App.tutorialStepId() !== 'welcome' && window.state.pages.length > 0, null, { timeout: 30000 });

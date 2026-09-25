@@ -66,6 +66,39 @@ and leaves the plain counter tool armed with the panel closed, so the three circ
 done" while the chain step stays undone with no hint (pressing T again and clicking them passes it).
 A lead for PERSONA-FIXES' triage.
 
+## fix(learn): what a lesson or tour made leaves with its sheets (LEARN-LEAK, 2026-09-25)
+
+The owner's call on LEARN-LEAK: sweep all of it. A reader who made counters and line types by
+hand inside a lesson or course ("HB Hose Bibb", "1.5in Copper") kept them in the palette after
+leaving, and they rode into the next real bid. Worse than the row said: the lesson's OWN items did
+too, because they were only swept when the next lesson opened; closing the lesson project keeps the
+palette (the Artboard rides into the next plan), so every counter a course made went along.
+
+Now features/lessons.js records, by id, every counter and line type that appears while a lesson or
+course set is open (`syncLessonPalette`, which app.js `updateUI` calls first through
+`App.onLessonPaletteSync`), and removes exactly those when the open plan stops being a set: Close
+project, or a saved bid loaded over the sheets. A toast says how many went. The palette that stood
+when the sheets opened is never touched, and neither is a loaded project's own palette (only the
+recorded ids go, which is why it records as they appear rather than diffing on the way out). The
+record rides localStorage (`clickcount-lesson-palette`), so a reload mid-lesson still sweeps on the
+way out; a boot with no plan yet, while the restore offer is up, does not count as leaving.
+
+**The tours too**, at the owner's ask in review: the three five-minute tours' sample plan and the
+blank tour's sheet are watched the same way. `openSamplePlan` (features/tutorial.js) and
+`openBlankSheet` (tour-blank.js) call `App.beginTeachingPalette()` when they open their sheet, the
+same entry the lessons' `openSheetsFor` uses; the tour's "Water Closet" and "1in PEX" leave with the
+sample plan. A tour has no seed, so its sheet counts as in once the first page is drawn with no
+Trim your set up for half a second, the lessons' own settle test.
+
+Two things found building it: Trim your set rebuilds the pages under "Untitled" after the set's name
+is already up, so the set only counts as open once it has settled (the moment the lesson lays its
+seed, `seededFor`); and an upload onto the lesson sheets adds a page to the set rather than opening
+a new plan, so Close project is the way off them. Pinned by lessons.spec.js ("what a lesson made…
+leaves with its sheets"): the lesson's Floor Drain and a hand-made counter and line type go on
+Close project, the reader's own counter stays, the next plan opens with their palette alone, and a
+project loaded over a second lesson's sheets keeps its own palette. tutorial.spec.js pins the tour:
+the plumbing tour's Water Closet goes on Close project, the reader's own counter stays.
+
 ## feat(persona): the seams simulated readers run on, and the rules a lesson teaches named (2026-09-25)
 
 PERSONA-PLAN build items 1 to 7 ([journeys/plans/PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)):

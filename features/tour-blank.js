@@ -172,6 +172,7 @@
       if (TEACHING_SETS.includes(s.currentProjectName)) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
       else if (!(await App.closeProject({ route: 'tour' }))) return;   // their own plan: the app's one Close project, which asks
     }
+    if (App.beginTeachingPalette) App.beginTeachingPalette();   // LEARN-LEAK: what the tour makes leaves with the sheet (features/lessons.js)
     let bytes;
     try { bytes = await makeBlankSheet(); } catch (e) { App.showToast('Could not make the blank sheet. Upload any PDF and the tour carries on from there.'); return; }
     const file = new File([bytes], SHEET_NAME + '.pdf', { type: 'application/pdf' });

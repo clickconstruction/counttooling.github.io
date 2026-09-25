@@ -1112,7 +1112,7 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       await page.keyboard.press('t');
       await expect(page.locator('#chainPanel')).toBeVisible();
       await page.waitForTimeout(600);
-      expect(await litIs(page, '#chainPanel')).toBe(true);
+      await expect.poll(() => litIs(page, '#chainPanel')).toBe(true);
       expect(overlaps(await rectOf(page, '#tourCard'), await rectOf(page, '#chainPanel'))).toBe(false);
     });
   });
@@ -1127,15 +1127,16 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       await page.tap('#chainBtn');
       await expect(page.locator('#chainPanel')).toBeVisible();
       await page.waitForTimeout(900);
-      expect(await litIs(page, '#chainPanel')).toBe(true);
+      await expect.poll(() => litIs(page, '#chainPanel')).toBe(true);
       const panel = await rectOf(page, '#chainPanel');
       let zs = await page.evaluate(() => window.App.tutorialZoneScreen());
       zs.forEach((z) => expect(overlaps(circleBox(z), panel)).toBe(false));
       // + New counter is in the palette: a Lavatory made right there, Name lit first
       await page.locator('#chainPanel .chain-new-row[data-new="counter"]').tap();
       await expect(page.locator('#counterModal')).toHaveClass(/visible/);
-      await page.waitForTimeout(500);
-      expect(await litIs(page, '#counterName')).toBe(true);
+      // the ring follows on the tour's 400 ms tick and slides for 160 ms, so the lit checks poll: a
+      // fixed 500 ms read the ring mid-slide about one run in eight (review, 2026-09-25)
+      await expect.poll(() => litIs(page, '#counterName')).toBe(true);
       await page.fill('#counterName', 'Lavatory');
       await page.locator('#counterCreate').tap();
       await expect(page.locator('#counterModal')).not.toHaveClass(/visible/);
@@ -1172,7 +1173,7 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       await page.touchscreen.tap(zs[0].cx, zs[0].cy);
       await expect(page.locator('#waterHintSize')).toBeVisible();
       await page.waitForTimeout(700);
-      expect(await litIs(page, '#waterHintSize')).toBe(true);
+      await expect.poll(() => litIs(page, '#waterHintSize')).toBe(true);
       await page.tap('#waterHintSize');
       await expect(page.locator('#waterSizePopover')).toBeVisible();
       expect(await page.evaluate(() => window.state.drawingPolyline.points.length)).toBe(2);   // the card ate no vertex
@@ -1188,7 +1189,7 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       await page.touchscreen.tap(zs[1].cx, zs[1].cy);
       await page.waitForTimeout(1500);
       expect(await stepId(page)).toBe('size');
-      expect(await litIs(page, '#finishPolyline')).toBe(true);
+      await expect.poll(() => litIs(page, '#finishPolyline')).toBe(true);
       await page.tap('#finishPolyline');
       await waitForStep(page, 'zone');
       expect(await page.evaluate(() => window.state.lineTypes.filter((l) => l.waterSide === 'cold').map((l) => l.name).sort())).toEqual(['1in PEX', '3/4in PEX']);

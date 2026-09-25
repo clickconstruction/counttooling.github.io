@@ -85,7 +85,9 @@
   const pageAnn = (i) => K().pageAnn(i);
   const marksOf = (c, pageIdx) => { const a = pageAnn(pageIdx); return c && a ? (a.counterMarkers[c.id] || []) : []; };
   const markNear = (c, spot, d, pageIdx) => marksOf(c, pageIdx).some((m) => K().near(m, spot, d));
-  const polylinesOn = (re, pageIdx) => { const a = pageAnn(pageIdx); const lt = lineType(re); return a && lt ? (a.polylines || []).filter((pl) => pl.lineTypeId === lt.id) : []; };
+  // every type the word names, and for the homerun every type flagged homerun (see the kit's lineTypesMatching)
+  const typeIds = (re) => new Set(K().lineTypesMatching(re).concat(re === RE.hr ? (S().lineTypes || []).filter((l) => l.homerun) : []).map((l) => l.id));
+  const polylinesOn = (re, pageIdx) => { const a = pageAnn(pageIdx); const ids = typeIds(re); return a ? (a.polylines || []).filter((pl) => ids.has(pl.lineTypeId)) : []; };
   const notesNear = (spot, d, pageIdx) => { const a = pageAnn(pageIdx); return a ? (a.notes || []).filter((n) => K().near(n, spot, d)) : []; };
   const bidRow = (id) => { const bc = App.getBidCheck ? App.getBidCheck() : null; return bc ? (bc.auto || []).find((r) => r.id === id) : null; };
   const manual = (id) => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual[id]);
@@ -98,7 +100,7 @@
   const ZR = 14;
   const circlesOn = (pageIdx, c, spots, r) => T().markZones(pageIdx, (c || {}).id || '__none__', spots, r || ZR);
   const guide = (spots, r, done) => spots.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: !!done }));
-  const runsOn = (re, pageIdx) => { const lt = lineType(re); const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && lt && d.lineTypeId === lt.id ? pls.concat([d.points]) : pls; };
+  const runsOn = (re, pageIdx) => { const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && typeIds(re).has(d.lineTypeId) ? pls.concat([d.points]) : pls; };
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
   const missing = (c, spots, labels, d, pageIdx) => { const ms = marksOf(c, pageIdx); const out = []; spots.forEach((pt, i) => { if (!ms.some((m) => K().near(m, pt, d || 8))) out.push(labels[i]); }); return out.length ? out.length + ' more: ' + out.join(', ') : ''; };
@@ -127,7 +129,7 @@
   function pick(tag) {
     const t = TAGS[tag];
     const have = counter(t[0]);
-    if (have) return have;
+    if (have && !K().isStanding(have.id)) return have;   // never adopts the reader's standing counter
     const c = Object.assign({ id: App.uid(), name: t[1], icon: icon(t[2]), color: t[3], lesson: true }, t[4]);
     S().counters.push(c);
     return c;
@@ -359,7 +361,10 @@
         { id: 'keys', title: 'Put the counters on the number row', kind: 'do',
           body: '1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose Duplex. Beside key 2, GFCI.\n3. Close the dialog.\nOn a real E-sheet the rhythm is 1, click, click, 2, click, and the hand never leaves the plan.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
-          check: () => { const c = counter(RE.duplex); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); },
+          // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
+          // engine closed the dialog under a reader who had not reached key 2 (by hand, 2026-09-25)
+          check: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); }; return bound(RE.duplex) && bound(RE.gfci) && !K().modalUp('quickKeysModal'); },
+          hint: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((x) => x && x.id === c.id); }; if (!bound(RE.duplex)) return ''; if (!bound(RE.gfci)) return 'Key 1 is Duplex. Now key 2: GFCI'; return K().modalUp('quickKeysModal') ? 'Both keys are set. Close the dialog' : ''; },
           action: { label: 'Bind 1 and 2 for me', run: () => { if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: pick('duplex').id }; S().numberKeyBindings[2] = { kind: 'counter', id: pick('gfci').id }; K().dirty(); } } },
       ],
       done: 'Twenty-one receptacles sorted by what the code wants, one of them the engineer\'s miss flagged, six equipment connections, and heights the app already knew.\nNext: [[Learn]] → Chapter 3, the lighting.',
@@ -407,7 +412,7 @@
         { id: 'linetype', title: 'A line type that knows what is in it', kind: 'do',
           body: 'The keynotes say 3 #12 CU THHN + 1 #12 G in 3/4" EMT.\n1. Under LINE TYPES, click [[+ Add]], then [[Quick]]. Pick 0.75in and, beside Material, add EMT with [[+]] if it is not there. Click [[Add Line Type]].\n2. Click the pencil beside it. Set the raceway to EMT, 3/4".\n3. In Conductors, type 3 #12 THHN + 1 #12 G, and click [[Done]].',
           target: ['#conductorsSpec', '#racewayKind', '#counterLineTypeDetailsModal .modal-card', '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', '#addLineType', '#lineTypesList .edit-btn'],
-          check: () => { const lt = lineType(RE.emt75); return !!(lt && lt.raceway && lt.raceway.kind === 'EMT' && (lt.conductors || []).length >= 2); },
+          check: () => K().someLineType(RE.emt75, (lt) => lt.raceway && lt.raceway.kind === 'EMT' && (lt.conductors || []).length >= 2),
           action: { label: 'Make 0.75in EMT · 3 #12 + G', run: () => { App.pushUndoSnapshot(); const lt = makeEmt(); S().activeLineTypeId = lt.id; K().dirty(); } } },
         { id: 'why12', title: 'Why #12', kind: 'read', cardAt: 'tl',
           body: 'Every 20 A circuit on the schedule is #12 copper.\nWhy that gauge, and what would #14 or #10 mean?',
@@ -428,7 +433,7 @@
         { id: 'straps', title: 'A support row of your own', kind: 'do',
           body: 'EMT is fastened within 3 ft of every box and every 10 ft along the run (NEC 358.30). The rulebook has no strap row for conduit yet, so write one.\n1. Click the pencil beside 0.75in EMT.\n2. Under [[Child counts]], add a row: Strap, 1 per 10 ft.\n3. Click [[Done]].',
           target: ['#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineType(RE.emt75); return !!(lt && (lt.childCounts || []).some((ch) => ch.per === 'ft')); },
+          check: () => K().someLineType(RE.emt75, (lt) => (lt.childCounts || []).some((ch) => ch.per === 'ft')),
           action: { label: 'Add Strap · 1 per 10 ft', run: () => { const lt = makeEmt(); if ((lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [{ name: 'Strap', qty: 1, per: 'ft', ftInterval: 10 }]; K().dirty(); } } },
         { id: 'read', title: 'What the drawing knows now', kind: 'read',
           body: '1. In the left sidebar, look at SUMMARY.\nFeet of 0.75in EMT with the four verticals inside, the straps under it, and the derived rows: #12 THHN by the foot, the green ground its own row. Wire is never a mark. Delete a run and its wire goes with it.',
@@ -451,7 +456,7 @@
         { id: 'homerun', title: 'The homerun', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.hr, pts(G.homerun1), E101),
           body: 'The arrow at the top receptacle says LP-1-1: from there the conduit goes up into the ceiling and across to the panel.\n1. Under LINE TYPES, click [[+ Add]]. In Name, type 0.75in EMT HR and click [[Create Line Type]].\n2. Click the pencil beside it: set the same raceway and conductors as 0.75in EMT, and turn on [[Homerun]].\n3. Under GROUPS, click the circuit, so the run you draw joins it. With the type active, click [[Polyline]] and trace: the top receptacle, straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.',
           target: ['#lineTypeHomerunBtn', '#polylineBtn', '#polylineBtnSidebar', '#lineTypeCreate', '#addLineType', '#lineTypesList .edit-btn'],
-          check: () => { const lt = lineType(RE.hr); return !!(lt && lt.homerun && allDone(traceZones(RE.hr, pts(G.homerun1), E101))); },
+          check: () => (S().lineTypes || []).some((l) => l.homerun) && allDone(traceZones(RE.hr, pts(G.homerun1), E101)),
           hint: () => { const lt = lineType(RE.hr); return lt && !lt.homerun ? 'The type exists: open its details and turn on Homerun' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeHomerun(); if (!polylinesOn(RE.hr, E101).length) tracePlan(lt, G.homerun1, 'Homerun, circuit 1', E101); const g = circuitOne(); void g; } } },
         { id: 'panelpoles', title: 'The panel knows its schedule', kind: 'do',
@@ -520,7 +525,7 @@
         { id: 'feeder', title: 'Trace the feeder', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.emt2, pts(G.feeder), E101),
           body: 'On E-101 the feeder is the heavy line from the main disconnect outside the south wall up to LP-1.\n1. Under PAGES, click E-101.\n2. Under LINE TYPES, make 2in EMT, and in its details set the raceway to EMT 2" and the conductors to 4 #3/0 THHN + 1 #6 G.\n3. With it active, click [[Polyline]], click the two circled ends, and press Enter.',
           target: ['#polylineBtn', '#polylineBtnSidebar', '#addLineType', '#pagesList', '#lineTypesList .edit-btn'],
-          check: () => { const lt = lineType(RE.emt2); return !!(lt && (lt.conductors || []).length >= 2 && allDone(traceZones(RE.emt2, pts(G.feeder), E101))); },
+          check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)),
           hint: () => { const lt = lineType(RE.emt2); return lt && !(lt.conductors || []).length ? 'The type exists: give it the conductors, 4 #3/0 THHN + 1 #6 G' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeFeeder(); if (!polylinesOn(RE.emt2, E101).length) tracePlan(lt, G.feeder, 'Feeder', E101); } } },
         { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => guide([pts(G.feeder)[0]], 14, polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0)),

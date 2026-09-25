@@ -94,7 +94,8 @@
   const marks = (re) => K().marksOf(counter(re));
   const pageAnn = (i) => K().pageAnn(i == null ? K().P101 : i);
   const ann = () => pageAnn(K().P101);
-  const polylinesOn = (re, pageIdx) => { const a = pageAnn(pageIdx); const lt = lineType(re); return a && lt ? (a.polylines || []).filter((pl) => pl.lineTypeId === lt.id) : []; };
+  const typeIds = (re) => new Set(K().lineTypesMatching(re).map((l) => l.id));   // every type the word names (see the kit's lineTypesMatching)
+  const polylinesOn = (re, pageIdx) => { const a = pageAnn(pageIdx); const ids = typeIds(re); return a ? (a.polylines || []).filter((pl) => ids.has(pl.lineTypeId)) : []; };
   const notesNear = (spot, d) => { const a = ann(); return a ? (a.notes || []).filter((n) => K().near(n, spot, d)) : []; };
   const anyRfi = () => (S().pages || []).some((p) => (p.canvases || []).some((cv) => ((cv.annotations && cv.annotations.notes) || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || '')))));
   const rotationOf = (i) => ((S().pages[i] || {}).rotation || 0);
@@ -106,7 +107,7 @@
   const ZR = 16;   // a circle on a fixture, in sheet points (a couple of feet of plan)
   const circlesOn = (pageIdx, re, spots, r) => T().markZones(pageIdx, (counter(re) || {}).id || '__none__', spots, r || ZR);
   const guide = (spots, r, done) => spots.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: !!done }));
-  const runsOn = (re, pageIdx) => { const lt = lineType(re); const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && lt && d.lineTypeId === lt.id ? pls.concat([d.points]) : pls; };
+  const runsOn = (re, pageIdx) => { const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && typeIds(re).has(d.lineTypeId) ? pls.concat([d.points]) : pls; };
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
   const rectsOf = (pageIdx, key, test) => { const a = pageAnn(pageIdx); return ((a && a[key]) || []).filter((z) => !test || test(z)); };
@@ -149,7 +150,7 @@
   const proveP101 = () => proof('P101', () => ({ page: K().P101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
   const proveP601 = () => proof('P601', () => ({ page: K().P601, ends: raw(R.prove), r: 13, ft: 14, tol: 0.4, stated: '14\'-0"' }));
   const proveP401 = () => proof('P401', () => ({ page: K().P401, ends: K().DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
-  const pick = (tag) => { const t = TAGS[tag]; return counter(t[0]) || K().makeCounter(t[1], t[2], t[3]); };
+  const pick = (tag) => { const t = TAGS[tag]; const have = counter(t[0]); return have && !K().isStanding(have.id) ? have : K().makeCounter(t[1], t[2], t[3]); };   // never adopts the reader's standing counter
   // Marks a counter at the spots it does not yet cover (the seam run twice adds nothing).
   function markMissing(c, spots, pageIdx) {
     const i = pageIdx == null ? K().P101 : pageIdx;
@@ -411,12 +412,12 @@
           action: { label: 'Click it for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('hs'), [K().HAND_SINKS[1]]); K().dirty(); } } },
         { id: 'kitchen', title: 'Count the rest of the kitchen and the bar', kind: 'do', cardAt: 'tl', page: 0, zones: kitchenZones,
           body: 'The one beside the range. The health code, not the plumbing code, puts it there: the FDA Food Code (5-204.11) wants a handwashing sink in each food preparation area, within reach, so the cook line, the dish and prep side and the bar each get one. A prep area without one is an RFI now or a health inspector\'s order later.\n1. Click the other two hand sinks: at the kitchen exit, and at the bar.\n2. Arm 3CS-1 and click the two 3-compartment sinks: in the bar, and in the dish pit.\n3. Arm FD-1 and click the seven floor drains in the bar, the kitchen, the dish pit and storage.',
-          target: ['#annCanvas'], check: () => allDone(kitchenZones()),
+          target: ['#annCanvas', '#countersList'], check: () => allDone(kitchenZones()),
           hint: () => { const s = SPOTS(); return hintFor([row('HS-1', RE.hs, s.hs, HS_LABELS), row('3CS-1', RE.tcs, s.tcs, ['the bar', 'the dish pit']), row('FD-1', RE.fd, s.fdRest, FD_LABELS.slice(3))]); },
           action: { label: 'Count them for me', run: () => { const s = SPOTS(); K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('hs'), s.hs); markMissing(pick('tcs'), s.tcs); markMissing(pick('fd'), s.fdRest); K().dirty(); } } },
         { id: 'floorsinks', title: 'Which fixtures do not drain to the waste line?', kind: 'do', cardAt: 'bl', page: 0, zones: () => circlesOn(K().P101, RE.fs, SPOTS().fs),
           body: 'Two pieces of equipment on this sheet drain to an FS, a floor sink, instead of straight into the pipe.\n1. Arm FS-1.\n2. Click both floor sinks: they are the squares with a circle inside.',
-          target: ['#annCanvas'], check: () => allDone(circlesOn(K().P101, RE.fs, SPOTS().fs)),
+          target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(K().P101, RE.fs, SPOTS().fs)),
           hint: () => (marks(RE.fs) ? 'One more: ' + (markNear(RE.fs, SPOTS().fs[0], 8) ? 'by the dishwasher in the dish pit' : 'below the prep sink on the hall wall') : ''),
           action: { label: 'Click both for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('fs'), SPOTS().fs); K().dirty(); } } },
         { id: 'primers', title: 'What the FD keynote costs', kind: 'do',
@@ -427,7 +428,10 @@
         { id: 'keys', title: 'Put the counters on the number row', kind: 'do',
           body: 'Ten primers and ten little 1/2" lines now ride the ten marks, and go if a mark goes.\n1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose FD-1. Beside key 2, HS-1.\n3. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
-          check: () => { const c = counter(RE.fd); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); },
+          // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
+          // engine closed the dialog under a reader who had not reached key 2 (by hand, 2026-09-25)
+          check: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); }; return bound(RE.fd) && bound(RE.hs) && !K().modalUp('quickKeysModal'); },
+          hint: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((x) => x && x.id === c.id); }; if (!bound(RE.fd)) return ''; if (!bound(RE.hs)) return 'Key 1 is FD-1. Now key 2: HS-1'; return K().modalUp('quickKeysModal') ? 'Both keys are set. Close the dialog' : ''; },
           action: { label: 'Bind 1 and 2 for me', run: () => { if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: pick('fd').id }; S().numberKeyBindings[2] = { kind: 'counter', id: pick('hs').id }; K().dirty(); } } },
       ],
       done: 'Twenty-two fixtures under eight schedule tags, a hydrant the eye skips, and the reasons behind where they sit.\nNext: [[Learn]] → Chapter 3, the water.',
@@ -455,11 +459,11 @@
           action: { label: 'Make the three copper types', run: () => { App.pushUndoSnapshot(); const k = K(); const cw = k.makeLineType('1.5in Copper CW', '#4a9eff'); k.makeLineType('1.25in Copper HW', '#e85447'); k.makeLineType('0.75in Copper CW', '#47c88e'); S().activeLineTypeId = cw.id; K().dirty(); } } },
         { id: 'trace', title: 'Trace the cold trunk', kind: 'do', cardAt: 'bl', page: 0, zones: () => traceZones(RE.copper15, pts(G.cwTrunk), K().P101),
           body: '1. In the left sidebar, click 1.5in Copper to make it the active line type.\n2. In the header, click [[Polyline]] (or press P).\n3. Click inside each circle in turn: where the trunk leaves the south-wall run, the corner at the top wall, the corner at the east wall, its end at the exit hand sink.\n4. Press Enter.\nFour clicks, and the app has the plan length of the whole trunk.',
-          target: ['#polylineBtn', '#polylineBtnSidebar'], check: () => allDone(traceZones(RE.copper15, pts(G.cwTrunk), K().P101)),
+          target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(traceZones(RE.copper15, pts(G.cwTrunk), K().P101)),
           action: { label: 'Trace it for me', run: () => { const lt = lineType(RE.copper15) || K().makeLineType('1.5in Copper CW', '#4a9eff'); if (polylinesOn(RE.copper15).length) return; tracePlan(lt, G.cwTrunk, 'Cold trunk'); } } },
         { id: 'hot', title: 'Which line is the return?', kind: 'do', cardAt: 'tl', page: 0, zones: () => traceZones(RE.hwr, pts(G.hwReturn), K().P101),
-          body: 'The hot water leaves the WH in STORAGE as a dashed line and rides beside the cold all the way round. A second line, dotted, comes back down the east wall through the RECIRC PUMP into the heater.\n1. Under LINE TYPES, make 0.75in Copper HWR (on the [[Create]] tab, or the Quick tab with HWR added to the name).\n2. With it active, click [[Polyline]] and trace the return: the top-right corner, down the east wall, and into the pump.\n3. Press Enter.',
-          target: ['#polylineBtn', '#polylineBtnSidebar', '#addLineType'], check: () => allDone(traceZones(RE.hwr, pts(G.hwReturn), K().P101)),
+          body: 'The hot water leaves the WH in STORAGE as a dashed line and rides beside the cold all the way round. A second line, dotted, comes back down the east wall through the RECIRC PUMP into the heater.\n1. Under LINE TYPES, click [[+ Add]]. In Name, type 0.75in Copper HWR and click [[Create Line Type]].\n2. With it active, click [[Polyline]] and trace the return: the top-right corner, down the east wall, and into the pump.\n3. Press Enter.',
+          target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypeCreate', '#addLineType'], check: () => allDone(traceZones(RE.hwr, pts(G.hwReturn), K().P101)),
           hint: () => (!S().drawingPolyline && polylinesOn(RE.hwr, K().P101).length && !allDone(traceZones(RE.hwr, pts(G.hwReturn), K().P101)) ? 'Trace the DOTTED line, the legend\'s HWR, not the dashed supply' : ''),
           action: { label: 'Trace the return for me', run: () => { const lt = lineType(RE.hwr) || K().makeLineType('0.75in Copper HWR', '#e8c547'); if (polylinesOn(RE.hwr).length) return; tracePlan(lt, G.hwReturn, 'Hot water return'); } } },
         { id: 'chain', title: 'Chain the fixtures off the top-wall run', kind: 'do', cardAt: 'bl', page: 0, zones: () => circlesOn(K().P101, RE.lav, K().LAVS, 14),
@@ -473,12 +477,12 @@
         { id: 'hangers', title: 'Hangers from the copper rule', kind: 'do',
           body: '1. In the left sidebar, under LINE TYPES, click the pencil beside 1.5in Copper.\n2. Under [[Child counts]], the app offers Hanger · 1 per 10 ft: IPC Table 308.5 for copper over 1-1/4", read off the type\'s name. Click [[Add]].\n3. Click [[Done]].\nEvery run of this type now counts its hangers, and the § chip in the Summary names the rule.',
           target: ['#childCountsSuggest', '#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineType(RE.copper15); return !!(lt && (lt.childCounts || []).length); },
+          check: () => K().someLineType(RE.copper15, (lt) => (lt.childCounts || []).length),
           action: { label: 'Add the hanger rule', run: () => addHangerRule(lineType(RE.copper15)) } },
         { id: 'bends', title: 'Elbows from the bends', kind: 'do',
           body: '1. Open the same line type\'s details again.\n2. Turn on [[Fittings from bends]] and click [[Done]].\nEach corner of the trunk now counts a 90, and the riser counts one too. None of them are marks, so they can never drift from the pipe.',
           target: ['#counterLineTypeDetailsModal .modal-card', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineType(RE.copper15); return !!(lt && lt.bendFittings && lt.bendFittings.enabled); },
+          check: () => K().someLineType(RE.copper15, (lt) => lt.bendFittings && lt.bendFittings.enabled),
           action: { label: 'Turn it on for me', run: () => enableBends(lineType(RE.copper15)) } },
         { id: 'read', title: 'What the drawing knows now', kind: 'read',
           body: '1. In the left sidebar, look at SUMMARY.\nFeet of 1.5in Copper with the riser inside, the hangers under it with their § chip, the elbows, the return, and the 0.75in branch from the chain. On a real bid this is the water side of the sheet in a few dozen clicks.\nMore: [Doing a plumbing takeoff](/guides/plumbing-takeoff/).',
@@ -504,8 +508,8 @@
           hint: () => { const a = ann(); if (!a || !(a.notes || []).length) return ''; const k = K(); const grease = k.HAND_SINKS.concat(SPOTS().tcs, SPOTS().fs, SPOTS().fdRest); /* the restroom FDs go to the sewer: a right answer */ return grease.some((pt) => notesNear(pt, 30).length) ? 'That fixture carries grease: the interceptor is exactly where it should go' : 'Put the note on the fixture itself'; },
           action: { label: 'Note the water closet for me', run: () => K().addNote(K().WCS[0], 'Sewage never enters the interceptor: the restrooms go straight to the sewer', '#e85447') } },
         { id: 'layer', title: 'Waste on its own layer', kind: 'do',
-          body: 'A water closet, a lavatory or the mop sink. Every kitchen, dish and bar fixture drains through the 3" grease line to the GI outside, where grease floats, cools and is pumped out; the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste and the code keeps everything else out (IPC 1003.3). The red note says it in nine words.\nA plumber reads water and waste as two drawings. Keep them apart.\n1. In the footer, beside the layer name, click [[Add canvas]], the + button.\n2. Click [[New empty layer]], name it Waste, and click [[Create]].\nThe up and down arrow keys switch layers; each layer has its own totals.',
-          target: ['#addCanvasModalCreate', '#addCanvasBtn'], check: onWasteLayer,
+          body: 'A water closet, a lavatory or the mop sink. Every kitchen, dish and bar fixture drains through the 3" grease line to the GI outside, where grease floats, cools and is pumped out; the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste and the code keeps everything else out (IPC 1003.3). The red note says it in nine words.\nA plumber reads water and waste as two drawings. Keep them apart.\n1. In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].\n2. Click [[New empty layer]], name it Waste, and click [[Create]].\nThe up and down arrow keys switch layers; each layer has its own totals.',
+          target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#canvasLayersBtn'], check: onWasteLayer,
           action: { label: 'Add the Waste layer for me', run: addWasteLayer } },
         { id: 'linetypes', title: 'Line types for the waste', kind: 'do',
           body: 'The general notes say PVC DWV.\n1. Under LINE TYPES, click [[+ Add]].\n2. Click [[Quick]], and pick 4in and PVC, and click [[Add Line Type]].\n3. Again for 3in PVC.',
@@ -514,22 +518,22 @@
           action: { label: 'Make 4in PVC and 3in PVC', run: () => { App.pushUndoSnapshot(); const k = K(); const ss = k.makeLineType('4in PVC', '#8a4bb0'); k.makeLineType('3in PVC', '#c8963a'); S().activeLineTypeId = ss.id; K().dirty(); } } },
         { id: 'ss', title: 'Trace the sanitary line', kind: 'do', cardAt: 'bl', page: 0, zones: () => traceZones(RE.pvc4, pts(G.ssRun), K().P101),
           body: '1. Click 4in PVC in the sidebar to make it active.\n2. In the header, click [[Polyline]] (or press P).\n3. Click the cleanout under MEN, the east wall where the line leaves, the cleanout at the turn outside, and where it meets the interceptor\'s outlet line.\n4. Press Enter.',
-          target: ['#polylineBtn', '#polylineBtnSidebar'], check: () => allDone(traceZones(RE.pvc4, pts(G.ssRun), K().P101)),
+          target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(traceZones(RE.pvc4, pts(G.ssRun), K().P101)),
           action: { label: 'Trace it for me', run: async () => { if (!onWasteLayer()) await addWasteLayer(); const lt = lineType(RE.pvc4) || K().makeLineType('4in PVC', '#8a4bb0'); if (polylinesOn(RE.pvc4).length) return; tracePlan(lt, G.ssRun, 'Sanitary'); } } },
         { id: 'gw', title: 'Trace the grease line', kind: 'do', cardAt: 'tl', page: 0, zones: greaseZones,
           body: 'Two runs, both 3in PVC.\n1. Click 3in PVC in the sidebar, then [[Polyline]].\n2. The work aisle: the cleanout by the kitchen door, the corner at the east end, down to the wall, and out to the interceptor. Press Enter.\n3. The back rooms: the cleanout in the bar, the two corners of the jog, and its end where it joins the first run. Press Enter.',
-          target: ['#polylineBtn', '#polylineBtnSidebar'], check: () => allDone(greaseZones()),
+          target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(greaseZones()),
           hint: () => (polylinesOn(RE.pvc3).length === 1 ? 'One more: the bar and back-room run' : ''),
           action: { label: 'Trace both for me', run: async () => { if (!onWasteLayer()) await addWasteLayer(); const lt = lineType(RE.pvc3) || K().makeLineType('3in PVC', '#c8963a'); const have = polylinesOn(RE.pvc3).length; if (have < 1) tracePlan(lt, G.gwAisle, 'Grease, work aisle'); if (have < 2) tracePlan(lt, G.gwBack, 'Grease, back rooms'); } } },
         { id: 'cleanouts', title: 'Where must a cleanout be?', kind: 'do', cardAt: 'bl',
           body: 'A snake has to get into every drain line somewhere.\n1. Make a counter named CO Cleanout.\n2. Click every spot on the plan where the code wants one.',
           target: ['#annCanvas', '#addCounter'], check: () => markCountNear(RE.co, SPOTS().co, 8) >= 4,
-          hint: () => missing(RE.co, SPOTS().co, CO_LABELS, 8),
+          hint: () => (marks(RE.co) ? missing(RE.co, SPOTS().co, CO_LABELS, 8) : ''),   // quiet until the first mark: before it the list is the answer
           action: { label: 'Count them for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('co'), SPOTS().co); K().dirty(); } } },
         { id: 'vents', title: 'Which walls carry a vent stack?', kind: 'do', cardAt: 'bl',
           body: 'Four: at the upstream end of each drain line and at the turn outside, wherever the snake goes in (IPC 708). On the bid a cleanout is a fitting, a plug and an access cover.\nEvery trap needs a vent behind it, or the water seal siphons out when the fixture upstream drains (IPC 901). The vent piping lives in the walls; what the plan shows is where a stack goes through the roof.\n1. Make a counter named VTR Vent Through Roof.\n2. Click both VTR tags.',
           target: ['#annCanvas', '#addCounter'], check: () => markCountNear(RE.vtr, SPOTS().vtr, 8) >= 2,
-          hint: () => missing(RE.vtr, SPOTS().vtr, VTR_LABELS, 8),
+          hint: () => (marks(RE.vtr) ? missing(RE.vtr, SPOTS().vtr, VTR_LABELS, 8) : ''),   // quiet until the first mark: before it the list is the answer
           action: { label: 'Count both for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('vtr'), SPOTS().vtr); K().dirty(); } } },
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: 'Two VTRs, each a roof penetration: a flashing, a boot, and a roofer to coordinate (IPC 903 puts the terminal above the roof and away from air intakes).\n1. In the left sidebar, click BID CHECK to expand it.\nThe row Hangers on every supported run is open: 4in PVC and 3in PVC count no hangers.',
@@ -565,7 +569,7 @@
           action: { label: 'Measure it for me', run: () => { const k = K(); k.goPage(k.P601); const d = raw(R.lavArm); k.measure(d[0], d[1]); } } },
         { id: 'stack', title: 'Trace the stack', kind: 'do', cardAt: 'br', page: 3, zones: () => traceZones(RE.pvc4, raw(R.stack), K().P601),
           body: 'Four feet. IPC Table 1002.2 allows six for a 1-1/2" arm; any longer and the trap would siphon when the water closet flushes. Riser note 2 lists the limits, and Bid Check\'s trap-arm row is where you sign that you read them.\nThe stack itself is pipe the plan cannot show.\n1. Click 4in PVC in the sidebar to make it active.\n2. Click [[Polyline]] (or press P), click the base of the stack at the building drain, then the vent terminal above the roof, and press Enter.',
-          target: ['#polylineBtn', '#polylineBtnSidebar'], check: () => allDone(traceZones(RE.pvc4, raw(R.stack), K().P601)),
+          target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(traceZones(RE.pvc4, raw(R.stack), K().P601)),
           action: { label: 'Trace it for me', run: () => { const lt = lineType(RE.pvc4) || K().makeLineType('4in PVC', '#8a4bb0'); if (polylinesOn(RE.pvc4, K().P601).length) return; traceSheet(lt, R.stack, 'Stack', K().P601); } } },
         { id: 'why', title: 'Why the stack keeps going', kind: 'read', cardAt: 'br',
           body: 'Seventeen feet of 4" pipe for one circle on the plan: the waste stack below the lavatory\'s connection, the vent stack above it, and a foot above the roof.\nWhy does a waste stack continue past the last fixture and out through the roof?',
@@ -594,13 +598,13 @@
           check: () => !!lineType(RE.gas),
           action: { label: 'Make 1.25in BI', run: () => { App.pushUndoSnapshot(); const lt = K().makeLineType('1.25in BI', '#e85447'); S().activeLineTypeId = lt.id; K().dirty(); } } },
         { id: 'trace', title: 'Trace the cook line', kind: 'do', cardAt: 'bl', page: 0, zones: () => traceZones(RE.gas, K().GAS_MAIN, K().P101),
-          body: '1. Click 1.25in BI in the sidebar, then [[Polyline]] (or press P).\n2. Click the meter, the corner where the run turns west behind the cook line, and its end at the range.\n3. Press Enter.',
-          target: ['#polylineBtn', '#polylineBtnSidebar'], check: () => allDone(traceZones(RE.gas, K().GAS_MAIN, K().P101)),
+          body: '1. 1.25in BI is the active line type, lit in the sidebar (if it is not, click it once), then click [[Polyline]] (or press P).\n2. Click the meter, the corner where the run turns west behind the cook line, and its end at the range.\n3. Press Enter.',
+          target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(traceZones(RE.gas, K().GAS_MAIN, K().P101)),
           action: { label: 'Trace it for me', run: () => { const lt = lineType(RE.gas) || K().makeLineType('1.25in BI', '#e85447'); if (polylinesOn(RE.gas).length) return; tracePlan(lt, gasFlat(), 'Gas main'); } } },
         { id: 'bends', title: 'Elbows from the bends', kind: 'do',
           body: '1. Click the pencil beside 1.25in BI.\n2. Turn on [[Fittings from bends]] and click [[Done]].\nThe corner counts a 90. Threaded steel elbows are priced each, so this row matters more on gas than on anything else.',
           target: ['#counterLineTypeDetailsModal .modal-card', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineType(RE.gas); return !!(lt && lt.bendFittings && lt.bendFittings.enabled); },
+          check: () => K().someLineType(RE.gas, (lt) => lt.bendFittings && lt.bendFittings.enabled),
           action: { label: 'Turn it on for me', run: () => enableBends(lineType(RE.gas)) } },
         { id: 'drops', title: 'Count the drops', kind: 'do', cardAt: 'bl', page: 0, zones: () => circlesOn(K().P101, RE.gasDrop, SPOTS().gasDrop, 12),
           body: 'Each dot on the run behind the cook line is a drop with a shutoff to one appliance (IFGC 409.5 wants a valve at every one).\n1. Make a Gas Drop w/ Shutoff counter.\n2. Click the four dots under the range, the flat top and the two fryers.',
@@ -616,7 +620,7 @@
         { id: 'hangers', title: 'A hanger row of your own', kind: 'do',
           body: 'Ahead of the first drop, so one valve cuts the whole line. A note that starts with RFI: is a flag; [[Copy RFI Flags]] under EXPORT OPTIONS collects every one for the GC, and the ledger in the header lists them.\nThe rulebook has no steel row yet, so Bid Check is quiet about the gas line. IPC Table 308.5 hangs steel pipe every 12 ft.\n1. Click the pencil beside 1.25in BI.\n2. Under [[Child counts]], add a row: Hanger, 1 per 12 ft.\n3. Click [[Done]].',
           target: ['#childCountsGroup', '#lineTypesList .edit-btn', '#lineTypesSectionTitle'],
-          check: () => { const lt = lineType(RE.gas); return !!(lt && (lt.childCounts || []).some((ch) => ch.per === 'ft')); },
+          check: () => K().someLineType(RE.gas, (lt) => (lt.childCounts || []).some((ch) => ch.per === 'ft')),
           action: { label: 'Add Hanger · 1 per 12 ft', run: () => { const lt = lineType(RE.gas); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: 12 }]; K().dirty(); } } },
       ],
       done: 'The gas from the meter to the range, its elbows and drops, the valve nobody drew flagged where it belongs, and hangers from a row you wrote.\nNext: [[Learn]] → Chapter 7, the enlarged plan and the typical.',
@@ -671,7 +675,7 @@
       seed() { scaleP101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Every fixture under its tag, every run by size and material: the service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas. Chapters 2 to 7 taught each of them; this is all of them on one sheet, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo see the finished sheet instead, click Skip this step: the next card compares against the reference.',
+          body: 'Every fixture under its tag, every run by size and material: the service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas. Chapters 2 to 7 taught each of them; this is all of them on one sheet, by hand.\n1. Count and trace until the status line stops naming what is missing.\nTo have the app lay it all instead, click [[Show me where]] and then its button; Skip this step moves on with the sheet as it is, and the next card compares it against the reference.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
@@ -682,8 +686,11 @@
           target: ['#legendSettingsModal .modal-card', '#summarySectionTitle'], check: () => K().modalUp('legendSettingsModal'),
           action: { label: 'Open Summary Legend', run: () => { if (App.openLegendSettingsModal) App.openLegendSettingsModal(); } } },
         { id: 'pdfs', title: 'The marked-up set', kind: 'do', hold: true,
-          body: '1. Under EXPORT OPTIONS, click [[Export PDFs]].\nChoose the sheets, set marker and line sizes for print, and let the report and the noted sheets ride along. This is the set the GC reads and the foreman builds from.',
-          target: ['#specificPagesModal .modal-card', '#specificPages', '#exportOptionsSectionTitle'], check: () => K().modalUp('specificPagesModal'),
+          body: '1. Under EXPORT OPTIONS, click [[Export PDFs]]. It shows once the sheet carries a mark: with the takeoff skipped there is nothing to export, and Next moves on.\nChoose the sheets, set marker and line sizes for print, and let the report and the noted sheets ride along. This is the set the GC reads and the foreman builds from.',
+          // Export PDFs shows only once the sheet carries a mark; after the takeoff step's Skip there is
+          // nothing to export, the button is hidden, and the step would hold a reader for good (by
+          // hand, 2026-09-25). Then it passes and says why.
+          target: ['#specificPagesModal .modal-card', '#specificPages', '#exportOptionsSectionTitle'], check: () => K().modalUp('specificPagesModal') || !App.projectHasAnyCanvasMarkup(),
           action: { label: 'Open Export PDFs', run: () => { if (App.openSpecificPagesModal) App.openSpecificPagesModal(); else el('specificPages').click(); } } },
       ],
       done: 'The whole sheet, counted and traced, checked against the reference, and on paper.\nNext: [[Learn]] → Chapter 9, the bid.',

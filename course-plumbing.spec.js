@@ -301,11 +301,12 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     expect(await circles()).toBe(4);
     await page.click('#addCounter');
     await page.waitForSelector('#counterModal.visible');
-    expect(await circles()).toBe(0);
+    // the zones redraw on the tour's 400 ms tick, so poll: a read right after the dialog opened failed
+    // under a loaded 3-worker run (Expected 0, Received 4) and passed alone (review, 2026-09-25)
+    await expect.poll(circles).toBe(0);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('#counterModal.visible'));
-    await page.waitForTimeout(400);
-    expect(await circles()).toBe(4);
+    await expect.poll(circles).toBe(4);
     // the riser's stack: a "4in PVC" of the reader's own beside the chapter's, the trace made with the reader's
     await startOnDevice(page, 'riser', errors);
     await page.evaluate(() => { window.state.lineTypes.unshift({ id: 'mine-pvc', name: '4in PVC', color: '#888888' }); window.App.updateUI(); });

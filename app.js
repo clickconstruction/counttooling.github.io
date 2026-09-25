@@ -2493,7 +2493,6 @@
     updateUI();
   }
 
-  // SECTION: UI Render Functions
   // SECTION: Recent bids
   // One writer: whatever bid the session is in becomes the most recent one.
   // Hooking the CURRENT project rather than each intake covers load, first
@@ -2521,6 +2520,7 @@
     pushRecentBid(id, name);
   }
 
+  // SECTION: UI Render Functions
   function updateUI() {
     const t0 = performance.now();
     // LEARN-LEAK: a lesson's palette leaves with its sheets (features/lessons.js), before the
@@ -3151,6 +3151,7 @@
   // call time. New publish-only deps: pageHasAnyAnnotations, startRename,
   // exitEditMode (registry block).
 
+  // SECTION: Placing selection (setActiveCounterType / setActiveLineType)
   /*
    * Selecting a counter / line type for placing. These are the ONE path: the
    * sidebar row click and the Quick Keys number hotkeys both call them, so the

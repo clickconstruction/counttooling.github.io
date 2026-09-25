@@ -5,7 +5,7 @@
  * longer hides the next four — all failures are reported in one pass.
  *
  * Steps mirror the old chain exactly: lint, unit tests, the generator
- * `--check`s (toc, filemap, macros, guides, rules, icons — D18 added
+ * `--check`s (toc, filemap, projectmap's structural invariants, macros, guides, rules, icons — D18 added
  * `build:icons --check`), the service-worker stamp check, the brand-token
  * verifier, the punch-list link check, and the lesson rules check (a tour, lesson or
  * course step that teaches a rulebook number names the rule and says its number).
@@ -22,6 +22,7 @@ const STEPS = [
   { name: 'unit tests', cmd: 'npm', args: ['run', 'test:unit'] },
   { name: 'build:toc --check', cmd: 'node', args: ['scripts/build-toc.js', '--check'] },
   { name: 'build:filemap --check', cmd: 'node', args: ['scripts/build-filemap.js', '--check'] },
+  { name: 'build:projectmap --check', cmd: 'node', args: ['scripts/build-projectmap.js', '--check'] },
   { name: 'build:macros --check', cmd: 'node', args: ['scripts/build-macros.js', '--check'] },
   { name: 'build:guides --check', cmd: 'node', args: ['scripts/build-guides.js', '--check'] },
   { name: 'build:rules --check', cmd: 'node', args: ['scripts/build-rules.js', '--check'] },

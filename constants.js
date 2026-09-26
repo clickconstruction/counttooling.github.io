@@ -120,11 +120,17 @@ function normalizeProjectCodes(raw) {
 // Lines this-sheet toggle) are a DEVICE preference: app.js starts state from these
 // defaults, merges localStorage `counterSettings` / `lineTypeSettings` over them at boot,
 // and writes the blob back on every change (saveDisplaySettings). Never in the project.
-const COUNTER_SETTINGS_DEFAULTS = { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+// ringSize is a percent of the marker, on the Ring size slider's 50 to 200 (MAP-RING-DEFAULT:
+// it was 1 until 2026-09-26, a ring 1% of the marker that drew nothing, under the slider).
+const COUNTER_SETTINGS_DEFAULTS = { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 100, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
 const LINE_TYPE_SETTINGS_DEFAULTS = { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false, showOnlyLinesOnCurrentPage: false };
 // The sidebar filter scope and its two legacy page-only booleans keep their own device
 // keys (counterSidebarFilterScope / lineTypeSidebarFilterScope), so the blob leaves them out.
 const DISPLAY_SETTINGS_SCOPE_FIELDS = ['sidebarFilterScope', 'showOnlyCountersOnCurrentPage', 'showOnlyLineTypesOnCurrentPage'];
+// A number under its slider's minimum (app/index.html) is not one the dialog can show: a
+// stored one reads as the default. The ring size is the one that happened: devices that
+// saved their settings while its default was 1 stored that 1 (MAP-RING-DEFAULT).
+const DISPLAY_SETTINGS_MINIMUMS = { ringSize: 50 };
 // The fields of `raw` worth keeping for a device: only the defaults' own keys, each the
 // default's type (a number finite), the scope fields left out. Used both ways: what is
 // written from state, and what a stored (maybe stale or corrupt) blob may set at boot.
@@ -136,6 +142,7 @@ function displaySettingsFields(defaults, raw) {
     const v = raw[k];
     if (typeof v !== typeof defaults[k]) return;
     if (typeof v === 'number' && !Number.isFinite(v)) return;
+    if (typeof v === 'number' && k in DISPLAY_SETTINGS_MINIMUMS && v < DISPLAY_SETTINGS_MINIMUMS[k]) return;
     out[k] = v;
   });
   return out;
@@ -292,7 +299,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     TOOL, SCALE_MODES, PLUMBING_DEFAULTS, LINE_DEFAULTS, COLORS, SCALE_PRESETS,
     TRADES, TRADE_LABELS, TRADE_QUICK_PROFILES, ELECTRICAL_DEFAULTS, HVAC_DEFAULTS, DEFAULT_MAKE_UP_FT, CODE_EDITIONS, CODE_DEFAULTS, normalizeProjectCodes,
-    COUNTER_SETTINGS_DEFAULTS, LINE_TYPE_SETTINGS_DEFAULTS, DISPLAY_SETTINGS_SCOPE_FIELDS, displaySettingsFields,
+    COUNTER_SETTINGS_DEFAULTS, LINE_TYPE_SETTINGS_DEFAULTS, DISPLAY_SETTINGS_SCOPE_FIELDS, DISPLAY_SETTINGS_MINIMUMS, displaySettingsFields,
     AUTO_SAVE_INTERVAL_MS, AUTOSAVE_TIMEOUT_MS, STORAGE_INFO_TIMEOUT_MS, CLIENT_PROBE_TIMEOUT_MS,
     CLIENT_RECYCLE_COOLDOWN_MS, DIRTY_SNAPSHOT_THRESHOLD_MS, LEGEND_SCALE_MIN, LEGEND_SCALE_MAX, CHECK_IN_TIMEOUT_MS, LONG_IDLE_PROBE_MS,
     TURN_IN_STALENESS_MS, AUTOSAVE_BACKOFF_LEVELS_MS, AUTOSAVE_BANNER_THRESHOLD, AUTOSAVE_RECOVERY_THRESHOLD,

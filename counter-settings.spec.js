@@ -67,4 +67,47 @@ test.describe('window.App registry pilot - Counter settings modal', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // MAP-RING-DEFAULT: the ring size default was 1, under the Ring size slider's minimum
+  // of 50, so the dialog showed "1" beside a slider sitting at 50 (and a ring at 1% of
+  // the marker draws nothing). Every slider's number is the value its slider sits at, on
+  // a fresh device and on one that stored the old 1 (MAP-SETTINGS persisted it).
+  test('every slider shows the number it sits at, on a fresh device and over a stored ring size of 1', async ({ page }) => {
+    const errors = [];
+    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    const boot = async () => page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const shownVsSlider = () => page.evaluate(() => {
+      window.App.openCounterSettingsModal();
+      const out = {};
+      ['counterSize', 'counterOpacity', 'counterOutline', 'counterNumberSize', 'counterRingSize', 'counterRingOpacity'].forEach((id) => {
+        out[id] = { shown: document.getElementById(id + 'Val').textContent, slider: /** @type {HTMLInputElement} */ (document.getElementById(id)).value };
+      });
+      window.App.hideModal('counterSettingsModal');
+      return { out, ringSize: window.state.counterSettings.ringSize };
+    });
+    const expectMatched = (res) => {
+      Object.entries(res.out).forEach(([id, v]) => expect(v.shown, id).toBe(v.slider));
+      expect(res.out.counterRingSize.shown).toBe('100');
+      expect(res.ringSize).toBe(100);
+    };
+
+    await page.goto('/app/');
+    await boot();
+    await page.evaluate(() => { localStorage.removeItem('counterSettings'); });
+    await page.reload();
+    await boot();
+    expectMatched(await shownVsSlider());
+
+    // A device that saved its settings while the default was 1 reads the default.
+    await page.evaluate(() => { localStorage.setItem('counterSettings', JSON.stringify({ size: 30, showRings: true, ringSize: 1 })); });
+    await page.reload();
+    await boot();
+    const stored = await shownVsSlider();
+    expectMatched(stored);
+    expect(stored.out.counterSize.shown).toBe('30');
+    expect(await page.evaluate(() => window.state.counterSettings.showRings)).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
 });

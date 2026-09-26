@@ -135,9 +135,20 @@ function createSaveEngine(ctx) {
   let dirtyGeneration = 0;
   let dirtyStartedAt = 0;
 
+  // MAP-EMPTY-SAVE (map D29): the canvas-only state load-project.js builds when a
+  // project's PDF is not in memory. The project is open, but state.pages is [] and the
+  // saved marks wait in pendingCanvasLoad.data until pdf-intake.js re-attaches the PDF
+  // (which re-hydrates the palette from that same saved data). Anything the engine
+  // wrote then would carry pages: [] over those marks, so dirty tracking, the autosave
+  // and the takeoff backup all hold until the pages exist.
+  function isCanvasOnlyPending(state) {
+    return !!(state && state.pendingCanvasLoad && !(state.pages && state.pages.length));
+  }
+
   function markProjectDirty() {
     const state = ctx.getState();
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
+    if (isCanvasOnlyPending(state)) return;
     const wasDirty = autoSaveDirty;
     autoSaveDirty = true;
     dirtyGeneration++;
@@ -299,6 +310,9 @@ function createSaveEngine(ctx) {
     const state = ctx.getState();
     if (!BACKUP_PDF_TO_INDEXEDDB) return;
     if (!state.pages.length && !state.counters.length && !state.lineTypes.length) return;
+    // MAP-EMPTY-SAVE: a canvas-only session would stamp pageCanvases: [] under the
+    // project's key, newer than the row, and the next load prefers the newer backup.
+    if (isCanvasOnlyPending(state)) return;
     if (takeoffBackupWriteInFlight) {
       try { saveDebugLog('takeoff_backup_skip_inflight', {}); } catch (_) {}
       return takeoffBackupWriteInFlight;
@@ -2562,6 +2576,14 @@ function createSaveEngine(ctx) {
     if (!ctx.getState().pages.length && !ctx.getState().currentProjectId) {
       saveDebugLog('autosave.skip', { runId, reason: 'no_pages_no_project' });
       return { ok: false, error: null };
+    }
+    if (isCanvasOnlyPending(ctx.getState())) {
+      // MAP-EMPTY-SAVE: nothing to write until the PDF is re-attached, so nothing is
+      // pending either. ok (not an error) so Turn In and the save-before-load gate
+      // go on to release the lock rather than report a failed save.
+      autoSaveDirty = false;
+      saveDebugLog('autosave.skip', { runId, reason: 'canvas_only_pending_pdf' });
+      return { ok: true, skipped: true, reason: 'canvas_only_pending_pdf' };
     }
     if (ctx.getState().isViewer) {
       saveDebugLog('autosave.skip', { runId, reason: 'viewer' });

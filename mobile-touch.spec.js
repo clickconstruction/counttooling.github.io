@@ -16,6 +16,11 @@
  *    "Click …"), the Set Scale info line says tap, the "(right-click …)"
  *    tooltip suffixes are stripped (static titles at boot, dynamic writers via
  *    withRightClickHint), and the ⇧Q chord chips hide (pointer: coarse CSS).
+ * 4. R08: a quick touch tap on the sheet places through the live path (the aim
+ *    timer's synthetic click into handleCanvasClick): a Counter marker, Polyline
+ *    vertices, a Highlight, a Multiply Zone (whose multiplier stays unfocused on
+ *    touch, D22; the mouse focus is pinned by lessons.spec.js and tutorial.spec.js),
+ *    and a Note, added and then reopened by a tap on it.
  *
  * (The zoom-rail half of B9 — stays until dismissed, no ~5s idle auto-fade —
  * lives in zoom-rail.spec.js.)
@@ -230,6 +235,106 @@ test.describe('B9: desktop wording is untouched', () => {
     });
     expect(await page.locator('#statusMode').textContent()).toContain('Click to place marker');
     expect(await page.locator('#counterBtn').getAttribute('title')).toBe('Cleanout (right-click for settings)');
+
+    expect(errors).toEqual([]);
+  });
+});
+
+// R08 (2026-09-26): a quick touch tap on the sheet reaches handleCanvasClick through the
+// live touch path. A placement tool is an aim tool, so the touchstart starts the aim timer
+// and a release before it fires dispatches one synthetic click (a tool that is not an aim
+// tool, Move or Edit polyline, rides the long-press timer's click instead).
+// Real touches (page.touchscreen, hasTouch) at phone width, one item per tap pair, and no
+// duplicate from a compatibility mouse click.
+test.describe('R08: a quick touch tap places through the live path', () => {
+  test.use({ viewport: MOBILE, hasTouch: true });
+
+  // Client coords of a page fraction, and a check that the canvas is what a finger there touches.
+  const pagePt = async (page, fx, fy) => {
+    const pt = await page.evaluate(({ fx, fy }) => {
+      const s = window.state; const p = s.pages[s.currentPage];
+      const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+      const r = document.getElementById('canvasWrapper').getBoundingClientRect();
+      const x = Math.round(r.left + (vp.width * fx) * s.zoom + s.pan.x), y = Math.round(r.top + (vp.height * fy) * s.zoom + s.pan.y);
+      const el = document.elementFromPoint(x, y);
+      return { x, y, onCanvas: !!(el && el.closest('#canvasWrapper')) };
+    }, { fx, fy });
+    expect(pt.onCanvas).toBe(true);
+    return pt;
+  };
+  const ann = (page) => page.evaluate(() => {
+    const a = window.App.ensureActiveCanvas(window.state.pages[window.state.currentPage]).annotations;
+    return { markers: (a.counterMarkers['r08-c'] || []).length, highlights: (a.highlights || []).length, notes: (a.notes || []).length };
+  });
+  const tap = async (page, pt) => { await page.touchscreen.tap(pt.x, pt.y); await page.waitForTimeout(150); };
+
+  test('Counter, Polyline, Highlight, Multiply Zone and Note each take a quick tap', async ({ page }) => {
+    const errors = [];
+    await bootWithPdf(page, errors);
+    expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)).toBe(true);
+    // Polyline asks for a scale first.
+    await page.evaluate(() => window.App.openScaleModal());
+    await page.locator('#scalePresetsList button').first().click();
+    await page.waitForFunction(() => !!window.state.pages[window.state.currentPage].scale, null, { timeout: 5000 });
+
+    // Counter: one tap, one marker.
+    await page.evaluate(() => {
+      window.state.counters.push({ id: 'r08-c', name: 'Cleanout', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547' });
+      window.App.setActiveCounterType('r08-c');
+    });
+    await tap(page, await pagePt(page, 0.3, 0.3));
+    expect((await ann(page)).markers).toBe(1);
+    await tap(page, await pagePt(page, 0.35, 0.3));
+    expect((await ann(page)).markers).toBe(2);
+
+    // Polyline: each tap is one vertex.
+    await page.evaluate(() => {
+      window.state.lineTypes.push({ id: 'r08-lt', name: 'Cold', color: '#4a9eff', curveStyle: 'straight' });
+      window.state.activeLineTypeId = 'r08-lt';
+      document.getElementById('polylineBtn').click();
+    });
+    expect(await page.evaluate(() => window.state.tool)).toBe(await page.evaluate(() => window.App.TOOL.POLYLINE));
+    await tap(page, await pagePt(page, 0.3, 0.5));
+    await tap(page, await pagePt(page, 0.5, 0.5));
+    await tap(page, await pagePt(page, 0.5, 0.6));
+    expect(await page.evaluate(() => (window.state.drawingPolyline?.points || []).length)).toBe(3);
+    await page.evaluate(() => document.getElementById('moveBtn').click());
+
+    // Highlight: corner, corner, one highlight.
+    await page.evaluate(() => { document.getElementById('highlightBtn').click(); window.App.closeHighlightPanel && window.App.closeHighlightPanel(); });
+    await tap(page, await pagePt(page, 0.2, 0.2));
+    expect(await page.evaluate(() => !!window.state.highlightStart)).toBe(true);
+    await tap(page, await pagePt(page, 0.3, 0.25));
+    expect((await ann(page)).highlights).toBe(1);
+    expect(await page.evaluate(() => window.state.highlightStart)).toBe(null);
+
+    // Multiply Zone: corner, corner, the dialog opens, and on touch the multiplier is not
+    // focused (D22: the on-screen keyboard would cover the preview).
+    await page.evaluate(() => document.getElementById('multiplyZoneBtn').click());
+    await tap(page, await pagePt(page, 0.6, 0.2));
+    await tap(page, await pagePt(page, 0.8, 0.3));
+    await expect(page.locator('#multiplyZoneModal')).toHaveClass(/visible/);
+    await page.waitForTimeout(200);
+    expect(await page.evaluate(() => document.activeElement && document.activeElement.id)).not.toBe('multiplyZoneMultiplier');
+    await page.locator('#multiplyZoneMultiplier').fill('3');
+    await page.locator('#multiplyZoneApply').click();
+    await page.waitForFunction(() => (window.App.ensureActiveCanvas(window.state.pages[window.state.currentPage]).annotations.multiplyZones || []).some((z) => z.multiplier === 3), null, { timeout: 3000 });
+
+    // Note: a tap on the sheet opens Add Note; a tap on that note opens it for edit.
+    await page.evaluate(() => document.getElementById('noteBtn').click());
+    const n = await pagePt(page, 0.4, 0.8);
+    await tap(page, n);
+    await expect(page.locator('#noteModal')).toHaveClass(/visible/);
+    expect(await page.locator('#noteModalTitle').textContent()).toBe('Add Note');
+    await page.locator('#noteModalText').fill('R08 note');
+    await page.locator('#noteModalDone').click();
+    expect((await ann(page)).notes).toBe(1);
+    await tap(page, n);
+    await expect(page.locator('#noteModal')).toHaveClass(/visible/);
+    expect(await page.locator('#noteModalTitle').textContent()).toBe('Edit Note');
+    expect(await page.locator('#noteModalText').inputValue()).toBe('R08 note');
+    await page.locator('#noteModalCancel').click();
+    expect((await ann(page)).notes).toBe(1);
 
     expect(errors).toEqual([]);
   });

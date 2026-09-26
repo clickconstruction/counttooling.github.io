@@ -161,6 +161,35 @@ Pinned by water-fixtures.spec.js: the Shower picked before a search, after searc
 after clearing the search reads the same name and the same fixture units. It was red before the fix
 (4 before the search, empty after).
 
+## refactor(input): a touch tap and a click share one commit path; the touch copy is gone (R08, 2026-09-26)
+
+The decomposition map's R08, with its defect D22. app.js carried `handleTouchAsCanvasTap`, a
+144-line copy of `handleCanvasClick` for Quick Line, Highlight, Multiply Zone, Scale Zone, Room,
+Delete Zone and Note, called from touchend only when the long-press timer was running. That timer
+starts only for a tool that is not an aim tool, and every tool the copy handled became an aim tool
+with the loupe work, so a quick tap on any of them already went the other way: the aim timer's
+synthetic click into `handleCanvasClick`. Proved before the delete: with a `throw` at the top of the
+copy, 40 touch tests (mobile-touch, aim-loupe-phase2, measure-loupe, mobile-burger-menu,
+bend-fittings, chain, water-size and tutorial's tablet walks) stayed green, and the only way to reach
+it was to change the tool between touchstart and touchend.
+
+The copy is deleted, with the 25px tap allowance it shared (it named only aim tools, so the 10px
+move test was always the one in force) and `state.longPressStart`, which only that allowance read.
+The long-press branch of touchend now always sends the synthetic click, so a tap on Move or Edit
+polyline reaches `handleCanvasClick` the way it did.
+
+D22: the Multiply Zone dialog opens with the caret in the multiplier, and the comment on
+`App.focusMultiplyZoneInput` said mouse opens only, since on a phone the keyboard would cover the
+preview. The guard it counted on was the copy, which never ran, so a tap focused the field on touch
+too. The guard is in `App.focusMultiplyZoneInput` itself now (features/zone-modals.js): nothing on a
+coarse pointer (`App.isCoarsePointer`). A mouse still gets the caret, which the Repeats lesson's
+"Type 4" relies on.
+
+Pinned by the new R08 case in mobile-touch.spec.js: real touch taps at phone width place a Counter
+marker, three Polyline vertices, a Highlight, a Multiply Zone (the multiplier left unfocused, red on
+main) and a Note, then reopen the Note with a tap on it. zone-modals, note and tool-resets are
+unchanged and green.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

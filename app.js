@@ -327,7 +327,7 @@
     recentBids: [],
     recentDrops: [],
     editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
-    longPressStart: null, pinchStartDistance: null, pinchStartZoom: null,
+    pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
     aimOffsetPx: 0, aimMouseDownClient: null, justFinishedLoupe: false,
@@ -5955,9 +5955,9 @@
     placeFixedMenu(menu, x, y);
   }
 
-  // Commit one Quick Line point (start, then end). Shared by the desktop click path,
-  // the mobile tap path (handleTouchAsCanvasTap), and the loupe-release path — so all
-  // three apply identical snap (H/V) + bounds handling. Callers render + updateUI.
+  // Commit one Quick Line point (start, then end). Shared by the click path (a mouse
+  // click, or a touch tap's synthetic click) and the loupe-release path, so both
+  // apply identical snap (H/V) + bounds handling. Callers render + updateUI.
   function commitLinePoint(pdf) {
     const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
     if (!state.quickLineStart) {
@@ -7085,7 +7085,6 @@
     } else if (e.touches.length === 1) {
       const c = getClientCoords(e);
       state.touchPanStart = { x: c.x, y: c.y, panX: state.pan.x, panY: state.pan.y };
-      state.longPressStart = c;
       if (isAimingTool()) {
         // Press-and-hold summons the aim loupe; suppress the context-menu long-press.
         state.aimPressTimer = setTimeout(() => { state.aimPressTimer = null; enterAiming(c); }, AIM_PRESS_MS);
@@ -7180,156 +7179,13 @@
         e.preventDefault();
         state.pan = { x: state.touchPanStart.panX + (c.x - state.touchPanStart.x), y: state.touchPanStart.panY + (c.y - state.touchPanStart.y) };
         updateContainerTransform();
-      } else if (moved && state.longPressTimer && state.longPressStart) {
-        const tapCancelThreshold = (state.tool === TOOL.LINE) || (state.tool === TOOL.POLYLINE && state.drawingPolyline) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing()) || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) ? 25 : 10;
-        if (ptDist(state.longPressStart, c) > tapCancelThreshold) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+      } else if (moved && state.longPressTimer) {
+        // A finger that travels is not a hold. Only a non-aim tool arms this timer,
+        // so the 25px allowance the aim tools had could never apply (R08).
+        clearTimeout(state.longPressTimer); state.longPressTimer = null;
       }
     }
   }, { passive: false });
-
-  function handleTouchAsCanvasTap(clientX, clientY) {
-    if (!state.pages.length) return;
-    const rect = (document.getElementById('canvasWrapper') || document.querySelector('.canvas-wrapper'))?.getBoundingClientRect();
-    if (!rect) return;
-    const pt = { x: clientX - rect.left, y: clientY - rect.top };
-    const pdf = canvasToPdf(pt.x, pt.y);
-    state.mousePos = pdf;
-    if (state.tool === TOOL.LINE) {
-      commitLinePoint(pdf);
-      renderAnnotations();
-      updateUI();
-      return;
-    }
-    if (state.tool === TOOL.HIGHLIGHT) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      const page = state.pages[state.currentPage];
-      if (!state.highlightStart) {
-        state.highlightStart = pdf;
-      } else {
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) {
-          pushUndoSnapshotCurrentPage();
-          if (!canvas.annotations.highlights) canvas.annotations.highlights = [];
-          const x1 = state.highlightStart.x, y1 = state.highlightStart.y, x2 = pdf.x, y2 = pdf.y;
-          canvas.annotations.highlights.push({ x1, y1, x2, y2, color: '#e8c547', opacity: 0.25, id: uid() });
-          markProjectDirty();
-        }
-        state.highlightStart = null;
-      }
-      renderAnnotations();
-      updateUI();
-      return;
-    }
-    if (state.tool === TOOL.MULTIPLY_ZONE) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      const page = state.pages[state.currentPage];
-      if (!state.multiplyZoneStart) {
-        state.multiplyZoneStart = pdf;
-      } else {
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) {
-          const x1 = Math.min(state.multiplyZoneStart.x, pdf.x), x2 = Math.max(state.multiplyZoneStart.x, pdf.x);
-          const y1 = Math.min(state.multiplyZoneStart.y, pdf.y), y2 = Math.max(state.multiplyZoneStart.y, pdf.y);
-          const zones = canvas.annotations.multiplyZones || [];
-          const overlaps = zones.some(z => rectsOverlap(x1, y1, x2, y2, z.x1, z.y1, z.x2, z.y2));
-          if (overlaps) {
-            showToast('Cannot place multiply zone:\nIt overlaps an existing zone.\nItems cannot be multiplied more than once.', 4000);
-            state.multiplyZoneStart = null;
-          } else {
-            const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
-            const lenStr = formatFeet(counts.lengthRealSum, page?.scale);
-            state.pendingMultiplyZone = { x1, y1, x2, y2 };
-            state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
-            const mzTitleElTouch = document.querySelector('#multiplyZoneModal h2');
-            if (mzTitleElTouch) mzTitleElTouch.textContent = 'Multiply Zone';
-            document.getElementById('multiplyZonePreview').textContent = multiplyZonePreviewText(counts, lenStr);
-            document.getElementById('multiplyZoneMultiplier').value = String(state.pendingMultiplyZoneValue);
-            showModal('multiplyZoneModal');
-          }
-        }
-        state.multiplyZoneStart = null;
-      }
-      renderAnnotations();
-      updateUI();
-      return;
-    }
-    if (state.tool === TOOL.ROOM) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Room Sizer'); return; }
-      if (!state.roomBoxStart) {
-        state.roomBoxStart = pdf;
-      } else {
-        const x1 = Math.min(state.roomBoxStart.x, pdf.x), x2 = Math.max(state.roomBoxStart.x, pdf.x);
-        const y1 = Math.min(state.roomBoxStart.y, pdf.y), y2 = Math.max(state.roomBoxStart.y, pdf.y);
-        state.roomBoxStart = null; state.scheduleBoxStart = null;
-        App.openRoomBoxModal({ x1, y1, x2, y2 });
-      }
-      renderAnnotations();
-      updateUI();
-      return;
-    }
-    if (state.tool === TOOL.SCALE_ZONE) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      if (!getPageScale(state.currentPage)) {
-        showSetScaleFirstToast('Scale Zone');
-        return;
-      }
-      const page = state.pages[state.currentPage];
-      if (!state.scaleZoneStart) {
-        state.scaleZoneStart = pdf;
-      } else {
-        const canvas = page && ensureActiveCanvas(page);
-        if (canvas) {
-          const x1 = Math.min(state.scaleZoneStart.x, pdf.x), x2 = Math.max(state.scaleZoneStart.x, pdf.x);
-          const y1 = Math.min(state.scaleZoneStart.y, pdf.y), y2 = Math.max(state.scaleZoneStart.y, pdf.y);
-          const szones = canvas.annotations.scaleZones || [];
-          const overlaps = szones.some(z => rectsOverlap(x1, y1, x2, y2, z.x1, z.y1, z.x2, z.y2));
-          if (overlaps) {
-            showToast('Cannot place scale zone:\nit overlaps an existing scale zone.', 4000);
-            state.scaleZoneStart = null;
-          } else {
-            state.scaleModalApplyTarget = 'zone';
-            state.pendingScaleZone = { x1, y1, x2, y2 };
-            state.pendingScaleZoneEdit = null;
-            const h2t = document.querySelector('#scaleModal h2');
-            if (h2t) h2t.textContent = 'Scale for zone';
-            App.openScaleModal();
-          }
-        }
-        state.scaleZoneStart = null;
-      }
-      renderAnnotations();
-      updateUI();
-      return;
-    }
-    if (state.tool === TOOL.DELETE_ZONE) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      const page = state.pages[state.currentPage];
-      if (!state.deleteZoneStart) {
-        state.deleteZoneStart = pdf;
-      } else {
-        const canvas = page && ensureActiveCanvas(page);
-        const ann = canvas?.annotations;
-        if (ann) {
-          const x1 = Math.min(state.deleteZoneStart.x, pdf.x), x2 = Math.max(state.deleteZoneStart.x, pdf.x);
-          const y1 = Math.min(state.deleteZoneStart.y, pdf.y), y2 = Math.max(state.deleteZoneStart.y, pdf.y);
-          openDeleteZoneForRect(ann, state.currentPage, x1, y1, x2, y2);
-        }
-        state.deleteZoneStart = null;
-      }
-      renderAnnotations();
-      updateUI();
-      return;
-    }
-    if (state.tool === TOOL.NOTE) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      App.openNoteModal('add', '', { x: pdf.x, y: pdf.y });
-      updateUI();
-      return;
-    }
-    const ev = new MouseEvent('click', { clientX, clientY, bubbles: true });
-    (cWrapper || pdfCanvas).dispatchEvent(ev);
-  }
 
   (cWrapper || pdfCanvas).addEventListener('touchend', (e) => {
     if (e.touches.length < 2) {
@@ -7386,13 +7242,12 @@
       state.longPressTimer = null;
       if (!state.longPressFired) {
         e.preventDefault();
+        // A quick tap on a tool that is not an aim tool (Move, Edit polyline): the
+        // same synthetic click the aim timer sends, so every tap reaches
+        // handleCanvasClick (R08 deleted the touch copy of it).
         const c = getClientCoords(e);
-        if (state.tool === TOOL.LINE || state.tool === TOOL.HIGHLIGHT || state.tool === TOOL.MULTIPLY_ZONE || state.tool === TOOL.SCALE_ZONE || state.tool === TOOL.ROOM || state.tool === TOOL.NOTE) {
-          handleTouchAsCanvasTap(c.x, c.y);
-        } else {
-          const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
-          (cWrapper || pdfCanvas).dispatchEvent(ev);
-        }
+        const ev = new MouseEvent('click', { clientX: c.x, clientY: c.y, bubbles: true });
+        (cWrapper || pdfCanvas).dispatchEvent(ev);
       }
       state.longPressFired = false;
     }

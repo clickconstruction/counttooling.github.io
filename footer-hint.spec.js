@@ -318,3 +318,182 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// MAP-HINTS (2026-09-26, the map's D01): signed in, the bar showed no tool hint and no live
+// readout at all; the ladder was composed only in the signed-out branch. The first three tests
+// reach the signed-in composition through the seam local-save-signal.spec.js uses (a session
+// object on state, with the committed config's SUPABASE_ENABLED), so CI without dev-auth
+// secrets covers it; the last one signs in for real and self-skips without DEV_AUTH_*.
+async function bootSignedInSeam(page, { width = 1600, height = 800 } = {}) {
+  await page.setViewportSize({ width, height });
+  await page.goto('/app/');
+  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+  if (!(await page.evaluate(() => !!window.App.SUPABASE_ENABLED))) return false;
+  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await page.evaluate(() => {
+    const s = window.state;
+    s.currentProjectName = 'Signed-in plan';
+    s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft' };
+    s.lineTypes = [{ id: 'lt1', name: '2in Waste', color: '#47c88e', curveStyle: 'straight' }];
+    s.activeLineTypeId = 'lt1';
+    s.supabaseSession = { user: { id: 'test-user', email: 'test@clickplumbing.com' } };
+    window.App.updateUI();
+    window.App.updateStatus();
+  });
+  return true;
+}
+
+test.describe('Signed-in bar shows the tool hint and live readouts (MAP-HINTS)', () => {
+  test('Line, Duct and Measure hints ride the signed-in bar, readout and all, with no leading bar', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    if (!(await bootSignedInSeam(page))) { test.skip(true, 'Supabase disabled in this config'); return; }
+    const mode = page.locator('#statusMode');
+    // Signed in: the Canvas label is the cloud branch's, and Move shows no hint.
+    await expect(page.locator('#statusCanvasLabel')).toContainText('Canvas');
+    expect(await mode.textContent()).not.toContain('Signed-in plan');
+
+    await page.evaluate(() => { window.state.tool = window.App.TOOL.LINE; window.App.updateUI(); window.App.updateStatus(); });
+    await expect(mode).toHaveText('Click start point');
+    await page.evaluate(() => {
+      window.state.quickLineStart = { x: 0, y: 0 };
+      window.state.mousePos = { x: 90, y: 0 };
+      window.App.updateStatus();
+    });
+    await expect(mode).toHaveText('Click end point: 10\'-0"');
+    await page.evaluate(() => { window.state.mousePos = { x: 45, y: 0 }; window.App.updateStatus(); });
+    await expect(mode).toHaveText('Click end point: 5\'-0"');
+
+    // The duct trace: "S = size" and the pounds, the one on-screen mention of the key.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.quickLineStart = null;
+      s.tool = window.App.TOOL.DUCT;
+      window.__realDuctReadout = window.App.ductLiveReadout;
+      window.App.ductLiveReadout = () => '24×12 · 38\'-6" · 267 lb · run 1,196 lb';
+      window.App.updateStatus();
+    });
+    await expect(mode).toHaveText('Click to trace duct · S = size: 24×12 · 38\'-6" · 267 lb · run 1,196 lb');
+    // An autosave in flight changes the labels beside the mode, not the hint.
+    await page.evaluate(() => {
+      window.__realSaving = window.App.isSaveInProgress;
+      window.App.isSaveInProgress = () => true;
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusCanvasLabel')).toHaveText('Canvas Uploading...');
+    await expect(mode).toContainText('S = size');
+    await page.evaluate(() => {
+      window.App.isSaveInProgress = window.__realSaving;
+      window.App.ductLiveReadout = window.__realDuctReadout;
+      window.state.tool = window.App.TOOL.MEASURE;
+      window.state.scaleMode = window.App.SCALE_MODES.POINT_A;
+      window.App.updateUI();
+      window.App.updateStatus();
+    });
+    await expect(mode).toHaveText('Click first point (or hold to aim)');
+    expect(errors).toEqual([]);
+  });
+
+  test('a signed-in viewer\'s line stays exactly as it was, Measure armed or not', async ({ page }) => {
+    if (!(await bootSignedInSeam(page))) { test.skip(true, 'Supabase disabled in this config'); return; }
+    const mode = page.locator('#statusMode');
+    const set = (tool, email) => page.evaluate(([t, e]) => {
+      const s = window.state;
+      s.isViewer = true;
+      s.lastSavedAt = null;
+      s.checkedOutEmail = e;
+      s.tool = window.App.TOOL[t];
+      s.scaleMode = window.App.SCALE_MODES.POINT_A;
+      window.App.updateStatus();
+    }, [tool, email]);
+    await set('NONE', null);
+    await expect(mode).toHaveText('Viewing, Available (check out to edit)');
+    await set('MEASURE', null);
+    await expect(mode).toHaveText('Viewing, Available (check out to edit)');
+    await set('MEASURE', 'estimator@clickplumbing.com');
+    await expect(mode).toHaveText('Viewing, estimator@clickplumbing.com is editing');
+  });
+
+  test('from laptop to phone the signed-in hint never costs the bar a row or overflows it', async ({ page }) => {
+    if (!(await bootSignedInSeam(page, { width: 1500, height: 900 }))) { test.skip(true, 'Supabase disabled in this config'); return; }
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters = [{ id: 'c1', name: 'Water Closet', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547' }];
+      const ann = window.App.getActiveAnnotations(s.pages[0]);
+      ann.counterMarkers.c1 = [{ x: 50, y: 50, id: 'm1' }];
+      s.tool = window.App.TOOL.DUCT;
+      window.App.ductLiveReadout = () => '24×12 · 38\'-6" · 267 lb · run 1,196 lb';
+      window.App.invalidateFooterTotals();
+      window.App.updateUI();
+    });
+    // Each width is read twice: Move (no hint, the bar as main renders it signed in) and the
+    // duct trace. The hint may be dropped, never allowed to push the actions down a row.
+    const sample = async (width, saving) => {
+      await page.setViewportSize({ width, height: 900 });
+      return page.evaluate((sv) => {
+        const s = window.state, App = window.App;
+        App.isSaveInProgress = () => sv;
+        const m = document.getElementById('statusMode');
+        const a = document.getElementById('statusBarActions');
+        const bar = m.parentElement;
+        s.tool = App.TOOL.NONE;
+        App.updateStatus();
+        const bareH = bar.offsetHeight;
+        s.tool = App.TOOL.DUCT;
+        App.updateStatus();
+        return {
+          hint: (m.textContent || '').includes('S = size'),
+          noNewRow: bar.offsetHeight <= bareH,
+          actionsBesideMode: a.offsetTop <= m.offsetTop,
+          oneLineBare: bareH < 40,
+          noOverflow: document.documentElement.scrollWidth <= window.innerWidth && bar.scrollWidth <= bar.clientWidth + 1,
+        };
+      }, saving);
+    };
+    const rows = [];
+    for (const w of [1500, 1300, 1150, 1000, 900, 800, 769, 600, 414, 375]) {
+      for (const saving of [false, true]) rows.push({ w, saving, ...(await sample(w, saving)) });
+    }
+    expect(rows.filter((r) => !r.noNewRow || !r.noOverflow), JSON.stringify(rows)).toEqual([]);
+    // Where the bare bar is one line, it stays one line (the 2026-08-14 contract).
+    expect(rows.filter((r) => r.oneLineBare && !r.actionsBesideMode), JSON.stringify(rows)).toEqual([]);
+    // Wide, the hint is there in both label states (the fit key carries the labels).
+    expect(rows.find((r) => r.w === 1500 && !r.saving).hint).toBe(true);
+    expect(rows.find((r) => r.w === 1500 && r.saving).hint).toBe(true);
+    // On a phone the mode has a zero flex basis and ellipsizes, so the hint takes no room
+    // and rides; the signed-in bar's second row there is the sync labels' own, hint or not.
+    for (const w of [414, 375]) expect(rows.find((r) => r.w === w && !r.saving).hint, JSON.stringify(rows)).toBe(true);
+  });
+
+  test('signed in for real (dev auth): the Line hint and its live readout', async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 800 });
+    await page.goto('/app/?devAuth=1');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const signedIn = await page.waitForFunction(() => !!window.state?.supabaseSession?.user, null, { timeout: 8000 }).catch(() => null);
+    if (!signedIn) { test.skip(true, 'Dev auth not configured or failed; set DEV_AUTH_EMAIL and DEV_AUTH_PASSWORD in config.local.js'); return; }
+    await page.evaluate(() => { if (window.App.isRestorePromptPending && window.App.isRestorePromptPending()) window.App.dismissLastSessionRestorePrompt(); });
+    // Open a plan and mark nothing, so no autosave creates a cloud project.
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    const opened = () => page.waitForFunction(() => window.state.pages.length === 1 && !document.querySelector('.modal-overlay.visible'), null, { timeout: 30000 });
+    const door = await Promise.race([
+      page.locator('#loadAnnotationsModal.visible').waitFor({ timeout: 30000 }).then(() => 'loadAnnotations'),
+      page.locator('#preparePdfModal.visible').waitFor({ timeout: 30000 }).then(() => 'prepare'),
+      opened().then(() => 'open'),
+    ]);
+    if (door === 'loadAnnotations') await page.locator('#loadAnnotationsSkip').click();
+    else if (door === 'prepare') await page.locator('#preparePdfDone').click();
+    await opened();
+    await page.evaluate(() => {
+      const s = window.state;
+      s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft' };
+      s.tool = window.App.TOOL.LINE;
+      s.quickLineStart = { x: 0, y: 0 };
+      s.mousePos = { x: 90, y: 0 };
+      window.App.updateUI();
+      window.App.updateStatus();
+    });
+    await expect(page.locator('#statusMode')).toContainText('Click end point: 10\'-0"');
+  });
+});

@@ -7,7 +7,9 @@
    * it is pure DOM chrome over state + save-engine getters): the footer totals
    * cache (computeFooterTotals / getFooterTotalsCached / invalidateFooterTotals),
    * the status-bar renderer (updateStatus — sync dot/square, mode line, tool
-   * hints, [count | length] totals), the Save Status summary-block data
+   * hints, [count | length] totals; four passes since MAP-HINTS, with the
+   * tool-hint ladder itself pure in status-hint-model.js and shown signed in
+   * as well as signed out), the Save Status summary-block data
    * (getCloudSaveSummary, consumed by features/save-status.js), and the
    * save-status bell state (updateSaveStatusIndicator — the hot-path bell;
    * the on-demand modal lives in features/save-status.js).
@@ -110,65 +112,57 @@
       : App.getPageScale(state.currentPage);
     return App.formatDistFeetInches(pdfPts, eff);
   }
-  // Worst-case stand-in for the wrap cache: keying the one-line fit verdict on
-  // the live number would re-run the forced layout read every mousemove — the
-  // exact thrash the (text @ width) cache exists to prevent (field feedback
-  // 2026-08-14). The fit is measured with this fixed placeholder instead, so
-  // the verdict is stable while the number grows and a growing readout can
-  // never wrap the bar mid-draw.
-  const HINT_READOUT_PLACEHOLDER = '88888\'-88"';
-  // Duct readout worst case (size · length · segment lb · run lb) — same
-  // fixed-placeholder rule as above so the wrap verdict stays stable while
-  // the live numbers grow (DUCT unit D2 rides the T2-09 seam).
-  const DUCT_READOUT_PLACEHOLDER = '88×88 · 8888\'-88" · 8,888 lb · run 88,888 lb';
-  // Chain readout worst case: the drop number varies, the counter name does
-  // not change per mousemove, so only the number rides the placeholder.
-  const CHAIN_READOUT_PLACEHOLDER = '+88.88 ft drop at counter';
 
-  function updateStatus() {
-    const state = App.state;
+  // updateStatus renders the bar in four passes (MAP-HINTS, 2026-09-26; the map's R05):
+  // renderSyncIndicators (dot, square, labels, and the mode text the sync state owns),
+  // composeMode (that text plus the tool hint, negotiated onto one line), renderTotals
+  // and renderMeasureChip. The tool hint itself is status-hint-model.js `toolHintFor`.
+  // Until this split the hint was composed only in the signed-out branch, so a signed-in
+  // estimator, which is every production estimator, never saw "Click start point", the
+  // live length readout, "S = size" or the duct pounds (the map's D01).
+
+  // The sync dot / square and their labels, and the mode text that belongs to the sync
+  // state: signed in, '' (the dot and labels say it) or the viewer line; signed out, the
+  // project name and the local-save stamp (B11), with its compact twin (D19).
+  // Returns { base, compact, hintable, fitSalt }: `hintable` false keeps the tool hint off
+  // (a save-progress message, a signed-in viewer), `fitSalt` is the text beside the
+  // mode that changes the bar's fit without changing the mode (the signed-in labels).
+  function renderSyncIndicators(state, cloudMode) {
     const lastLocalBackupAt = App.getLastLocalBackupAt();   // engine-owned (Stage 3)
-    const modeEl = document.getElementById('statusMode');
-    const coordsEl = document.getElementById('statusCoords');
     const dotEl = document.getElementById('statusBarDot');
     const squareEl = document.getElementById('statusBarSquare');
     const canvasLabelEl = document.getElementById('statusCanvasLabel');
     const pdfLabelEl = document.getElementById('statusPdfLabel');
     const pdfGroupEl = document.getElementById('statusPdfGroup');
-    let mode;
-    const cloudMode = App.SUPABASE_ENABLED && state.supabaseSession?.user;
     if (cloudMode) {
+      let base = '';
       if (pdfGroupEl) { pdfGroupEl.style.display = ''; }
       if (App.isSaveInProgress()) {
         if (dotEl) { dotEl.className = 'dot dot-yellow'; dotEl.title = 'Canvas sync: Uploading...'; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas Uploading...';
-        mode = '';
       } else if (state.lastSavedAt && !App.getAutoSaveDirty()) {
         let canvasTitle = 'Canvas sync: Synced with Cloud';
         if (state.lastSavedAt) canvasTitle += '\nCloud: ' + App.formatSaveTime(state.lastSavedAt);
         if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
         if (dotEl) { dotEl.className = 'dot dot-green'; dotEl.title = canvasTitle; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas';
-        mode = '';
       } else if (!state.pages.length) {
         if (dotEl) { dotEl.className = 'dot dot-grey'; dotEl.title = 'Canvas sync: Upload PDF to start a project'; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas';
         if (pdfLabelEl) pdfLabelEl.textContent = 'PDF - Upload PDF to start a project';
-        mode = '';
       } else if (state.isViewer) {
         let canvasTitle = 'Canvas sync: Viewing (read-only)';
         if (state.lastSavedAt) canvasTitle += '\nCloud: ' + App.formatSaveTime(state.lastSavedAt);
         if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
         if (dotEl) { dotEl.className = 'dot dot-yellow'; dotEl.title = canvasTitle; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas Viewing (read-only)';
-        mode = state.checkedOutEmail ? ('Viewing, ' + (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing') : 'Viewing, Available (check out to edit)';
+        base = state.checkedOutEmail ? ('Viewing, ' + (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing') : 'Viewing, Available (check out to edit)';
       } else {
         let canvasTitle = 'Canvas sync: Project not saved to cloud';
         if (state.lastSavedAt) canvasTitle += '\nCloud: ' + App.formatSaveTime(state.lastSavedAt);
         if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
         if (dotEl) { dotEl.className = 'dot dot-red'; dotEl.title = canvasTitle; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas';
-        mode = '';
       }
       if (squareEl) {
         const pdfSynced = App.getLastSaveIncludedPdf() || !!state.pdfStoragePath;
@@ -192,210 +186,206 @@
         else if (!state.pages.length) pdfLabelEl.textContent = 'PDF - Upload PDF to start a project';
         else pdfLabelEl.textContent = 'PDF: Not saved to cloud';
       }
-    } else {
-      let canvasTitle = 'Canvas sync: Local only';
-      if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
-      if (dotEl) { dotEl.className = 'dot dot-green'; dotEl.title = canvasTitle; }
-      if (canvasLabelEl) canvasLabelEl.textContent = '';
-      if (pdfGroupEl) pdfGroupEl.style.display = 'none';
-      if (App.isSaveInProgress() && App.getSaveProgressMessage()) {
-        mode = App.getSaveProgressMessage();
-      } else {
-        const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : 'none'))
-          + (state.currentProjectExternalRef ? ' · ' + state.currentProjectExternalRef : '');
-        let lastSavedSegment = 'not saved yet';
-        // Same text unless the local-save branch below offers a shorter twin.
-        let lastSavedSegmentCompact = null;
-        if (lastLocalBackupAt) {
-          // B11 (J12/J15): signed-out, the segment shows the local-save stamp
-          // the engine already tracks ("Saved on this device · 4:42 PM")
-          // instead of the permanent dash — the IDB backup lands ~1s after
-          // every change, so this replaces a false "never saved" signal.
-          // Narrow bars (<1280px, B10's footer-words threshold) compact the
-          // words to "Saved · 4:42 PM"; the mode is one text node so the swap
-          // is done here in JS — window.innerWidth, not a clientWidth read,
-          // because updateStatus runs per mousemove and must not force layout.
-          const timeStr = new Date(lastLocalBackupAt)
-            .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-          const words = window.innerWidth >= 1280 ? 'Saved on this device' : 'Saved';
-          lastSavedSegment = words + ' · ' + timeStr;
-          // D19 (J19 Friction #5): the compact twin is kept ready even on a
-          // wide bar. At ~1380 px the long stamp fits but pushes the tool hint
-          // over the one-line budget, and B11's fixed 1280 px threshold had no
-          // way to notice — the hint (and the duct readout with it) just
-          // vanished for the rest of the session. The fit negotiation below
-          // now spends this before it spends the hint.
-          lastSavedSegmentCompact = 'Saved · ' + timeStr;
-        } else if (state.lastSavedAt) {
-          const d = new Date(state.lastSavedAt);
-          const agoSec = (Date.now() - d.getTime()) / 1000;
-          const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-          const agoStr = App.formatAgo(agoSec);
-          lastSavedSegment = timeStr + ' | ' + agoStr;
-        } else {
-          lastSavedSegmentCompact = '';   // never saved: the compact twin is the name alone
-        }
-        // Nothing loaded: one plain phrase instead of "none · not saved yet".
-        const noProject = !state.pages.length && !state.currentProjectName;
-        mode = noProject ? 'No project open' : projectSegment + ' · ' + lastSavedSegment;
-        const modeCompact = (noProject || lastSavedSegmentCompact === null) ? mode
-          : (lastSavedSegmentCompact ? projectSegment + ' · ' + lastSavedSegmentCompact : projectSegment);
-        let toolHint = '';
-        // Wrap-cache variant of the hint: live length readout replaced by the
-        // fixed worst-case placeholder ('' = no readout, key on toolHint).
-        let toolHintKeyed = '';
-        const TOOL = App.TOOL, SCALE_MODES = App.SCALE_MODES;
-        // B9 (J15): touch talks "Tap", mouse talks "Click" — same hints, the
-        // trade's word for the device in hand (App.isCoarsePointer, live).
-        const press = App.isCoarsePointer && App.isCoarsePointer() ? 'Tap' : 'Click';
-        if (state.tool === TOOL.MEASURE) toolHint = state.aiming ? 'Hold + drag to aim; release to place' : (state.scaleMode === SCALE_MODES.POINT_A ? press + ' first point (or hold to aim)' : press + ' second point (or hold to aim)');
-        else if (state.tool === TOOL.SCALE) toolHint = state.scaleMode === SCALE_MODES.POINT_A ? press + ' first point' : press + ' second point';
-        else if (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) {
-          toolHint = state.tool === TOOL.LINE
-            ? (state.quickLineStart ? press + ' end point' : press + ' start point')
-            : press + ' to add points';
-          const readout = liveDrawReadout();
-          if (readout) {
-            toolHintKeyed = toolHint + ': ' + HINT_READOUT_PLACEHOLDER;
-            toolHint += ': ' + readout;
-          }
-        }
-        else if (state.tool === TOOL.DUCT) {
-          // Duct trace (features/duct-tool.js): the live length + pounds
-          // readout — "24×12 · 38'-6" · 267 lb · run 1,196 lb".
-          toolHint = press + ' to trace duct · S = size';
-          const readout = App.ductLiveReadout ? App.ductLiveReadout() : '';
-          if (readout) {
-            toolHintKeyed = toolHint + ': ' + DUCT_READOUT_PLACEHOLDER;
-            toolHint += ': ' + readout;
-          }
-        }
-        else if (state.tool === TOOL.HIGHLIGHT) toolHint = state.highlightStart ? press + ' second corner' : press + ' first corner';
-        else if (state.tool === TOOL.MULTIPLY_ZONE) toolHint = state.multiplyZoneStart ? press + ' second corner' : press + ' first corner';
-        else if (state.tool === TOOL.SCALE_ZONE) toolHint = state.scaleZoneStart ? press + ' second corner' : press + ' first corner';
-        else if (state.tool === TOOL.ROOM) toolHint = state.roomBoxStart ? press + ' second corner' : press + ' first corner';
-        else if (state.tool === TOOL.DELETE_ZONE) toolHint = state.deleteZoneStart ? press + ' second corner' : press + ' first corner';
-        else if (state.tool === TOOL.NOTE) toolHint = press + ' to add note';
-        else if (state.tool === TOOL.COUNTER) {
-          toolHint = press + ' to place marker';
-          // S6: the tag the text layer reads beside the cursor ("Plan says B → Type B")
-          const th = App.tagHintText ? App.tagHintText() : '';
-          if (th) { toolHintKeyed = toolHint + ': Plan says WW → counter name placeholder'; toolHint += ': ' + th; }
-        }
-        else if (state.tool === TOOL.SCHEDULE) toolHint = state.scheduleBoxStart ? press + ' the schedule\'s far corner' : press + ' one corner of the fixture schedule';
-        else if (state.tool === TOOL.CHAIN) {
-          // S2: the default vertical the next tap writes ("+9.5 ft drop at
-          // Duplex receptacle") — keyed by a fixed placeholder like the other
-          // live readouts so the one-line verdict never flickers with the number.
-          toolHint = state.chainStart && state.chainStart.page === state.currentPage ? press + ' next device (Enter ends)' : press + ' first device';
-          const readout = App.chainDropHint ? App.chainDropHint() : '';
-          if (readout) {
-            toolHintKeyed = toolHint + ': ' + CHAIN_READOUT_PLACEHOLDER;
-            toolHint += ': ' + readout;
-          }
-        }
-        else if (state.tool === TOOL.EDIT_POLY) toolHint = 'Edit polyline · drag a vertex · right-click a vertex';
-        // The hint only rides when the bar stays on ONE line (field feedback
-        // 2026-08-14): on narrow layouts the status bar flex-wraps, and a long
-        // project name + "Tap start point" shoved the right-side actions onto
-        // a second row. Measure with the hint in and drop it if the bar
-        // wrapped. updateStatus runs per mousemove, so the layout read is
-        // cached by (composed text, bar width) — coords/totals live in their
-        // own spans and never invalidate the key. A live length readout keys
-        // and measures via its worst-case placeholder (toolHintKeyed), never
-        // the growing number — the verdict stays stable per (static text,
-        // width) and the live string is swapped in after the cached verdict.
-        if (toolHint && modeEl) {
-          const barEl = modeEl.parentElement;
-          const actionsEl = document.getElementById('statusBarActions');
-          // D19 (J19 Friction #5): three candidates, in the order the bar
-          // should spend its width — full stamp + hint, COMPACT stamp + hint,
-          // then full stamp alone. B11's own narrow-bar rule says the stamp's
-          // words are the droppable part; the hint carries the only on-screen
-          // mention of "S = size" and the live duct readout, so it goes last.
-          const keyed = (m) => m + ' | ' + (toolHintKeyed || toolHint);
-          if (barEl && actionsEl) {
-            const key = keyed(mode) + '@' + barEl.clientWidth;
-            if (key !== footerHintKey) {
-              footerHintKey = key;
-              modeEl.textContent = keyed(mode);
-              let fits = actionsEl.offsetTop <= modeEl.offsetTop;
-              let compact = false;
-              if (!fits && modeCompact !== mode) {
-                modeEl.textContent = keyed(modeCompact);
-                if (actionsEl.offsetTop <= modeEl.offsetTop) { fits = true; compact = true; }
-              }
-              // Fourth rung: no hint at all — does the full stamp fit? If not, the compact stamp alone.
-              let bareCompact = false;
-              if (!fits && modeCompact !== mode) {
-                modeEl.textContent = mode;
-                bareCompact = !(actionsEl.offsetTop <= modeEl.offsetTop);
-              }
-              footerHintFits = fits;
-              footerHintCompactStamp = compact;
-              footerBareCompact = bareCompact;
-            }
-            if (footerHintFits) mode = (footerHintCompactStamp ? modeCompact : mode) + ' | ' + toolHint;
-            else if (footerBareCompact) mode = modeCompact;
-          } else {
-            mode = mode + ' | ' + toolHint;
-          }
-        }
-      }
+      // A signed-in viewer's mode text stays exactly as it was: no hint rides it (a
+      // viewer arms only Measure and Set Scale, and the line is what tells them who is
+      // editing). The labels go in the fit key: "Canvas Uploading..." / "PDF Uploading..."
+      // are wider than "Canvas" / "PDF Synced with Cloud" at the same width and mode text.
+      const fitSalt = (canvasLabelEl ? canvasLabelEl.textContent : '') + '/' + (pdfLabelEl ? pdfLabelEl.textContent : '');
+      return { base, compact: base, hintable: !state.isViewer, fitSalt };
     }
-    if (state.hoverLegendResize) mode += ' | Drag to resize';
+    let canvasTitle = 'Canvas sync: Local only';
+    if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
+    if (dotEl) { dotEl.className = 'dot dot-green'; dotEl.title = canvasTitle; }
+    if (canvasLabelEl) canvasLabelEl.textContent = '';
+    if (pdfGroupEl) pdfGroupEl.style.display = 'none';
+    if (App.isSaveInProgress() && App.getSaveProgressMessage()) {
+      const msg = App.getSaveProgressMessage();
+      return { base: msg, compact: msg, hintable: false, fitSalt: '' };
+    }
+    const projectSegment = (state.currentProjectName || (state.pages.length ? 'Untitled' : 'none'))
+      + (state.currentProjectExternalRef ? ' · ' + state.currentProjectExternalRef : '');
+    let lastSavedSegment = 'not saved yet';
+    // Same text unless the local-save branch below offers a shorter twin.
+    let lastSavedSegmentCompact = null;
+    if (lastLocalBackupAt) {
+      // B11 (J12/J15): signed-out, the segment shows the local-save stamp
+      // the engine already tracks ("Saved on this device · 4:42 PM")
+      // instead of the permanent dash — the IDB backup lands ~1s after
+      // every change, so this replaces a false "never saved" signal.
+      // Narrow bars (<1280px, B10's footer-words threshold) compact the
+      // words to "Saved · 4:42 PM"; the mode is one text node so the swap
+      // is done here in JS — window.innerWidth, not a clientWidth read,
+      // because updateStatus runs per mousemove and must not force layout.
+      const timeStr = new Date(lastLocalBackupAt)
+        .toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      const words = window.innerWidth >= 1280 ? 'Saved on this device' : 'Saved';
+      lastSavedSegment = words + ' · ' + timeStr;
+      // D19 (J19 Friction #5): the compact twin is kept ready even on a
+      // wide bar. At ~1380 px the long stamp fits but pushes the tool hint
+      // over the one-line budget, and B11's fixed 1280 px threshold had no
+      // way to notice — the hint (and the duct readout with it) just
+      // vanished for the rest of the session. The fit negotiation in
+      // composeMode spends this before it spends the hint.
+      lastSavedSegmentCompact = 'Saved · ' + timeStr;
+    } else if (state.lastSavedAt) {
+      const d = new Date(state.lastSavedAt);
+      const agoSec = (Date.now() - d.getTime()) / 1000;
+      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      const agoStr = App.formatAgo(agoSec);
+      lastSavedSegment = timeStr + ' | ' + agoStr;
+    } else {
+      lastSavedSegmentCompact = '';   // never saved: the compact twin is the name alone
+    }
+    // Nothing loaded: one plain phrase instead of "none · not saved yet".
+    const noProject = !state.pages.length && !state.currentProjectName;
+    const base = noProject ? 'No project open' : projectSegment + ' · ' + lastSavedSegment;
+    const compact = (noProject || lastSavedSegmentCompact === null) ? base
+      : (lastSavedSegmentCompact ? projectSegment + ' · ' + lastSavedSegmentCompact : projectSegment);
+    return { base, compact, hintable: true, fitSalt: '' };
+  }
+
+  // The mode line: the sync state's text plus the armed tool's hint, kept to ONE line.
+  function composeMode(state, modeEl, sync) {
+    const Model = window.StatusHintModel;
+    let mode = sync.base;
+    const modeCompact = sync.compact;
+    if (!sync.hintable || !Model) return mode;
+    // B9 (J15): touch talks "Tap", mouse talks "Click" — same hints, the
+    // trade's word for the device in hand (App.isCoarsePointer, live).
+    const press = App.isCoarsePointer && App.isCoarsePointer() ? 'Tap' : 'Click';
+    // The live readouts go in as readers; the model calls only the one its tool shows.
+    const hint = Model.toolHintFor(state, press, {
+      draw: liveDrawReadout,
+      duct: () => (App.ductLiveReadout ? App.ductLiveReadout() : ''),
+      tag: () => (App.tagHintText ? App.tagHintText() : ''),
+      chain: () => (App.chainDropHint ? App.chainDropHint() : ''),
+    }, { TOOL: App.TOOL, SCALE_MODES: App.SCALE_MODES });
+    const toolHint = hint.text;
+    const join = Model.joinStatusMode;
+    if (!toolHint) return mode;
+    if (!modeEl) return join(mode, toolHint);
+    // The hint only rides when the bar stays on ONE line (field feedback
+    // 2026-08-14): on narrow layouts the status bar flex-wraps, and a long
+    // project name + "Tap start point" shoved the right-side actions onto
+    // a second row. Measure with the hint in and drop it if the bar
+    // wrapped. updateStatus runs per mousemove, so the layout read is
+    // cached by (composed text, bar width, signed-in labels); coords/totals
+    // live in their own spans and never invalidate the key. A live readout keys
+    // and measures via its worst-case placeholder (hint.keyed), never
+    // the growing number — the verdict stays stable per (static text,
+    // width) and the live string is swapped in after the cached verdict.
+    // Phone widths (768px and under) never wrap: the bar is nowrap there and
+    // the mode ellipsizes on a zero flex basis, so a hint can only truncate.
+    const barEl = modeEl.parentElement;
+    const actionsEl = document.getElementById('statusBarActions');
+    if (!barEl || !actionsEl) return join(mode, toolHint);
+    // D19 (J19 Friction #5): three candidates, in the order the bar
+    // should spend its width — full stamp + hint, COMPACT stamp + hint,
+    // then full stamp alone. B11's own narrow-bar rule says the stamp's
+    // words are the droppable part; the hint carries the only on-screen
+    // mention of "S = size" and the live duct readout, so it goes last.
+    // Signed in, the stamp is '' and there is one candidate: the hint, or nothing.
+    const keyed = (m) => join(m, hint.keyed);
+    const key = keyed(mode) + '@' + barEl.clientWidth + '#' + sync.fitSalt;
+    if (key !== footerHintKey) {
+      footerHintKey = key;
+      // "Fits" means the candidate costs the bar no row: the bar is no taller than with
+      // the narrowest bare text (the compact stamp, or '' signed in). Until MAP-HINTS
+      // this asked whether the actions still shared the mode's row, which only held while
+      // the bare bar was one line; a signed-in bar at 769-900px, or on a phone, is already
+      // two rows from the sync labels alone, and the hint then never showed there even
+      // where it took no room (on a phone the mode has a zero flex basis and ellipsizes).
+      modeEl.textContent = modeCompact;
+      const baseHeight = barEl.offsetHeight;
+      const noNewRow = () => barEl.offsetHeight <= baseHeight;
+      modeEl.textContent = keyed(mode);
+      let fits = noNewRow();
+      let compact = false;
+      if (!fits && modeCompact !== mode) {
+        modeEl.textContent = keyed(modeCompact);
+        if (noNewRow()) { fits = true; compact = true; }
+      }
+      // Fourth rung: no hint at all — does the full stamp fit? If not, the compact stamp alone.
+      let bareCompact = false;
+      if (!fits && modeCompact !== mode) {
+        modeEl.textContent = mode;
+        bareCompact = !noNewRow();
+      }
+      footerHintFits = fits;
+      footerHintCompactStamp = compact;
+      footerBareCompact = bareCompact;
+    }
+    if (footerHintFits) mode = join(footerHintCompactStamp ? modeCompact : mode, toolHint);
+    else if (footerBareCompact) mode = modeCompact;
+    return mode;
+  }
+
+  function renderTotals(state) {
+    const totalsEl = document.getElementById('statusTotals');
+    if (!totalsEl) return;
+    if (!state.pages || !state.pages.length) {
+      totalsEl.style.display = 'none';
+      return;
+    }
+    const t = getFooterTotalsCached();
+    const countStr = (t.count || 0).toLocaleString();
+    // Split buckets: feet (scaled lines) and raw px (unscaled) are never summed.
+    const lenStr = App.formatFeetPx(t.lengthFt || 0, t.lengthPx || 0);
+    // B10 (J18): the bare "[14 | 225.00 ft]" pair was cryptic until hover
+    // — the words ride inline now, and the pair is the audit entry point
+    // (click scrolls to and flashes the Summary; binding below). The
+    // words are .status-totals-words spans, CSS-hidden on bars narrower
+    // than 1280px — the compact pair keeps the one-line-bar invariant
+    // (field feedback 2026-08-14) that the droppable tool hint protects,
+    // since totals, unlike the hint, never drop.
+    totalsEl.textContent = '';
+    const seg = (txt, words) => {
+      const sp = document.createElement('span');
+      sp.textContent = txt;
+      if (words) sp.className = 'status-totals-words';
+      totalsEl.appendChild(sp);
+    };
+    // X13 (D19 fold-in): "1 counts" read as a bug in the one place the
+    // footer is supposed to be the audit entry point. Same grammar in the
+    // chip and its tooltip, which are the same sentence twice.
+    const countWord = (t.count || 0) === 1 ? ' count' : ' counts';
+    seg('[' + countStr); seg(countWord, true);
+    seg(' | ' + lenStr); seg(' of lines', true);
+    seg(']');
+    totalsEl.title = countStr + countWord + ' | ' + lenStr + ' of lines'
+      + ((t.lengthPx || 0) > 0 ? '; px lengths are on sheets with no scale' : '')
+      + '. Click to see the Summary';
+    totalsEl.style.display = '';
+  }
+
+  // Measure-tool result chip (Tier-2 #15): shows state.lastMeasure while it
+  // belongs to the current page — page flips hide it, flipping back shows it
+  // again (a fact about that sheet), a new measure overwrites it.
+  function renderMeasureChip(state) {
+    const measureEl = document.getElementById('statusMeasure');
+    if (!measureEl) return;
+    const lm = state.lastMeasure;
+    if (lm && lm.pageIdx === state.currentPage) {
+      measureEl.textContent = lm.text;
+      measureEl.title = lm.text;
+      measureEl.style.display = '';
+    } else {
+      measureEl.style.display = 'none';
+    }
+  }
+
+  function updateStatus() {
+    const state = App.state;
+    const modeEl = document.getElementById('statusMode');
+    const coordsEl = document.getElementById('statusCoords');
+    const cloudMode = App.SUPABASE_ENABLED && state.supabaseSession?.user;
+    const sync = renderSyncIndicators(state, cloudMode);
+    let mode = composeMode(state, modeEl, sync);
+    if (state.hoverLegendResize) mode = window.StatusHintModel ? window.StatusHintModel.joinStatusMode(mode, 'Drag to resize') : mode + ' | Drag to resize';
     if (modeEl) { modeEl.textContent = mode; modeEl.title = mode || ''; }
     if (coordsEl) coordsEl.textContent = state.mousePos ? `(${Math.round(state.mousePos.x)}, ${Math.round(state.mousePos.y)})` : 'none';
-    const totalsEl = document.getElementById('statusTotals');
-    if (totalsEl) {
-      if (!state.pages || !state.pages.length) {
-        totalsEl.style.display = 'none';
-      } else {
-        const t = getFooterTotalsCached();
-        const countStr = (t.count || 0).toLocaleString();
-        // Split buckets: feet (scaled lines) and raw px (unscaled) are never summed.
-        const lenStr = App.formatFeetPx(t.lengthFt || 0, t.lengthPx || 0);
-        // B10 (J18): the bare "[14 | 225.00 ft]" pair was cryptic until hover
-        // — the words ride inline now, and the pair is the audit entry point
-        // (click scrolls to and flashes the Summary; binding below). The
-        // words are .status-totals-words spans, CSS-hidden on bars narrower
-        // than 1280px — the compact pair keeps the one-line-bar invariant
-        // (field feedback 2026-08-14) that the droppable tool hint protects,
-        // since totals, unlike the hint, never drop.
-        totalsEl.textContent = '';
-        const seg = (txt, words) => {
-          const sp = document.createElement('span');
-          sp.textContent = txt;
-          if (words) sp.className = 'status-totals-words';
-          totalsEl.appendChild(sp);
-        };
-        // X13 (D19 fold-in): "1 counts" read as a bug in the one place the
-        // footer is supposed to be the audit entry point. Same grammar in the
-        // chip and its tooltip, which are the same sentence twice.
-        const countWord = (t.count || 0) === 1 ? ' count' : ' counts';
-        seg('[' + countStr); seg(countWord, true);
-        seg(' | ' + lenStr); seg(' of lines', true);
-        seg(']');
-        totalsEl.title = countStr + countWord + ' | ' + lenStr + ' of lines'
-          + ((t.lengthPx || 0) > 0 ? '; px lengths are on sheets with no scale' : '')
-          + '. Click to see the Summary';
-        totalsEl.style.display = '';
-      }
-    }
-    // Measure-tool result chip (Tier-2 #15): shows state.lastMeasure while it
-    // belongs to the current page — page flips hide it, flipping back shows it
-    // again (a fact about that sheet), a new measure overwrites it.
-    const measureEl = document.getElementById('statusMeasure');
-    if (measureEl) {
-      const lm = state.lastMeasure;
-      if (lm && lm.pageIdx === state.currentPage) {
-        measureEl.textContent = lm.text;
-        measureEl.title = lm.text;
-        measureEl.style.display = '';
-      } else {
-        measureEl.style.display = 'none';
-      }
-    }
+    renderTotals(state);
+    renderMeasureChip(state);
   }
 
   function getCloudSaveSummary() {

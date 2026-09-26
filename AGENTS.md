@@ -172,7 +172,10 @@
     cross-check; `window.CircuitModel`), [bid-check-model.js](bid-check-model.js) (the
     pure Bid Check rule table — NEC fill / voltage-drop arithmetic, the manual
     rows; `window.BidCheckModel`), [tag-model.js](tag-model.js) (the pure text-layer
-    reading model — tag tokens, nearest tag, schedule rows; `window.TagModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    reading model — tag tokens, nearest tag, schedule rows; `window.TagModel`),
+    [status-hint-model.js](status-hint-model.js) (the pure status-bar tool hint:
+    `toolHintFor` returns `{ text, keyed }` with the live readouts passed in, shown
+    signed in and signed out; `window.StatusHintModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +

@@ -13,6 +13,53 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(bid-check): Bid Check owns the export gate, works out its rows once per redraw, and resolves every contributed table one way (R13, 2026-09-26)
+
+The decomposition map's R13, with its defect D25, in the map's order.
+
+**Once per redraw (D25).** On a project with duct or water runs, every updateUI built the whole
+Bid Check twice. `renderBidCheck` computed it for the sidebar, then asked for the badges on Copy
+to /Tooling and Export PDFs, and the badge code's `gateStatus` computed it again from nothing: the
+full duct schedule, a static-path walk per ESP group per sheet, the water schedule, and on an
+electrical bid the circuit schedule. Now `renderBidCheck` hands the check it has to
+`renderBidGateBadges(check)`, and `gateStatus(check)` reads it. Only the gate's click
+(`runBidGate`) computes a fresh one, since the runs and ticks may have moved since the last
+redraw. No memo per `dirtyGeneration`: with the second walk gone nothing else in a redraw computes
+the check, and report.js's reads belong to a report build, not a redraw.
+
+**The gate moved.** The export gate, its acknowledgment memory (D18), its one toast and the badges
+moved from features/duct-bidcheck.js to features/bid-check.js. They read the whole panel and have
+served water since WATER-PLAN rung 6, so they were never duct's, and the two files called each
+other (the panel asked duct-bidcheck.js for the badges, which asked the panel for the check).
+`gateScope` is now `GATE_CONTRIBUTORS`, a list of predicates (`App.hasDuctRuns`,
+`App.hasWaterRuns`); a trade that contributes a table adds one. The names follow the owner:
+`App.runBidGate` and the spec seam `App.isBidGateAcknowledged`; `ductBidGateHandles` is the
+file-local `bidGateHandles`, since the advisory beside it was its only reader. The rename
+was mechanical, so the two callers (features/output.js `runGatedCopy`, features/export-pdfs.js's
+`#specificPages`) and duct-b19a.spec.js changed in the same commit and no alias was kept:
+output.js reads the gate guarded, and an alias would have hidden a caller the rename missed.
+duct-bidcheck.js keeps `getDuctBidCheck`, the statics, `hasDuctRuns` and the depth line. No new
+shell file, and nothing an estimator sees changes: the same toast, badges, wording and telemetry.
+
+**One row resolver.** duct-model.js and water-model.js carried the same resolver and the same
+unresolved split, line for line. Both are bid-check-model.js's now, `resolveBidCheckRows(table,
+inputs, ticks)` and `bidCheckUnresolved(rows)`, with two node cases, and `ductBidCheckRows`,
+`waterBidCheckRows` and their `*Unresolved` twins are one-line delegates, so duct-model.test.js
+and water-model.test.js pass unchanged. The map's skeptic warned that both models sit in the plain
+browserModule eslint group with no cross-file globals, and that their tests require them bare. The
+choice: a guarded lookup beside each footer's own guard, `window.BidCheckModel` in the browser
+(bid-check-model.js loads before both) and `module.require('./bid-check-model.js')` under node, so
+neither the eslint group nor any test preamble changed. The scope and ticks both contributors
+copied (`scopeOf`, `manualTicks`) are one helper, `App.bidCheckScope(opts)` returning
+`{ pageIndices, getAnn, ticks }`, which getBidCheck reads too.
+
+Pinned by the new D25 case in duct-bidcheck.spec.js: a duct trunk and a cold water run, one
+`App.updateUI()`, and counters on `App.getDuctBidCheck` and `App.getWaterBidCheck` read 1 and 1
+(2 and 2 on main), with the badges still showing. bid-check, duct-bidcheck, duct-b19a (gate
+memory, one toast), water-bidcheck, export-pdfs and output are green, as are the specs that read
+the panel (the three courses, lessons, tutorial, duct-static, duct-orientation, duct-b19b,
+bend-fittings, codes, rules-chip) and the model tests.
+
 ## feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command (R06, 2026-09-26)
 
 The decomposition map's R06, both items. Every new shell file cost four hand steps, and one of

@@ -2200,26 +2200,21 @@ const DUCT_BID_CHECK_ROWS = [
 /**
  * Resolve the table against live inputs + the project's ticks. Returns
  * [{ id, kind: 'auto' | 'manual', label, short, rule?, verdict, detail, done,
- * upgraded }] — a manual row whose evaluator answered arrives as kind 'auto'
+ * upgraded }]: a manual row whose evaluator answered arrives as kind 'auto'
  * with upgraded: true (its tick, if any, is ignored: the app knows). Manual
- * rows carry verdict 'done' | 'open'.
+ * rows carry verdict 'done' | 'open'. R13: the resolver is bid-check-model.js's
+ * `resolveBidCheckRows`, shared with the water table; the unresolved split is
+ * its `bidCheckUnresolved` (auto ⚠ first, then unticked manual; the gate
+ * toast names the first, the badge counts both).
  */
-function ductBidCheckRows(inputs, manualState) {
-  const ticks = manualState || {};
-  return DUCT_BID_CHECK_ROWS.map(row => {
-    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
-    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
-    const done = !!ticks[row.id];
-    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done: done, upgraded: false };
-  });
-}
-
-/** Unresolved rows in panel order — auto ⚠ first, then unticked manual
- * (the gate toast names the first; the badge counts both). */
-function ductBidCheckUnresolved(rows) {
-  const auto = (rows || []).filter(r => r.kind === 'auto' && r.verdict === 'warn');
-  const manual = (rows || []).filter(r => r.kind === 'manual' && !r.done);
-  return { auto: auto, manual: manual, first: auto[0] || manual[0] || null };
+function ductBidCheckRows(inputs, manualState) { return ductBidCheckModel().resolveBidCheckRows(DUCT_BID_CHECK_ROWS, inputs, manualState); }
+function ductBidCheckUnresolved(rows) { return ductBidCheckModel().bidCheckUnresolved(rows); }
+// bid-check-model.js loads before this file: window.BidCheckModel in the
+// browser; under node --test a guarded `module.require` (the footer's own
+// guard), so this module keeps no cross-file global in its eslint group.
+function ductBidCheckModel() {
+  if (typeof window !== 'undefined' && window.BidCheckModel) return window.BidCheckModel;
+  return typeof module !== 'undefined' && module.require ? module.require('./bid-check-model.js') : null;
 }
 
 // --- 8. Plan-and-spec callout reading (unit D10) -----------------------------

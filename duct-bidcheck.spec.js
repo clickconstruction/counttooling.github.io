@@ -67,6 +67,35 @@ test.describe('Duct Bid Check (D9)', () => {
   const bidCheck = (page) => page.evaluate(() => window.App.getBidCheck());
   const rowById = (bc, id) => bc.auto.find((r) => r.id === id) || bc.manual.find((r) => r.id === id);
 
+  // D25 (R13): one updateUI resolves each contributor's rows once. The gate
+  // badges read the check the panel just computed instead of walking the
+  // whole Bid Check again (a full duct schedule and a static path per ESP
+  // group, a water schedule), so a counter on each seam must read 1.
+  test('D25: one updateUI computes the Bid Check once; the badges reuse it', async ({ page }) => {
+    await seedTrunk(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      s.lineTypes.push({ id: 'lt-cold', name: '3/4in PEX cold', color: '#4a9eff', curveStyle: 'straight', waterSide: 'cold' });
+      window.App.ensureActiveCanvas(s.pages[0]).annotations.quickLines.push({ id: 'q-cold', name: 'Cold main', lineTypeId: 'lt-cold', color: '#4a9eff', x1: 100, y1: 300, x2: 400, y2: 300 });
+    });
+    const calls = await page.evaluate(() => {
+      const A = window.App;
+      const n = { duct: 0, water: 0 };
+      const duct = A.getDuctBidCheck, water = A.getWaterBidCheck;
+      A.getDuctBidCheck = (o) => { n.duct++; return duct(o); };
+      A.getWaterBidCheck = (o) => { n.water++; return water(o); };
+      try { A.updateUI(); } finally { A.getDuctBidCheck = duct; A.getWaterBidCheck = water; }
+      return n;
+    });
+    expect(calls).toEqual({ duct: 1, water: 1 });
+    // The badges still say what the gate would: the panel's open items.
+    const open = await page.evaluate(() => window.App.getBidCheck().open);
+    expect(open.total).toBeGreaterThan(0);
+    await expect(page.locator('#specificPages .bid-gate-badge')).toHaveCount(1);
+    await expect(page.locator('#forPipeTooling .bid-gate-badge')).toContainText(open.manual + ' unchecked');
+    expect(errors).toEqual([]);
+  });
+
   test('panel: no duct rows without duct; a run adds them; ticks persist through the project data; the roof row upgrades manual → auto', async ({ page }) => {
     // Without duct: only the trade-neutral manual rows, nothing contributed.
     let bc = await bidCheck(page);

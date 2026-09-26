@@ -22,15 +22,47 @@
  *     open: { auto, manual, total }, defaults: { loadAmps, volts } }
  * (report.js consumes it guarded for the Bid Check section, the email block and
  * the payload's `checks`), renderBidCheck() (updateUI), showBidCheckAdvisory(surface),
- * openBidCheckAtRow(rowId) (expand + scroll + flash one row — the gate toast's Review).
+ * openBidCheckAtRow(rowId) (expand + scroll + flash one row — the gate toast's Review),
+ * bidCheckScope(opts) (R13: the pages, annotation getter and tick map every
+ * contributor reads), and the export gate's runBidGate (+ its spec seam
+ * isBidGateAcknowledged).
  *
- * DUCT (D9, features/duct-bidcheck.js): once the project has a duct run the
- * seam App.getDuctBidCheck contributes duct-model's DUCT_BID_CHECK_ROWS —
- * its auto rows after the trade's, its manual rows BEFORE the trade-neutral
- * ones (the duct judgment calls sit with the duct scope; generic sign-off
- * last), ticked in the same state.bidCheck.manual map. The Copy / Export
- * PDFs GATE (the interactive "Review · Export anyway" toast) is that file's;
- * this file's post-action advisory yields to it on the gated surfaces.
+ * CONTRIBUTORS: once the project has a duct run, App.getDuctBidCheck
+ * (features/duct-bidcheck.js, D9) contributes duct-model's DUCT_BID_CHECK_ROWS;
+ * once it has a water run, App.getWaterBidCheck (features/water-bidcheck.js,
+ * WATER-PLAN rung 6) contributes water-model's WATER_BID_CHECK_ROWS. Their auto
+ * rows follow the trade's, their manual rows sit BEFORE the trade-neutral ones
+ * (the judgment calls sit with their scope; generic sign-off last), ticked in
+ * the same state.bidCheck.manual map. Both tables resolve through
+ * bid-check-model.js's resolveBidCheckRows.
+ *
+ * THE EXPORT GATE (R13: moved here from features/duct-bidcheck.js, where D9
+ * built it; it is trade-generic). Copy to /Tooling (features/output.js
+ * runGatedCopy, surfaces pipe-tooling / takeoff-tooling, after the T1-05 scale
+ * gate) and Export PDFs (`#specificPages`, features/export-pdfs.js) run
+ * App.runBidGate(proceed, surface). While a contributor is present
+ * (GATE_CONTRIBUTORS: duct runs, water runs) and the WHOLE panel has open
+ * items, it shows the INTERACTIVE corner toast `#bidGateToastModal`, "Bid
+ * Check: Fits the roof? — Review · Export anyway" (T2-04 .toast-interactive +
+ * T2-06 gate-link, the B3 Copy-again precedent): Review opens the panel at that
+ * row (openBidCheckAtRow), Export anyway calls proceed() inside the click
+ * (clipboard writes stay permitted). Otherwise proceed() runs straight away,
+ * silent. NEVER a block. The post-action advisory yields to the gate on those
+ * surfaces (bidGateHandles), and (D18, J19 #9) on the 'duct-schedule' and
+ * 'water-schedule' copies, whose single "copied" toast carries the open ⚠ rows.
+ * GATE MEMORY (D18, B19 ratchet, "Export anyway IS the acknowledgment"):
+ * pressing Export anyway records the exact unresolved-row set on
+ * `state.bidCheck.acknowledgedGate`, `{ rows: [{ id, verdict }], at }` (verdict
+ * 'warn' for an auto ⚠ row, 'unchecked' for an unticked manual row, ids
+ * sorted), and the next Export / Copy presses proceed silently while the live
+ * set is IDENTICAL; any change re-arms the toast. It rides the project data
+ * like the ticks (every intake spreads state.bidCheck).
+ * THE BADGES on `#forPipeTooling` / `#specificPages` ("2 ⚠ · 3 unchecked",
+ * `.bid-gate-badge`), present only while the gate would fire, render from the
+ * check renderBidCheck already computed (D25: one Bid Check per updateUI); only
+ * the click-time gate computes a fresh one.
+ * Telemetry: `bid_check_row_state` ({ surface, kind: 'gate', open: [ids],
+ * choice }) via App.logUserEvent (the S5 event, allowlisted).
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
@@ -96,13 +128,25 @@
     return n;
   }
 
+  // R13: the one scope + ticks read every contributor shares (features/duct-bidcheck.js,
+  // water-bidcheck.js): the pages in scope (every page by default), the annotation
+  // getter (each page's active canvas by default) and the manual tick map, read-only.
+  function bidCheckScope(opts) {
+    const state = App.state;
+    const o = opts || {};
+    const bc = state && state.bidCheck;
+    return {
+      pageIndices: o.pageIndices || ((state && state.pages) || []).map((_, i) => i),
+      getAnn: o.getAnnotations || ((pi) => App.getActiveAnnotations(state.pages[pi], pi)),
+      ticks: bc && bc.manual && typeof bc.manual === 'object' ? bc.manual : {},
+    };
+  }
+
   function getBidCheck(opts) {
     const state = App.state;
     const bm = BM();
     if (!state || !bm) return { auto: [], manual: [], open: { auto: 0, manual: 0, total: 0 }, defaults: { loadAmps: 12, volts: 120 } };
-    const o = opts || {};
-    const pageIndices = o.pageIndices || (state.pages || []).map((_, i) => i);
-    const getAnn = o.getAnnotations || ((pi) => App.getActiveAnnotations(state.pages[pi], pi));
+    const { pageIndices, getAnn } = bidCheckScope(opts);
     const trade = state.trade || null;
     const d = defaults();
     let auto = [];
@@ -167,7 +211,7 @@
       badge.className = 'badge bid-check-badge' + (check.open.auto ? ' warn' : '');
       badge.title = check.open.auto + ' check' + (check.open.auto === 1 ? '' : 's') + ' at ⚠ · ' + check.open.manual + ' unticked';
     }
-    if (App.renderDuctBidBadges) App.renderDuctBidBadges();   // D9: the Copy / Export PDFs gate badges
+    renderBidGateBadges(check);   // D9: the Copy / Export PDFs gate badges, from this check (D25)
     const collapsed = state.bidCheckCollapsed !== false;   // collapsed by default
     document.getElementById('bidCheckCollapseIcon').textContent = collapsed ? '▶' : '▼';
     const list = document.getElementById('bidCheckList');
@@ -256,7 +300,7 @@
   function showBidCheckAdvisory(surface) {
     const state = App.state;
     if (!state || !state.pages || !state.pages.length) return;
-    if (App.ductBidGateHandles && App.ductBidGateHandles(surface)) return;   // D9: the pre-action gate is the surface with duct present
+    if (bidGateHandles(surface)) return;   // D9: the pre-action gate is the surface while a contributor is present
     const check = getBidCheck();
     if (!check.open.auto) return;   // advisory only when the app itself found something
     const el = document.getElementById('bidCheckAdvisoryModal');
@@ -282,6 +326,145 @@
     App.state.bidCheckCollapsed = App.state.bidCheckCollapsed === false;
     renderBidCheck();
   });
+
+  // --- the export gate (R13: from features/duct-bidcheck.js) ------------------
+
+  const GATED_SURFACES = ['pipe-tooling', 'takeoff-tooling', 'export-pdfs'];
+  // Surfaces whose own confirmation toast carries the open-items line, so the
+  // advisory card must not stack a second one (D18: Copy Schedule; WATER-PLAN
+  // rung 5: the water copy toast carries its own ⚠ count).
+  const FOLDED_ADVISORY_SURFACES = ['duct-schedule', 'water-schedule'];
+  // What puts a project behind the gate: a contributor with rows of its own.
+  // A trade that contributes a table adds its predicate here.
+  const GATE_CONTRIBUTORS = [
+    () => !!(App.hasDuctRuns && App.hasDuctRuns()),     // D9, features/duct-bidcheck.js
+    () => !!(App.hasWaterRuns && App.hasWaterRuns()),   // WATER-PLAN rung 6, features/water-bidcheck.js
+  ];
+  const gateScope = () => GATE_CONTRIBUTORS.some((has) => has());
+
+  // What the gate reads: the WHOLE panel's open items (the trade rows too, the
+  // panel is one sign-off list), but only while a contributor is present.
+  // `check` is the one renderBidCheck already computed (D25); the click-time
+  // gate passes none and gets a fresh one.
+  function gateStatus(check) {
+    if (!gateScope()) return null;
+    const c = check || getBidCheck();
+    if (!c) return null;
+    const auto = c.auto.filter((r) => r.verdict === 'warn');
+    const manual = c.manual.filter((r) => !r.done);
+    const first = auto[0] || manual[0] || null;
+    return { auto, manual, first, open: auto.length + manual.length };
+  }
+
+  function bidGateHandles(surface) {
+    if (FOLDED_ADVISORY_SURFACES.includes(surface)) return true;
+    return GATED_SURFACES.includes(surface) && gateScope();
+  }
+
+  // Gate memory (D18). The unresolved set as the memory records it: every auto
+  // ⚠ row and every unticked manual row, `{ id, verdict }`, sorted by id so two
+  // walks of the same state compare equal.
+  function unresolvedRows(status) {
+    return status.auto.map((r) => ({ id: r.id, verdict: 'warn' }))
+      .concat(status.manual.map((r) => ({ id: r.id, verdict: 'unchecked' })))
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  }
+  const rowsKey = (rows) => (rows || []).map((r) => r.id + '=' + r.verdict).join('|');
+  function isAcknowledged(status) {
+    const bc = App.state && App.state.bidCheck;
+    const ack = bc && bc.acknowledgedGate;
+    if (!ack || !Array.isArray(ack.rows) || !ack.rows.length) return false;
+    return rowsKey(ack.rows) === rowsKey(unresolvedRows(status));
+  }
+  function acknowledgeGate(status) {
+    bidCheckState().acknowledgedGate = { rows: unresolvedRows(status), at: new Date().toISOString() };
+    App.markProjectDirty && App.markProjectDirty();
+  }
+
+  let gateTimer = null;
+  let pendingProceed = null;   // { proceed, surface, rowId, projectId, rows } while the toast is up
+  const shortLabel = (row) => row.short || row.label.replace(/[:—].*$/, '').replace(/ within.*| on plan.*| and reached.*/i, '');
+
+  function hideGateToast() {
+    if (gateTimer) { clearTimeout(gateTimer); gateTimer = null; }
+    App.hideModal('bidGateToastModal');
+  }
+
+  // proceed() runs the export. Synchronous when nothing gates it (the caller's
+  // user gesture is intact); deferred to the toast's "Export anyway" otherwise.
+  function runBidGate(proceed, surface) {
+    const status = gateStatus();
+    if (!status || !status.open) return proceed();
+    // D18 gate memory: the same unresolved set was already exported past, so
+    // the earlier "Export anyway" stands until the set changes.
+    if (isAcknowledged(status)) {
+      App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null,
+        { surface, kind: 'gate', choice: 'remembered', open: status.auto.concat(status.manual).map((r) => r.id) });
+      return proceed();
+    }
+    const el = document.getElementById('bidGateToastModal');
+    const textEl = document.getElementById('bidGateToastText');
+    if (!el || !textEl) return proceed();
+    textEl.textContent = 'Bid Check: ' + shortLabel(status.first) + '?';
+    pendingProceed = { proceed, surface, rowId: status.first.id, projectId: App.state.currentProjectId || null, rows: unresolvedRows(status) };
+    App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null,
+      { surface, kind: 'gate', open: status.auto.concat(status.manual).map((r) => r.id) });
+    if (gateTimer) clearTimeout(gateTimer);
+    App.showModal('bidGateToastModal');
+    gateTimer = setTimeout(() => { hideGateToast(); pendingProceed = null; }, 8000);
+    return undefined;
+  }
+
+  document.getElementById('bidGateReview')?.addEventListener('click', () => {
+    const pending = pendingProceed;
+    pendingProceed = null;
+    hideGateToast();
+    App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null, { surface: pending?.surface, kind: 'gate', choice: 'review' });
+    openBidCheckAtRow(pending ? pending.rowId : null);
+  });
+  document.getElementById('bidGateExportAnyway')?.addEventListener('click', () => {
+    const pending = pendingProceed;
+    pendingProceed = null;
+    hideGateToast();
+    if (!pending || pending.projectId !== (App.state.currentProjectId || null)) return;
+    App.logUserEvent && App.logUserEvent('bid_check_row_state', App.state.currentProjectId || null, { surface: pending.surface, kind: 'gate', choice: 'export-anyway' });
+    // D18: "Export anyway" IS the acknowledgment. Remember the set the toast
+    // was raised for (not a re-walk: the state may have moved while it was up).
+    acknowledgeGate({ auto: pending.rows.filter((r) => r.verdict === 'warn'), manual: pending.rows.filter((r) => r.verdict === 'unchecked') });
+    // The click is the user gesture: the clipboard write inside proceed stays permitted.
+    pending.proceed();
+  });
+
+  // The badges on the two gated buttons, from the check renderBidCheck passes.
+  function badgeText(status) {
+    const parts = [];
+    if (status.auto.length) parts.push(status.auto.length + ' ⚠');
+    if (status.manual.length) parts.push(status.manual.length + ' unchecked');
+    return parts.join(' · ');
+  }
+
+  function renderBidGateBadges(check) {
+    const status = gateStatus(check);
+    ['forPipeTooling', 'specificPages'].forEach((id) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      let badge = btn.querySelector('.bid-gate-badge');
+      if (!status || !status.open) { if (badge) { badge.remove(); btn.removeAttribute('title'); } return; }
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'bid-gate-badge';
+        badge.setAttribute('aria-hidden', 'true');
+        btn.appendChild(badge);
+      }
+      const text = badgeText(status);
+      if (badge.textContent !== text) badge.textContent = text;
+      btn.title = 'Bid Check: ' + text + '. Review in the sidebar, or export anyway';
+    });
+  }
+
+  App.bidCheckScope = bidCheckScope;
+  App.runBidGate = runBidGate;
+  App.isBidGateAcknowledged = () => { const s = gateStatus(); return !!(s && s.open && isAcknowledged(s)); };   // D18 spec seam
 
   // D9 (the gate toast's Review): expand the section, uncollapse the desktop
   // sidebar / open the mobile one, scroll the row into view and flash it —

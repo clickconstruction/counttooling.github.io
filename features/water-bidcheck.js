@@ -16,47 +16,38 @@
  *   + the manual rows (pressure available checked per Appendix E, backflow,
  *     water heater sized, recirculation), ticked in state.bidCheck.manual.
  *
- * The export GATE is the duct one (features/duct-bidcheck.js runDuctBidGate):
- * its scope now includes a project with water runs (App.hasWaterRuns), so the
- * badge on Copy to /Tooling and Export PDFs, the "Review · Export anyway"
- * toast and the acknowledgment memory all serve water too, unchanged. Boundary
- * rule: shared deps from App.* at call time.
+ * The export GATE is Bid Check's (features/bid-check.js runBidGate, R13):
+ * App.hasWaterRuns is one of its contributor predicates, so the badge on Copy
+ * to /Tooling and Export PDFs, the "Review · Export anyway" toast and the
+ * acknowledgment memory serve water as they serve duct. Scope and ticks come
+ * from App.bidCheckScope; the rows resolve through water-model's
+ * waterBidCheckRows, a delegate of bid-check-model.js's resolveBidCheckRows.
+ * Boundary rule: shared deps from App.* at call time.
  */
 (function () {
   'use strict';
   const App = (window.App = window.App || {});
   const WM = () => window.WaterModel;
 
-  function scopeOf(opts) {
-    const state = App.state;
-    const o = opts || {};
-    const pageIndices = o.pageIndices || (state.pages || []).map((_, i) => i);
-    const getAnn = o.getAnnotations || ((pi) => App.getActiveAnnotations(state.pages[pi], pi));
-    return { pageIndices, getAnn };
-  }
   function hasWaterRuns(opts) {
     const state = App.state;
     if (!state || !state.pages || !state.pages.length || !App.getWaterRuns) return false;
-    const scope = scopeOf(opts);
+    const scope = App.bidCheckScope(opts);
     return scope.pageIndices.some((pi) => App.getWaterRuns(pi, scope.getAnn(pi)).length > 0);
-  }
-  function manualTicks() {
-    const bc = App.state && App.state.bidCheck;
-    return bc && bc.manual && typeof bc.manual === 'object' ? bc.manual : {};
   }
   const pageLabel = (pi) => App.state.pages[pi]?.label || 'Page ' + (pi + 1);
 
   function getWaterBidCheck(opts) {
     const wm = WM();
     if (!wm || !hasWaterRuns(opts)) return null;
-    const scope = scopeOf(opts);
+    const scope = App.bidCheckScope(opts);
     const s = App.computeWaterSchedule ? App.computeWaterSchedule({ pageIndices: scope.pageIndices, getAnnotations: scope.getAnn }) : null;
     const rows = s ? s.rows : [];
     const waterPages = [...new Set(rows.map((r) => r.pageIdx))].map(pageLabel);
     const unscaledPages = (App.collectUnscaledWaterPages ? App.collectUnscaledWaterPages(scope.getAnn ? (p, pi) => scope.getAnn(pi) : null, scope.pageIndices) : []).map(pageLabel);
     const service = rows.filter((r) => /\bservice\b|\bmeter\b/i.test(r.name + ' ' + r.typeName)).map((r) => ({ name: r.name, sizeIn: r.sizeIn, sizeLabel: r.sizeLabel }));
     const inputs = { rows, unserved: s ? s.unserved : [], served: s ? s.served : 0, waterPages, unscaledPages, service };
-    const resolved = wm.waterBidCheckRows(inputs, manualTicks());
+    const resolved = wm.waterBidCheckRows(inputs, scope.ticks);
     return {
       rows: resolved,
       auto: resolved.filter((r) => r.kind === 'auto'),

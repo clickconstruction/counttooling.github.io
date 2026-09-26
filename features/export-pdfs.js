@@ -425,12 +425,12 @@
     btn.innerHTML = origHtml;
   }
 
-  // D9: Export PDFs runs the Bid Check gate first (features/duct-bidcheck.js
-  // — the "Review · Export anyway" toast with duct present and rows
+  // D9: Export PDFs runs the Bid Check gate first (features/bid-check.js
+  // — the "Review · Export anyway" toast with duct or water present and rows
   // unresolved; opens the modal straight away otherwise). The bid-basis
   // entry (features/bid-basis.js → App.openSpecificPagesModal) is its own door.
   document.getElementById('specificPages').onclick = () => {
-    if (App.runDuctBidGate) App.runDuctBidGate(() => openSpecificPagesModal(), 'export-pdfs');
+    if (App.runBidGate) App.runBidGate(() => openSpecificPagesModal(), 'export-pdfs');
     else openSpecificPagesModal();
   };
   document.getElementById('specificPagesCancel').onclick = () => App.hideModal('specificPagesModal');

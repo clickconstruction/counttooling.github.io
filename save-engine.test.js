@@ -1623,3 +1623,275 @@ test('rawCheckInProject (R21): POSTs { p_project_id } to its RPC; a missing toke
   await assert.rejects(bare.rawListAccessibleProjects(undefined), /No access token for raw list_accessible_projects/);
   assert.strictEqual(noTok.length, 0);
 });
+
+// --- Stage 7 (R21): visibility, connectivity and the autosave tick ----------
+// app.js keeps the three listeners and the interval; the bodies are engine
+// functions driven here with a fake clock (Date.now) and a stubbed ctx.
+const { LONG_IDLE_PROBE_MS } = require('./constants.js');
+
+function fakeClock(startMs) {
+  const realNow = Date.now;
+  let now = startMs;
+  Date.now = () => now;
+  return { advance: (ms) => { now += ms; }, restore: () => { Date.now = realNow; } };
+}
+
+// The long-idle cast: a wedged client (its client probe errors) with a
+// working auth, and the replacement createClient hands back. rpc names are
+// recorded per client so a test can tell which one the calls reached.
+function idleReturnClients(opts) {
+  opts = opts || {};
+  const rpcCalls = { old: [], next: [] };
+  const auth = { refresh: 0, get: 0, setSession: 0 };
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' };
+  const rpcFor = (bucket) => async (name) => {
+    rpcCalls[bucket].push(name);
+    if (name === 'refresh_checkout_activity') return opts.checkoutProbe || { data: { ok: true, checked_out_at: '2026-09-26T12:00:00Z' } };
+    if (name === 'list_accessible_projects') return { data: [row] };
+    return { data: {} };
+  };
+  const old = makeChannelSupabase(rpcFor('old'));
+  old.supabase.auth = {
+    refreshSession: async () => { auth.refresh++; return { data: { session: opts.refreshedSession } }; },
+    getSession: async () => { auth.get++; return { data: { session: opts.currentSession || null } }; },
+  };
+  let clientProbes = 0;
+  old.supabase.from = () => ({ select: () => ({ limit: () => ({ abortSignal: async () => { clientProbes++; return opts.clientHealthy ? { error: null } : { error: { message: 'wedged' } }; } }) }) });
+  const next = makeChannelSupabase(rpcFor('next'));
+  next.supabase.auth = { setSession: async () => { auth.setSession++; return { data: {} }; } };
+  const created = [];
+  globalThis.window.supabase = { createClient: () => { created.push(next.supabase); return next.supabase; } };
+  return { old, next, rpcCalls, auth, created, clientProbes: () => clientProbes };
+}
+
+test('Stage 7: hidden stamps the idle clock, backs up, and flushes a dirty lock holder\'s edits', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = saveTestState({ pages: [{ canvases: [] }] });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  await engine.onVisibilityChange('hidden');
+  await new Promise((r) => setImmediate(r));
+  assert.strictEqual(sub.updates.length, 1, 'the dirty edits flushed on hide');
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
+  assert.ok(idbPuts.length >= 1, 'the takeoff backup was written');
+});
+
+test('Stage 7: hidden does not flush for a viewer, a non-holder, or a suspended session', async () => {
+  for (const [stateExtra, ctxExtra] of [
+    [{ checkedOutBy: 'u2' }, {}],
+    [{}, { isAutoSaveSuspended: () => true }],
+  ]) {
+    const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+    const state = saveTestState(Object.assign({ pages: [{ canvases: [] }] }, stateExtra));
+    const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, ...ctxExtra });
+    const engine = createSaveEngine(ctx);
+    engine.setAutoSaveDirty(true);
+    await engine.onVisibilityChange('hidden');
+    await new Promise((r) => setImmediate(r));
+    assert.strictEqual(sub.updates.length, 0);
+    assert.strictEqual(engine.getAutoSaveDirty(), true);
+  }
+});
+
+test('Stage 7: a return past LONG_IDLE_PROBE_MS probes the connection, forces a JWT refresh, recycles a wedged client, then probes the lock and refreshes permissions on the new client', async () => {
+  const clock = fakeClock(1_800_000_000_000);
+  try {
+    const refreshed = { user: { id: 'u1' }, access_token: 'tok-2', refresh_token: 'r-2' };
+    const cast = idleReturnClients({ refreshedSession: refreshed });
+    let client = cast.old.supabase;
+    const state = saveTestState({
+      supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1', refresh_token: 'r-1' },
+      checkedOutAt: '2026-09-26T11:59:00Z',
+    });
+    const fetches = routeFetch([{ match: '/rest/v1/rpc/list_accessible_projects', body: [{ id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' }] }]);
+    const set = [];
+    const { ctx, calls } = makeCtx({
+      getState: () => state,
+      getSupabase: () => client,
+      setSupabase: (c) => { client = c; set.push(c); },
+    });
+    const engine = createSaveEngine(ctx);
+    await engine.onVisibilityChange('hidden');
+    clock.advance(LONG_IDLE_PROBE_MS + 1000);
+    const uiBefore = calls.uiUpdates;
+    await engine.onVisibilityChange('visible');
+
+    // 1. The raw-fetch connection probe ran first.
+    assert.ok(fetches.some((c) => c.url.includes('/rest/v1/projects?select=id&limit=1')), 'recovery probe');
+    assert.ok(logKinds(engine).includes('autosave_recovery_probe'));
+    // 2. A forced refresh, not a getSession, and the new session is adopted.
+    assert.strictEqual(cast.auth.refresh, 1);
+    assert.strictEqual(cast.auth.get, 0);
+    const refreshEv = engine.getSaveStatusLog().find((e) => e.kind === 'session_refresh_attempt');
+    assert.ok(refreshEv, 'session_refresh_attempt logged');
+    assert.strictEqual(JSON.parse(refreshEv.detail).hiddenForMs, LONG_IDLE_PROBE_MS + 1000);
+    assert.strictEqual(state.supabaseSession, refreshed);
+    // 3. The wedged client was probed and replaced, carrying the fresh session.
+    assert.strictEqual(cast.clientProbes(), 1);
+    assert.strictEqual(set.length, 1);
+    assert.strictEqual(set[0], cast.next.supabase);
+    assert.strictEqual(cast.auth.setSession, 1);
+    assert.strictEqual(engine.getClientRecycleCount(), 1);
+    // 4. The lock probe reached the NEW client, never the wedged one.
+    assert.deepStrictEqual(cast.rpcCalls.old, []);
+    assert.ok(cast.rpcCalls.next.includes('refresh_checkout_activity'));
+    // The client probe's failure marks supabase-js as recently bad, so the
+    // permissions read takes the raw-fetch twin (not a second wedged rpc).
+    assert.ok(fetches.some((c) => c.url.includes('/rest/v1/rpc/list_accessible_projects')));
+    assert.strictEqual(state.checkedOutEmail, 'me@x.com');
+    assert.ok(calls.uiUpdates > uiBefore);
+  } finally {
+    clock.restore();
+    delete globalThis.window.supabase;
+  }
+});
+
+test('Stage 7: a short return reads the session, skips the recovery and client probes, and still probes the lock', async () => {
+  const clock = fakeClock(1_800_000_000_000);
+  try {
+    const session = { user: { id: 'u1' }, access_token: 'tok-1' };
+    const cast = idleReturnClients({ currentSession: session });
+    const state = saveTestState({ supabaseSession: { user: { id: 'u1' } }, checkedOutAt: '2026-09-26T11:59:00Z' });
+    const fetches = routeFetch([]);
+    const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => cast.old.supabase });
+    const engine = createSaveEngine(ctx);
+    await engine.onVisibilityChange('hidden');
+    clock.advance(LONG_IDLE_PROBE_MS - 1000);
+    await engine.onVisibilityChange('visible');
+    assert.strictEqual(fetches.length, 0, 'no recovery probe');
+    assert.strictEqual(cast.auth.refresh, 0);
+    assert.strictEqual(cast.auth.get, 1);
+    assert.strictEqual(state.supabaseSession, session);
+    assert.strictEqual(cast.clientProbes(), 0, 'no client probe');
+    assert.strictEqual(cast.created.length, 0, 'no recycle');
+    assert.ok(!logKinds(engine).includes('session_refresh_attempt'));
+    assert.ok(cast.rpcCalls.old.includes('refresh_checkout_activity'));
+    assert.ok(cast.rpcCalls.old.includes('list_accessible_projects'));
+    assert.ok(calls.uiUpdates >= 1);
+  } finally {
+    clock.restore();
+    delete globalThis.window.supabase;
+  }
+});
+
+test('Stage 7: a long-idle return with a healthy client keeps it; an expired lock routes the background recovery', async () => {
+  const clock = fakeClock(1_800_000_000_000);
+  try {
+    const refreshed = { user: { id: 'u1' }, access_token: 'tok-2', refresh_token: 'r-2' };
+    const cast = idleReturnClients({ refreshedSession: refreshed, clientHealthy: true, checkoutProbe: { data: { ok: false, error: 'expired' } } });
+    const state = saveTestState({ supabaseSession: { user: { id: 'u1' } } });
+    routeFetch([]);
+    const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => cast.old.supabase });
+    const engine = createSaveEngine(ctx);
+    await engine.onVisibilityChange('hidden');
+    clock.advance(LONG_IDLE_PROBE_MS + 1);
+    await engine.onVisibilityChange('visible');
+    assert.strictEqual(cast.clientProbes(), 1);
+    assert.strictEqual(cast.created.length, 0, 'a healthy client is not replaced');
+    assert.strictEqual(engine.getClientRecycleCount(), 0);
+    // handleBackgroundCheckoutExpired('visibility_probe') took over.
+    assert.ok(calls.attention >= 1 || calls.suspends >= 1, 'the expired lock reached the background recovery');
+  } finally {
+    clock.restore();
+    delete globalThis.window.supabase;
+  }
+});
+
+test('Stage 7: a signed-out return past the idle limit probes the connection and stops there', async () => {
+  const clock = fakeClock(1_800_000_000_000);
+  try {
+    const cast = idleReturnClients({});
+    const state = saveTestState({ supabaseSession: null });
+    const fetches = routeFetch([]);
+    const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => cast.old.supabase });
+    const engine = createSaveEngine(ctx);
+    await engine.onVisibilityChange('hidden');
+    clock.advance(LONG_IDLE_PROBE_MS + 1);
+    await engine.onVisibilityChange('visible');
+    assert.strictEqual(fetches.length, 1);
+    assert.strictEqual(cast.auth.refresh + cast.auth.get, 0);
+    assert.deepStrictEqual(cast.rpcCalls.old, []);
+    assert.strictEqual(calls.uiUpdates, 0);
+  } finally {
+    clock.restore();
+    delete globalThis.window.supabase;
+  }
+});
+
+test('Stage 7: online logs, repaints the bell, and probes only after failures; offline logs and repaints', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]), { updateResult: { error: { message: 'row level security', status: 400 } } });
+  const state = saveTestState();
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  const fetches = routeFetch([]);
+  engine.onOnline();
+  assert.ok(logKinds(engine).includes('online'));
+  assert.strictEqual(calls.indicatorUpdates, 1);
+  assert.strictEqual(fetches.length, 0, 'no failures, no probe');
+
+  engine.onOffline();
+  assert.ok(logKinds(engine).includes('offline'));
+  assert.strictEqual(calls.indicatorUpdates, 2);
+
+  engine.setAutoSaveDirty(true);
+  await engine.performAutoSave();
+  assert.strictEqual(engine.getConsecutiveAutoSaveFailures(), 1);
+  engine.onOnline();
+  await new Promise((r) => setImmediate(r));
+  assert.ok(fetches.some((c) => c.url.includes('/rest/v1/projects?select=id&limit=1')), 'failures -> recovery probe');
+  assert.strictEqual(calls.indicatorUpdates, 3);
+});
+
+test('Stage 7: one autosave tick saves a dirty takeoff and repaints; clean, signed-out and suspended ticks do not save', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = saveTestState({ pdfStoragePath: 'cloud/p.pdf' });
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  await engine.autoSaveTick();
+  assert.strictEqual(sub.updates.length, 0, 'clean tick');
+  engine.setAutoSaveDirty(true);
+  await engine.autoSaveTick();
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
+  assert.strictEqual(calls.indicatorUpdates >= 1, true);
+
+  const signedOut = saveTestState({ supabaseSession: null });
+  const e2 = createSaveEngine(makeCtx({ getState: () => signedOut, getSupabase: () => supabase }).ctx);
+  e2.setAutoSaveDirty(true);
+  await e2.autoSaveTick();
+  assert.strictEqual(sub.updates.length, 1);
+
+  const e3 = createSaveEngine(makeCtx({ getState: () => saveTestState(), getSupabase: () => supabase, isAutoSaveSuspended: () => true }).ctx);
+  e3.setAutoSaveDirty(true);
+  await e3.autoSaveTick();
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(e3.getAutoSaveDirty(), true);
+});
+
+test('Stage 7: a failing tick records the error and backs off; the next tick waits', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]), { updateResult: { error: { message: 'row level security', status: 400 } } });
+  const state = saveTestState({ pdfStoragePath: 'cloud/p.pdf' });
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  delete globalThis.window.lastSaveError;
+  engine.setAutoSaveDirty(true);
+  await engine.autoSaveTick();
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(globalThis.window.lastSaveError.message, 'row level security');
+  assert.ok(calls.indicatorUpdates >= 1);
+  await engine.autoSaveTick();
+  assert.strictEqual(sub.updates.length, 1, 'the backoff holds the next tick');
+  delete globalThis.window.lastSaveError;
+});
+
+test('Stage 7: a tick whose save finds the checkout expired routes the background recovery', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]));
+  // Hard-skew expiry: the lock is older than the inactivity window plus grace.
+  const state = saveTestState({ pdfStoragePath: 'cloud/p.pdf', checkedOutAt: new Date(Date.now() - 3 * CHECKOUT_INACTIVITY_MS).toISOString() });
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  await engine.autoSaveTick();
+  assert.ok(calls.attention >= 1 || calls.suspends >= 1, 'handleBackgroundCheckoutExpired(\'autosave\') took over');
+});

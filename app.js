@@ -489,12 +489,13 @@
   // The auto-recheckout rate-limit state (per-project count/cap Maps + min-gap
   // stamp) lives in save-engine.js (Stage 5); resetAutoRecheckoutCounter below.
   // Background-expiry entry point: implementation lives in save-engine.js
-  // (Stage 5), including the old supabase-disabled no-op fallback.
-  function handleBackgroundCheckoutExpired(trigger) { return saveEngine.handleBackgroundCheckoutExpired(trigger); }
+  // (Stage 5), including the old supabase-disabled no-op fallback. Its last
+  // app-side callers (the visibility probe and the autosave tick) moved into
+  // the engine in Stage 7; App.handleBackgroundCheckoutExpired delegates.
   function resetAutoRecheckoutCounter(projectId) { return saveEngine.resetAutoRecheckoutCounter(projectId); }
   let lastCheckoutRefreshAt = 0;
   let suspendAutoSaveUntilCheckout = false;
-  let lastHiddenAt = 0;
+  // lastHiddenAt lives in save-engine.js (Stage 7, the visibility handler).
   let serverClockOffsetMs = 0;
   function serverNowMs() { return Date.now() + serverClockOffsetMs; }
   function updateServerClockFromRpc(rpcData) {
@@ -529,8 +530,9 @@
   // SECTION: [sync] Sync recovery & client recycle
   // The recovery/recycle orchestrators, probes, client recycle, and raw-fetch
   // fallbacks live in save-engine.js (Stage 4); same-named wrappers below.
-  // runRecoveryProbeAndMaybeRecycle: engine-internal since Stage 6.
-  function recycleClientIfWedgedOnIdleReturn(trigger) { return saveEngine.recycleClientIfWedgedOnIdleReturn(trigger); }
+  // runRecoveryProbeAndMaybeRecycle: engine-internal since Stage 6;
+  // recycleClientIfWedgedOnIdleReturn since Stage 7 (its one caller, the
+  // long-idle return, moved in with the visibility handler).
 
   // updateSyncPausedBanner + retrySyncNow + captureNetworkInfoDetail/Obj live
   // in save-engine.js (Stage 6); the sync-paused banner Retry button below
@@ -598,8 +600,9 @@
   // moved there too. All three are referenced here by bare name (save-utils
   // globals).
 
-  function runRecoveryProbe(trigger) { return saveEngine.runRecoveryProbe(trigger); }
-  // runSupabaseClientProbe / recreateSupabaseClient have no app-side callers
+  // runRecoveryProbe (Stage 7: its callers, the long-idle return and the
+  // online event, moved into the engine), runSupabaseClientProbe and
+  // recreateSupabaseClient have no app-side callers
   // anymore (their orchestrators moved with them) — reach them via saveEngine.*.
 
   // rawProjectsUpdate / rawProjectsInsert: engine-internal since Stage 6
@@ -708,10 +711,10 @@
 
   // The [SaveDebug] helpers (isSaveDebugEnabled/setSaveDebugEnabled/
   // saveDebugRunId/saveDebugLog/saveDebugLogError) live in save-engine.js
-  // (Stage 2); same-named wrappers below.
+  // (Stage 2); same-named wrappers below (saveDebugRunId has none since its
+  // one app-side caller, the autosave tick, moved in with Stage 7).
   function isSaveDebugEnabled() { return saveEngine.isSaveDebugEnabled(); }
   function setSaveDebugEnabled(on) { return saveEngine.setSaveDebugEnabled(on); }
-  function saveDebugRunId() { return saveEngine.saveDebugRunId(); }
   function saveDebugLog(phase, payload) { return saveEngine.saveDebugLog(phase, payload); }
   function getSaveStatusLogWindowMs() { return saveEngine.getSaveStatusLogWindowMs(); }
   // The saveStatusLog array + prune/push live in save-engine.js (Stage 2);
@@ -995,9 +998,9 @@
   }
 
   // SECTION: [sync] Checkout probe, hashing & PDF cache
-  // probeCheckoutLock lives in save-engine.js (Stage 3); wrapper keeps the
-  // preflight/visibility callers frozen.
-  function probeCheckoutLock(runId) { return saveEngine.probeCheckoutLock(runId); }
+  // probeCheckoutLock lives in save-engine.js (Stage 3); App.probeCheckoutLock
+  // delegates for the save preflight, and the visibility caller moved into the
+  // engine (Stage 7).
 
   // sha256Hex: engine-internal + App.sha256Hex delegate (intake moved, split #38).
 
@@ -7076,150 +7079,43 @@
   // The PDF upload ladder (resumable/TUS + verify-after-timeout),
   // performSaveProjectToCloud, and the one-shot local-PDF uploader live in
   // save-engine.js (Stage 6) with the upload-progress sink and the one-shot
-  // in-flight/backoff state. Wrappers keep the App registry (Prepare PDF
-  // commit) and the interval/visibility callers below frozen.
+  // in-flight/backoff state. The wrapper keeps the App registry (Prepare PDF
+  // commit) frozen; the autosave tick calls the uploader inside the engine
+  // (Stage 7).
   function performSaveProjectToCloud(opts) { return saveEngine.performSaveProjectToCloud(opts); }
-  function uploadLocalPdfToCloudIfNeeded(reason, opts) { return saveEngine.uploadLocalPdfToCloudIfNeeded(reason, opts); }
 
   // SECTION: [sync] Auto-save
   // performAutoSave (the 5s dirty-loop worker: checkout preflight, update/
   // insert with raw-fetch fallback + retry, outcome bookkeeping) lives in
-  // save-engine.js (Stage 6); the interval + visibility callers use this
-  // wrapper.
+  // save-engine.js (Stage 6); the app-side callers use this wrapper (the
+  // interval and visibility callers moved into the engine, Stage 7).
   function performAutoSave(externalRunId) { return saveEngine.performAutoSave(externalRunId); }
 
   // SECTION: [sync] Local backup (IndexedDB takeoff state)
   // The three-layer backup writer (writeTakeoffStateBackup ->
   // writeTakeoffBackupToIndexedDB -> doWriteTakeoffBackupToIndexedDB, with the
   // in-flight promise + lastLocalBackup stamps) lives in save-engine.js
-  // (Stage 3); the 5s interval and the visibilitychange kick stay here.
+  // (Stage 3); the 5s interval stays here, and the visibilitychange kick is
+  // saveEngine.onVisibilityChange (Stage 7).
   function writeTakeoffStateBackup() { return saveEngine.writeTakeoffStateBackup(); }
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
 
+  // SECTION: [sync] Visibility & timers
+  // The listeners and the autosave interval stay here so they are greppable;
+  // their bodies live in save-engine.js (Stage 7): onVisibilityChange (hidden:
+  // back up and flush a dirty holder; visible after LONG_IDLE_PROBE_MS: probe,
+  // JWT refresh, wedged-client recycle, then the lock probe and permissions
+  // refresh), onOnline / onOffline, and autoSaveTick. lastHiddenAt is engine-owned.
   if (typeof document !== 'undefined' && document.addEventListener) {
-    document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'hidden') {
-        lastHiddenAt = Date.now();
-        saveDebugLog('visibility.hidden', { autoSaveDirty: saveEngine.getAutoSaveDirty(), hasProject: !!state.currentProjectId });
-        writeTakeoffStateBackup();
-        saveEngine.abortInFlightAutoSave('hidden');
-        const userId = state.supabaseSession?.user?.id;
-        if (SUPABASE_ENABLED && supabase && userId && state.currentProjectId &&
-            state.checkedOutBy === userId && saveEngine.getAutoSaveDirty() && !saveEngine.isSaveInProgress() && !suspendAutoSaveUntilCheckout) {
-          performAutoSave().catch(() => {});
-        }
-        return;
-      }
-      if (document.visibilityState !== 'visible') return;
-      const hiddenForMs = lastHiddenAt ? Date.now() - lastHiddenAt : 0;
-      if (hiddenForMs > LONG_IDLE_PROBE_MS && SUPABASE_ENABLED && supabase) {
-        await runRecoveryProbe('long_idle_return').catch(() => {});
-      }
-      if (!(SUPABASE_ENABLED && supabase && state.supabaseSession?.user)) {
-        saveDebugLog('visibility.visible', { hiddenForMs, signedIn: false });
-        return;
-      }
-      let sessionRefreshOk = false;
-      try {
-        let result;
-        if (hiddenForMs > LONG_IDLE_PROBE_MS) {
-          pushSaveEvent('session_refresh_attempt', 'Forcing JWT refresh after long idle', JSON.stringify({ hiddenForMs }));
-          result = await withTimeout(supabase.auth.refreshSession(), 5000, 'visibility refreshSession');
-        } else {
-          result = await withTimeout(supabase.auth.getSession(), 5000, 'visibility getSession');
-        }
-        if (result?.data?.session) {
-          state.supabaseSession = result.data.session;
-          sessionRefreshOk = true;
-        }
-      } catch (_) {}
-      // After a long idle, replace a wedged supabase-js client before the checkout
-      // and permissions refreshes below try to use it (each is a .rpc that would
-      // otherwise hang to its full timeout on a wedged client). Runs only on the
-      // long-idle path; the JWT was just refreshed above, so a probe failure here
-      // means a genuine wedge rather than an expired token.
-      let clientRecycled = false;
-      if (hiddenForMs > LONG_IDLE_PROBE_MS) {
-        clientRecycled = await recycleClientIfWedgedOnIdleReturn('long_idle_return').catch(() => false);
-      }
-      let probeResult = null;
-      const userId = state.supabaseSession?.user?.id;
-      if (state.currentProjectId && userId && state.checkedOutBy === userId && !state.isViewer && !suspendAutoSaveUntilCheckout) {
-        const probe = await probeCheckoutLock();
-        probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
-        if (probe.expired) {
-          try {
-            await handleBackgroundCheckoutExpired('visibility_probe');
-          } catch (e) {
-            try {
-              pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
-                JSON.stringify({ trigger: 'visibility_probe', message: (e && e.message) || String(e), name: e && e.name }));
-            } catch (_) {}
-          }
-        }
-      }
-      let permsRefreshed = false;
-      if (state.currentProjectId) {
-        try { await refreshProjectPermissions(); permsRefreshed = true; } catch (_) {}
-      }
-      saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, clientRecycled, probeResult, permsRefreshed });
-      updateUI();
-    });
+    document.addEventListener('visibilitychange', () => saveEngine.onVisibilityChange(document.visibilityState));
   }
 
   if (typeof window !== 'undefined') {
-    window.addEventListener('online', () => {
-      pushSaveEvent('online', 'Browser reports connection online');
-      updateSaveStatusIndicator();
-      if (saveEngine.getConsecutiveAutoSaveFailures() > 0) {
-        runRecoveryProbe('online_event').catch(() => {});
-      }
-    });
-    window.addEventListener('offline', () => {
-      pushSaveEvent('offline', 'Browser reports connection offline');
-      updateSaveStatusIndicator();
-    });
+    window.addEventListener('online', () => saveEngine.onOnline());
+    window.addEventListener('offline', () => saveEngine.onOffline());
   }
 
-  setInterval(async () => {
-    if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
-    if (suspendAutoSaveUntilCheckout) {
-      if (saveEngine.getAutoSaveDirty() && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
-      return;
-    }
-    // Belt-and-suspenders: if this project has a local PDF that never reached
-    // cloud storage (e.g. created via Prepare PDF "Open"), upload it. Fire and
-    // forget; the helper self-gates (in-flight, backoff, !pdfStoragePath) and
-    // stops firing once the upload succeeds. Runs regardless of canvas-dirty
-    // state so a failed attempt retries on a later tick.
-    uploadLocalPdfToCloudIfNeeded('autosave_tick').catch(() => {});
-    if (!saveEngine.getAutoSaveDirty()) return;
-    saveEngine.maybeWriteDirtySnapshot();
-    if (Date.now() < saveEngine.getNextAutoSaveAttemptAt()) {
-      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: saveEngine.getNextAutoSaveAttemptAt() - Date.now() });
-      return;
-    }
-    const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
-    if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
-    const result = await performAutoSave(intervalRunId);
-    if (!result.ok) {
-      if (result.error?.code === 'CHECKOUT_EXPIRED') {
-        try {
-          await handleBackgroundCheckoutExpired('autosave');
-        } catch (e) {
-          try {
-            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
-              JSON.stringify({ trigger: 'autosave', message: (e && e.message) || String(e), name: e && e.name }));
-          } catch (_) {}
-        }
-      } else if (result.error) {
-        window.lastSaveError = result.error;
-        updateSaveStatusIndicator();
-      }
-    } else {
-      updateSaveStatusIndicator();
-    }
-  }, AUTO_SAVE_INTERVAL_MS);
+  setInterval(() => saveEngine.autoSaveTick(), AUTO_SAVE_INTERVAL_MS);
 
   // SECTION: [sync] Checkout keep-alive
   // Implementation in save-engine.js (Stage 1); the wrapper + interval stay so

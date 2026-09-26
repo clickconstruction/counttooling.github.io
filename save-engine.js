@@ -2909,6 +2909,147 @@ function createSaveEngine(ctx) {
     }
   }
 
+  // --- [sync] Visibility & timers (Stage 7) ------------------------------
+  // The bodies behind app.js's visibilitychange, online and offline listeners
+  // and its autosave setInterval. app.js keeps the three addEventListener
+  // lines and the interval (so the timers stay greppable there, under
+  // `// SECTION: [sync] Visibility & timers`) and calls these. Engine-owned:
+  // lastHiddenAt, the stamp the long-idle return measures from.
+  let lastHiddenAt = 0;
+
+  // visibilityState is document.visibilityState, passed in so node tests can
+  // drive both edges. Hidden: stamp, back up, abort a hanging autosave and
+  // flush a dirty lock holder's edits. Visible after more than
+  // LONG_IDLE_PROBE_MS: probe the connection, force a JWT refresh, replace a
+  // wedged client, then (every return) probe our checkout lock and refresh
+  // the project's permissions.
+  async function onVisibilityChange(visibilityState) {
+    const state = ctx.getState();
+    if (visibilityState === 'hidden') {
+      lastHiddenAt = Date.now();
+      saveDebugLog('visibility.hidden', { autoSaveDirty, hasProject: !!state.currentProjectId });
+      writeTakeoffStateBackup();
+      abortInFlightAutoSave('hidden');
+      const userId = state.supabaseSession?.user?.id;
+      if (ctx.isSupabaseEnabled() && ctx.getSupabase() && userId && state.currentProjectId &&
+          state.checkedOutBy === userId && autoSaveDirty && !saveInProgress && !ctx.isAutoSaveSuspended()) {
+        performAutoSave().catch(() => {});
+      }
+      return;
+    }
+    if (visibilityState !== 'visible') return;
+    const hiddenForMs = lastHiddenAt ? Date.now() - lastHiddenAt : 0;
+    if (hiddenForMs > LONG_IDLE_PROBE_MS && ctx.isSupabaseEnabled() && ctx.getSupabase()) {
+      await runRecoveryProbe('long_idle_return').catch(() => {});
+    }
+    if (!(ctx.isSupabaseEnabled() && ctx.getSupabase() && state.supabaseSession?.user)) {
+      saveDebugLog('visibility.visible', { hiddenForMs, signedIn: false });
+      return;
+    }
+    let sessionRefreshOk = false;
+    try {
+      let result;
+      if (hiddenForMs > LONG_IDLE_PROBE_MS) {
+        pushSaveEvent('session_refresh_attempt', 'Forcing JWT refresh after long idle', JSON.stringify({ hiddenForMs }));
+        result = await ctx.withTimeout(ctx.getSupabase().auth.refreshSession(), 5000, 'visibility refreshSession');
+      } else {
+        result = await ctx.withTimeout(ctx.getSupabase().auth.getSession(), 5000, 'visibility getSession');
+      }
+      if (result?.data?.session) {
+        state.supabaseSession = result.data.session;
+        sessionRefreshOk = true;
+      }
+    } catch (_) {}
+    // After a long idle, replace a wedged supabase-js client before the checkout
+    // and permissions refreshes below try to use it (each is a .rpc that would
+    // otherwise hang to its full timeout on a wedged client). Runs only on the
+    // long-idle path; the JWT was just refreshed above, so a probe failure here
+    // means a genuine wedge rather than an expired token.
+    let clientRecycled = false;
+    if (hiddenForMs > LONG_IDLE_PROBE_MS) {
+      clientRecycled = await recycleClientIfWedgedOnIdleReturn('long_idle_return').catch(() => false);
+    }
+    let probeResult = null;
+    const userId = state.supabaseSession?.user?.id;
+    if (state.currentProjectId && userId && state.checkedOutBy === userId && !state.isViewer && !ctx.isAutoSaveSuspended()) {
+      const probe = await probeCheckoutLock();
+      probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
+      if (probe.expired) {
+        try {
+          await handleBackgroundCheckoutExpired('visibility_probe');
+        } catch (e) {
+          try {
+            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+              JSON.stringify({ trigger: 'visibility_probe', message: (e && e.message) || String(e), name: e && e.name }));
+          } catch (_) {}
+        }
+      }
+    }
+    let permsRefreshed = false;
+    if (state.currentProjectId) {
+      try { await refreshProjectPermissions(); permsRefreshed = true; } catch (_) {}
+    }
+    saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, clientRecycled, probeResult, permsRefreshed });
+    ctx.updateUI();
+  }
+
+  function onOnline() {
+    pushSaveEvent('online', 'Browser reports connection online');
+    ctx.updateSaveStatusIndicator();
+    if (consecutiveAutoSaveFailures > 0) {
+      runRecoveryProbe('online_event').catch(() => {});
+    }
+  }
+
+  function onOffline() {
+    pushSaveEvent('offline', 'Browser reports connection offline');
+    ctx.updateSaveStatusIndicator();
+  }
+
+  // One AUTO_SAVE_INTERVAL_MS tick: upload a local PDF that never reached the
+  // cloud, then save the dirty takeoff unless suspended or backing off, and
+  // route a CHECKOUT_EXPIRED result into the background recovery.
+  async function autoSaveTick() {
+    const state = ctx.getState();
+    if (!ctx.isSupabaseEnabled() || !state.supabaseSession?.user) return;
+    if (ctx.isAutoSaveSuspended()) {
+      if (autoSaveDirty && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
+      return;
+    }
+    // Belt-and-suspenders: if this project has a local PDF that never reached
+    // cloud storage (e.g. created via Prepare PDF "Open"), upload it. Fire and
+    // forget; the helper self-gates (in-flight, backoff, !pdfStoragePath) and
+    // stops firing once the upload succeeds. Runs regardless of canvas-dirty
+    // state so a failed attempt retries on a later tick.
+    uploadLocalPdfToCloudIfNeeded('autosave_tick').catch(() => {});
+    if (!autoSaveDirty) return;
+    maybeWriteDirtySnapshot();
+    if (Date.now() < nextAutoSaveAttemptAt) {
+      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: nextAutoSaveAttemptAt - Date.now() });
+      return;
+    }
+    const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
+    if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
+    const result = await performAutoSave(intervalRunId);
+    if (!result.ok) {
+      if (result.error?.code === 'CHECKOUT_EXPIRED') {
+        try {
+          await handleBackgroundCheckoutExpired('autosave');
+        } catch (e) {
+          try {
+            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+              JSON.stringify({ trigger: 'autosave', message: (e && e.message) || String(e), name: e && e.name }));
+          } catch (_) {}
+        }
+      } else if (result.error) {
+        window.lastSaveError = result.error;
+        ctx.updateSaveStatusIndicator();
+      }
+    } else {
+      ctx.updateSaveStatusIndicator();
+    }
+  }
+
   return {
     // Stage 2: Save Status log core + dirty core
     pushSaveEvent,
@@ -3002,6 +3143,11 @@ function createSaveEngine(ctx) {
     installGlobalReloadStampCommit,
     showGlobalReloadBanner,
     checkoutKeepalive,
+    // Stage 7: visibility & timers (app.js keeps the listeners + interval)
+    onVisibilityChange,
+    onOnline,
+    onOffline,
+    autoSaveTick,
   };
 }
 

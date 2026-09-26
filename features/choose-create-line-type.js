@@ -55,7 +55,8 @@
     filtered.forEach(lt => {
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type';
-      div.innerHTML = '<span class="name line-type-name">' + (lt.name || 'Line') + '</span><span class="swatch" style="background:' + (lt.color || '#4a9eff') + '"></span>';
+      // MAP-XSS: the name and the color are the estimator's own words (or a shared or imported project's); text, never markup.
+      div.innerHTML = '<span class="name line-type-name">' + App.escapeHtml(lt.name || 'Line') + '</span><span class="swatch" style="background:' + App.escapeHtml(lt.color || '#4a9eff') + '"></span>';
       div.onclick = () => {
         state.activeLineTypeId = lt.id;
         App.hideModal('chooseLineTypeModal');

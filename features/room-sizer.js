@@ -727,7 +727,7 @@
         : '';
       return '<div class="room-row-wrap">'
         + '<div class="room-row" data-ti="' + ti + '"' + (t.id ? ' title="Click to edit room"' : '') + '>'
-        + '<span class="room-swatch" style="background:' + t.color + '"></span>'
+        + '<span class="room-swatch" style="background:' + escapeHtmlText(t.color) + '"></span>'
         + '<span class="room-row-name">' + escapeHtmlText(t.name) + '</span>'
         + '<span class="room-row-total">' + totalLine + '</span>'
         + '</div>'

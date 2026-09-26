@@ -13,6 +13,24 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
+
+The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser
+(features/choose-create-line-type.js) wrote a line type's name and color into its list raw, so a
+name typed as markup, in a shared bid or in a Canvas JSON import, ran for whoever opened the
+chooser; every other list already escaped the name. The same raw concatenation sat in the
+Polyline dialog's select (app.js; markup only there, a select drops elements), the header's active
+line swatch and counter button, the sidebar's counter button, the counter list's swatch and icon
+path, the line-type list's drag-handle swatch, and the Room Sizer's room swatch. All nine go
+through `App.escapeHtml` now (`escapeHtmlText` in room-sizer.js), and a comment at each says why.
+
+Pinned by choose-create-line-type.spec.js "MAP-XSS": a line type named as an `<img onerror>` with
+a color that closes its style attribute, and a counter whose icon path closes the `<path>` and
+opens an `<img>`, show as their own text in the sidebar lists, the header, the chooser and the
+Polyline select; nothing runs, no `on…` handler lands anywhere on the page, and the only console
+lines are the browser refusing the poisoned path as path data, which is the string staying an
+attribute value. The test is red on the pre-fix chooser.
+
 ## fix(learn): the reader's own PDF uploaded onto the sample sheets opens as their own plan (LESSON-UPLOAD, 2026-09-25)
 
 Found building LEARN-LEAK: with a lesson's, course's or tour's sample sheets open, Upload PDF (or a

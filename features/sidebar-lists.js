@@ -91,7 +91,7 @@
         App.getCounterWsfuOverrideText ? App.getCounterWsfuOverrideText(c) : null,
       ].filter(Boolean).join(' ');
       const neckTitle = neckText ? ' title="' + esc(neckText) + '"' : '';
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name"' + neckTitle + '>' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + withRepeats + '</span>' + (showEdit ? '<span class="swatch" style="background:' + c.color + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + esc(c.color) + '" d="' + esc(c.icon) + '"/></svg></span><span class="name"' + neckTitle + '>' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + withRepeats + '</span>' + (showEdit ? '<span class="swatch" style="background:' + esc(c.color) + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');
@@ -169,7 +169,7 @@
       });
       const div = document.createElement('div');
       div.className = 'sidebar-item sidebar-item-line-type' + (state.activeLineTypeId === lt.id && showEdit ? ' active' : '');
-      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + lt.color + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + App.formatFeetPx(lenFt, lenPx) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(lt.name || 'Line') + quickKeyBadgeHtml('lineType', lt.id) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch line-type-drag-handle" style="background:' + esc(lt.color) + '" title="Drag to reorder"></span>' : '') + '<span class="badge">' + runs + ' · ' + App.formatFeetPx(lenFt, lenPx) + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
       if (App.waterLineTypeMetaHtml) div.insertAdjacentHTML('beforeend', App.waterLineTypeMetaHtml(lt));   // WATER-PLAN rung 3: "cold · 12 WSFU served"
       if (showEdit) {
         div.dataset.lineTypeId = lt.id;

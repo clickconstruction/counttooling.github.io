@@ -13,6 +13,180 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
+
+Two of the decomposition map's confirmed bugs (R03, D09 and D10).
+
+The rule pages and the app's § popover printed "waterSchedule" under Used by for the four water
+rules (velocity, pipe ID, fixture supply minimum, the demand curve). The labels were a list in
+features/rules.js and a copy of it in scripts/build-rules.js, and water sizing had been added to
+neither. They are one list now, `USED_BY_LABEL` in scripts/lib/rules.js, with Water Sizing on it.
+build-rules.js prints the pages from it and writes it into rules.json as `usedByLabels`, above the
+rules; the popover reads that and prints an id with no label as itself. The loader fails a rule
+whose `used_by` names an id that is not on the list, so a rule for a new surface has to add the
+surface's name first (content/rules/README.md says so). The four water pages and rules.json are
+rebuilt, and sw.js restamped, since rules.json is precached.
+
+The water card's half had already landed on main in the persona calibration (C4 and its review,
+2026-09-25): a Pipe size button, the whole card taking a tap on a touch screen, the card wired the
+first time it shows rather than on the first S, and its presses kept from the sheet under it. The
+map was read before that. The one width nothing pinned was a phone, so water-size.spec.js now taps
+the card's text at 375 px, with S never pressed, and sees the sizes open with no vertex placed; the
+case fails when the card's touch-screen `pointer-events` or its first-show wiring is taken out.
+
+Pinned by rules.test.js (Water Sizing on the list, every rule's `used_by` labelled, an unknown id
+rejected, `usedByLabels` above the rules in rules.json, every rule page printing the label and never
+the id) and rules-chip.spec.js (the Water Sizing dialog's velocity chip opens a popover whose Used
+by reads Water Sizing). Both were red before the fix.
+
+## fix(duct): changing your mind back to the previous size prices no transition, and the flex and damper knobs refresh the Bid Check (MAP-DUCT-STEP, 2026-09-26)
+
+The decomposition map's R04 (defects D07 and D08). Tracing duct, picking a new size at a vertex and
+then the size you had before, at that same vertex, left a boundary with the same size on both
+sides: the pick replaced the new segment's size but never looked at the one before it. The
+committed run carried a size step from 24×12 to 24×12, and the fitting walk
+(`inferAutoDuctFittings`) logged a transition at every boundary without comparing, so the
+schedule, the sidebar and the static path priced a fitting that was not there. A pick that lands
+back on the previous segment's size now undoes the step: the segment and its recorded step go.
+And the walk skips a boundary whose two sides are the same size, so a run saved with the phantom
+boundary stops pricing it the next time its sheet's fittings are worked out.
+
+What a pick and an Esc pop do to the draft is now pure: duct-model.js's `ductDraftApplySizeStep`
+and `ductDraftPopVertex` (the pop carries the rise/drop prune Esc already did), and
+features/duct-tool.js's `applyDuctSizeStep` / `handleDuctEscape` delegate to them.
+
+Separately, on the Duct Schedule's Polish row, the Max flex field and the VD-per-tap toggle
+re-rendered the schedule but never ran `updateUI`, so the Bid Check's "Flex drops within max" row
+and the static path's damper feet stayed as they were until something else redrew. Both now call
+`App.updateUI()`, as the friction and terminal-allowance fields already did.
+
+Pinned by duct-model.test.js (the step, the no-op, the same-vertex replace, the re-pick back at
+vertex 1 and deeper in a run, the pop's prunes, and the walk skipping an equal-size boundary);
+duct-fittings.spec.js "MAP-DUCT-STEP" (a re-pick back at vertex 1 commits one segment, no step,
+no transition); duct-bidcheck.spec.js "MAP-DUCT-STEP" (Max flex 6 to 10 turns the rendered flex
+row from ⚠ to ✓ with nothing else done); duct-static.spec.js "MAP-DUCT-STEP" (VD-per-tap off
+takes the damper out of the rendered static-path row, 62 to 60 eq ft). All three specs are red on
+the pre-fix code.
+
+## fix(save): a restored bid comes back with its own Quick Keys and header pins (MAP-QUICKKEYS, 2026-09-26)
+
+The decomposition map's R02, with its defects D13, D19 and D44. The shared hydrator
+(annotation-model.js `hydrateStateFromProjectData`, which the last-session restore uses whenever
+the cloud copy is newer than the device's backup, and the view-link boot) never read the project's
+Quick Keys or its header pins. The session kept whatever it had, the boot's older bindings, an
+Artboard seed or the last bid's, and the next autosave wrote them over this bid's. A cloud bid
+opened without its PDF lost its Quick Keys the same way on both canvas-only branches of
+features/load-project.js and again when the PDF was uploaded (features/pdf-intake.js
+`matchPendingCanvasLoad`), and both pdf-intake paths skipped the header pins and the Groups gate,
+as did the device backup applier (`applyTakeoffBackupToState`) for the pins. Import Canvas dropped
+the layer each sheet was on, which Export Canvas writes.
+
+The hydrator now applies Quick Keys through `App.applyProjectQuickKeys`, read at call time because
+features/quick-keys.js loads after the model is built (node, and a shell without the feature, copy
+them plain), and sets the pins from the project, {} when it has none so the trade decides. The
+backup applier takes the pins when the backup carries them and keeps the session's when it does
+not, like the rest of its merge. The two canvas-only branches and the PDF match apply Quick Keys by
+the same replace-or-keep rule; both pdf-intake paths set the pins and the Groups gate. Import Canvas
+reads the layer map back, kept to the sheets the plan has.
+
+Pinned by annotation-model.test.js, which reads the key lists out of the builders themselves (the
+two save-engine.js cloud payloads, app.js `buildCanvasExportData` and the IndexedDB backup) with
+espree, checks the three project builders write one list, and sends a recognizable value for every
+key through the hydrator, with the sheets loaded and canvas-only, and through the backup applier: a
+key that does not come back fails by name, and so does a new builder key with no sentinel. Red
+before the fix on the pins and then on Quick Keys. quick-keys.spec.js adds a restored bid (through
+the published hydrator, signed out) and a canvas-only bid getting its PDF; import-clear.spec.js adds
+the layer map. All three were red before the fix. Left for the one-contract refactor (R12): the PDF
+match still drops the layer map, and the backup applier still copies Quick Keys plain.
+
+## fix(notes): RFI flags and the Notes ledger name the sheet, and a ledger jump opens the note's layer (MAP-SHEETNAMES, 2026-09-26)
+
+The sheet-name and notes-jump part of the decomposition map's R03 (D11, D14, D15). Copy RFI Flags
+(features/rfi-flags.js) and the Notes ledger (features/notes-ledger.js) read the sheet name from
+`page.name`, a field no page carries (every intake writes `label`), so every RFI row read a bare
+"p3" and every ledger heading a bare "p2". Both now read the page's `label` through one helper,
+`App.sheetNameForPage` (features/rfi-flags.js), which leaves the name out when
+`SheetTitleModel.isDefaultPageLabel` says it is only the intake's file-name default: "p1 P-200 ·
+Plumbing Plan" for a sheet read off its title block or renamed, "p2" for "bid-set.pdf, p2".
+
+The ledger's jump wrote `page.activeCanvas`, which nothing reads, so a jump to a note on a layer
+other than the active one landed on the page with the old layer still showing: the note was not
+drawn and the chip pointed at empty sheet, and the page kept a junk field. It now sets
+`state.activeCanvasIdByPage` to the note's canvas id, the way the layer pills do (marking the
+project dirty when the layer changed, as they do), before the render.
+
+Pinned by rfi-flags.spec.js, which used to seed `pages[0].name` and so pinned the phantom field:
+it now seeds a label and expects it in the row, and expects page 2's file-name label left out. Two
+new notes-ledger.spec.js cases: the drawer headings read "p1 · P-200 · Plumbing Plan" and "p2";
+and a jump to an RFI on a second, non-active layer makes that layer active, leaves no
+`activeCanvas` field, and paints the red pin on the annotation canvas at the note (the same probe
+reads nothing there once Main is active again). All three were red before the fix.
+
+## fix(status-bar): a signed-in estimator sees the tool hint and the live readouts (MAP-HINTS, 2026-09-26)
+
+The decomposition map's R05 / D01, after the owner's call of 2026-09-25. The status bar's tool
+hint ("Click start point", "Tap second corner") and the live numbers that ride it, the feet-inches
+of a Line or Polyline being drawn, the duct trace's "S = size" and pounds, the Chain tool's next
+drop and the tag the plan reads beside the Counter cursor, were composed only in the signed-out
+branch of features/status-bar.js `updateStatus`. Every production estimator is signed in, so none
+of them ever saw any of it, and every spec that pinned the hint ran signed out.
+
+The ladder is now `toolHintFor(state, press, readouts, enums)` in a new pure module,
+[status-hint-model.js](status-hint-model.js) (`window.StatusHintModel`, guarded CommonJS footer),
+returning `{ text, keyed }`: the hint as shown, and the same hint with any live readout swapped for
+its fixed worst-case placeholder, which is what the one-line fit cache measures. The readouts go in
+as readers and only the armed tool's is called, so the other three cost nothing per mousemove.
+`updateStatus` is four passes: renderSyncIndicators (the dot, square, labels and the mode text the
+sync state owns), composeMode (that text plus the hint, negotiated onto the bar), renderTotals and
+renderMeasureChip. Signed in, the hint stands alone in the mode, never behind a leading bar; a
+signed-in viewer's "Viewing, … is editing" line is unchanged; the signed-in labels ride the fit key,
+since "Canvas Uploading..." is wider than "Canvas" at the same width.
+
+One rule changed with it. The fit asked whether the actions still shared the mode's row, which only
+holds while the bar without a hint is one line. Signed in, the sync labels alone make it two rows at
+769 to 900 px and on a phone, so the hint would never have shown there, even on a phone where the
+mode has a zero flex basis and takes no room. The fit now asks whether the hint costs the bar a row
+(the bar's height against the narrowest bare text); on a one-line bar that is the old answer, and
+the signed-out D19 ladder is unchanged.
+
+Pinned by status-hint-model.test.js (every TOOL's hint in both press words, every readout's keyed
+placeholder, a new TOOL fails until it is given a hint or none) and footer-hint.spec.js "MAP-HINTS":
+the Line, Duct and Measure hints on a signed-in bar with the readout live and an autosave in flight,
+the viewer line exact with Measure armed, a sweep from 1500 px to 375 px where the hint never adds a
+row or overflows, and a real dev-auth sign-in that self-skips without DEV_AUTH_*.
+
+## fix(tour): a trade tour started from Learn opens the sample plan, never the sheets that were open (MAP-TOUR-SHEET, 2026-09-26)
+
+The decomposition map's D06 (R03). The three trade tours' welcome passed the moment any plan was
+open, and nothing reset it. So a reader who finished a lesson, which hands back to the Learn menu,
+and pressed Plumbing tour there ran the tour on the lesson set: the welcome ticked itself on its
+four sheets, and the circles of the steps after it sat at the sample plan's coordinates on P-101,
+where the 20'-0" dimension they ring is not. Over the reader's own local plan the same thing
+happened, and the plumbing and HVAC welcomes stamped their trade onto that plan as well. The
+lessons and the blank tour already reset a sample set or asked; the trade tours did neither, and the
+two lists of what counts as a sample set disagreed (the lessons knew four, the blank tour six).
+
+Now the tourKit (features/tutorial.js) owns one list, `TEACHING_SETS` (each set's name, the pages it
+comes with, and whether LEARN-LEAK watches its palette: every set but the engineered sample plan,
+which the reader opens to practise on), and one reset-or-close, `leaveForTeachingSet(route)`: a
+teaching set as it came is reset without asking, anything else is the reader's own plan and goes
+through Close project, which asks. `openTeachingSet(url, fileName, route)` is that, then the palette
+watch, then the intake. The trade tours' Open the sample plan goes through it, and their welcome
+passes only once `sample-plan` is the open project, so the trade is only ever stamped on the sample.
+The lessons (`openSheetsFor`) and the blank tour (`openBlankSheet`, whose sheet is bytes, so only the
+clearing is shared) call the same branch; lessons.js's own `KNOWN_SETS`, `SET_PAGES` and the unread
+`App.isTeachingSetGrown` are gone, and LESSON-UPLOAD's `App.isTeachingSetOpen` reads the kit. One
+behavior moves with the list: a lesson opened over the tours' sample plan or the engineered sample
+plan now resets it without asking, as the blank tour already did.
+
+Pinned by tutorial.spec.js: a lesson's sheets are open, the Plumbing tour starts from Learn, the
+welcome waits for its button, which opens the sample plan with no question, clean and stamped
+plumbing, and the Measure step's two circles ring the 20'-0" dimension in the open sheet's own text
+layer; and over the reader's own plan the welcome waits without stamping a trade, its button asks
+Close project, Cancel keeps the plan and its mark, and agreeing opens the sample plan with the
+reader's palette. Both are red on the old welcome. lessons.spec.js's guard that a lesson never
+replaces the reader's plan unasked stays green.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

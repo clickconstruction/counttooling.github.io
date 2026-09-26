@@ -55,7 +55,12 @@
  * true ANSI B sheet at a true 1/8", so the Set Scale dialog shows no sheet-size
  * warning) and
  * nothing they do touches a cloud project: a tour refuses to start while a
- * cloud project is open. Progress is per session; a finished tour is
+ * cloud project is open. The welcome passes only once the sample plan is the open
+ * project (MAP-TOUR-SHEET, 2026-09-26): its button resets a teaching set left open
+ * (a lesson's sheets, the blank sheet) without asking, and puts the reader's own plan
+ * through Close project, which asks. The list of teaching sets and that reset-or-close
+ * live here, in the tourKit (`TEACHING_SETS`, `leaveForTeachingSet`, `openTeachingSet`),
+ * for the lessons and the blank tour too. Progress is per session; a finished tour is
  * remembered per device under its own key (`clickcount-tour-done` electrical,
  * `clickcount-tour-done-plumbing`, `clickcount-tour-done-hvac` — H1, 2026-09-14) so the empty-canvas hint stops offering
  * THAT tour and keeps offering the other. Entry points: the hint's two links,
@@ -286,7 +291,7 @@
       id: 'welcome', title: 'A five-minute electrical takeoff', kind: 'do',
       body: 'A small takeoff on the sample plan: set the scale and prove it, count devices, chain a run, read the wire and the checks. Nothing here touches your projects.\n1. Click [[Open the sample plan]] below.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
-      check: () => !!(state().pages && state().pages.length),
+      check: () => samplePlanOpen(),   // the sample plan, never whatever else is open (MAP-TOUR-SHEET)
       handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
     },
@@ -484,8 +489,9 @@
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // A device whose last bid was electrical remembers that as its default
       // trade; the plumbing tour must speak plumbing, so the project is stamped
-      // (never remembered) the moment the plan is open, whichever way it opened.
-      check: () => { const ok = !!(state().pages && state().pages.length); if (ok && state().trade !== 'plumbing' && App.setProjectTrade) App.setProjectTrade('plumbing', { remember: false, route: 'tour' }); return ok; },
+      // (never remembered) the moment the sample plan is open, whichever way it opened;
+      // never the reader's own plan (MAP-TOUR-SHEET).
+      check: () => { const ok = samplePlanOpen(); if (ok && state().trade !== 'plumbing' && App.setProjectTrade) App.setProjectTrade('plumbing', { remember: false, route: 'tour' }); return ok; },
       handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
     },
@@ -654,7 +660,7 @@
       body: 'A design-build duct takeoff on the sample plan: set the scale and prove it, box a room the plan already names, give diffusers a CFM, let the app size the main, count the fittings and the pounds, sign off, hand it to the bid. Nothing here touches your projects.\n1. Click [[Open the sample plan]] below.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
-      check: () => { const ok = !!(state().pages && state().pages.length); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
+      check: () => { const ok = samplePlanOpen(); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
       handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
     },
@@ -777,8 +783,49 @@
       inp.dispatchEvent(new Event('change', { bubbles: true }));
     } catch (e) { App.showToast('Could not load the sample plan. Upload PDF works the same way.'); }
   }
-  // LEARN-LEAK: what the tour makes leaves with the sample plan (features/lessons.js)
-  async function openSamplePlan() { if (App.beginTeachingPalette) App.beginTeachingPalette(); return openPlanFile(SAMPLE_PLAN, 'sample-plan.pdf'); }
+  // ===== the teaching sets (MAP-TOUR-SHEET, 2026-09-26) ======================================
+  // Every sample project the teaching opens, by the name the intake gives it, with the pages it
+  // comes with. ONE list, read by features/lessons.js (the lessons and courses, LEARN-LEAK's palette
+  // watch, LESSON-UPLOAD's upload test) and features/tour-blank.js; the two copies there disagreed.
+  // `palette`: what is made while it is open leaves with it (LEARN-LEAK). The engineered sample plan
+  // is one the reader opens to practise on (the empty canvas, Project Settings), so it is a set a
+  // lesson or tour may reset, but its palette is the reader's.
+  const TEACHING_SETS = [
+    { name: 'sample-plan', pages: 1, palette: true },            // the three trade tours (this file)
+    { name: 'sample-plan-advanced', pages: 1, palette: false },   // the engineered sample plan
+    { name: 'sample-lessons', pages: 4, palette: true },         // the lessons, the plumbing course
+    { name: 'sample-electrical', pages: 4, palette: true },      // the electrical course
+    { name: 'sample-hvac', pages: 3, palette: true },            // the HVAC course
+    { name: 'blank-sheet', pages: 2, palette: true },            // the blank tour (features/tour-blank.js)
+  ];
+  const SAMPLE_NAME = 'sample-plan';
+  const teachingSetOf = (name) => TEACHING_SETS.find((t) => t.name === (name || '')) || null;
+  const isTeachingSet = (name) => !!teachingSetOf(name);
+  // More pages than the set came with: something of the reader's is on it (LESSON-UPLOAD), so no silent reset.
+  const teachingSetGrown = () => { const t = teachingSetOf(state().currentProjectName); return !!t && (state().pages || []).length > t.pages; };
+  // Clear the way for a teaching set. Nothing open, nothing to do; a teaching set as it came is
+  // reset without asking; anything else is the reader's own plan and goes through the app's one
+  // Close project, which asks (the owner's call). False when the reader said Cancel.
+  async function leaveForTeachingSet(route) {
+    const s = state();
+    if (!(s.pages && s.pages.length)) return true;
+    if (isTeachingSet(s.currentProjectName) && !teachingSetGrown()) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); return true; }
+    return !!(await App.closeProject({ route }));
+  }
+  // Open a teaching set by URL, fresh: clear the way, start LEARN-LEAK's palette watch (what the
+  // tour makes leaves with the set, features/lessons.js), then the intake. False when the reader
+  // kept their own plan.
+  async function openTeachingSet(url, fileName, route) {
+    if (!(await leaveForTeachingSet(route))) return false;
+    if (App.beginTeachingPalette) App.beginTeachingPalette();
+    await openPlanFile(url, fileName);
+    return true;
+  }
+  // The trade tours' welcome. Over the lesson set or the reader's own plan the tour used to run on
+  // whatever was open, and its circles landed on the wrong sheet (D06).
+  async function openSamplePlan() { return openTeachingSet(SAMPLE_PLAN, SAMPLE_NAME + '.pdf', 'tour'); }
+  // The welcome's check: the sample plan, as it came, is the open project.
+  function samplePlanOpen() { const s = state(); return !!(s.pages && s.pages.length) && s.currentProjectName === SAMPLE_NAME && !teachingSetGrown(); }
   async function openAdvancedSamplePlan() { return openPlanFile(ADVANCED_PLAN, 'sample-plan-advanced.pdf'); }
   // Through the real dialog when it is there — the estimator sees the presets tab
   // and the 1/8" row get picked, the way they will do it on a real sheet — with a
@@ -1748,7 +1795,7 @@
   App.setTutorialPending = (v) => { pending = !!v; };
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
-  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
+  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, teachingSetGrown, leaveForTeachingSet, openTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
     markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff

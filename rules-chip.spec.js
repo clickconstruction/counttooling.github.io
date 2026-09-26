@@ -96,6 +96,24 @@ test.describe('Rulebook chips and popover', () => {
     await expect(page.locator('#chainPanelFoot .rule-chip[data-rule="elec.vertical.make-up"]')).toBeVisible();
   });
 
+  // MAP-WATER-TAP (2026-09-26): the popover's "Used by" printed the raw id waterSchedule, since the
+  // app's label list had no entry for it. The labels now ride rules.json (usedByLabels).
+  test('the popover names the surface a rule is used by, Water Sizing, never its raw id', async ({ page }) => {
+    await seedElectrical(page);
+    await page.evaluate(() => window.App.rulesReady());
+    await page.evaluate(() => window.App.showModal('waterScheduleModal'));
+    const chip = page.locator('#waterScheduleModal .rule-chip[data-rule="plumb.water.velocity"]');
+    await expect(chip).toBeVisible();
+    await chip.click();
+    const pop = page.locator('#rulePopover');
+    await expect(pop).toBeVisible();
+    const used = pop.locator('.rule-pop-chip');
+    await expect(used).toHaveText(['Water Sizing']);
+    expect(await pop.textContent()).not.toContain('waterSchedule');
+    await page.keyboard.press('Escape');
+    await expect(pop).toBeHidden();
+  });
+
 });
 
 // The base config blocks the service worker for every spec (CI-NETWORKIDLE); this test is

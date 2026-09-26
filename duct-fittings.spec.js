@@ -115,6 +115,30 @@ test.describe('Duct auto fittings (D3)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('picking the previous size again at the same vertex undoes the step: no transition is priced (MAP-DUCT-STEP)', async ({ page }) => {
+    const wrapper = page.locator('#canvasWrapper');
+    await armDuct(page);
+    await wrapper.click({ position: { x: 150, y: 150 } });
+    await wrapper.click({ position: { x: 300, y: 150 } });
+    // At vertex 1: step 24×12 → 20×12, then change your mind back to 24×12.
+    await page.evaluate(() => { window.App.applyDuctSizeStep({ kind: 'rect', w: 20, h: 12 }); });
+    expect(await page.evaluate(() => window.state.drawingDuct.segments.length)).toBe(2);
+    await page.evaluate(() => { window.App.applyDuctSizeStep({ kind: 'rect', w: 24, h: 12 }); });
+    const draft = await page.evaluate(() => ({ segments: window.state.drawingDuct.segments, sizeSteps: window.state.drawingDuct.sizeSteps }));
+    expect(draft.segments).toEqual([{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }]);
+    expect(draft.sizeSteps).toEqual([]);
+    await wrapper.click({ position: { x: 450, y: 150 } });
+    await page.keyboard.press('Enter');
+
+    const run = await page.evaluate(() => window.App.ensureActiveCanvas(window.state.pages[0]).annotations.ductRuns[0]);
+    expect(run.segments.length).toBe(1);
+    expect(run.sizeSteps).toEqual([]);
+    expect((await visibleFittings(page)).filter((f) => f.type === 'transition')).toEqual([]);
+    expect(await page.evaluate(() => window.App.getDuctFittingCounts())).toEqual([]);
+
+    expect(errors).toEqual([]);
+  });
+
   test('a run started on an existing run logs a tap on the PARENT at the child start size', async ({ page }) => {
     const wrapper = page.locator('#canvasWrapper');
     await traceL(page);

@@ -18,7 +18,8 @@
  * what the lesson takes for granted (a scale, a counter, a chained branch), so lesson 10
  * never depends on lesson 3 having been taken. Opening never costs the reader their
  * work: over their own plan the first step goes through App.closeProject, which asks;
- * over the last lesson's sheets it just resets. Palette items a lesson makes carry
+ * over a teaching set (the last lesson's sheets, a tour's sample plan) it just resets
+ * (the tourKit's `leaveForTeachingSet`, shared with the tours). Palette items a lesson makes carry
  * `lesson: true` and are swept before the next lesson, so the reader's own palette (an
  * Artboard's counters ride every new project) is left as it was.
  *
@@ -44,9 +45,10 @@
   // The sample SETS the teaching runs on. The lessons and the plumbing course run on the
   // lesson set; a course may name another (`lesson.set`, features/course-electrical.js runs
   // on the electrical set). A set the teaching opened is reset, never asked about, when the
-  // next lesson opens; the reader's own plan always goes through Close project.
+  // next lesson opens; the reader's own plan always goes through Close project. Which projects
+  // are teaching sets is ONE list, the tourKit's TEACHING_SETS (features/tutorial.js,
+  // MAP-TOUR-SHEET), and so is the reset-or-close (`leaveForTeachingSet`).
   const LESSON_SET = { url: '/samples/sample-lessons.pdf', name: 'sample-lessons', pages: 4, trade: 'plumbing', word: 'four' };
-  const KNOWN_SETS = ['sample-lessons', 'sample-electrical', 'sample-hvac', 'blank-sheet'];   // blank-sheet: features/tour-blank.js
   const setOf = (lesson) => (lesson && lesson.set) || LESSON_SET;
   const SET_NAME = LESSON_SET.name;
   const DONE_KEY = 'clickcount-lessons-done';
@@ -250,8 +252,9 @@
   let opening = false;
   let settle = { page: null, at: 0 };
   // The sheets the palette is watched on: the lesson and course sets, the blank tour's sheet, and the
-  // five-minute tours' sample plan (features/tutorial.js).
-  const TRACKED_SETS = KNOWN_SETS.concat(['sample-plan']);
+  // five-minute tours' sample plan; every teaching set but the engineered sample plan (the tourKit's
+  // TEACHING_SETS, `palette`). Read at call time: the kit registers before this file, never captured.
+  const isTrackedSet = (name) => K().TEACHING_SETS.some((t) => t.palette && t.name === name);
   // After a reload mid-lesson the boot shows no plan at all while it offers to restore one; only a
   // plan that is not a set, or a set left again, counts as leaving.
   let fromStorage = !!track;
@@ -260,7 +263,7 @@
     if (!track) return;
     const name = S().currentProjectName || '';
     if (name) fromStorage = false;
-    if (TRACKED_SETS.includes(name)) {
+    if (isTrackedSet(name)) {
       // IN once settled: the lesson laid its seed, or (a tour has none) the first sheet is drawn, no
       // Trim your set is up, and it has stayed so for half a second, the lessons' own settle test
       const first = S().pages && S().pages[0];
@@ -286,11 +289,8 @@
   // other lesson presses its Open for them.
   async function openSheetsFor(lesson) {
     if (modalUp('preparePdfModal')) { el('preparePdfDone').click(); return; }
-    const s = S();
-    if (s.pages && s.pages.length) {
-      if (KNOWN_SETS.includes(s.currentProjectName) && !teachingSetGrown()) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
-      else if (!(await App.closeProject({ route: 'lesson' }))) return;   // their own plan: the app's one Close project, which asks first
-    }
+    // a teaching set is reset; their own plan goes through the app's one Close project, which asks first
+    if (!(await K().leaveForTeachingSet('lesson'))) return;
     sweepLessonPalette();
     setSearches({ counter: '', lineType: '', lines: '' });   // a filter typed on the last bid hid the counter the reader just made (wendi, 2026-09-24)
     seededFor = null;
@@ -856,10 +856,8 @@
   // cleared it without asking, and LEARN-LEAK swept what they made for it. features/pdf-intake.js
   // now asks here first, and the upload opens as their own new plan. A running lesson or tour asks
   // before it stops (the owner's call); finished, the sample just closes.
-  const SET_PAGES = { 'sample-lessons': 4, 'sample-electrical': 4, 'sample-hvac': 3, 'blank-sheet': 2, 'sample-plan': 1 };
-  const teachingSetOpen = () => TRACKED_SETS.concat(['sample-plan-advanced']).includes(S().currentProjectName || '') && !!(S().pages && S().pages.length);
-  // More pages than the set came with: something of the reader's is on it, so no silent reset.
-  function teachingSetGrown() { const n = SET_PAGES[S().currentProjectName || '']; return !!n && (S().pages || []).length > n; }
+  // Which projects are teaching sets, and how many pages each came with, is the tourKit's list.
+  const teachingSetOpen = () => K().isTeachingSet(S().currentProjectName) && !!(S().pages && S().pages.length);
   async function leaveTeachingSheetsForUpload() {
     if (App.isTutorialActive && App.isTutorialActive()) {
       const id = (App.tutorialId && App.tutorialId()) || '';
@@ -874,7 +872,6 @@
     return true;
   }
   App.isTeachingSetOpen = teachingSetOpen;
-  App.isTeachingSetGrown = teachingSetGrown;
   App.leaveTeachingSheetsForUpload = leaveTeachingSheetsForUpload;
   App.onLessonPaletteSync = syncLessonPalette;   // app.js updateUI, before the sidebar draws
   App.beginTeachingPalette = beginTeachingPalette;   // a tour opening its sheet (features/tutorial.js, tour-blank.js)

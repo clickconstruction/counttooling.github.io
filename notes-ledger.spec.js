@@ -5,7 +5,9 @@
  * Pins replace plan-space text for RFIs / long notes / notes with a `detail`
  * payload ('auto' mode); short plain notes keep rendering as text. The drawer
  * lists every note across pages, the badge counts open RFIs, and resolving or
- * answering is project data (undo + dirty).
+ * answering is project data (undo + dirty). The drawer's page heading names the
+ * sheet by its `label` and leaves out the file-name default; a jump to a note on
+ * another layer makes that layer active so the note is drawn (MAP-SHEETNAMES).
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -21,7 +23,7 @@ async function boot(page) {
   await page.evaluate(() => {
     const s = window.state;
     s.currentProjectName = 'Ledger spec';
-    s.pages[0].name = 'P200';
+    s.pages[0].label = 'P-200 · Plumbing Plan';
     s.pages[0].canvases[0].annotations.notes.push(
       { x: 100, y: 100, id: 'ln1', text: 'RFI: SB-2 in schedule but nowhere in plan view', width: 150, fontSize: 14 },
       { x: 200, y: 120, id: 'ln2', text: '3" typ', width: 150, fontSize: 14 },
@@ -115,6 +117,69 @@ test.describe('Notes ledger', () => {
     });
     expect(jumped.page).toBe(1);
     expect(jumped.centeredX && jumped.centeredY).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test('the drawer heading names the sheet, and leaves out the file-name default', async ({ page }) => {
+    const errors = await boot(page);
+    const page2IsDefault = await page.evaluate(() => window.SheetTitleModel.isDefaultPageLabel(window.state.pages[1].label));
+    expect(page2IsDefault).toBe(true);
+    await page.evaluate(() => window.App.openNotesLedger());
+    await expect(page.locator('#notesLedgerDrawer .notes-ledger-page')).toHaveText(['p1 · P-200 · Plumbing Plan', 'p2']);
+    expect(await page.evaluate(() => window.App.collectNotesLedger().map((r) => r.pageName))).toEqual(['P-200 · Plumbing Plan', 'P-200 · Plumbing Plan', 'P-200 · Plumbing Plan', '']);
+    expect(errors).toEqual([]);
+  });
+
+  test('a jump to a note on another layer makes that layer active and draws the note', async ({ page }) => {
+    const errors = await boot(page);
+    // Page 2 gets a second layer holding an RFI; Main stays the active layer.
+    const note = { x: 420, y: 320, id: 'ln5', text: 'RFI: riser on the waste layer only', width: 150, fontSize: 14 };
+    await page.evaluate((n) => {
+      const s = window.state;
+      const main = s.pages[1].canvases[0];
+      s.pages[1].canvases.push({ id: 'layer-waste', name: 'Waste', annotations: window.App.makeAnnotations() });
+      s.pages[1].canvases[1].annotations.notes.push(n);
+      s.activeCanvasIdByPage[1] = main.id;
+      window.App.updateUI();
+    }, note);
+    await page.evaluate(() => window.App.openNotesLedger());
+    const row = page.locator('#notesLedgerDrawer .notes-ledger-row', { hasText: 'riser on the waste layer only' });
+    await expect(row).toHaveCount(1);
+    await row.click();
+
+    const after = await page.evaluate(() => {
+      const s = window.state;
+      const p = s.pages[1];
+      return {
+        page: s.currentPage,
+        active: s.activeCanvasIdByPage[1],
+        junk: Object.prototype.hasOwnProperty.call(p, 'activeCanvas'),
+        onActive: window.App.getActiveAnnotations(p).notes.some((n) => n.id === 'ln5'),
+      };
+    });
+    expect(after.page).toBe(1);
+    expect(after.active).toBe('layer-waste');
+    expect(after.junk).toBe(false);
+    expect(after.onActive).toBe(true);
+
+    // The RFI pin (red) is painted on the annotation canvas at the note.
+    const redNearNote = () => page.evaluate((n) => {
+      const c = document.getElementById('annCanvas');
+      const bc = window.App.toCanvas({ x: n.x, y: n.y });
+      const r = 8;
+      const d = c.getContext('2d').getImageData(Math.round(bc.x) - r, Math.round(bc.y) - r, 2 * r + 1, 2 * r + 1).data;
+      let red = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 128 && d[i] > 180 && d[i + 1] < 120 && d[i + 2] < 120) red += 1;
+      return red;
+    }, note);
+    await expect.poll(redNearNote, { timeout: 5000 }).toBeGreaterThan(10);
+    // And the probe tells: with Main active again, nothing red is drawn there.
+    await page.evaluate(() => {
+      const s = window.state;
+      s.activeCanvasIdByPage[1] = s.pages[1].canvases[0].id;
+      window.App.renderAnnotations();
+    });
+    await expect.poll(redNearNote, { timeout: 5000 }).toBe(0);
     expect(errors).toEqual([]);
   });
 

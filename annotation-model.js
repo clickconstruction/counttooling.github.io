@@ -262,12 +262,26 @@ function createAnnotationModel(ctx) {
     if (raw.occupancy === 'public' || raw.occupancy === 'private') out.occupancy = raw.occupancy;
     return Object.keys(out).length ? out : null;
   }
+  // Header pins (D21), per project: a copy of the saved map, or {} (follow the trade).
+  function normStripPins(raw) {
+    return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? { ...raw } : {};
+  }
+  // Quick Keys go through features/quick-keys.js's one lifecycle rule (the project's
+  // bindings replace; none keeps an Artboard seed and drops a previous project's).
+  // Read at CALL time: the feature loads after app.js, which builds this model. Node
+  // (the tests load this file alone) and a shell without the feature copy them plain.
+  function applyQuickKeys(raw) {
+    const App = typeof window !== 'undefined' ? window.App : null;
+    if (App && typeof App.applyProjectQuickKeys === 'function') { App.applyProjectQuickKeys(raw); return; }
+    ctx.getState().numberKeyBindings = (raw && typeof raw === 'object' && !Array.isArray(raw)) ? raw : {};
+  }
   function applyTakeoffBackupToState(backup) {
     if (!backup) return;
     if (Array.isArray(backup.counters)) ctx.getState().counters = backup.counters;
     if (Array.isArray(backup.lineTypes)) ctx.getState().lineTypes = backup.lineTypes;
     if (Array.isArray(backup.groups)) ctx.getState().groups = ctx.ensureGroupColors(backup.groups);
     if (backup.groupsEnabled != null) ctx.getState().groupsEnabled = !!backup.groupsEnabled;
+    if (backup.stripPins && typeof backup.stripPins === 'object') ctx.getState().stripPins = normStripPins(backup.stripPins);   // D21; absent = keep, like the rest of this merge
     ctx.getState().trade = typeof backup.trade === 'string' && backup.trade ? backup.trade : null;
     ctx.getState().ceilingHeightFt = typeof backup.ceilingHeightFt === 'number' && backup.ceilingHeightFt > 0 ? backup.ceilingHeightFt : null;
     ctx.getState().makeUpFt = typeof backup.makeUpFt === 'number' && backup.makeUpFt >= 0 ? backup.makeUpFt : null;
@@ -317,6 +331,7 @@ function createAnnotationModel(ctx) {
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
     state.groups = ctx.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
     state.groupsEnabled = !!d.groupsEnabled;
+    state.stripPins = normStripPins(d.stripPins);   // D21 header pins
     state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
     state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;   // S2 vertical-by-default
     state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
@@ -330,6 +345,7 @@ function createAnnotationModel(ctx) {
       applyPageAnnotationsFromData(state.pages[p.index], p);
     });
     if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+    applyQuickKeys(d.numberKeyBindings);   // MAP-QUICKKEYS: a restored cloud bid kept the last session's keys
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
     if (d.ductSettings) state.ductSettings = { ...state.ductSettings, ...d.ductSettings };

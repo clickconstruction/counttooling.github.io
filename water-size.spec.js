@@ -182,6 +182,40 @@ test.describe('The S moment for water (rung 4)', () => {
     });
   });
 
+  // MAP-WATER-TAP (2026-09-26): on a phone, a finger on the card's text, before S was ever pressed,
+  // opens the sizes and places no vertex on the sheet under it.
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+    test('a tap on the card, never S, opens the sizes and eats no vertex', async ({ page }) => {
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await load(page);
+      await page.evaluate(() => {
+        const s = window.state;
+        s.lineTypes.push({ id: 'lt-cold', name: '1in PEX cold', color: '#4a9eff', curveStyle: 'straight', waterSide: 'cold' });
+        s.counters.push({ id: 'c-lav', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#47c88e', wsfu: 2 });
+        s.pages[0].canvases[0].annotations.counterMarkers['c-lav'] = [{ x: 250, y: 210 }, { x: 300, y: 210 }, { x: 350, y: 210 }];
+        s.activeLineTypeId = 'lt-cold';
+        s.tool = window.App.TOOL.POLYLINE;
+        s.drawingPolyline = { id: 'draft-p', name: 'Cold main', color: '#4a9eff', points: [{ x: 100, y: 200 }, { x: 200, y: 200 }], closed: false, lineTypeId: 'lt-cold', group: null };
+        window.App.updateUI();
+        window.App.renderAnnotations();
+      });
+      const card = page.locator('#waterHintCard');
+      await expect(card).toBeVisible();
+      // the card, not the sheet under it, is what a finger lands on
+      const box = await page.locator('#waterHintText').boundingBox();
+      const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+      expect(await page.evaluate((p) => { const e = document.elementFromPoint(p.x, p.y); return !!e && document.getElementById('waterHintCard').contains(e); }, at)).toBe(true);
+      expect(await page.evaluate(() => window.App.isWaterPopoverOpen())).toBe(false);
+      await page.touchscreen.tap(at.x, at.y);
+      await expect(page.locator('#waterSizePopover')).toBeVisible();
+      await page.waitForTimeout(400);   // past the double-tap window: no late vertex either
+      expect(await page.evaluate(() => window.state.drawingPolyline.points.length)).toBe(2);
+      expect(errors).toEqual([]);
+    });
+  });
+
   // With a mouse only Pipe size takes the click: the card body lets it through to the sheet like the
   // duct card, so a click where the card sits reaches the sheet (review of the persona fixes,
   // 2026-09-25: the whole card had taken clicks and opened the popover instead).

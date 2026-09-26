@@ -11,9 +11,10 @@
  * pages: a border, a title block that says 1/8" = 1'-0", and on SK-1 one 20'-0"
  * dimension to prove the scale on), then fed to #pdfInput like a dropped file, so it goes
  * through the normal intake and nothing about the app is faked. The project is named
- * `blank-sheet`; features/lessons.js knows the name so a lesson opened afterwards resets it
- * without asking, and this tour resets the teaching sets the same way. The reader's own
- * plan always goes through Close project, which asks.
+ * `blank-sheet`, one of the tourKit's TEACHING_SETS (features/tutorial.js), so a lesson or
+ * a trade tour opened afterwards resets it without asking, and this tour resets the other
+ * teaching sets the same way (`leaveForTeachingSet`). The reader's own plan always goes
+ * through Close project, which asks.
  *
  * It is a tour on the engine (App.registerTour('blank', ...)), so a step is the engine's
  * { id, title, body, kind, target, check(), action?, hint?, hold?, zones?, page? }: check()
@@ -51,8 +52,6 @@
   const SHEET_NAME = 'blank-sheet';
   const W = 1224, H = 792;   // ANSI B in PDF points
   const PPU = 9;             // 1/8" = 1'-0": 72 / 8 points per foot
-  // Sets the teaching opened; reset without asking when this tour opens over one.
-  const TEACHING_SETS = ['sample-plan', 'sample-plan-advanced', 'sample-lessons', 'sample-electrical', 'sample-hvac', SHEET_NAME];
 
   // ----- the sheet, in points (y down, like every annotation) --------------------------
   const DIM = [{ x: 120, y: 120 }, { x: 300, y: 120 }];                       // 180 pt = 20'-0"
@@ -167,11 +166,10 @@
 
   // ----- opening the sheet ------------------------------------------------------------------
   async function openBlankSheet() {
-    const s = S();
-    if (s.pages && s.pages.length) {
-      if (TEACHING_SETS.includes(s.currentProjectName) && !(App.isTeachingSetGrown && App.isTeachingSetGrown())) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
-      else if (!(await App.closeProject({ route: 'tour' }))) return;   // their own plan: the app's one Close project, which asks
-    }
+    // A teaching set (the tourKit's one list, SHEET_NAME among them) is reset without asking; their
+    // own plan goes through the app's one Close project, which asks (MAP-TOUR-SHEET: shared with the
+    // lessons and the trade tours). The sheet is bytes, not a URL, so only the clearing is shared.
+    if (!(await K().leaveForTeachingSet('tour'))) return;
     if (App.beginTeachingPalette) App.beginTeachingPalette();   // LEARN-LEAK: what the tour makes leaves with the sheet (features/lessons.js)
     let bytes;
     try { bytes = await makeBlankSheet(); } catch (e) { App.showToast('Could not make the blank sheet. Upload any PDF and the tour carries on from there.'); return; }

@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '46b72a2d607f';
+const CACHE_VERSION = 'd576f61290ad';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -243,7 +243,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': '981aa3e990f7ab52b9ff93046f274aaf7e43b867ec4b6532005a5a24e9cd5711',
   '/save-engine.js': 'f404367950efe5f0d593c78a5da687f7af6f4e329c4c7434c8ea37672c890cb1',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '0c71a1da3e803f81cd66d7d2c7c03557454d782b7f2e3b3e8b845ab3b4b8fe45',
+  '/app.js': 'fcc3ac49b1fc6cba827e2d4da37bbff4fb5537813dda52f6e3cd60b383b2b0d8',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
@@ -261,7 +261,7 @@ const PRECACHE_SHA256 = {
   '/features/page-settings.js': '2e9b961016930ea467a50e9a426cf8aa3a901f10dd2fb2fbe11a9186c7020e40',
   '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',
   '/features/line-type-settings.js': '91bcfa06e0f4d29360effb6b1178d869020cbb5aa427f2e2550eb3b1fa48ed60',
-  '/features/choose-create-line-type.js': '99fabe1fdff21e16afd49bb5d8d28cb22ab8134e2b8443c15193e7204c31506f',
+  '/features/choose-create-line-type.js': '58905eaa89e7bcf66fa930b9cbf3964758fcd7ff2bd3b6aa9155918137997a07',
   '/features/scale.js': 'ed1d36d899d3ad3bf69b36ce2d60b9becf69821bdc18fafb19ddffe41b54c104',
   '/features/scale-zone-settings.js': '67a8a802e7aeaf629a235dbd0e4d9c42ea5c746412ae6749b90ecf35be7a9c9f',
   '/features/groups.js': '257d1e404ce5be5f7b6bf1d0f349724301c42fa715274203e5d2e2dc8b2c6521',
@@ -289,7 +289,7 @@ const PRECACHE_SHA256 = {
   '/features/zone-modals.js': '0c72999abd1666415e1cb0d4371dd7d4314d8aeef0b786c8987342ce560556a5',
   '/features/restore-last-session.js': '4203b69c9248a5beb0fbbf44390b0e1568a50a45344f452083801fd1ed201f8c',
   '/features/summary-detail.js': 'd47742a59b401b0f35bda3469b8f7bad7425cda14fcaf88cfb2023caea7b3892',
-  '/features/room-sizer.js': '7cf1d80b1e500f44fc788b575013cd9883d666eafcc01558866fb5e0ff7228ba',
+  '/features/room-sizer.js': '9c78abcbde1128f583fafacfdea28f613a81c4ee13c8a2c57af7c8c2caa685cf',
   '/features/burger-menu.js': 'ace047ffd97c17d329ff3d2af9853c5439fcbe33e46619b5c22881da182dbe12',
   '/features/bid-chip.js': 'fd7909891aa6565e2c3d5c8b56970430c48fe2e8540ff8057bbcababfe395ad0',
   '/features/header-more.js': '5b74e8f40464c9caf78ab4bda862ea8ef254e157cf6b5e6804574f8b8f85b41c',
@@ -305,7 +305,7 @@ const PRECACHE_SHA256 = {
   '/features/bend-override.js': '8de5e5c77f6cb8675a810c46c890f571165787be15f296f3f8846bcddf2541ee',
   '/features/lines-list.js': '84517cb4fe787e74fb94b7f0c2e28bb4e9960208e8a2d838541e85329614fcc6',
   '/features/pages-list.js': 'dda86248a882058fb9f1e981de6eeafa21476920689af794e2cb33ec34b85ca2',
-  '/features/sidebar-lists.js': '71b6c459bae2fc22aad8125f94b510b2c7a47f451770672d7174d366262fd818',
+  '/features/sidebar-lists.js': 'adfd181f3ccb6f61e93d121b7c5b54927b76f5bf3c671c1f2da44a71c19c5b5f',
   '/features/quick-keys.js': 'b7e42d61f4010da4f3db67407b5e5febd210882e1c5aca98a4ce280b674c2705',
   '/features/keyboard-map.js': '32253988b54563a25c1827faacceb13609a9b8e7d15735dc0df8cc00d2c2b278',
   '/features/chain.js': '1f90b93a6a9b801ff262f9e77ab28afd350ce8ef94b2a54b171516b6cfe6e9d5',

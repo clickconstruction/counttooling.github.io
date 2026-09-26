@@ -234,4 +234,65 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
     });
     await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 5000 });
   });
+  // MAP-XSS (DECOMPOSITION_MAP R01): a line type's name and color, and a counter's
+  // color and icon path, are the estimator's own words, or a shared or imported
+  // project's. Every surface that writes them into markup writes them as text: the
+  // Line chooser, the Polyline dialog's select, the sidebar lists, and the header's
+  // active swatch and counter button.
+  test('MAP-XSS: a line-type name, a color or an icon path written as markup is shown as text on every surface', async ({ page }) => {
+    const errors = [];
+    // The browser refusing the poisoned icon as path data ("<path> attribute d: Expected
+    // path command") is the escape working: the string stayed an attribute value.
+    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.text().includes('config.local.js') && !msg.text().includes('<path> attribute d')) errors.push(msg.text()); });
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await page.goto('/app/');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const NAME = '<img src=x onerror="window.__xss=1">Poison';
+    const COLOR = '#4a9eff" onmouseover="window.__xss=2';
+    const ICON = 'M0 0h10v10H0z"/><img src=x onerror="window.__xss=3"><path d="';
+    const seed = { NAME, COLOR, ICON };
+
+    // The sidebar lists and the header, with the poisoned pair active (the active
+    // item is exempt from the usage filter, so it is always listed).
+    await page.evaluate(({ NAME, COLOR, ICON }) => {
+      window.state.lineTypes.push({ id: 'lt-xss', name: NAME, color: COLOR });
+      window.state.counters.push({ id: 'c-xss', name: 'Poison Counter', icon: ICON, color: COLOR });
+      window.state.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1 ft' };
+      window.state.activeLineTypeId = 'lt-xss';
+      window.state.activeCounterType = 'c-xss';
+      window.state.tool = window.App.TOOL.LINE;
+      window.App.updateUI();
+    }, seed);
+    expect(await page.locator('#lineTypesList img, #countersList img, #headerActiveLineType img').count()).toBe(0);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#lineTypesList .line-type-name')].map((e) => e.textContent))).toContain(NAME);
+    expect(await page.evaluate(() => document.querySelector('#countersList .counter-drag-handle path')?.getAttribute('d'))).toBe(ICON);
+    expect(await page.locator('#headerActiveLineType .header-type-swatch').count()).toBe(1);
+
+    await page.evaluate(() => { window.state.tool = window.App.TOOL.COUNTER; window.App.updateUI(); });
+    expect(await page.locator('#counterBtn img, #counterBtnSidebar img').count()).toBe(0);
+    expect(await page.evaluate(() => document.querySelector('#counterBtn path')?.getAttribute('d'))).toBe(ICON);
+
+    // The Line chooser.
+    await page.evaluate(() => window.App.showChooseLineTypeModal());
+    await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 5000 });
+    await page.waitForSelector('#chooseLineTypeList .sidebar-item', { timeout: 5000 });
+    expect(await page.locator('#chooseLineTypeList img').count()).toBe(0);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#chooseLineTypeList .line-type-name')].map((e) => e.textContent))).toContain(NAME);
+    await page.evaluate(() => window.App.hideModal('chooseLineTypeModal'));
+    await page.waitForFunction(() => !document.querySelector('#chooseLineTypeModal.visible'), null, { timeout: 3000 });
+
+    // The Polyline dialog's select (opens only with no active line type).
+    await page.evaluate(() => { window.state.activeLineTypeId = null; window.state.tool = window.App.TOOL.NONE; window.App.updateUI(); });
+    await page.evaluate(() => { document.getElementById('polylineBtn').click(); });   // the button may sit behind the header's ⋯
+    await page.waitForSelector('#polylineModal.visible', { timeout: 5000 });
+    expect(await page.locator('#polylineLineType img').count()).toBe(0);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#polylineLineType option')].map((o) => o.textContent))).toContain(NAME);
+
+    // Nothing ran, and no attribute broke out of its value anywhere on the page.
+    expect(await page.evaluate(() => ({ ran: window.__xss, handlers: document.querySelectorAll('[onmouseover], [onerror]').length }))).toEqual({ ran: undefined, handlers: 0 });
+    expect(errors).toEqual([]);
+  });
 });

@@ -2977,7 +2977,8 @@
     document.body.classList.toggle('mobile-view-mode', isMobile && !!state.isViewer);
     const settingsSaveProject = document.getElementById('settingsSaveProject');
     if (settingsSaveProject) {
-      settingsSaveProject.style.display = state.isViewer ? 'none' : '';
+      // A cloud save: no row at all without Supabase (MAP-NOSUPA).
+      settingsSaveProject.style.display = (state.isViewer || !SUPABASE_ENABLED) ? 'none' : '';
       settingsSaveProject.textContent = (state.currentProjectId && state.pdfStoragePath)
         ? 'Save Changes'
         : 'Save Project to Cloud';
@@ -5034,6 +5035,121 @@
   // getOrderedIcons/iconVbFor/getUserCustomIcons/saveUserCustomIcons/showToast
   // stay here and are published on App.
 
+  // SECTION: Project Settings doors & local rows
+  // Bound OUTSIDE the SUPABASE_ENABLED block below, so a deploy without cloud
+  // config keeps the Hide marks eye and Project Settings (MAP-NOSUPA). The cloud
+  // rows inside the modal (Save, Load, Manage, Share, checkout, review) stay in
+  // that block and are hidden by updateUI when Supabase is off.
+  //
+  // Project Settings has two doors -- the desktop header gear and the mobile
+  // sidebar-logo gear -- so they open through one function and can't drift
+  // apart on auth or title. No sign-in gate here:
+  // the modal is mostly local work (add PDF pages, Close Project, quick keys,
+  // Advanced -> Export / Import / Canvas Repair), and the
+  // cloud rows inside prompt for sign-in themselves.
+  function setSettingsHelpOpen(open) {
+    const toggle = document.getElementById('settingsHelpToggle');
+    const links = document.getElementById('settingsHelpLinks');
+    if (toggle) toggle.setAttribute('aria-expanded', String(open));
+    if (links) links.hidden = !open;
+  }
+  function openProjectSettings() {
+    setSettingsHelpOpen(false);
+    // The title stays "Project Settings"; the project name is the subtitle line under it
+    // (a long bid-set name used to wrap the title onto two lines).
+    const subEl = document.getElementById('settingsSubtitle');
+    if (subEl) {
+      const open = state.pages.length || state.currentProjectId;
+      subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
+      subEl.style.display = open ? '' : 'none';
+    }
+    document.body.classList.remove('sidebar-open');
+    // Declared inside the SUPABASE_ENABLED block (it hides the section itself when off).
+    if (SUPABASE_ENABLED) updateSettingsCheckoutSection();
+    syncProjectSettingsRows();
+    showModal('settingsModal');
+  }
+  document.getElementById('settingsGearBtn').onclick = openProjectSettings;
+  document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
+  const hideMarksBtnEl = document.getElementById('hideMarksBtn');
+  if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
+  document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
+  document.getElementById('settingsAddAdditionalPages').onclick = async () => {
+    // #7b: Route through Prepare PDF in append mode. We need the current
+    // project's PDF buffer in memory so the commit step can merge the new
+    // pages onto it; recover from pdfCache when needed.
+    hideModal('settingsModal');
+    if (!state.pdfBuffer && state.currentProjectId && state.pdfHash) {
+      try {
+        const blob = await pdfCacheGet(state.currentProjectId, state.pdfHash);
+        if (blob && blob.size > 0) {
+          const ab = await blob.arrayBuffer();
+          state.pdfBuffer = ab;
+          state.pdfBufferSize = ab.byteLength;
+        }
+      } catch (_) {}
+    }
+    if (!state.pdfBuffer) {
+      showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
+      return;
+    }
+    App.setPendingAddAdditionalPages(true);
+    document.getElementById('pdfInput').click();
+  };
+  document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
+  document.getElementById('settingsAdvancedBtn').onclick = () => { const d = document.getElementById('settingsAdvancedSection'); d.open = !d.open; if (d.open) d.scrollIntoView({ block: 'nearest' }); };
+  // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
+  // folded again every time the modal opens (openProjectSettings).
+  const settingsHelpToggle = document.getElementById('settingsHelpToggle');
+  if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
+  document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await App.loadTestPdf(); };
+  document.getElementById('advancedExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
+  document.getElementById('advancedImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
+  document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsModal'); App.openCanvasRepairModal(); };
+  document.getElementById('advancedEmptyCacheReload').onclick = async () => {
+    if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
+    hideModal('settingsModal');
+    try {
+      indexedDB.deleteDatabase('clickcount-pdf-cache');
+    } catch (_) {}
+    const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+    for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('view:allowed:')) { try { localStorage.removeItem(k); } catch (_) {} }
+    }
+    location.reload();
+  };
+  // Close project: ONE routine behind every door — Project Settings, the
+  // header cloud menu, the "Project turned in." toast and the admin
+  // force-turn-in notice (Wendi, 2026-09-10: "I just refresh after I turn
+  // things in"). Confirms only when there is something to lose: unsaved
+  // edits, or a takeoff that lives on this device alone — a turned-in
+  // project is already saved and closes on the click.
+  async function closeProject(opts) {
+    opts = opts || {};
+    const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
+    const localOnly = !state.currentProjectId;
+    if (state.pages.length > 0 && (unsaved || localOnly) && !(await confirmDialog({ title: 'Close project?', body: 'Any unsaved changes will be lost.', confirmLabel: 'Close project', danger: true }))) return false;
+    logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
+    // Block-scoped in the SUPABASE_ENABLED block, published there; absent with Supabase off.
+    if (App.checkInCurrentProjectIfHeld) await App.checkInCurrentProjectIfHeld();
+    resetGridOrigin();
+    resetLocalSessionState({ keepArtboard: true });
+    state.pagesListCollapsed = true;
+    state.sidebarReorderModeActive = false;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
+    updateUI();
+    renderPdf();
+    return true;
+  }
+  (window.App = window.App || {}).closeProject = closeProject;
+  document.getElementById('settingsCloseProject').onclick = async () => {
+    hideModal('settingsModal');
+    await closeProject({ route: 'settings' });
+  };
+
   // SECTION: Auth & settings entry buttons
   // The Manage Projects modal (openManageProjectsModal, forceCheckInProjectFromManage,
   // deleteProject, and the #manageProjectsModalClose handler) moved to
@@ -5069,45 +5185,20 @@
       updateUI();
     };
     document.getElementById('authBtnSidebar').onclick = () => document.getElementById('authBtn').click();
-    // Project Settings has two doors -- the desktop header gear and the mobile
-    // sidebar-logo gear -- so they open through one function and can't drift
-    // apart on auth or title. No sign-in gate here:
-    // the modal is mostly local work (add PDF pages, Close Project, quick keys,
-    // Advanced -> Export / Import / Canvas Repair), and the
-    // cloud rows inside prompt for sign-in themselves.
-    function setSettingsHelpOpen(open) {
-      const toggle = document.getElementById('settingsHelpToggle');
-      const links = document.getElementById('settingsHelpLinks');
-      if (toggle) toggle.setAttribute('aria-expanded', String(open));
-      if (links) links.hidden = !open;
-    }
-    function openProjectSettings() {
-      setSettingsHelpOpen(false);
-      // The title stays "Project Settings"; the project name is the subtitle line under it
-      // (a long bid-set name used to wrap the title onto two lines).
-      const subEl = document.getElementById('settingsSubtitle');
-      if (subEl) {
-        const open = state.pages.length || state.currentProjectId;
-        subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
-        subEl.style.display = open ? '' : 'none';
-      }
-      document.body.classList.remove('sidebar-open');
-      updateSettingsCheckoutSection();
-      syncProjectSettingsRows();
-      showModal('settingsModal');
-    }
+    // openProjectSettings and the two gears, #hideMarksBtn, and the modal's local
+    // rows are bound above this block (SECTION: Project Settings doors & local rows).
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); App.openMySettings(); };
     document.getElementById('sidebarLogoShare').onclick = () => { document.body.classList.remove('sidebar-open'); hideModal('settingsModal'); App.openShareProjectModal(); };
     const headerShareBtnEl = document.getElementById('headerShareBtn');
     if (headerShareBtnEl) headerShareBtnEl.onclick = () => copyOrCreateViewLinkToClipboard(headerShareBtnEl);
-    const hideMarksBtnEl = document.getElementById('hideMarksBtn');
-    if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
-    document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
     // The status-bar link reads "Sign In" signed out — route through #authBtn
     // so it opens the PLAIN wall (no gate line); signed in, #authBtn opens
     // User Settings exactly as openMySettings did. (Tier-3 B7)
     document.getElementById('statusBarAuth').onclick = () => document.getElementById('authBtn').click();
     // SECTION: Project Settings checkout & Save Status bell
+    // Every caller sits outside this block (openProjectSettings, the save-engine ctx, the
+    // tail registry) and reaches it through the Annex-B hoist, which eslint-scope cannot see.
+    // eslint-disable-next-line no-unused-vars
     function updateSettingsCheckoutSection() {
       const section = document.getElementById('settingsCheckoutSection');
       const statusEl = document.getElementById('settingsCheckoutStatus');
@@ -5167,7 +5258,6 @@
       }
     }
     document.getElementById('copyViewLinkBtn').onclick = () => copyOrCreateViewLinkToClipboard(document.getElementById('copyViewLinkBtn'));
-    document.getElementById('settingsGearBtn').onclick = openProjectSettings;
     document.getElementById('authCancel').onclick = () => { clearAuthGate(); hideModal('authModal'); };
     const authDevBypassWrap = document.getElementById('authDevBypassWrap');
     const authDevBypass = document.getElementById('authDevBypass');
@@ -5186,7 +5276,6 @@
         }
       };
     }
-    document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
     // The Save Status bell open buttons (#saveStatusBtn/#saveStatusBtnHeader) and
     // the #saveStatusModalClose/#saveStatusModalDone/#saveStatusVerboseToggle/
     // #saveStatusExportBtn/#saveStatusCopyBtn handlers moved to
@@ -5287,52 +5376,8 @@
       if (SUPABASE_ENABLED && !state.supabaseSession?.user) { openAuthGate('saveProject'); return; }
       document.getElementById('saveProjectBtn').click();
     };
-    document.getElementById('settingsAddAdditionalPages').onclick = async () => {
-      // #7b: Route through Prepare PDF in append mode. We need the current
-      // project's PDF buffer in memory so the commit step can merge the new
-      // pages onto it; recover from pdfCache when needed.
-      hideModal('settingsModal');
-      if (!state.pdfBuffer && state.currentProjectId && state.pdfHash) {
-        try {
-          const blob = await pdfCacheGet(state.currentProjectId, state.pdfHash);
-          if (blob && blob.size > 0) {
-            const ab = await blob.arrayBuffer();
-            state.pdfBuffer = ab;
-            state.pdfBufferSize = ab.byteLength;
-          }
-        } catch (_) {}
-      }
-      if (!state.pdfBuffer) {
-        showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
-        return;
-      }
-      App.setPendingAddAdditionalPages(true);
-      document.getElementById('pdfInput').click();
-    };
-    document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
-    document.getElementById('settingsAdvancedBtn').onclick = () => { const d = document.getElementById('settingsAdvancedSection'); d.open = !d.open; if (d.open) d.scrollIntoView({ block: 'nearest' }); };
-    // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
-    // folded again every time the modal opens (openProjectSettings).
-    const settingsHelpToggle = document.getElementById('settingsHelpToggle');
-    if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
-    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await App.loadTestPdf(); };
-    document.getElementById('advancedExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-    document.getElementById('advancedImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
-    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsModal'); App.openCanvasRepairModal(); };
-    document.getElementById('advancedEmptyCacheReload').onclick = async () => {
-      if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
-      hideModal('settingsModal');
-      try {
-        indexedDB.deleteDatabase('clickcount-pdf-cache');
-      } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
-      for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('view:allowed:')) { try { localStorage.removeItem(k); } catch (_) {} }
-      }
-      location.reload();
-    };
+    // Add pages, Download PDF, Advanced, Help and the local Advanced rows are
+    // bound above this block (SECTION: Project Settings doors & local rows).
     document.getElementById('advancedGlobalForceReload').onclick = async () => {
       if (!state.isAdmin) return;
       if (!(await confirmDialog({ title: 'Force a reload for every signed-in user?', body: 'Active tabs see a Reload banner; everyone else reloads on their next visit.', confirmLabel: 'Force reload', danger: true }))) return;
@@ -5414,36 +5459,10 @@
       hideModal('settingsModal');
       App.openLoadProjectModalOrPromptSave();
     };
-    // Close project: ONE routine behind every door — Project Settings, the
-    // header cloud menu, the "Project turned in." toast and the admin
-    // force-turn-in notice (Wendi, 2026-09-10: "I just refresh after I turn
-    // things in"). Confirms only when there is something to lose: unsaved
-    // edits, or a takeoff that lives on this device alone — a turned-in
-    // project is already saved and closes on the click.
-    async function closeProject(opts) {
-      opts = opts || {};
-      const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
-      const localOnly = !state.currentProjectId;
-      if (state.pages.length > 0 && (unsaved || localOnly) && !(await confirmDialog({ title: 'Close project?', body: 'Any unsaved changes will be lost.', confirmLabel: 'Close project', danger: true }))) return false;
-      logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
-      await checkInCurrentProjectIfHeld();
-      resetGridOrigin();
-      resetLocalSessionState({ keepArtboard: true });
-      state.pagesListCollapsed = true;
-      state.sidebarReorderModeActive = false;
-      document.getElementById('pagesSection').classList.add('collapsed');
-      document.getElementById('pagesCollapseIcon').textContent = '▶';
-      updateUI();
-      renderPdf();
-      return true;
-    }
-    (window.App = window.App || {}).closeProject = closeProject;
+    // closeProject and #settingsCloseProject live above this block (SECTION:
+    // Project Settings doors & local rows); the header [Close] is cloud-only.
     const headerCloseProjectBtn = document.getElementById('headerCloseProjectBtn');
     if (headerCloseProjectBtn) headerCloseProjectBtn.onclick = async () => { await closeProject({ route: 'header' }); };
-    document.getElementById('settingsCloseProject').onclick = async () => {
-      hideModal('settingsModal');
-      await closeProject({ route: 'settings' });
-    };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); App.openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); App.openShareProjectModal(); };
     // The #mySettings* handlers moved to features/my-settings.js.

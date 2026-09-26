@@ -633,19 +633,16 @@ const WATER_BID_CHECK_ROWS = [
   { id: 'water-heater-sized', kind: 'manual', label: 'Water heater sized for the load', short: 'Water heater sized for the load' },
   { id: 'water-recirc', kind: 'manual', label: 'Recirculation where the code asks', short: 'Recirculation where the code asks' },
 ];
-function waterBidCheckRows(inputs, manualState) {
-  const ticks = manualState || {};
-  return WATER_BID_CHECK_ROWS.map((row) => {
-    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
-    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
-    const done = !!ticks[row.id];
-    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done, upgraded: false };
-  });
-}
-function waterBidCheckUnresolved(rows) {
-  const auto = (rows || []).filter((r) => r.kind === 'auto' && r.verdict === 'warn');
-  const manual = (rows || []).filter((r) => r.kind === 'manual' && !r.done);
-  return { auto, manual, first: auto[0] || manual[0] || null };
+// R13: one resolver for every contributed table (bid-check-model.js
+// `resolveBidCheckRows` / `bidCheckUnresolved`, shared with duct-model's).
+function waterBidCheckRows(inputs, manualState) { return waterBidCheckModel().resolveBidCheckRows(WATER_BID_CHECK_ROWS, inputs, manualState); }
+function waterBidCheckUnresolved(rows) { return waterBidCheckModel().bidCheckUnresolved(rows); }
+// bid-check-model.js loads before this file: window.BidCheckModel in the
+// browser; under node --test a guarded `module.require` (the footer's own
+// guard), so this module keeps no cross-file global in its eslint group.
+function waterBidCheckModel() {
+  if (typeof window !== 'undefined' && window.BidCheckModel) return window.BidCheckModel;
+  return typeof module !== 'undefined' && module.require ? module.require('./bid-check-model.js') : null;
 }
 
 const WATER_MODEL_API = {

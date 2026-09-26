@@ -195,7 +195,33 @@ function bidCheckOpenCount(autoRows, manualState, trade, extraManualRows) {
   return { auto, manual, total: auto + manual };
 }
 
-const BID_CHECK_MODEL_API = { RACEWAY_AREA_IN2, CONDUCTOR_AREA_IN2, GAUGE_CMIL, GAUGE_ORDER, fillLimitFor, VD_K, VD_LIMIT_PCT_DEFAULT, conductorAreaIn2, smallestGauge, nextGaugeUp, conduitFill, voltageDrop, BID_CHECK_MANUAL_ROWS, bidCheckAutoRows, bidCheckOpenCount };
+// The one row resolver (R13) behind every contributed table: duct-model's
+// DUCT_BID_CHECK_ROWS and water-model's WATER_BID_CHECK_ROWS delegate here.
+// A table row is { id, kind: 'auto' | 'manual', label, short?, rule?,
+// evaluate?(inputs) }; `ticks` is state.bidCheck.manual. Returns
+// [{ id, kind, label, short, rule?, verdict, detail, done, upgraded }]: a row
+// whose evaluator answered arrives as kind 'auto' (a manual row so answered
+// carries upgraded: true and its tick is ignored, the app knows); the rest are
+// manual with verdict 'done' | 'open'.
+function resolveBidCheckRows(table, inputs, ticks) {
+  const t = ticks || {};
+  return (table || []).map((row) => {
+    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
+    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
+    const done = !!t[row.id];
+    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done, upgraded: false };
+  });
+}
+
+// Unresolved resolved rows in panel order: auto ⚠ first, then unticked manual
+// (the gate toast names `first`; the badge counts both lists).
+function bidCheckUnresolved(rows) {
+  const auto = (rows || []).filter((r) => r.kind === 'auto' && r.verdict === 'warn');
+  const manual = (rows || []).filter((r) => r.kind === 'manual' && !r.done);
+  return { auto, manual, first: auto[0] || manual[0] || null };
+}
+
+const BID_CHECK_MODEL_API = { RACEWAY_AREA_IN2, CONDUCTOR_AREA_IN2, GAUGE_CMIL, GAUGE_ORDER, fillLimitFor, VD_K, VD_LIMIT_PCT_DEFAULT, conductorAreaIn2, smallestGauge, nextGaugeUp, conduitFill, voltageDrop, BID_CHECK_MANUAL_ROWS, bidCheckAutoRows, bidCheckOpenCount, resolveBidCheckRows, bidCheckUnresolved };
 if (typeof window !== 'undefined') window.BidCheckModel = BID_CHECK_MODEL_API;
 // Node test harness only: in a classic browser <script> `module` is undefined.
 if (typeof module !== 'undefined' && module.exports) module.exports = BID_CHECK_MODEL_API;

@@ -87,3 +87,46 @@ test('the auto rows that apply a public rule name it (rulebook chips)', () => {
   assert.strictEqual(byId['conduit-fill'].rule, 'elec.conduit.fill-limit');
   assert.strictEqual(byId['voltage-drop'].rule, 'elec.voltage-drop.branch-limit');
 });
+
+// R13: the one row resolver the duct and water tables delegate to.
+test('resolveBidCheckRows: an answered evaluator makes an auto row, a silent one a manual row read from the ticks', () => {
+  const table = [
+    { id: 'a-ok', kind: 'auto', label: 'Scale set: every sheet', rule: 'x.rule', evaluate: () => ({ verdict: 'ok', detail: 'all scaled ✓' }) },
+    { id: 'a-warn', kind: 'auto', label: 'Rooms served', short: 'Every room served', evaluate: (i) => ({ verdict: i.bad ? 'warn' : 'ok', detail: 'd' }) },
+    { id: 'm-up', kind: 'manual', label: 'Fits the roof', evaluate: (i) => (i.deck ? { verdict: 'ok', detail: 'fits' } : null) },
+    { id: 'm-open', kind: 'manual', label: 'Fire dampers located' },
+    { id: 'm-done', kind: 'manual', label: 'Controls set', short: 'Controls' },
+  ];
+  const rows = bc.resolveBidCheckRows(table, { bad: true }, { 'm-done': true, 'm-up': true });
+  assert.deepStrictEqual(rows.map((r) => [r.id, r.kind, r.verdict, r.done, r.upgraded]), [
+    ['a-ok', 'auto', 'ok', false, false],
+    ['a-warn', 'auto', 'warn', false, false],
+    ['m-up', 'manual', 'done', true, false],
+    ['m-open', 'manual', 'open', false, false],
+    ['m-done', 'manual', 'done', true, false],
+  ]);
+  assert.strictEqual(rows[0].rule, 'x.rule');
+  assert.strictEqual(rows[0].short, 'Scale set: every sheet');   // short falls back to the label
+  assert.strictEqual(rows[1].short, 'Every room served');
+  // Once its inputs exist the manual row upgrades to auto and its tick is ignored.
+  const up = bc.resolveBidCheckRows(table, { deck: 12 }, { 'm-up': true }).find((r) => r.id === 'm-up');
+  assert.deepStrictEqual({ kind: up.kind, verdict: up.verdict, done: up.done, upgraded: up.upgraded }, { kind: 'auto', verdict: 'ok', done: false, upgraded: true });
+  // No inputs and no ticks are fine; no table is an empty list.
+  assert.strictEqual(bc.resolveBidCheckRows(table, null, null).filter((r) => r.kind === 'manual').length, 3);
+  assert.deepStrictEqual(bc.resolveBidCheckRows(null, {}, {}), []);
+});
+
+test('bidCheckUnresolved: auto ⚠ first, then unticked manual; first names the one the gate toast shows', () => {
+  const rows = [
+    { id: 'm1', kind: 'manual', done: false },
+    { id: 'a1', kind: 'auto', verdict: 'ok' },
+    { id: 'a2', kind: 'auto', verdict: 'warn' },
+    { id: 'm2', kind: 'manual', done: true },
+  ];
+  const u = bc.bidCheckUnresolved(rows);
+  assert.deepStrictEqual(u.auto.map((r) => r.id), ['a2']);
+  assert.deepStrictEqual(u.manual.map((r) => r.id), ['m1']);
+  assert.strictEqual(u.first.id, 'a2');
+  assert.strictEqual(bc.bidCheckUnresolved(rows.filter((r) => r.id !== 'a2')).first.id, 'm1');
+  assert.deepStrictEqual(bc.bidCheckUnresolved(null), { auto: [], manual: [], first: null });
+});

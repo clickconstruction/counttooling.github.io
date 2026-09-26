@@ -230,13 +230,13 @@
   // stashed with the pending/resume state so Export-anyway and the
   // "Copy again" resume re-walk the SAME rule. Published as App.runGatedCopy.
   // D9: on the /Tooling surfaces the copy also runs the Bid Check gate
-  // (features/duct-bidcheck.js App.runDuctBidGate — the "Review · Export
-  // anyway" toast, only with duct present and rows unresolved; proceed() is
+  // (features/bid-check.js App.runBidGate — the "Review · Export anyway"
+  // toast, only with duct or water present and rows unresolved; proceed() is
   // synchronous otherwise so the clipboard gesture survives). Wrapped HERE so
   // the scale gate's Export-anyway and the Copy-again resume run it too.
   async function runGatedCopy(getAnnFn, pageIndices, doCopyRaw, surface, mode, collectFlagged, layers) {
     resumeToolingExport = null;   // a fresh copy attempt supersedes any pending Copy-again resume
-    const bidGate = App.runDuctBidGate;
+    const bidGate = App.runBidGate;
     const doCopy = bidGate && (surface === 'pipe-tooling' || surface === 'takeoff-tooling')
       ? (a, b, c, d) => bidGate(() => doCopyRaw(a, b, c, d), surface)
       : doCopyRaw;

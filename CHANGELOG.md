@@ -13,6 +13,55 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(export): Download, Export PDFs and the note and highlight pages render sheets through one pipeline (R25, 2026-09-26)
+
+The decomposition map's R25. The sheet raster (plan, marks, JPEG, a jsPDF page) was written out
+nine times: four in the header Download (features/output.js), three in Export PDFs
+(features/export-pdfs.js) and two in the note and highlight bundles (features/pdf-bundle.js).
+It is written once now, in features/pdf-bundle.js: `rasterPageCanvas` / `rasterPageJpeg(page,
+{ scale, overrides, annotations, quality })` render a sheet (annotations omitted = the active
+layer, a layer's annotations = that layer, null = the plain sheet) and `addImagePage(doc, img,
+{ caption })` puts it on a page, edge to edge or, with a layer name, captioned with a 14 mm margin.
+`runSpecificPagesExport` moved there from export-pdfs.js, built on those two, and is registered
+again as `App.runSpecificPagesExport` (R16 had removed the registration because nothing read it;
+both the Export PDFs dialog and the Download read it now).
+
+**Download is the shared export with its own selections.** `downloadCurrentPageAsPdf` builds a
+selection per mode (this sheet or every sheet, marked; active layer or every layer), calls the
+shared export at scale 4, JPEG 0.95 and the Export settings' marker and line sizes, and keeps its
+own file names, button-title progress and `export_pdf` event. Where the Download copies had
+drifted from Export PDFs, the difference is an option on the shared export, never unified:
+`ensureActiveCanvas` (Download makes sure each sheet has a layer before reading it),
+`captionSingleLayer` ("this sheet, every layer" captions a sheet even when it has one layer),
+`skipSheetsWithoutLayers` ("everything" adds nothing for a sheet with no layers; unreachable
+behind ensureActiveCanvas, kept for fidelity) and `progressNoun` ("Exporting plan n/N" on "every
+sheet"; the one-sheet modes still show only "Downloading…"). Every download keeps its name, page
+count, page size and captions:
+
+| Mode | File | Pages | Captions |
+|---|---|---|---|
+| this-canvas | `takeoff-page<N>_<project>.pdf` | 1 | none, the sheet edge to edge |
+| all-canvases | `takeoff-page<N>_all-canvases_<project>.pdf` | one per layer | every page, even a one-layer sheet |
+| all-pages | `takeoff-all-pages_<project>.pdf` | one per sheet | none |
+| all-pages-canvases | `takeoff-all-pages-canvases_<project>.pdf` | one per layer | sheets with 2+ layers; a one-layer sheet is plain |
+
+One small equivalence: "everything" on a one-layer sheet drew that layer's annotations by name and
+now draws the active layer's, which on a one-layer sheet is the same layer (getActiveCanvas falls
+back to the first canvas).
+
+**The note and highlight pages render each sheet once.** Both bundles cropped every item out of
+a fresh 4x raster of its sheet, so a sheet with twelve highlights was rendered twelve times. A
+one-sheet memo now renders each sheet once per export (the items run sheet by sheet; the last
+sheet is dropped before the next renders, so a big set never holds every sheet's raster at once).
+The pages they add are the same.
+
+Pinned first, green on the base before anything moved: output.spec.js "Download modes" captures
+each of the four downloads and reads it back with the vendored pdf-lib (file name, page count,
+each page's size against the sheet, the caption strings), including "this sheet, every layer" on
+a one-layer sheet. pdf-bundle.spec.js adds the render count (one print render per sheet for the
+highlights and the notes bundles; it fails on the base with two). output, export-pdfs, bid-basis,
+pdf-bundle and copy-layers specs green.
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

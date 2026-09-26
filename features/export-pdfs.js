@@ -13,10 +13,10 @@
  * Scope is the Export PDFs feature only. The shared PDF-download helpers
  * (sanitizeForFilename / downloadPdfBuffer / downloadProjectPdf) and the
  * "Copy to PipeTooling" dropdown toggle stay in app.js. The render/bundle
- * helpers (renderAnnotationsToContext, addReportPagesToPdf, addHighlightsToPdf,
- * addNotesToPdf, hasAnyHighlights, hasAnyNotes, getPageCanvases,
- * sanitizeForFilename, logUserEvent) stay defined in app.js and are read here
- * via App.* (publish-only). Boundary rule: read shared deps from App.* at call
+ * work (the raster pipeline, the report/highlight/note pages, hasAnyHighlights,
+ * hasAnyNotes) is features/pdf-bundle.js's, and getPageCanvases,
+ * sanitizeForFilename, logUserEvent are published by app.js / output.js; all
+ * are read here via App.*. Boundary rule: read shared deps from App.* at call
  * time, never captured at load. See ARCHITECTURE.md "Feature files / window.App
  * registry". No build step.
  *
@@ -27,7 +27,8 @@
  * the bid chip and the "Saves as" file name, and after the download hands the
  * finished jsPDF to App.onBidBasisExported. The download function reads its
  * options through readSpecificPagesOptionsFromDom() and runs through
- * runSpecificPagesExport(options), so a preset never has to poke the controls.
+ * App.runSpecificPagesExport(options) (features/pdf-bundle.js since R25, shared
+ * with the header Download), so a preset never has to poke the controls.
  */
 (function() {
   const App = (window.App = window.App || {});
@@ -279,101 +280,9 @@
     };
   }
 
-  /**
-   * Build the export from an options object. Returns { doc, included } with the
-   * jsPDF document unsaved (null doc when nothing was included), so a caller can
-   * save it under any name. `onProgress(text)` drives the button label.
-   */
-  async function runSpecificPagesExport(options, onProgress) {
-    const state = App.state;
-    const progress = typeof onProgress === 'function' ? onProgress : () => {};
-    const selections = options.selections || {};
-    const canvasModes = options.canvasMode || {};
-    const included = state.pages.map((_, i) => i).filter(i => selections[i] !== 'exclude');
-    if (!included.length) return { doc: null, included };
-    const jsPDFLib = window.jspdf;
-    const EXPORT_SCALE = options.exportScale || 4;
-    const JPEG_QUALITY = options.jpegQuality != null ? options.jpegQuality : 0.95;
-    const PT_TO_MM = 25.4 / 72;
-    const exportOverrides = { markerScale: options.markerScale, lineScale: options.lineScale };
-    let doc = null;
-    if (options.includeReport) {
-      doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-      progress('Exporting report…');
-      await App.addReportPagesToPdf(doc);
-    }
-    for (let idx = 0; idx < included.length; idx++) {
-      const i = included[idx];
-      const page = state.pages[i];
-      const canvases = App.getPageCanvases(page);
-      const canvasMode = canvasModes[i] || 'current';
-      const useAllCanvases = selections[i] === 'marked' && canvasMode === 'all' && canvases.length > 1;
-      if (selections[i] === 'unmarked') {
-        progress('Exporting page ' + (idx + 1) + '/' + included.length + '…');
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        const imgData = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-        else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-      } else if (useAllCanvases) {
-        for (let ci = 0; ci < canvases.length; ci++) {
-          progress('Exporting page ' + (idx + 1) + '/' + included.length + '…');
-          const c = canvases[ci];
-          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || App.makeAnnotations());
-          const imgData = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          const caption = c.name || 'Main';
-          const captionTop = 10;
-          const imageTop = 14;
-          const pdfPageW = Math.max(210, wMm + 28);
-          const pdfPageH = imageTop + hMm + 14 + 20;
-          if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-          else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-          doc.setFontSize(9);
-          doc.text(caption, 14, captionTop);
-          doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-        }
-      } else {
-        progress('Exporting page ' + (idx + 1) + '/' + included.length + '…');
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        if (doc === null) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-        else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-      }
-    }
-    if (doc && options.bundleHighlights && App.hasAnyHighlights()) {
-      progress('Exporting highlights…');
-      await App.addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
-    }
-    if (doc && options.bundleNotes && App.hasAnyNotes()) {
-      progress('Exporting notes…');
-      await App.addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
-    }
-    return { doc, included };
-  }
+  // The export itself (runSpecificPagesExport: options -> an unsaved jsPDF) lives
+  // in features/pdf-bundle.js since R25, shared with the header Download; it is
+  // read through App.runSpecificPagesExport at call time.
 
   async function downloadSpecificPages() {
     const state = App.state;
@@ -406,7 +315,7 @@
           return;
         }
       }
-      const { doc, included } = await runSpecificPagesExport(options, (text) => { btn.textContent = text; });
+      const { doc, included } = await App.runSpecificPagesExport(options, (text) => { btn.textContent = text; });
       if (doc) {
         let saved = { filename, saveMethod: 'intended' };
         if (save && save.handle && App.finishBidBasisSave) saved = await App.finishBidBasisSave(save.handle, doc, filename);

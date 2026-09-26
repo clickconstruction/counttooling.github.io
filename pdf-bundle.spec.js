@@ -196,4 +196,52 @@ test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
 
     errors.assertNoErrors();
   });
+
+  // R25: the notes and highlights bundles render each sheet ONCE per export
+  // (a one-sheet memo), not once per note or highlight; the pages they add are
+  // unchanged (one per item, plus the summary).
+  test('notes and highlights bundles render each sheet once per export (R25)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = collectConsoleErrors(page);
+
+    await bootApp(page);
+    await uploadPdf(page);
+
+    const result = await page.evaluate(async () => {
+      const s = window.state, App = window.App;
+      const a0 = App.getActiveAnnotations(s.pages[0]);
+      const a1 = App.getActiveAnnotations(s.pages[1]);
+      a0.highlights.push({ x1: 20, y1: 20, x2: 120, y2: 80 }, { x1: 150, y1: 150, x2: 260, y2: 230 });
+      a1.highlights.push({ x1: 30, y1: 30, x2: 140, y2: 90 });
+      a0.notes.push({ x: 40, y: 40, width: 150, fontSize: 14, text: 'Note one.' }, { x: 60, y: 200, width: 150, fontSize: 14, text: 'Note two.' });
+      a1.notes.push({ x: 40, y: 40, width: 150, fontSize: 14, text: 'Note three.' });
+      // Count the print renders per sheet (the export's own rasters; the view
+      // renders with the display intent).
+      const renders = [0, 0];
+      s.pages.forEach((p, i) => {
+        const orig = p.pdfPage.render.bind(p.pdfPage);
+        p.pdfPage.render = (args) => { if (args && args.intent === 'print') renders[i]++; return orig(args); };
+      });
+      const count = async (fn) => {
+        renders[0] = 0; renders[1] = 0;
+        const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+        const added = await fn(doc);
+        return { renders: renders.slice(), added, pages: doc.getNumberOfPages() };
+      };
+      return {
+        highlights: await count((doc) => App.addHighlightsToPdf(doc, {})),
+        notes: await count((doc) => App.addNotesToPdf(doc, {})),
+      };
+    });
+
+    // One print render per sheet, however many items it carries.
+    expect(result.highlights.renders).toEqual([1, 1]);
+    expect(result.notes.renders).toEqual([1, 1]);
+    // Highlights: the summary page, then one page per highlight.
+    expect(result.highlights.pages).toBe(4);
+    // Notes: the summary folds onto the first note's page (3 notes -> 3 pages).
+    expect(result.notes.pages).toBe(3);
+
+    errors.assertNoErrors();
+  });
 });

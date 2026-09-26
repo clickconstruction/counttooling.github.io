@@ -806,6 +806,7 @@
     markProjectDirty: () => markProjectDirty(),
     renderPdf: () => renderPdf(),
     updateUI: () => updateUI(),
+    remapSessionPageIndices: (to) => annotationModel.remapSessionPageIndices(to),
   });
   // A run being edited (TOOL.EDIT_POLY) is spliced OUT of its page's polylines
   // into state.editingPolyline, so a snapshot taken mid-edit (a vertex delete,
@@ -829,6 +830,14 @@
   function pushUndoSnapshot(homeRun) {
     const t0 = performance.now();
     const r = withEditingPolylineHome(() => undoStackModel.pushUndoSnapshot(), homeRun);
+    notePerfSample('undoSnapshotMs', performance.now() - t0);
+    return r;
+  }
+  // The step for a change to the page list itself (a page delete): undo puts
+  // the list back, not just what is on the pages (MAP-PAGE-UNDO, undo-stack.js).
+  function pushUndoSnapshotPageList() {
+    const t0 = performance.now();
+    const r = withEditingPolylineHome(() => undoStackModel.pushUndoSnapshotPageList());
     notePerfSample('undoSnapshotMs', performance.now() - t0);
     return r;
   }
@@ -7796,6 +7805,7 @@
   App.planPaletteRelink = planPaletteRelink;
   App.applyPaletteRelink = applyPaletteRelink;
   App.pushUndoSnapshot = pushUndoSnapshot;
+  App.pushUndoSnapshotPageList = pushUndoSnapshotPageList;
   App.pushUndoSnapshotCurrentPage = pushUndoSnapshotCurrentPage;
   App.markProjectDirty = markProjectDirty;
   App.showModal = showModal;

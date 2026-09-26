@@ -13,6 +13,40 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(undo): undoing a page delete puts the sheet back where it was, with its own marks (MAP-PAGE-UNDO, 2026-09-26)
+
+The other half of the decomposition map's R11. Deleting a sheet from the Pages list pushed an
+ordinary undo step, and an ordinary step lays its pages back over the live list by position. After a
+delete the live list is one shorter, so Ctrl+Z did not bring the sheet back at all: the sheet after
+it took the deleted sheet's marks, label and scale, lost its own until redo, and the last sheet's
+copy fell off the end. The layer chosen on each sheet came back wrong the same way, and an undo
+step recorded on a later sheet before the delete had no sheet left to land on.
+
+The delete now pushes a page-list step, undo-stack.js `pushUndoSnapshotPageList` (published as
+`App.pushUndoSnapshotPageList`). It is the ordinary full step plus a record of the list itself: the
+page objects in order, which carry the PDF page, the bake frame and the rest with them, and copies
+of the two maps kept by page number (`activeCanvasIdByPage`, `peekCanvasIdsByPage`). Undo puts that
+list and those maps back in place first, then lays the copied marks, scales and labels over them,
+which now line up. The session's own page numbers (the sheet on screen, the selected line and duct
+run, the polyline being edited, the Chain start, the last measurement) follow their sheets by
+identity, so the estimator stays on the sheet she was looking at. That list of fields is
+annotation-model.js `remapSessionPageIndices`, which `deletePageAt` now uses too, so a new field
+kept by page number is added in one place. Undo and redo record the opposite step with the same
+shape, so redo deletes the sheet again and a second undo brings it back.
+
+Only this step touches the list. An ordinary step still lays pages over by position, since sheets
+added without a step (the Prepare PDF append) must survive an undo of an earlier edit. Entries
+recorded before a delete are not cleared: the stack is last in, first out, so the delete's step is
+always undone before them and the list is back to the shape they were recorded against.
+
+Pinned by annotation-model.test.js (a mark on sheet 3, delete sheet 2, undo: every sheet is its own
+object again with its marks, scale, label and layer, the maps are restored in place, the sheet on
+screen and the selection follow; the older sheet-3 step then undoes on sheet 3; redo and undo again
+round-trip; and an ordinary step leaves an appended sheet alone) and delete-page.spec.js
+"MAP-PAGE-UNDO" (three sheets with their own label, scale, highlight and chosen layer; delete sheet
+2 from the Pages list, Ctrl+Z, and every sheet, the saved payload and the layer on screen are as
+they were; Ctrl+Shift+Z deletes it again). Both were red before the fix.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

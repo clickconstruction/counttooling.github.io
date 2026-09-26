@@ -226,6 +226,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 **Landed 2026-09-26** (MAP-PAGE-DELETE closed): annotation-model.js `deletePageAt(i)` splices the page and reindexes, in place, `activeCanvasIdByPage`, `peekCanvasIdsByPage`, `currentPage`, the selected line and duct run, `editingPolyIndex`, `chainStart.page` and `lastMeasure.pageIdx` (the map's list missed the last three); app.js publishes it as `App.deletePageAt` and pages-list.js's delete calls it. Undo of a page delete is still wrong, and is not this row: `applySnapshot` lays the snapshot's pages over the shortened list by index, so the sheet after the deleted one takes the deleted sheet's marks, label and scale. CHANGELOG "fix(pages): deleting a page keeps every later sheet on the layer it was on".
 
+**Undo half landed 2026-09-26** (MAP-PAGE-UNDO closed): the delete pushes undo-stack.js `pushUndoSnapshotPageList`, a full step that also records the page objects in order and both page-keyed maps; undo and redo put that list back in place before laying the copies over, and carry the session indices by page identity through annotation-model.js `remapSessionPageIndices` (the list `deletePageAt` now shares). CHANGELOG "fix(undo): undoing a page delete puts the sheet back where it was, with its own marks".
+
 *Risk low, yield ~15.* Latent corruption of scales and layers after a delete. Small and node-testable.
 
 - **`core-render-ui:page-delete-model-op`** (test-first, medium confidence; check: unchecked) Test-first: move page deletion from the Pages list renderer into a model op that reindexes page-keyed maps

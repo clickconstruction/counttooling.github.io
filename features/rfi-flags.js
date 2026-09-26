@@ -13,6 +13,18 @@
   // Cross-file deps read from App at call time: state, showToast, logUserEvent.
   const RFI_RE = /^\s*RFI\s*:/i;
 
+  // A page's sheet name as a row prints it: the page's `label` (the pages list's name,
+  // "P-101 · Plumbing Plan" read off the title block or typed in a rename), or '' when the
+  // label is only the intake's file-name default ("bid-set.pdf, p24", "Page 3"), which says
+  // nothing the "p24" beside it doesn't (sheet-title-model.js isDefaultPageLabel). The
+  // Notes ledger's page heading reads the same helper (App.sheetNameForPage).
+  function sheetNameForPage(page) {
+    const label = String(page?.label || '').trim();
+    const M = window.SheetTitleModel;
+    if (!label || (M && M.isDefaultPageLabel(label))) return '';
+    return label;
+  }
+
   function collectRfiFlags() {
     const state = App.state;
     const rows = [];
@@ -24,7 +36,7 @@
           if (!RFI_RE.test(text)) return;
           rows.push({
             page: pi + 1,
-            pageName: page?.name || '',
+            pageName: sheetNameForPage(page),
             // The canvas label only earns its place when it disambiguates.
             canvas: multiCanvas ? (cv?.name || 'Canvas ' + (ci + 1)) : '',
             text: text.replace(RFI_RE, '').trim(),
@@ -63,6 +75,7 @@
 
   document.getElementById('copyRfiFlags')?.addEventListener('click', () => { void copyRfiFlags(); });
 
+  App.sheetNameForPage = sheetNameForPage;
   App.collectRfiFlags = collectRfiFlags;
   App.buildRfiFlagsText = buildRfiFlagsText;
   App.copyRfiFlags = copyRfiFlags;

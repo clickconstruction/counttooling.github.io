@@ -99,6 +99,29 @@ the published hydrator, signed out) and a canvas-only bid getting its PDF; impor
 the layer map. All three were red before the fix. Left for the one-contract refactor (R12): the PDF
 match still drops the layer map, and the backup applier still copies Quick Keys plain.
 
+## fix(notes): RFI flags and the Notes ledger name the sheet, and a ledger jump opens the note's layer (MAP-SHEETNAMES, 2026-09-26)
+
+The sheet-name and notes-jump part of the decomposition map's R03 (D11, D14, D15). Copy RFI Flags
+(features/rfi-flags.js) and the Notes ledger (features/notes-ledger.js) read the sheet name from
+`page.name`, a field no page carries (every intake writes `label`), so every RFI row read a bare
+"p3" and every ledger heading a bare "p2". Both now read the page's `label` through one helper,
+`App.sheetNameForPage` (features/rfi-flags.js), which leaves the name out when
+`SheetTitleModel.isDefaultPageLabel` says it is only the intake's file-name default: "p1 P-200 ·
+Plumbing Plan" for a sheet read off its title block or renamed, "p2" for "bid-set.pdf, p2".
+
+The ledger's jump wrote `page.activeCanvas`, which nothing reads, so a jump to a note on a layer
+other than the active one landed on the page with the old layer still showing: the note was not
+drawn and the chip pointed at empty sheet, and the page kept a junk field. It now sets
+`state.activeCanvasIdByPage` to the note's canvas id, the way the layer pills do (marking the
+project dirty when the layer changed, as they do), before the render.
+
+Pinned by rfi-flags.spec.js, which used to seed `pages[0].name` and so pinned the phantom field:
+it now seeds a label and expects it in the row, and expects page 2's file-name label left out. Two
+new notes-ledger.spec.js cases: the drawer headings read "p1 · P-200 · Plumbing Plan" and "p2";
+and a jump to an RFI on a second, non-active layer makes that layer active, leaves no
+`activeCanvas` field, and paints the red pin on the annotation canvas at the note (the same probe
+reads nothing there once Main is active again). All three were red before the fix.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

@@ -300,4 +300,133 @@ test.describe('Ghost tool (features/ghost.js)', () => {
     expect(restored.counts).toEqual({ counters: 2, lines: 1 });
     expect(restored.label).toBe('Typical');
   });
+
+  // MAP-GHOST-DELETE (DECOMPOSITION_MAP D32): deleting a counter, a line type
+  // or a group used to prune the live marks only. The Typical kept them, drew
+  // a deleted counter as a default circle, and Stamp put back marks no tally
+  // counts. Each case deletes through the real surface, then stamps through
+  // the ghost menu.
+  test.describe('deleting a type or group reaches inside the Typical', () => {
+    // A second counter type in the box, so a delete has a survivor to keep,
+    // and a group on one fixture and the run.
+    async function seedTypical(page) {
+      await seedPlan(page);
+      await page.evaluate(() => {
+        const st = window.state;
+        st.counters.push({ id: 'lav', name: 'Lavatory', icon: st.counters[0].icon, color: '#4a9eff' });
+        st.groups = [{ id: 'grp', name: 'Level 1', color: '#4a9eff' }];
+        const ann = window.App.getActiveAnnotations(st.pages[0]);
+        ann.counterMarkers.lav = [{ x: 60, y: 60, id: 'm3' }];
+        ann.counterMarkers.wc[0].group = 'grp';
+        ann.quickLines[0].group = 'grp';
+        window.App.updateUI();
+        document.getElementById('ghostBtn').click();
+        window.App.handleGhostCanvasClick({ x: 0, y: 0 });
+        window.App.handleGhostCanvasClick({ x: 100, y: 100 });
+        window.App.handleGhostCanvasClick({ x: 300, y: 100 });
+        window.App.hideModal('airboardToastModal');
+      });
+      expect(await page.evaluate(() => window.App.ghostCounts(window.App.getActiveAnnotations(window.state.pages[0]).ghosts[0])))
+        .toEqual({ counters: 3, lines: 1 });
+    }
+
+    async function deleteItem(page, kind, id) {
+      await page.evaluate(([k, i]) => {
+        const list = k === 'counter' ? window.state.counters : window.state.lineTypes;
+        window.App.openCounterLineTypeDetailsModal(k, list.find(x => x.id === i));
+      }, [kind, id]);
+      await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
+      await page.evaluate(() => document.getElementById('counterLineTypeDetailsDelete').click());
+      await page.waitForSelector('#deleteCounterLineTypeConfirmModal.visible', { timeout: 5000 });
+      await page.evaluate(() => document.getElementById('deleteCounterLineTypeConfirm').click());
+      await expect(page.locator('#counterLineTypeDetailsModal')).not.toHaveClass(/visible/);
+    }
+
+    // Right-click the ghost with the Ghost tool armed, then Stamp from its menu.
+    async function stampFromMenu(page) {
+      await page.evaluate(() => {
+        const st = window.state;
+        if (st.tool !== window.App.TOOL.GHOST) document.getElementById('ghostBtn').click();
+        const b = window.App.ghostBounds(window.App.getActiveAnnotations(st.pages[0]).ghosts[0]);
+        if (!window.App.tryOpenGhostMenuAt({ x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 }, 200, 200)) throw new Error('ghost menu did not open');
+        document.querySelector('#ghostMenu [data-ghost-action="stamp"]').click();
+      });
+    }
+
+    const liveMarks = (page) => page.evaluate(() => {
+      const ann = window.App.getActiveAnnotations(window.state.pages[0]);
+      const byType = {};
+      Object.entries(ann.counterMarkers || {}).forEach(([k, a]) => { byType[k] = a.length; });
+      const lines = (ann.quickLines || []).concat(ann.polylines || []);
+      return {
+        byType,
+        lineTypes: lines.map(l => l.lineTypeId),
+        groups: Object.values(ann.counterMarkers || {}).flat().concat(lines).map(m => m.group || null),
+        footer: document.getElementById('statusTotals')?.textContent || '',
+      };
+    });
+
+    test('a deleted counter never comes back from a stamp', async ({ page }) => {
+      await seedTypical(page);
+      await deleteItem(page, 'counter', 'wc');
+      const before = await liveMarks(page);
+      expect(before.byType.wc || 0).toBe(0);
+      expect(before.byType.lav).toBe(1);
+      // The Typical lost the counter too, and still holds the rest.
+      expect(await page.evaluate(() => window.App.ghostCounts(window.App.getActiveAnnotations(window.state.pages[0]).ghosts[0])))
+        .toEqual({ counters: 1, lines: 1 });
+
+      await stampFromMenu(page);
+      const after = await liveMarks(page);
+      expect(after.byType.wc || 0).toBe(0);      // no marks of the deleted counter
+      expect(after.byType.lav).toBe(2);          // the survivor stamped as usual
+      expect(after.lineTypes).toEqual(['waste', 'waste']);
+      // Every stamped mark belongs to a type the palette still has, so nothing
+      // is drawn that the tallies skip.
+      expect(await page.evaluate(() => {
+        const ann = window.App.getActiveAnnotations(window.state.pages[0]);
+        const ids = new Set(window.state.counters.map(c => c.id));
+        return Object.keys(ann.counterMarkers).filter(k => ann.counterMarkers[k].length && !ids.has(k));
+      })).toEqual([]);
+    });
+
+    test('a deleted line type never comes back from a stamp', async ({ page }) => {
+      await seedTypical(page);
+      await deleteItem(page, 'lineType', 'waste');
+      const before = await liveMarks(page);
+      expect(before.lineTypes).toEqual([]);
+      expect(await page.evaluate(() => window.App.ghostCounts(window.App.getActiveAnnotations(window.state.pages[0]).ghosts[0])))
+        .toEqual({ counters: 3, lines: 0 });
+
+      await stampFromMenu(page);
+      const after = await liveMarks(page);
+      expect(after.lineTypes).toEqual([]);       // no run of the deleted line type
+      expect(after.byType).toEqual({ wc: 4, lav: 2 });
+    });
+
+    test('a deleted group leaves no id inside the Typical to stamp back', async ({ page }) => {
+      await seedTypical(page);
+      await page.evaluate(() => { window.__delGroup = window.App.deleteGroup('grp'); });
+      await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+      await page.locator('#confirmOk').click();
+      expect(await page.evaluate(() => window.__delGroup)).toBe(true);
+      await stampFromMenu(page);
+      const after = await liveMarks(page);
+      expect(after.byType).toEqual({ wc: 4, lav: 2 });
+      expect(after.groups.filter(Boolean)).toEqual([]);
+    });
+
+    test('deleting everything a Typical held removes the Typical', async ({ page }) => {
+      await seedTypical(page);
+      await deleteItem(page, 'counter', 'wc');
+      await deleteItem(page, 'counter', 'lav');
+      await deleteItem(page, 'lineType', 'waste');
+      expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ghosts || []).length)).toBe(0);
+      // The delete's own undo snapshot holds the Typical, so Ctrl+Z brings it
+      // back with the line type.
+      await page.locator('body').press('Control+z');
+      const ghosts = await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ghosts || []).map(g => window.App.ghostCounts(g)));
+      expect(ghosts).toEqual([{ counters: 0, lines: 1 }]);
+    });
+  });
 });

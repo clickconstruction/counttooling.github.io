@@ -13,6 +13,37 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(ghost): deleting a counter, a line type or a group takes it out of every Typical too (MAP-GHOST-DELETE, 2026-09-26)
+
+The decomposition map's R17 (defect D32). A Typical (a ghost) keeps its own copy of the marks it
+was made from, outside the live marks. Deleting a counter or a line type from its details modal,
+or a group from the group modal, pruned the live marks on every page and left the copies alone.
+The Typical went on drawing a deleted counter's markers as default yellow circles, and Stamp put
+back marks of a type the palette no longer had: drawn on the sheet, missing from every tally, and
+turned into an "Unknown" palette row the next time the bid opened. A deleted group's id rode the
+stamp the same way, a group id that names no group, which the report sorts as a second "Untagged".
+
+Both delete paths now reach into the Typicals. annotation-model.js has a pure
+`purgeFromGhosts(ann, kind, id)`: a deleted counter's markers and a deleted line type's runs come
+out of every ghost on that layer, a deleted group's id is cleared there, and a Typical left
+holding nothing is removed, since capture never makes an empty one and an empty one has no bounds
+to click. features/ghost.js's `purgeFromEveryGhost` runs it over every page and layer, and over
+the Typical riding the cursor, and drops the selection or the open menu of one it emptied.
+`performDeleteCounterLineType` and `deleteGroup` call it after the live prune, inside the undo
+snapshot they already push, so Ctrl+Z brings the Typical back with the type.
+
+`deleteGroup` moved from features/item-details.js to features/groups.js, the file that owns the
+group modals and its one caller, unchanged but for the ghost line. Its callers already read
+`App.deleteGroup` at call time. The map's companion fold (openGroupAssignModal onto
+refreshGroupAssignButtons) is not in this change.
+
+Pinned by annotation-model.test.js (two counter types in a Typical, one deleted, the other kept;
+a line type's straight and polyline runs; a group id cleared while another group stays; an
+emptied Typical removed; no ghosts, no src, an unknown kind) and ghost.spec.js "deleting a type or
+group reaches inside the Typical" (a counter, a line type and a group each deleted through the app,
+then a Stamp from the ghost menu brings none of it back; deleting all a Typical held removes it,
+and Ctrl+Z restores it). Both were red before the fix.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

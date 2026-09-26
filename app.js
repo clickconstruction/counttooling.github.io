@@ -3466,9 +3466,9 @@
   // The Counter/Line Type details modal (openCounterLineTypeDetailsModal +
   // performDeleteCounterLineType + the counterLineTypeDetailsItem /
   // pendingDeleteCounterLineType flags), the Line Properties modal
-  // (openLinePropertiesModal / closeLinePropertiesModal + pendingLineProperties),
-  // and deleteGroup moved to features/item-details.js (window.App registry);
-  // reached via App.* at call time. showModal/hideModal stay here (app-wide
+  // (openLinePropertiesModal / closeLinePropertiesModal + pendingLineProperties)
+  // moved to features/item-details.js, and deleteGroup to features/groups.js
+  // (window.App registry); reached via App.* at call time. showModal/hideModal stay here (app-wide
   // modal primitives); hideModal resets the moved details item via the
   // App.onCounterLineTypeDetailsHidden callback.
 
@@ -8225,8 +8225,8 @@
   App.formatMountHeightIn = formatMountHeightIn;
   App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;
-  // Item detail & properties modal deps (features/item-details.js; deleteGroup's
-  // App registration moved there too — groups.js keeps consuming App.deleteGroup).
+  // Item detail & properties modal deps (features/item-details.js; deleteGroup
+  // and its App registration live in features/groups.js).
   App.enterEditMode = enterEditMode;
   App.getPageScale = getPageScale;
   App.getPageSheetAnalysis = getPageSheetAnalysis;
@@ -8265,6 +8265,10 @@
   // Same-id palette collapse (features/palette-insights.js id-aware merge +
   // spec seam; annotation-model.js pure helper).
   App.dedupePaletteById = dedupePaletteById;
+  // The delete cascades' reach into Typicals (features/item-details.js
+  // performDeleteCounterLineType, features/groups.js deleteGroup;
+  // annotation-model.js pure helper, MAP-GHOST-DELETE).
+  App.purgeFromGhosts = purgeFromGhosts;
   // Line-drop deps (features/item-details.js Recent chips + features/drop-mode.js
   // Drop tool). collectDropNodes/applyDropToNode are the pure node model in
   // annotation-model.js; the recent list is device-local (localStorage

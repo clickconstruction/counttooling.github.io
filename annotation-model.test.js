@@ -1181,3 +1181,89 @@ test('applyTakeoffBackupToState: header pins absent from an older backup keep th
   m.applyTakeoffBackupToState({ counters: [] });
   assert.deepStrictEqual(state.stripPins, { measureBtn: true });
 });
+
+// --- purgeFromGhosts: deleting a type or group reaches inside every Typical ---
+// MAP-GHOST-DELETE (DECOMPOSITION_MAP D32): the delete cascades pruned only the
+// live marks, so a Typical kept the deleted counter's markers, the deleted line
+// type's runs and the deleted group's id, and Stamp put them back uncounted.
+
+const { purgeFromGhosts } = require('./annotation-model.js');
+
+function typicalAnn() {
+  return {
+    counterMarkers: { wc: [{ x: 1, y: 1, id: 'live' }] },
+    ghosts: [
+      {
+        id: 'g1', label: 'Typical', showCounters: true, showLines: true,
+        src: {
+          counterMarkers: {
+            wc: [{ x: 10, y: 10, id: 'a', group: 'grpA' }, { x: 20, y: 20, id: 'b' }],
+            lav: [{ x: 30, y: 30, id: 'c', group: 'grpB' }],
+          },
+          quickLines: [
+            { x1: 0, y1: 0, x2: 5, y2: 0, id: 'q1', lineTypeId: 'waste', group: 'grpA' },
+            { x1: 0, y1: 5, x2: 5, y2: 5, id: 'q2', lineTypeId: 'vent' },
+          ],
+          polylines: [
+            { id: 'p1', lineTypeId: 'waste', points: [{ x: 0, y: 9 }, { x: 9, y: 9 }], group: 'grpB' },
+            { id: 'p2', lineTypeId: 'vent', points: [{ x: 1, y: 9 }, { x: 8, y: 9 }], group: 'grpA' },
+          ],
+        },
+      },
+    ],
+  };
+}
+
+test('purgeFromGhosts: deleting one counter type takes its markers out of the Typical, the other type survives', () => {
+  const ann = typicalAnn();
+  const res = purgeFromGhosts(ann, 'counter', 'wc');
+  const src = ann.ghosts[0].src;
+  assert.strictEqual(src.counterMarkers.wc, undefined);
+  assert.deepStrictEqual(src.counterMarkers.lav.map(m => m.id), ['c']);
+  assert.strictEqual(src.quickLines.length, 2);
+  assert.strictEqual(src.polylines.length, 2);
+  assert.deepStrictEqual(ann.counterMarkers.wc.map(m => m.id), ['live']);   // live marks are the caller's
+  assert.deepStrictEqual(res, { changed: 2, removedGhostIds: [] });
+});
+
+test('purgeFromGhosts: deleting a line type takes its runs out of the Typical, both straight and polyline', () => {
+  const ann = typicalAnn();
+  const res = purgeFromGhosts(ann, 'lineType', 'waste');
+  const src = ann.ghosts[0].src;
+  assert.deepStrictEqual(src.quickLines.map(q => q.id), ['q2']);
+  assert.deepStrictEqual(src.polylines.map(p => p.id), ['p2']);
+  assert.strictEqual(Object.keys(src.counterMarkers).length, 2);
+  assert.strictEqual(res.changed, 2);
+});
+
+test('purgeFromGhosts: deleting a group clears its id from the Typical\'s marks and runs, other groups kept', () => {
+  const ann = typicalAnn();
+  const res = purgeFromGhosts(ann, 'group', 'grpA');
+  const src = ann.ghosts[0].src;
+  assert.strictEqual(src.counterMarkers.wc[0].group, null);
+  assert.strictEqual(src.counterMarkers.lav[0].group, 'grpB');
+  assert.strictEqual(src.quickLines[0].group, null);
+  assert.strictEqual(src.polylines[0].group, 'grpB');
+  assert.strictEqual(src.polylines[1].group, null);
+  assert.strictEqual(res.changed, 3);
+  assert.strictEqual(ann.ghosts.length, 1);   // a group delete never empties a Typical
+});
+
+test('purgeFromGhosts: a Typical left holding nothing is removed, since capture never makes an empty one', () => {
+  const ann = typicalAnn();
+  ann.ghosts.push({ id: 'g2', label: 'Typical', src: { counterMarkers: { wc: [{ x: 5, y: 5, id: 'z' }] }, quickLines: [], polylines: [] } });
+  const res = purgeFromGhosts(ann, 'counter', 'wc');
+  assert.deepStrictEqual(ann.ghosts.map(g => g.id), ['g1']);
+  assert.deepStrictEqual(res.removedGhostIds, ['g2']);
+});
+
+test('purgeFromGhosts: tolerant of annotations with no ghosts, a ghost with no src, and an unknown kind', () => {
+  assert.deepStrictEqual(purgeFromGhosts(null, 'counter', 'wc'), { changed: 0, removedGhostIds: [] });
+  assert.deepStrictEqual(purgeFromGhosts({}, 'counter', 'wc'), { changed: 0, removedGhostIds: [] });
+  const ann = { ghosts: [{ id: 'g', src: null }] };
+  assert.deepStrictEqual(purgeFromGhosts(ann, 'lineType', 'waste'), { changed: 0, removedGhostIds: [] });
+  assert.strictEqual(ann.ghosts.length, 1);
+  const full = typicalAnn();
+  assert.deepStrictEqual(purgeFromGhosts(full, 'nope', 'wc'), { changed: 0, removedGhostIds: [] });
+  assert.strictEqual(full.ghosts[0].src.counterMarkers.wc.length, 2);
+});

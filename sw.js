@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'a29560c44990';
+const CACHE_VERSION = '5aad21a04512';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -225,7 +225,7 @@ const PRECACHE_SHA256 = {
   '/support-model.js': 'a1fba42dfd24cfc5dfd662e6dcb67bced82bb656f7589b828110f5d08088eb69',
   '/water-model.js': 'de4ac32ceb56b64225db71fc7e6af9575e4e0dc892b3e621c008c3288e7109e4',
   '/fitting-model.js': '60aef6daecbf4ea7205224b2656d3bdaca033fa9ce9f896885f56e5618b6b9b1',
-  '/duct-model.js': '44a643436a4aa08d4b61da1e979c4992f844a7e23e47eab91a8b6d54f03ff4b2',
+  '/duct-model.js': '9add987fe296d166b5308928cb893b2d9dc3d710299dff630f58817fd274ca33',
   '/bid-basis-model.js': '825fc0a1cfd1a765dbb3bab5f06eb49c9780253d071def87784939e194a834f0',
   '/canvas-draw.js': '350765d5def90d064f56214d00abe2cf9e3790fb5875cfa64c02080fb392dbc6',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
@@ -310,11 +310,11 @@ const PRECACHE_SHA256 = {
   '/features/keyboard-map.js': '32253988b54563a25c1827faacceb13609a9b8e7d15735dc0df8cc00d2c2b278',
   '/features/chain.js': '1f90b93a6a9b801ff262f9e77ab28afd350ce8ef94b2a54b171516b6cfe6e9d5',
   '/features/drop-mode.js': 'ddc9792a551d3cff3bdc5a557406cd9ceb93dc14c5392a8bc28e7b1c9751cade',
-  '/features/duct-tool.js': 'ba604fb9a9134ed1fc1fbcfdb0c7a65a0e71726f841c6e2f026be280f2da4bbe',
+  '/features/duct-tool.js': '2df5039c00d0dee38bd3f12cc36a0811ec44d770ab89ee560f0b02838a8eb7af',
   '/features/duct-size-popover.js': '7815b986d05160667c6bfafc7c974e6d3787b64f7b9ad2ce287fd2b06dbc3622',
   '/features/duct-fittings.js': '5a735e2eb90cd3f57d41ad33536900ddf02f9212967d09883287353298085c24',
   '/features/duct-sidebar.js': '8f47717c1d43cd229d439563d4cccc17901f94439116cd1b26d5d7174f6ba3a5',
-  '/features/duct-schedule.js': '4e8b3057c426c1a4ecb7a11c65db1e663ba9c375dcc17d08a99aaa6cbe9b2b5f',
+  '/features/duct-schedule.js': '15e1129e2b53393b881f48b61b96a8295fe7db9bc7bc4ebd880427848aa95fa7',
   '/features/duct-suggest.js': 'e0961d484412ed6684439419752fc6ba9d68eda46575903c290a7bb30103209e',
   '/features/water-fixtures.js': 'bc7480a8869ec98efab4a9b01654cb1d43b57073522a2b83cb194780020f32c3',
   '/features/water-runs.js': '7cdb6339f56f474389e66d99fba1e9d6953b7af0df22aa0a02a24a9ee4012d8a',

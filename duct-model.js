@@ -13,6 +13,8 @@
  *      like quickLines/polylines do (see annotation-model.js conventions).
  *      D2 adds `ductRuns` / `ductFittings` arrays to makeAnnotations(); this
  *      unit only defines the element shapes.
+ *   1b. The drawing draft's size step and vertex pop (MAP-DUCT-STEP), the
+ *      rules features/duct-tool.js applies to state.drawingDuct.
  *   2. SMACNA-style gauge selection (data table, by pressure class + larger
  *      side) and galvanized sheet weights.
  *   3. Weight math — lb/ft, segment/rollup pounds, fitting lb-eq, seam & waste
@@ -226,6 +228,69 @@ function validateDuctFitting(f) {
   if (!isDuctSize(f.size)) errs.push('invalid size');
   if (f.vertexIdx == null && !f.position) errs.push('needs vertexIdx or position');
   return errs;
+}
+
+// --- 1b. The drawing draft (MAP-DUCT-STEP, 2026-09-26) ------------------------
+//
+// features/duct-tool.js holds a pre-commit draft, state.drawingDuct:
+//   { vertices, segments, sizeSteps: [{ vertexIdx, from, to }], verticalFt? }
+// These two helpers are what a size pick and an Esc pop DO to it, kept here so
+// node can pin them. Both MUTATE the draft in place (the tool holds it by
+// reference) and return true when something changed.
+
+/**
+ * A size pick: end the current segment at the LAST placed vertex and start
+ * the next at `size`, recording the step (the transition input). With no
+ * vertex placed yet, or a second pick at the same vertex, the boundary
+ * already exists and its size is REPLACED, not stacked, so startVertexIdx
+ * stays strictly ascending. A replacement that lands back on the previous
+ * segment's size undoes the step: the segment and its step go, so no
+ * transition is priced where the duct never changes size.
+ */
+function ductDraftApplySizeStep(draft, size) {
+  if (!draft || !Array.isArray(draft.segments) || !draft.segments.length || !isDuctSize(size)) return false;
+  const segs = draft.segments;
+  const last = segs[segs.length - 1];
+  const key = formatDuctSize(size);
+  if (formatDuctSize(last.size) === key) return false;   // no-op pick
+  if (!Array.isArray(draft.sizeSteps)) draft.sizeSteps = [];
+  const nVerts = (draft.vertices || []).length;
+  const lastVertexIdx = nVerts - 1;
+  if (nVerts === 0 || last.startVertexIdx === lastVertexIdx) {
+    const prev = segs.length > 1 ? segs[segs.length - 2] : null;
+    if (prev && formatDuctSize(prev.size) === key) {
+      segs.pop();
+      draft.sizeSteps = draft.sizeSteps.filter((s) => s.vertexIdx !== last.startVertexIdx);
+      return true;
+    }
+    last.size = cloneDuctSize(size);
+    const step = draft.sizeSteps.find((s) => s.vertexIdx === last.startVertexIdx);
+    if (step) step.to = cloneDuctSize(size);
+    return true;
+  }
+  segs.push({ startVertexIdx: lastVertexIdx, size: cloneDuctSize(size) });
+  draft.sizeSteps.push({ vertexIdx: lastVertexIdx, from: cloneDuctSize(last.size), to: cloneDuctSize(size) });
+  return true;
+}
+
+/**
+ * An Esc rung: pop the last vertex, then prune the segment boundaries (and
+ * their recorded steps) that no longer have a vertex to sit on, and the
+ * rise/drop entries anchored past the end. The starting segment always
+ * survives. False when there was no vertex to pop (the caller clears the
+ * draft and exits the tool).
+ */
+function ductDraftPopVertex(draft) {
+  if (!draft || !Array.isArray(draft.vertices) || !draft.vertices.length) return false;
+  draft.vertices.pop();
+  const n = draft.vertices.length;
+  const segs = draft.segments || [];
+  while (segs.length > 1 && segs[segs.length - 1].startVertexIdx >= n) {
+    const dropped = segs.pop();
+    draft.sizeSteps = (draft.sizeSteps || []).filter((s) => s.vertexIdx !== dropped.startVertexIdx);
+  }
+  if (draft.verticalFt) draft.verticalFt = draft.verticalFt.filter((e) => e.vertexIdx < n);
+  return true;
 }
 
 // --- 2. SMACNA gauge selection ----------------------------------------------
@@ -615,7 +680,7 @@ function rollupRunsToSchedule(runs, fittings, opts) {
 //          bends are drafting wiggle, not fittings.
 //   step — every segment boundary logs a transition (equivalently: every
 //          committed sizeSteps entry — a boundary exists iff a step was
-//          recorded). Size = the LARGER of the two sides (governing dim,
+//          recorded), unless both sides are the same size. Size = the LARGER of the two sides (governing dim,
 //          then perimeter — the metal is cut from the big end).
 //   tap  — a run whose FIRST vertex lands within tapSnapDist of another
 //          run's polyline logs a tap ON THE PARENT run (nearest parent
@@ -707,9 +772,12 @@ function inferAutoDuctFittings(runs, opts) {
         size: ductSizeAtVertex(run, v), auto: true,
       });
     }
-    // steps: every segment boundary is a transition.
+    // steps: every segment boundary that changes size is a transition. An
+    // equal-size boundary (a run saved before MAP-DUCT-STEP's draft fix) is
+    // no fitting.
     for (let i = 1; i < run.segments.length; i++) {
       const from = run.segments[i - 1].size, to = run.segments[i].size;
+      if (formatDuctSize(from) === formatDuctSize(to)) continue;
       const size = largerDuctSize(from, to);
       if (!size) continue;
       out.push({ runId: run.id, vertexIdx: run.segments[i].startVertexIdx, origin: 'step', type: 'transition', size: size, auto: true });
@@ -2299,6 +2367,8 @@ if (typeof module !== 'undefined' && module.exports) {
     DUCT_AIRSIDES, DUCT_FITTING_TYPES, DUCT_FITTING_ORIGINS,
     makeRectSize, makeRoundSize, isDuctSize, cloneDuctSize, formatDuctSize,
     makeDuctRun, makeDuctFitting, validateDuctRun, validateDuctFitting,
+    // the drawing draft (MAP-DUCT-STEP)
+    ductDraftApplySizeStep, ductDraftPopVertex,
     // fitting inference (D3)
     DUCT_ELBOW_MIN_DEG, DUCT_ELBOW90_MIN_DEG, DUCT_TAP_SNAP_PDF,
     ductBendAngleDeg, largerDuctSize, ductSizeAtVertex, ductDistToPolyline,

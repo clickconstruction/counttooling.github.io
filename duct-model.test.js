@@ -690,6 +690,121 @@ test('inferAutoDuctFittings: a run never taps itself; degenerate runs are skippe
   assert.strictEqual(dm.inferAutoDuctFittings(null).length, 0);
 });
 
+test('inferAutoDuctFittings: an equal-size boundary is no transition (MAP-DUCT-STEP)', () => {
+  // A run saved before the draft fix can carry 24×12 → 24×12; the walk must
+  // not price a fitting there. A real step in the same run still logs.
+  const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 200, y: 0 }, { x: 300, y: 0 }], [
+    { startVertexIdx: 0, size: dm.makeRectSize(24, 12) },
+    { startVertexIdx: 1, size: dm.makeRectSize(24, 12) },
+    { startVertexIdx: 2, size: dm.makeRectSize(20, 12) },
+  ]);
+  const fits = dm.inferAutoDuctFittings([r]);
+  assert.strictEqual(fits.length, 1);
+  assert.strictEqual(fits[0].type, 'transition');
+  assert.strictEqual(fits[0].vertexIdx, 2);
+});
+
+// --- 3a. Draft size steps + vertex pops (MAP-DUCT-STEP) ---------------------
+
+const draftOf = (nVerts, size) => ({
+  vertices: Array.from({ length: nVerts }, (_, i) => ({ x: i * 100, y: 0 })),
+  segments: [{ startVertexIdx: 0, size: size || dm.makeRectSize(24, 12) }],
+  sizeSteps: [],
+  verticalFt: [],
+});
+
+test('ductDraftApplySizeStep: a pick past the last boundary opens a segment and records the step', () => {
+  const d = draftOf(2);
+  assert.strictEqual(dm.ductDraftApplySizeStep(d, dm.makeRectSize(20, 12)), true);
+  assert.deepStrictEqual(d.segments, [
+    { startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } },
+    { startVertexIdx: 1, size: { kind: 'rect', w: 20, h: 12 } },
+  ]);
+  assert.deepStrictEqual(d.sizeSteps, [{ vertexIdx: 1, from: { kind: 'rect', w: 24, h: 12 }, to: { kind: 'rect', w: 20, h: 12 } }]);
+});
+
+test('ductDraftApplySizeStep: the same size again is a no-op; a bad size is refused', () => {
+  const d = draftOf(2);
+  assert.strictEqual(dm.ductDraftApplySizeStep(d, dm.makeRectSize(24, 12)), false);
+  assert.strictEqual(dm.ductDraftApplySizeStep(d, { kind: 'rect', w: 0, h: 12 }), false);
+  assert.strictEqual(dm.ductDraftApplySizeStep(null, dm.makeRectSize(20, 12)), false);
+  assert.strictEqual(d.segments.length, 1);
+  assert.deepStrictEqual(d.sizeSteps, []);
+});
+
+test('ductDraftApplySizeStep: no vertex yet, the starting size is replaced (no step)', () => {
+  const d = draftOf(0);
+  assert.strictEqual(dm.ductDraftApplySizeStep(d, dm.makeRoundSize(12)), true);
+  assert.deepStrictEqual(d.segments, [{ startVertexIdx: 0, size: { kind: 'round', d: 12 } }]);
+  assert.deepStrictEqual(d.sizeSteps, []);
+});
+
+test('ductDraftApplySizeStep: a second pick at the same vertex replaces the step, never stacks', () => {
+  const d = draftOf(2);
+  dm.ductDraftApplySizeStep(d, dm.makeRectSize(20, 12));
+  dm.ductDraftApplySizeStep(d, dm.makeRectSize(18, 12));
+  assert.strictEqual(d.segments.length, 2);
+  assert.deepStrictEqual(d.segments[1], { startVertexIdx: 1, size: { kind: 'rect', w: 18, h: 12 } });
+  assert.deepStrictEqual(d.sizeSteps, [{ vertexIdx: 1, from: { kind: 'rect', w: 24, h: 12 }, to: { kind: 'rect', w: 18, h: 12 } }]);
+});
+
+test('ductDraftApplySizeStep: picking the previous size again at the same vertex undoes the step (MAP-DUCT-STEP)', () => {
+  // A→B at v1, then A at v1: one segment, no step, so no phantom transition.
+  const d = draftOf(2);
+  dm.ductDraftApplySizeStep(d, dm.makeRectSize(20, 12));
+  assert.strictEqual(dm.ductDraftApplySizeStep(d, dm.makeRectSize(24, 12)), true);
+  assert.deepStrictEqual(d.segments, [{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }]);
+  assert.deepStrictEqual(d.sizeSteps, []);
+  // The committed run infers no transition.
+  const r = dm.makeDuctRun({ id: 'r1', vertices: d.vertices, segments: d.segments });
+  assert.strictEqual(dm.inferAutoDuctFittings([r]).filter(f => f.type === 'transition').length, 0);
+
+  // Deeper in a run: A→B at v1, B→C at v2, then B at v2 leaves A→B only.
+  const e = draftOf(2);
+  dm.ductDraftApplySizeStep(e, dm.makeRectSize(20, 12));
+  e.vertices.push({ x: 200, y: 0 });
+  dm.ductDraftApplySizeStep(e, dm.makeRectSize(16, 12));
+  dm.ductDraftApplySizeStep(e, dm.makeRectSize(20, 12));
+  assert.deepStrictEqual(e.segments.map(s => [s.startVertexIdx, dm.formatDuctSize(s.size)]), [[0, '24×12'], [1, '20×12']]);
+  assert.deepStrictEqual(e.sizeSteps.map(s => s.vertexIdx), [1]);
+  // Back up to the FIRST size at v2 is a real step (20×12 sits between).
+  dm.ductDraftApplySizeStep(e, dm.makeRectSize(24, 12));
+  assert.deepStrictEqual(e.segments.map(s => [s.startVertexIdx, dm.formatDuctSize(s.size)]), [[0, '24×12'], [1, '20×12'], [2, '24×12']]);
+  assert.deepStrictEqual(e.sizeSteps.map(s => [s.vertexIdx, dm.formatDuctSize(s.from), dm.formatDuctSize(s.to)]), [[1, '24×12', '20×12'], [2, '20×12', '24×12']]);
+});
+
+test('ductDraftPopVertex: pops one vertex and prunes the boundaries, steps and rises it carried', () => {
+  const d = draftOf(2);
+  d.verticalFt = [{ vertexIdx: 0, ft: 3, auto: true }, { vertexIdx: 1, ft: 2 }];
+  dm.ductDraftApplySizeStep(d, dm.makeRectSize(20, 12));
+  d.vertices.push({ x: 200, y: 0 });
+  d.verticalFt.push({ vertexIdx: 2, ft: 1 });
+
+  assert.strictEqual(dm.ductDraftPopVertex(d), true);
+  assert.strictEqual(d.vertices.length, 2);
+  assert.strictEqual(d.segments.length, 2);            // the v1 boundary still has its vertex
+  assert.deepStrictEqual(d.verticalFt.map(e => e.vertexIdx), [0, 1]);
+
+  assert.strictEqual(dm.ductDraftPopVertex(d), true);
+  assert.strictEqual(d.vertices.length, 1);
+  assert.deepStrictEqual(d.segments, [{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }]);
+  assert.deepStrictEqual(d.sizeSteps, []);
+  assert.deepStrictEqual(d.verticalFt.map(e => e.vertexIdx), [0]);
+
+  // The starting segment always survives; the last pop takes the v0 riser.
+  assert.strictEqual(dm.ductDraftPopVertex(d), true);
+  assert.strictEqual(d.vertices.length, 0);
+  assert.strictEqual(d.segments.length, 1);
+  assert.deepStrictEqual(d.verticalFt, []);
+  // Nothing left to pop: false, and the caller clears the draft.
+  assert.strictEqual(dm.ductDraftPopVertex(d), false);
+  assert.strictEqual(dm.ductDraftPopVertex(null), false);
+  // A draft without a verticalFt list pops cleanly.
+  const bare = { vertices: [{ x: 0, y: 0 }], segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }], sizeSteps: [] };
+  assert.strictEqual(dm.ductDraftPopVertex(bare), true);
+  assert.strictEqual(bare.verticalFt, undefined);
+});
+
 test('ductFittingAnchor: vertexIdx through the run, position free, pruned when gone', () => {
   const r = run('r1', [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]);
   const byVertex = dm.makeDuctFitting({ runId: 'r1', vertexIdx: 1, size: dm.makeRectSize(24, 12) });

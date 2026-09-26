@@ -218,6 +218,28 @@ test.describe('Duct static path (D11)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the schedule\'s VD-per-tap toggle refreshes the static-path row at once, with no other action (MAP-DUCT-STEP)', async ({ page }) => {
+    await page.evaluate(() => {
+      const s = window.state;
+      s.groups.push({ id: 'g1', name: 'RTU-1', color: '#e05d5d', equipmentTag: 'RTU-1', capacityCfm: 600, espInWg: 0.8 });
+      s.groupsEnabled = true;
+    });
+    await seedSystemTree(page, 'g1');
+    await page.click('#bidCheckSectionTitle');
+    const staticDetail = page.locator('#bidCheckList .bid-check-row[data-row-id="duct-static-path"] .bid-check-detail');
+    await expect(staticDetail).toContainText('critical path 62 eq ft');
+    await expect(staticDetail).toContainText('1 VD');
+
+    // Off: the tap's damper leaves the walk (62 − 2 = 60 eq ft). The short
+    // timeout keeps an autosave or an unrelated redraw from passing it.
+    await page.evaluate(() => window.App.openDuctScheduleModal());
+    await page.locator('#ductVdPerTapBtn').click();
+    expect(await page.evaluate(() => window.state.ductSettings.countVdPerTap)).toBe(false);
+    await expect(staticDetail).toContainText('critical path 60 eq ft', { timeout: 1000 });
+    await expect(staticDetail).not.toContainText('VD', { timeout: 1000 });
+    expect(errors).toEqual([]);
+  });
+
   test('ESP without a run stays manual; the header shows nothing until the system has a root run', async ({ page }) => {
     await page.evaluate(() => {
       const s = window.state;

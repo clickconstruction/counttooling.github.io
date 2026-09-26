@@ -11,20 +11,16 @@
  * registry (window.App.getCanvasCaps / window.App.effectiveDpr).
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.describe('Zoom canvas cap', () => {
   test('extreme zoom clamps the buffer under the device cap and still renders', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     // Use the sample floor plan (has real line content to detect after clamping).
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'samples', 'sample-plan.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'samples/sample-plan.pdf');
 
     // Force a small cap so the clamp engages at a modest zoom (fast, deterministic
     // buffer) instead of rendering a ~16k-px canvas, then zoom 50% past it.
@@ -76,16 +72,14 @@ test.describe('Zoom canvas cap', () => {
     // (c) the page still rendered content (not a blank/black canvas).
     expect(result.hasContent).toBe(true);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // Helper: load the sample plan and inject a spread of counter markers so the
   // annotation overlay has real content to detect after a clamped render.
   async function loadPlanWithMarkers(page) {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'samples', 'sample-plan.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await bootApp(page);
+    await uploadPdf(page, 'samples/sample-plan.pdf');
     await page.evaluate(() => {
       const s = window.state, p = s.pages[s.currentPage];
       const vp = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
@@ -103,9 +97,7 @@ test.describe('Zoom canvas cap', () => {
   // Regression for the reported bug: the annotation overlay (counts) must be sized to
   // exactly match the PDF canvas and must not be blank after an area-budgeted clamp.
   test('area budget keeps the overlay sized to the PDF canvas and painted', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await loadPlanWithMarkers(page);
 
@@ -147,7 +139,7 @@ test.describe('Zoom canvas cap', () => {
     expect(result.pcW * result.pcH).toBeLessThanOrEqual(setup.maxArea * setup.safety * 1.03);
     // the counts actually painted (not a blank overlay).
     expect(result.overlayPainted).toBe(true);
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // Helper: wait until the PDF render has landed at the clamped target for the zoom.
@@ -164,9 +156,7 @@ test.describe('Zoom canvas cap', () => {
   // The read-back guard: a render that reads back blank ratchets renderAreaSafety down
   // and re-renders smaller, so a would-be-blank overlay becomes a softer, visible one.
   test('a blank read-back ratchets the safety knob down and still renders', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await loadPlanWithMarkers(page);
 
@@ -216,14 +206,12 @@ test.describe('Zoom canvas cap', () => {
     expect(result.safety).toBeLessThan(safety0);   // ratcheted down at least one step
     expect(result.acW).toBe(result.pcW);           // overlay matches the PDF buffer after settling
     expect(result.overlayPainted).toBe(true);      // soft but visible, not blank
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // Always-blank: the ratchet is bounded — it settles at the floor without spinning.
   test('a persistently blank read-back settles at the floor without looping', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await loadPlanWithMarkers(page);
 
@@ -255,6 +243,6 @@ test.describe('Zoom canvas cap', () => {
 
     expect(result.safety).toBeLessThanOrEqual(0.12);   // reached the floor
     expect(result.pcW).toBeGreaterThan(0);             // still rendered (accepted soft bitmap)
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

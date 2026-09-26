@@ -12,17 +12,13 @@
  * flow, and the Choose-list search + select.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.describe('window.App registry pilot - Choose/Create Line Type modal', () => {
   test('the sidebar + Add dialog has a door to the Quick creator, by click and by Shift+Q, even with exactly one line type (by hand, 2026-09-24)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.text().includes('config.local.js')) errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
+    await uploadPdf(page);
     // exactly one line type: the header's Quick Line arms it instead of opening the chooser (T2-08)
     await page.evaluate(() => { window.state.lineTypes.push({ id: 'only', name: 'Only One', color: '#47c88e' }); window.state.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1 ft' }; window.App.updateUI(); });
     await page.click('#quickLine');
@@ -52,20 +48,16 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
     await page.keyboard.press('Shift+Q');
     await page.waitForSelector('#chooseLineTypeModal.visible', { timeout: 3000 });
     expect(await page.evaluate(() => document.querySelector('#chooseLineTypeModal .line-type-tab.active')?.dataset.tab)).toBe('quick');
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('registry wired; create + choose flows work with no errors', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     // 1. Upload a 2-page PDF.
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await uploadPdf(page);
 
     // 2. Registry contract: the two entry points the feature file registers.
     const wired = await page.evaluate(() => ({
@@ -120,20 +112,16 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
     );
     expect(await page.evaluate(() => window.state.activeLineTypeId)).toBe(targetId);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // T2-08: every line-type create surface arms the Line tool (was: 3 of 4
   // dropped back to Move, dead-ending the naive sidebar-+Add-then-click path).
   test('T2-08a: sidebar + Add on a scaled page arms the pen and draws', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error' && !(msg.location()?.url || '').includes('config.local.js')) errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await page.evaluate(() => {
       window.state.pages[window.state.currentPage].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
     });
@@ -171,14 +159,12 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
     expect(committed.count).toBe(1);
     expect(committed.lineTypeId).toBe(armed.lastId);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('T2-08b: create on an unscaled page selects the type, stays in Move, shows the scale-gate toast', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     await page.evaluate(() => document.getElementById('addLineType').click());
     await page.waitForSelector('#lineTypeModal.visible', { timeout: 5000 });
@@ -206,10 +192,8 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
   });
 
   test('T2-08c: Quick Line skips the chooser at exactly one type, opens it at two', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await page.evaluate(() => {
       const s = window.state;
       s.pages[s.currentPage].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
@@ -240,15 +224,11 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
   // Line chooser, the Polyline dialog's select, the sidebar lists, and the header's
   // active swatch and counter button.
   test('MAP-XSS: a line-type name, a color or an icon path written as markup is shown as text on every surface', async ({ page }) => {
-    const errors = [];
     // The browser refusing the poisoned icon as path data ("<path> attribute d: Expected
     // path command") is the escape working: the string stayed an attribute value.
-    page.on('console', (msg) => { if (msg.type() === 'error' && !msg.text().includes('config.local.js') && !msg.text().includes('<path> attribute d')) errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    const errors = collectConsoleErrors(page, { ignore: ['<path> attribute d'] });
+    await bootApp(page);
+    await uploadPdf(page);
 
     const NAME = '<img src=x onerror="window.__xss=1">Poison';
     const COLOR = '#4a9eff" onmouseover="window.__xss=2';
@@ -293,6 +273,6 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
 
     // Nothing ran, and no attribute broke out of its value anywhere on the page.
     expect(await page.evaluate(() => ({ ran: window.__xss, handlers: document.querySelectorAll('[onmouseover], [onerror]').length }))).toEqual({ ran: undefined, handlers: 0 });
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

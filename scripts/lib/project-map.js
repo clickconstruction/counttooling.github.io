@@ -569,6 +569,20 @@ function build({ since, fnFloor = 20, skipDuplicates = false, skipChurn = false 
       if (!r.guarded) e.guardedEverywhere = false;
     }
   }
+  // A spec reads what the root helpers it requires read (R07: spec-helpers.js holds the boot
+  // wait on App.bootSettled that every spec used to copy). Only the helper's App.* reads are
+  // appended, never its text, so a path named in a helper's comment pins nothing.
+  const appReadsOf = (src) => (src.match(/\bApp\.[A-Za-z_$][\w$]*/g) || []).join('\n');
+  const specText = (s) => {
+    let out = srcs[s];
+    const re = /require\(['"]\.\/([\w.-]+?)(?:\.js)?['"]\)/g;
+    let mm;
+    while ((mm = re.exec(srcs[s]))) {
+      const h = mm[1] + '.js';
+      if (files[h] && files[h].kind === 'helper') out += '\n' + appReadsOf(srcs[h]);
+    }
+    return out;
+  };
   // Who else reads each name: specs (spec seams are live, not dead) and the
   // Node drivers under scripts/ (build-screenshots, build-hero-video).
   const nameReaders = (kind) => {
@@ -577,7 +591,8 @@ function build({ since, fnFloor = 20, skipDuplicates = false, skipChurn = false 
       const re = /\bApp\.([A-Za-z_$][\w$]*)/g;
       let mm;
       const seen = new Set();
-      while ((mm = re.exec(srcs[f]))) seen.add(mm[1]);
+      const src = kind === 'spec' ? specText(f) : srcs[f];
+      while ((mm = re.exec(src))) seen.add(mm[1]);
       for (const n of seen) (out[n] = out[n] || []).push(f);
     }
     return out;
@@ -640,7 +655,7 @@ function build({ since, fnFloor = 20, skipDuplicates = false, skipChurn = false 
   // Specs + node tests that pin each source file.
   const specs = Object.keys(files).filter((f) => files[f].kind === 'spec');
   const tests = Object.keys(files).filter((f) => files[f].kind === 'test');
-  const specSrc = Object.fromEntries(specs.map((s) => [s, srcs[s]]));
+  const specSrc = Object.fromEntries(specs.map((s) => [s, specText(s)]));
   const testSrc = Object.fromEntries(tests.map((s) => [s, srcs[s]]));
   for (const f of browser.concat(Object.keys(files).filter((f) => files[f].kind === 'tooling'))) {
     const base = path.basename(f, '.js');

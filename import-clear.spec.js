@@ -17,7 +17,7 @@
  * the mobile hamburger drawer.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 // Seed a counter marker on page 0's active canvas ("Main") — shared by the
 // clear-flow tests below.
@@ -34,14 +34,10 @@ async function seedPage0Marker(page) {
 
 test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
   test('clear-page confirm flow and JSON import', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Seed markers on both pages.
     await page.evaluate(() => {
@@ -102,7 +98,7 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     expect(imported.lineType).toBe('Imported Line');
     expect(imported.orphanRecreated).toBe(true);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('bad import file toasts in-app with the Export Canvas pointer (Tier-3 B2 / J12)', async ({ page }) => {
@@ -118,10 +114,8 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     // dialog fires.
     page.on('dialog', async (d) => { pageErrors.push('unexpected dialog: ' + d.message()); await d.dismiss(); });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     await page.locator('#importInput').setInputFiles({
       name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('this is not json {'),
@@ -133,15 +127,11 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
   });
 
   test('page-count mismatch import toasts "Applied marks to 1 of 2 pages…" (Tier-3 B2 / J10)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     // 1-page plan + a 2-page export: the second entry has no page to land on.
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await uploadPdf(page, 'test-page.pdf');
 
     const exportJson = JSON.stringify({
       counters: [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
@@ -162,14 +152,12 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     }));
     expect(after.p0).toBe(1);
     expect(after.counters).toContain('c1');
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('matching page-count import stays quiet (no mismatch toast)', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     const exportJson = JSON.stringify({
       counters: [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
@@ -193,10 +181,8 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
   // import dropped it, so a two-layer sheet came back on whichever layer is first.
   // An entry for a sheet the plan lacks is not kept.
   test('import brings back the layer each sheet was on', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     const exportJson = JSON.stringify({
       counters: [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
@@ -221,19 +207,14 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
   });
 
   test('sidebar Clear Page is visible and live at desktop width', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.setViewportSize({ width: 1380, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page, { viewport: { width: 1380, height: 800 } });
 
     // Before any PDF loads, the body:not(.has-pdf) gate hides the section.
     await expect(page.locator('#clearPageSidebar')).toBeHidden();
 
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await uploadPdf(page);
 
     // With a PDF loaded the button is visible — no sign-in, no Project Settings.
     await expect(page.locator('#clearPageSidebar')).toBeVisible();
@@ -255,19 +236,14 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     await page.evaluate(() => { window.state.isViewer = false; window.App.updateUI(); });
     await expect(page.locator('#clearPageSidebar')).toBeVisible();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('sidebar Clear Page is reachable inside the mobile hamburger drawer', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page, { viewport: { width: 375, height: 812 } });
+    await uploadPdf(page);
 
     await seedPage0Marker(page);
 
@@ -282,19 +258,14 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     await page.locator('#clearPageCancel').click();
     await expect(page.locator('#clearPageConfirmModal')).not.toHaveClass(/visible/);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('Import Canvas menu row greys out with the explainer instead of vanishing (Tier-3 B12 / J12)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.setViewportSize({ width: 1380, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page, { viewport: { width: 1380, height: 800 } });
+    await uploadPdf(page, 'test-page.pdf');
 
     const row = page.locator('.export-dropdown-option[data-action="import-canvas"]');
     const note = page.locator('#importCanvasBlockedNote');
@@ -345,19 +316,14 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     await page.evaluate(() => { window.state.isViewer = false; window.App.updateUI(); });
     expect(await page.evaluate(() => document.querySelector('.export-dropdown-option[data-action="import-canvas"]').style.display)).toBe('');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('burger drawer mirrors the disabled Import Canvas row on mobile (Tier-3 B12 / J12)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page, { viewport: { width: 375, height: 812 } });
+    await uploadPdf(page, 'test-page.pdf');
     await seedPage0Marker(page);
 
     await page.locator('#headerBurger').click();
@@ -366,6 +332,6 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     await expect(drawerRow).toBeDisabled();
     await expect(drawerRow).toContainText('(canvas has marks: clear or undo first)');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

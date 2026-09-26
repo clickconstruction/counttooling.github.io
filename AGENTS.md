@@ -257,6 +257,12 @@
   runs them on full-ICU (browser-equivalent / CI Node 20). Naming split (enforced by `testMatch` in
   [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
   `*.test.js` = Node unit tests.
+  **A new spec boots through [spec-helpers.js](spec-helpers.js)** (R07): `const errors =
+  collectConsoleErrors(page)` before the goto, `await bootApp(page)` (or `bootApp(page, { url,
+  viewport })`, `reloadApp(page)`), `await uploadPdf(page)` (test-2pages.pdf, or a named file),
+  and `errors.assertNoErrors()` at the end. The collector already drops the config.local.js 404
+  and the suite's other known-benign lines; pass `{ ignore: [...] }` for a line the spec expects.
+  Don't paste a copy of the boot wait, the upload or the collector into a spec.
 - **Aggregate check**: `npm run check` runs [scripts/check.js](scripts/check.js),
   which executes EVERY step and reports all failures at once (one stale stamp
   no longer hides the next): lint + `test:unit` + `build:toc --check`

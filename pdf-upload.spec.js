@@ -10,16 +10,14 @@
  * tests (pdfUploadTimeoutMs, the resume store) + a manual large-file smoke.
  */
 const { test, expect } = require('@playwright/test');
+const { bootApp, collectConsoleErrors, reloadApp, uploadPdf } = require('./spec-helpers');
 const path = require('path');
 
 test.describe('robust PDF upload', () => {
   test('tus-js-client loads and integrates with no page errors', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     const tusInfo = await page.evaluate(() => ({
       defined: typeof window.tus !== 'undefined',
@@ -38,8 +36,7 @@ test.describe('robust PDF upload', () => {
   });
 
   test('pdf_upload_resume IndexedDB store round-trips (real browser)', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     const result = await page.evaluate(async () => {
       const fp = 'spec-fp-' + Date.now();
@@ -78,11 +75,9 @@ test.describe('robust PDF upload', () => {
   }
 
   test('signed-out same-PDF re-upload re-applies marks (hash-verified, backup consumed)', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await seedDataOnlyBackup(page);
-    await page.reload();
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await reloadApp(page);
 
     // Data-only backup: NO boot prompt (nothing to restore the PDF from)...
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
@@ -91,7 +86,7 @@ test.describe('robust PDF upload', () => {
 
     // Re-upload the SAME PDF: the marker re-applies, the toast shows, and the
     // backup record is consumed.
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
     await page.waitForFunction(() => {
       try { return (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers.c1 || []).length === 1; } catch (_) { return false; }
     }, null, { timeout: 15000 });
@@ -112,13 +107,11 @@ test.describe('robust PDF upload', () => {
   });
 
   test('a different PDF never receives the backup marks (no apply, no toast)', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await seedDataOnlyBackup(page);
-    await page.reload();
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await reloadApp(page);
 
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await uploadPdf(page, 'test-2pages.pdf', { waitForPages: false });
     await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
     const after = await page.evaluate(() => ({
       markup: window.App.projectHasAnyCanvasMarkup(),
@@ -149,8 +142,7 @@ test.describe('corrupt-PDF fresh upload feedback', () => {
       if (m.type() === 'error' && !/\[Upload PDF\]/.test(m.text())) consoleErrors.push(m.text());
     });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await page.locator('#pdfInput').setInputFiles({
       name: 'broken.pdf', mimeType: 'application/pdf', buffer: Buffer.from('this is not a pdf'),
     });
@@ -179,10 +171,8 @@ test.describe('corrupt-PDF fresh upload feedback', () => {
 test.describe('append never renames the open project', () => {
   /** Upload test-2pages.pdf into an empty session and wait for its 2 pages. */
   async function freshUploadTwoPages(page) {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await page.waitForFunction(() => window.state.pages.length === 2, null, { timeout: 15000 });
   }
 
@@ -195,7 +185,7 @@ test.describe('append never renames the open project', () => {
     await freshUploadTwoPages(page);
     await page.evaluate(() => { window.state.currentProjectName = 'Riverside Clinic Plumbing'; });
 
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
     await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
     expect(await page.evaluate(() => window.state.currentProjectName)).toBe('Riverside Clinic Plumbing');
     // Assert promptly — the toast auto-hides at 3500 ms (the text node persists,
@@ -237,7 +227,7 @@ test.describe('append never renames the open project', () => {
 
     // No Project-Settings flag, so this routes through handleFreshUpload —
     // the verified worse-than-stated case (autosave would push the wrong name).
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
     await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
     const after = await page.evaluate(() => ({
       id: window.state.currentProjectId,
@@ -251,21 +241,16 @@ test.describe('append never renames the open project', () => {
 // ---- Tier-3 B16: cold start — drag-and-drop + the empty-canvas hint (J1) ----
 test.describe('cold start (Tier-3 B16)', () => {
   test('empty canvas shows the quiet hint; it hides once a plan loads', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await expect(page.locator('#canvasEmptyHint')).toBeVisible();
     await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await uploadPdf(page, 'test-page.pdf');
     await expect(page.locator('#canvasEmptyHint')).toBeHidden();
   });
 
   test('dropping a PDF anywhere on the app loads it through the normal intake', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
     await page.evaluate(async () => {
       const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
       const file = new File([buf], 'dropped-plan.pdf', { type: 'application/pdf' });
@@ -277,12 +262,11 @@ test.describe('cold start (Tier-3 B16)', () => {
     // Same intake as Upload PDF: the project is named after the file.
     expect(await page.evaluate(() => window.state.currentProjectName)).toBe('dropped-plan');
     expect(await page.evaluate(() => window.state.pages.length)).toBe(1);
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('a non-PDF drop is refused with a toast — and never navigates the app away', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     const prevented = await page.evaluate(() => {
       const file = new File(['not a pdf'], 'notes.txt', { type: 'text/plain' });
       const dt = new DataTransfer();
@@ -297,8 +281,7 @@ test.describe('cold start (Tier-3 B16)', () => {
   });
 
   test('a drop while a dialog is open is ignored (no second intake mid-flow)', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await page.evaluate(async () => {
       window.App.showModal('settingsModal');
       const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
@@ -314,11 +297,8 @@ test.describe('cold start (Tier-3 B16)', () => {
 // ---- B15b: signed-out 3+ sheet uploads get the trim step (⚑ resolved) ----
 test.describe('signed-out trim step (B15b)', () => {
   test('a 3-sheet signed-out fresh upload opens Trim your set; committing Open lands the pages', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
     // Two files, 3 pages total — over the >=3 gate.
     await page.locator('#pdfInput').setInputFiles([
       path.join(__dirname, 'test-2pages.pdf'),
@@ -333,14 +313,12 @@ test.describe('signed-out trim step (B15b)', () => {
     await page.locator('#preparePdfDone').click();
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/, { timeout: 10000 });
     await page.waitForFunction(() => window.state.pages.length === 3, null, { timeout: 15000 });
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('a 2-sheet signed-out upload still goes straight in — no modal on the small cold start', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     expect(await page.evaluate(() => window.state.pages.length)).toBe(2);
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
   });

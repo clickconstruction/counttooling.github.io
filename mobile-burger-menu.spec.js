@@ -15,26 +15,22 @@
  * is unaffected (burger hidden, header dropdowns visible).
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 const MOBILE = { width: 390, height: 844 };
 
 test.describe('Mobile right-side burger menu', () => {
   test('burger gates on PDF, consolidates the four header controls, rows work', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize(MOBILE);
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     // 1. Burger hidden before a PDF is loaded.
     await expect(page.locator('#headerBurger')).toBeHidden();
 
     // 2. Load a 2-page PDF -> burger appears; the four header controls are hidden on mobile.
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await uploadPdf(page);
     await expect(page.locator('#headerBurger')).toBeVisible();
     for (const id of ['#hideMarksBtn', '#headerShareBtn', '#exportDropdown', '#downloadCurrentPageDropdown']) {
       await expect(page.locator(id)).toBeHidden();
@@ -107,15 +103,13 @@ test.describe('Mobile right-side burger menu', () => {
     await page.locator('#rightMenuBackdrop').click({ position: { x: 10, y: 120 } });
     await expect(page.locator('body')).not.toHaveClass(/right-menu-open/);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('single-page PDF collapses Download to one row', async ({ page }) => {
     await page.setViewportSize(MOBILE);
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
     await page.locator('#headerBurger').click();
     const downloadRows = (await page.locator('#rightMenuList .right-menu-item', { hasText: 'Download' }).allTextContents())
       .map(t => t.replace(/\s+/g, ' ').trim());
@@ -124,10 +118,8 @@ test.describe('Mobile right-side burger menu', () => {
 
   test('mobile shared-project viewer gets the copy-link Share row, never the editor modal row', async ({ page }) => {
     await page.setViewportSize(MOBILE);
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     // Simulate a signed-in shared-project VIEWER (role=viewer, not a view link):
     // updateUI hides #sidebarLogoShare for isMobile && isViewer, so the drawer
@@ -161,11 +153,8 @@ test.describe('Mobile right-side burger menu', () => {
   });
 
   test('desktop is unaffected: burger hidden, header dropdowns visible', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page, { viewport: { width: 1280, height: 900 } });
+    await uploadPdf(page);
     await expect(page.locator('#headerBurger')).toBeHidden();
     await expect(page.locator('#downloadCurrentPageDropdown')).toBeVisible();
     await expect(page.locator('#exportDropdown')).toBeVisible();
@@ -174,10 +163,8 @@ test.describe('Mobile right-side burger menu', () => {
   // mirrors it (gated like the button: a note exists), and the row opens the ledger.
   test('Notes ledger: no row without a note, a row that opens the ledger with one', async ({ page }) => {
     await page.setViewportSize(MOBILE);
-    await page.goto('/app/');
-    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
     const itemText = async () => (await page.locator('#rightMenuList .right-menu-item').allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
     await page.locator('#headerBurger').click();
     expect(await itemText()).not.toContain('Notes ledger');

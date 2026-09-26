@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command (R06, 2026-09-26)
+
+The decomposition map's R06, both items. Every new shell file cost four hand steps, and one of
+them was copying its path into sw.js's `PRECACHE_URLS`, which the build only checked one way
+(a tag with no list entry failed; the list itself was typed by hand). Now `npm run build:sw`
+writes the whole `PRECACHE_URLS` literal the way it already wrote `CACHE_VERSION` and
+`PRECACHE_SHA256`: every root-absolute `<script src>` and `<link href>` in app/index.html in
+document order, the font files `vendor/fonts/fonts.css` names, the icons the manifest names, and
+last a short `PRECACHE_EXTRA` kept by hand in scripts/build-sw.js for what code fetches with no
+tag (`/app/` and `/app/index.html` for the offline shell, the render worker, the pdf.js worker,
+`rules/rules.json`), each with its reason beside it. Each group carries a comment line in sw.js.
+`--check` fails when the list is stale and names the URLs it would gain or lose, so a new shell
+file needs only its tag and a rerun. A relative `src` or `href` in the shell is now a build error
+(it would resolve under `/app/` and precache the wrong path). The old one-way coverage gate is
+gone, since the list can no longer miss a tag.
+
+The list holds the same 167 URLs as before, none added and none dropped; the order changed (tags
+first, in the shell's own order), so `CACHE_VERSION` changed once and returning browsers install
+the worker again, a normal deploy.
+
+The second half: both sides of nearly every merge restamp sw.js, and the stamp lines conflicted
+by hand ever since. `npm run build:sw -- --resolve` settles it: it splits a conflicted sw.js into
+its two sides (plain or diff3 markers), and when they differ only inside the three generated
+blocks it keeps our side and restamps from the merged files, so either side would do. A hunk in
+the worker's hand-written code is refused with the file untouched, for a person to settle. This
+was chosen over the map's `.gitattributes` merge driver, which needs a `git config` line in every
+clone and quietly falls back to a normal conflict without one. Resolve the other files first, then
+run it and `git add sw.js`.
+
+New [build-sw.test.js](build-sw.test.js) (`npm run test:unit`): the tag, font and icon readers, the
+derived list holding every tag, font, icon and extra exactly once, a fresh stamp being a fixed
+point, a sw.js missing `/app.js` failing `--check` with `+ /app.js` and the build putting it back,
+the `PRECACHE_EXTRA` entries coming back after a restamp that lost them, `--resolve` settling a
+conflict in all three blocks (one in diff3 style) to the fresh stamp, and refusing one in
+`CACHE_NAME`. The CLI cases run the real script on a scratch copy through a new `--sw <file>`
+option. AGENTS.md's PWA bullet and ARCHITECTURE.md's PWA / offline section say the new steps, and
+the Files table gains a row for sw.js and its stamper.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

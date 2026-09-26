@@ -147,6 +147,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R06. Generate sw.js PRECACHE_URLS from app/index.html; then a merge driver for the stamps
 
+**Landed 2026-09-26** (R06, both items): `npm run build:sw` stamps the whole `PRECACHE_URLS` literal (the recipe's skeptic: a spread form would break pwa.spec.js and the parser), derived from app/index.html's root-absolute tags, the fonts fonts.css names, the manifest's icons and a five-entry `PRECACHE_EXTRA` in scripts/build-sw.js; the one-way coverage gate went with it. The same 167 URLs, reordered, so CACHE_VERSION changed once. The merge driver became `npm run build:sw -- --resolve` (no per-clone `git config`): a conflict only inside the generated blocks takes our side and restamps, one anywhere else is refused. build-sw.test.js pins both. CHANGELOG "feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command".
+
 *Risk low, yield ~20.* Every extraction below adds a shell file. This removes one hand step and most of the sw.js merge pain.
 
 - **`shell-css-tooling:generate-precache-urls`** (dedupe, high confidence; check: adjusted) Generate sw.js's shell precache list from app/index.html instead of hand-copying it

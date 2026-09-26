@@ -80,6 +80,33 @@ the current page, delete the last page and the only one) and delete-page.spec.js
 which was 3, still shows its layer, with the shifted map in the saved payload). Both were red before
 the fix.
 
+## fix(save): a bid opened without its PDF no longer saves its sheets away (MAP-EMPTY-SAVE, 2026-09-26)
+
+The decomposition map's D29, proved before it was fixed. When a cloud bid opens and its PDF is not
+there to be had (the storage object is missing, or none was ever stored), features/load-project.js
+opens it canvas-only: the project is open and checked out, the palette is loaded, `state.pages` is
+empty, and the saved marks wait in `pendingCanvasLoad` until the estimator re-attaches the PDF. The
+engine's only empty-session test was "no pages AND no project", so in that state any edit that
+marks the project dirty (a trade picked, a ceiling height, a counter added) armed the autosave, and
+the next tick wrote `data.pages: []` to the row: every mark on every sheet, gone from the cloud. A
+node test sent exactly that payload before the fix. The 5 second takeoff backup had the same hole
+without any edit at all: it wrote the project's backup with no sheets, stamped newer than the row,
+and the next load of the bid prefers the newer backup, so re-attaching the PDF then brought back
+blank sheets and the first edit saved them.
+
+save-engine.js now names the state, `isCanvasOnlyPending` (a pending canvas load and no pages), and
+holds all three writers on it: `markProjectDirty` does not arm, `performAutoSave` skips (clearing
+dirty and answering ok, so Turn In and the save-before-load gate go on to release the lock rather
+than report a failed save), and the takeoff backup does not write. Nothing is lost by holding: the
+PDF match (pdf-intake.js `matchPendingCanvasLoad`) re-hydrates the palette and the marks from the
+saved data anyway, and the save runs as soon as the pages exist. A palette-only session with no
+pending load (a bid started before any PDF) still saves and backs up as before.
+
+Pinned by save-engine.test.js "canvas-only" (three cases: dirty does not arm; the autosave sends no
+update and Turn In still releases, then saves one sheet once the PDF is back; the backup writes
+nothing). All three were red on the pre-fix engine (the autosave sent one update carrying `pages: []`, the
+backup wrote `pageCanvases: []` under the project's key).
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

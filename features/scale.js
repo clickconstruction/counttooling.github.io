@@ -506,7 +506,7 @@
     parkDraftForScaleModal();   // D20 (J5-A) — before the tool is dropped
     state.tool = App.TOOL.NONE;
     state.drawingPolyline = null;
-    state.quickLineStart = null;
+    App.clearToolStarts();   // MAP-RESETS: every start, not only the (parked) quick line's
     openScaleModal();
   };
   document.getElementById('setScale').onclick = setScaleClick;

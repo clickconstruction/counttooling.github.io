@@ -13,6 +13,49 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tools): no tool leaves a half-drawn box on the sheet, and a drag that ends off the canvas is saved (MAP-RESETS, 2026-09-26)
+
+The decomposition map's R09, with its defects D05, D17, D21 and D26. Clearing a tool's pending
+first point was written out by hand sixteen times, and the copies had drifted. The M key cleared
+the line, highlight, zone and chain starts but not the room or schedule corner, so V, one corner,
+then M left the dashed purple room box and its W × L readout drawing in Move until another tool
+button was clicked. The Note button cleared nothing, so a zone corner kept rubber-banding under it;
+Quick Line kept a highlight corner; Esc with a schedule box half drawn fell to the last rung, which
+dropped the tool and left the amber box up. The bands were drawn from the start alone, whatever the
+tool.
+
+app.js now has one list, `clearToolStarts()`: every tool's start, the ghost in hand and the scale or
+measure points. The tool arms in app.js call it after they set the new tool (the buttons, the
+counter and line-type selection the sidebar rows and Quick Keys share, the Polyline arms), and so do
+the page-switch disarm, the viewer reset, the legend toggle, Set Scale and Esc's last rung, which
+now also redraws. `resetToMove(opts)` is the one Move reset for the button and the M key. They still
+differ where they always did, and the option names it: M keeps the selected counter and drops a
+polyline or duct trace in progress and a pending note; the button drops the counter and leaves a
+polyline draft for P to resume. Each rubber band (Quick Line, Highlight, Multiply Zone, Scale Zone,
+Room Sizer, schedule box) now draws only under its own tool, as Chain, Delete Area and Ghost already
+did, so an arm in a feature file that sets the tool by hand (the Counter dialog, Duct, the schedule
+reader) can no longer show a corner left by the tool before. Both helpers are on `App` for the Esc
+table that comes next.
+
+Separately, a drag that left the canvas was cut off by the canvas's mouseleave, after the note or
+zone had already moved, and nothing marked the project dirty, so the edit waited for some other
+change to be saved. A ghost or polyline vertex was not reset at all, and one released outside came
+back riding the pointer until the next click. `endPointerDrag({ release })` now ends every mark drag
+(a note, its width or font grip, the legend, a zone in Move, a ghost, a vertex). The canvas mouseup
+calls it for a release on the sheet, exactly as before; the window mouseup calls it for a release
+off the sheet, and leaving the canvas no longer aborts the drag. The mark waits at the edge, follows
+again if the pointer comes back with the button down, and is marked dirty and re-tallied wherever the
+button comes up. The flags that swallow the click after a release are set only on the sheet, where
+a click follows; the legend's release off the sheet used to set one anyway and eat the next real
+click. Touch was left alone: it has no note, zone or ghost drag, and its vertex drag already ends on
+touchend and touchcancel.
+
+Pinned by tool-resets.spec.js, all seven cases red before the fix: the helpers on `App`; V, one
+corner, M (no corner, and no purple on the overlay past the sheet's own); a schedule box and Esc; a
+zone corner and the Note button, a highlight corner and Quick Line; a note, a zone and a ghost
+dragged off the canvas (moved, dirty, not stuck to the pointer). The ghost case then takes it out and
+back in with the button held: it follows, and the release on the sheet arms no capture corner.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

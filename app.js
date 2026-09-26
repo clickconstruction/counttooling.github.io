@@ -1671,10 +1671,9 @@
       [TOOL.CHAIN]: 'Chain', [TOOL.DUCT]: 'Duct' };
     const toolName = gated[state.tool];
     if (!toolName || !state.pages.length || getPageScale(state.currentPage)) return;
-    // Same reset as the Move button (the #moveBtn onclick): drop to Move + clear starts.
+    // Drop to Move and clear every start (MAP-RESETS: the one list, clearToolStarts).
     state.tool = TOOL.NONE;
-    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null; state.scheduleBoxStart = null; state.chainStart = null;
-    if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
+    clearToolStarts();
     showSetScaleFirstToast(toolName);
     logUserEvent('unscaled_ft_block', state.currentProjectId || null, { surface: 'page-switch' });
     updateUI();
@@ -2241,7 +2240,10 @@
         };
       })(),
     });
-    if (state.quickLineStart && state.mousePos) {
+    // MAP-RESETS: each rubber band draws only under its own tool (the Chain, Delete
+    // Area and Ghost bands already did), so a start some path forgot to clear can
+    // never paint under another tool or in Move (D05, D17, D26).
+    if (state.tool === TOOL.LINE && state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       const aPdf = state.quickLineStart;
       let bPdf = state.mousePos;
@@ -2273,7 +2275,7 @@
       // ring (features/drop-mode.js draws them so the node math lives once).
       App.drawDropNodesOverlay && App.drawDropNodesOverlay(ctx);
     }
-    if (state.highlightStart && state.mousePos) {
+    if (state.tool === TOOL.HIGHLIGHT && state.highlightStart && state.mousePos) {
       const minX = Math.min(state.highlightStart.x, state.mousePos.x), maxX = Math.max(state.highlightStart.x, state.mousePos.x);
       const minY = Math.min(state.highlightStart.y, state.mousePos.y), maxY = Math.max(state.highlightStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2282,7 +2284,7 @@
       ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
-    if (state.multiplyZoneStart && state.mousePos) {
+    if (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart && state.mousePos) {
       const minX = Math.min(state.multiplyZoneStart.x, state.mousePos.x), maxX = Math.max(state.multiplyZoneStart.x, state.mousePos.x);
       const minY = Math.min(state.multiplyZoneStart.y, state.mousePos.y), maxY = Math.max(state.multiplyZoneStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2290,7 +2292,7 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
-    if (state.scaleZoneStart && state.mousePos) {
+    if (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart && state.mousePos) {
       const minX = Math.min(state.scaleZoneStart.x, state.mousePos.x), maxX = Math.max(state.scaleZoneStart.x, state.mousePos.x);
       const minY = Math.min(state.scaleZoneStart.y, state.mousePos.y), maxY = Math.max(state.scaleZoneStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2298,7 +2300,7 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
-    if (state.scheduleBoxStart && state.mousePos) {
+    if (state.tool === TOOL.SCHEDULE && state.scheduleBoxStart && state.mousePos) {
       // S6: the schedule box rubber band (amber, dashed)
       const tl = toCanvas({ x: Math.min(state.scheduleBoxStart.x, state.mousePos.x), y: Math.min(state.scheduleBoxStart.y, state.mousePos.y) });
       const br = toCanvas({ x: Math.max(state.scheduleBoxStart.x, state.mousePos.x), y: Math.max(state.scheduleBoxStart.y, state.mousePos.y) });
@@ -2306,7 +2308,7 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
-    if (state.roomBoxStart && state.mousePos) {
+    if (state.tool === TOOL.ROOM && state.roomBoxStart && state.mousePos) {
       const minX = Math.min(state.roomBoxStart.x, state.mousePos.x), maxX = Math.max(state.roomBoxStart.x, state.mousePos.x);
       const minY = Math.min(state.roomBoxStart.y, state.mousePos.y), maxY = Math.max(state.roomBoxStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2751,13 +2753,7 @@
       state.tool = TOOL.NONE;
       state.activeCounterType = null;
       state.activeLineTypeId = null;
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
+      clearToolStarts();
       state.drawingPolyline = null;
       state.editingPolyline = null;
       if (App.clearDuctDraft) App.clearDuctDraft();
@@ -3164,12 +3160,57 @@
     document.getElementById('pagesSection').classList.add('collapsed');
     document.getElementById('pagesCollapseIcon').textContent = '▶';
   }
+  // MAP-RESETS (R09): the ONE list of pending tool starts. Every tool arm, the Move
+  // reset, the page-switch disarm, the viewer reset and Esc's last rung clear through
+  // here, so a start field is added once and no tool switch leaves a corner that
+  // rubber-bands in Move or under another tool (D05, D17, D26: sixteen hand copies
+  // had drifted). Only the starts: a polyline or duct draft and a pending note keep
+  // their own settle rules. The scale / measure points go too, except while the Set
+  // Scale pick is the tool (its dialog reads them when it reopens), so an arming
+  // handler calls this AFTER it sets the new tool.
+  function clearToolStarts() {
+    state.quickLineStart = null;
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
+    state.deleteZoneStart = null;
+    state.roomBoxStart = null;
+    state.scheduleBoxStart = null;
+    state.chainStart = null;
+    state.ghostRectStart = null;
+    state.placingGhost = null;   // a ghost in hand is orphaned by any other tool
+    state.placingGhostLast = null;
+    if (state.tool !== TOOL.SCALE && (state.scalePointA || state.scalePointB)) {
+      state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE;
+    }
+  }
+  // MAP-RESETS (R09): the Move reset #moveBtn and the M hotkey share. The two used to
+  // clear different lists (M left a room or schedule corner drawing, D05). They still
+  // differ on purpose in two ways, named here: M keeps the selected counter (so
+  // its number key arms it again, see below) and drops the drafts in
+  // flight (a polyline or duct trace, a pending note); the button drops the
+  // counter and leaves a polyline draft for P to resume (T2-12).
+  function resetToMove(opts) {
+    const o = opts || {};
+    if (state.aiming || state.aimPressTimer) cancelAiming();
+    state.tool = TOOL.NONE;
+    clearToolStarts();
+    if (!o.keepCounter) state.activeCounterType = null;
+    if (o.dropDrafts) {
+      state.pendingNote = null; state.editingNote = null;
+      if (state.drawingPolyline) state.drawingPolyline = null;
+      if (App.clearDuctDraft) App.clearDuctDraft();   // M abandons a duct trace like a polyline one
+    }
+    updateUI();
+    renderAnnotations();
+  }
   // A second press deselects only what is ARMED: after M (Move) the counter is still the
   // selected one but its tool is down, and the lesson's "press M, then 1" left nothing armed
   // (by hand, 2026-09-25). Same for a line type under the Line or Polyline tool.
   function setActiveCounterType(id) {
     state.activeCounterType = state.activeCounterType === id && state.tool === TOOL.COUNTER ? null : id;
     state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE;
+    clearToolStarts();   // MAP-RESETS: no corner from the last tool rides into this one
     // B9 (J1 J15): arming closes the mobile drawer (the next tap belongs on
     // the plan); toggling OFF keeps it open — the user is managing the list.
     if (state.activeCounterType) { collapsePagesSectionForPlacing(); closeMobileSidebar(); }
@@ -3178,7 +3219,8 @@
   function setActiveLineType(id) {
     state.activeLineTypeId = state.activeLineTypeId === id && (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) ? null : id;
     state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE;
-    if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); closeMobileSidebar(); }
+    clearToolStarts();
+    if (state.activeLineTypeId) { collapsePagesSectionForPlacing(); closeMobileSidebar(); }
     updateUI();
   }
   // T2-08: every line-type create surface hands the user the pen, exactly as
@@ -3188,7 +3230,7 @@
     if (state.drawingPolyline) return;        // never abandon an in-flight polyline trace
     if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Quick Line'); return; }
     state.tool = TOOL.LINE;
-    state.quickLineStart = null;
+    clearToolStarts();
     collapsePagesSectionForPlacing();
     closeMobileSidebar();   // B9 (J1 J15): armed — next action is on the plan
   }
@@ -3968,6 +4010,7 @@
       return;
     }
     state.tool = TOOL.MEASURE;
+    clearToolStarts();
     state.scaleMode = SCALE_MODES.POINT_A;
     state.scalePointA = null;
     state.scalePointB = null;
@@ -3975,32 +4018,16 @@
     renderAnnotations();
   };
   document.getElementById('measureBtnSidebar').onclick = () => document.getElementById('measureBtn').click();
-  document.getElementById('moveBtn').onclick = () => {
-    if (state.aiming || state.aimPressTimer) cancelAiming();
-    state.tool = TOOL.NONE;
-    state.quickLineStart = null;
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
-    state.chainStart = null;
-    state.ghostRectStart = null;
-    state.placingGhost = null;
-    if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
-    state.activeCounterType = null;
-    updateUI();
-    renderAnnotations();
-  };
+  document.getElementById('moveBtn').onclick = () => resetToMove();
   document.getElementById('quickLine').onclick = () => {
     if (!getPageScale(state.currentPage)) {
       showSetScaleFirstToast('Quick Line');
       return;
     }
-    if (state.quickLineStart) {
-      state.quickLineStart = null;
-      renderAnnotations();
-    }
+    // MAP-RESETS (D17): every start goes, not only the line's own; a highlight or
+    // zone corner used to keep rubber-banding under Line.
+    clearToolStarts();
+    renderAnnotations();
     // T2-08: exactly one line type — nothing to choose, arm it directly.
     if (state.lineTypes.length === 1) {
       state.activeLineTypeId = state.lineTypes[0].id;
@@ -4016,14 +4043,8 @@
       return;
     }
     if (state.tool !== TOOL.CHAIN) {
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
       state.tool = TOOL.CHAIN;
+      clearToolStarts();
       collapsePagesSectionForPlacing();
     }
     // Every activation opens the picker; T/click while already in Chain
@@ -4035,14 +4056,8 @@
     // Drop tool: no page-scale gate — a drop is entered in its own unit and
     // the length math only adds it where a scale exists.
     if (state.tool !== TOOL.DROP) {
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
       state.tool = TOOL.DROP;
+      clearToolStarts();
       collapsePagesSectionForPlacing();
     }
     // Re-click while active reopens a closed palette (the Chain pattern).
@@ -4074,6 +4089,7 @@
       if (App.settleDuctDraft) App.settleDuctDraft();
       state.drawingPolyline = { id: uid(), name: nextPolylineName(), color: activeLt.color, points: [], closed: false, lineTypeId: activeLt.id, group: state.activeGroupId || null };
       state.tool = TOOL.POLYLINE;
+      clearToolStarts();
       updateUI();
       return;
     }
@@ -4100,23 +4116,15 @@
     showModal('polylineModal');
   };
   document.getElementById('highlightBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.HIGHLIGHT;
+    clearToolStarts();
     // Re-click while active reopens a closed bookmarks panel (the Chain pattern).
     App.openHighlightPanel && App.openHighlightPanel();
     updateUI();
   };
   document.getElementById('multiplyZoneBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.MULTIPLY_ZONE;
+    clearToolStarts();
     updateUI();
   };
   document.getElementById('scaleZoneBtn').onclick = () => {
@@ -4124,35 +4132,22 @@
       showSetScaleFirstToast('Scale Zone');
       return;
     }
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.SCALE_ZONE;
+    clearToolStarts();
     updateUI();
   };
   document.getElementById('ghostBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
-    state.ghostRectStart = null;
     // A ghost mid-placement survives nothing but a drop or Escape — re-arming
-    // the tool while carrying one would leave it orphaned on the cursor.
-    state.placingGhost = null;
+    // the tool while carrying one would leave it orphaned on the cursor
+    // (clearToolStarts drops placingGhost and the capture corner).
     state.tool = TOOL.GHOST;
+    clearToolStarts();
     updateUI();
     renderAnnotations();
   };
   document.getElementById('deleteZoneBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.DELETE_ZONE;
+    clearToolStarts();
     updateUI();
   };
   document.getElementById('roomBtn').onclick = () => {
@@ -4160,12 +4155,8 @@
       showSetScaleFirstToast('Room Sizer');
       return;
     }
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.ROOM;
+    clearToolStarts();
     updateUI();
   };
   // SECTION: Tool sidebar buttons & legend overlay
@@ -4192,7 +4183,7 @@
   if (scaleZoneBtnSidebarEl) scaleZoneBtnSidebarEl.onclick = () => document.getElementById('scaleZoneBtn').click();
   const deleteZoneBtnSidebarEl = document.getElementById('deleteZoneBtnSidebar');
   if (deleteZoneBtnSidebarEl) deleteZoneBtnSidebarEl.onclick = () => document.getElementById('deleteZoneBtn').click();
-  document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; updateUI(); };
+  document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; clearToolStarts(); updateUI(); renderAnnotations(); };
   document.getElementById('noteBtnSidebar').onclick = () => document.getElementById('noteBtn').click();
   const legendBtn = document.getElementById('legendBtn');
   const legendBtnSidebar = document.getElementById('legendBtnSidebar');
@@ -4203,13 +4194,7 @@
       state.tool = TOOL.NONE;
       state.activeCounterType = null;
       state.activeLineTypeId = null;
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
+      clearToolStarts();
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
       const ann = getActiveAnnotations(page);
@@ -4678,6 +4663,7 @@
     if (App.settleDuctDraft) App.settleDuctDraft();   // D17 (J5-B): one draft at a time
     state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId, group: state.activeGroupId || null };
     state.tool = TOOL.POLYLINE;
+    clearToolStarts();
     hideModal('polylineModal');
     updateUI();
   };
@@ -6831,6 +6817,77 @@
     if (state.resizingLegend || state.draggingLegend) handleCanvasMouseMove(e);
   });
 
+  // MAP-RESETS (R09, D21): the ONE end of a pointer drag (a note, its width or
+  // font grip, the legend, a zone in Move, a ghost, a polyline vertex). The canvas
+  // mouseup ends a drag released on the sheet; the window mouseup ends one released
+  // off it. Leaving the canvas no longer aborts a drag (the mark waits at the edge
+  // and follows again if the pointer comes back with the button down), so a drag
+  // that ends off the canvas is committed like one that ends on it: marked dirty,
+  // the zone tallies recomputed, and nothing left glued to the pointer (before, a
+  // note or zone edit that left the canvas was never saved, and a ghost or vertex
+  // released outside rode the pointer back in). `release` is true only for a
+  // release ON the canvas, the one case a native click follows, so only then are
+  // the justFinished* flags set that swallow it; set off the canvas they would eat
+  // the next real click.
+  function pointerDragLive() {
+    return state.resizingNoteIdx != null || state.resizingNoteFontSizeIdx != null || state.draggingNoteIdx != null
+      || !!state.resizingLegend || !!state.draggingLegend || !!state.draggingZone
+      || state.draggingGhostIdx != null || (state.draggingVertexIdx != null && state.draggingVertexIdx >= 0);   // a miss stores -1
+  }
+  function endPointerDrag(opts) {
+    const release = !!(opts && opts.release);
+    if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { if (release) state.justFinishedResize = true; markProjectDirty(); }
+    if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { if (release) state.justFinishedDragNote = true; markProjectDirty(); }
+    if (state.resizingLegend || state.draggingLegend) {
+      if (release) state.justFinishedLegendResize = true;
+      markProjectDirty();
+      if (!release) { state.hoverLegendResize = false; if (annCanvas) annCanvas.style.cursor = ''; }
+    }
+    if (state.draggingZone) {
+      // D23 (X1): a real drag (past the note-drag threshold) is an edit — dirty,
+      // the click that follows the release is swallowed, and the tallies that
+      // depend on zone MEMBERSHIP (footer / sidebar / legend) recompute once
+      // here rather than per frame. A press that never moved is a click.
+      const d = state.draggingZone;
+      if (ptDist(state.mousePos, d.start) > 3) {
+        if (release) state.justFinishedZoneDrag = true;
+        markProjectDirty();
+        invalidateFooterTotals();
+        if (d.kind === 'scaleZone') logUserEvent('scale_set', state.currentProjectId || null, { method: 'zone_edit', target: 'zone', route: d.corner ? 'resize' : 'move', pageIndex: d.pageIdx });
+        updateUI();
+      }
+    }
+    if (state.draggingGhostIdx !== null) {
+      if (state.ghostDragMoved) markProjectDirty();
+      state.draggingGhostIdx = null;
+      state.draggingGhostLast = null;
+      state.ghostDragMoved = false;
+      // NOT cleared here: the click event fires AFTER mouseup, and without
+      // this flag it would fall into the TOOL.GHOST branch and arm a stray
+      // capture corner. The click handler consumes it (justFinishedDragNote
+      // pattern). Unconditional on purpose — a press that grabbed a ghost is
+      // ghost interaction even when the pointer never moved.
+      if (release) state.justFinishedDragGhost = true;
+    }
+    state.draggingVertexIdx = null;   // a mouse vertex drag commits with Done Editing (exitEditMode)
+    state.resizingNoteIdx = null;
+    state.resizingNotePageIdx = null;
+    state.resizingNoteFontSizeIdx = null;
+    state.resizingNoteFontSizePageIdx = null;
+    state.resizingNoteFontSizeStartY = null;
+    state.resizingNoteFontSizeStartLocalY = null;
+    state.resizingNoteFontSizeStartVal = null;
+    state.draggingNoteIdx = null;
+    state.draggingNotePageIdx = null;
+    state.draggingNoteOffset = null;
+    state.dragNoteStartPos = null;
+    state.resizingLegend = false;
+    state.draggingLegend = false;
+    state.legendResizeStart = null;
+    state.legendDragOffset = null;
+    state.draggingZone = null;
+  }
+
   (cWrapper || pdfCanvas).addEventListener('mouseup', (e) => {
     if (e.button === 1) {
       state.isPanning = false;
@@ -6870,55 +6927,10 @@
       return;
     }
     state.rectPress = null;   // sub-threshold press: plain click, the two-click path handles it
-    if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
-    if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
-    if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
-    if (state.draggingZone) {
-      // D23 (X1): a real drag (past the note-drag threshold) is an edit — dirty,
-      // the click that follows the release is swallowed, and the tallies that
-      // depend on zone MEMBERSHIP (footer / sidebar / legend) recompute once
-      // here rather than per frame. A press that never moved is a click.
-      const d = state.draggingZone;
-      if (ptDist(state.mousePos, d.start) > 3) {
-        state.justFinishedZoneDrag = true;
-        markProjectDirty();
-        invalidateFooterTotals();
-        if (d.kind === 'scaleZone') logUserEvent('scale_set', state.currentProjectId || null, { method: 'zone_edit', target: 'zone', route: d.corner ? 'resize' : 'move', pageIndex: d.pageIdx });
-        updateUI();
-      }
-    }
-    if (state.draggingGhostIdx !== null) {
-      if (state.ghostDragMoved) markProjectDirty();
-      state.draggingGhostIdx = null;
-      state.draggingGhostLast = null;
-      state.ghostDragMoved = false;
-      // NOT cleared here: the click event fires AFTER mouseup, and without
-      // this flag it would fall into the TOOL.GHOST branch and arm a stray
-      // capture corner. The click handler consumes it (justFinishedDragNote
-      // pattern). Unconditional on purpose — a press that grabbed a ghost is
-      // ghost interaction even when the pointer never moved.
-      state.justFinishedDragGhost = true;
-    }
+    endPointerDrag({ release: true });
     state.isPanning = false;
     state.panStart = null;
     scheduleCropTile();   // pan settled — re-cover the new visible window (no-ops when base is sharp)
-    state.draggingVertexIdx = null;
-    state.resizingNoteIdx = null;
-    state.resizingNotePageIdx = null;
-    state.resizingNoteFontSizeIdx = null;
-    state.resizingNoteFontSizePageIdx = null;
-    state.resizingNoteFontSizeStartY = null;
-    state.resizingNoteFontSizeStartLocalY = null;
-    state.resizingNoteFontSizeStartVal = null;
-    state.draggingNoteIdx = null;
-    state.draggingNotePageIdx = null;
-    state.draggingNoteOffset = null;
-    state.dragNoteStartPos = null;
-    state.resizingLegend = false;
-    state.draggingLegend = false;
-    state.legendResizeStart = null;
-    state.legendDragOffset = null;
-    state.draggingZone = null;
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
@@ -6935,23 +6947,9 @@
     state.rectPress = null;
     state.isPanning = false;
     state.panStart = null;
-    state.resizingNoteIdx = null;
-    state.resizingNotePageIdx = null;
-    state.resizingNoteFontSizeIdx = null;
-    state.resizingNoteFontSizePageIdx = null;
-    state.resizingNoteFontSizeStartY = null;
-    state.resizingNoteFontSizeStartLocalY = null;
-    state.resizingNoteFontSizeStartVal = null;
-    state.draggingNoteIdx = null;
-    state.draggingNotePageIdx = null;
-    state.draggingNoteOffset = null;
-    state.dragNoteStartPos = null;
-    if (!state.resizingLegend && !state.draggingLegend) {
-      state.resizingLegend = false;
-      state.draggingLegend = false;
-      state.legendResizeStart = null;
-      state.legendDragOffset = null;
-    state.draggingZone = null;
+    // MAP-RESETS (D21): a mark drag in flight is NOT ended here; the window
+    // mouseup ends it wherever the button comes up (endPointerDrag).
+    if (!pointerDragLive()) {
       state.hoverLegendResize = false;
       if (annCanvas) annCanvas.style.cursor = '';
     }
@@ -6963,17 +6961,9 @@
       state.panStart = null;
       scheduleCropTile();
     }
-    if (e.button === 0 && (state.resizingLegend || state.draggingLegend)) {
-      state.justFinishedLegendResize = true;
-      markProjectDirty();
-      state.resizingLegend = false;
-      state.draggingLegend = false;
-      state.legendResizeStart = null;
-      state.legendDragOffset = null;
-    state.draggingZone = null;
-      state.hoverLegendResize = false;
-      if (annCanvas) annCanvas.style.cursor = '';
-    }
+    // A drag released on the canvas was already ended by its mouseup; one still
+    // live here came up off the canvas (MAP-RESETS, D21).
+    if (e.button === 0 && pointerDragLive()) endPointerDrag({ release: false });
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
@@ -7428,15 +7418,7 @@
   // the pieces of a hotkey that aren't just "click this button". Keys here must
   // match the table; hotkeys.spec.js asserts full coverage both directions.
   const HOTKEY_RUNNERS = {
-    moveReset: () => {
-      state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null;
-      state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null;
-      state.chainStart = null;
-      state.pendingNote = null; state.editingNote = null;
-      if (state.drawingPolyline) state.drawingPolyline = null;
-      if (App.clearDuctDraft) App.clearDuctDraft();   // M abandons a duct trace like a polyline one
-      updateUI();
-    },
+    moveReset: () => resetToMove({ keepCounter: true, dropDrafts: true }),   // MAP-RESETS (D05)
     toggleSnap: () => {
       state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
       const cb = document.getElementById('lineTypeSnapToHV');
@@ -7727,7 +7709,14 @@
         // reached only with no modal open and no tool armed.
         state.emphasizedCounterId = null;
         renderAnnotations();
-      } else state.tool = TOOL.NONE;
+      } else {
+        // MAP-RESETS (D26): the last rung (the schedule box tool has no rung of
+        // its own) drops the starts with the tool, or a half-drawn box stays up.
+        state.tool = TOOL.NONE;
+        clearToolStarts();
+        updateUI();
+        renderAnnotations();
+      }
     }
     if (e.key === 'ArrowLeft') {
       if (e.shiftKey) {
@@ -8088,6 +8077,8 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  App.clearToolStarts = clearToolStarts;   // MAP-RESETS: every tool's pending start, the one list (R10's Esc table calls it)
+  App.resetToMove = resetToMove;           // MAP-RESETS: the Move reset (#moveBtn, M); opts { keepCounter, dropDrafts }
   // T2-08 arm-on-create (features/quick-line.js + features/choose-create-line-type.js).
   App.armLineToolAfterCreate = armLineToolAfterCreate;
   // B9 (J1 J15): the picker-modal arm paths (features/counter.js,

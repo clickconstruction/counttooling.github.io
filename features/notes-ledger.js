@@ -25,8 +25,10 @@
  *
  * - DRAWER (#notesLedgerDrawer, opened by the header #notesLedgerBtn whose
  *   badge counts OPEN RFIs): every note grouped by page, filter chips
- *   (all / RFI / open), click a row to jump — switches page, centers the pan
- *   on the note, and pins the chip there briefly. Rows carry the resolved
+ *   (all / RFI / open), click a row to jump — switches page (and layer, when
+ *   the note sits on one that isn't active), centers the pan on the note, and
+ *   pins the chip there briefly. A page heading names the sheet by its label
+ *   (App.sheetNameForPage, features/rfi-flags.js). Rows carry the resolved
  *   checkbox and (for RFIs) an inline answer editor; saving an answer marks
  *   the note resolved. Both are project data (undo snapshot + dirty), so they
  *   sync to the cloud and reach the twin via manage-user `twin_projects`.
@@ -97,7 +99,7 @@
           rows.push({
             num,
             pageIdx: pi,
-            pageName: page?.name || '',
+            pageName: App.sheetNameForPage ? App.sheetNameForPage(page) : '',
             canvasIdx: ci,
             canvasName: multiCanvas ? (cv?.name || 'Canvas ' + (ci + 1)) : '',
             noteIdx: ni,
@@ -265,8 +267,17 @@
     const state = App.state;
     if (!state?.pages?.[row.pageIdx]) return;
     state.currentPage = row.pageIdx;
-    if (typeof row.canvasIdx === 'number' && state.pages[row.pageIdx].canvases?.[row.canvasIdx]) {
-      state.pages[row.pageIdx].activeCanvas = row.canvasIdx;
+    // The note may sit on a layer other than the page's active one: make its layer
+    // active, the way the layer pills do (state.activeCanvasIdByPage holds the canvas
+    // id; annotation-model.js getActiveCanvas reads it), so the render below draws it.
+    const cv = typeof row.canvasIdx === 'number' ? state.pages[row.pageIdx].canvases?.[row.canvasIdx] : null;
+    if (cv && cv.id) {
+      if (!state.activeCanvasIdByPage) state.activeCanvasIdByPage = {};
+      const wasActive = App.getActiveCanvas ? App.getActiveCanvas(state.pages[row.pageIdx], row.pageIdx) : null;
+      if (wasActive !== cv) {
+        state.activeCanvasIdByPage[row.pageIdx] = cv.id;
+        if (!state.isViewer) App.markProjectDirty?.();
+      }
     }
     if (state.zoom < 1) state.zoom = 1.2;
     const wrap = document.querySelector('.canvas-wrapper');

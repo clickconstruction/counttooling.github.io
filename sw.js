@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'd576f61290ad';
+const CACHE_VERSION = 'ad648e94d8b1';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -282,8 +282,8 @@ const PRECACHE_SHA256 = {
   '/features/pdf-bundle.js': '9f08fe5a316ff8c82561c4655c6b2d4d4858268bb3ee2807fe6e61df0cc8351e',
   '/features/item-details.js': '639c61d4750da453e2f837f47d334b0b9269f8e533b1951d93be09bd6c4ad3b1',
   '/features/output.js': 'e6a1c995702ddd6ec3c46400efa09da5fd257fd03d590b72409f45244dce0953',
-  '/features/rfi-flags.js': 'c4165e15ca970b4352e05a9e77a3636211e8e22e77c379a21ddbdb919f408162',
-  '/features/notes-ledger.js': '7238cc1f232aaa179bc7cb642f4c1a4fbb1f06ae61e09d14c6e83222d49420a2',
+  '/features/rfi-flags.js': '4321db07f601a5636f04d42a9e746498eb03ad1005213e2e248aad8e66fdb41b',
+  '/features/notes-ledger.js': '351062c6b07b5ce6a59a5fe226bca858619a0c1628791dbe1970c5454c544380',
   '/features/share-links.js': '4f7fcaf5af80c431064081b1d3d3d7388943b48ef94983cb83fb1f2c3dab33a9',
   '/features/import-clear.js': 'e743af49bd39686aba8985bcd30c831fdc6c9b518a206255263cba125a99e3d4',
   '/features/zone-modals.js': '0c72999abd1666415e1cb0d4371dd7d4314d8aeef0b786c8987342ce560556a5',

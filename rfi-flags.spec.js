@@ -5,7 +5,9 @@
  * with "RFI:" (case-insensitive, optional space before the colon) is a question for
  * the GC; Copy RFI Flags collects every such note across ALL pages and canvases into
  * a tab-delimited clipboard list headed by the project name. Non-RFI notes never
- * leak in; the empty case alerts instead of copying.
+ * leak in; the empty case alerts instead of copying. A row names its sheet by the
+ * page's `label` (the field pages carry; MAP-SHEETNAMES), and a label that is only
+ * the file-name default ("test-2pages.pdf, p2") is left out, so p2 reads bare.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
@@ -34,7 +36,8 @@ test.describe('RFI flags', () => {
     const text = await page.evaluate(() => {
       const s = window.state;
       s.currentProjectName = 'ZZ Twin LIVSTE';
-      s.pages[0].name = 'P200';
+      s.pages[0].label = 'P-200 · Plumbing Plan';
+      const page2IsDefault = window.SheetTitleModel.isDefaultPageLabel(s.pages[1].label);
       s.pages[0].canvases[0].annotations.notes.push(
         { x: 10, y: 10, id: 'n1', text: 'RFI: fixture on plan missing from schedule', width: 150, fontSize: 14 },
         { x: 20, y: 20, id: 'n2', text: 'plain note — never exported', width: 150, fontSize: 14 },
@@ -44,15 +47,17 @@ test.describe('RFI flags', () => {
         { x: 5, y: 5, id: 'n4', text: 'RFI:unlabeled line near gridline 3/B', width: 150, fontSize: 14 },
       );
       const rows = window.App.collectRfiFlags();
-      return { rows, text: window.App.buildRfiFlagsText(rows) };
+      return { rows, text: window.App.buildRfiFlagsText(rows), page2IsDefault };
     });
 
     expect(text.rows).toHaveLength(3);
     const lines = text.text.split('\n');
     expect(lines[0]).toBe('RFI flags\tZZ Twin LIVSTE');
-    expect(lines[1]).toBe('p1 P200\tfixture on plan missing from schedule');
-    expect(lines[2]).toBe('p1 P200\triser disagrees with plan here');
-    expect(lines[3]).toMatch(/^p2\tunlabeled line near gridline 3\/B$/);
+    expect(lines[1]).toBe('p1 P-200 · Plumbing Plan\tfixture on plan missing from schedule');
+    expect(lines[2]).toBe('p1 P-200 · Plumbing Plan\triser disagrees with plan here');
+    // Page 2 still wears the intake's file-name label, which says nothing a "p2" doesn't.
+    expect(text.page2IsDefault).toBe(true);
+    expect(lines[3]).toBe('p2\tunlabeled line near gridline 3/B');
 
     // Clipboard path (stubbed) via the button
     const copied = await page.evaluate(async () => {

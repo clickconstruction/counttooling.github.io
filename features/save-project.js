@@ -8,6 +8,11 @@
   // checkout-expiry preflight and stale-PDF confirm. Deps resolve through App
   // at call time; pdfCacheGet is an idb.js classic-script global.
 
+  // #saveProjectNoPdfMessage's two wordings: the markup's own (a bid with no PDF yet,
+  // which saves its palette), and the canvas-only hold (MAP-MANUAL-SAVE).
+  const CANVAS_ONLY_NOTE = 'Canvas only. Upload a PDF first to include it in saves.';
+  const CANVAS_ONLY_HELD_NOTE = 'This bid’s PDF is not attached, so its marks can’t be saved yet. Choose the PDF first: the marks come back on it, and Save works again.';
+
   document.getElementById('saveProjectBtn').onclick = async () => {
     document.getElementById('saveProjectName').value = App.state.currentProjectName || 'Untitled';
     document.getElementById('saveProjectError').style.display = 'none';
@@ -80,6 +85,18 @@
       contentsList.style.display = 'none';
       contentsLabel.style.display = 'none';
       noPdfMessage.style.display = 'block';
+    }
+    // MAP-MANUAL-SAVE: a bid open without its PDF (the marks waiting in
+    // pendingCanvasLoad) has nothing to save but empty sheets, and the engine holds
+    // the write. Say so here, where the other "can't save" states are said, and take
+    // the Save button away rather than let a click that writes nothing look like a save.
+    const held = !!(App.isCanvasOnlyPending && App.isCanvasOnlyPending());
+    noPdfMessage.textContent = held ? CANVAS_ONLY_HELD_NOTE : CANVAS_ONLY_NOTE;
+    if (held) {
+      contentsList.style.display = 'none';
+      contentsLabel.style.display = 'none';
+      noPdfMessage.style.display = 'block';
+      document.getElementById('saveProjectDo').disabled = true;
     }
     App.showModal('saveProjectModal');
   };

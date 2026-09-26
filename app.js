@@ -8013,6 +8013,7 @@
   App.resetGridOrigin = resetGridOrigin;
   App.writeTakeoffStateBackup = writeTakeoffStateBackup;
   App.performSaveProjectToCloud = performSaveProjectToCloud;
+  App.isCanvasOnlyPending = () => saveEngine.isCanvasOnlyPending();   // MAP-MANUAL-SAVE: the Save dialog's hold
   App.isAuthError = isAuthError;
   // NB: the three async, block-scoped load helpers (checkInCurrentProjectIfHeld,
   // resolvePdfBufferForCloudProject, buildPagesFromPdfArrayBufferAndProjectData)

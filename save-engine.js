@@ -2080,6 +2080,16 @@ function createSaveEngine(ctx) {
       saveDebugLog('manual.save.skip', { runId, reason: 'not_signed_in' });
       return { ok: false, error: new Error('Not signed in') };
     }
+    if (isCanvasOnlyPending(ctx.getState())) {
+      // MAP-MANUAL-SAVE: the autosave's MAP-EMPTY-SAVE hold, for the manual path. The
+      // pages would be built from state.pages ([]) over the marks waiting in
+      // pendingCanvasLoad, so nothing is sent. ok (a hold, not a failure) so no
+      // "Save failed" toast and no yellow bell; the Save dialog says why beforehand.
+      autoSaveDirty = false;
+      saveDebugLog('manual.save.skip', { runId, reason: 'canvas_only_pending_pdf' });
+      pushSaveEvent('manual_save_held', 'Save held: re-attach the PDF to save this bid\'s marks');
+      return { ok: true, skipped: true, reason: 'canvas_only_pending_pdf' };
+    }
     let rawPdf = optsPdfBuffer ?? ctx.getState().pdfBuffer;
     let rawPdfBytes = (rawPdf && (rawPdf.byteLength || rawPdf.length || 0)) | 0;
     if (includePdf && rawPdfBytes === 0 && ctx.getState().pdfBufferSize > 0 && ctx.getState().currentProjectId && ctx.getState().pdfHash) {
@@ -3106,6 +3116,7 @@ function createSaveEngine(ctx) {
     maybeWriteDirtySnapshot,
     // Stage 6: save paths
     performSaveProjectToCloud,
+    isCanvasOnlyPending: () => isCanvasOnlyPending(ctx.getState()),
     uploadLocalPdfToCloudIfNeeded,
     performAutoSave,
     // Stage 1: global force reload + checkout keep-alive

@@ -13,6 +13,34 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(save): a manual Save of a bid opened without its PDF no longer saves its sheets away (MAP-MANUAL-SAVE, 2026-09-26)
+
+MAP-EMPTY-SAVE held the autosave, the dirty flag and the takeoff backup in the canvas-only state
+(a cloud bid open, `state.pages` empty, the saved marks waiting in `pendingCanvasLoad` for their
+PDF). The Save dialog was the door it left open. It stayed fully usable there: with the PDF's
+storage path still on the row (the pdf_missing branch) it showed Contents with "PDF (in project)",
+without it only the "Canvas only" note, and either way Save called `performSaveProjectToCloud`,
+which builds the pages from `state.pages` and wrote `data.pages: []` over every mark on every sheet.
+A node test sent exactly that payload before the fix.
+
+The engine now refuses the write there: `performSaveProjectToCloud` answers
+`{ ok: true, skipped: true, reason: 'canvas_only_pending_pdf' }` the way the autosave does, sends
+nothing, clears dirty, and logs a `manual_save_held` event, so no "Save failed" toast and no yellow
+bell. The dialog says so before anyone clicks. The Save dialog already carries its "can't save"
+states in its own body (the Canvas only note, the sign-in and view-only lines), and a toast would
+arrive only after the estimator had chosen to save, so the note is reworded in place instead: the
+bid's PDF is not attached, its marks can't be saved yet, choose the PDF first. The Contents list is
+hidden and Save is disabled. The dialog reads the state through `App.isCanvasOnlyPending`, the
+engine's own test published by app.js. Turn In and the save-before-load gate never reach this path
+in that state (they save through `performAutoSave`, which already skips with ok, and Turn In's PDF
+upload needs pages), so both still release the lock.
+
+Pinned by save-engine.test.js "canvas-only: a manual Save" (both Include PDF positions send no
+update and answer ok, the name is not changed, Turn In still releases, and the same Save writes one
+sheet once the PDF is back) and save-project.spec.js "canvas-only" (the reworded note, no Contents,
+Save disabled, no write request leaves the page, and the ordinary note and a live Save come back
+once the pending load is gone). Both were red on the pre-fix code.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

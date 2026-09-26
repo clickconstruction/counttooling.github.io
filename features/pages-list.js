@@ -12,8 +12,9 @@
    * App.startRename, App.exitEditMode. The page delete behind the trash
    * button is the model's App.deletePageAt (annotation-model.js), which
    * splices the page and reindexes every page-index-keyed map
-   * (MAP-PAGE-DELETE); this file keeps the undo step, ending an edit on the
-   * page, and the redraw.
+   * (MAP-PAGE-DELETE); this file keeps the undo step (App.pushUndoSnapshotPageList,
+   * which records the page list so undo puts the sheet back, MAP-PAGE-UNDO),
+   * ending an edit on the page, and the redraw.
    * Boundary rule: read shared deps from App.* at call time, never captured at
    * load. See ARCHITECTURE.md "Feature files / window.App registry".
    */
@@ -95,7 +96,10 @@
       if (showEdit) {
         const deletePage = () => {
           if (state.pages.length <= 1) { App.showToast('Cannot delete the only page.', 3000); return; }
-          App.pushUndoSnapshot();
+          // The page-list undo step: Ctrl+Z puts the sheet back in its place
+          // with its own marks, and every later sheet keeps its own
+          // (MAP-PAGE-UNDO; an ordinary step laid pages back by index).
+          App.pushUndoSnapshotPageList();
           // A polyline being edited on this page is dropped with it (edit mode
           // is UI, so it ends here); the model splices the page and shifts
           // every page-index-keyed map and index past it (MAP-PAGE-DELETE).

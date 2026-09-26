@@ -1260,6 +1260,111 @@ test('deletePageAt: deleting the last page steps back; the only page is never de
   assert.strictEqual(state.currentPage, 0);
 });
 
+// MAP-PAGE-UNDO: the undo step a page delete pushes restores the page LIST,
+// not just what is on the pages. Laid back over the shorter list by index, the
+// sheet after the deleted one took its marks, label and scale, and a page-scoped
+// entry recorded before the delete landed on the wrong sheet.
+function threePageUndoState() {
+  const state = threePageState();
+  state.pages.forEach((p, i) => {
+    const n = i + 1;
+    p.pdfPage = { pageNumber: n };
+    p.bakeFrame = { w: 612, h: 792, intrinsic: 0, n };
+    p.scale = { pdfPtsPerFoot: 10 * n };
+    p.rotation = 0;
+    p.canvases.forEach((c) => { c.annotations = { highlights: [{ id: c.id + '-mark' }] }; });
+  });
+  Object.assign(state, { isViewer: false, counters: [], lineTypes: [], groups: [], rooms: [] });
+  return state;
+}
+function pageListUndo(state) {
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const { ctx } = undoCtx(state);
+  ctx.remapSessionPageIndices = (to) => m.remapSessionPageIndices(to);
+  return { m, u: createUndoStack(ctx) };
+}
+const marksOf = (p) => p.canvases.map((c) => c.annotations.highlights.map((h) => h.id));
+
+test('undo of a page delete puts the page back where it was, with its marks, label, scale and chosen layer; redo deletes it again', () => {
+  const state = threePageUndoState();
+  state.currentPage = 2;
+  state.selectedLineId = 'L'; state.selectedLinePageIdx = 2;
+  const [p1, p2, p3] = state.pages;
+  const { m, u } = pageListUndo(state);
+  // An edit on sheet 3 BEFORE the delete: a page-scoped entry keyed by index 2.
+  u.pushUndoSnapshotPage(2);
+  p3.canvases[0].annotations.highlights.push({ id: 'late3' });
+  // Delete sheet 2 the way the Pages list does.
+  u.pushUndoSnapshotPageList();
+  assert.strictEqual(m.deletePageAt(1), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P3']);
+
+  assert.strictEqual(u.undo(), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P2', 'P3']);
+  assert.ok(state.pages[0] === p1 && state.pages[1] === p2 && state.pages[2] === p3, 'the same page objects, so the PDF page and bake frame come back with them');
+  assert.deepStrictEqual(state.pages[1].pdfPage, { pageNumber: 2 });
+  assert.deepStrictEqual(state.pages.map((p) => p.scale.pdfPtsPerFoot), [10, 20, 30]);
+  assert.deepStrictEqual(marksOf(state.pages[1]), [['main2-mark'], ['waste2-mark']]);
+  assert.deepStrictEqual(marksOf(state.pages[2]), [['main3-mark', 'late3'], ['waste3-mark']]);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 1: 'waste2', 2: 'waste3' });
+  assert.deepStrictEqual(state.peekCanvasIdsByPage, { 0: ['waste1'], 2: [] });
+  assert.strictEqual(m.getActiveCanvas(state.pages[1]).id, 'waste2');
+  assert.strictEqual(m.getActiveCanvas(state.pages[2]).id, 'waste3');
+  assert.strictEqual(state.currentPage, 2, 'still looking at sheet 3');
+  assert.deepStrictEqual([state.selectedLineId, state.selectedLinePageIdx], ['L', 2], 'the selection follows its sheet');
+
+  // The older page-scoped entry now lands on sheet 3, where it was recorded.
+  assert.strictEqual(u.undo(), true);
+  assert.deepStrictEqual(marksOf(state.pages[2]), [['main3-mark'], ['waste3-mark']]);
+  assert.deepStrictEqual(marksOf(state.pages[1]), [['main2-mark'], ['waste2-mark']]);
+
+  // Redo both: the mark comes back on sheet 3, then sheet 2 goes again.
+  assert.strictEqual(u.redo(), true);
+  assert.deepStrictEqual(marksOf(state.pages[2]), [['main3-mark', 'late3'], ['waste3-mark']]);
+  assert.strictEqual(u.redo(), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P3']);
+  assert.ok(state.pages[1] === p3);
+  assert.deepStrictEqual(marksOf(state.pages[1]), [['main3-mark', 'late3'], ['waste3-mark']]);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 1: 'waste3' });
+  assert.deepStrictEqual(state.peekCanvasIdsByPage, { 0: ['waste1'], 1: [] });
+  assert.strictEqual(state.currentPage, 1, 'still on sheet 3, now the second sheet');
+  assert.deepStrictEqual([state.selectedLineId, state.selectedLinePageIdx], ['L', 1]);
+
+  // And undo once more brings it back again.
+  assert.strictEqual(u.undo(), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P2', 'P3']);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 1: 'waste2', 2: 'waste3' });
+});
+
+test('undo of a page delete: the maps are restored in place, and the sheet on screen and a selection made after the delete follow their sheet', () => {
+  const state = threePageUndoState();
+  state.currentPage = 1;
+  const map = state.activeCanvasIdByPage;
+  const { m, u } = pageListUndo(state);
+  u.pushUndoSnapshotPageList();
+  m.deletePageAt(1);
+  state.selectedDuctRunId = 'D'; state.selectedDuctRunPageIdx = 1;   // chosen on sheet 3 after the delete
+  state.chainStart = { x: 1, y: 2, page: 0 };
+  u.undo();
+  assert.strictEqual(state.activeCanvasIdByPage, map, 'a holder of the map sees the restore');
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 1: 'waste2', 2: 'waste3' });
+  assert.strictEqual(state.currentPage, 2, 'the sheet on screen stays on screen');
+  assert.deepStrictEqual([state.selectedDuctRunId, state.selectedDuctRunPageIdx], ['D', 2]);
+  assert.strictEqual(state.chainStart.page, 0);
+});
+
+test('an ordinary full undo step leaves the page list alone (pages added after it survive the undo)', () => {
+  const state = threePageUndoState();
+  const { u } = pageListUndo(state);
+  u.pushUndoSnapshot();
+  state.pages[0].label = 'Renamed';
+  const added = { label: 'P4', pdfPage: { pageNumber: 4 }, canvases: [{ id: 'main4', name: 'Main', annotations: { highlights: [] } }], scale: null, rotation: 0 };
+  state.pages.push(added);   // the Prepare PDF append adds sheets without an undo step
+  u.undo();
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P2', 'P3', 'P4']);
+  assert.strictEqual(state.pages[3], added);
+});
+
 // --- purgeFromGhosts: deleting a type or group reaches inside every Typical ---
 // MAP-GHOST-DELETE (DECOMPOSITION_MAP D32): the delete cascades pruned only the
 // live marks, so a Typical kept the deleted counter's markers, the deleted line

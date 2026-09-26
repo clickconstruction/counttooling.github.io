@@ -982,20 +982,36 @@ function createAnnotationModel(ctx) {
     });
     if (state.currentPage >= pages.length) state.currentPage = Math.max(0, pages.length - 1);
     else if (state.currentPage > i) state.currentPage--;
-    if (state.selectedLinePageIdx === i) { state.selectedLineId = null; state.selectedLinePageIdx = null; }
-    else state.selectedLinePageIdx = shifted(state.selectedLinePageIdx);
-    if (state.selectedDuctRunPageIdx === i) { state.selectedDuctRunId = null; state.selectedDuctRunPageIdx = null; }
-    else state.selectedDuctRunPageIdx = shifted(state.selectedDuctRunPageIdx);
-    if (state.editingPolyIndex != null) state.editingPolyIndex = shifted(state.editingPolyIndex);
-    if (state.chainStart) {
-      if (state.chainStart.page === i) state.chainStart = null;
-      else if (state.chainStart.page > i) state.chainStart.page--;
-    }
-    if (state.lastMeasure) {
-      if (state.lastMeasure.pageIdx === i) state.lastMeasure = null;
-      else if (state.lastMeasure.pageIdx > i) state.lastMeasure.pageIdx--;
-    }
+    remapSessionPageIndices(shifted);
     return true;
+  }
+  // The session's page-INDEX fields other than the current page and the two
+  // maps: the selected line and duct run, the polyline being edited, the Chain
+  // tool's start and the last measurement. `to(idx)` gives each index its new
+  // home, or null when its sheet is gone, which drops what lived there (an
+  // edit's index only, since ending an edit is UI). ONE list, shared by
+  // deletePageAt and the undo stack's page-list restore (MAP-PAGE-UNDO), so a
+  // new page-indexed field is added once.
+  function remapSessionPageIndices(to) {
+    const state = ctx.getState();
+    const move = (idx) => (idx == null ? idx : to(idx));
+    if (state.selectedLinePageIdx != null) {
+      state.selectedLinePageIdx = move(state.selectedLinePageIdx);
+      if (state.selectedLinePageIdx == null) state.selectedLineId = null;
+    }
+    if (state.selectedDuctRunPageIdx != null) {
+      state.selectedDuctRunPageIdx = move(state.selectedDuctRunPageIdx);
+      if (state.selectedDuctRunPageIdx == null) state.selectedDuctRunId = null;
+    }
+    if (state.editingPolyIndex != null) state.editingPolyIndex = move(state.editingPolyIndex);
+    if (state.chainStart && state.chainStart.page != null) {
+      const to2 = move(state.chainStart.page);
+      if (to2 == null) state.chainStart = null; else state.chainStart.page = to2;
+    }
+    if (state.lastMeasure && state.lastMeasure.pageIdx != null) {
+      const to2 = move(state.lastMeasure.pageIdx);
+      if (to2 == null) state.lastMeasure = null; else state.lastMeasure.pageIdx = to2;
+    }
   }
   function deepCopyAnnotations(ann) {
     if (!ann) return makeAnnotations();
@@ -1035,6 +1051,7 @@ function createAnnotationModel(ctx) {
     applyRotationDeltaToAnnotations,
     deepCopyAnnotations,
     deletePageAt,
+    remapSessionPageIndices,
   };
 }
 

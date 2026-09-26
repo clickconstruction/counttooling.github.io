@@ -153,4 +153,47 @@ test.describe('Fixture units on counters', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // MAP-ICON-SEARCH: the icon search rebuilt #counterIconGrid with a click of
+  // its own that filled the name but never ran the fixture-unit sync, so a
+  // built-in pick after a search left Fixture units empty. One builder now
+  // wires the grid on open and on every search.
+  test('a built-in icon picked after an icon search prefills Fixture units, as before any search', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await load(page);
+    await openCreateTab(page);
+    await expect(page.locator('#counterWsfuGroup')).toBeVisible();
+    const name = page.locator('#counterName');
+    const wsfu = page.locator('#counterWsfu');
+    const read = async () => ({ name: await name.inputValue(), wsfu: await wsfu.inputValue() });
+    // A pick fills only an EMPTY name, so clear it first (which also empties the field).
+    const pickBuiltIn = async (iconName) => {
+      await name.fill('');
+      await expect(wsfu).toHaveValue('');
+      const idx = await page.evaluate((n) => {
+        const ic = window.App.getOrderedIcons().find((x) => window.App.getIconName(x.value) === n);
+        return Array.from(document.querySelectorAll('#counterIconGrid .icon-cell')).findIndex((c) => c.dataset.path === ic.value);
+      }, iconName);
+      expect(idx).toBeGreaterThanOrEqual(0);
+      await page.locator('#counterIconGrid .icon-cell').nth(idx).click();
+      return read();
+    };
+
+    const beforeSearch = await pickBuiltIn('Shower');
+    expect(beforeSearch).toEqual({ name: 'Shower', wsfu: '4' });   // public shower head
+
+    // The search rebuilds the grid; its first result is selected, as before.
+    await page.locator('#counterIconSearch').fill('shower');
+    await expect(page.locator('#counterIconGrid .icon-cell').first()).toHaveClass(/selected/);
+    expect(await pickBuiltIn('Shower')).toEqual(beforeSearch);
+    await expect(page.locator('#counterIconGrid .icon-cell.selected')).toHaveCount(1);
+
+    // Cleared back to every icon, the pick still reads the table.
+    await page.locator('#counterIconSearch').fill('');
+    expect(await pickBuiltIn('Shower')).toEqual(beforeSearch);
+    await page.locator('#counterCancel').click();
+    expect(errors).toEqual([]);
+  });
 });

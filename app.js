@@ -8039,6 +8039,9 @@
   App.pageHasAnyAnnotations = pageHasAnyAnnotations;
   App.startRename = startRename;
   App.exitEditMode = exitEditMode;
+  // Page delete (features/pages-list.js): the splice + page-index reindex is
+  // the model's (MAP-PAGE-DELETE).
+  App.deletePageAt = (i) => annotationModel.deletePageAt(i);
   // features/lines-list.js deps (publish-only). formatArea/polygonArea are
   // geometry.js globals — lint-invisible to the features eslint group, so they
   // route through the registry (the pilot-#13 ptDist pattern).

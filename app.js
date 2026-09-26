@@ -1991,6 +1991,8 @@
   });
   const canvasDraw = createCanvasDraw({
     getState: () => state,
+    // MAP-RING-DEFAULT: the constants.js display defaults (constants.js loads after canvas-draw.js).
+    getDisplaySettingsDefaults: (key) => (key === 'counterSettings' ? COUNTER_SETTINGS_DEFAULTS : LINE_TYPE_SETTINGS_DEFAULTS),
     getEffectiveScaleForLine: (ann, line, isPoly, pageIdx) => getEffectiveScaleForLine(ann, line, isPoly, pageIdx),
     getLineRealWorldLength: (line, pageIdx, isPoly, ann) => getLineRealWorldLength(line, pageIdx, isPoly, ann),
     formatDistFeetInchesFromReal: (realLen, sc) => formatDistFeetInchesFromReal(realLen, sc),
@@ -2192,10 +2194,10 @@
     // env carries the live path's sizing rules (constant-screen-weight line
     // width, raw chrome sizes, zoom*DPR font scale, selection glow, note
     // handles). The lts/lw/lo consts stay for the in-progress previews below.
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
+    const lts = state.lineTypeSettings || LINE_TYPE_SETTINGS_DEFAULTS;
     const lw = lts.lineSize || 2;
     const lo = lts.opacity != null ? lts.opacity : 1;
-    const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+    const cs = state.counterSettings || COUNTER_SETTINGS_DEFAULTS;
     const sel = state.selectedLineId && state.currentPage === state.selectedLinePageIdx;
     // Ghosts paint UNDER the real marks: they are reference scaffolding, and
     // the takeoff has to stay readable on top of its own stencil. The ghost
@@ -2432,8 +2434,8 @@
     const ann = annotationsOverride ?? getActiveAnnotations(page);
     const pageIdx = state.pages.indexOf(page);
     const pi = pageIdx >= 0 ? pageIdx : 0;
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
-    const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+    const lts = state.lineTypeSettings || LINE_TYPE_SETTINGS_DEFAULTS;
+    const cs = state.counterSettings || COUNTER_SETTINGS_DEFAULTS;
     const lineScale = exportOverrides?.lineScale ?? 1;
     const markerScale = exportOverrides?.markerScale ?? 1;
     canvasDraw.drawAnnotationsCore(ctx, ann, {

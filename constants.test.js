@@ -340,3 +340,16 @@ test('displaySettingsFields leaves out the sidebar filter scope and its legacy b
   const full = Object.assign({}, c.COUNTER_SETTINGS_DEFAULTS, { size: 30 });
   assert.deepStrictEqual(Object.assign({}, c.COUNTER_SETTINGS_DEFAULTS, c.displaySettingsFields(c.COUNTER_SETTINGS_DEFAULTS, JSON.parse(JSON.stringify(c.displaySettingsFields(c.COUNTER_SETTINGS_DEFAULTS, full))))), full);
 });
+
+test('the ring size default sits on its slider, and a stored size under the slider reads as the default (MAP-RING-DEFAULT)', () => {
+  // The Ring size slider runs 50 to 200 (app/index.html #counterRingSize); the default was 1.
+  assert.strictEqual(c.COUNTER_SETTINGS_DEFAULTS.ringSize, 100);
+  const d = c.COUNTER_SETTINGS_DEFAULTS;
+  const merged = (raw) => Object.assign({}, d, c.displaySettingsFields(d, raw));
+  assert.strictEqual(merged({ ringSize: 1, showRings: true }).ringSize, 100);
+  assert.strictEqual(merged({ ringSize: 1, showRings: true }).showRings, true);
+  assert.strictEqual(merged({ ringSize: 0 }).ringSize, 100);
+  assert.strictEqual(merged({ ringSize: 49 }).ringSize, 100);
+  assert.strictEqual(merged({ ringSize: 50 }).ringSize, 50);
+  assert.strictEqual(merged({ ringSize: 170 }).ringSize, 170);
+});

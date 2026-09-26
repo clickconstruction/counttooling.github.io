@@ -507,7 +507,9 @@ length label size and orientation, `snapToHorizontalVertical` (the 8-way 45° sn
 the key keeps its original H/V-era name), and the Lines `showOnlyLinesOnCurrentPage`
 toggle. app.js starts state from `COUNTER_SETTINGS_DEFAULTS` / `LINE_TYPE_SETTINGS_DEFAULTS`
 (constants.js) and merges the stored JSON over them at boot through `displaySettingsFields`
-(only the defaults' own keys, each of the default's type, so a new key keeps its default);
+(only the defaults' own keys, each of the default's type, so a new key keeps its default;
+a number under its slider's minimum, `DISPLAY_SETTINGS_MINIMUMS`, reads as the default: the
+ring size default is 100, it was 1 under the slider's 50 until MAP-RING-DEFAULT);
 every change writes both through `App.saveDisplaySettings` (the two settings modals, the
 header Snap button, the J hotkey, the Lines this-sheet button). Wiped by the sign-out key
 list. The IndexedDB takeoff backup still carries both objects but nothing restores from

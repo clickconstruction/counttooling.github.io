@@ -13,6 +13,35 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(settings): Counter Settings shows the ring size its slider sits at (MAP-RING-DEFAULT, 2026-09-26)
+
+The ring size default was 1 while the Ring size slider runs 50 to 200, so Counter Settings
+showed "1" beside a slider sitting at 50. The draw reads ring size as a percent of the marker,
+and a ring 1% of a 22 px marker is under a pixel: turning Show ring on without moving the
+slider drew nothing at all (a pixel probe of one counter at export scale 4 counted the same
+pixels with the ring on as off). The draw's own fallback was 100, but only for a 0.
+
+The default is 100 now, the value the slider's markup, the dialog's table and the draw's
+fallback already named: a ring the marker's size. Behind the default round marker at full
+opacity it sits under the marker, as today's ring did (the probe: 4 more antialiased edge
+pixels out of about 4,000); where a marker's shape or opacity leaves it uncovered, it shows. A device that
+never turned rings on sees no change. Exact parity with the old 1 was not on offer, since no
+slider stop draws nothing.
+
+MAP-SETTINGS (earlier today) started storing the settings per device, so a device that saved
+any counter setting since then stored the old 1. `displaySettingsFields` now drops a number
+under its slider's minimum (`DISPLAY_SETTINGS_MINIMUMS`, ring size 50, in constants.js), so
+that stored 1 reads as the default at boot and is written back as 100 on the next change.
+
+The display-settings fallbacks in app.js (the live and export renders) and canvas-draw.js no
+longer repeat the defaults as literals: app.js reads `COUNTER_SETTINGS_DEFAULTS` /
+`LINE_TYPE_SETTINGS_DEFAULTS`, and canvas-draw.js, which loads before constants.js, gets them
+through a new `getDisplaySettingsDefaults` dep, the ring size and opacity fallbacks included.
+The render-pixels baselines are unchanged.
+
+Pinned by counter-settings.spec.js (every slider's number is the one it sits at, on a fresh
+device and over a stored ring size of 1) and constants.test.js.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '93d3a67f1e42';
+const CACHE_VERSION = 'd68e398b4e07';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -230,10 +230,10 @@ const PRECACHE_SHA256 = {
   '/duct-model.js': '9add987fe296d166b5308928cb893b2d9dc3d710299dff630f58817fd274ca33',
   '/bid-basis-model.js': '825fc0a1cfd1a765dbb3bab5f06eb49c9780253d071def87784939e194a834f0',
   '/status-hint-model.js': 'b55e1c0217607899538609aa147fe19649650d1b8cfd141469277199f576d240',
-  '/canvas-draw.js': '350765d5def90d064f56214d00abe2cf9e3790fb5875cfa64c02080fb392dbc6',
+  '/canvas-draw.js': 'e247bd9f97f6d4bc8ce035506538833d18864785d7abe9398401c3d6428dc446',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
   '/render-worker.js': '97409f02a7150a5f9b5e456769083b49dca0c7baaae0263a34e2fc7a1d23a54d',
-  '/constants.js': 'dd7e912465ff4db3c3c2252b114057685a1cc6fe6f4a05ab142d3c2368009bf8',
+  '/constants.js': '5322207361efb23c360f498be918190ea321096e3a3a4f36c073e27564b6b92a',
   '/zoom-ladder.js': 'c8396a9b8610ce94c703b575e3180ad3152d17a5b23c9e576c8d45b980005ba3',
   '/hotkeys.js': 'cd0eafcc9f24c885d3e4e10d0a5d2e493f54be34d2e8607f53dd456f44c49d23',
   '/recent-colors.js': '01a7af7515a037ac51f0819601156c64035b903ce55a2739a5393988792285a7',
@@ -246,7 +246,7 @@ const PRECACHE_SHA256 = {
   '/undo-stack.js': '981aa3e990f7ab52b9ff93046f274aaf7e43b867ec4b6532005a5a24e9cd5711',
   '/save-engine.js': 'ca0bcad168993413f8f38808748d38d0ddab37f5b008f99e56f497f8275e3392',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '01bd9dd0fd0434f522aad0a77860cb5a890f929af4bf64d726a92d456de2f6db',
+  '/app.js': '48f1284a06f154a2fb304d03041ab3cc38ab9de916730fcf06d94d6371280b8a',
   '/features/canvas-repair.js': 'b2dca5c86174ed9589d0c44091d9265c2e3af039c08cf4422eb151fa5fd8ec02',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',

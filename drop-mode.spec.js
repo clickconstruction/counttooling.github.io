@@ -209,4 +209,45 @@ test.describe('Drop tool', () => {
     await expect(page.locator('#airboardToastText')).toHaveText('No runs on this sheet yet. Drop adds its size to the end of a line: draw a run, then click its end.');
     expect(errors).toEqual([]);
   });
+
+  // R20 (2026-09-26): the palette drags by its title bar and the spot persists per device
+  // (dropPanelPos), the chainPanelPos case in chain.spec.js on the Drop palette. A stored
+  // spot that no longer fits the viewport is ignored and the CSS dock wins.
+  test('drag by the title bar persists dropPanelPos; a spot off the viewport falls back to the dock', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await setupDropProject(page);
+    await page.click('#dropBtn');
+    await expect(page.locator('#dropPanel')).toBeVisible();
+    const dock = await page.evaluate(() => Math.round(document.getElementById('dropPanel').getBoundingClientRect().left));
+
+    const head = page.locator('#dropPanelHead');
+    const box = await head.boundingBox();
+    await page.mouse.move(box.x + 60, box.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 360, box.y + 210, { steps: 5 });
+    await page.mouse.up();
+    const dragged = await page.evaluate(() => {
+      const r = document.getElementById('dropPanel').getBoundingClientRect();
+      return { left: Math.round(r.left), top: Math.round(r.top), stored: JSON.parse(localStorage.getItem('dropPanelPos')) };
+    });
+    expect(dragged.left).toBeGreaterThan(200);
+    expect(dragged.stored).toEqual({ x: dragged.left, y: dragged.top });
+    await page.locator('#dropPanelClose').click();
+    await expect(page.locator('#dropPanel')).toBeHidden();
+    await page.click('#dropBtn');   // re-click while armed reopens the palette
+    await expect(page.locator('#dropPanel')).toBeVisible();
+    expect(await page.evaluate(() => Math.round(document.getElementById('dropPanel').getBoundingClientRect().left))).toBe(dragged.left);
+
+    // A spot past the viewport's edge is ignored on the next open: the panel comes back at the dock.
+    await page.evaluate(() => {
+      localStorage.setItem('dropPanelPos', JSON.stringify({ x: window.innerWidth + 50, y: 40 }));
+      const p = document.getElementById('dropPanel');
+      p.style.left = ''; p.style.top = '';
+      window.App.closeDropPanel();
+      window.App.openDropPanel();
+    });
+    expect(await page.evaluate(() => Math.round(document.getElementById('dropPanel').getBoundingClientRect().left))).toBe(dock);
+    expect(errors).toEqual([]);
+  });
 });

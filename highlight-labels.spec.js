@@ -134,4 +134,33 @@ test.describe('Named highlights (features/highlight-labels.js)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // R20 (2026-09-26): the bookmarks panel drags by its title bar and the spot persists per
+  // device (highlightPanelPos), the chainPanelPos case in chain.spec.js on this palette.
+  test('drag by the title bar persists highlightPanelPos across a close and reopen', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors);
+    await page.evaluate(() => document.getElementById('highlightBtn').click()); // header overflow at this viewport — the visible-click path is pinned by tool-context-menu.spec.js
+    await expect(page.locator('#highlightPanel')).toBeVisible();
+
+    const head = page.locator('#highlightPanelHead');
+    const box = await head.boundingBox();
+    await page.mouse.move(box.x + 60, box.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 360, box.y + 210, { steps: 5 });
+    await page.mouse.up();
+    const dragged = await page.evaluate(() => {
+      const r = document.getElementById('highlightPanel').getBoundingClientRect();
+      return { left: Math.round(r.left), top: Math.round(r.top), stored: JSON.parse(localStorage.getItem('highlightPanelPos')) };
+    });
+    expect(dragged.left).toBeGreaterThan(200);
+    expect(dragged.stored).toEqual({ x: dragged.left, y: dragged.top });
+    await page.locator('#highlightPanelClose').click();
+    await expect(page.locator('#highlightPanel')).toBeHidden();
+    await page.evaluate(() => document.getElementById('highlightBtn').click()); // re-click while armed reopens the panel
+    await expect(page.locator('#highlightPanel')).toBeVisible();
+    expect(await page.evaluate(() => Math.round(document.getElementById('highlightPanel').getBoundingClientRect().left))).toBe(dragged.left);
+
+    expect(errors).toEqual([]);
+  });
 });

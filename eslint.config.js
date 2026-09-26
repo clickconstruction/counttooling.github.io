@@ -220,7 +220,10 @@ module.exports = [
   // constants.js/save-utils.js/idb.js, read their exports by bare name
   // (saveEngineGlobals); everything state/closure-coupled arrives via ctx.
   // `tus` is the vendored resumable-upload lib (classic <script>).
-  browserModule(['save-engine.js', 'annotation-model.js', 'undo-stack.js', 'pdf-tile-cache.js'], { ...saveEngineGlobals, tus: 'readonly' }),
+  browserModule(['save-engine.js', 'undo-stack.js', 'pdf-tile-cache.js'], { ...saveEngineGlobals, tus: 'readonly' }),
+  // annotation-model.js also reads the duct and water knob normalizers (R12:
+  // normalizeDuctSettings / normalizeWaterSettings, loaded before it) by bare name.
+  browserModule(['annotation-model.js'], { ...saveEngineGlobals, ...ductModelGlobals, ...waterModelGlobals }),
   // features/*.js: incremental splits of the app.js IIFE (window.App registry).
   // Each is its own classic-script IIFE loaded AFTER app.js; reads shared
   // state/helpers from App at call time. Extra globals: the vendored libs

@@ -88,31 +88,17 @@
   // silently under-reports a bid.
   let scheduleScope = 'project';
 
-  // --- settings (per project — defaults live in app.js state init) ----------
+  // --- settings (per project; the defaults are duct-model.js DUCT_SETTINGS_DEFAULTS) --
 
+  // The project's knobs, normalized in place by duct-model.js normalizeDuctSettings
+  // (R12: the same rule every project intake reads a save through). In place, so a
+  // caller holding the object keeps writing to state's own copy.
   function getDuctSettings() {
     const state = App.state;
-    if (!state.ductSettings || typeof state.ductSettings !== 'object') {
-      state.ductSettings = { ...(App.DUCT_SETTINGS_DEFAULTS || { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted' }) };
-    }
-    const ds = state.ductSettings;
-    if (!Number.isFinite(ds.seamWastePct) || ds.seamWastePct < 0) ds.seamWastePct = 15;
-    if (!Number.isFinite(ds.fittingFactorPct) || ds.fittingFactorPct < 0) ds.fittingFactorPct = 40;
-    if (ds.fittingMode !== 'factor') ds.fittingMode = 'counted';
-    // D6 design-build knobs — the ductulator suggestion's friction rate and
-    // velocity cap (DUCT-PLAN §5). Pre-D6 saves get the defaults here.
-    if (!Number.isFinite(ds.frictionInPer100ft) || ds.frictionInPer100ft <= 0) ds.frictionInPer100ft = 0.08;
-    if (!Number.isFinite(ds.maxVelocityFpm) || ds.maxVelocityFpm <= 0) ds.maxVelocityFpm = 1200;
-    // D11 — the static-path terminal allowance (diffuser + flex, in. w.g.),
-    // added once at the end of the critical path; 0 is a legal "none".
-    if (!Number.isFinite(ds.terminalAllowanceInWg) || ds.terminalAllowanceInWg < 0) ds.terminalAllowanceInWg = 0.10;
-    // D8 polish knobs. deckHeightFt is deliberately null-until-set (the
-    // auto-riser only arms once the project has a real deck height);
-    // countVdPerTap defaults ON for pre-D8 saves (absent ⇒ true).
-    if (!(ds.deckHeightFt > 0)) ds.deckHeightFt = null;
-    if (!Number.isFinite(ds.maxFlexFt) || ds.maxFlexFt <= 0) ds.maxFlexFt = 6;
-    ds.countVdPerTap = ds.countVdPerTap !== false;
-    return ds;
+    const ds = normalizeDuctSettings(state.ductSettings);
+    if (state.ductSettings && typeof state.ductSettings === 'object' && !Array.isArray(state.ductSettings)) Object.assign(state.ductSettings, ds);
+    else state.ductSettings = ds;
+    return state.ductSettings;
   }
 
   // --- the rollup ------------------------------------------------------------
@@ -403,14 +389,14 @@
     const factorInput = document.getElementById('ductFitFactorPct');
     if (factorInput) factorInput.addEventListener('change', () => {
       const v = parseFloat(factorInput.value);
-      getDuctSettings().fittingFactorPct = Number.isFinite(v) && v >= 0 ? v : 40;
+      getDuctSettings().fittingFactorPct = Number.isFinite(v) && v >= 0 ? v : DUCT_SETTINGS_DEFAULTS.fittingFactorPct;
       App.markProjectDirty();
       renderScheduleBody();
     });
     const seamInput = document.getElementById('ductSeamWastePct');
     if (seamInput) seamInput.addEventListener('change', () => {
       const v = parseFloat(seamInput.value);
-      getDuctSettings().seamWastePct = Number.isFinite(v) && v >= 0 ? v : 15;
+      getDuctSettings().seamWastePct = Number.isFinite(v) && v >= 0 ? v : DUCT_SETTINGS_DEFAULTS.seamWastePct;
       App.markProjectDirty();
       renderScheduleBody();
     });
@@ -619,7 +605,7 @@
   const frictionInput = document.getElementById('ductFrictionRate');
   if (frictionInput) frictionInput.addEventListener('change', () => {
     const v = parseFloat(frictionInput.value);
-    getDuctSettings().frictionInPer100ft = Number.isFinite(v) && v > 0 ? v : 0.08;
+    getDuctSettings().frictionInPer100ft = Number.isFinite(v) && v > 0 ? v : DUCT_SETTINGS_DEFAULTS.frictionInPer100ft;
     syncDesignRow();
     App.markProjectDirty();
     App.updateUI();   // D11: the static-path row + system headers track the rate
@@ -627,7 +613,7 @@
   const velocityInput = document.getElementById('ductMaxVelocity');
   if (velocityInput) velocityInput.addEventListener('change', () => {
     const v = parseFloat(velocityInput.value);
-    getDuctSettings().maxVelocityFpm = Number.isFinite(v) && v > 0 ? v : 1200;
+    getDuctSettings().maxVelocityFpm = Number.isFinite(v) && v > 0 ? v : DUCT_SETTINGS_DEFAULTS.maxVelocityFpm;
     syncDesignRow();
     App.markProjectDirty();
   });
@@ -635,7 +621,7 @@
   const terminalInput = document.getElementById('ductTerminalAllowance');
   if (terminalInput) terminalInput.addEventListener('change', () => {
     const v = parseFloat(terminalInput.value);
-    getDuctSettings().terminalAllowanceInWg = Number.isFinite(v) && v >= 0 ? v : 0.10;
+    getDuctSettings().terminalAllowanceInWg = Number.isFinite(v) && v >= 0 ? v : DUCT_SETTINGS_DEFAULTS.terminalAllowanceInWg;
     syncDesignRow();
     App.markProjectDirty();
     App.updateUI();   // the Bid Check row + the system headers re-read it
@@ -657,7 +643,7 @@
   const maxFlexInput = document.getElementById('ductMaxFlex');
   if (maxFlexInput) maxFlexInput.addEventListener('change', () => {
     const v = parseFloat(maxFlexInput.value);
-    getDuctSettings().maxFlexFt = Number.isFinite(v) && v > 0 ? v : 6;
+    getDuctSettings().maxFlexFt = Number.isFinite(v) && v > 0 ? v : DUCT_SETTINGS_DEFAULTS.maxFlexFt;
     syncDesignRow();
     App.markProjectDirty();
     renderScheduleBody();

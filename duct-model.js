@@ -365,12 +365,34 @@ function ductRowLabel(row) {
 }
 
 // DATA TABLE — the Duct Schedule's per-project knob defaults (state.ductSettings
-// is seeded from a copy; every intake restores the saved values over it).
-// Rulebook: content/rules/hvac/duct-schedule-factors.md.
+// is seeded from normalizeDuctSettings below; every intake reads the saved values
+// through it). Rulebook: content/rules/hvac/duct-schedule-factors.md.
 // D8 adds deckHeightFt (project deck height, null = unset — arms the auto-riser
 // on equipment-started runs), maxFlexFt (single-drop flex warning cap) and
 // countVdPerTap (a volume damper counted at every tap).
 const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true, terminalAllowanceInWg: 0.10 };
+
+// R12: a project's knobs, read over the defaults. The Duct Schedule's getter, every
+// project intake (annotation-model.js) and the knob fallbacks go through this, so a
+// project saved without a knob gets the default, never the last project's value. A
+// saved value that is not a legal knob reads as its default (0 is legal for the two
+// percentages and the terminal allowance; deckHeightFt stays null until set;
+// countVdPerTap is on unless it was turned off). Keys it does not know ride along.
+// Pure: returns a new object and never writes raw or the table.
+function normalizeDuctSettings(raw) {
+  const D = DUCT_SETTINGS_DEFAULTS;
+  const ds = { ...D, ...(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) };
+  if (!Number.isFinite(ds.seamWastePct) || ds.seamWastePct < 0) ds.seamWastePct = D.seamWastePct;
+  if (!Number.isFinite(ds.fittingFactorPct) || ds.fittingFactorPct < 0) ds.fittingFactorPct = D.fittingFactorPct;
+  if (ds.fittingMode !== 'factor') ds.fittingMode = D.fittingMode;
+  if (!Number.isFinite(ds.frictionInPer100ft) || ds.frictionInPer100ft <= 0) ds.frictionInPer100ft = D.frictionInPer100ft;
+  if (!Number.isFinite(ds.maxVelocityFpm) || ds.maxVelocityFpm <= 0) ds.maxVelocityFpm = D.maxVelocityFpm;
+  if (!Number.isFinite(ds.terminalAllowanceInWg) || ds.terminalAllowanceInWg < 0) ds.terminalAllowanceInWg = D.terminalAllowanceInWg;
+  if (!(ds.deckHeightFt > 0)) ds.deckHeightFt = null;
+  if (!Number.isFinite(ds.maxFlexFt) || ds.maxFlexFt <= 0) ds.maxFlexFt = D.maxFlexFt;
+  ds.countVdPerTap = ds.countVdPerTap !== false;
+  return ds;
+}
 
 // DATA TABLE — gauge schedule keyed by pressure class (in. w.g., as strings)
 // then by the LARGER side dimension (rect: max(w,h); round: diameter), inches.
@@ -2391,7 +2413,7 @@ if (typeof module !== 'undefined' && module.exports) {
     roomTargetCfm, pointInRoomBox, roomServedCfm, roomAirBalance,
     ductSystemDesignedCfm, ductEquipmentPosForGroup, suggestSystemsForCfm,
     // gauge
-    SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES, DUCT_SETTINGS_DEFAULTS,
+    SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES, DUCT_SETTINGS_DEFAULTS, normalizeDuctSettings,
     ductGoverningDimIn, selectGauge,
     // material (D25)
     DUCT_MATERIALS, DUCT_MATERIAL_IDS, ductMaterialOf, isGreaseMaterial, selectGaugeFor, ductRowLabel,

@@ -168,6 +168,77 @@
     return sorted[Math.floor(p * (sorted.length - 1))];
   }
 
+  // R12: the project payload, written once. Until 2026-09-26 the manual cloud save,
+  // the autosave (save-engine.js) and Export Canvas (app.js buildCanvasExportData)
+  // each typed this literal by hand, and the IndexedDB backup a fourth copy; a field
+  // added to one and missed in another saved a value no intake read back. The
+  // hydrators that read it are annotation-model.js hydrateStateFromProjectData (the
+  // project payload) and applyTakeoffBackupToState (the backup); annotation-model.test.js
+  // sends every key these write through them.
+  //
+  // projectPayloadFields: what both payloads carry. `state` is the live state object;
+  // customIconPaths is the user's icon list (app-side, not on state).
+  function projectPayloadFields(state, customIconPaths) {
+    return {
+      counters: state.counters,
+      lineTypes: state.lineTypes,
+      iconNames: state.iconNames || {},
+      iconOrder: state.iconOrder || null,
+      customIconPaths,
+      groups: state.groups || [],
+      groupsEnabled: !!state.groupsEnabled,
+      stripPins: state.stripPins || {},
+      trade: state.trade || null,
+      ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null,
+      makeUpFt: state.makeUpFt != null ? state.makeUpFt : null,
+      codes: state.codes ? { ...state.codes } : null,
+      bidCheck: state.bidCheck || { manual: {} },
+      rooms: state.rooms || [],
+      ductSettings: state.ductSettings,
+      waterSettings: state.waterSettings,
+      legendSettings: state.legendSettings,
+      multiplyZoneSettings: state.multiplyZoneSettings,
+      scaleZoneSettings: state.scaleZoneSettings,
+      showGridOverlay: state.showGridOverlay,
+      gridSettings: state.gridSettings,
+      activeCanvasIdByPage: state.activeCanvasIdByPage || {},
+      numberKeyBindings: state.numberKeyBindings || {},
+    };
+  }
+  // The project payload: the cloud row's `data` and the Export Canvas file.
+  // opts: { customIconPaths, maxZoom, bakeFrame(page) -> the page's orientation stamp }.
+  function buildProjectData(state, opts) {
+    const o = opts || {};
+    const bakeFrame = typeof o.bakeFrame === 'function' ? o.bakeFrame : () => null;
+    return {
+      version: 1,
+      ...projectPayloadFields(state, o.customIconPaths),
+      maxZoom: o.maxZoom,
+      pages: (state.pages || []).map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: bakeFrame(p) })),
+    };
+  }
+  // The IndexedDB takeoff backup: the same project fields, plus this device's display
+  // and export preferences, with the pages as parallel arrays. No version and no
+  // maxZoom (applyTakeoffBackupToState merges: absent = keep).
+  // opts: { customIconPaths, bakeFrame(page) }.
+  function buildTakeoffBackupData(state, opts) {
+    const o = opts || {};
+    const bakeFrame = typeof o.bakeFrame === 'function' ? o.bakeFrame : () => null;
+    const pages = state.pages || [];
+    return {
+      ...projectPayloadFields(state, o.customIconPaths),
+      counterSettings: state.counterSettings,
+      lineTypeSettings: state.lineTypeSettings,
+      exportSettings: state.exportSettings,
+      recentLineColors: state.recentLineColors,
+      pageCanvases: pages.map(p => p.canvases),
+      pageLabels: pages.map(p => p.label),
+      pageScales: pages.map(p => p.scale),
+      pageRotations: pages.map(p => p.rotation ?? 0),
+      pageBakeFrames: pages.map(p => bakeFrame(p)),
+    };
+  }
+
   // Node test harness only: in a classic browser <script> `module` is undefined,
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
@@ -175,6 +246,7 @@
       isTransientSaveError, getProjectCounts,
       serializeSaveError, formatSaveStatusErrDetail, backoffDelayMs,
       computeClockOffsetMs, percentile, pdfUploadTimeoutMs,
-      extractResponseDiagnostics, secondsToExpiry, pickBootRestoreCandidate
+      extractResponseDiagnostics, secondsToExpiry, pickBootRestoreCandidate,
+      projectPayloadFields, buildProjectData, buildTakeoffBackupData
     };
   }

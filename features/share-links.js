@@ -11,7 +11,7 @@
  * Loaded as a classic <script src="/features/share-links.js"> AFTER app.js.
  * Its own IIFE: it reaches the cross-cutting state + helpers through the
  * shared window.App registry, registers App.openShareProjectModal, and binds
- * the `#shareViewLinkCreate` / `#shareProjectModalClose` / `#shareProjectAdd`
+ * the `#shareViewLinkCreate` / `#shareProjectAdd`
  * handlers plus the view-links collapse toggle at load.
  *
  * Cloud-coupled: re-reads the Supabase client via App.getSupabase() at every
@@ -212,7 +212,6 @@
       btn.textContent = 'Create view link';
     }
   };
-  document.getElementById('shareProjectModalClose').onclick = () => App.hideModal('shareProjectModal');
   document.getElementById('shareProjectAdd').onclick = async () => {
     const state = App.state;
     const userSelect = document.getElementById('shareProjectUserSelect');

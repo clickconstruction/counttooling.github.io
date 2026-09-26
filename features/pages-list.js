@@ -9,7 +9,11 @@
    * features/page-settings.js keeps consuming it via App.* at call time.
    * formatPageTitleStartEnd (the start/end title truncation) moves along as a
    * private helper. New publish-only deps: App.pageHasAnyAnnotations,
-   * App.startRename, App.exitEditMode.
+   * App.startRename, App.exitEditMode. The page delete behind the trash
+   * button is the model's App.deletePageAt (annotation-model.js), which
+   * splices the page and reindexes every page-index-keyed map
+   * (MAP-PAGE-DELETE); this file keeps the undo step, ending an edit on the
+   * page, and the redraw.
    * Boundary rule: read shared deps from App.* at call time, never captured at
    * load. See ARCHITECTURE.md "Feature files / window.App registry".
    */
@@ -92,13 +96,11 @@
         const deletePage = () => {
           if (state.pages.length <= 1) { App.showToast('Cannot delete the only page.', 3000); return; }
           App.pushUndoSnapshot();
-          state.pages.splice(i, 1);
-          if (state.currentPage >= state.pages.length) state.currentPage = Math.max(0, state.pages.length - 1);
-          else if (state.currentPage > i) state.currentPage--;
-          if (state.selectedLinePageIdx === i) { state.selectedLineId = null; state.selectedLinePageIdx = null; }
-          else if (state.selectedLinePageIdx > i) state.selectedLinePageIdx--;
+          // A polyline being edited on this page is dropped with it (edit mode
+          // is UI, so it ends here); the model splices the page and shifts
+          // every page-index-keyed map and index past it (MAP-PAGE-DELETE).
           if (state.editingPolyline && state.editingPolyIndex === i) App.exitEditMode(false);
-          else if (state.editingPolyline && state.editingPolyIndex > i) state.editingPolyIndex--;
+          if (!App.deletePageAt(i)) return;
           App.markProjectDirty();
           App.updateUI();
           App.renderAnnotations();

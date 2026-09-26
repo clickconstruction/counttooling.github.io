@@ -5,7 +5,9 @@
   // Custom icon upload (registry split #37) -- extracted from app.js: the
   // SVG parser (path/rect/circle/ellipse/line -> normalized path icon) and
   // the #customIconUploadInput handler that refreshes the three custom icon
-  // grids (Create Counter, Quick Count, Details) after an upload.
+  // grids (Create Counter, Quick Count, Details) after an upload. The Create
+  // Counter grid is rebuilt by features/counter.js's own builder
+  // (App.buildCreateCustomIconGrid), so its pick cannot drift from the boot one.
   // The pure shape->path core lives in icon-render.js (svgShapeToPath,
   // node-tested); this file owns only the DOMParser walk and the DOM refresh.
 
@@ -80,19 +82,15 @@
       const detailsCustomGrid = document.getElementById('counterLineTypeDetailsIconGridCustom');
       const effectiveCustom = App.getEffectiveCustomIcons();
       const customCells = App.customIconCellsHtml(effectiveCustom, undefined, App.getQuickTrade ? App.getQuickTrade() : undefined);
-      if (customGrid) {
-        refreshCustomGrid(customGrid, '#counterIconGrid', customCells, (c) => {
-          const path = c.dataset.path;
-          App.markCreateIconPicked && App.markCreateIconPicked();   // D16: a click here is a pick (beats the CFM default)
-          if (path) {
-            const nameEl = document.getElementById('counterName');
-            if (!nameEl.value.trim()) nameEl.value = App.getIconName(path);
-          }
-        });
+      // MAP-ICON-PREFILL (D34): the Create panel's grid is rebuilt by its own
+      // builder (features/counter.js), never a second copy of its click here.
+      if (customGrid && App.buildCreateCustomIconGrid) {
+        App.buildCreateCustomIconGrid();
         if (selectUploadedIcon(customGrid, '#counterIconGrid', icon.value)) {
           App.markCreateIconPicked && App.markCreateIconPicked();   // D16: so is the upload itself
           const nameEl = document.getElementById('counterName');
           if (!nameEl.value.trim()) nameEl.value = icon.name;
+          if (App.syncWsfuForm) App.syncWsfuForm('create');   // the upload may have named the counter
         }
       }
       const counterQuickCountCustomGrid = document.getElementById('counterQuickCountIconGridCustom');

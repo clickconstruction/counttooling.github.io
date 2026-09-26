@@ -7,7 +7,8 @@
  * First two-modal move and first core-function -> feature callback (the
  * hideModal('groupModal') hook calls App.onGroupModalHidden to reset the
  * now-private openedGroupModalFromAssign flag). One new publish-only dep
- * (App.deleteGroup, stays in app.js); the rest were already on App. Guards the
+ * (App.deleteGroup, which features/groups.js itself registers since
+ * MAP-GHOST-DELETE); the rest were already on App. Guards the
  * registry contract plus the create, edit, and assign flows.
  */
 const { test, expect } = require('@playwright/test');

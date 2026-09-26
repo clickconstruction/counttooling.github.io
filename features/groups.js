@@ -7,8 +7,9 @@
  * Loaded as a classic <script src="features/groups.js"> AFTER app.js. Its own
  * IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
- * openGroupModal + openGroupAssignModal + onGroupModalHidden back onto App, and
- * binds the #addGroup opener + the groupModal / groupAssign handlers at load.
+ * openGroupModal + openGroupAssignModal + onGroupModalHidden + deleteGroup back
+ * onto App, and binds the #addGroup opener + the groupModal / groupAssign
+ * handlers at load.
  *
  * The three pieces of group-modal state (pendingGroupEdit,
  * pendingGroupAssignTarget, openedGroupModalFromAssign) live here as private
@@ -17,12 +18,12 @@
  * App.onGroupModalHidden() instead of mutating the flag directly -- the first
  * core-function -> feature callback in this codebase.
  *
- * Scope is the two modals only. deleteGroup (a heavier mutation that clears the
- * group off every annotation) lives in features/item-details.js (split #25; its
- * App.deleteGroup registration moved there from app.js) and is reached via
- * App.deleteGroup at call time, so load order between the two files is irrelevant;
- * the "Show group colors" sidebar toggle (#showGroupColorsBtn) also stays in
- * app.js. The two external callers -- the groups-list Edit button (render code)
+ * Scope is the two modals plus deleteGroup, the heavier mutation that clears the
+ * group off every annotation and out of every ghost (Typical). deleteGroup
+ * lived in features/item-details.js until MAP-GHOST-DELETE (DECOMPOSITION_MAP
+ * R17) moved it home; its callers read App.deleteGroup at call time, so load
+ * order does not matter. The "Show group colors" sidebar toggle
+ * (#showGroupColorsBtn) stays in app.js. The two external callers -- the groups-list Edit button (render code)
  * and the canvas right-click "Assign to Group" -- reach these via
  * App.openGroupModal / App.openGroupAssignModal at call time.
  * Boundary rule: read shared deps from App.* at call time, never captured at
@@ -246,7 +247,41 @@
     App.hideModal('groupAssignModal');
   };
 
+  // Removes a group and clears its id off every mark, run and duct run on every
+  // page and layer, and out of every ghost (Typical), so Stamp cannot put a
+  // dangling group id back (MAP-GHOST-DELETE). Moved here from
+  // features/item-details.js unchanged but for that ghost line (DECOMPOSITION_MAP R17).
+  // B20: async — the confirm is the app's dialog now, so the ONE caller
+  // (the groupModal Delete above) awaits the boolean.
+  async function deleteGroup(groupId) {
+    const state = App.state;
+    const g = (state.groups || []).find(x => x.id === groupId);
+    if (!g) return false;
+    const count = App.countItemsInGroup(groupId);
+    if (count > 0 && !(await App.confirmDialog({ title: 'Remove this group?', body: 'It has ' + count + ' item' + (count === 1 ? '' : 's') + '. They stay on the sheet and lose the group assignment.', confirmLabel: 'Remove group', danger: true }))) return false;
+    App.pushUndoSnapshot();   // FULL snapshot — group removal clears assignments on every page
+    state.groups = (state.groups || []).filter(x => x.id !== groupId);
+    if (state.activeGroupId === groupId) state.activeGroupId = null;
+    state.pages.forEach(p => {
+      App.getPageCanvases(p).forEach(c => {
+        const ann = c.annotations || App.makeAnnotations();
+        Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
+        (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
+        (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
+        // DUCT unit D4: duct runs reference groups as their SYSTEM — clear
+        // the inherited id so a deleted group leaves no dangling reference.
+        (ann.ductRuns || []).forEach(run => { if ((run.systemGroupId || null) === groupId) run.systemGroupId = null; });
+      });
+    });
+    App.purgeFromEveryGhost('group', groupId);
+    App.markProjectDirty();
+    App.updateUI();
+    App.renderAnnotations();
+    return true;
+  }
+
   App.openGroupModal = openGroupModal;
   App.openGroupAssignModal = openGroupAssignModal;
+  App.deleteGroup = deleteGroup;
   App.onGroupModalHidden = () => { openedGroupModalFromAssign = false; };
 })();

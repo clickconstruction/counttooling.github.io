@@ -174,9 +174,9 @@
     if (e.target.closest('#zoomRail') || e.target.closest('#zoomPct') || e.target.closest('#zoomModal')) return;
     closeZoomRail();
   });
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && rail.classList.contains('visible')) closeZoomRail();
-  });
+  // Escape: features/esc-ladder.js's popover rungs call closeZoomRail (MAP-ESC), after
+  // any open dialog (the Zoom Settings modal closes first, the rail stays) and before
+  // any tool rung.
 
   // Called from app.js updateUI() (and the pinch rAF) after every zoom change.
   App.onZoomRailSync = () => {

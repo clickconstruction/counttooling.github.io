@@ -157,7 +157,6 @@
     App.showModal('manageIconsModal');
   }
 
-  document.getElementById('manageIconsModalClose').onclick = () => App.hideModal('manageIconsModal');
   document.getElementById('manageIconsCancel').onclick = () => App.hideModal('manageIconsModal');
   document.getElementById('manageIconsSave').onclick = () => {
     const state = App.state;

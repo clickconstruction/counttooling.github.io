@@ -778,11 +778,16 @@
   // reaches onStop, and the lesson's filter, snap and emptied search boxes stayed on their device
   // for good (by hand, 2026-09-25). The next load puts them back; a lesson started while another
   // is still mid-way keeps the FIRST snapshot, the reader's own.
+  // The blank tour (features/tour-blank.js) takes the same snapshot through lessonKit with
+  // { searches: false }: a tour's search words already ride the engine's own key
+  // (features/tutorial.js), so its snapshot leaves them out and restoreDevice leaves them be
+  // (MAP-SETTINGS, 2026-09-26: Snap persists per device now, so it has to come back too).
   const BEFORE_KEY = 'clickcount-lesson-device-before';
   let deviceBefore = (() => { try { return JSON.parse(localStorage.getItem(BEFORE_KEY) || 'null'); } catch (_) { return null; } })();
-  function rememberDevice() {
+  function rememberDevice(opts) {
     if (deviceBefore) return;
-    deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical), searches: getSearches() };
+    deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) };
+    if (!opts || opts.searches !== false) deviceBefore.searches = getSearches();
     try { localStorage.setItem(BEFORE_KEY, JSON.stringify(deviceBefore)); } catch (_) { /* private mode: this session's stop still restores */ }
   }
   function restoreDevice() {
@@ -790,7 +795,7 @@
     if (!deviceBefore) return;
     if (App.getCounterListFilterScope && App.getCounterListFilterScope() !== deviceBefore.scope) App.setCounterListFilterScope(deviceBefore.scope);
     if (!!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) !== deviceBefore.snap && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
-    setSearches(deviceBefore.searches || {});
+    if (deviceBefore.searches) setSearches(deviceBefore.searches);
     deviceBefore = null;
     App.updateUI();
   }
@@ -898,6 +903,7 @@
     pageAnn, onPage, isSetOpen, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, inRect, near, modalUp, measured,
     dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, arm, hangerRuleFor, addNote, openStep, doneStep,
     beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); },
+    rememberDevice,   // the blank tour's door: rememberDevice({ searches: false })
     restoreDevice,
   };
 })();

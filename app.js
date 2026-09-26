@@ -296,7 +296,7 @@
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, stripPins: {}, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
-    counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
+    counterSettings: { ...COUNTER_SETTINGS_DEFAULTS },   // per device: merged from localStorage below (MAP-SETTINGS)
     iconNames: {},
     iconOrder: null,
     pagesListCollapsed: false,
@@ -311,7 +311,7 @@
     linesTypeExpanded: {},
     groupsListCollapsed: true,
     summaryListCollapsed: false,
-    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false, showOnlyLinesOnCurrentPage: false },
+    lineTypeSettings: { ...LINE_TYPE_SETTINGS_DEFAULTS },   // per device, like counterSettings
     legendSettings: { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false },
     // Duct Schedule knobs (DUCT unit D5) — per project, riding save/load +
     // export/import like legendSettings: the schedule's editable seam-&-waste
@@ -390,6 +390,21 @@
     userActivityViewMode: 'events'
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
+  // Counter and Line Type display settings persist per device (MAP-SETTINGS, decided
+  // 2026-09-25): a visual preference like Hide marks, never the project. The stored blob
+  // merges over the defaults field by field (displaySettingsFields in constants.js), so
+  // a key added later keeps its default and a corrupt entry costs only itself.
+  // saveDisplaySettings is every writer's one door: the two settings modals, the header
+  // Snap button, the J hotkey and the Lines this-sheet toggle.
+  const DISPLAY_SETTINGS_STORE = [['counterSettings', COUNTER_SETTINGS_DEFAULTS], ['lineTypeSettings', LINE_TYPE_SETTINGS_DEFAULTS]];
+  function saveDisplaySettings() {
+    DISPLAY_SETTINGS_STORE.forEach(([key, defaults]) => {
+      try { localStorage.setItem(key, JSON.stringify(displaySettingsFields(defaults, state[key]))); } catch (_) { /* private window: this session keeps them */ }
+    });
+  }
+  DISPLAY_SETTINGS_STORE.forEach(([key, defaults]) => {
+    try { Object.assign(state[key], displaySettingsFields(defaults, JSON.parse(localStorage.getItem(key) || 'null'))); } catch (_) { /* corrupt entry -> the defaults */ }
+  });
   // Sidebar usage-filter scope persists per device (idea recovered from the
   // unlanded claude/app-review-docs-bb19fa attempt): a big-palette user who
   // sets "this project" keeps it across sessions. The setters write these
@@ -1671,10 +1686,9 @@
       [TOOL.CHAIN]: 'Chain', [TOOL.DUCT]: 'Duct' };
     const toolName = gated[state.tool];
     if (!toolName || !state.pages.length || getPageScale(state.currentPage)) return;
-    // Same reset as the Move button (the #moveBtn onclick): drop to Move + clear starts.
+    // Drop to Move and clear every start (MAP-RESETS: the one list, clearToolStarts).
     state.tool = TOOL.NONE;
-    state.quickLineStart = null; state.scaleZoneStart = null; state.roomBoxStart = null; state.scheduleBoxStart = null; state.chainStart = null;
-    if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
+    clearToolStarts();
     showSetScaleFirstToast(toolName);
     logUserEvent('unscaled_ft_block', state.currentProjectId || null, { surface: 'page-switch' });
     updateUI();
@@ -2241,7 +2255,10 @@
         };
       })(),
     });
-    if (state.quickLineStart && state.mousePos) {
+    // MAP-RESETS: each rubber band draws only under its own tool (the Chain, Delete
+    // Area and Ghost bands already did), so a start some path forgot to clear can
+    // never paint under another tool or in Move (D05, D17, D26).
+    if (state.tool === TOOL.LINE && state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       const aPdf = state.quickLineStart;
       let bPdf = state.mousePos;
@@ -2273,7 +2290,7 @@
       // ring (features/drop-mode.js draws them so the node math lives once).
       App.drawDropNodesOverlay && App.drawDropNodesOverlay(ctx);
     }
-    if (state.highlightStart && state.mousePos) {
+    if (state.tool === TOOL.HIGHLIGHT && state.highlightStart && state.mousePos) {
       const minX = Math.min(state.highlightStart.x, state.mousePos.x), maxX = Math.max(state.highlightStart.x, state.mousePos.x);
       const minY = Math.min(state.highlightStart.y, state.mousePos.y), maxY = Math.max(state.highlightStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2282,7 +2299,7 @@
       ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
-    if (state.multiplyZoneStart && state.mousePos) {
+    if (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart && state.mousePos) {
       const minX = Math.min(state.multiplyZoneStart.x, state.mousePos.x), maxX = Math.max(state.multiplyZoneStart.x, state.mousePos.x);
       const minY = Math.min(state.multiplyZoneStart.y, state.mousePos.y), maxY = Math.max(state.multiplyZoneStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2290,7 +2307,7 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
-    if (state.scaleZoneStart && state.mousePos) {
+    if (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart && state.mousePos) {
       const minX = Math.min(state.scaleZoneStart.x, state.mousePos.x), maxX = Math.max(state.scaleZoneStart.x, state.mousePos.x);
       const minY = Math.min(state.scaleZoneStart.y, state.mousePos.y), maxY = Math.max(state.scaleZoneStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2298,7 +2315,7 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
-    if (state.scheduleBoxStart && state.mousePos) {
+    if (state.tool === TOOL.SCHEDULE && state.scheduleBoxStart && state.mousePos) {
       // S6: the schedule box rubber band (amber, dashed)
       const tl = toCanvas({ x: Math.min(state.scheduleBoxStart.x, state.mousePos.x), y: Math.min(state.scheduleBoxStart.y, state.mousePos.y) });
       const br = toCanvas({ x: Math.max(state.scheduleBoxStart.x, state.mousePos.x), y: Math.max(state.scheduleBoxStart.y, state.mousePos.y) });
@@ -2306,7 +2323,7 @@
       ctx.strokeRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
       ctx.setLineDash([]);
     }
-    if (state.roomBoxStart && state.mousePos) {
+    if (state.tool === TOOL.ROOM && state.roomBoxStart && state.mousePos) {
       const minX = Math.min(state.roomBoxStart.x, state.mousePos.x), maxX = Math.max(state.roomBoxStart.x, state.mousePos.x);
       const minY = Math.min(state.roomBoxStart.y, state.mousePos.y), maxY = Math.max(state.roomBoxStart.y, state.mousePos.y);
       const tl = toCanvas({ x: minX, y: minY }), br = toCanvas({ x: maxX, y: maxY });
@@ -2751,13 +2768,7 @@
       state.tool = TOOL.NONE;
       state.activeCounterType = null;
       state.activeLineTypeId = null;
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
+      clearToolStarts();
       state.drawingPolyline = null;
       state.editingPolyline = null;
       if (App.clearDuctDraft) App.clearDuctDraft();
@@ -2977,7 +2988,8 @@
     document.body.classList.toggle('mobile-view-mode', isMobile && !!state.isViewer);
     const settingsSaveProject = document.getElementById('settingsSaveProject');
     if (settingsSaveProject) {
-      settingsSaveProject.style.display = state.isViewer ? 'none' : '';
+      // A cloud save: no row at all without Supabase (MAP-NOSUPA).
+      settingsSaveProject.style.display = (state.isViewer || !SUPABASE_ENABLED) ? 'none' : '';
       settingsSaveProject.textContent = (state.currentProjectId && state.pdfStoragePath)
         ? 'Save Changes'
         : 'Save Project to Cloud';
@@ -3164,12 +3176,57 @@
     document.getElementById('pagesSection').classList.add('collapsed');
     document.getElementById('pagesCollapseIcon').textContent = '▶';
   }
+  // MAP-RESETS (R09): the ONE list of pending tool starts. Every tool arm, the Move
+  // reset, the page-switch disarm, the viewer reset and Esc's last rung clear through
+  // here, so a start field is added once and no tool switch leaves a corner that
+  // rubber-bands in Move or under another tool (D05, D17, D26: sixteen hand copies
+  // had drifted). Only the starts: a polyline or duct draft and a pending note keep
+  // their own settle rules. The scale / measure points go too, except while the Set
+  // Scale pick is the tool (its dialog reads them when it reopens), so an arming
+  // handler calls this AFTER it sets the new tool.
+  function clearToolStarts() {
+    state.quickLineStart = null;
+    state.highlightStart = null;
+    state.multiplyZoneStart = null;
+    state.scaleZoneStart = null;
+    state.deleteZoneStart = null;
+    state.roomBoxStart = null;
+    state.scheduleBoxStart = null;
+    state.chainStart = null;
+    state.ghostRectStart = null;
+    state.placingGhost = null;   // a ghost in hand is orphaned by any other tool
+    state.placingGhostLast = null;
+    if (state.tool !== TOOL.SCALE && (state.scalePointA || state.scalePointB)) {
+      state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE;
+    }
+  }
+  // MAP-RESETS (R09): the Move reset #moveBtn and the M hotkey share. The two used to
+  // clear different lists (M left a room or schedule corner drawing, D05). They still
+  // differ on purpose in two ways, named here: M keeps the selected counter (so
+  // its number key arms it again, see below) and drops the drafts in
+  // flight (a polyline or duct trace, a pending note); the button drops the
+  // counter and leaves a polyline draft for P to resume (T2-12).
+  function resetToMove(opts) {
+    const o = opts || {};
+    if (state.aiming || state.aimPressTimer) cancelAiming();
+    state.tool = TOOL.NONE;
+    clearToolStarts();
+    if (!o.keepCounter) state.activeCounterType = null;
+    if (o.dropDrafts) {
+      state.pendingNote = null; state.editingNote = null;
+      if (state.drawingPolyline) state.drawingPolyline = null;
+      if (App.clearDuctDraft) App.clearDuctDraft();   // M abandons a duct trace like a polyline one
+    }
+    updateUI();
+    renderAnnotations();
+  }
   // A second press deselects only what is ARMED: after M (Move) the counter is still the
   // selected one but its tool is down, and the lesson's "press M, then 1" left nothing armed
   // (by hand, 2026-09-25). Same for a line type under the Line or Polyline tool.
   function setActiveCounterType(id) {
     state.activeCounterType = state.activeCounterType === id && state.tool === TOOL.COUNTER ? null : id;
     state.tool = state.activeCounterType ? TOOL.COUNTER : TOOL.NONE;
+    clearToolStarts();   // MAP-RESETS: no corner from the last tool rides into this one
     // B9 (J1 J15): arming closes the mobile drawer (the next tap belongs on
     // the plan); toggling OFF keeps it open — the user is managing the list.
     if (state.activeCounterType) { collapsePagesSectionForPlacing(); closeMobileSidebar(); }
@@ -3178,7 +3235,8 @@
   function setActiveLineType(id) {
     state.activeLineTypeId = state.activeLineTypeId === id && (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE) ? null : id;
     state.tool = state.activeLineTypeId ? TOOL.LINE : TOOL.NONE;
-    if (state.activeLineTypeId) { state.quickLineStart = null; collapsePagesSectionForPlacing(); closeMobileSidebar(); }
+    clearToolStarts();
+    if (state.activeLineTypeId) { collapsePagesSectionForPlacing(); closeMobileSidebar(); }
     updateUI();
   }
   // T2-08: every line-type create surface hands the user the pen, exactly as
@@ -3188,7 +3246,7 @@
     if (state.drawingPolyline) return;        // never abandon an in-flight polyline trace
     if (!getPageScale(state.currentPage)) { showSetScaleFirstToast('Quick Line'); return; }
     state.tool = TOOL.LINE;
-    state.quickLineStart = null;
+    clearToolStarts();
     collapsePagesSectionForPlacing();
     closeMobileSidebar();   // B9 (J1 J15): armed — next action is on the plan
   }
@@ -3395,14 +3453,16 @@
     requestAnimationFrame(() => syncModalControls(el));
   }
   // Every dismissible dialog's × (data-modal-close) dismisses the way Esc does:
-  // the Esc ladder below knows each modal's cleanup (pending state, parked
-  // drafts); a modal with no rung just hides.
+  // features/esc-ladder.js closes ITS overlay with the same rung or Cancel Esc
+  // would use (pending state, parked drafts); a dialog with neither just hides.
+  // MAP-ESC: this used to re-dispatch a synthetic Escape through the whole
+  // ladder, so a rung-less dialog's × unwound the tool under it first (D04).
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-modal-close]');
     if (!btn) return;
     const overlay = btn.closest('.modal-overlay');
     if (!overlay) return;
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    if (App.dismissOverlay) App.dismissOverlay(overlay);
     if (overlay.classList.contains('visible')) hideModal(overlay.id);
   });
   // B20 (X8): the app's one confirm. Resolves true on OK, false on Cancel /
@@ -3466,9 +3526,9 @@
   // The Counter/Line Type details modal (openCounterLineTypeDetailsModal +
   // performDeleteCounterLineType + the counterLineTypeDetailsItem /
   // pendingDeleteCounterLineType flags), the Line Properties modal
-  // (openLinePropertiesModal / closeLinePropertiesModal + pendingLineProperties),
-  // and deleteGroup moved to features/item-details.js (window.App registry);
-  // reached via App.* at call time. showModal/hideModal stay here (app-wide
+  // (openLinePropertiesModal / closeLinePropertiesModal + pendingLineProperties)
+  // moved to features/item-details.js, and deleteGroup to features/groups.js
+  // (window.App registry); reached via App.* at call time. showModal/hideModal stay here (app-wide
   // modal primitives); hideModal resets the moved details item via the
   // App.onCounterLineTypeDetailsHidden callback.
 
@@ -3968,6 +4028,7 @@
       return;
     }
     state.tool = TOOL.MEASURE;
+    clearToolStarts();
     state.scaleMode = SCALE_MODES.POINT_A;
     state.scalePointA = null;
     state.scalePointB = null;
@@ -3975,32 +4036,16 @@
     renderAnnotations();
   };
   document.getElementById('measureBtnSidebar').onclick = () => document.getElementById('measureBtn').click();
-  document.getElementById('moveBtn').onclick = () => {
-    if (state.aiming || state.aimPressTimer) cancelAiming();
-    state.tool = TOOL.NONE;
-    state.quickLineStart = null;
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
-    state.chainStart = null;
-    state.ghostRectStart = null;
-    state.placingGhost = null;
-    if (state.scalePointA || state.scalePointB) { state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE; }
-    state.activeCounterType = null;
-    updateUI();
-    renderAnnotations();
-  };
+  document.getElementById('moveBtn').onclick = () => resetToMove();
   document.getElementById('quickLine').onclick = () => {
     if (!getPageScale(state.currentPage)) {
       showSetScaleFirstToast('Quick Line');
       return;
     }
-    if (state.quickLineStart) {
-      state.quickLineStart = null;
-      renderAnnotations();
-    }
+    // MAP-RESETS (D17): every start goes, not only the line's own; a highlight or
+    // zone corner used to keep rubber-banding under Line.
+    clearToolStarts();
+    renderAnnotations();
     // T2-08: exactly one line type — nothing to choose, arm it directly.
     if (state.lineTypes.length === 1) {
       state.activeLineTypeId = state.lineTypes[0].id;
@@ -4016,14 +4061,8 @@
       return;
     }
     if (state.tool !== TOOL.CHAIN) {
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
       state.tool = TOOL.CHAIN;
+      clearToolStarts();
       collapsePagesSectionForPlacing();
     }
     // Every activation opens the picker; T/click while already in Chain
@@ -4035,14 +4074,8 @@
     // Drop tool: no page-scale gate — a drop is entered in its own unit and
     // the length math only adds it where a scale exists.
     if (state.tool !== TOOL.DROP) {
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
       state.tool = TOOL.DROP;
+      clearToolStarts();
       collapsePagesSectionForPlacing();
     }
     // Re-click while active reopens a closed palette (the Chain pattern).
@@ -4074,6 +4107,7 @@
       if (App.settleDuctDraft) App.settleDuctDraft();
       state.drawingPolyline = { id: uid(), name: nextPolylineName(), color: activeLt.color, points: [], closed: false, lineTypeId: activeLt.id, group: state.activeGroupId || null };
       state.tool = TOOL.POLYLINE;
+      clearToolStarts();
       updateUI();
       return;
     }
@@ -4100,23 +4134,15 @@
     showModal('polylineModal');
   };
   document.getElementById('highlightBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.HIGHLIGHT;
+    clearToolStarts();
     // Re-click while active reopens a closed bookmarks panel (the Chain pattern).
     App.openHighlightPanel && App.openHighlightPanel();
     updateUI();
   };
   document.getElementById('multiplyZoneBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.MULTIPLY_ZONE;
+    clearToolStarts();
     updateUI();
   };
   document.getElementById('scaleZoneBtn').onclick = () => {
@@ -4124,35 +4150,22 @@
       showSetScaleFirstToast('Scale Zone');
       return;
     }
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.SCALE_ZONE;
+    clearToolStarts();
     updateUI();
   };
   document.getElementById('ghostBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
-    state.ghostRectStart = null;
     // A ghost mid-placement survives nothing but a drop or Escape — re-arming
-    // the tool while carrying one would leave it orphaned on the cursor.
-    state.placingGhost = null;
+    // the tool while carrying one would leave it orphaned on the cursor
+    // (clearToolStarts drops placingGhost and the capture corner).
     state.tool = TOOL.GHOST;
+    clearToolStarts();
     updateUI();
     renderAnnotations();
   };
   document.getElementById('deleteZoneBtn').onclick = () => {
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.DELETE_ZONE;
+    clearToolStarts();
     updateUI();
   };
   document.getElementById('roomBtn').onclick = () => {
@@ -4160,12 +4173,8 @@
       showSetScaleFirstToast('Room Sizer');
       return;
     }
-    state.highlightStart = null;
-    state.multiplyZoneStart = null;
-    state.scaleZoneStart = null;
-    state.deleteZoneStart = null;
-    state.roomBoxStart = null; state.scheduleBoxStart = null;
     state.tool = TOOL.ROOM;
+    clearToolStarts();
     updateUI();
   };
   // SECTION: Tool sidebar buttons & legend overlay
@@ -4192,7 +4201,7 @@
   if (scaleZoneBtnSidebarEl) scaleZoneBtnSidebarEl.onclick = () => document.getElementById('scaleZoneBtn').click();
   const deleteZoneBtnSidebarEl = document.getElementById('deleteZoneBtnSidebar');
   if (deleteZoneBtnSidebarEl) deleteZoneBtnSidebarEl.onclick = () => document.getElementById('deleteZoneBtn').click();
-  document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; updateUI(); };
+  document.getElementById('noteBtn').onclick = () => { state.tool = TOOL.NOTE; clearToolStarts(); updateUI(); renderAnnotations(); };
   document.getElementById('noteBtnSidebar').onclick = () => document.getElementById('noteBtn').click();
   const legendBtn = document.getElementById('legendBtn');
   const legendBtnSidebar = document.getElementById('legendBtnSidebar');
@@ -4203,13 +4212,7 @@
       state.tool = TOOL.NONE;
       state.activeCounterType = null;
       state.activeLineTypeId = null;
-      state.quickLineStart = null;
-      state.highlightStart = null;
-      state.multiplyZoneStart = null;
-      state.scaleZoneStart = null;
-      state.deleteZoneStart = null;
-      state.roomBoxStart = null; state.scheduleBoxStart = null;
-      state.chainStart = null;
+      clearToolStarts();
       if (state.drawingPolyline) state.drawingPolyline = null;
       const page = state.pages[state.currentPage];
       const ann = getActiveAnnotations(page);
@@ -4467,6 +4470,7 @@
   document.getElementById('lineTypeSnapToHVHeaderBtn').onclick = (e) => {
     e.stopPropagation();
     state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
+    saveDisplaySettings();
     const cb = document.getElementById('lineTypeSnapToHV');
     const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
     cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical;
@@ -4608,6 +4612,7 @@
   if (linesShowOnlyOnPageBtn) {
     linesShowOnlyOnPageBtn.onclick = () => {
       state.lineTypeSettings.showOnlyLinesOnCurrentPage = !state.lineTypeSettings.showOnlyLinesOnCurrentPage;
+      saveDisplaySettings();
       linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
       // Narrate the two-state Lines toggle like the scope cycles do — this
       // button's meaning was otherwise only in its title attr.
@@ -4678,6 +4683,7 @@
     if (App.settleDuctDraft) App.settleDuctDraft();   // D17 (J5-B): one draft at a time
     state.drawingPolyline = { id: uid(), name, color, points: [], closed: false, lineTypeId, group: state.activeGroupId || null };
     state.tool = TOOL.POLYLINE;
+    clearToolStarts();
     hideModal('polylineModal');
     updateUI();
   };
@@ -4945,7 +4951,6 @@
   wireClick('settingsMacros', () => { hideModal('settingsModal'); showModal('macrosModal'); });
   wireClick('statusBarMacros', () => showModal('macrosModal'));
   wireClick('settingsClearPage', () => { hideModal('settingsModal'); App.showClearPageModal(); });
-  wireClick('macrosModalClose', () => hideModal('macrosModal'));
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
@@ -5034,6 +5039,120 @@
   // getOrderedIcons/iconVbFor/getUserCustomIcons/saveUserCustomIcons/showToast
   // stay here and are published on App.
 
+  // SECTION: Project Settings doors & local rows
+  // Bound OUTSIDE the SUPABASE_ENABLED block below, so a deploy without cloud
+  // config keeps the Hide marks eye and Project Settings (MAP-NOSUPA). The cloud
+  // rows inside the modal (Save, Load, Manage, Share, checkout, review) stay in
+  // that block and are hidden by updateUI when Supabase is off.
+  //
+  // Project Settings has two doors -- the desktop header gear and the mobile
+  // sidebar-logo gear -- so they open through one function and can't drift
+  // apart on auth or title. No sign-in gate here:
+  // the modal is mostly local work (add PDF pages, Close Project, quick keys,
+  // Advanced -> Export / Import / Canvas Repair), and the
+  // cloud rows inside prompt for sign-in themselves.
+  function setSettingsHelpOpen(open) {
+    const toggle = document.getElementById('settingsHelpToggle');
+    const links = document.getElementById('settingsHelpLinks');
+    if (toggle) toggle.setAttribute('aria-expanded', String(open));
+    if (links) links.hidden = !open;
+  }
+  function openProjectSettings() {
+    setSettingsHelpOpen(false);
+    // The title stays "Project Settings"; the project name is the subtitle line under it
+    // (a long bid-set name used to wrap the title onto two lines).
+    const subEl = document.getElementById('settingsSubtitle');
+    if (subEl) {
+      const open = state.pages.length || state.currentProjectId;
+      subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
+      subEl.style.display = open ? '' : 'none';
+    }
+    document.body.classList.remove('sidebar-open');
+    // Declared inside the SUPABASE_ENABLED block (it hides the section itself when off).
+    if (SUPABASE_ENABLED) updateSettingsCheckoutSection();
+    syncProjectSettingsRows();
+    showModal('settingsModal');
+  }
+  document.getElementById('settingsGearBtn').onclick = openProjectSettings;
+  document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
+  const hideMarksBtnEl = document.getElementById('hideMarksBtn');
+  if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
+  document.getElementById('settingsAddAdditionalPages').onclick = async () => {
+    // #7b: Route through Prepare PDF in append mode. We need the current
+    // project's PDF buffer in memory so the commit step can merge the new
+    // pages onto it; recover from pdfCache when needed.
+    hideModal('settingsModal');
+    if (!state.pdfBuffer && state.currentProjectId && state.pdfHash) {
+      try {
+        const blob = await pdfCacheGet(state.currentProjectId, state.pdfHash);
+        if (blob && blob.size > 0) {
+          const ab = await blob.arrayBuffer();
+          state.pdfBuffer = ab;
+          state.pdfBufferSize = ab.byteLength;
+        }
+      } catch (_) {}
+    }
+    if (!state.pdfBuffer) {
+      showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
+      return;
+    }
+    App.setPendingAddAdditionalPages(true);
+    document.getElementById('pdfInput').click();
+  };
+  document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
+  document.getElementById('settingsAdvancedBtn').onclick = () => { const d = document.getElementById('settingsAdvancedSection'); d.open = !d.open; if (d.open) d.scrollIntoView({ block: 'nearest' }); };
+  // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
+  // folded again every time the modal opens (openProjectSettings).
+  const settingsHelpToggle = document.getElementById('settingsHelpToggle');
+  if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
+  document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await App.loadTestPdf(); };
+  document.getElementById('advancedExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
+  document.getElementById('advancedImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
+  document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsModal'); App.openCanvasRepairModal(); };
+  document.getElementById('advancedEmptyCacheReload').onclick = async () => {
+    if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
+    hideModal('settingsModal');
+    try {
+      indexedDB.deleteDatabase('clickcount-pdf-cache');
+    } catch (_) {}
+    const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'counterSettings', 'lineTypeSettings', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+    for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('view:allowed:')) { try { localStorage.removeItem(k); } catch (_) {} }
+    }
+    location.reload();
+  };
+  // Close project: ONE routine behind every door — Project Settings, the
+  // header cloud menu, the "Project turned in." toast and the admin
+  // force-turn-in notice (Wendi, 2026-09-10: "I just refresh after I turn
+  // things in"). Confirms only when there is something to lose: unsaved
+  // edits, or a takeoff that lives on this device alone — a turned-in
+  // project is already saved and closes on the click.
+  async function closeProject(opts) {
+    opts = opts || {};
+    const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
+    const localOnly = !state.currentProjectId;
+    if (state.pages.length > 0 && (unsaved || localOnly) && !(await confirmDialog({ title: 'Close project?', body: 'Any unsaved changes will be lost.', confirmLabel: 'Close project', danger: true }))) return false;
+    logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
+    // Block-scoped in the SUPABASE_ENABLED block, published there; absent with Supabase off.
+    if (App.checkInCurrentProjectIfHeld) await App.checkInCurrentProjectIfHeld();
+    resetGridOrigin();
+    resetLocalSessionState({ keepArtboard: true });
+    state.pagesListCollapsed = true;
+    state.sidebarReorderModeActive = false;
+    document.getElementById('pagesSection').classList.add('collapsed');
+    document.getElementById('pagesCollapseIcon').textContent = '▶';
+    updateUI();
+    renderPdf();
+    return true;
+  }
+  (window.App = window.App || {}).closeProject = closeProject;
+  document.getElementById('settingsCloseProject').onclick = async () => {
+    hideModal('settingsModal');
+    await closeProject({ route: 'settings' });
+  };
+
   // SECTION: Auth & settings entry buttons
   // The Manage Projects modal (openManageProjectsModal, forceCheckInProjectFromManage,
   // deleteProject, and the #manageProjectsModalClose handler) moved to
@@ -5069,45 +5188,20 @@
       updateUI();
     };
     document.getElementById('authBtnSidebar').onclick = () => document.getElementById('authBtn').click();
-    // Project Settings has two doors -- the desktop header gear and the mobile
-    // sidebar-logo gear -- so they open through one function and can't drift
-    // apart on auth or title. No sign-in gate here:
-    // the modal is mostly local work (add PDF pages, Close Project, quick keys,
-    // Advanced -> Export / Import / Canvas Repair), and the
-    // cloud rows inside prompt for sign-in themselves.
-    function setSettingsHelpOpen(open) {
-      const toggle = document.getElementById('settingsHelpToggle');
-      const links = document.getElementById('settingsHelpLinks');
-      if (toggle) toggle.setAttribute('aria-expanded', String(open));
-      if (links) links.hidden = !open;
-    }
-    function openProjectSettings() {
-      setSettingsHelpOpen(false);
-      // The title stays "Project Settings"; the project name is the subtitle line under it
-      // (a long bid-set name used to wrap the title onto two lines).
-      const subEl = document.getElementById('settingsSubtitle');
-      if (subEl) {
-        const open = state.pages.length || state.currentProjectId;
-        subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
-        subEl.style.display = open ? '' : 'none';
-      }
-      document.body.classList.remove('sidebar-open');
-      updateSettingsCheckoutSection();
-      syncProjectSettingsRows();
-      showModal('settingsModal');
-    }
+    // openProjectSettings and the two gears, #hideMarksBtn, and the modal's local
+    // rows are bound above this block (SECTION: Project Settings doors & local rows).
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); App.openMySettings(); };
     document.getElementById('sidebarLogoShare').onclick = () => { document.body.classList.remove('sidebar-open'); hideModal('settingsModal'); App.openShareProjectModal(); };
     const headerShareBtnEl = document.getElementById('headerShareBtn');
     if (headerShareBtnEl) headerShareBtnEl.onclick = () => copyOrCreateViewLinkToClipboard(headerShareBtnEl);
-    const hideMarksBtnEl = document.getElementById('hideMarksBtn');
-    if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
-    document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
     // The status-bar link reads "Sign In" signed out — route through #authBtn
     // so it opens the PLAIN wall (no gate line); signed in, #authBtn opens
     // User Settings exactly as openMySettings did. (Tier-3 B7)
     document.getElementById('statusBarAuth').onclick = () => document.getElementById('authBtn').click();
     // SECTION: Project Settings checkout & Save Status bell
+    // Every caller sits outside this block (openProjectSettings, the save-engine ctx, the
+    // tail registry) and reaches it through the Annex-B hoist, which eslint-scope cannot see.
+    // eslint-disable-next-line no-unused-vars
     function updateSettingsCheckoutSection() {
       const section = document.getElementById('settingsCheckoutSection');
       const statusEl = document.getElementById('settingsCheckoutStatus');
@@ -5167,7 +5261,6 @@
       }
     }
     document.getElementById('copyViewLinkBtn').onclick = () => copyOrCreateViewLinkToClipboard(document.getElementById('copyViewLinkBtn'));
-    document.getElementById('settingsGearBtn').onclick = openProjectSettings;
     document.getElementById('authCancel').onclick = () => { clearAuthGate(); hideModal('authModal'); };
     const authDevBypassWrap = document.getElementById('authDevBypassWrap');
     const authDevBypass = document.getElementById('authDevBypass');
@@ -5186,9 +5279,8 @@
         }
       };
     }
-    document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
     // The Save Status bell open buttons (#saveStatusBtn/#saveStatusBtnHeader) and
-    // the #saveStatusModalClose/#saveStatusModalDone/#saveStatusVerboseToggle/
+    // the #saveStatusModalDone/#saveStatusVerboseToggle/
     // #saveStatusExportBtn/#saveStatusCopyBtn handlers moved to
     // features/save-status.js (window.App registry). #syncPausedBannerRetry stays.
     const syncPausedBannerRetryEl = document.getElementById('syncPausedBannerRetry');
@@ -5287,52 +5379,8 @@
       if (SUPABASE_ENABLED && !state.supabaseSession?.user) { openAuthGate('saveProject'); return; }
       document.getElementById('saveProjectBtn').click();
     };
-    document.getElementById('settingsAddAdditionalPages').onclick = async () => {
-      // #7b: Route through Prepare PDF in append mode. We need the current
-      // project's PDF buffer in memory so the commit step can merge the new
-      // pages onto it; recover from pdfCache when needed.
-      hideModal('settingsModal');
-      if (!state.pdfBuffer && state.currentProjectId && state.pdfHash) {
-        try {
-          const blob = await pdfCacheGet(state.currentProjectId, state.pdfHash);
-          if (blob && blob.size > 0) {
-            const ab = await blob.arrayBuffer();
-            state.pdfBuffer = ab;
-            state.pdfBufferSize = ab.byteLength;
-          }
-        } catch (_) {}
-      }
-      if (!state.pdfBuffer) {
-        showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
-        return;
-      }
-      App.setPendingAddAdditionalPages(true);
-      document.getElementById('pdfInput').click();
-    };
-    document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
-    document.getElementById('settingsAdvancedBtn').onclick = () => { const d = document.getElementById('settingsAdvancedSection'); d.open = !d.open; if (d.open) d.scrollIntoView({ block: 'nearest' }); };
-    // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
-    // folded again every time the modal opens (openProjectSettings).
-    const settingsHelpToggle = document.getElementById('settingsHelpToggle');
-    if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
-    document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await App.loadTestPdf(); };
-    document.getElementById('advancedExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-    document.getElementById('advancedImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
-    document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsModal'); App.openCanvasRepairModal(); };
-    document.getElementById('advancedEmptyCacheReload').onclick = async () => {
-      if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
-      hideModal('settingsModal');
-      try {
-        indexedDB.deleteDatabase('clickcount-pdf-cache');
-      } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
-      for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
-      for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith('view:allowed:')) { try { localStorage.removeItem(k); } catch (_) {} }
-      }
-      location.reload();
-    };
+    // Add pages, Download PDF, Advanced, Help and the local Advanced rows are
+    // bound above this block (SECTION: Project Settings doors & local rows).
     document.getElementById('advancedGlobalForceReload').onclick = async () => {
       if (!state.isAdmin) return;
       if (!(await confirmDialog({ title: 'Force a reload for every signed-in user?', body: 'Active tabs see a Reload banner; everyone else reloads on their next visit.', confirmLabel: 'Force reload', danger: true }))) return;
@@ -5381,7 +5429,7 @@
     // SECTION: Share modal pointer & copy-project openers
     // The Share Project modal (openShareProjectModal + the people list, view
     // links list/create/copy/access-log/revoke, and the #shareViewLinkCreate /
-    // #shareProjectModalClose / #shareProjectAdd bindings) moved to
+    // #shareProjectAdd bindings) moved to
     // features/share-links.js; reached via App.openShareProjectModal at call
     // time. Revoke clears the export view-link cache via App.onViewLinkRevoked
     // (features/output.js).
@@ -5414,36 +5462,10 @@
       hideModal('settingsModal');
       App.openLoadProjectModalOrPromptSave();
     };
-    // Close project: ONE routine behind every door — Project Settings, the
-    // header cloud menu, the "Project turned in." toast and the admin
-    // force-turn-in notice (Wendi, 2026-09-10: "I just refresh after I turn
-    // things in"). Confirms only when there is something to lose: unsaved
-    // edits, or a takeoff that lives on this device alone — a turned-in
-    // project is already saved and closes on the click.
-    async function closeProject(opts) {
-      opts = opts || {};
-      const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
-      const localOnly = !state.currentProjectId;
-      if (state.pages.length > 0 && (unsaved || localOnly) && !(await confirmDialog({ title: 'Close project?', body: 'Any unsaved changes will be lost.', confirmLabel: 'Close project', danger: true }))) return false;
-      logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
-      await checkInCurrentProjectIfHeld();
-      resetGridOrigin();
-      resetLocalSessionState({ keepArtboard: true });
-      state.pagesListCollapsed = true;
-      state.sidebarReorderModeActive = false;
-      document.getElementById('pagesSection').classList.add('collapsed');
-      document.getElementById('pagesCollapseIcon').textContent = '▶';
-      updateUI();
-      renderPdf();
-      return true;
-    }
-    (window.App = window.App || {}).closeProject = closeProject;
+    // closeProject and #settingsCloseProject live above this block (SECTION:
+    // Project Settings doors & local rows); the header [Close] is cloud-only.
     const headerCloseProjectBtn = document.getElementById('headerCloseProjectBtn');
     if (headerCloseProjectBtn) headerCloseProjectBtn.onclick = async () => { await closeProject({ route: 'header' }); };
-    document.getElementById('settingsCloseProject').onclick = async () => {
-      hideModal('settingsModal');
-      await closeProject({ route: 'settings' });
-    };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); App.openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); App.openShareProjectModal(); };
     // The #mySettings* handlers moved to features/my-settings.js.
@@ -5483,17 +5505,14 @@
       if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget();
       hideModal('copyProjectModal');
     };
-    document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
     // SECTION: Checkout expired recovery modal wiring
     (function wireCheckoutExpiredRecoveryModal() {
       const modal = document.getElementById('checkoutExpiredRecoveryModal');
       if (!modal) return;
-      const closeBtn = document.getElementById('checkoutExpiredRecoveryClose');
       const cancelBtn = document.getElementById('checkoutExpiredRecoveryCancel');
       const exportBtn = document.getElementById('checkoutExpiredRecoveryExport');
       const recheckBtn = document.getElementById('checkoutExpiredRecoveryRecheckout');
       const discardBtn = document.getElementById('checkoutExpiredRecoveryDiscard');
-      if (closeBtn) closeBtn.onclick = () => closeCheckoutExpiredRecoveryModal();
       if (cancelBtn) cancelBtn.onclick = () => closeCheckoutExpiredRecoveryModal();
       modal.onclick = (e) => { if (e.target === modal) closeCheckoutExpiredRecoveryModal(); };
       const card = modal.querySelector('.modal-card');
@@ -5600,7 +5619,7 @@
     // The #userActivity* close/select/filter/view-toggle bindings moved to
     // features/user-activity.js.
     // #manageProjectsModalClose moved to features/manage-projects.js.
-    // manageIconsModalClose / manageIconsCancel / manageIconsSave handlers live
+    // manageIconsCancel / manageIconsSave handlers live
     // in features/manage-icons.js (window.App registry). The #canvasRepair*
     // close/cancel/apply bindings live in features/canvas-repair.js (split #37).
     // #adminCreateForm (create-user) moved to features/user-admin.js.
@@ -6831,6 +6850,77 @@
     if (state.resizingLegend || state.draggingLegend) handleCanvasMouseMove(e);
   });
 
+  // MAP-RESETS (R09, D21): the ONE end of a pointer drag (a note, its width or
+  // font grip, the legend, a zone in Move, a ghost, a polyline vertex). The canvas
+  // mouseup ends a drag released on the sheet; the window mouseup ends one released
+  // off it. Leaving the canvas no longer aborts a drag (the mark waits at the edge
+  // and follows again if the pointer comes back with the button down), so a drag
+  // that ends off the canvas is committed like one that ends on it: marked dirty,
+  // the zone tallies recomputed, and nothing left glued to the pointer (before, a
+  // note or zone edit that left the canvas was never saved, and a ghost or vertex
+  // released outside rode the pointer back in). `release` is true only for a
+  // release ON the canvas, the one case a native click follows, so only then are
+  // the justFinished* flags set that swallow it; set off the canvas they would eat
+  // the next real click.
+  function pointerDragLive() {
+    return state.resizingNoteIdx != null || state.resizingNoteFontSizeIdx != null || state.draggingNoteIdx != null
+      || !!state.resizingLegend || !!state.draggingLegend || !!state.draggingZone
+      || state.draggingGhostIdx != null || (state.draggingVertexIdx != null && state.draggingVertexIdx >= 0);   // a miss stores -1
+  }
+  function endPointerDrag(opts) {
+    const release = !!(opts && opts.release);
+    if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { if (release) state.justFinishedResize = true; markProjectDirty(); }
+    if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { if (release) state.justFinishedDragNote = true; markProjectDirty(); }
+    if (state.resizingLegend || state.draggingLegend) {
+      if (release) state.justFinishedLegendResize = true;
+      markProjectDirty();
+      if (!release) { state.hoverLegendResize = false; if (annCanvas) annCanvas.style.cursor = ''; }
+    }
+    if (state.draggingZone) {
+      // D23 (X1): a real drag (past the note-drag threshold) is an edit — dirty,
+      // the click that follows the release is swallowed, and the tallies that
+      // depend on zone MEMBERSHIP (footer / sidebar / legend) recompute once
+      // here rather than per frame. A press that never moved is a click.
+      const d = state.draggingZone;
+      if (ptDist(state.mousePos, d.start) > 3) {
+        if (release) state.justFinishedZoneDrag = true;
+        markProjectDirty();
+        invalidateFooterTotals();
+        if (d.kind === 'scaleZone') logUserEvent('scale_set', state.currentProjectId || null, { method: 'zone_edit', target: 'zone', route: d.corner ? 'resize' : 'move', pageIndex: d.pageIdx });
+        updateUI();
+      }
+    }
+    if (state.draggingGhostIdx !== null) {
+      if (state.ghostDragMoved) markProjectDirty();
+      state.draggingGhostIdx = null;
+      state.draggingGhostLast = null;
+      state.ghostDragMoved = false;
+      // NOT cleared here: the click event fires AFTER mouseup, and without
+      // this flag it would fall into the TOOL.GHOST branch and arm a stray
+      // capture corner. The click handler consumes it (justFinishedDragNote
+      // pattern). Unconditional on purpose — a press that grabbed a ghost is
+      // ghost interaction even when the pointer never moved.
+      if (release) state.justFinishedDragGhost = true;
+    }
+    state.draggingVertexIdx = null;   // a mouse vertex drag commits with Done Editing (exitEditMode)
+    state.resizingNoteIdx = null;
+    state.resizingNotePageIdx = null;
+    state.resizingNoteFontSizeIdx = null;
+    state.resizingNoteFontSizePageIdx = null;
+    state.resizingNoteFontSizeStartY = null;
+    state.resizingNoteFontSizeStartLocalY = null;
+    state.resizingNoteFontSizeStartVal = null;
+    state.draggingNoteIdx = null;
+    state.draggingNotePageIdx = null;
+    state.draggingNoteOffset = null;
+    state.dragNoteStartPos = null;
+    state.resizingLegend = false;
+    state.draggingLegend = false;
+    state.legendResizeStart = null;
+    state.legendDragOffset = null;
+    state.draggingZone = null;
+  }
+
   (cWrapper || pdfCanvas).addEventListener('mouseup', (e) => {
     if (e.button === 1) {
       state.isPanning = false;
@@ -6870,55 +6960,10 @@
       return;
     }
     state.rectPress = null;   // sub-threshold press: plain click, the two-click path handles it
-    if (state.resizingNoteIdx !== null || state.resizingNoteFontSizeIdx !== null) { state.justFinishedResize = true; markProjectDirty(); }
-    if (state.draggingNoteIdx !== null && state.dragNoteStartPos && ptDist(state.mousePos, state.dragNoteStartPos) > 3) { state.justFinishedDragNote = true; markProjectDirty(); }
-    if (state.resizingLegend || state.draggingLegend) { state.justFinishedLegendResize = true; markProjectDirty(); }
-    if (state.draggingZone) {
-      // D23 (X1): a real drag (past the note-drag threshold) is an edit — dirty,
-      // the click that follows the release is swallowed, and the tallies that
-      // depend on zone MEMBERSHIP (footer / sidebar / legend) recompute once
-      // here rather than per frame. A press that never moved is a click.
-      const d = state.draggingZone;
-      if (ptDist(state.mousePos, d.start) > 3) {
-        state.justFinishedZoneDrag = true;
-        markProjectDirty();
-        invalidateFooterTotals();
-        if (d.kind === 'scaleZone') logUserEvent('scale_set', state.currentProjectId || null, { method: 'zone_edit', target: 'zone', route: d.corner ? 'resize' : 'move', pageIndex: d.pageIdx });
-        updateUI();
-      }
-    }
-    if (state.draggingGhostIdx !== null) {
-      if (state.ghostDragMoved) markProjectDirty();
-      state.draggingGhostIdx = null;
-      state.draggingGhostLast = null;
-      state.ghostDragMoved = false;
-      // NOT cleared here: the click event fires AFTER mouseup, and without
-      // this flag it would fall into the TOOL.GHOST branch and arm a stray
-      // capture corner. The click handler consumes it (justFinishedDragNote
-      // pattern). Unconditional on purpose — a press that grabbed a ghost is
-      // ghost interaction even when the pointer never moved.
-      state.justFinishedDragGhost = true;
-    }
+    endPointerDrag({ release: true });
     state.isPanning = false;
     state.panStart = null;
     scheduleCropTile();   // pan settled — re-cover the new visible window (no-ops when base is sharp)
-    state.draggingVertexIdx = null;
-    state.resizingNoteIdx = null;
-    state.resizingNotePageIdx = null;
-    state.resizingNoteFontSizeIdx = null;
-    state.resizingNoteFontSizePageIdx = null;
-    state.resizingNoteFontSizeStartY = null;
-    state.resizingNoteFontSizeStartLocalY = null;
-    state.resizingNoteFontSizeStartVal = null;
-    state.draggingNoteIdx = null;
-    state.draggingNotePageIdx = null;
-    state.draggingNoteOffset = null;
-    state.dragNoteStartPos = null;
-    state.resizingLegend = false;
-    state.draggingLegend = false;
-    state.legendResizeStart = null;
-    state.legendDragOffset = null;
-    state.draggingZone = null;
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
@@ -6935,23 +6980,9 @@
     state.rectPress = null;
     state.isPanning = false;
     state.panStart = null;
-    state.resizingNoteIdx = null;
-    state.resizingNotePageIdx = null;
-    state.resizingNoteFontSizeIdx = null;
-    state.resizingNoteFontSizePageIdx = null;
-    state.resizingNoteFontSizeStartY = null;
-    state.resizingNoteFontSizeStartLocalY = null;
-    state.resizingNoteFontSizeStartVal = null;
-    state.draggingNoteIdx = null;
-    state.draggingNotePageIdx = null;
-    state.draggingNoteOffset = null;
-    state.dragNoteStartPos = null;
-    if (!state.resizingLegend && !state.draggingLegend) {
-      state.resizingLegend = false;
-      state.draggingLegend = false;
-      state.legendResizeStart = null;
-      state.legendDragOffset = null;
-    state.draggingZone = null;
+    // MAP-RESETS (D21): a mark drag in flight is NOT ended here; the window
+    // mouseup ends it wherever the button comes up (endPointerDrag).
+    if (!pointerDragLive()) {
       state.hoverLegendResize = false;
       if (annCanvas) annCanvas.style.cursor = '';
     }
@@ -6963,17 +6994,9 @@
       state.panStart = null;
       scheduleCropTile();
     }
-    if (e.button === 0 && (state.resizingLegend || state.draggingLegend)) {
-      state.justFinishedLegendResize = true;
-      markProjectDirty();
-      state.resizingLegend = false;
-      state.draggingLegend = false;
-      state.legendResizeStart = null;
-      state.legendDragOffset = null;
-    state.draggingZone = null;
-      state.hoverLegendResize = false;
-      if (annCanvas) annCanvas.style.cursor = '';
-    }
+    // A drag released on the canvas was already ended by its mouseup; one still
+    // live here came up off the canvas (MAP-RESETS, D21).
+    if (e.button === 0 && pointerDragLive()) endPointerDrag({ release: false });
   });
 
   (cWrapper || pdfCanvas).addEventListener('click', (e) => {
@@ -7428,17 +7451,10 @@
   // the pieces of a hotkey that aren't just "click this button". Keys here must
   // match the table; hotkeys.spec.js asserts full coverage both directions.
   const HOTKEY_RUNNERS = {
-    moveReset: () => {
-      state.tool = TOOL.NONE; state.quickLineStart = null; state.highlightStart = null;
-      state.multiplyZoneStart = null; state.scaleZoneStart = null; state.deleteZoneStart = null;
-      state.chainStart = null;
-      state.pendingNote = null; state.editingNote = null;
-      if (state.drawingPolyline) state.drawingPolyline = null;
-      if (App.clearDuctDraft) App.clearDuctDraft();   // M abandons a duct trace like a polyline one
-      updateUI();
-    },
+    moveReset: () => resetToMove({ keepCounter: true, dropDrafts: true }),   // MAP-RESETS (D05)
     toggleSnap: () => {
       state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
+      saveDisplaySettings();
       const cb = document.getElementById('lineTypeSnapToHV');
       const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
       const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
@@ -7469,7 +7485,6 @@
         return;
       }
     }
-    // (a dialog's × re-dispatches Escape on `document`, which has no matches())
     if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     if (e.key === ' ') {
       if (!e.target.closest('button') && window.matchMedia('(min-width: 769px)').matches) {
@@ -7539,196 +7554,11 @@
         e.preventDefault();
       }
     }
-    if (e.key === 'Escape') {
-      // Toasts are non-blocking corner cards (Tier-2 #15): they self-dismiss
-      // and never consume Escape, so the ladder below goes straight to real
-      // modals and tools. (The old Ghost mid-gesture pre-clear hack and the
-      // toast rungs died with the modal toasts.)
-      // B20: the confirm dialog sits above everything — Esc is its Cancel.
-      if (document.getElementById('confirmModal').classList.contains('visible')) { resolveConfirm(false); return; }
-      if (state.gridOriginPickMode) {
-        state.gridOriginPickMode = false;
-        showModal('gridSettingsModal');
-        updateUI();
-        return;
-      }
-      if (document.getElementById('saveStatusModal').classList.contains('visible')) {
-        // z-index 210 — floats above every standard overlay, so it is the
-        // first modal rung. Routed through the close button so the 5s
-        // re-render tick timer is cleared (features/save-status.js).
-        // (JOURNEY-MAP Tier-3 B1 / J12)
-        document.getElementById('saveStatusModalClose').click();
-      } else if (document.getElementById('lastSessionRestoreModal').classList.contains('visible')) {
-        // T1-01 clobber guard: NOT a bare hide — the dismiss helper clears
-        // pendingRestore (takeoff backups resume) while consuming NOTHING
-        // (the held record and clickcount-last-project survive), so the
-        // Keep/Discard offer returns next boot, exactly like reloading
-        // without answering. See features/restore-last-session.js.
-        if (App.dismissLastSessionRestorePrompt) App.dismissLastSessionRestorePrompt();
-      } else if (document.getElementById('customIconTipsModal').classList.contains('visible')) {
-        // Icon tips open ON TOP of counterModal / the details dialog (their
-        // openers don't hide them), so this rung must precede both.
-        hideModal('customIconTipsModal');
-      } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
-        hideModal('chooseLineTypeModal');
-      } else if (document.getElementById('scaleModal').classList.contains('visible')) {
-        if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
-        App.resetScaleModalZoneMode();
-        App.resetScaleCheckMode && App.resetScaleCheckMode();
-        hideModal('scaleModal');
-        updateUI();
-      } else if (document.getElementById('counterModal').classList.contains('visible')) {
-        hideModal('counterModal');
-      }
-      // The five counter dialogs (JOURNEY-MAP Tier-3 B1 / J4). Stacking rules:
-      // the delete-confirm opens ON TOP of the details dialog (which stays
-      // visible), and "+ Add group" stacks groupModal OVER groupAssignModal —
-      // each inner surface is checked first. Rungs route through the dialogs'
-      // own Cancel/Close buttons so their pending-state resets fire
-      // (features/item-details.js, features/groups.js).
-      else if (document.getElementById('deleteCounterLineTypeConfirmModal').classList.contains('visible')) { document.getElementById('deleteCounterLineTypeCancel').click(); }
-      else if (document.getElementById('counterLineTypeDetailsModal').classList.contains('visible')) { document.getElementById('counterLineTypeDetailsClose').click(); }
-      else if (document.getElementById('groupModal').classList.contains('visible')) { document.getElementById('groupModalCancel').click(); }
-      else if (document.getElementById('groupAssignModal').classList.contains('visible')) { document.getElementById('groupAssignCancel').click(); }
-      else if (document.getElementById('counterSettingsModal').classList.contains('visible')) { hideModal('counterSettingsModal'); }
-      else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
-      else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
-      else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
-      else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
-      else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
-      else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
-      else if (document.getElementById('roomBoxModal')?.classList.contains('visible')) { hideModal('roomBoxModal'); state.pendingRoomBox = null; state.pendingRoomBoxEdit = null; }
-      else if (document.getElementById('roomEditModal')?.classList.contains('visible')) { hideModal('roomEditModal'); }
-      else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
-      else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
-      else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
-      else if (document.getElementById('ductScheduleModal')?.classList.contains('visible')) { hideModal('ductScheduleModal'); } // DUCT D5
-      else if (document.getElementById('markerCfmModal')?.classList.contains('visible')) { App.cancelMarkerCfm ? App.cancelMarkerCfm() : hideModal('markerCfmModal'); } // DUCT D15
-      else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
-      // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
-      // Escape closes the board and leaves the shortcut list up behind it.
-      else if (document.getElementById('keyboardMapModal').classList.contains('visible')) { hideModal('keyboardMapModal'); }
-      else if (document.getElementById('quickKeysModal').classList.contains('visible')) { hideModal('quickKeysModal'); }
-      else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
-      else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
-      else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
-      else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
-      else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
-      // Palette Insights opens OVER My Settings (its opener doesn't hide it),
-      // so it must be checked first. (Tier-3 B1 / J16)
-      else if (document.getElementById('paletteInsightsModal').classList.contains('visible')) { hideModal('paletteInsightsModal'); }
-      else if (document.getElementById('mySettingsModal').classList.contains('visible')) { hideModal('mySettingsModal'); }
-      else if (document.getElementById('authModal').classList.contains('visible')) { clearAuthGate(); hideModal('authModal'); }
-      else if (document.getElementById('adminPanelModal').classList.contains('visible')) { hideModal('adminPanelModal'); }
-      else if (document.getElementById('manageUserModal').classList.contains('visible')) { hideModal('manageUserModal'); }
-      else if (document.getElementById('allUsersModal').classList.contains('visible')) { hideModal('allUsersModal'); }
-      else if (document.getElementById('userActivityModal').classList.contains('visible')) { hideModal('userActivityModal'); }
-      else if (document.getElementById('manageProjectsModal').classList.contains('visible')) { hideModal('manageProjectsModal'); }
-      else if (document.getElementById('manageIconsModal').classList.contains('visible')) { hideModal('manageIconsModal'); }
-      else if (document.getElementById('canvasRepairModal').classList.contains('visible')) { hideModal('canvasRepairModal'); }
-      else if (document.getElementById('saveProjectModal').classList.contains('visible')) { hideModal('saveProjectModal'); }
-      else if (document.getElementById('copyProjectModal').classList.contains('visible')) { if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget(); hideModal('copyProjectModal'); }
-      else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
-      else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
-      else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }
-      else if (document.getElementById('preparePdfModal').classList.contains('visible')) { if (typeof closePreparePdfModal === 'function') closePreparePdfModal(); }
-      else if (document.getElementById('summaryCountDetailModal').classList.contains('visible')) { hideModal('summaryCountDetailModal'); }
-      else if (document.getElementById('viewLinkEmailModal').classList.contains('visible')) {
-        if (App.cancelViewLinkEmailPrompt) App.cancelViewLinkEmailPrompt();
-        hideModal('viewLinkEmailModal');
-      }
-      else if (document.getElementById('addCanvasModal').classList.contains('visible')) { hideModal('addCanvasModal'); }
-      else if (document.getElementById('deleteCanvasConfirmModal').classList.contains('visible')) { hideModal('deleteCanvasConfirmModal'); }
-      else if (document.getElementById('forceTurnInNoticeModal').classList.contains('visible')) { hideModal('forceTurnInNoticeModal'); }
-      else if (document.getElementById('canvasDetailsModal').classList.contains('visible')) {
-        // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
-        document.getElementById('canvasDetailsClose').click();
-      }
-      else if (document.getElementById('ductCreateModal')?.classList.contains('visible')) { hideModal('ductCreateModal'); }
-      else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
-      else if (state.drawingPolyline) {
-        // Staged like Quick Line/Ghost: each Escape unwinds one clicked vertex;
-        // with none left, Escape exits to Move. A stray Esc never costs more
-        // than the last click. (JOURNEY-MAP Tier-2 #22)
-        // WATER-PLAN rung 4: the water size popover closes first, costing no vertex.
-        if (App.isWaterPopoverOpen && App.isWaterPopoverOpen()) { App.closeWaterSizePopover(); }
-        else if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
-        else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
-      }
-      else if (state.tool === TOOL.DUCT) {
-        // Duct ladder (DUCT unit D2, staged per the T2-02 polyline pattern):
-        // close the S popover -> pop the last vertex -> clear the draft and
-        // exit to Move. All stages live in features/duct-tool.js; a false
-        // return means nothing was left to unwind.
-        if (!(App.handleDuctEscape && App.handleDuctEscape())) { state.tool = TOOL.NONE; updateUI(); }
-      }
-      else if (state.tool === TOOL.LINE) {
-        if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.CHAIN) {
-        // Esc ladder: end the run -> close the palette (tool stays active,
-        // the header pair chip takes over) -> exit to Move.
-        if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
-        else if (App.isChainPanelOpen && App.isChainPanelOpen()) { App.closeChainPanel(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.DROP) {
-        // Same ladder as Chain, minus the run: close the palette first, then exit.
-        if (App.isDropPanelOpen && App.isDropPanelOpen()) { App.closeDropPanel(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); renderAnnotations(); }
-      } else if (state.tool === TOOL.SCALE) {
-        // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
-        // stray crosshair lingers) and any zone-apply state.
-        state.tool = TOOL.NONE;
-        state.scaleMode = SCALE_MODES.NONE;
-        state.scalePointA = null;
-        state.scalePointB = null;
-        App.resetScaleModalZoneMode();
-        App.resetScaleCheckMode && App.resetScaleCheckMode();
-        // D20 (J5-A): the pick was reached from Set Scale over a live draft —
-        // give the draft back now that the hand-off ended without a modal hide.
-        App.resumeParkedDraft && App.resumeParkedDraft();
-        updateUI();
-        renderAnnotations();
-      } else if (state.tool === TOOL.MEASURE) {
-        state.tool = TOOL.NONE;
-        state.scalePointA = null;
-        state.scalePointB = null;
-        state.scaleMode = SCALE_MODES.NONE;
-        updateUI();
-        renderAnnotations();
-      } else if (state.tool === TOOL.HIGHLIGHT) {
-        // Esc ladder: cancel the in-progress rect -> close the bookmarks
-        // panel (tool stays active) -> exit to Move.
-        if (state.highlightStart) { state.highlightStart = null; renderAnnotations(); updateUI(); }
-        else if (App.isHighlightPanelOpen && App.isHighlightPanelOpen()) { App.closeHighlightPanel(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.MULTIPLY_ZONE) {
-        if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.SCALE_ZONE) {
-        if (state.scaleZoneStart) { state.scaleZoneStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.DELETE_ZONE) {
-        if (state.deleteZoneStart) { state.deleteZoneStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.GHOST) {
-        // Staged like Quick Line's: drop the ghost in hand -> drop the first
-        // corner -> exit to Move. One Escape never costs more than one click.
-        if (App.handleGhostEscape && App.handleGhostEscape()) { renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; state.activeGhostId = null; updateUI(); renderAnnotations(); }
-      } else if (state.tool === TOOL.ROOM) {
-        if (state.roomBoxStart) { state.roomBoxStart = null; state.scheduleBoxStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.NOTE) {
-        state.tool = TOOL.NONE;
-        updateUI();
-      } else if (state.emphasizedCounterId) {
-        // "Find this counter" halo (features/drop-peek.js) — the last rung:
-        // reached only with no modal open and no tool armed.
-        state.emphasizedCounterId = null;
-        renderAnnotations();
-      } else state.tool = TOOL.NONE;
-    }
+    // The Escape ladder is a table in features/esc-ladder.js (MAP-ESC, R10): the confirm,
+    // the grid origin pick, the topmost dialog (its rung, its Cancel, or a plain hide),
+    // a header popover, then the armed tool one step per press, then back to Move.
+    // Called synchronously here so the listener order is unchanged.
+    if (e.key === 'Escape') { if (App.handleEscape) App.handleEscape(e); }
     if (e.key === 'ArrowLeft') {
       if (e.shiftKey) {
         const marked = getMarkedPageIndices();
@@ -8039,6 +7869,9 @@
   App.pageHasAnyAnnotations = pageHasAnyAnnotations;
   App.startRename = startRename;
   App.exitEditMode = exitEditMode;
+  // Page delete (features/pages-list.js): the splice + page-index reindex is
+  // the model's (MAP-PAGE-DELETE).
+  App.deletePageAt = (i) => annotationModel.deletePageAt(i);
   // features/lines-list.js deps (publish-only). formatArea/polygonArea are
   // geometry.js globals — lint-invisible to the features eslint group, so they
   // route through the registry (the pilot-#13 ptDist pattern).
@@ -8061,6 +7894,7 @@
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.confirmDialog = confirmDialog;   // B20 (X8): the one confirm — features await it instead of confirm()
   App.resolveConfirm = resolveConfirm; // spec seam
+  App.clearAuthGate = clearAuthGate;   // MAP-ESC: the authModal Esc rung (features/esc-ladder.js)
   App.planRoomLabels = (ann, pageIdx) => canvasDraw.planRoomLabels(ann, pageIdx);   // D24 spec seam
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;
@@ -8088,6 +7922,8 @@
   // The single selection path, shared by the sidebar rows and Quick Keys.
   App.setActiveCounterType = setActiveCounterType;
   App.setActiveLineType = setActiveLineType;
+  App.clearToolStarts = clearToolStarts;   // MAP-RESETS: every tool's pending start, the one list (R10's Esc table calls it)
+  App.resetToMove = resetToMove;           // MAP-RESETS: the Move reset (#moveBtn, M); opts { keepCounter, dropDrafts }
   // T2-08 arm-on-create (features/quick-line.js + features/choose-create-line-type.js).
   App.armLineToolAfterCreate = armLineToolAfterCreate;
   // B9 (J1 J15): the picker-modal arm paths (features/counter.js,
@@ -8225,8 +8061,8 @@
   App.formatMountHeightIn = formatMountHeightIn;
   App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;
-  // Item detail & properties modal deps (features/item-details.js; deleteGroup's
-  // App registration moved there too — groups.js keeps consuming App.deleteGroup).
+  // Item detail & properties modal deps (features/item-details.js; deleteGroup
+  // and its App registration live in features/groups.js).
   App.enterEditMode = enterEditMode;
   App.getPageScale = getPageScale;
   App.getPageSheetAnalysis = getPageSheetAnalysis;
@@ -8265,6 +8101,10 @@
   // Same-id palette collapse (features/palette-insights.js id-aware merge +
   // spec seam; annotation-model.js pure helper).
   App.dedupePaletteById = dedupePaletteById;
+  // The delete cascades' reach into Typicals (features/item-details.js
+  // performDeleteCounterLineType, features/groups.js deleteGroup;
+  // annotation-model.js pure helper, MAP-GHOST-DELETE).
+  App.purgeFromGhosts = purgeFromGhosts;
   // Line-drop deps (features/item-details.js Recent chips + features/drop-mode.js
   // Drop tool). collectDropNodes/applyDropToNode are the pure node model in
   // annotation-model.js; the recent list is device-local (localStorage
@@ -8293,6 +8133,8 @@
   App.getLineTypeListFilterScope = getLineTypeListFilterScope;
   App.setLineTypeListFilterScope = setLineTypeListFilterScope;
   App.syncFilterScopeSegment = syncFilterScopeSegment;
+  // MAP-SETTINGS: the display settings' one localStorage writer (the two settings modals call it on every change).
+  App.saveDisplaySettings = saveDisplaySettings;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
   App.getPdfDocument = getPdfDocument;
   // Viewer scale sharing + view-only boot live in features/view-only.js

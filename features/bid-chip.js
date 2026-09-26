@@ -279,10 +279,12 @@
     const { chip } = chipEls();
     if (m && !m.contains(e.target) && chip && !chip.contains(e.target)) closeBidMenu();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOpen) closeBidMenu(); });
+  // Esc closes the menu from features/esc-ladder.js's popover rungs (MAP-ESC), before
+  // any tool rung, so a stray Esc here never costs a vertex behind it.
 
   App.renderBidChip = renderBidChip;
   App.toggleBidMenu = toggleBidMenu;
   App.closeBidMenu = closeBidMenu;
+  App.isBidMenuOpen = () => menuOpen;   // MAP-ESC: the Esc ladder's popover rung
   App.loadRecentBidNow = loadRecentBidNow;
 })();

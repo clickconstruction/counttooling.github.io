@@ -30,7 +30,6 @@
   document.getElementById('importBtnSidebar').onclick = () => document.getElementById('importInput').click();
   const importCanvasAfterPdfChoose = document.getElementById('importCanvasAfterPdfChoose');
   const importCanvasAfterPdfCancel = document.getElementById('importCanvasAfterPdfCancel');
-  const importCanvasAfterPdfModalClose = document.getElementById('importCanvasAfterPdfModalClose');
   function closeImportCanvasAfterPdfModal() { App.hideModal('importCanvasAfterPdfModal'); }
   if (importCanvasAfterPdfChoose) {
     importCanvasAfterPdfChoose.onclick = () => {
@@ -39,7 +38,6 @@
     };
   }
   if (importCanvasAfterPdfCancel) importCanvasAfterPdfCancel.onclick = closeImportCanvasAfterPdfModal;
-  if (importCanvasAfterPdfModalClose) importCanvasAfterPdfModalClose.onclick = closeImportCanvasAfterPdfModal;
   document.getElementById('importInput').onchange = (e) => {
     const f = e.target.files[0];
     if (!f) return;

@@ -503,12 +503,9 @@
       const wsch = waterSchedule;
       const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
       const fx = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
-      const verdict = (r) => {
-        if (r.unsized) return r.material ? 'no size in the name' : 'no material in the name';
-        if (r.underMin) return '⚠ under the fixture supply minimum' + (r.suggestLabel ? ' → ' + r.suggestLabel : '');
-        if (r.over) return '⚠ over ' + fx(r.capFps) + ' fps' + (r.suggestLabel ? ' → ' + r.suggestLabel : '');
-        return '✓';
-      };
+      // The Check cell is water-model's one wording, the schedule modal's word for word
+      // (MAP-REPORT-WATER); a schedule exists only when the model loaded.
+      const verdict = (r) => window.WaterModel.waterRowVerdict(r).text;
       html += '<h3 class="section-header">Water Sizing</h3>';
       html += '<table class="report-table"><tr><th>Run</th><th>Size</th><th>Serves</th><th>gpm</th><th>fps</th><th>Check</th></tr>';
       ['cold', 'hot'].forEach(side => {

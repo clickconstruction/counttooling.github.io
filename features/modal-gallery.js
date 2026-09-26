@@ -260,9 +260,9 @@
     o.classList.remove('mg-live-overlay', 'visible');
     document.body.classList.remove('mg-live');
   }
-  // Esc in live mode: the app's own ladder (app.js keydown) closes the modals
-  // it lists, and the observer follows; a modal with no rung (Zoom Settings
-  // closes by its Done button) falls back to the gallery's exit, after the
+  // Esc in live mode: the app's own ladder (features/esc-ladder.js) closes the
+  // overlay on top, and the observer follows; one it leaves up (the blocking
+  // Turn In overlay swallows Esc) falls back to the gallery's exit, after the
   // ladder has had its turn.
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !liveOverlay) return;

@@ -196,7 +196,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->97<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->98<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -372,7 +372,11 @@
   failure signal, never a driver.
 - **Modal primitives (2026-09-18 polish pass).** A dialog is a `.modal-card` with a
   `.modal-card-header` (title, optional `.modal-card-sub`, and a × carrying `data-modal-close`,
-  which app.js dismisses the way Esc does). Action buttons in `.actions` carry a role class
+  which app.js dismisses the way Esc does, through features/esc-ladder.js; never give a × its
+  own `onclick`). Esc closes the topmost visible overlay and never unwinds the tool under it: a
+  dialog that holds pending state gets a row there (`MODAL_RUNGS`, in stacking order, or a
+  `CLOSERS` entry naming its Cancel), anything else just hides, and a blocking overlay carries
+  `data-esc="none"` so Esc does nothing (MAP-ESC). Action buttons in `.actions` carry a role class
   (`ghost` / `primary` / `danger` / `danger-ghost` / `link`), never rely on first/last position;
   a destructive button sits left with `margin-right:auto`. Sliders are plain
   `input[type=range]` under a `label.range-label` (value in `.range-val`), colour pickers are
@@ -491,14 +495,28 @@ Rules to follow when adding/editing a feature file:
 
 ### Persisted settings (localStorage unless noted)
 
-`counterSettings`, `lineTypeSettings` (includes `parallelEndsSize`,
-`lengthLabelSize`, `snapToHorizontalVertical` (the 8-way 45° snap toggle — the
-key keeps its original H/V-era name so saved settings aren't orphaned),
-`showOnlyLinesOnCurrentPage`; both settings objects carry `sidebarFilterScope`
+"The sign-out key list" below is the `keysToRemove` list that Project Settings → Advanced →
+Clear cached data and reload runs (app.js) and its twin in the admin global force reload
+(save-engine.js `doGlobalReloadNow`); a plain sign-out (`resetLocalSessionState`) resets
+state but removes none of these device keys.
+
+`counterSettings`, `lineTypeSettings` (MAP-SETTINGS, 2026-09-26: the Counter and Line
+Type display settings, per DEVICE, never in the project payload: marker size, opacity,
+rings, number size, outline; line width, opacity, drop size and icon, parallel ends,
+length label size and orientation, `snapToHorizontalVertical` (the 8-way 45° snap toggle;
+the key keeps its original H/V-era name), and the Lines `showOnlyLinesOnCurrentPage`
+toggle. app.js starts state from `COUNTER_SETTINGS_DEFAULTS` / `LINE_TYPE_SETTINGS_DEFAULTS`
+(constants.js) and merges the stored JSON over them at boot through `displaySettingsFields`
+(only the defaults' own keys, each of the default's type, so a new key keeps its default);
+every change writes both through `App.saveDisplaySettings` (the two settings modals, the
+header Snap button, the J hotkey, the Lines this-sheet button). Wiped by the sign-out key
+list. The IndexedDB takeoff backup still carries both objects but nothing restores from
+it. Both objects also carry `sidebarFilterScope`
 — the `'off' | 'page' | 'project'` sidebar usage filter, superseding the legacy
 `showOnlyCountersOnCurrentPage` / `showOnlyLineTypesOnCurrentPage` booleans,
 which are kept in sync (`true` only for `'page'`) so the settings shape is
-unchanged; the scope ALSO persists per device via the localStorage keys
+unchanged; the scope and those two booleans stay OUT of the stored blobs and persist per
+device via their own localStorage keys
 `counterSidebarFilterScope` / `lineTypeSidebarFilterScope` — written by the
 `set*ListFilterScope` setters, read at boot, wiped by the sign-out key list),
 `legendSettings` (includes `style`: `'tally' | 'compact' | 'full'`, the on-plan legend's drawing; absent = by trade, compact for electrical and HVAC, tally for plumbing; the block also scales with the sheet's long side, canvas-draw `legendSheetFactor`), `multiplyZoneSettings`, `scaleZoneSettings` (the on-zone scale
@@ -518,7 +536,7 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`; since S1 also `profiles[trade]` — the electrical / HVAC Quick profiles, each `sizes`/`types`/`materials`/`iconByType`/`mountByType`/`defaultColor` — and `defaultTrade`, the device's default for new projects; the whole blob rides `user_airboard.plumbing_modifiers`),
 `lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` / `clickcount-tour-done-plumbing` / `clickcount-tour-done-hvac` (the electrical / plumbing / HVAC walkthrough was finished on this device — hides that tour's empty-canvas link; the whole offer goes when all three are set),
 `clickcount-lessons-done` (Learn: `{ <lessonId>: ISO }`, the lessons finished on this device; features/lessons.js),
-`clickcount-lesson-device-before` (the reader's sidebar filter, Snap and search words as a lesson found them; written when a lesson starts, removed when it stops, and put back on the next load when a reload or a closed tab skipped the stop; features/lessons.js),
+`clickcount-lesson-device-before` (the reader's sidebar filter, Snap and search words as a lesson found them; written when a lesson starts, removed when it stops, and put back on the next load when a reload or a closed tab skipped the stop; features/lessons.js. The blank tour takes the same snapshot without the search words, `lessonKit.rememberDevice({ searches: false })`, since a tour's words ride `clickcount-tour-searches-before`),
 `clickcount-tour-searches-before` (the same for a TOUR's sidebar search words: cleared while the five-minute or blank tour runs, typed back when it stops or on the next load; features/tutorial.js),
 `clickcount-lesson-palette` (LEARN-LEAK: `{ standing, made }`, the palette ids that stood when a lesson's, course's or tour's sheets opened and the ones made while they were open; the made ones are removed when the reader leaves the sheets, even after a reload mid-lesson; features/lessons.js),
 `clickcount-last-project`,

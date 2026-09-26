@@ -17,7 +17,7 @@
  * Loaded as a classic <script src="features/keyboard-map.js"> AFTER app.js.
  * Its own IIFE: it reaches the shared helpers through the window.App registry,
  * registers openKeyboardMapModal back onto App, and binds the "See Keyboard"
- * opener + the modal's close button at this file's load. A zero-new-dep split
+ * opener at this file's load (the × is data-modal-close). A zero-new-dep split
  * (like legend-settings / multiply-zone-settings): both deps it uses,
  * App.showModal and App.hideModal, were already published.
  *
@@ -246,8 +246,6 @@
 
   const seeKeyboardBtn = document.getElementById('macrosSeeKeyboard');
   if (seeKeyboardBtn) seeKeyboardBtn.onclick = () => openKeyboardMapModal();
-  const closeBtn = document.getElementById('keyboardMapClose');
-  if (closeBtn) closeBtn.onclick = () => App.hideModal('keyboardMapModal');
 
   const modalHost = document.getElementById('keyboardMapModal');
   const inlineHost = document.getElementById('macrosKeyboardInline');

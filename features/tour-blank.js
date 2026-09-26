@@ -25,7 +25,8 @@
  * ("Fixture", "Pipe") and reaches every tool through the ladder, so a plumbing device
  * finds Duct behind the ⋯ and an HVAC device finds Polyline there. Controls are written
  * as double-bracket chips (teaching-labels.test.js proves each exists), bodies are lines, no em
- * dashes. Snap to 45° is a device setting: remembered on start, put back on stop.
+ * dashes. Snap to 45° is a device setting: remembered on start through the lessons' device
+ * snapshot (lessonKit.rememberDevice, persisted), put back on stop or on the next load.
  *
  * Doors: the empty canvas (#canvasEmptyHintTourBlank, hidden once the tour is done on this
  * device: localStorage `clickcount-tour-done-blank`), Learn (#learnTour-blank), Project
@@ -156,7 +157,7 @@
   // and pressed back) remembers that it happened. All reset when the tour starts.
   let seen = {};
   const latch = (key, cond) => { if (cond) seen[key] = true; return !!seen[key]; };
-  let moveBase = null, zoomBase = null, snapBefore = null, settled = null, settledAt = 0;
+  let moveBase = null, zoomBase = null, settled = null, settledAt = 0;
   // Where the reader left off (see the header): the saved index, read on start, and whether
   // this run is picking up there (`resumeTo`) or starting over.
   const STEP_KEY = 'clickcount-tour-blank-step';
@@ -736,7 +737,11 @@
   ];
 
   // ----- registration, the doors, the device -----------------------------------------------------
-  const snapNow = () => !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical);
+  // Snap to 45° is the reader's device setting (it persists, MAP-SETTINGS): the tour turns it on,
+  // so it takes the lessons' device snapshot when it starts and puts it back when it stops. The
+  // snapshot rides localStorage, so a reload or a closed tab mid-tour still gets it back on the
+  // next load (features/lessons.js). The search words are the engine's, so they stay out of it.
+  const lessonKit = () => App.lessonKit || {};
   // The welcome card is one of two: a fresh start, or the offer to pick up where the reader
   // left off, with the earlier steps laid down for them, beside a start-over.
   const WELCOME = STEPS[0];
@@ -751,12 +756,11 @@
   App.registerTour(TOUR_ID, {
     steps: STEPS,
     doneKey: DONE_KEY,
-    onStart() { seen = {}; base = null; moveBase = null; zoomBase = null; settled = null; resumeTo = null; restoring = false; snapBefore = snapNow(); offerResume(savedStep()); },
+    onStart() { seen = {}; base = null; moveBase = null; zoomBase = null; settled = null; resumeTo = null; restoring = false; if (lessonKit().rememberDevice) lessonKit().rememberDevice({ searches: false }); offerResume(savedStep()); },
     onStep(id, index) { if (!restoring) saveStep(index); },
     onStop(finished) {
       if (finished) saveStep(0);
-      if (snapBefore != null && snapNow() !== snapBefore && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
-      snapBefore = null;
+      if (lessonKit().restoreDevice) lessonKit().restoreDevice();
       sweepPalette();
       syncDoor();
     },

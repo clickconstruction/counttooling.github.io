@@ -62,7 +62,6 @@
     App.updateUI();
     App.updateSaveStatusIndicator();
   };
-  document.getElementById('mySettingsModalClose').onclick = () => App.hideModal('mySettingsModal');
   document.getElementById('mySettingsSaveAirboard').onclick = async () => {
     const ok = await App.saveUserAirboard();
     if (ok) {

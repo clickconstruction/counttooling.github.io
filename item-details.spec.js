@@ -11,8 +11,8 @@
  * private details item read back through App.getCounterLineTypeDetailsItem;
  * Line Properties opens via the context-menu path, and Escape closes it via
  * App.closeLinePropertiesModal while persisting the drop just typed; and
- * App.deleteGroup (whose registration re-homed here from app.js) still clears
- * the group off annotations for its features/groups.js consumer.
+ * App.deleteGroup (registered by features/groups.js since MAP-GHOST-DELETE)
+ * still clears the group off annotations.
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');

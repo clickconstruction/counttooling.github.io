@@ -321,3 +321,22 @@ test('normalizeProjectCodes keeps the editions, the jurisdiction and a public|pr
   assert.deepStrictEqual(c.normalizeProjectCodes({ occupancy: 'public' }), { occupancy: 'public' });
   assert.strictEqual(c.normalizeProjectCodes(null), null);
 });
+
+test('displaySettingsFields keeps only the defaults\' own keys, each of the default\'s type (MAP-SETTINGS)', () => {
+  const d = c.COUNTER_SETTINGS_DEFAULTS;
+  assert.deepStrictEqual(c.displaySettingsFields(d, { size: 40, opacity: 0.6, showRings: true, bogus: 1 }), { size: 40, opacity: 0.6, showRings: true });
+  // a wrong type or a non-finite number costs only that field
+  assert.deepStrictEqual(c.displaySettingsFields(d, { size: 'huge', numberSize: NaN, ringSolid: 'yes', outlineSize: 2 }), { outlineSize: 2 });
+  // strings stay strings (the drop icon)
+  assert.deepStrictEqual(c.displaySettingsFields(c.LINE_TYPE_SETTINGS_DEFAULTS, { dropIconStyle: 'plus', snapToHorizontalVertical: true }), { dropIconStyle: 'plus', snapToHorizontalVertical: true });
+  for (const raw of [null, undefined, 'x', 5, [1, 2]]) assert.deepStrictEqual(c.displaySettingsFields(d, raw), {});
+});
+
+test('displaySettingsFields leaves out the sidebar filter scope and its legacy booleans (their own device keys)', () => {
+  const out = c.displaySettingsFields(c.LINE_TYPE_SETTINGS_DEFAULTS, { sidebarFilterScope: 'page', showOnlyLineTypesOnCurrentPage: true, showOnlyLinesOnCurrentPage: true });
+  assert.deepStrictEqual(out, { showOnlyLinesOnCurrentPage: true });
+  assert.deepStrictEqual(c.displaySettingsFields(c.COUNTER_SETTINGS_DEFAULTS, { showOnlyCountersOnCurrentPage: true }), {});
+  // merged over a copy of the defaults, the stored blob of a full settings object round-trips
+  const full = Object.assign({}, c.COUNTER_SETTINGS_DEFAULTS, { size: 30 });
+  assert.deepStrictEqual(Object.assign({}, c.COUNTER_SETTINGS_DEFAULTS, c.displaySettingsFields(c.COUNTER_SETTINGS_DEFAULTS, JSON.parse(JSON.stringify(c.displaySettingsFields(c.COUNTER_SETTINGS_DEFAULTS, full))))), full);
+});

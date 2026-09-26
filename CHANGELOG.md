@@ -13,6 +13,284 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
+
+The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in
+app.js's keydown, one rung per dialog, and about twenty dialogs had no rung: Water Sizing, the
+fixture-unit override, Learn, the Bid Board, Zoom Settings, Line Type Settings, Name Highlight, the
+schedule palette, the admin sub-dialogs and others. Esc left the dialog up and fell through to the
+tool rungs, so a polyline being traced lost a vertex behind the Water Sizing schedule, a Quick Line
+lost its start, a zone lost its first corner. Their × was no better: it re-dispatched a synthetic
+Escape through the same ladder before hiding, so it cost the vertex too.
+
+The ladder is a table now, in features/esc-ladder.js (`App.handleEscape`, called from the same
+place in app.js's keydown, so the menus that stop Esc in the capture phase still win). One press
+closes one thing: the confirm dialog, the grid origin pick, then the topmost visible dialog. A
+dialog with a rung keeps it, in the old order; one without is dismissed on its own, through its
+Cancel where it holds something pending (`App.cancelMarkerWsfu`, which existed for this and was
+never called; a new `App.cancelSchedulePalette`; the save-before-load Cancel, which does nothing
+while its save runs) or a plain hide. The Turn In progress overlay carries `data-esc="none"` and
+swallows the key. After the dialogs come the header popovers (the bid menu, the ⋯ tool menu, the
+zoom rail), which used to close on their own listeners after the tool had already unwound, and
+only then the tool, one step per press. Those steps go through the MAP-RESETS helpers,
+`App.clearToolStarts` and `App.resetToMove({ keepCounter: true })`, instead of clearing their own
+fields. The schedule box keeps MAP-RESETS' one-press Esc (the box and the tool go together).
+
+A × with `data-modal-close` now dismisses its own dialog through `App.dismissOverlay`, the same
+rung or Cancel Esc uses, without touching anything else. With that in place the thirteen × buttons
+that were wired by hand (Import canvas, Macros, Quick Keys, Keyboard Map, the schedule palette,
+Project Settings, Save Status, Canvas Repair, Manage Icons, My Settings, Count by Page, Share,
+Edit session expired) carry `data-modal-close` and lost their own handlers; they keep their ids.
+Save Status's rung clicks its Close button rather than the × so the tick timer still clears.
+
+Pinned by the new esc-dialogs.spec.js: over a three-vertex polyline, Esc and the × of twelve
+dialogs close the dialog and keep all three vertices (red before the fix on every rung-less one),
+plus the fixture-unit override, a rung-less dialog over a rung dialog, the Turn In overlay, the
+schedule palette's Cancel and the zoom rail. esc-ladder.spec.js is unchanged and green.
+
+## fix(icons): a custom icon picked after an upload fills in the fixture units, as it did before (MAP-ICON-PREFILL, 2026-09-26)
+
+The decomposition map's defect D34. On the Create tab, picking a custom icon with the name field
+empty names the counter after the icon and fills Fixture units from the table (a Urinal reads 5 on a
+public job). Once an icon had been uploaded, that stopped: the upload rebuilt the Custom Icons grid
+with a click of its own that filled the name and counted the pick, but never re-read the table, so
+the field stayed empty and the counter went out with no fixture units unless she typed them.
+
+The grid has one builder now, `buildCreateCustomIconGrid` in features/counter.js (published as
+`App.buildCreateCustomIconGrid`). The Create panel's prep builds it, and the upload handler calls
+the same builder after it saves the new icon rather than wiring the cells itself, so the pick
+cannot drift from the boot one again. The upload's own autofill, which names an empty counter after
+the file, re-reads the table too, so an upload called Lavatory.svg fills the field as well. The
+Quick Count and Details grids were already right and are unchanged.
+
+Pinned by custom-icon-upload.spec.js: the Urinal picked before an upload and again after it reads
+the same name and the same fixture units, and an uploaded Lavatory fills the field both on the
+upload and on a later pick. It was red before the fix (5 before the upload, empty after).
+
+## fix(report): the printed report's Water Sizing check says what the schedule says (MAP-REPORT-WATER, 2026-09-26)
+
+The decomposition map's D33. The Water Sizing schedule and the printed report each wrote the Check
+cell themselves, and the report's copy had fallen behind. A run under a served fixture's supply
+minimum read "under the 1″ fixture supply minimum → 1-1/4″" in the modal and "under the fixture
+supply minimum → 1-1/4″" in the PDF, and a run over the cap with no size that passes read "over
+5 fps, no size passes" in the modal and just "over 5 fps" in the PDF, which reads as if a bigger
+pipe would fix it.
+
+The wording now lives once, in the pure water-model.js: `waterRowVerdict(row)` gives the cell's text
+and whether the row is fine. The schedule modal, its Copy Schedule text and report.js's Water Sizing
+table all print it (report.js through `window.WaterModel`, the way it reads SupportModel), so the
+same row says the same thing on screen, in the clipboard and on paper. The modal's wording was the
+right one and is unchanged.
+
+Pinned by water-model.test.js (a passing row, the minimum named, "no size passes", the minimum
+winning over the cap, both unsized readings, a bare `waterScheduleRow`) and a water-schedule.spec.js
+case that sets up one run under a flush-valve WC's 1″ minimum and one over a cap nothing meets, then
+reads each row's Check in the modal and in `buildReportHtml` and wants them identical. Both were red
+before the fix.
+
+## fix(pages): deleting a page keeps every later sheet on the layer it was on (MAP-PAGE-DELETE, 2026-09-26)
+
+The decomposition map's R11 (defect D18). The layer an estimator has chosen on a sheet is kept by
+page number, in `activeCanvasIdByPage`, and so is the show-layers peek's pick
+(`peekCanvasIdsByPage`). Deleting a page from the Pages list moved every later sheet up one but
+left both maps where they were, so each later sheet looked up the layer chosen for the sheet
+before it, found no such layer, and fell back to its first one. The stale map was then saved with
+the bid. The delete lived in the Pages list's renderer and fixed the current page, the selected
+line and the edit by hand; the maps were never on its list.
+
+The delete is a model operation now: annotation-model.js `deletePageAt(i)`, published as
+`App.deletePageAt`. It splices the page and reindexes, in place, everything the session keys by
+page number: both maps, the current page, the selected line and the selected duct run, the
+polyline being edited, the Chain tool's start and the last measurement. What lived on the deleted
+page goes with it, and every number past it steps down one. The Pages list keeps its part: the
+confirm, the undo step, ending an edit on that page, and the redraw. It refuses the only page, as
+the trash button already did.
+
+Undo of a page delete is unchanged and still wrong: the snapshot's pages are laid back over the
+shorter list by index, so the sheet after the deleted one takes its marks, label and scale.
+
+Pinned by annotation-model.test.js (delete page 1 of 3 with layers chosen on pages 2 and 3, delete
+the current page, delete the last page and the only one) and delete-page.spec.js "MAP-PAGE-DELETE"
+(three sheets, a second layer active on sheet 3; delete sheet 2 from the Pages list, and sheet 2,
+which was 3, still shows its layer, with the shifted map in the saved payload). Both were red before
+the fix.
+
+## fix(save): a bid opened without its PDF no longer saves its sheets away (MAP-EMPTY-SAVE, 2026-09-26)
+
+The decomposition map's D29, proved before it was fixed. When a cloud bid opens and its PDF is not
+there to be had (the storage object is missing, or none was ever stored), features/load-project.js
+opens it canvas-only: the project is open and checked out, the palette is loaded, `state.pages` is
+empty, and the saved marks wait in `pendingCanvasLoad` until the estimator re-attaches the PDF. The
+engine's only empty-session test was "no pages AND no project", so in that state any edit that
+marks the project dirty (a trade picked, a ceiling height, a counter added) armed the autosave, and
+the next tick wrote `data.pages: []` to the row: every mark on every sheet, gone from the cloud. A
+node test sent exactly that payload before the fix. The 5 second takeoff backup had the same hole
+without any edit at all: it wrote the project's backup with no sheets, stamped newer than the row,
+and the next load of the bid prefers the newer backup, so re-attaching the PDF then brought back
+blank sheets and the first edit saved them.
+
+save-engine.js now names the state, `isCanvasOnlyPending` (a pending canvas load and no pages), and
+holds all three writers on it: `markProjectDirty` does not arm, `performAutoSave` skips (clearing
+dirty and answering ok, so Turn In and the save-before-load gate go on to release the lock rather
+than report a failed save), and the takeoff backup does not write. Nothing is lost by holding: the
+PDF match (pdf-intake.js `matchPendingCanvasLoad`) re-hydrates the palette and the marks from the
+saved data anyway, and the save runs as soon as the pages exist. A palette-only session with no
+pending load (a bid started before any PDF) still saves and backs up as before.
+
+Pinned by save-engine.test.js "canvas-only" (three cases: dirty does not arm; the autosave sends no
+update and Turn In still releases, then saves one sheet once the PDF is back; the backup writes
+nothing). All three were red on the pre-fix engine (the autosave sent one update carrying `pages: []`, the
+backup wrote `pageCanvases: []` under the project's key).
+
+## fix(settings): with Supabase off, the Hide marks eye works and Project Settings has a door (MAP-NOSUPA, 2026-09-26)
+
+The decomposition map's D16, the bug half of R23. A deploy with no cloud config (no
+`SUPABASE_URL` / `SUPABASE_ANON_KEY`, so `SUPABASE_ENABLED` is false) is meant to stay a working
+takeoff app, and two things were dead in it. The Hide marks eye showed once a plan was open but
+did nothing, because its click was bound inside app.js's `if (SUPABASE_ENABLED)` block. And
+Project Settings could not be opened at all: `openProjectSettings`, both gears' clicks and every
+local row in the modal sat in that same block, and both gears were hidden besides. The header
+gear carried `.supabase-only`, and the phone's sidebar-logo gear sat inside the
+`.sidebar-logo-icons` wrapper, which carried it too. So Close project, Add pages, Download PDF
+and Advanced (Export, Import, Canvas Repair, Empty cache) had no way in.
+
+They are bound above the block now, in a new `// SECTION: Project Settings doors & local rows`:
+`openProjectSettings` (it touches the checkout strip only when Supabase is on), both gears, the
+eye, the modal's ×, Add pages, Download PDF, Help, Advanced and its local rows, and
+`closeProject` with its Project Settings row (`App.closeProject` is published there, and the
+check-in it makes goes through `App.checkInCurrentProjectIfHeld` when the block defined it). The
+header gear lost `.supabase-only` and shows on every desktop (its `!important` rule no longer asks
+for `body.supabase-enabled`); on the sidebar logo the class moved from the wrapper to the user
+icon, so the gear shows on a phone and the user icon still hides. The cloud rows in the modal
+(checkout strip, Share, Bid review, Load, Manage, the admin reload) were already hidden by the
+`.supabase-only` pass in `updateUI`; Save Project to Cloud was not, and now hides too. With
+Supabase on nothing changes.
+
+The map had it as about three lines: it counted the eye and the gear's click, but the gears were
+hidden and the modal's own rows were bound in the same block, so the eye and the modal came back
+dead without them. The R23 feature-file split is still to do.
+
+Pinned by supabase-disabled.spec.js, which boots with `/config.js` routed to an empty script (the
+committed config is the only thing that turns the cloud on, so that is the whole seam): on a
+desktop the eye blanks and restores the overlay, the header gear opens Project Settings with no
+cloud row showing, Help and Advanced open, the × closes, and Close project clears the plan after
+the house confirm; on a phone the sidebar-logo gear shows and opens it while the user icon stays
+hidden; and with the committed config the phone still shows the user icon beside the gear. The
+first two were red before the fix.
+
+## fix(settings): marker size, line width and Snap to 45° stay the way you set them after a reload (MAP-SETTINGS, 2026-09-26)
+
+The decomposition map's R18 (defect D03). The Counter and Line Type display settings (marker size,
+opacity, rings, number size, outline, line width, drop size and icon, label sizes, Snap to 45°, the
+Lines this-sheet toggle) lived in state and nowhere else, so every reload put them back to the
+defaults. AGENTS.md had listed `counterSettings` and `lineTypeSettings` as localStorage keys; nothing
+wrote or read them. The IndexedDB takeoff backup did carry both objects, but nothing restored them
+from it, and the cloud payload never had them.
+
+The call was made on 2026-09-25: they are the device's, like Hide marks and the sidebar filter, and
+never ride the project. app.js now starts both objects from `COUNTER_SETTINGS_DEFAULTS` /
+`LINE_TYPE_SETTINGS_DEFAULTS` (constants.js) and merges localStorage `counterSettings` /
+`lineTypeSettings` over them at boot through the pure `displaySettingsFields`, which keeps only the
+defaults' own keys, each of the default's type, so a key added later keeps its default and a corrupt
+field costs only itself. Every writer goes through one door, `App.saveDisplaySettings`: the two
+settings dialogs, the header Snap button, the J key and the Lines this-sheet button. The sidebar
+filter scope and its two legacy booleans stay out of the blob; they already had their own keys. Both
+new keys join the device key list that Clear cached data and reload (and the admin force reload)
+clears. A plain sign-out clears none of these device keys, the filter scope included; AGENTS.md now
+says so instead of calling that list "the sign-out key list" without explaining it.
+
+The two dialogs' hand-written slider and toggle handlers are now one row each in a `SLIDERS` /
+`TOGGLES` table, bound by one loop (the map's binder), with what each field opens at unchanged.
+
+Once Snap survived a reload, the blank tour's copy of it did not: it read Snap when it started and put
+it back when it stopped, in memory, so a reader who reloaded mid-tour kept Snap on for good. The tour
+now takes the lessons' own device snapshot, `App.lessonKit.rememberDevice({ searches: false })`,
+persisted in `clickcount-lesson-device-before` and put back on the next load, and `restoreDevice()`
+when it stops. The search words stay out of the tour's snapshot because the tour engine already
+clears and restores them under its own key; `restoreDevice` now leaves the words alone when a
+snapshot has none. The IndexedDB backup still writes both objects; it is not the restore path and was
+left as it is.
+
+Pinned by display-settings-persist.spec.js (marker size, opacity, number size, rings, line width,
+label size, Snap and the Lines toggle hold across a reload; a corrupt field falls back; the device
+wipe resets them; the blank tour puts Snap back after a reload and after a stop in-session, and the
+reader's search word still comes back) and constants.test.js (`displaySettingsFields`). The spec was
+red before the fix.
+
+## fix(ghost): deleting a counter, a line type or a group takes it out of every Typical too (MAP-GHOST-DELETE, 2026-09-26)
+
+The decomposition map's R17 (defect D32). A Typical (a ghost) keeps its own copy of the marks it
+was made from, outside the live marks. Deleting a counter or a line type from its details modal,
+or a group from the group modal, pruned the live marks on every page and left the copies alone.
+The Typical went on drawing a deleted counter's markers as default yellow circles, and Stamp put
+back marks of a type the palette no longer had: drawn on the sheet, missing from every tally, and
+turned into an "Unknown" palette row the next time the bid opened. A deleted group's id rode the
+stamp the same way, a group id that names no group, which the report sorts as a second "Untagged".
+
+Both delete paths now reach into the Typicals. annotation-model.js has a pure
+`purgeFromGhosts(ann, kind, id)`: a deleted counter's markers and a deleted line type's runs come
+out of every ghost on that layer, a deleted group's id is cleared there, and a Typical left
+holding nothing is removed, since capture never makes an empty one and an empty one has no bounds
+to click. features/ghost.js's `purgeFromEveryGhost` runs it over every page and layer, and over
+the Typical riding the cursor, and drops the selection or the open menu of one it emptied.
+`performDeleteCounterLineType` and `deleteGroup` call it after the live prune, inside the undo
+snapshot they already push, so Ctrl+Z brings the Typical back with the type.
+
+`deleteGroup` moved from features/item-details.js to features/groups.js, the file that owns the
+group modals and its one caller, unchanged but for the ghost line. Its callers already read
+`App.deleteGroup` at call time. The map's companion fold (openGroupAssignModal onto
+refreshGroupAssignButtons) is not in this change.
+
+Pinned by annotation-model.test.js (two counter types in a Typical, one deleted, the other kept;
+a line type's straight and polyline runs; a group id cleared while another group stays; an
+emptied Typical removed; no ghosts, no src, an unknown kind) and ghost.spec.js "deleting a type or
+group reaches inside the Typical" (a counter, a line type and a group each deleted through the app,
+then a Stamp from the ghost menu brings none of it back; deleting all a Typical held removes it,
+and Ctrl+Z restores it). Both were red before the fix.
+
+## fix(tools): no tool leaves a half-drawn box on the sheet, and a drag that ends off the canvas is saved (MAP-RESETS, 2026-09-26)
+
+The decomposition map's R09, with its defects D05, D17, D21 and D26. Clearing a tool's pending
+first point was written out by hand sixteen times, and the copies had drifted. The M key cleared
+the line, highlight, zone and chain starts but not the room or schedule corner, so V, one corner,
+then M left the dashed purple room box and its W × L readout drawing in Move until another tool
+button was clicked. The Note button cleared nothing, so a zone corner kept rubber-banding under it;
+Quick Line kept a highlight corner; Esc with a schedule box half drawn fell to the last rung, which
+dropped the tool and left the amber box up. The bands were drawn from the start alone, whatever the
+tool.
+
+app.js now has one list, `clearToolStarts()`: every tool's start, the ghost in hand and the scale or
+measure points. The tool arms in app.js call it after they set the new tool (the buttons, the
+counter and line-type selection the sidebar rows and Quick Keys share, the Polyline arms), and so do
+the page-switch disarm, the viewer reset, the legend toggle, Set Scale and Esc's last rung, which
+now also redraws. `resetToMove(opts)` is the one Move reset for the button and the M key. They still
+differ where they always did, and the option names it: M keeps the selected counter and drops a
+polyline or duct trace in progress and a pending note; the button drops the counter and leaves a
+polyline draft for P to resume. Each rubber band (Quick Line, Highlight, Multiply Zone, Scale Zone,
+Room Sizer, schedule box) now draws only under its own tool, as Chain, Delete Area and Ghost already
+did, so an arm in a feature file that sets the tool by hand (the Counter dialog, Duct, the schedule
+reader) can no longer show a corner left by the tool before. Both helpers are on `App` for the Esc
+table that comes next.
+
+Separately, a drag that left the canvas was cut off by the canvas's mouseleave, after the note or
+zone had already moved, and nothing marked the project dirty, so the edit waited for some other
+change to be saved. A ghost or polyline vertex was not reset at all, and one released outside came
+back riding the pointer until the next click. `endPointerDrag({ release })` now ends every mark drag
+(a note, its width or font grip, the legend, a zone in Move, a ghost, a vertex). The canvas mouseup
+calls it for a release on the sheet, exactly as before; the window mouseup calls it for a release
+off the sheet, and leaving the canvas no longer aborts the drag. The mark waits at the edge, follows
+again if the pointer comes back with the button down, and is marked dirty and re-tallied wherever the
+button comes up. The flags that swallow the click after a release are set only on the sheet, where
+a click follows; the legend's release off the sheet used to set one anyway and eat the next real
+click. Touch was left alone: it has no note, zone or ghost drag, and its vertex drag already ends on
+touchend and touchcancel.
+
+Pinned by tool-resets.spec.js, all seven cases red before the fix: the helpers on `App`; V, one
+corner, M (no corner, and no purple on the overlay past the sheet's own); a schedule box and Esc; a
+zone corner and the Note button, a highlight corner and Quick Line; a note, a zone and a ghost
+dragged off the canvas (moved, dirty, not stuck to the pointer). The ghost case then takes it out and
+back in with the button held: it follows, and the release on the sheet arms no capture corner.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

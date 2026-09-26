@@ -126,6 +126,36 @@
   // (features/custom-icon-upload.js) rebuilds this panel's custom grid with
   // its own click wiring and selects the new icon, so it reports here.
   App.markCreateIconPicked = () => { createIconPicked = true; syncCreateCfmChip(); };
+  // MAP-ICON-PREFILL (D34): the ONE builder for the Create panel's custom
+  // grid, its cells and its pick. The panel's prep calls it, and so does the
+  // upload handler after it saves a new icon, so a pick behaves the same
+  // before and after an upload: it fills an empty name, counts as a pick
+  // (D16), refreshes the CFM chip and re-reads the fixture units for the
+  // name. The upload's own copy of this click once skipped that last step.
+  function buildCreateCustomIconGrid() {
+    const grid = document.getElementById('counterIconGrid');
+    const customGrid = document.getElementById('counterIconGridCustom');
+    if (!customGrid) return null;
+    customGrid.innerHTML = App.customIconCellsHtml(App.getEffectiveCustomIcons(), undefined, App.getQuickTrade ? App.getQuickTrade() : undefined);
+    customGrid.querySelectorAll('.icon-cell').forEach(c => {
+      c.onclick = () => {
+        if (c.dataset.upload) {
+          document.getElementById('customIconUploadInput').click();
+          return;
+        }
+        if (grid) grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+        c.classList.add('selected');
+        createIconPicked = true;
+        const path = c.dataset.path;
+        if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+        syncCreateCfmChip();
+        if (App.syncWsfuForm) App.syncWsfuForm('create');   // the pick may have named the counter
+      };
+    });
+    return customGrid;
+  }
+  App.buildCreateCustomIconGrid = buildCreateCustomIconGrid;
   function syncCreateIconToCfm() {
     if (createIconPicked) { syncCreateCfmChip(); return; }
     const v = parseFloat(document.getElementById('counterCfm')?.value);
@@ -266,8 +296,7 @@
     const grid = document.getElementById('counterIconGrid');
     const customGrid = document.getElementById('counterIconGridCustom');
     grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === prefillIdx);
-    const effectiveCustom = App.getEffectiveCustomIcons();
-    customGrid.innerHTML = App.customIconCellsHtml(effectiveCustom, undefined, App.getQuickTrade ? App.getQuickTrade() : undefined);
+    buildCreateCustomIconGrid();
     grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
       grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
       customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
@@ -277,22 +306,6 @@
       if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
       syncCreateCfmChip();   // D18: an explicit pick replaces the chip's icon
       if (App.syncWsfuForm) App.syncWsfuForm('create');   // the pick may have named the counter
-    });
-    customGrid.querySelectorAll('.icon-cell').forEach(c => {
-      c.onclick = () => {
-        if (c.dataset.upload) {
-          document.getElementById('customIconUploadInput').click();
-          return;
-        }
-        grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-        c.classList.add('selected');
-        createIconPicked = true;
-        const path = c.dataset.path;
-        if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
-        syncCreateCfmChip();
-        if (App.syncWsfuForm) App.syncWsfuForm('create');
-      };
     });
     if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
     // WATER-PLAN rung 2: the Fixture units field, prefilled from the name for

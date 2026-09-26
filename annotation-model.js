@@ -115,6 +115,59 @@ function applyDropToNode(ann, node, value, unit, dryRun) {
   return changed;
 }
 
+// --- Purging a deleted type or group from ghosts (Typicals) -----------------
+//
+// A ghost's src is annotation-shaped ({ counterMarkers, quickLines, polylines })
+// but sits OUTSIDE the live marks, so the delete cascades (features/item-details.js
+// performDeleteCounterLineType, features/groups.js deleteGroup) have to reach in
+// here as well. Otherwise the Typical keeps the deleted counter's markers (drawn
+// as a default circle), the deleted line type's runs, or the deleted group's id,
+// and Stamp puts them back as marks no tally counts (MAP-GHOST-DELETE, D32).
+//
+// kind: 'counter' (drop counterMarkers[id]), 'lineType' (drop runs whose
+// lineTypeId is id), 'group' (null every mark's and run's group id). A ghost
+// left holding nothing is removed from ann.ghosts: capture never makes an empty
+// one, and an empty one has no bounds to click. Mutates ann in place. Returns
+// { changed, removedGhostIds }: changed counts the marks removed or ungrouped.
+// No state, no DOM; the caller owns the undo snapshot, dirty and re-render.
+function purgeFromGhosts(ann, kind, id) {
+  const out = { changed: 0, removedGhostIds: [] };
+  if (!ann || !Array.isArray(ann.ghosts) || id == null) return out;
+  const touched = [];
+  ann.ghosts.forEach(g => {
+    const src = g && g.src;
+    if (!src) return;
+    let n = 0;
+    if (kind === 'counter') {
+      const arr = src.counterMarkers && src.counterMarkers[id];
+      if (arr) { n += arr.length; delete src.counterMarkers[id]; }
+    } else if (kind === 'lineType') {
+      ['quickLines', 'polylines'].forEach(key => {
+        if (!Array.isArray(src[key])) return;
+        const kept = src[key].filter(l => l.lineTypeId !== id);
+        n += src[key].length - kept.length;
+        src[key] = kept;
+      });
+    } else if (kind === 'group') {
+      const clear = (m) => { if (m && (m.group || null) === id) { m.group = null; n++; } };
+      Object.values(src.counterMarkers || {}).forEach(arr => (arr || []).forEach(clear));
+      (src.quickLines || []).forEach(clear);
+      (src.polylines || []).forEach(clear);
+    }
+    if (n) { out.changed += n; touched.push(g); }
+  });
+  const isEmpty = (g) => {
+    let marks = 0;
+    Object.values(g.src.counterMarkers || {}).forEach(arr => { marks += (arr || []).length; });
+    return !marks && !(g.src.quickLines || []).length && !(g.src.polylines || []).length;
+  };
+  touched.filter(isEmpty).forEach(g => {
+    out.removedGhostIds.push(g.id);
+    ann.ghosts.splice(ann.ghosts.indexOf(g), 1);
+  });
+  return out;
+}
+
 function createAnnotationModel(ctx) {
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], ductRuns: [], ductFittings: [], legend: null }; }
 
@@ -900,6 +953,50 @@ function createAnnotationModel(ctx) {
     }
     return -1;
   }
+  // MAP-PAGE-DELETE (R11 / D18): delete page i as ONE model op. The splice
+  // alone leaves everything the session keys by page INDEX pointing one sheet
+  // off: each later page's chosen layer (activeCanvasIdByPage, which is saved)
+  // and peek subset fall back to the wrong canvas, and the selections, the
+  // chain start and the last measurement name the wrong sheet. So the maps
+  // are reindexed IN PLACE (a holder of the object sees the shift), the
+  // deleted page's entries go with it, and each index past it steps down one.
+  // A live polyline edit on page i is UI (exitEditMode), so the caller ends it
+  // first; one left here only loses its index. Returns false, and changes
+  // nothing, for the only page or an index out of range.
+  function deletePageAt(i) {
+    const state = ctx.getState();
+    const pages = state.pages || [];
+    if (!Number.isInteger(i) || i < 0 || i >= pages.length || pages.length <= 1) return false;
+    pages.splice(i, 1);
+    const shifted = (idx) => (idx == null || idx < i ? idx : idx === i ? null : idx - 1);
+    [state.activeCanvasIdByPage, state.peekCanvasIdsByPage].forEach((map) => {
+      if (!map || typeof map !== 'object') return;
+      const entries = Object.entries(map);
+      entries.forEach(([k]) => { delete map[k]; });
+      entries.forEach(([k, v]) => {
+        const n = Number(k);
+        if (!Number.isInteger(n)) { map[k] = v; return; }
+        const to = shifted(n);
+        if (to != null) map[to] = v;
+      });
+    });
+    if (state.currentPage >= pages.length) state.currentPage = Math.max(0, pages.length - 1);
+    else if (state.currentPage > i) state.currentPage--;
+    if (state.selectedLinePageIdx === i) { state.selectedLineId = null; state.selectedLinePageIdx = null; }
+    else state.selectedLinePageIdx = shifted(state.selectedLinePageIdx);
+    if (state.selectedDuctRunPageIdx === i) { state.selectedDuctRunId = null; state.selectedDuctRunPageIdx = null; }
+    else state.selectedDuctRunPageIdx = shifted(state.selectedDuctRunPageIdx);
+    if (state.editingPolyIndex != null) state.editingPolyIndex = shifted(state.editingPolyIndex);
+    if (state.chainStart) {
+      if (state.chainStart.page === i) state.chainStart = null;
+      else if (state.chainStart.page > i) state.chainStart.page--;
+    }
+    if (state.lastMeasure) {
+      if (state.lastMeasure.pageIdx === i) state.lastMeasure = null;
+      else if (state.lastMeasure.pageIdx > i) state.lastMeasure.pageIdx--;
+    }
+    return true;
+  }
   function deepCopyAnnotations(ann) {
     if (!ann) return makeAnnotations();
     return JSON.parse(JSON.stringify(ann));
@@ -937,6 +1034,7 @@ function createAnnotationModel(ctx) {
     rotateAnnotations,
     applyRotationDeltaToAnnotations,
     deepCopyAnnotations,
+    deletePageAt,
   };
 }
 
@@ -947,5 +1045,5 @@ function createAnnotationModel(ctx) {
 
 // Dual-environment export (inert in the browser) for node --test + eslint.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode };
+  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode, purgeFromGhosts };
 }

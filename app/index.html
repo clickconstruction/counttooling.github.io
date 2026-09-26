@@ -210,7 +210,7 @@
       <button id="copyViewLinkBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Copy view link" title="Copy view link">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M384 64C366.3 64 352 78.3 352 96C352 113.7 366.3 128 384 128L466.7 128L265.3 329.4C252.8 341.9 252.8 362.2 265.3 374.7C277.8 387.2 298.1 387.2 310.6 374.7L512 173.3L512 256C512 273.7 526.3 288 544 288C561.7 288 576 273.7 576 256L576 96C576 78.3 561.7 64 544 64L384 64zM144 160C99.8 160 64 195.8 64 240L64 496C64 540.2 99.8 576 144 576L400 576C444.2 576 480 540.2 480 496L480 416C480 398.3 465.7 384 448 384C430.3 384 416 398.3 416 416L416 496C416 504.8 408.8 512 400 512L144 512C135.2 512 128 504.8 128 496L128 240C128 231.2 135.2 224 144 224L224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160L144 160z"/></svg>
       </button>
-      <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers supabase-only" style="display:none;" aria-label="Project Settings" title="Project Settings">
+      <button id="settingsGearBtn" class="header-settings-gear sidebar-triggers" aria-label="Project Settings" title="Project Settings">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="28" height="28"><path fill="currentColor" d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z"/></svg>
       </button>
       <!-- .replaced-by-status-bar: hidden in the header (styles.css), but NOT
@@ -274,8 +274,8 @@
       <aside class="sidebar">
         <div class="sidebar-logo">
           <span class="sidebar-logo-title">CountTooling</span>
-          <div class="sidebar-logo-icons supabase-only">
-            <button type="button" class="sidebar-logo-icon" id="sidebarLogoUser" aria-label="User" title="User">
+          <div class="sidebar-logo-icons">
+            <button type="button" class="sidebar-logo-icon supabase-only" id="sidebarLogoUser" aria-label="User" title="User">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill="currentColor" d="M320 312C386.3 312 440 258.3 440 192C440 125.7 386.3 72 320 72C253.7 72 200 125.7 200 192C200 258.3 253.7 312 320 312zM290.3 368C191.8 368 112 447.8 112 546.3C112 562.7 125.3 576 141.7 576L498.3 576C514.7 576 528 562.7 528 546.3C528 447.8 448.2 368 349.7 368L290.3 368z"/></svg>
             </button>
             <button type="button" class="sidebar-logo-icon supabase-only" id="sidebarLogoShare" style="display:none;" aria-label="Share" title="Share">
@@ -1683,7 +1683,7 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>Import canvas</h2>
-        <button type="button" class="modal-close-btn" id="importCanvasAfterPdfModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="importCanvasAfterPdfModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <p style="margin:0 0 1rem;font-size:0.95rem;color:var(--text2);">PDF loaded. Choose a canvas export (.json) to apply annotations.</p>
       <div class="actions">
@@ -1695,7 +1695,7 @@
     <div class="modal-card macros-modal-card">
       <div class="modal-card-header">
         <h2>Keyboard Shortcuts</h2>
-        <button type="button" class="modal-close-btn" id="macrosModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="macrosModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <button type="button" class="macros-see-keyboard" id="macrosSeeKeyboard">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M96 128C60.7 128 32 156.7 32 192L32 448C32 483.3 60.7 512 96 512L544 512C579.3 512 608 483.3 608 448L608 192C608 156.7 579.3 128 544 128L96 128zM128 208C128 199.2 135.2 192 144 192L176 192C184.8 192 192 199.2 192 208L192 240C192 248.8 184.8 256 176 256L144 256C135.2 256 128 248.8 128 240L128 208zM240 192L272 192C280.8 192 288 199.2 288 208L288 240C288 248.8 280.8 256 272 256L240 256C231.2 256 224 248.8 224 240L224 208C224 199.2 231.2 192 240 192zM320 208C320 199.2 327.2 192 336 192L368 192C376.8 192 384 199.2 384 208L384 240C384 248.8 376.8 256 368 256L336 256C327.2 256 320 248.8 320 240L320 208zM432 192L464 192C472.8 192 480 199.2 480 208L480 240C480 248.8 472.8 256 464 256L432 256C423.2 256 416 248.8 416 240L416 208C416 199.2 423.2 192 432 192zM128 304C128 295.2 135.2 288 144 288L176 288C184.8 288 192 295.2 192 304L192 336C192 344.8 184.8 352 176 352L144 352C135.2 352 128 344.8 128 336L128 304zM240 288L272 288C280.8 288 288 295.2 288 304L288 336C288 344.8 280.8 352 272 352L240 352C231.2 352 224 344.8 224 336L224 304C224 295.2 231.2 288 240 288zM320 304C320 295.2 327.2 288 336 288L368 288C376.8 288 384 295.2 384 304L384 336C384 344.8 376.8 352 368 352L336 352C327.2 352 320 344.8 320 336L320 304zM432 288L464 288C472.8 288 480 295.2 480 304L480 336C480 344.8 472.8 352 464 352L432 352C423.2 352 416 344.8 416 336L416 304C416 295.2 423.2 288 432 288zM192 400C192 391.2 199.2 384 208 384L432 384C440.8 384 448 391.2 448 400L448 432C448 440.8 440.8 448 432 448L208 448C199.2 448 192 440.8 192 432L192 400zM512 192L528 192C536.8 192 544 199.2 544 208L544 240C544 248.8 536.8 256 528 256L512 256C503.2 256 496 248.8 496 240L496 208C496 199.2 503.2 192 512 192zM496 304C496 295.2 503.2 288 512 288L528 288C536.8 288 544 295.2 544 304L544 336C544 344.8 536.8 352 528 352L512 352C503.2 352 496 344.8 496 336L496 304z"/></svg>
@@ -1767,7 +1767,7 @@
     <div class="modal-card quick-keys-card">
       <div class="modal-card-header">
         <h2>Quick Keys</h2>
-        <button type="button" class="modal-close-btn" id="quickKeysModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="quickKeysModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <p class="quick-keys-hint">Bind a counter or line type to a number key. Press the key while marking up to switch to it; press it again to deselect.</p>
       <p class="quick-keys-empty" id="quickKeysEmpty" style="display:none;">This project has no counters or line types yet. Add some first, then come back to bind them.</p>
@@ -1786,7 +1786,7 @@
     <div class="modal-card keyboard-map-card">
       <div class="modal-card-header">
         <h2>Keyboard Map</h2>
-        <button type="button" class="modal-close-btn" id="keyboardMapClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="keyboardMapClose" data-modal-close aria-label="Close">×</button>
       </div>
       <div class="kb-board-wrap">
         <div class="kb-board" id="keyboardMapBoard" role="group" aria-label="Keyboard shortcut map"></div>
@@ -2322,7 +2322,7 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>Counters from the schedule</h2>
-        <button type="button" class="modal-close-btn" id="schedulePaletteClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="schedulePaletteClose" data-modal-close aria-label="Close">×</button>
       </div>
       <p id="schedulePaletteIntro" style="margin:0 0 10px;font-size:0.9rem;color:var(--text2);"></p>
       <div id="schedulePaletteList" class="schedule-palette-list"></div>
@@ -2409,7 +2409,7 @@
           <h2 id="settingsTitle">Project Settings</h2>
           <div class="settings-subtitle" id="settingsSubtitle" style="display:none;"></div>
         </div>
-        <button type="button" class="modal-close-btn" id="settingsModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="settingsModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <div class="settings-menu">
         <div id="settingsCheckoutSection" class="settings-status-strip" style="display:none;">
@@ -2559,7 +2559,7 @@
     <div class="modal-card" style="width:96vw;max-width:820px;">
       <div class="modal-card-header">
         <h2>Save Status</h2>
-        <button type="button" class="modal-close-btn" id="saveStatusModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="saveStatusModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <div class="save-status-modal-body" style="padding:0 1rem 1rem;">
         <div id="saveStatusExpiredCallout" class="save-status-expired-callout" style="display:none;">
@@ -2604,7 +2604,7 @@
     <div class="modal-card modal-card-large modal-card-flex">
       <div class="modal-card-header">
         <h2>Canvas Repair</h2>
-        <button type="button" class="modal-close-btn" id="canvasRepairModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="canvasRepairModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Reassign annotations to PDF pages and fix rotation when the canvas is on the wrong page or rotated incorrectly.</p>
       <div class="form-group modal-flex-scroll" style="max-height:50vh;overflow-y:auto;">
@@ -2628,7 +2628,7 @@
     <div class="modal-card modal-card-large">
       <div class="modal-card-header">
         <h2>Manage Icons</h2>
-        <button type="button" class="modal-close-btn" id="manageIconsModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="manageIconsModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <p class="form-group" style="margin-bottom:16px;color:var(--text2);font-size:0.9rem;">Edit display names for each icon. These names appear in reports and when creating counters.</p>
       <div id="manageIconsList" class="manage-icons-list"></div>
@@ -2656,7 +2656,7 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>User Settings</h2>
-        <button type="button" class="modal-close-btn" id="mySettingsModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="mySettingsModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <div class="form-group setting-row">
         <span class="setting-label"><b id="mySettingsEmail" style="font-weight:500;"></b><small>Signed in on this device</small></span>
@@ -3067,7 +3067,7 @@
     <div class="modal-card modal-card-summary-detail">
       <div class="modal-card-header">
         <h2 id="summaryCountDetailTitle">Count by Page</h2>
-        <button type="button" class="modal-close-btn" id="summaryCountDetailClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="summaryCountDetailClose" data-modal-close aria-label="Close">×</button>
       </div>
       <div id="summaryCountDetailList" class="form-group" style="max-height:60vh;overflow-y:auto;"></div>
     </div>
@@ -3076,7 +3076,7 @@
     <div class="modal-card">
       <div class="modal-card-header">
         <h2>Share Project</h2>
-        <button type="button" class="modal-close-btn" id="shareProjectModalClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="shareProjectModalClose" data-modal-close aria-label="Close">×</button>
       </div>
       <p class="form-group" style="margin-bottom:12px;color:var(--text2);font-size:0.9rem;">Viewers look; editors can check out to edit.</p>
       <div id="shareProjectList" class="form-group" style="max-height:180px;overflow-y:auto;margin-bottom:12px;"></div>
@@ -3130,7 +3130,7 @@
     <div class="modal-card" style="max-width:520px;">
       <div class="modal-card-header">
         <h2 id="checkoutExpiredRecoveryTitle">Edit session expired</h2>
-        <button type="button" class="modal-close-btn" id="checkoutExpiredRecoveryClose" aria-label="Close">×</button>
+        <button type="button" class="modal-close-btn" id="checkoutExpiredRecoveryClose" data-modal-close aria-label="Close">×</button>
       </div>
       <div style="padding:0 1rem 1rem;">
         <p id="checkoutExpiredRecoveryBody" style="margin:0 0 12px 0;color:var(--text2);">Your edit session expired while idle. Your edits are still safe in this browser. Re-check out to save them to the cloud.</p>
@@ -3310,7 +3310,7 @@
        release in flight — app.js setTurnInProgress). It used to share
        #airboardToastModal with showToast; now that toasts are non-blocking it
        keeps the full-screen .modal-overlay treatment on its own element. -->
-  <div class="modal-overlay" id="turnInProgressModal">
+  <div class="modal-overlay" id="turnInProgressModal" data-esc="none">
     <div class="modal-card modal-card-toast">
       <div class="turn-in-progress"><span class="turn-in-spinner" aria-hidden="true"></span><p id="turnInProgressText" style="margin:0;font-size:1rem;white-space:pre-line;"></p></div>
     </div>
@@ -3701,6 +3701,7 @@
   <script src="/features/drop-peek.js"></script>
   <script src="/features/highlight-labels.js"></script>
   <script src="/features/hotkey-peek.js"></script>
+  <script src="/features/esc-ladder.js"></script>
   <script src="/features/child-counts.js"></script>
   <script src="/features/conductors.js"></script>
   <script src="/features/circuits.js"></script>

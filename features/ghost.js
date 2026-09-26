@@ -4,10 +4,13 @@
 //
 // Division of labour:
 //   annotation-model.js  the pure half — capture / bounds / translate / stamp,
-//                        and the ann.ghosts[] shape itself.
+//                        purge (a deleted type or group), and the
+//                        ann.ghosts[] shape itself.
 //   canvas-draw.js       drawGhosts (live overlay only — never the export path).
 //   app.js               tool button, the TOOL.GHOST click branch, drag.
-//   here                 the capture→place gesture and the per-ghost menu.
+//   here                 the capture→place gesture, the per-ghost menu, and
+//                        purgeFromEveryGhost (the delete cascades' reach
+//                        into every Typical, MAP-GHOST-DELETE).
 //
 // The load-bearing rule: a ghost is a DISTINCT annotation kind, never a real
 // mark carrying an isGhost flag. Nothing that tallies (footer, sidebar,
@@ -203,6 +206,35 @@
     App.updateUI();
   }
 
+  // --- Deletes reach inside every ghost ---------------------------------------
+  // The delete cascades (features/item-details.js performDeleteCounterLineType,
+  // features/groups.js deleteGroup) call this after pruning the live marks, so
+  // a deleted counter, line type or group leaves nothing in any Typical on any
+  // page or layer, nor in the one riding the cursor, for Stamp to put back
+  // uncounted (MAP-GHOST-DELETE). The walk over one ghost list is the pure
+  // annotation-model.js purgeFromGhosts; a Typical it empties is removed.
+  // kind: 'counter' | 'lineType' | 'group'. Caller owns undo, dirty, render.
+  function purgeFromEveryGhost(kind, id) {
+    const state = App.state;
+    const removed = [];
+    let changed = 0;
+    (state.pages || []).forEach(p => {
+      App.getPageCanvases(p).forEach(c => {
+        const res = App.purgeFromGhosts(c.annotations, kind, id);
+        changed += res.changed;
+        removed.push(...res.removedGhostIds);
+      });
+    });
+    if (state.placingGhost) {
+      const res = App.purgeFromGhosts({ ghosts: [state.placingGhost] }, kind, id);
+      changed += res.changed;
+      if (res.removedGhostIds.length) { state.placingGhost = null; state.placingGhostLast = null; }
+    }
+    if (state.activeGhostId && removed.includes(state.activeGhostId)) state.activeGhostId = null;
+    if (menuGhostId && removed.includes(menuGhostId)) hideGhostMenu();
+    return changed;
+  }
+
   // Called from app.js's contextmenu handler while TOOL.GHOST is armed.
   // Returns true when a ghost was hit and the menu opened, so the caller knows
   // to suppress the normal mark context menu.
@@ -224,4 +256,5 @@
   App.handleGhostEscape = handleGhostEscape;
   App.tryOpenGhostMenuAt = tryOpenGhostMenuAt;
   App.hideGhostMenu = hideGhostMenu;
+  App.purgeFromEveryGhost = purgeFromEveryGhost;
 })();

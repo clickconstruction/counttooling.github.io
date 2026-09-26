@@ -105,6 +105,49 @@ test.describe('Custom icon upload (features/custom-icon-upload.js)', () => {
     expect(errors).toEqual([]);
   });
 
+  // MAP-ICON-PREFILL (D34): the upload rebuilt #counterIconGridCustom with a
+  // click handler of its own that filled the name but never ran the
+  // fixture-unit sync, so after any upload a custom pick left Fixture units
+  // empty. One builder now wires the grid on open and after an upload.
+  test('after an upload, picking a custom icon still prefills Fixture units, as before any upload', async ({ page }) => {
+    const errors = [];
+    await bootWithCreateCounterOpen(page, errors);
+    await page.locator('#counterCreatePanel .counter-icon-tab[data-icon-tab="custom"]').click();
+    await expect(page.locator('#counterWsfuGroup')).toBeVisible();
+    const name = page.locator('#counterName');
+    const wsfu = page.locator('#counterWsfu');
+    const read = async () => ({ name: await name.inputValue(), wsfu: await wsfu.inputValue() });
+    // A pick fills only an EMPTY name, so clear it first (which also empties the field).
+    const pick = async (title) => {
+      await name.fill('');
+      await expect(wsfu).toHaveValue('');
+      await page.locator('#counterIconGridCustom .icon-cell[title="' + title + '"]').first().click();
+      return read();
+    };
+
+    const beforeUpload = await pick('Urinal');
+    expect(beforeUpload.name).toBe('Urinal');
+    expect(beforeUpload.wsfu).not.toBe('');
+
+    // The upload itself names an empty counter after the file, and reads the table too.
+    await name.fill('');
+    const count = await page.evaluate(() => window.App.getUserCustomIcons().length);
+    await page.locator('#customIconUploadInput').setInputFiles({
+      name: 'Lavatory.svg', mimeType: 'image/svg+xml', buffer: GOOD_SVG,
+    });
+    await page.waitForFunction((n) => window.App.getUserCustomIcons().length === n + 1, count, { timeout: 5000 });
+    await expect(name).toHaveValue('Lavatory');
+    expect(await wsfu.inputValue()).not.toBe('');
+
+    // The same bundled icon, picked from the rebuilt grid, reads the same.
+    expect(await pick('Urinal')).toEqual(beforeUpload);
+    // And the uploaded icon itself names a lavatory, which the table knows.
+    const lav = await pick('Lavatory');
+    expect(lav.name).toBe('Lavatory');
+    expect(lav.wsfu).not.toBe('');
+    expect(errors).toEqual([]);
+  });
+
   test('an SVG with no supported shapes is rejected with a toast (B20/X8: not alert()) and adds nothing', async ({ page }) => {
     const errors = [];
     await bootWithCreateCounterOpen(page, errors);

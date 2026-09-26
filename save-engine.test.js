@@ -1091,6 +1091,70 @@ test('performAutoSave: three straight failures emit the autosave_failing_3 miles
   assert.ok(logKinds(engine).includes('autosave_failing_3'));
 });
 
+// MAP-EMPTY-SAVE (map D29): the canvas-only state load-project.js builds when the
+// project's PDF is not in memory (the cloud object is missing, or none was stored):
+// the project is open (currentProjectId set, checked out), the palette is loaded,
+// but state.pages is [] and the saved marks live only in pendingCanvasLoad.data
+// until the estimator re-attaches the PDF (pdf-intake.js matchPendingCanvasLoad).
+function canvasOnlyState(extra) {
+  return saveTestState(Object.assign({
+    pages: [],
+    counters: [{ id: 'wc', name: 'WC' }], lineTypes: [],
+    pendingCanvasLoad: {
+      projectId: 'p1', name: 'Clinic', pdf_hash: null,
+      data: { pages: [{ index: 0, canvases: [{ id: 'c', name: 'Main', annotations: { counterMarkers: { wc: [{ x: 10, y: 20 }] } } }] }] },
+    },
+  }, extra || {}));
+}
+
+test('canvas-only: markProjectDirty does not arm while the saved marks wait for their PDF (MAP-EMPTY-SAVE)', async () => {
+  const state = canvasOnlyState();
+  const { ctx } = makeCtx({ getState: () => state });
+  const engine = createSaveEngine(ctx);
+  engine.markProjectDirty();
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
+  assert.strictEqual(engine.getDirtyGeneration(), 0);
+  // The debounced backup never fires either. (Earlier tests' 1s debounce timers can
+  // land in idbPuts during this wait, so count only writes of THIS session's palette.)
+  await new Promise((r) => setTimeout(r, 1300));
+  assert.strictEqual(idbPuts.filter(([, data]) => data.counters === state.counters).length, 0);
+});
+
+test('canvas-only: performAutoSave never sends pages: [] over the saved marks, and Turn In still releases (MAP-EMPTY-SAVE)', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = canvasOnlyState();
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  // Dirty by a route that bypasses markProjectDirty (retrySyncNow, re-checkout).
+  engine.setAutoSaveDirty(true);
+  const res = await engine.performAutoSave();
+  const sentPages = sub.updates.map((u) => u.payload.data && u.payload.data.pages);
+  assert.deepStrictEqual(sentPages, [], 'the autosave wrote data.pages = ' + JSON.stringify(sentPages) + ' over the saved marks');
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
+  // Turn In's pre-check-in flush takes the same skip and does not block the release.
+  engine.setAutoSaveDirty(true);
+  const turnIn = await engine.doTurnIn();
+  assert.strictEqual(turnIn.ok, true);
+  assert.strictEqual(sub.updates.length, 0);
+  // Once the PDF is re-attached (pages built, pendingCanvasLoad cleared) the save runs.
+  state.pages = [{ label: 'P-101', canvases: state.pendingCanvasLoad.data.pages[0].canvases, scale: null, rotation: 0 }];
+  state.pendingCanvasLoad = null;
+  engine.setAutoSaveDirty(true);
+  const after = await engine.performAutoSave();
+  assert.strictEqual(after.ok, true);
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(sub.updates[0].payload.data.pages.length, 1);
+});
+
+test('canvas-only: the 5s takeoff backup does not overwrite the device copy with no pages (MAP-EMPTY-SAVE)', async () => {
+  const { ctx } = makeCtx({ getState: () => canvasOnlyState(), getLastModifiedAt: () => 0 });
+  await createSaveEngine(ctx).writeTakeoffStateBackup();
+  const written = idbPuts.map(([projectId, data]) => ({ projectId, pageCanvases: data.pageCanvases }));
+  assert.deepStrictEqual(written, [], 'the backup wrote ' + JSON.stringify(written));
+});
+
 test('uploadLocalPdfToCloudIfNeeded: the skip ladder reports its reasons', async () => {
   const { supabase } = makeChannelSupabase(rpcWithProjects([]));
   const mk = (stateExtra, ctxExtra) => createSaveEngine(makeCtx(Object.assign({

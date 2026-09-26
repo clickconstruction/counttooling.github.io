@@ -290,8 +290,9 @@
     App.updateUI();
   }
   document.getElementById('schedulePaletteCreate')?.addEventListener('click', createProposedCounters);
-  document.getElementById('schedulePaletteCancel')?.addEventListener('click', () => { pendingProposal = null; App.hideModal('schedulePaletteModal'); });
-  document.getElementById('schedulePaletteClose')?.addEventListener('click', () => { pendingProposal = null; App.hideModal('schedulePaletteModal'); });
+  // Closing the palette drops the proposal: its × (data-modal-close) and Esc both come
+  // here through features/esc-ladder.js (MAP-ESC).
+  function cancelSchedulePalette() { pendingProposal = null; App.hideModal('schedulePaletteModal'); }
   // The Create-tab link arms the schedule tool and closes the modal.
   document.getElementById('counterReadSchedule')?.addEventListener('click', () => {
     const state = App.state;
@@ -341,6 +342,7 @@
   App.tagHintText = tagHintText;
   App.tagSwapCounterId = tagSwapCounterId;
   App.tagCreateFromHint = tagCreateFromHint;
+  App.cancelSchedulePalette = cancelSchedulePalette;   // MAP-ESC: the palette's Esc and ×
   App.proposeCountersFromBox = proposeCountersFromBox;
   App.renderTagField = renderTagField;
   App.renderTagReaderUI = renderTagReaderUI;

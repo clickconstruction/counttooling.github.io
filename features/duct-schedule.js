@@ -567,7 +567,7 @@
   // D18 (J19 #9): ONE toast on Copy Schedule. The S5 post-action advisory
   // used to stack a second card ("Bid Check has 1 open item…") over the copied
   // confirmation; features/duct-bidcheck.js now claims the 'duct-schedule'
-  // surface (App.ductBidGateHandles) so the advisory stays quiet, and the open
+  // surface (the gate handles in features/bid-check.js) so the advisory stays quiet, and the open
   // ⚠ rows — the same list it would have named — ride this toast instead,
   // after the number the estimator wants and the PipeTooling paste hint.
   function copiedToastText(s) {

@@ -442,7 +442,7 @@
     // ability to change the icon". Zero matches keeps the grid area with an
     // honest empty state instead.
     if (q && filtered.length === 0) {
-      grid.innerHTML = '<p class="icon-grid-empty">No icons match &ldquo;' + App.escapeHtml(q) + '&rdquo; &mdash; clear the search to see every icon.</p>';
+      grid.innerHTML = '<p class="icon-grid-empty">No icons match &ldquo;' + App.escapeHtml(q) + '&rdquo;. Clear the search to see every icon.</p>';
       return;
     }
     buildCreateIconGrid(filtered, hadCustomSelected ? -1 : 0);

@@ -44,8 +44,13 @@
     // The multiplier is the one thing the dialog asks: it opens with the caret in it and the
     // default selected, so typing 4 makes it 4. It opened unfocused, and the Repeats lesson's
     // "Type 4" typed into nothing (by hand, 2026-09-25). Mouse opens only: on touch the
-    // on-screen keyboard would cover the preview.
-    App.focusMultiplyZoneInput = () => requestAnimationFrame(() => { if (!inputEl || !inputEl.offsetParent) return; inputEl.focus(); inputEl.select(); });
+    // on-screen keyboard would cover the preview. A touch tap reaches the same opener as a
+    // click (the aim timer's synthetic click, or the loupe's commit), so the guard is here,
+    // on the device's pointer, not on which path called (D22, R08).
+    App.focusMultiplyZoneInput = () => {
+      if (App.isCoarsePointer && App.isCoarsePointer()) return;
+      requestAnimationFrame(() => { if (!inputEl || !inputEl.offsetParent) return; inputEl.focus(); inputEl.select(); });
+    };
   })();
   document.getElementById('multiplyZoneApply').onclick = (e) => {
     const state = App.state;

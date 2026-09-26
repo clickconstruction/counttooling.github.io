@@ -332,6 +332,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R15. One shared course runner plus lessonKit helpers
 
+**Landed 2026-09-26** (part of MAP-SHORTLIST): `lessonKit.registerCourse({ id, chapters, doors: { hint, settings } })` in lessons.js registers the chapters' tours, pushes `App.courseSections`, wires the doors and the `?course=` / `?chapter=` routes and returns `{ start }`; each course's tail is one call plus its `App.startChapter…` / `…Ids` / `…Reference`. The lessons' list and the course sections share one `renderRows` (the skeptic's three differences are parameters). The kit took `pts` / `raw` / `planFeet`, `markMissing`, `dropAt`, `openBidCheck`, `tickManual`, `readerFeet` / `feetFor`, `guide`, `rectsOf` and `memoProof`, and the lessons use them in place of their inline copies; `byTag` and `circlesOn` stay local. Not as the recipe said: `tickManual` keeps the kit's own writer, because bid-check.js publishes no door for the manual tick (its row click toggles inline). App.courseDone had already moved (R16). The course files went from 823 / 690 / 709 lines to 725 / 609 / 640, lessons.js from 917 to 1,043: about 120 lines net, not 150. D38 is narrowed, not gone: the steps are built inside lessons.js now, but each course still calls `registerCourse` at load. CHANGELOG "refactor(learn): the three courses run on one runner in the lesson kit, and share its helpers".
+
 *Risk low, yield ~150.* Three copies of a 60-line tail. It also registers App.courseDone for all three courses.
 
 - **`teaching:course-runner-tail`** (dedupe, high confidence; check: confirmed) One shared course runner instead of three copied tails

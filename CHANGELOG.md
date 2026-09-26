@@ -13,6 +13,47 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(learn): the three courses run on one runner in the lesson kit, and share its helpers (R15, 2026-09-26)
+
+The decomposition map's R15, both items. The plumbing, electrical and HVAC courses each ended in
+the same sixty lines: the progress map, a loop registering a `course:<id>:<chapter>` tour per
+chapter, `startChapter`, the Learn menu section's renderer, the empty-canvas and Project Settings
+doors, and the `?course=` / `?chapter=` routes. They differed only in the course id and the two
+door ids. Now features/lessons.js has `lessonKit.registerCourse({ id, chapters, doors: { hint,
+settings } })`, which does all of it and returns `{ start }`, and each course's tail is one call
+plus the three names its spec and the persona driver read (`App.startChapter…`, `…Ids`,
+`…Reference`), unchanged.
+
+The Learn list's row markup was a fourth copy, in `renderLearnList`. The map's skeptic doubted
+sharing it was worth it (the lessons' list adds the read-only suffix, `data-lesson` and a scroll to
+the lit row); all three fit a parameter, so the lessons' list and every course section now draw
+through one `renderRows`: the row's data attribute, the noun in "All 9 chapters done" and the
+scroll are passed in, and a chapter has no `readOnly`, so its minutes read as before.
+
+The helpers the courses had copied moved into the kit, and the lessons use them where they had
+their own inline copy: `pts` / `raw` / `planFeet` (flat point lists on the P-101 shell),
+`markMissing(c, spots, pageIdx)` (P-101 unless a page is named, the plumbing copy's default),
+`dropAt(spot, ft, pageIdx)` (also the Measuring lesson's riser), `openBidCheck()` and
+`tickManual(id)` (also the Check lesson's Open it and Tick it), `readerFeet` / `feetFor`, `guide`,
+`rectsOf`, and `memoProof(key, make)`, the once-built measure proofs, keyed `lesson:…` and
+`<course>:…` so no two owners share one. The HVAC course's `guide` was never called and is gone.
+`byTag` and `circlesOn` stay in each course: they differ on purpose.
+
+`tickManual` keeps the kit's own writer. The map asked for the tick to go through a door
+features/bid-check.js publishes, so the row's writer and its telemetry would be used, but there is
+none: the row's click toggles `bidCheck.manual` inline, and a toggle is not what a step's action
+wants (a tick already made must stay made). A registered writer in bid-check.js is the follow-up,
+left for the Bid Check work in progress there.
+
+Nothing a reader sees changes, and a step's shape does not: `check-lesson-rules` reads the same 292
+steps, teaching-labels.test.js finds the same six files, and `App.tutorialDoStep` runs the same
+actions. The courses still read the kit once at load, for `registerCourse` (lessons.js loads
+first; the map's D38), and everything else at call time. The three course files went from 823,
+690 and 709 lines to 725, 609 and 640; lessons.js grew from 917 to 1,043. Pinned by
+course-plumbing.spec.js, course-electrical.spec.js and course-hvac.spec.js (every chapter's
+do-it-for-me path, courseDone, the doors and the routes), lessons.spec.js (the Learn menu, every
+lesson) and tutorial.spec.js.
+
 ## feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command (R06, 2026-09-26)
 
 The decomposition map's R06, both items. Every new shell file cost four hand steps, and one of

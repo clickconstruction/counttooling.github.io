@@ -37,15 +37,19 @@
  * reference takeoff (every fixture, every run), and a compare step (a body that is a
  * FUNCTION, rendered live) sets the reader's quantities beside the reference's, run by run.
  *
- * Progress is per device: localStorage `clickcount-course-done`, { 'plumbing:<id>': ISO },
- * the one map every course shares (lessonKit.courseDone / markCourseDone, App.courseDone).
- * Doors: the Learn menu's course section (#learnCourseList-plumbing), the empty-canvas
+ * The runner is the lessonKit's, one for every course (R15): `registerCourse` registers the
+ * chapters' tours, ticks progress per device in localStorage `clickcount-course-done`,
+ * { 'plumbing:<id>': ISO } (the one map every course shares, App.courseDone), and wires the
+ * doors: the Learn menu's course section (#learnCourseList-plumbing), the empty-canvas
  * "plumbing course" link, Project Settings → Help → "plumbing course", /app/?course=plumbing
- * (the menu, at the course) and /app/?chapter=plumbing:<id>.
+ * (the menu, at the course) and /app/?chapter=plumbing:<id>. The copied helpers (markMissing,
+ * dropAt, tickManual, openBidCheck, feetFor, pts / raw / planFeet, guide, rectsOf, memoProof)
+ * are the kit's too.
  *
- * Registrations: renderCourseList(nextId), startChapter(id), courseChapterIds(),
- * courseReference() (the reference quantities, for the spec).
- * Boundary rule: read shared deps from App.* at call time, never captured at load.
+ * Registrations: startChapter(id), courseChapterIds(), courseReference() (the reference
+ * quantities, for the spec).
+ * Boundary rule: read shared deps from App.* at call time, never captured at load; the one
+ * exception is the registerCourse call at the foot (lessons.js loads first).
  */
 (function () {
   'use strict';
@@ -56,8 +60,6 @@
   const S = () => App.state;
   const el = (id) => document.getElementById(id);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const tourId = (id) => 'course:' + COURSE + ':' + id;
-  const key = (id) => COURSE + ':' + id;
 
   // ----- the sheets, in PDF points -----------------------------------------------------------
   // P-101's drawing sits at (60 + 0.75·x, 70 + 0.75·y) of its SVG figure at 12 px/ft; K().P
@@ -82,9 +84,7 @@
   const R = {   // P-601, sheet points
     prove: [110, 268, 110, 520], stack: [520, 556, 520, 250], lavArm: [520, 493, 592, 493], co: [534, 540],
   };
-  const pts = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push(P(flat[i], flat[i + 1])); return out; };
-  const raw = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push({ x: flat[i], y: flat[i + 1] }); return out; };
-  const planFeet = (flat) => { let px = 0; for (let i = 2; i + 1 < flat.length; i += 2) px += Math.hypot(flat[i] - flat[i - 2], flat[i + 1] - flat[i - 1]); return px / 12; };
+  const pts = (flat) => K().pts(flat), raw = (flat) => K().raw(flat), planFeet = (flat) => K().planFeet(flat);   // the kit's flat-list readers
   const SCHEDULE_BOX = { x1: 110, y1: 130, x2: 930, y2: 330 };       // P-501 turned upright: the table, in the page's own points
   const WC1_ROW = { x1: 112, y1: 160, x2: 930, y2: 178 };
 
@@ -106,11 +106,9 @@
   // ----- on-sheet targets (the engine's, features/tutorial.js) ---------------------------------
   const ZR = 16;   // a circle on a fixture, in sheet points (a couple of feet of plan)
   const circlesOn = (pageIdx, re, spots, r) => T().markZones(pageIdx, (counter(re) || {}).id || '__none__', spots, r || ZR);
-  const guide = (spots, r, done) => spots.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: !!done }));
   const runsOn = (re, pageIdx) => { const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && typeIds(re).has(d.lineTypeId) ? pls.concat([d.points]) : pls; };
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
-  const rectsOf = (pageIdx, key, test) => { const a = pageAnn(pageIdx); return ((a && a[key]) || []).filter((z) => !test || test(z)); };
   const DETAIL_INNER = () => K().DETAIL.box, DETAIL_OUTER = () => T().grow(K().DETAIL.box, 40);
   // Several counters on one step: "FD-1 2 more: MEN, the mop room · L-1 1 more: WOMEN".
   const row = (tag, re, spots, labels) => ({ tag, re, spots, labels });
@@ -144,22 +142,12 @@
   const copperStillToMake = () => COPPER_SIZES.filter((c) => !(S().lineTypes || []).some((lt) => c.re.test(lt.name || ''))).map((c) => c.name);
   // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
   // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
-  // on the card. Built on first use: the tour kit registers after this file loads.
-  const proofs = {};
-  const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
-  const proveP101 = () => proof('P101', () => ({ page: K().P101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
-  const proveP601 = () => proof('P601', () => ({ page: K().P601, ends: raw(R.prove), r: 13, ft: 14, tol: 0.4, stated: '14\'-0"' }));
-  const proveP401 = () => proof('P401', () => ({ page: K().P401, ends: K().DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
+  // on the card. Built once, on first use, through the kit's memo.
+  const proveP101 = () => K().memoProof('plumbing:P101', () => ({ page: K().P101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
+  const proveP601 = () => K().memoProof('plumbing:P601', () => ({ page: K().P601, ends: raw(R.prove), r: 13, ft: 14, tol: 0.4, stated: '14\'-0"' }));
+  const proveP401 = () => K().memoProof('plumbing:P401', () => ({ page: K().P401, ends: K().DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
   const pick = (tag) => { const t = TAGS[tag]; const have = counter(t[0]); return have && !K().isStanding(have.id) ? have : K().makeCounter(t[1], t[2], t[3]); };   // never adopts the reader's standing counter
-  // Marks a counter at the spots it does not yet cover (the seam run twice adds nothing).
-  function markMissing(c, spots, pageIdx) {
-    const i = pageIdx == null ? K().P101 : pageIdx;
-    const a = App.ensureActiveCanvas(S().pages[i]).annotations;
-    const have = (a.counterMarkers[c.id] || []);
-    const todo = spots.filter((pt) => !have.some((m) => K().near(m, pt, 4)));
-    if (todo.length) K().mark(i, c, todo);
-    return todo.length;
-  }
+  const markMissing = (c, spots, pageIdx) => K().markMissing(c, spots, pageIdx);   // P-101 unless a page is named
   const SPOTS = () => { const k = K(); return {
     wc: k.WCS, lav: k.LAVS, ms: [k.MOP], hs: k.HAND_SINKS,
     fdRestrooms: [k.FD.men, k.FD.women, k.FD.mop], fdRest: [k.FD.bar1, k.FD.bar2, k.FD.kitchen1, k.FD.kitchen2, k.FD.kitchen3, k.FD.dish, k.FD.storage],
@@ -182,27 +170,6 @@
     K().dirty();
   }
   function addHangerRule(lt) { if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [K().hangerRuleFor(lt)]; K().dirty(); }
-  function dropAt(spot, ft) {
-    const a = ann(); if (!a) return;
-    const nodes = App.collectDropNodes(a, 1) || [];
-    let best = null, d = Infinity;
-    nodes.forEach((n) => { const dd = Math.hypot(n.x - spot.x, n.y - spot.y); if (dd < d) { d = dd; best = n; } });
-    if (!best || !App.applyDropToNode(a, best, ft, 'ft', true)) return;
-    App.pushUndoSnapshotCurrentPage();
-    App.applyDropToNode(a, best, ft, 'ft');
-    App.pushRecentDrop(ft, 'ft');
-    K().dirty();
-  }
-  function tick(id) {
-    const s = S();
-    s.bidCheck = s.bidCheck || { manual: {} };
-    s.bidCheck.manual = s.bidCheck.manual || {};
-    if (s.bidCheck.manual[id]) return;
-    App.pushUndoSnapshot();
-    s.bidCheck.manual[id] = true;
-    s.bidCheckCollapsed = false;
-    K().dirty();
-  }
   const manual = (id) => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual[id]);
   const scaleP101 = () => K().setScale(K().P101, 9, '1/8" = 1\'');
   const uprightSchedule = () => { const p = S().pages[K().P501]; if (p && (p.rotation || 0) !== 90) p.rotation = 90; };
@@ -276,16 +243,7 @@
     ['fd', s.fdRestrooms.concat(s.fdRest), 'FD-1'], ['fs', s.fs, 'FS-1'], ['hb', s.hb, 'HB'], ['rpz', s.rpz, 'RPZ'],
     ['co', s.co, 'CO'], ['vtr', s.vtr, 'VTR'], ['gasDrop', s.gasDrop, 'Gas Drop'],
   ]; };
-  // The reader's takeoff, read off the same summary Copy to /Tooling copies.
-  function readerFeet() {
-    const out = {};
-    String(window.getPipeToolingSummary ? window.getPipeToolingSummary() : '').split('\n').forEach((line) => {
-      const m = /^(?:\[.*?\]\s*)?ft of (.+?)\t([\d.]+)/.exec(line);   // a run inside a group is prefixed with the group in brackets
-      if (m) out[m[1]] = Number(m[2]);
-    });
-    return out;
-  }
-  const feetFor = (re, exclude) => { const f = readerFeet(); let n = 0; Object.keys(f).forEach((name) => { if (re.test(name) && !(exclude && exclude.test(name))) n += f[name]; }); return n; };
+  // The reader's takeoff is the kit's feetFor, read off the same summary Copy to /Tooling copies.
   const fmtFt = (n) => (Math.round(n * 10) / 10).toFixed(1);
   function layEverything() {
     const k = K();
@@ -300,7 +258,7 @@
       const lt = lineType(r.re) || k.makeLineType(r.name, r.color);
       const have = polylinesOn(r.re).length;
       const wanted = RUNS.filter((x) => x.re === r.re).indexOf(r);
-      if (have <= wanted) { tracePlan(lt, runFlat(r), r.label); if (r.drop) dropAt(pts(runFlat(r))[0], r.drop); }
+      if (have <= wanted) { tracePlan(lt, runFlat(r), r.label); if (r.drop) K().dropAt(pts(runFlat(r))[0], r.drop); }
       if (/copper|pvc/i.test(lt.name)) addHangerRule(lt);
       enableBends(lt);
     });
@@ -308,13 +266,13 @@
   }
   function takeoffComplete() {
     const ref = referenceFeet();
-    const runsOk = RUNS.every((r) => feetFor(r.re, r.key === 'hwr' ? null : RE.hwr) >= ref[r.name] * 0.95);
+    const runsOk = RUNS.every((r) => K().feetFor(r.re, r.key === 'hwr' ? null : RE.hwr) >= ref[r.name] * 0.95);
     const countsOk = COUNTS().every(([tag, spots]) => markCountNear(TAGS[tag][0], spots, 8) >= spots.length);
     return runsOk && countsOk;
   }
   function takeoffHint() {
     const ref = referenceFeet();
-    const run = RUNS.find((r) => feetFor(r.re, r.key === 'hwr' ? null : RE.hwr) < ref[r.name] * 0.95);
+    const run = RUNS.find((r) => K().feetFor(r.re, r.key === 'hwr' ? null : RE.hwr) < ref[r.name] * 0.95);
     if (run) return 'Not yet traced: ' + run.label;
     const c = COUNTS().find(([tag, spots]) => markCountNear(TAGS[tag][0], spots, 8) < spots.length);
     return c ? 'Not all counted: ' + c[2] : '';
@@ -326,11 +284,11 @@
     const lines = ['Reference on the left, from the sheet\'s own geometry. Yours on the right, from your Summary.'];
     RUNS.forEach((r) => {
       if (seen.has(r.name)) return; seen.add(r.name);
-      const mine = feetFor(r.re, r.key === 'hwr' ? null : RE.hwr);
+      const mine = K().feetFor(r.re, r.key === 'hwr' ? null : RE.hwr);
       const ok = mine >= ref[r.name] * 0.95 && mine <= ref[r.name] * 1.05;
       lines.push(r.name + ': ' + fmtFt(ref[r.name]) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref[r.name] * 0.95 ? ', short: ' + r.label : ', over: check for a doubled run'));
     });
-    const branches = feetFor(RE.copper75cw, RE.hwr);
+    const branches = K().feetFor(RE.copper75cw, RE.hwr);
     lines.push('0.75in Copper CW branches: 10.7 ft, yours ' + fmtFt(branches) + ' ft' + (branches >= 10 ? ' ✓' : ', short: the chained lavatories'));
     const bad = COUNTS().filter(([tag, spots]) => markCountNear(TAGS[tag][0], spots, 8) < spots.length).map((c) => c[2]);
     lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: twelve fixture types, thirty-four marks.');
@@ -392,7 +350,7 @@
       intro: 'Why the restrooms share a wall, which hand sink serves the cook line, what a floor sink is for, and every fixture on the sheet counted under a counter the schedule itself made.',
       seed() { scaleP101(); uprightSchedule(); },
       steps: [
-        { id: 'wetwall', title: 'Where the water goes', kind: 'do', cardAt: 'bl', page: 0, zones: () => guide(K().WCS, 14, K().measured(K().P101, 11.33, 0.7)),
+        { id: 'wetwall', title: 'Where the water goes', kind: 'do', cardAt: 'bl', page: 0, zones: () => K().guide(K().WCS, 14, K().measured(K().P101, 11.33, 0.7)),
           body: 'Look at MEN and WOMEN. They share a wall, and every fixture in both rooms sits against that wall or the top wall.\n1. In the header, click [[Measure]] (or press D).\n2. Click the water closet in MEN, then the water closet in WOMEN.\nHow much wall carries both rooms\' plumbing?',
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P101, 11.33, 0.7),
           hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === K().P101 && T().measuredFeet() != null ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Try water closet to water closet' : ''; },
@@ -475,10 +433,10 @@
           body: 'Forty feet of 3/4" pipe, insulated, plus the pump, a check valve and a balancing valve, that most bids miss because it looks like the supply. Without the loop the mop sink, forty feet from the heater, runs cold for a minute every time it is opened, and the health code wants hot water at every hand sink now (FDA Food Code 5-202.12, at least 100°F).\nBoth lavatories hang off the top-wall run on 3/4" branches, lav to lav.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose L-1 and 0.75in Copper.\n3. Click the lavatory in MEN, then the one in WOMEN.\n4. Press Enter.\nEvery click places the fixture AND draws the branch back to the last one. (The mop sink has its own counter, so it is not on this chain.)',
           target: ['#chainPanel', '#chainBtn'], check: () => { const a = ann(); return !!a && (a.quickLines || []).length >= 1 && allDone(circlesOn(K().P101, RE.lav, K().LAVS, 14)); },
           action: { label: 'Chain the two for me', run: () => { K().goPage(K().P101); seedCopperBranch(); } } },
-        { id: 'drop', title: 'The riser the plan cannot show', kind: 'do', cardAt: 'bl', page: 0, zones: () => guide([P(564, 594)], 14, trunkDropped()),
+        { id: 'drop', title: 'The riser the plan cannot show', kind: 'do', cardAt: 'bl', page: 0, zones: () => K().guide([P(564, 594)], 14, trunkDropped()),
           body: 'The trunk comes up out of the slab at the south wall, and plan view never shows a vertical.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, choose or type 4 ft.\n3. Click the start of the trunk, at the south wall.\nThose 4 ft join the trunk\'s footage. Click the same end again to clear it.',
           target: ['#dropPanel', '#dropBtn'], check: trunkDropped,
-          action: { label: 'Add a 4 ft riser for me', run: () => { K().goPage(K().P101); if (!polylinesOn(RE.copper15).length) tracePlan(lineType(RE.copper15) || K().makeLineType('1.5in Copper CW', '#4a9eff'), G.cwTrunk, 'Cold trunk'); dropAt(P(564, 594), 4); } } },
+          action: { label: 'Add a 4 ft riser for me', run: () => { K().goPage(K().P101); if (!polylinesOn(RE.copper15).length) tracePlan(lineType(RE.copper15) || K().makeLineType('1.5in Copper CW', '#4a9eff'), G.cwTrunk, 'Cold trunk'); K().dropAt(P(564, 594), 4); } } },
         { id: 'hangers', title: 'Hangers from the copper rule', kind: 'do',
           rules: ['plumb.hanger.copper'],
           body: '1. In the left sidebar, under LINE TYPES, click the pencil beside 1.5in Copper.\n2. Under [[Child counts]], the app offers Hanger · 1 per 10 ft: IPC Table 308.5 for copper over 1-1/4", read off the type\'s name. Click [[Add]].\n3. Click [[Done]].\nEvery run of this type now counts its hangers, and the § chip in the Summary names the rule.',
@@ -503,7 +461,7 @@
       intro: 'Gravity, slope, traps and vents, cleanouts, and why the grease interceptor sits outside with the restrooms going around it. Then both waste lines traced on their own layer and the marks counted.',
       seed() { scaleP101(); const s = SPOTS(); markMissing(pick('fd'), s.fdRestrooms.concat(s.fdRest)); markMissing(pick('wc'), s.wc); markMissing(pick('hs'), s.hs); },
       steps: [
-        { id: 'downhill', title: 'Downhill', kind: 'do', cardAt: 'tl', page: 0, zones: () => guide(pts(G.ssRun).slice(0, 2), 14, K().measured(K().P101, 29, 0.8)),
+        { id: 'downhill', title: 'Downhill', kind: 'do', cardAt: 'tl', page: 0, zones: () => K().guide(pts(G.ssRun).slice(0, 2), 14, K().measured(K().P101, 29, 0.8)),
           body: 'Water arrives under pressure and goes wherever the pipe goes. Waste has only gravity. The heavy dashed line under the restrooms starts at a cleanout under MEN and leaves through the east wall.\n1. Click [[Measure]] (or press D).\n2. Click the cleanout under MEN, then the point where the line crosses the east wall.',
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P101, 29, 0.8),
           hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === K().P101 && T().measuredFeet() != null ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. The CO under MEN to the east wall' : ''; },
@@ -549,7 +507,7 @@
           rules: ['plumb.hanger.pvc'],
           onEnter: () => T().foldBidCheck(), hold: true, body: 'Two VTRs, each a roof penetration: a flashing, a boot, and a roofer to coordinate (IPC 903 puts the terminal above the roof and away from air intakes).\n1. In the left sidebar, click BID CHECK to expand it.\nThe row Hangers on every supported run is open: 4in PVC and 3in PVC count no hangers.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false,
-          action: { label: 'Open it', run: () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); } } },
+          action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'underslab', title: 'Hangers under the slab?', kind: 'read',
           rules: ['plumb.hanger.pvc'],
           body: 'Bid Check says the two PVC types count no hangers.\nIs it right?',
@@ -574,7 +532,7 @@
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 14\'-0" string at the left, floor to roof.\n3. Click inside circle 2, at the other end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP601().check(), hint: () => proveP601().hint(), zones: () => proveP601().zones(),
           action: { label: 'Measure the 14\'-0" string', run: async () => { const k = K(); k.goPage(k.P601); if (!k.scaleIs(k.P601, 18)) await T().applyScalePreset('1/4" = 1\'', 18); const d = raw(R.prove); k.measure(d[0], d[1]); } } },
-        { id: 'traparm', title: 'How long is the lavatory\'s trap arm?', kind: 'do', cardAt: 'br', page: 3, zones: () => guide(raw(R.lavArm), 12, K().measured(K().P601, 4, 0.3)),
+        { id: 'traparm', title: 'How long is the lavatory\'s trap arm?', kind: 'do', cardAt: 'br', page: 3, zones: () => K().guide(raw(R.lavArm), 12, K().measured(K().P601, 4, 0.3)),
           body: 'The trap arm is the run from a fixture\'s trap to its vent. The lavatory\'s is dimensioned, in the wall at 18" above the floor.\n1. Click [[Measure]] again.\n2. Click both ends of the lavatory\'s trap arm, from the stack to the trap.',
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P601, 4, 0.3),
           hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === K().P601 && T().measuredFeet() != null && Math.abs(T().measuredFeet() - 14) > 0.4 ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Stack to trap, at the lavatory' : ''; },
@@ -668,17 +626,17 @@
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 12\'-0" string over WOMEN.\n3. Click inside circle 2, at its right end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP401().check(), hint: () => proveP401().hint(), zones: () => proveP401().zones(),
           action: { label: 'Measure the 12\'-0" string', run: async () => { const k = K(); k.goPage(k.P401); if (!k.scaleIs(k.P401, 18)) await T().applyScalePreset('1/4" = 1\'', 18); k.measure(k.DETAIL.prove[0], k.DETAIL.prove[1]); } } },
-        { id: 'zone', title: 'A detail at another scale', kind: 'do', cardAt: 'bl', page: 1, zones: () => [T().boxZone(rectsOf(K().P401, 'scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 36) < 0.1), DETAIL_INNER(), DETAIL_OUTER(), 'Drag your box around detail 2, anywhere in here')],
-          hint: () => T().boxMiss(rectsOf(K().P401, 'scaleZones'), DETAIL_INNER(), DETAIL_OUTER()),
+        { id: 'zone', title: 'A detail at another scale', kind: 'do', cardAt: 'bl', page: 1, zones: () => [T().boxZone(K().rectsOf(K().P401, 'scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 36) < 0.1), DETAIL_INNER(), DETAIL_OUTER(), 'Drag your box around detail 2, anywhere in here')],
+          hint: () => T().boxMiss(K().rectsOf(K().P401, 'scaleZones'), DETAIL_INNER(), DETAIL_OUTER()),
           body: 'Detail 2, the hand sink station, is drawn at 1/2". Measured at the sheet\'s 1/4" it would read double.\n1. In the header, click [[⋯]], then [[Scale Zone]].\n2. Drag a box around detail 2, the dashed frame.\n3. In the dialog, choose [[1/2" = 1\']].',
           target: ['#scaleZoneBtn', '#scaleZoneBtnSidebar', '#headerMoreBtn'],
           check: () => { const a = pageAnn(K().P401); return !!a && (a.scaleZones || []).some((z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 36) < 0.1); },
           action: { label: 'Box detail 2 at 1/2"', run: () => { const k = K(); k.goPage(k.P401); const a = App.ensureActiveCanvas(S().pages[k.P401]).annotations; if (!a.scaleZones) a.scaleZones = []; if (a.scaleZones.length) return; App.pushUndoSnapshotCurrentPage(); a.scaleZones.push(Object.assign({ id: App.uid(), scale: { pixelsPerUnit: 36, unit: 'ft', label: '1/2" = 1\'' } }, k.DETAIL.box)); k.dirty(); } } },
-        { id: 'multiply', title: 'How many hand sink stations does the bid carry?', kind: 'do', cardAt: 'bl', page: 1, zones: () => [T().boxZone(rectsOf(K().P401, 'multiplyZones', (z) => (z.multiplier || 1) === 4), DETAIL_INNER(), DETAIL_OUTER(), 'Drag your box around detail 2, anywhere in here')],
+        { id: 'multiply', title: 'How many hand sink stations does the bid carry?', kind: 'do', cardAt: 'bl', page: 1, zones: () => [T().boxZone(K().rectsOf(K().P401, 'multiplyZones', (z) => (z.multiplier || 1) === 4), DETAIL_INNER(), DETAIL_OUTER(), 'Drag your box around detail 2, anywhere in here')],
           body: 'Detail 2 is titled HAND SINK STATION · TYP. OF 4, and the chapter counted it once: one hand sink, one floor drain.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around detail 2.\n3. Type the number the bid carries and click [[Apply]].',
           target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
           check: () => { const a = pageAnn(K().P401); return !!a && (a.multiplyZones || []).some((z) => (z.multiplier || 1) === 4); },
-          hint: () => { const a = pageAnn(K().P401); const z = a && (a.multiplyZones || []).find((x) => (x.multiplier || 1) > 1); return z && (z.multiplier || 1) !== 4 ? 'The sheet says how many: right-click the zone\'s label to change the number' : T().boxMiss(rectsOf(K().P401, 'multiplyZones'), DETAIL_INNER(), DETAIL_OUTER()); },
+          hint: () => { const a = pageAnn(K().P401); const z = a && (a.multiplyZones || []).find((x) => (x.multiplier || 1) > 1); return z && (z.multiplier || 1) !== 4 ? 'The sheet says how many: right-click the zone\'s label to change the number' : T().boxMiss(K().rectsOf(K().P401, 'multiplyZones'), DETAIL_INNER(), DETAIL_OUTER()); },
           action: { label: 'Wrap detail 2 in a ×4 zone', run: () => { const k = K(); k.goPage(k.P401); const a = App.ensureActiveCanvas(S().pages[k.P401]).annotations; if (!a.multiplyZones) a.multiplyZones = []; if (a.multiplyZones.length) return; App.pushUndoSnapshotCurrentPage(); a.multiplyZones.push(Object.assign({ id: App.uid(), multiplier: 4 }, k.DETAIL.box)); k.dirty(); } } },
         { id: 'read', title: 'Count one, bid four', kind: 'read',
           body: 'Four of everything in it: four hand sinks, four floor drains, four sets of supplies, traps and primers, though the sheet draws one. TYP. is the engineer saving ink, and the estimator\'s most common miss.\n1. In the left sidebar, look at SUMMARY: HS-1 and FD-1 read 4 while the sheet still shows one mark of each.',
@@ -731,7 +689,7 @@
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nRows marked AUTO are judged by the app from your runs. The rest are questions only you can answer.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false,
-          action: { label: 'Open it', run: () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); } } },
+          action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'rows', title: 'What the rows mean', kind: 'read',
           rulesExempt: 'no rulebook entry: IPC 710 drainage fixture units, IPC Table 1002.2 trap arms',
           body: 'The manual rows read: fixture units against the building drain, trap arm lengths, slope on every waste run, backflow and water-heater venting.\nWhich of them did the engineer already answer on this set?',
@@ -740,7 +698,7 @@
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
           body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\n2. Click Fixture units checked against the building drain size.\n3. Click Trap arm lengths within the table.\nYour ticks are saved with the bid. Hand off with a row still open and the app asks once, then remembers.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('fixture-units') && manual('trap-arms'),
-          action: { label: 'Tick the three for me', run: () => { tick('scale-verified'); tick('fixture-units'); tick('trap-arms'); } } },
+          action: { label: 'Tick the three for me', run: () => { K().tickManual('scale-verified'); K().tickManual('fixture-units'); K().tickManual('trap-arms'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the FD-1 total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits, zones already applied. This is what you open when the GC questions the number.',
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', counter(RE.fd)), '#summarySectionTitle'), check: () => K().modalUp('summaryCountDetailModal'),
@@ -757,67 +715,11 @@
     },
   ];
 
-  // ----- progress, the menu section, the doors ---------------------------------------------
-  const courseDone = () => K().courseDone();
-  const markDone = (id) => K().markCourseDone(key(id));
-  const suggested = () => { const d = courseDone(); return (CHAPTERS.find((c) => !d[key(c.id)]) || {}).id || null; };
-
-  CHAPTERS.forEach((chapter, idx) => {
-    const next = CHAPTERS[idx + 1];
-    App.registerTour(tourId(chapter.id), {
-      steps: [K().openStep(chapter)].concat(chapter.steps, [K().doneStep(chapter, chapter.done)]),
-      doneKey: null,
-      onStop(finished) {
-        K().restoreDevice();
-        if (!finished) return;
-        markDone(chapter.id);
-        App.openLearnMenu(undefined, { course: COURSE, chapter: next ? next.id : null });   // back to the menu, at the course, the next chapter lit
-      },
-    });
-  });
-
-  function startChapter(id) {
-    if (!CHAPTERS.some((c) => c.id === id)) return false;
-    if (App.hideModal) App.hideModal('learnModal');
-    K().beginTeaching();
-    return App.startTutorial(tourId(id));
-  }
-  function renderCourseList(nextId) {
-    const list = el('learnCourseList-' + COURSE);
-    if (!list) return;
-    const done = courseDone();
-    const lit = nextId === undefined ? suggested() : nextId;
-    const count = CHAPTERS.filter((c) => done[key(c.id)]).length;
-    const esc = App.escapeHtml || ((t) => String(t));
-    list.innerHTML = CHAPTERS.map((c, i) => '<button type="button" class="learn-row' + (done[key(c.id)] ? ' learn-row-done' : '') + (c.id === lit ? ' learn-row-next' : '') + '" data-chapter="' + c.id + '">'
-      + '<span class="learn-row-no">' + (done[key(c.id)] ? '✓' : (i + 1)) + '</span>'
-      + '<span class="learn-row-text"><span class="learn-row-title">' + esc(c.title.replace(/^Chapter \d+: /, '')) + '</span><span class="learn-row-sub">' + esc(c.intro) + '</span></span>'
-      + '<span class="learn-row-min">' + c.minutes + ' min</span></button>').join('');
-    const prog = el('learnCourseProgress-' + COURSE);
-    if (prog) prog.textContent = count === CHAPTERS.length ? 'All ' + CHAPTERS.length + ' chapters done' : count + ' of ' + CHAPTERS.length + ' done';
-    list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => startChapter(row.dataset.chapter); });
-  }
-  const openAtCourse = () => App.openLearnMenu(undefined, { course: COURSE, chapter: suggested() });
-
-  // wiring (static DOM)
-  el('canvasEmptyHintCourse') && (el('canvasEmptyHintCourse').onclick = (e) => { e.preventDefault(); openAtCourse(); });
-  el('settingsCourse') && (el('settingsCourse').onclick = () => { App.hideModal('settingsModal'); openAtCourse(); });
-  // /app/?course=plumbing opens the menu at the course; /app/?chapter=plumbing:<id> starts that chapter.
-  try {
-    const params = new URLSearchParams(location.search);
-    const chapter = String(params.get('chapter') || '');
-    const want = chapter.startsWith(COURSE + ':') ? chapter.slice(COURSE.length + 1) : null;
-    if (want && CHAPTERS.some((c) => c.id === want)) {
-      App.setTutorialPending(true);   // the boot's restore offer waits, as it does for ?tour= and ?lesson=
-      setTimeout(() => { App.setTutorialPending(false); startChapter(want); }, 600);
-    } else if (params.get('course') === COURSE) {
-      App.setTutorialPending(true);
-      setTimeout(() => { App.setTutorialPending(false); openAtCourse(); }, 600);
-    }
-  } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
-
-  (App.courseSections = App.courseSections || []).push({ id: COURSE, render: renderCourseList });
-  App.startChapter = startChapter;
+  // ----- the runner, the lessonKit's (R15) --------------------------------------------------
+  // The chapters' tours, the Learn menu section, the doors and the routes, /app/?course=plumbing
+  // and /app/?chapter=plumbing:<id>. The one lessonKit read at load: lessons.js loads first.
+  const course = K().registerCourse({ id: COURSE, chapters: CHAPTERS, doors: { hint: 'canvasEmptyHintCourse', settings: 'settingsCourse' } });
+  App.startChapter = course.start;
   App.courseChapterIds = () => CHAPTERS.map((c) => c.id);
   App.courseReference = () => ({ feet: referenceFeet(), counts: COUNTS().map(([tag, spots, label]) => [label, spots.length]) });
 })();

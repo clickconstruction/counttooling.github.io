@@ -85,6 +85,80 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.evaluate(() => [window.state.pages.length, window.App.tutorialStepId()])).toEqual([1, null]);
   });
 
+  // MAP-TOUR-SHEET (D06): a trade tour started from Learn ran on whatever plan was open. On the lesson
+  // set the welcome passed on its four sheets, the lesson's seeded scale passed Set the scale, and the
+  // Measure step's circles sat at the sample plan's 20'-0" dimension on P-101, where there is none.
+  // The dimension text the circles ring, in the open sheet's own text layer (PDF y up, sheet y down).
+  const dimUnderCircles = (page) => page.evaluate(async () => {
+    const zs = window.App.tutorialZones().filter((z) => z.kind === 'circle');
+    const p = window.state.pages[window.state.currentPage];
+    if (zs.length !== 2 || !p || !p.pdfPage) return null;
+    const mid = { x: (zs[0].x + zs[1].x) / 2, y: (zs[0].y + zs[1].y) / 2 };
+    const h = p.pdfPage.view[3] - p.pdfPage.view[1];
+    const tc = await p.pdfPage.getTextContent();
+    const hit = tc.items.find((it) => /20'-0"/.test(it.str || '') && Math.hypot(it.transform[4] - mid.x, (h - it.transform[5]) - mid.y) < 60);
+    return hit ? hit.str.trim() : '';
+  });
+  test('a trade tour started from Learn over the lesson sheets opens the sample plan, and its circles ring the sample plan\'s dimension', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await ready(page);
+    // a lesson opens its sheets, and the reader leaves it for the Learn menu
+    expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await page.click('#tourLeave');
+    expect(await page.evaluate(() => [window.state.currentProjectName, window.state.pages.length])).toEqual(['sample-lessons', 4]);
+    await page.evaluate(() => window.App.openLearnMenu());
+    await page.click('#learnTour-plumbing');
+    await waitForStep(page, 'welcome');
+    // the lesson sheets are not the sample plan: the welcome waits for its button
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('welcome');
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'scale', null, { timeout: 30000 });
+    // a teaching set is reset without asking, and the sample plan is the open project
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => [window.state.currentProjectName, window.state.pages.length, window.state.trade, window.App.projectHasAnyCanvasMarkup()])).toEqual(['sample-plan', 1, 'plumbing', false]);
+    await page.evaluate(() => window.App.tutorialDoStep());   // the scale
+    await waitForStep(page, 'measure');
+    expect(await dimUnderCircles(page)).toMatch(/20'-0"/);
+    expect(errors).toEqual([]);
+  });
+
+  test('a trade tour started over the reader\'s own plan asks Close project first; Cancel keeps their plan', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/app/');
+    await ready(page);
+    await page.locator('#pdfInput').setInputFiles('test-page.pdf');
+    await page.waitForFunction(() => window.state.currentProjectName === 'test-page' && window.state.pages.length === 1, null, { timeout: 15000 });
+    await page.evaluate(() => { const s = window.state; s.counters.push({ id: 'mine', name: 'My Counter', icon: window.App.getOrderedIcons()[0].value, color: '#fff' }); window.App.ensureActiveCanvas(s.pages[0]).annotations.counterMarkers.mine = [{ x: 50, y: 50, id: 'm1', group: null }]; window.App.markProjectDirty(); window.App.updateUI(); });
+    const tradeBefore = await page.evaluate(() => window.state.trade);
+    const plan = () => page.evaluate(() => [window.state.currentProjectName, window.state.pages.length, window.App.projectHasAnyCanvasMarkup(), window.App.tutorialStepId()]);
+    await page.evaluate(() => window.App.openLearnMenu());
+    await page.click('#learnTour-plumbing');
+    await waitForStep(page, 'welcome');
+    // their plan is not the sample plan: the welcome waits, and the tour never stamps its trade on their plan
+    await page.waitForTimeout(1500);
+    expect(await plan()).toEqual(['test-page', 1, true, 'welcome']);
+    expect(await page.evaluate(() => window.state.trade)).toBe(tradeBefore);
+    // Open the sample plan: the app's one Close project, which asks; Cancel keeps everything
+    await page.click('#tourShow');
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#confirmTitle')).toHaveText('Close project?');
+    await page.click('#confirmCancel');
+    await page.waitForTimeout(800);
+    expect(await plan()).toEqual(['test-page', 1, true, 'welcome']);
+    // agreeing closes it and opens the sample plan
+    await page.click('#tourShow');
+    await page.click('#confirmOk');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'scale', null, { timeout: 30000 });
+    expect(await page.evaluate(() => [window.state.currentProjectName, window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual(['sample-plan', 1, ['My Counter']]);
+  });
+
   // A paragraph between two actions splits the numbered list; the second part keeps counting.
   // The size step read 1, 2, 1, 1 until 2026-09-24.
   test('a step\'s actions number straight through a paragraph between them', async ({ page }) => {

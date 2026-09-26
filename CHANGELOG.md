@@ -226,6 +226,53 @@ its text, so a path in a helper's comment pins nothing), and the lists match mai
 Left for the follow-up, in DECOMPOSITION_MAP.md R07's Landed line: the other specs, 157 of which
 still carry 246 copies of the boot wait.
 
+## refactor(registry): 53 App registrations and 18 teaching-kit members nothing read are gone (R16, 2026-09-26)
+
+The decomposition map's R16, with its defects D23 and D24. A registration is a promise that
+something reads it, and 53 of them were promises to no one. The project map listed 59 names
+registered and read by no other file, spec or script; a whole-word grep of every .js and .html
+confirmed 53 of them dead, and the others have readers the map does not see (below). Nothing a user sees changes: every function behind a deleted
+line is still called where it was, by its own file.
+
+Gone from app.js: `pushRecentBid`, `syncTradeSegment` (quick-modals.js keeps its own), the
+constants `TRADES`, `TRADE_LABELS`, `ELECTRICAL_DEFAULTS`, `HVAC_DEFAULTS` and `CODE_EDITIONS`
+(features read constants by bare name), the three model publishes `ConductorModel`,
+`CircuitModel` and `BidCheckModel` (every reader uses `window.*`), and the second
+`App.SUPABASE_URL`. Gone from the features: `isBendVertexMenuOpen`, `toggleBidMenu`,
+`childCountRuleLabel`, `getPanelCrossCheck`, `isHomerunLine`, `lineTypeConductorChip`,
+`hideDropPeek`, `drawDuctCalloutRing`, `hideDuctFittingMenu`, `isDuctFittingMenuOpen`,
+`setDuctVerticalFt`, `ductRepeatsLabel`, `ductStepDownCandidates`, `applyDeckHeightToRuns`,
+`topmostOverlay`, `runSpecificPagesExport`, `setSpecificPagesToMarksOnly`, `hideGhostMenu`,
+`applyStripOverflow`, `modalGalleryExitLive`, `noteKind`, `noteTitle`, `notePinInfo`,
+`getNotesDisplayMode`, `closeNotesLedger`, `copyLayerPickerModel`, `doOpenTakeoffTooling`,
+`titleFromPdfFilename`, `QUICK_KEY_SLOTS`, `refreshSettingsReviewRow`, `ruleChipLabel`,
+`closeRulePopover`, `isRulePopoverOpen`, `getFooterTotalsCached`, `addPageTextLoadedListener`,
+`blankTourSteps`, `tryTurnIn`, `doTurnInAndHandleResult`, `getWaterServedForLine`,
+`waterSideFieldValue`, `getWaterSettings`, `buildWaterScheduleText` and `openWaterSizePopover`.
+Several were labelled spec seams that no spec ever read. Four functions existed only to be
+registered and went with their line: `drawDuctCalloutRing` (unpainted since 30ffd6f),
+`lineTypeConductorChip`, `notePinInfo` and `addPageTextLoadedListener`.
+
+The teaching kits lost the members no lesson, course, tour, spec or script reads: tourKit's
+`q`, `el`, `wait`, `state`, `ann`, `teachingSetGrown` and `openTeachingSet` (the last two stay,
+the tours' own), and lessonKit's `SET_NAME`, `LESSON_SET`, `KITCHEN_FDS`, `BAR`, `STRAY`, `GI`,
+`NOTE_SPOT`, `RFI_SPOT`, `isSetOpen`, `inRect` and `arm`.
+
+Kept, because something does read them: `pickScaleForLineType` (lines-list.spec.js checks it by
+name), `applyCanvasRepair` and `noteViewerTempScale` (their specs), `lessonIds` (the persona
+driver), `modalGalleryReloadCss` (the gallery's phone-width embed calls it in the iframe),
+`pageTextLoadedListeners` (tag-reader notifies it), `resolveConfirm` and `closeBidMenu` (the Esc
+ladder), `tutorialZones` and `startBlankTour` (specs). Where the project map called one of these
+dead, the reason is written into DECOMPOSITION_MAP.md's blind spots.
+
+D23: `App.courseDone` was registered by the plumbing course alone, and the electrical and HVAC
+specs called it, passing only because all three courses share one localStorage map and the
+plumbing file happened to load. The map now lives in lessons.js, which registers
+`App.courseDone`; each course reads and ticks it through `lessonKit.courseDone` and
+`markCourseDone` instead of its own copy of the key. D24: teaching-labels.test.js named its six
+teaching files; it now finds them (tutorial.js, lessons.js, any tour-* or course-* file, and any
+feature file that calls `App.registerTour`), so a fourth course is checked the day it lands.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

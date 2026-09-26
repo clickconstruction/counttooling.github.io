@@ -604,7 +604,6 @@
   });
 
   App.loadTestPdf = loadTestPdf;
-  App.titleFromPdfFilename = titleFromPdfFilename;
   App.setPendingAddAdditionalPages = (v) => { pendingAddAdditionalPages = !!v; };
   App.markTeachingOpen = () => { pendingTeachingOpen = true; };   // the next #pdfInput change is a sample sheet a lesson or tour opens
   App.resetPdfIntakeFlags = () => { pendingAddAdditionalPages = false; pendingImportCanvasAfterPdf = false; pendingTeachingOpen = false; };

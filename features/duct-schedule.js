@@ -690,5 +690,4 @@
   App.buildDuctScheduleText = buildDuctScheduleText;   // spec seam
   App.ductCopiedToastText = copiedToastText;   // D18 spec seam: the one-toast copy
   App.buildDuctCopyRows = buildDuctCopyRows;   // D17: report.js appends these to Copy Summary / Copy to /Tooling
-  App.ductRepeatsLabel = repeatsLabel;   // D17: the T2-11 honesty phrase (sidebar total title, report)
 })();

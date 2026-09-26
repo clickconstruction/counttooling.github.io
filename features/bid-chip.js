@@ -283,7 +283,6 @@
   // any tool rung, so a stray Esc here never costs a vertex behind it.
 
   App.renderBidChip = renderBidChip;
-  App.toggleBidMenu = toggleBidMenu;
   App.closeBidMenu = closeBidMenu;
   App.isBidMenuOpen = () => menuOpen;   // MAP-ESC: the Esc ladder's popover rung
   App.loadRecentBidNow = loadRecentBidNow;

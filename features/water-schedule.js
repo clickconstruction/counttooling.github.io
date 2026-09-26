@@ -294,11 +294,9 @@
   };
 
   App.openWaterScheduleModal = openWaterScheduleModal;
-  App.getWaterSettings = getWaterSettings;
   App.computeWaterSchedule = computeWaterSchedule;
   App.getWaterScheduleForReport = getWaterScheduleForReport;
   App.buildWaterCopyRows = buildWaterCopyRows;
-  App.buildWaterScheduleText = buildWaterScheduleText;   // spec seam
   App.syncWaterScheduleBtn = syncWaterScheduleBtn;
   App.collectUnscaledWaterPages = collectUnscaledWaterPages;
 })();

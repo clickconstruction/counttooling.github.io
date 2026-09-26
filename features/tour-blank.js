@@ -794,6 +794,5 @@
   el('learnTour-blank') && (el('learnTour-blank').onclick = () => { App.hideModal('learnModal'); start(); });
   syncDoor();
   App.startBlankTour = start;
-  App.blankTourSteps = () => STEPS.map((s) => s.id);   // spec seam
   App.blankTourLatches = () => ({ seen: Object.assign({}, seen), zoomBase, moveBase, base: !!base, resumeTo, restoring, saved: savedStep() });   // spec seam: what the checks remember
 })();

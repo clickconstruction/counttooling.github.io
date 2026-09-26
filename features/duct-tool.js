@@ -839,7 +839,6 @@
   App.clearDuctDraft = clearDuctDraft;
   App.settleDuctDraft = settleDuctDraft;   // D17 (J5-B): the Polyline arm settles a live duct draft
   App.setDuctDeckHeight = setDuctDeckHeight;   // D17 (J19 #2): the one deck-height writer (retroactive risers)
-  App.applyDeckHeightToRuns = applyDeckHeightToRuns;   // spec seam
   App.turnOnGroupsFromDuct = turnOnGroupsFromDuct;   // D17 (J19 #1): shared by the Bid Check hint
   App.drawDuctOverlay = drawDuctOverlay;
   App.getDuctChipClientAnchor = getDuctChipClientAnchor;

@@ -5,7 +5,9 @@
  * The rulebook's source is content/rules/*.md; `npm run build:rules` renders it
  * to /rules/ (pages) and /rules/rules.json (the same list for software — id,
  * kind, status, values as when/value/unit, source + section + editions,
- * amendments, used_by, url; no prose). This file fetches rules.json once at boot
+ * amendments, used_by, url; no prose; above the rules, usedByLabels, the label
+ * for each used_by surface, whose one list is scripts/lib/rules.js's USED_BY_LABEL:
+ * an id with no label prints as itself). This file fetches rules.json once at boot
  * (precached by the service worker, so chips work offline) and gives every
  * surface that DERIVES a number from a rule one gesture: a small chip that
  * names the citation ("§ NEC Chapter 9", "§ IPC 308.5", or "convention" for a
@@ -38,9 +40,9 @@
   const App = (window.App = window.App || {});
   const RULES_URL = '/rules/rules.json';
   const KIND_LABEL = { code: 'Code', standard: 'Standard', recommendation: 'Recommendation', convention: 'Convention' };
-  const USED_BY_LABEL = { bidCheck: 'Bid Check', childCount: 'Child counts', chain: 'Chain tool', ductSchedule: 'Duct Schedule', roomSizer: 'Room Sizer', quickCreate: 'Quick creator' };
 
   let rules = null;          // Map id -> rule, once loaded (empty Map on failure)
+  let usedByLabels = {};     // surface id -> label, rules.json's usedByLabels (scripts/lib/rules.js owns the list)
   let loading = null;
   let openId = null;
   let anchor = null;
@@ -52,6 +54,7 @@
     if (loading) return loading;
     loading = fetch(RULES_URL).then((r) => (r.ok ? r.json() : null)).then((j) => {
       rules = new Map(((j && j.rules) || []).map((r) => [r.id, r]));
+      usedByLabels = (j && j.usedByLabels && typeof j.usedByLabels === 'object') ? j.usedByLabels : {};
       syncChips();
       App.onRulesLoaded && App.onRulesLoaded();
       return rules;
@@ -119,7 +122,7 @@
   }
   function render(rule) {
     const editions = ((rule.source && rule.source.editions) || []).map(String).join(' · ');
-    const used = (rule.used_by || []).map((u) => '<span class="rule-pop-chip">' + esc(USED_BY_LABEL[u] || u) + '</span>').join(' ');
+    const used = (rule.used_by || []).map((u) => '<span class="rule-pop-chip">' + esc(Object.prototype.hasOwnProperty.call(usedByLabels, u) ? usedByLabels[u] : u) + '</span>').join(' ');
     const amend = amendmentsFor(rule);
     return '<div class="rule-pop-head"><span class="rule-pop-kind rule-pop-kind-' + esc(rule.kind) + '">' + esc(KIND_LABEL[rule.kind] || rule.kind) + '</span>'
       + (rule.status === 'draft' ? '<span class="rule-pop-draft">not applied yet</span>' : '')

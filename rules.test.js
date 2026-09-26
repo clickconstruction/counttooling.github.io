@@ -6,7 +6,7 @@ const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
-const { loadRules, driftCheck, toJson, parseYamlSubset, resolvePointer } = require('./scripts/lib/rules');
+const { loadRules, driftCheck, toJson, parseYamlSubset, resolvePointer, validate, USED_BY_LABEL } = require('./scripts/lib/rules');
 
 const ROOT = __dirname;
 const rules = loadRules();
@@ -67,4 +67,31 @@ test('the index lists every rule and the sitemap lists every rule page', () => {
   const sitemap = fs.readFileSync(path.join(ROOT, 'sitemap.xml'), 'utf8');
   assert.ok(sitemap.includes('<loc>https://counttooling.com/rules/</loc>'));
   for (const r of rules) assert.ok(sitemap.includes(`<loc>https://counttooling.com${r.url}</loc>`), `sitemap missing ${r.url}`);
+});
+
+// MAP-WATER-TAP (2026-09-26): the surfaces a rule is used by are ONE list, in scripts/lib/rules.js.
+// The app's § popover and the rule pages each carried a copy, neither had waterSchedule, and both
+// printed the raw id. A new surface now has to name itself before a rule may cite it.
+test('used_by names a surface on the one label list, and the list names Water Sizing', () => {
+  assert.strictEqual(USED_BY_LABEL.waterSchedule, 'Water Sizing');
+  for (const r of rules) for (const u of r.used_by) assert.ok(USED_BY_LABEL[u], `${r.id}: used_by "${u}" has no label`);
+  const good = { id: 'plumb.test.rule', title: 'T', summary: 'S', trade: 'plumbing', kind: 'code', status: 'applied', values: [{ when: 'always', value: 1 }], source: { code: 'IPC', section: '1' }, used_by: ['waterSchedule'], updated: '2026-09-26' };
+  assert.deepStrictEqual(validate(good, 'plumbing'), []);
+  const problems = validate({ ...good, used_by: ['waterSchedule', 'pipeWizard'] }, 'plumbing');
+  assert.strictEqual(problems.length, 1);
+  assert.match(problems[0], /used_by: "pipeWizard" is not a surface/);
+});
+
+test('rules.json carries the used_by labels above the rules, and every rule page prints the label', () => {
+  const json = JSON.parse(fs.readFileSync(path.join(ROOT, 'rules', 'rules.json'), 'utf8'));
+  assert.deepStrictEqual(json.usedByLabels, USED_BY_LABEL);
+  const keys = Object.keys(json);
+  assert.ok(keys.indexOf('usedByLabels') < keys.indexOf('rules'), 'usedByLabels sits above the rules');
+  for (const r of rules) {
+    const html = fs.readFileSync(path.join(ROOT, r.url, 'index.html'), 'utf8');
+    for (const u of r.used_by) {
+      assert.ok(html.includes(`<span class="rule-chip">${USED_BY_LABEL[u]}</span>`), `${r.url}: no "${USED_BY_LABEL[u]}" chip`);
+      assert.ok(!html.includes(`<span class="rule-chip">${u}</span>`), `${r.url}: prints the raw id "${u}"`);
+    }
+  }
 });

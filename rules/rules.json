@@ -1,6 +1,15 @@
 {
   "generated": "npm run build:rules",
   "site": "https://counttooling.com",
+  "usedByLabels": {
+    "bidCheck": "Bid Check",
+    "childCount": "Child counts",
+    "chain": "Chain tool",
+    "ductSchedule": "Duct Schedule",
+    "roomSizer": "Room Sizer",
+    "quickCreate": "Quick creator",
+    "waterSchedule": "Water Sizing"
+  },
   "rules": [
     {
       "id": "elec.conduit.fill-limit",

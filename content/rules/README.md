@@ -30,10 +30,15 @@ source:
   editions: [2017, 2020, 2023]       # editions the value was checked against
   url: https://…                     # where the public text can be read
 amendments: []                       # [{ jurisdiction: Texas, note: … }] when one changes the value
-used_by: [bidCheck]                  # bidCheck | childCount | chain | ductSchedule | roomSizer | quickCreate
+used_by: [bidCheck]                  # bidCheck | childCount | chain | ductSchedule | roomSizer | quickCreate | waterSchedule
 updated: 2026-09-09
 ---
 ```
+
+`used_by` names the app surfaces that apply the rule, by id. The ids and the labels the rule
+page and the app's § popover print for them are one list, `USED_BY_LABEL` in
+`scripts/lib/rules.js` (it rides `rules.json` as `usedByLabels`). An id not on it fails the
+build, so a rule for a new surface first adds that surface's id and label there.
 
 Then the body, in Markdown: what the rule says **as the app applies it**, why it
 matters on a bid, and what the app does and does not do with it.

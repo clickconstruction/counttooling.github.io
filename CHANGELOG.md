@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
+
+Two of the decomposition map's confirmed bugs (R03, D09 and D10).
+
+The rule pages and the app's § popover printed "waterSchedule" under Used by for the four water
+rules (velocity, pipe ID, fixture supply minimum, the demand curve). The labels were a list in
+features/rules.js and a copy of it in scripts/build-rules.js, and water sizing had been added to
+neither. They are one list now, `USED_BY_LABEL` in scripts/lib/rules.js, with Water Sizing on it.
+build-rules.js prints the pages from it and writes it into rules.json as `usedByLabels`, above the
+rules; the popover reads that and prints an id with no label as itself. The loader fails a rule
+whose `used_by` names an id that is not on the list, so a rule for a new surface has to add the
+surface's name first (content/rules/README.md says so). The four water pages and rules.json are
+rebuilt, and sw.js restamped, since rules.json is precached.
+
+The water card's half had already landed on main in the persona calibration (C4 and its review,
+2026-09-25): a Pipe size button, the whole card taking a tap on a touch screen, the card wired the
+first time it shows rather than on the first S, and its presses kept from the sheet under it. The
+map was read before that. The one width nothing pinned was a phone, so water-size.spec.js now taps
+the card's text at 375 px, with S never pressed, and sees the sizes open with no vertex placed; the
+case fails when the card's touch-screen `pointer-events` or its first-show wiring is taken out.
+
+Pinned by rules.test.js (Water Sizing on the list, every rule's `used_by` labelled, an unknown id
+rejected, `usedByLabels` above the rules in rules.json, every rule page printing the label and never
+the id) and rules-chip.spec.js (the Water Sizing dialog's velocity chip opens a popover whose Used
+by reads Water Sizing). Both were red before the fix.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

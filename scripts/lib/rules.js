@@ -25,7 +25,7 @@
  *     editions: [2017, 2020, 2023]
  *     url: https://...                            # where the public text lives
  *   amendments: []                                # [{ jurisdiction, note }]
- *   used_by: [bidCheck]                           # app surfaces that apply it
+ *   used_by: [bidCheck]                           # app surfaces that apply it (USED_BY_LABEL ids)
  *   updated: 2026-09-09
  *   ---
  *   Markdown body: what the rule says as the app applies it, and why.
@@ -42,6 +42,19 @@ const CONTENT_DIR = path.join(ROOT, 'content', 'rules');
 const TRADES = ['electrical', 'hvac', 'plumbing'];
 const KINDS = ['code', 'standard', 'recommendation', 'convention'];
 const STATUSES = ['applied', 'draft'];
+// The app surfaces a rule can be used by: the id a rule file's used_by names, and the label the
+// rule pages and the app's § popover print for it. The one list (MAP-WATER-TAP, 2026-09-26): the
+// app reads it from rules.json's usedByLabels, build-rules.js from here, and a used_by id not on
+// it fails the load, so a new surface names itself here before a rule may cite it.
+const USED_BY_LABEL = {
+  bidCheck: 'Bid Check',
+  childCount: 'Child counts',
+  chain: 'Chain tool',
+  ductSchedule: 'Duct Schedule',
+  roomSizer: 'Room Sizer',
+  quickCreate: 'Quick creator',
+  waterSchedule: 'Water Sizing',
+};
 
 // --- YAML subset -------------------------------------------------------------------
 function scalar(s) {
@@ -144,6 +157,7 @@ function validate(m, trade) {
   }
   if (m.amendments != null && !Array.isArray(m.amendments)) p.push('amendments: a list (may be empty)');
   if (!Array.isArray(m.used_by)) p.push('used_by: a list (may be empty)');
+  else m.used_by.forEach((u) => { if (!Object.prototype.hasOwnProperty.call(USED_BY_LABEL, u)) p.push(`used_by: "${u}" is not a surface (one of ${Object.keys(USED_BY_LABEL).join(' | ')}; a new one is added to USED_BY_LABEL in scripts/lib/rules.js)`); });
   if (m.status === 'applied' && !(m.used_by || []).length) p.push('status applied needs a non-empty used_by');
   if (!m.updated || !/^\d{4}-\d{2}-\d{2}$/.test(String(m.updated))) p.push('updated: YYYY-MM-DD');
   return p;
@@ -217,4 +231,4 @@ function toJson(rules) {
   }));
 }
 
-module.exports = { CONTENT_DIR, TRADES, KINDS, STATUSES, parseYamlSubset, splitFrontMatter, loadRules, resolvePointer, driftCheck, toJson };
+module.exports = { CONTENT_DIR, TRADES, KINDS, STATUSES, USED_BY_LABEL, parseYamlSubset, splitFrontMatter, loadRules, validate, resolvePointer, driftCheck, toJson };

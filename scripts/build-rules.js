@@ -15,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 const { escAttr, escHtml, fmtDate, layout, breadcrumb, breadcrumbLd } = require('./lib/site');
-const { loadRules, driftCheck, toJson, TRADES } = require('./lib/rules');
+const { loadRules, driftCheck, toJson, TRADES, USED_BY_LABEL } = require('./lib/rules');
 
 const ROOT = path.join(__dirname, '..');
 const OUT_DIR = path.join(ROOT, 'rules');
@@ -27,7 +27,6 @@ const KIND_BLURB = {
   recommendation: 'In the code, but advisory — an informational note, not a requirement.',
   convention: 'A working figure the trade uses and the app defaults to. Shops override these most.',
 };
-const USED_BY_LABEL = { bidCheck: 'Bid Check', childCount: 'Child counts', chain: 'Chain tool', ductSchedule: 'Duct Schedule', roomSizer: 'Room Sizer', quickCreate: 'Quick creator' };
 
 function valueCell(v) {
   const val = typeof v.value === 'number' ? String(v.value) : escHtml(v.value);
@@ -155,7 +154,7 @@ ${groups}
   const outputs = new Map();
   outputs.set(path.join(OUT_DIR, 'index.html'), indexPage(rules));
   for (const r of rules) outputs.set(path.join(OUT_DIR, r.trade, r.slug, 'index.html'), rulePage(r, marked));
-  outputs.set(path.join(OUT_DIR, 'rules.json'), JSON.stringify({ generated: 'npm run build:rules', site: 'https://counttooling.com', rules: toJson(rules) }, null, 2) + '\n');
+  outputs.set(path.join(OUT_DIR, 'rules.json'), JSON.stringify({ generated: 'npm run build:rules', site: 'https://counttooling.com', usedByLabels: USED_BY_LABEL, rules: toJson(rules) }, null, 2) + '\n');
 
   if (check) {
     const stale = [];

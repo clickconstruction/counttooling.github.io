@@ -201,10 +201,33 @@
     renderDuctList();
   };
 
+  // D19 (J6-H), moved from app.js in R14 (openDeleteZoneForRect calls it guarded):
+  // the duct fragment of the Delete Area preview —
+  // "61' · 438 lb, 2 fittings". The ft/lb come from the SAME per-run tally the
+  // Duct sidebar badge shows (App.ductRunTally), so the number in the confirm
+  // matches the row the estimator is about to lose. app.js falls back to '' when
+  // this file is not loaded, so the preview degrades to a plain count.
+  function ductDeleteSummary(collected, ann, pageIdx) {
+    if (!App.ductRunTally) return '';
+    let ft = 0, lb = 0;
+    for (const { run } of collected.ductRuns || []) {
+      try {
+        const tally = App.ductRunTally({ run, ann, pageIdx });
+        ft += tally?.totalLengthFt || 0;
+        lb += tally?.totalPounds || 0;
+      } catch (_) { /* a malformed run must not block the delete confirm */ }
+    }
+    const bits = [];
+    if (ft > 0 || lb > 0) bits.push(Math.round(ft).toLocaleString() + "' · " + Math.round(lb).toLocaleString() + ' lb');
+    const nf = collected.ductFittingCount || 0;
+    if (nf) bits.push(nf + (nf === 1 ? ' fitting' : ' fittings'));
+    return bits.join(', ');
+  }
   // D19 (J6-H): the Delete Area preview quotes the SAME per-run tally the
   // sidebar badge shows, so "61' · 438 lb" in the confirm matches the row the
   // estimator is about to lose. entry = { run, ann, pageIdx }.
   App.ductRunTally = runTally;
+  App.ductDeleteSummary = ductDeleteSummary;
 
   App.renderDuctList = renderDuctList;
 })();

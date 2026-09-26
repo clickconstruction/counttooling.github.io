@@ -16,11 +16,10 @@
  * drawing (drawGrid), the snap-to-grid branch, the render-code grid-button
  * active/disabled toggling, and resetGridOrigin (a state-reset used by the
  * prepare-PDF / page-setup flows, not the modal) all stay in app.js. The
- * "set origin on page" handoff goes through the shared `state.gridOriginPickMode`
- * flag: this feature sets it true, and the app.js canvas handler reads it, writes
- * the origin, flips it false, and reopens the modal via showModal -- because the
- * flag lives on the shared `state` object, no registry callback is needed
- * (unlike the Groups openedGroupModalFromAssign case).
+ * "set origin on page" pick is this file's end to end (R14): #gridSetOriginOnPage
+ * arms the shared `state.gridOriginPickMode` flag, app.js's canvas click hands the
+ * point to App.commitGridOriginPick while it is up (the origin is written and the
+ * dialog comes back), and the Esc ladder drops it through App.cancelGridOriginPick.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -107,6 +106,33 @@
     App.showToast('Click on the plan to set grid origin');
     App.updateUI();
   };
+  // R14 (moved from app.js's handleCanvasClick, which hands every click here while the
+  // pick is armed): the "Set origin on page" pick. The click writes the origin into the
+  // dialog and gives it back; Apply commits it. Esc drops the pick (features/esc-ladder.js).
+  function commitGridOriginPick(pdf) {
+    const state = App.state;
+    if (!App.isPointInPageBounds(pdf)) { App.showOutOfBoundsToast(); return; }
+    const pageScale = App.getPageScale(state.currentPage);
+    if (!pageScale) { App.showToast('Set Scale first'); state.gridOriginPickMode = false; return; }
+    const offsetX = pdf.x / pageScale.pixelsPerUnit;
+    const offsetY = pdf.y / pageScale.pixelsPerUnit;
+    if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
+    state.gridSettings.offsetX = offsetX;
+    state.gridSettings.offsetY = offsetY;
+    document.getElementById('gridOriginDisplay').style.display = '';
+    document.getElementById('gridSetOriginFormGroup').style.display = 'none';
+    document.getElementById('gridOriginText').textContent = offsetX.toFixed(2) + ', ' + offsetY.toFixed(2) + ' ' + (document.getElementById('gridSpacingUnit')?.value || 'ft');
+    state.gridOriginPickMode = false;
+    App.showModal('gridSettingsModal');
+    App.showToast('Origin set. Click Apply to confirm.');
+    App.renderAnnotations();
+    App.updateUI();
+  }
+  function cancelGridOriginPick() {
+    App.state.gridOriginPickMode = false;
+    App.showModal('gridSettingsModal');
+    App.updateUI();
+  }
   document.getElementById('gridClearOrigin').onclick = () => {
     const state = App.state;
     if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
@@ -172,4 +198,6 @@
 
   App.toggleGridOverlay = toggleGridOverlay;
   App.openGridSettingsModal = openGridSettingsModal;
+  App.commitGridOriginPick = commitGridOriginPick;
+  App.cancelGridOriginPick = cancelGridOriginPick;
 })();

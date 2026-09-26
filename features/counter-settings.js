@@ -6,6 +6,11 @@
  * handlers" grab-bag while the value handlers lived in a separate
  * "// SECTION: Counter settings handlers" block - both are merged here.
  *
+ * MAP-SETTINGS (2026-09-26): the settings are a device preference. Every slider
+ * and toggle is a row in SLIDERS / TOGGLES, bound by one loop each, and every
+ * change writes localStorage `counterSettings` through App.saveDisplaySettings
+ * (app.js merges it over the defaults at boot). Never the project payload.
+ *
  * Loaded as a classic <script src="features/counter-settings.js"> AFTER app.js.
  * Its own IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
@@ -23,29 +28,38 @@
 (function() {
   const App = (window.App = window.App || {});
 
+  // The modal's sliders and toggles, one row each (MAP-SETTINGS / R18): `pct` sliders
+  // show 0-100 over a 0-1 setting; `dflt` is what an unset field opens at. Every change
+  // renders live and writes the device's settings through App.saveDisplaySettings.
+  const SLIDERS = [
+    { id: 'counterSize', key: 'size', dflt: 22 },
+    { id: 'counterOpacity', key: 'opacity', dflt: 1, pct: true },
+    { id: 'counterOutline', key: 'outlineSize', dflt: 0 },
+    { id: 'counterNumberSize', key: 'numberSize', dflt: 10 },
+    { id: 'counterRingSize', key: 'ringSize', dflt: 100 },
+    { id: 'counterRingOpacity', key: 'ringOpacity', dflt: 1, pct: true },
+  ];
+  // A toggle is a hidden checkbox behind an aria-pressed button; `after` runs on change.
+  const TOGGLES = [
+    { id: 'counterShowRings', key: 'showRings', after: (on) => { document.getElementById('counterRingSection').style.display = on ? '' : 'none'; } },
+    { id: 'counterRingSolid', key: 'ringSolid' },
+  ];
+  const shown = (row, v) => (row.pct ? Math.round(v * 100) : v);
+
   function openCounterSettingsModal() {
     const state = App.state;
-    document.getElementById('counterSize').value = state.counterSettings.size;
-    document.getElementById('counterSizeVal').textContent = state.counterSettings.size;
-    document.getElementById('counterOpacity').value = Math.round(state.counterSettings.opacity * 100);
-    document.getElementById('counterOpacityVal').textContent = Math.round(state.counterSettings.opacity * 100);
-    document.getElementById('counterOutline').value = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
-    document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize != null ? state.counterSettings.outlineSize : 0;
-    const counterShowRingsCb = document.getElementById('counterShowRings');
-    const counterShowRingsBtn = document.getElementById('counterShowRingsBtn');
-    counterShowRingsCb.checked = state.counterSettings.showRings;
-    counterShowRingsBtn.setAttribute('aria-pressed', state.counterSettings.showRings);
-    document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
-    document.getElementById('counterNumberSize').value = state.counterSettings.numberSize || 10;
-    document.getElementById('counterNumberSizeVal').textContent = state.counterSettings.numberSize || 10;
-    document.getElementById('counterRingSize').value = state.counterSettings.ringSize != null ? state.counterSettings.ringSize : 100;
-    document.getElementById('counterRingSizeVal').textContent = state.counterSettings.ringSize != null ? state.counterSettings.ringSize : 100;
-    document.getElementById('counterRingOpacity').value = Math.round((state.counterSettings.ringOpacity != null ? state.counterSettings.ringOpacity : 1) * 100);
-    document.getElementById('counterRingOpacityVal').textContent = Math.round((state.counterSettings.ringOpacity != null ? state.counterSettings.ringOpacity : 1) * 100);
-    const counterRingSolidCb = document.getElementById('counterRingSolid');
-    const counterRingSolidBtn = document.getElementById('counterRingSolidBtn');
-    counterRingSolidCb.checked = !!state.counterSettings.ringSolid;
-    counterRingSolidBtn.setAttribute('aria-pressed', !!state.counterSettings.ringSolid);
+    const cs = state.counterSettings;
+    SLIDERS.forEach((row) => {
+      const v = shown(row, cs[row.key] ?? row.dflt);
+      document.getElementById(row.id).value = v;
+      document.getElementById(row.id + 'Val').textContent = v;
+    });
+    TOGGLES.forEach((row) => {
+      const on = !!cs[row.key];
+      document.getElementById(row.id).checked = on;
+      document.getElementById(row.id + 'Btn').setAttribute('aria-pressed', on);
+      if (row.after) row.after(on);
+    });
     App.syncFilterScopeSegment('counterShowOnlySegment', App.getCounterListFilterScope());
     document.getElementById('counterSettingsReorder').style.display = state.counters.length < 2 ? 'none' : '';
     App.showModal('counterSettingsModal');
@@ -78,65 +92,31 @@
     App.showToast('Drag Counters and Lines by their left colors to re-order.', 3200);
   };
 
-  document.getElementById('counterSize').oninput = () => {
-    const state = App.state;
-    state.counterSettings.size = parseInt(document.getElementById('counterSize').value, 10);
-    document.getElementById('counterSizeVal').textContent = state.counterSettings.size;
-    App.renderAnnotations();
-  };
-  document.getElementById('counterOpacity').oninput = () => {
-    const state = App.state;
-    state.counterSettings.opacity = parseInt(document.getElementById('counterOpacity').value, 10) / 100;
-    document.getElementById('counterOpacityVal').textContent = Math.round(state.counterSettings.opacity * 100);
-    App.renderAnnotations();
-  };
-  document.getElementById('counterOutline').oninput = () => {
-    const state = App.state;
-    state.counterSettings.outlineSize = parseInt(document.getElementById('counterOutline').value, 10);
-    document.getElementById('counterOutlineVal').textContent = state.counterSettings.outlineSize;
-    App.renderAnnotations();
-  };
-  document.getElementById('counterShowRingsBtn').onclick = () => {
-    const cb = document.getElementById('counterShowRings');
-    cb.checked = !cb.checked;
-    document.getElementById('counterShowRingsBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('counterShowRings').onchange = () => {
-    const state = App.state;
-    state.counterSettings.showRings = document.getElementById('counterShowRings').checked;
-    document.getElementById('counterRingSection').style.display = state.counterSettings.showRings ? '' : 'none';
-    App.renderAnnotations();
-  };
-  document.getElementById('counterNumberSize').oninput = () => {
-    const state = App.state;
-    state.counterSettings.numberSize = parseInt(document.getElementById('counterNumberSize').value, 10);
-    document.getElementById('counterNumberSizeVal').textContent = state.counterSettings.numberSize;
-    App.renderAnnotations();
-  };
-  document.getElementById('counterRingSize').oninput = () => {
-    const state = App.state;
-    state.counterSettings.ringSize = parseInt(document.getElementById('counterRingSize').value, 10);
-    document.getElementById('counterRingSizeVal').textContent = state.counterSettings.ringSize;
-    App.renderAnnotations();
-  };
-  document.getElementById('counterRingOpacity').oninput = () => {
-    const state = App.state;
-    state.counterSettings.ringOpacity = parseInt(document.getElementById('counterRingOpacity').value, 10) / 100;
-    document.getElementById('counterRingOpacityVal').textContent = Math.round(state.counterSettings.ringOpacity * 100);
-    App.renderAnnotations();
-  };
-  document.getElementById('counterRingSolidBtn').onclick = () => {
-    const cb = document.getElementById('counterRingSolid');
-    cb.checked = !cb.checked;
-    document.getElementById('counterRingSolidBtn').setAttribute('aria-pressed', cb.checked);
-    cb.dispatchEvent(new Event('change'));
-  };
-  document.getElementById('counterRingSolid').onchange = () => {
-    const state = App.state;
-    state.counterSettings.ringSolid = document.getElementById('counterRingSolid').checked;
-    App.renderAnnotations();
-  };
+  SLIDERS.forEach((row) => {
+    document.getElementById(row.id).oninput = () => {
+      const cs = App.state.counterSettings;
+      const n = parseInt(document.getElementById(row.id).value, 10);
+      cs[row.key] = row.pct ? n / 100 : n;
+      document.getElementById(row.id + 'Val').textContent = shown(row, cs[row.key]);
+      App.saveDisplaySettings();
+      App.renderAnnotations();
+    };
+  });
+  TOGGLES.forEach((row) => {
+    document.getElementById(row.id + 'Btn').onclick = () => {
+      const cb = document.getElementById(row.id);
+      cb.checked = !cb.checked;
+      document.getElementById(row.id + 'Btn').setAttribute('aria-pressed', cb.checked);
+      cb.dispatchEvent(new Event('change'));
+    };
+    document.getElementById(row.id).onchange = () => {
+      const on = document.getElementById(row.id).checked;
+      App.state.counterSettings[row.key] = on;
+      if (row.after) row.after(on);
+      App.saveDisplaySettings();
+      App.renderAnnotations();
+    };
+  });
   document.querySelectorAll('#counterShowOnlySegment button').forEach(btn => {
     btn.onclick = () => {
       App.setCounterListFilterScope(btn.dataset.scope);

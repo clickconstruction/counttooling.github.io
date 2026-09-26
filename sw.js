@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '7b8b4774821a';
+const CACHE_VERSION = 'cee071b93c92';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -232,7 +232,7 @@ const PRECACHE_SHA256 = {
   '/canvas-draw.js': '350765d5def90d064f56214d00abe2cf9e3790fb5875cfa64c02080fb392dbc6',
   '/render-service.js': '077e7474ba588a262ca7fe01183271af85d8a9a105e4c90cb1ebd5ed7d8ab0da',
   '/render-worker.js': '97409f02a7150a5f9b5e456769083b49dca0c7baaae0263a34e2fc7a1d23a54d',
-  '/constants.js': 'a05eee9bf81db44eb8c4d4c4e839143e5cda2727993d1f171882c31afe344bb5',
+  '/constants.js': 'dd7e912465ff4db3c3c2252b114057685a1cc6fe6f4a05ab142d3c2368009bf8',
   '/zoom-ladder.js': 'c8396a9b8610ce94c703b575e3180ad3152d17a5b23c9e576c8d45b980005ba3',
   '/hotkeys.js': 'cd0eafcc9f24c885d3e4e10d0a5d2e493f54be34d2e8607f53dd456f44c49d23',
   '/recent-colors.js': '01a7af7515a037ac51f0819601156c64035b903ce55a2739a5393988792285a7',
@@ -243,9 +243,9 @@ const PRECACHE_SHA256 = {
   '/save-utils.js': '3ba2623bcd4981c6289555e2172805a9592ba4c789ea180fc7623f6aa27c9c25',
   '/annotation-model.js': '5a2e87285105079fdbc180f671cf170e5b6492073b37ff3536b03e2dae8c9df8',
   '/undo-stack.js': '981aa3e990f7ab52b9ff93046f274aaf7e43b867ec4b6532005a5a24e9cd5711',
-  '/save-engine.js': '389e044c30f1ccb88d09877ab70872ffcfcfe8734a9f2f3c19d83316a8c848ab',
+  '/save-engine.js': 'ca0bcad168993413f8f38808748d38d0ddab37f5b008f99e56f497f8275e3392',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': '1f48b44c6aa07559cd9d77846a8b6d75ffd3f0e8189a468e8c32f469ee34d2dd',
+  '/app.js': '604853ee297596d233834b27cf2fc52643109fba006970ded9a064ce10b7767c',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
@@ -261,8 +261,8 @@ const PRECACHE_SHA256 = {
   '/features/bid-basis.js': '1effb492871d0ec5fb3de46d4f9e72e25efedac4708cd9c86af1e735abbd352c',
   '/features/legend-settings.js': 'd9a749587acf289b31503bfb2bc764868f507296b272ef880938359f919a9976',
   '/features/page-settings.js': '2e9b961016930ea467a50e9a426cf8aa3a901f10dd2fb2fbe11a9186c7020e40',
-  '/features/counter-settings.js': '7ffa8f737269666f7de0efc1e4a83edd4539d0e43e9299a76c6e253534d1820a',
-  '/features/line-type-settings.js': '91bcfa06e0f4d29360effb6b1178d869020cbb5aa427f2e2550eb3b1fa48ed60',
+  '/features/counter-settings.js': 'a36664ce5a4ed0b8097becf5809c4d13b0114bd08d9c23791555ef4acc738eab',
+  '/features/line-type-settings.js': '4fb2d7d8193b2b21f314b89982286922f040942c227793d07cda3d08cdb5198f',
   '/features/choose-create-line-type.js': '58905eaa89e7bcf66fa930b9cbf3964758fcd7ff2bd3b6aa9155918137997a07',
   '/features/scale.js': 'ed1d36d899d3ad3bf69b36ce2d60b9becf69821bdc18fafb19ddffe41b54c104',
   '/features/scale-zone-settings.js': '67a8a802e7aeaf629a235dbd0e4d9c42ea5c746412ae6749b90ecf35be7a9c9f',
@@ -335,11 +335,11 @@ const PRECACHE_SHA256 = {
   '/features/rules.js': '4866c40d7c367c5e2b3dcf6d29694b960274e9865b75deb02d358235880f828f',
   '/features/tag-reader.js': '18e33828734558fdbb99f63eb82ca05b595757f70eb8e22aeb5e2c42e6e630fc',
   '/features/tutorial.js': '437c916697e9197d030a1223fe0803d2bc283682717b7d004e49fa90d9d53acb',
-  '/features/lessons.js': '25e17c3051b8ffb95c768249ba6852e7ad8b65319e2aadb1d16c4da99d3e1f22',
+  '/features/lessons.js': '8f1b61fa31fb754ffccf5bdbb6895f11e737af61f4edb67f9c78b599855dcc7d',
   '/features/course-plumbing.js': 'bee7160e4f2e91af7a83e8504566d518201fe18c28edd29d92cfd973c609732e',
   '/features/course-electrical.js': '2909ee2d23d4671b53388ac7224e1b304f46397c7bfe3ae39f51730cbfdacc3a',
   '/features/course-hvac.js': 'aa3a9f3936cba10ad70c039f414ebb72189e0af2ee7023ebd5a9c48489e5fd40',
-  '/features/tour-blank.js': '6717434d8b99d1e87a5d17d7b8d95d66df050100ff9069102b5527ee9423999e',
+  '/features/tour-blank.js': '7ad18108283f0c251d6ab5d1b935b8818b1a87ff08c5a7e8ea106d56b4aab96a',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
   '/report.js': '8a0f1f9c16b226e69d88270457677631886ad99a0596122837b506e6607acf18',

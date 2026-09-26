@@ -3453,14 +3453,16 @@
     requestAnimationFrame(() => syncModalControls(el));
   }
   // Every dismissible dialog's × (data-modal-close) dismisses the way Esc does:
-  // the Esc ladder below knows each modal's cleanup (pending state, parked
-  // drafts); a modal with no rung just hides.
+  // features/esc-ladder.js closes ITS overlay with the same rung or Cancel Esc
+  // would use (pending state, parked drafts); a dialog with neither just hides.
+  // MAP-ESC: this used to re-dispatch a synthetic Escape through the whole
+  // ladder, so a rung-less dialog's × unwound the tool under it first (D04).
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-modal-close]');
     if (!btn) return;
     const overlay = btn.closest('.modal-overlay');
     if (!overlay) return;
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    if (App.dismissOverlay) App.dismissOverlay(overlay);
     if (overlay.classList.contains('visible')) hideModal(overlay.id);
   });
   // B20 (X8): the app's one confirm. Resolves true on OK, false on Cancel /
@@ -4949,7 +4951,6 @@
   wireClick('settingsMacros', () => { hideModal('settingsModal'); showModal('macrosModal'); });
   wireClick('statusBarMacros', () => showModal('macrosModal'));
   wireClick('settingsClearPage', () => { hideModal('settingsModal'); App.showClearPageModal(); });
-  wireClick('macrosModalClose', () => hideModal('macrosModal'));
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
@@ -5076,7 +5077,6 @@
   document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
   const hideMarksBtnEl = document.getElementById('hideMarksBtn');
   if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
-  document.getElementById('settingsModalClose').onclick = () => hideModal('settingsModal');
   document.getElementById('settingsAddAdditionalPages').onclick = async () => {
     // #7b: Route through Prepare PDF in append mode. We need the current
     // project's PDF buffer in memory so the commit step can merge the new
@@ -5280,7 +5280,7 @@
       };
     }
     // The Save Status bell open buttons (#saveStatusBtn/#saveStatusBtnHeader) and
-    // the #saveStatusModalClose/#saveStatusModalDone/#saveStatusVerboseToggle/
+    // the #saveStatusModalDone/#saveStatusVerboseToggle/
     // #saveStatusExportBtn/#saveStatusCopyBtn handlers moved to
     // features/save-status.js (window.App registry). #syncPausedBannerRetry stays.
     const syncPausedBannerRetryEl = document.getElementById('syncPausedBannerRetry');
@@ -5429,7 +5429,7 @@
     // SECTION: Share modal pointer & copy-project openers
     // The Share Project modal (openShareProjectModal + the people list, view
     // links list/create/copy/access-log/revoke, and the #shareViewLinkCreate /
-    // #shareProjectModalClose / #shareProjectAdd bindings) moved to
+    // #shareProjectAdd bindings) moved to
     // features/share-links.js; reached via App.openShareProjectModal at call
     // time. Revoke clears the export view-link cache via App.onViewLinkRevoked
     // (features/output.js).
@@ -5505,17 +5505,14 @@
       if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget();
       hideModal('copyProjectModal');
     };
-    document.getElementById('summaryCountDetailClose').onclick = () => hideModal('summaryCountDetailModal');
     // SECTION: Checkout expired recovery modal wiring
     (function wireCheckoutExpiredRecoveryModal() {
       const modal = document.getElementById('checkoutExpiredRecoveryModal');
       if (!modal) return;
-      const closeBtn = document.getElementById('checkoutExpiredRecoveryClose');
       const cancelBtn = document.getElementById('checkoutExpiredRecoveryCancel');
       const exportBtn = document.getElementById('checkoutExpiredRecoveryExport');
       const recheckBtn = document.getElementById('checkoutExpiredRecoveryRecheckout');
       const discardBtn = document.getElementById('checkoutExpiredRecoveryDiscard');
-      if (closeBtn) closeBtn.onclick = () => closeCheckoutExpiredRecoveryModal();
       if (cancelBtn) cancelBtn.onclick = () => closeCheckoutExpiredRecoveryModal();
       modal.onclick = (e) => { if (e.target === modal) closeCheckoutExpiredRecoveryModal(); };
       const card = modal.querySelector('.modal-card');
@@ -5622,7 +5619,7 @@
     // The #userActivity* close/select/filter/view-toggle bindings moved to
     // features/user-activity.js.
     // #manageProjectsModalClose moved to features/manage-projects.js.
-    // manageIconsModalClose / manageIconsCancel / manageIconsSave handlers live
+    // manageIconsCancel / manageIconsSave handlers live
     // in features/manage-icons.js (window.App registry). The #canvasRepair*
     // close/cancel/apply bindings live in features/canvas-repair.js (split #37).
     // #adminCreateForm (create-user) moved to features/user-admin.js.
@@ -7488,7 +7485,6 @@
         return;
       }
     }
-    // (a dialog's × re-dispatches Escape on `document`, which has no matches())
     if (e.target && e.target.matches && e.target.matches('input, textarea, [contenteditable="true"]') && e.key !== 'Escape') return;
     if (e.key === ' ') {
       if (!e.target.closest('button') && window.matchMedia('(min-width: 769px)').matches) {
@@ -7558,203 +7554,11 @@
         e.preventDefault();
       }
     }
-    if (e.key === 'Escape') {
-      // Toasts are non-blocking corner cards (Tier-2 #15): they self-dismiss
-      // and never consume Escape, so the ladder below goes straight to real
-      // modals and tools. (The old Ghost mid-gesture pre-clear hack and the
-      // toast rungs died with the modal toasts.)
-      // B20: the confirm dialog sits above everything — Esc is its Cancel.
-      if (document.getElementById('confirmModal').classList.contains('visible')) { resolveConfirm(false); return; }
-      if (state.gridOriginPickMode) {
-        state.gridOriginPickMode = false;
-        showModal('gridSettingsModal');
-        updateUI();
-        return;
-      }
-      if (document.getElementById('saveStatusModal').classList.contains('visible')) {
-        // z-index 210 — floats above every standard overlay, so it is the
-        // first modal rung. Routed through the close button so the 5s
-        // re-render tick timer is cleared (features/save-status.js).
-        // (JOURNEY-MAP Tier-3 B1 / J12)
-        document.getElementById('saveStatusModalClose').click();
-      } else if (document.getElementById('lastSessionRestoreModal').classList.contains('visible')) {
-        // T1-01 clobber guard: NOT a bare hide — the dismiss helper clears
-        // pendingRestore (takeoff backups resume) while consuming NOTHING
-        // (the held record and clickcount-last-project survive), so the
-        // Keep/Discard offer returns next boot, exactly like reloading
-        // without answering. See features/restore-last-session.js.
-        if (App.dismissLastSessionRestorePrompt) App.dismissLastSessionRestorePrompt();
-      } else if (document.getElementById('customIconTipsModal').classList.contains('visible')) {
-        // Icon tips open ON TOP of counterModal / the details dialog (their
-        // openers don't hide them), so this rung must precede both.
-        hideModal('customIconTipsModal');
-      } else if (document.getElementById('chooseLineTypeModal').classList.contains('visible')) {
-        hideModal('chooseLineTypeModal');
-      } else if (document.getElementById('scaleModal').classList.contains('visible')) {
-        if (state.tool === TOOL.SCALE) { state.tool = TOOL.NONE; state.scaleMode = SCALE_MODES.NONE; state.scalePointA = null; state.scalePointB = null; }
-        App.resetScaleModalZoneMode();
-        App.resetScaleCheckMode && App.resetScaleCheckMode();
-        hideModal('scaleModal');
-        updateUI();
-      } else if (document.getElementById('counterModal').classList.contains('visible')) {
-        hideModal('counterModal');
-      }
-      // The five counter dialogs (JOURNEY-MAP Tier-3 B1 / J4). Stacking rules:
-      // the delete-confirm opens ON TOP of the details dialog (which stays
-      // visible), and "+ Add group" stacks groupModal OVER groupAssignModal —
-      // each inner surface is checked first. Rungs route through the dialogs'
-      // own Cancel/Close buttons so their pending-state resets fire
-      // (features/item-details.js, features/groups.js).
-      else if (document.getElementById('deleteCounterLineTypeConfirmModal').classList.contains('visible')) { document.getElementById('deleteCounterLineTypeCancel').click(); }
-      else if (document.getElementById('counterLineTypeDetailsModal').classList.contains('visible')) { document.getElementById('counterLineTypeDetailsClose').click(); }
-      else if (document.getElementById('groupModal').classList.contains('visible')) { document.getElementById('groupModalCancel').click(); }
-      else if (document.getElementById('groupAssignModal').classList.contains('visible')) { document.getElementById('groupAssignCancel').click(); }
-      else if (document.getElementById('counterSettingsModal').classList.contains('visible')) { hideModal('counterSettingsModal'); }
-      else if (document.getElementById('lineColorModal').classList.contains('visible')) { state.pendingLineColorApply = null; hideModal('lineColorModal'); }
-      else if (document.getElementById('gridSettingsModal').classList.contains('visible')) { hideModal('gridSettingsModal'); }
-      else if (document.getElementById('specificPagesModal').classList.contains('visible')) { hideModal('specificPagesModal'); }
-      else if (document.getElementById('toolingScaleCheckModal')?.classList.contains('visible')) { hideModal('toolingScaleCheckModal'); }
-      else if (document.getElementById('noteModal').classList.contains('visible')) { hideModal('noteModal'); state.pendingNote = null; state.editingNote = null; state.pendingNoteColor = null; }
-      else if (document.getElementById('multiplyZoneModal').classList.contains('visible')) { hideModal('multiplyZoneModal'); state.pendingMultiplyZone = null; state.pendingMultiplyZoneEdit = null; }
-      else if (document.getElementById('roomBoxModal')?.classList.contains('visible')) { hideModal('roomBoxModal'); state.pendingRoomBox = null; state.pendingRoomBoxEdit = null; }
-      else if (document.getElementById('roomEditModal')?.classList.contains('visible')) { hideModal('roomEditModal'); }
-      else if (document.getElementById('multiplyZoneSettingsModal').classList.contains('visible')) { hideModal('multiplyZoneSettingsModal'); }
-      else if (document.getElementById('scaleZoneSettingsModal').classList.contains('visible')) { hideModal('scaleZoneSettingsModal'); }
-      else if (document.getElementById('legendSettingsModal').classList.contains('visible')) { hideModal('legendSettingsModal'); } // Tier-3 B1 / J8
-      else if (document.getElementById('ductScheduleModal')?.classList.contains('visible')) { hideModal('ductScheduleModal'); } // DUCT D5
-      else if (document.getElementById('markerCfmModal')?.classList.contains('visible')) { App.cancelMarkerCfm ? App.cancelMarkerCfm() : hideModal('markerCfmModal'); } // DUCT D15
-      else if (document.getElementById('linePropertiesModal').classList.contains('visible')) { App.closeLinePropertiesModal(); }
-      // Keyboard Map opens ON TOP of Macros, so it must be checked first — one
-      // Escape closes the board and leaves the shortcut list up behind it.
-      else if (document.getElementById('keyboardMapModal').classList.contains('visible')) { hideModal('keyboardMapModal'); }
-      else if (document.getElementById('quickKeysModal').classList.contains('visible')) { hideModal('quickKeysModal'); }
-      else if (document.getElementById('macrosModal').classList.contains('visible')) { hideModal('macrosModal'); }
-      else if (document.getElementById('pageSettingsModal').classList.contains('visible')) { hideModal('pageSettingsModal'); }
-      else if (document.getElementById('clearPageConfirmModal').classList.contains('visible')) { hideModal('clearPageConfirmModal'); }
-      else if (document.getElementById('deletePageConfirmModal').classList.contains('visible')) { hideModal('deletePageConfirmModal'); state.pendingDeletePage = null; }
-      else if (document.getElementById('settingsModal').classList.contains('visible')) { hideModal('settingsModal'); }
-      // Palette Insights opens OVER My Settings (its opener doesn't hide it),
-      // so it must be checked first. (Tier-3 B1 / J16)
-      else if (document.getElementById('paletteInsightsModal').classList.contains('visible')) { hideModal('paletteInsightsModal'); }
-      else if (document.getElementById('mySettingsModal').classList.contains('visible')) { hideModal('mySettingsModal'); }
-      else if (document.getElementById('authModal').classList.contains('visible')) { clearAuthGate(); hideModal('authModal'); }
-      else if (document.getElementById('adminPanelModal').classList.contains('visible')) { hideModal('adminPanelModal'); }
-      else if (document.getElementById('manageUserModal').classList.contains('visible')) { hideModal('manageUserModal'); }
-      else if (document.getElementById('allUsersModal').classList.contains('visible')) { hideModal('allUsersModal'); }
-      else if (document.getElementById('userActivityModal').classList.contains('visible')) { hideModal('userActivityModal'); }
-      else if (document.getElementById('manageProjectsModal').classList.contains('visible')) { hideModal('manageProjectsModal'); }
-      else if (document.getElementById('manageIconsModal').classList.contains('visible')) { hideModal('manageIconsModal'); }
-      else if (document.getElementById('canvasRepairModal').classList.contains('visible')) { hideModal('canvasRepairModal'); }
-      else if (document.getElementById('saveProjectModal').classList.contains('visible')) { hideModal('saveProjectModal'); }
-      else if (document.getElementById('copyProjectModal').classList.contains('visible')) { if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget(); hideModal('copyProjectModal'); }
-      else if (document.getElementById('loadProjectModal').classList.contains('visible')) { hideModal('loadProjectModal'); }
-      else if (document.getElementById('shareProjectModal').classList.contains('visible')) { hideModal('shareProjectModal'); }
-      else if (document.getElementById('loadAnnotationsModal').classList.contains('visible')) { hideModal('loadAnnotationsModal'); }
-      else if (document.getElementById('preparePdfModal').classList.contains('visible')) { if (typeof closePreparePdfModal === 'function') closePreparePdfModal(); }
-      else if (document.getElementById('summaryCountDetailModal').classList.contains('visible')) { hideModal('summaryCountDetailModal'); }
-      else if (document.getElementById('viewLinkEmailModal').classList.contains('visible')) {
-        if (App.cancelViewLinkEmailPrompt) App.cancelViewLinkEmailPrompt();
-        hideModal('viewLinkEmailModal');
-      }
-      else if (document.getElementById('addCanvasModal').classList.contains('visible')) { hideModal('addCanvasModal'); }
-      else if (document.getElementById('deleteCanvasConfirmModal').classList.contains('visible')) { hideModal('deleteCanvasConfirmModal'); }
-      else if (document.getElementById('forceTurnInNoticeModal').classList.contains('visible')) { hideModal('forceTurnInNoticeModal'); }
-      else if (document.getElementById('canvasDetailsModal').classList.contains('visible')) {
-        // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
-        document.getElementById('canvasDetailsClose').click();
-      }
-      else if (document.getElementById('ductCreateModal')?.classList.contains('visible')) { hideModal('ductCreateModal'); }
-      else if (state.tool === TOOL.EDIT_POLY) exitEditMode(false);
-      else if (state.drawingPolyline) {
-        // Staged like Quick Line/Ghost: each Escape unwinds one clicked vertex;
-        // with none left, Escape exits to Move. A stray Esc never costs more
-        // than the last click. (JOURNEY-MAP Tier-2 #22)
-        // WATER-PLAN rung 4: the water size popover closes first, costing no vertex.
-        if (App.isWaterPopoverOpen && App.isWaterPopoverOpen()) { App.closeWaterSizePopover(); }
-        else if (state.drawingPolyline.points.length > 0) { state.drawingPolyline.points.pop(); renderAnnotations(); updateUI(); }
-        else { state.drawingPolyline = null; state.tool = TOOL.NONE; updateUI(); }
-      }
-      else if (state.tool === TOOL.DUCT) {
-        // Duct ladder (DUCT unit D2, staged per the T2-02 polyline pattern):
-        // close the S popover -> pop the last vertex -> clear the draft and
-        // exit to Move. All stages live in features/duct-tool.js; a false
-        // return means nothing was left to unwind.
-        if (!(App.handleDuctEscape && App.handleDuctEscape())) { state.tool = TOOL.NONE; updateUI(); }
-      }
-      else if (state.tool === TOOL.LINE) {
-        if (state.quickLineStart) { state.quickLineStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.CHAIN) {
-        // Esc ladder: end the run -> close the palette (tool stays active,
-        // the header pair chip takes over) -> exit to Move.
-        if (state.chainStart) { state.chainStart = null; renderAnnotations(); updateUI(); }
-        else if (App.isChainPanelOpen && App.isChainPanelOpen()) { App.closeChainPanel(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.DROP) {
-        // Same ladder as Chain, minus the run: close the palette first, then exit.
-        if (App.isDropPanelOpen && App.isDropPanelOpen()) { App.closeDropPanel(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); renderAnnotations(); }
-      } else if (state.tool === TOOL.SCALE) {
-        // Escaping mid "Select on PDF" must clear the placed scale point(s) (else a
-        // stray crosshair lingers) and any zone-apply state.
-        state.tool = TOOL.NONE;
-        state.scaleMode = SCALE_MODES.NONE;
-        state.scalePointA = null;
-        state.scalePointB = null;
-        App.resetScaleModalZoneMode();
-        App.resetScaleCheckMode && App.resetScaleCheckMode();
-        // D20 (J5-A): the pick was reached from Set Scale over a live draft —
-        // give the draft back now that the hand-off ended without a modal hide.
-        App.resumeParkedDraft && App.resumeParkedDraft();
-        updateUI();
-        renderAnnotations();
-      } else if (state.tool === TOOL.MEASURE) {
-        state.tool = TOOL.NONE;
-        state.scalePointA = null;
-        state.scalePointB = null;
-        state.scaleMode = SCALE_MODES.NONE;
-        updateUI();
-        renderAnnotations();
-      } else if (state.tool === TOOL.HIGHLIGHT) {
-        // Esc ladder: cancel the in-progress rect -> close the bookmarks
-        // panel (tool stays active) -> exit to Move.
-        if (state.highlightStart) { state.highlightStart = null; renderAnnotations(); updateUI(); }
-        else if (App.isHighlightPanelOpen && App.isHighlightPanelOpen()) { App.closeHighlightPanel(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.MULTIPLY_ZONE) {
-        if (state.multiplyZoneStart) { state.multiplyZoneStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.SCALE_ZONE) {
-        if (state.scaleZoneStart) { state.scaleZoneStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.DELETE_ZONE) {
-        if (state.deleteZoneStart) { state.deleteZoneStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.GHOST) {
-        // Staged like Quick Line's: drop the ghost in hand -> drop the first
-        // corner -> exit to Move. One Escape never costs more than one click.
-        if (App.handleGhostEscape && App.handleGhostEscape()) { renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; state.activeGhostId = null; updateUI(); renderAnnotations(); }
-      } else if (state.tool === TOOL.ROOM) {
-        if (state.roomBoxStart) { state.roomBoxStart = null; state.scheduleBoxStart = null; renderAnnotations(); updateUI(); }
-        else { state.tool = TOOL.NONE; updateUI(); }
-      } else if (state.tool === TOOL.NOTE) {
-        state.tool = TOOL.NONE;
-        updateUI();
-      } else if (state.emphasizedCounterId) {
-        // "Find this counter" halo (features/drop-peek.js) — the last rung:
-        // reached only with no modal open and no tool armed.
-        state.emphasizedCounterId = null;
-        renderAnnotations();
-      } else {
-        // MAP-RESETS (D26): the last rung (the schedule box tool has no rung of
-        // its own) drops the starts with the tool, or a half-drawn box stays up.
-        state.tool = TOOL.NONE;
-        clearToolStarts();
-        updateUI();
-        renderAnnotations();
-      }
-    }
+    // The Escape ladder is a table in features/esc-ladder.js (MAP-ESC, R10): the confirm,
+    // the grid origin pick, the topmost dialog (its rung, its Cancel, or a plain hide),
+    // a header popover, then the armed tool one step per press, then back to Move.
+    // Called synchronously here so the listener order is unchanged.
+    if (e.key === 'Escape') { if (App.handleEscape) App.handleEscape(e); }
     if (e.key === 'ArrowLeft') {
       if (e.shiftKey) {
         const marked = getMarkedPageIndices();
@@ -8090,6 +7894,7 @@
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.confirmDialog = confirmDialog;   // B20 (X8): the one confirm — features await it instead of confirm()
   App.resolveConfirm = resolveConfirm; // spec seam
+  App.clearAuthGate = clearAuthGate;   // MAP-ESC: the authModal Esc rung (features/esc-ladder.js)
   App.planRoomLabels = (ann, pageIdx) => canvasDraw.planRoomLabels(ann, pageIdx);   // D24 spec seam
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;

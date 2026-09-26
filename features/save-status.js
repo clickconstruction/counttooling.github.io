@@ -124,11 +124,6 @@
   if (saveStatusBtnEl) saveStatusBtnEl.onclick = () => openSaveStatusModal();
   const saveStatusHeaderBtnEl = document.getElementById('saveStatusBtnHeader');
   if (saveStatusHeaderBtnEl) saveStatusHeaderBtnEl.onclick = () => openSaveStatusModal();
-  const saveStatusModalCloseEl = document.getElementById('saveStatusModalClose');
-  if (saveStatusModalCloseEl) saveStatusModalCloseEl.onclick = () => {
-    if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }
-    App.hideModal('saveStatusModal');
-  };
   const saveStatusModalDoneEl = document.getElementById('saveStatusModalDone');
   if (saveStatusModalDoneEl) saveStatusModalDoneEl.onclick = () => {
     if (saveStatusModalTickTimer) { clearInterval(saveStatusModalTickTimer); saveStatusModalTickTimer = null; }

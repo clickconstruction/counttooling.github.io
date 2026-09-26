@@ -274,9 +274,11 @@
     const m = menuEl(); const b = moreBtn();
     if (m && !m.contains(e.target) && b && !b.contains(e.target)) closeMenu();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && menuOpen) closeMenu(); });
+  // Esc closes the menu from features/esc-ladder.js's popover rungs (MAP-ESC).
 
   App.updateHeaderMore = updateHeaderMore;   // D21: a trade change re-resolves the strip
   App.onHeaderMoreSync = syncMoreState;
   App.scheduleHeaderMoreCheck = scheduleHeaderMoreCheck;
+  App.isHeaderMoreOpen = () => menuOpen;   // MAP-ESC: the Esc ladder's popover rung
+  App.closeHeaderMoreMenu = closeMenu;
 })();

@@ -93,7 +93,6 @@
   App.applyCanvasRepair = applyCanvasRepair;
 
   // --- Modal close/cancel/apply bindings (split #37, moved from app.js) ----
-  document.getElementById('canvasRepairModalClose').onclick = () => App.hideModal('canvasRepairModal');
   document.getElementById('canvasRepairCancel').onclick = () => App.hideModal('canvasRepairModal');
   document.getElementById('canvasRepairApply').onclick = () => App.applyCanvasRepair();
 })();

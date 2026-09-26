@@ -251,8 +251,6 @@
   // The input sits outside #quickKeysList, so the re-render never rebuilds it
   // (typing keeps focus); each keystroke just refilters the ten dropdowns.
   if (searchInput) searchInput.oninput = () => renderQuickKeysList();
-  const closeBtn = document.getElementById('quickKeysModalClose');
-  if (closeBtn) closeBtn.onclick = () => App.hideModal('quickKeysModal');
   const doneBtn = document.getElementById('quickKeysDone');
   if (doneBtn) doneBtn.onclick = () => App.hideModal('quickKeysModal');
 

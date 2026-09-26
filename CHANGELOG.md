@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
+
+The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in
+app.js's keydown, one rung per dialog, and about twenty dialogs had no rung: Water Sizing, the
+fixture-unit override, Learn, the Bid Board, Zoom Settings, Line Type Settings, Name Highlight, the
+schedule palette, the admin sub-dialogs and others. Esc left the dialog up and fell through to the
+tool rungs, so a polyline being traced lost a vertex behind the Water Sizing schedule, a Quick Line
+lost its start, a zone lost its first corner. Their × was no better: it re-dispatched a synthetic
+Escape through the same ladder before hiding, so it cost the vertex too.
+
+The ladder is a table now, in features/esc-ladder.js (`App.handleEscape`, called from the same
+place in app.js's keydown, so the menus that stop Esc in the capture phase still win). One press
+closes one thing: the confirm dialog, the grid origin pick, then the topmost visible dialog. A
+dialog with a rung keeps it, in the old order; one without is dismissed on its own, through its
+Cancel where it holds something pending (`App.cancelMarkerWsfu`, which existed for this and was
+never called; a new `App.cancelSchedulePalette`; the save-before-load Cancel, which does nothing
+while its save runs) or a plain hide. The Turn In progress overlay carries `data-esc="none"` and
+swallows the key. After the dialogs come the header popovers (the bid menu, the ⋯ tool menu, the
+zoom rail), which used to close on their own listeners after the tool had already unwound, and
+only then the tool, one step per press. Those steps go through the MAP-RESETS helpers,
+`App.clearToolStarts` and `App.resetToMove({ keepCounter: true })`, instead of clearing their own
+fields. The schedule box keeps MAP-RESETS' one-press Esc (the box and the tool go together).
+
+A × with `data-modal-close` now dismisses its own dialog through `App.dismissOverlay`, the same
+rung or Cancel Esc uses, without touching anything else. With that in place the thirteen × buttons
+that were wired by hand (Import canvas, Macros, Quick Keys, Keyboard Map, the schedule palette,
+Project Settings, Save Status, Canvas Repair, Manage Icons, My Settings, Count by Page, Share,
+Edit session expired) carry `data-modal-close` and lost their own handlers; they keep their ids.
+Save Status's rung clicks its Close button rather than the × so the tick timer still clears.
+
+Pinned by the new esc-dialogs.spec.js: over a three-vertex polyline, Esc and the × of twelve
+dialogs close the dialog and keep all three vertices (red before the fix on every rung-less one),
+plus the fixture-unit override, a rung-less dialog over a rung dialog, the Turn In overlay, the
+schedule palette's Cancel and the zoom rail. esc-ladder.spec.js is unchanged and green.
+
 ## fix(icons): a custom icon picked after an upload fills in the fixture units, as it did before (MAP-ICON-PREFILL, 2026-09-26)
 
 The decomposition map's defect D34. On the Create tab, picking a custom icon with the name field

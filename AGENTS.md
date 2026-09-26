@@ -196,7 +196,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->97<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->98<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -372,7 +372,11 @@
   failure signal, never a driver.
 - **Modal primitives (2026-09-18 polish pass).** A dialog is a `.modal-card` with a
   `.modal-card-header` (title, optional `.modal-card-sub`, and a × carrying `data-modal-close`,
-  which app.js dismisses the way Esc does). Action buttons in `.actions` carry a role class
+  which app.js dismisses the way Esc does, through features/esc-ladder.js; never give a × its
+  own `onclick`). Esc closes the topmost visible overlay and never unwinds the tool under it: a
+  dialog that holds pending state gets a row there (`MODAL_RUNGS`, in stacking order, or a
+  `CLOSERS` entry naming its Cancel), anything else just hides, and a blocking overlay carries
+  `data-esc="none"` so Esc does nothing (MAP-ESC). Action buttons in `.actions` carry a role class
   (`ghost` / `primary` / `danger` / `danger-ghost` / `link`), never rely on first/last position;
   a destructive button sits left with `margin-right:auto`. Sliders are plain
   `input[type=range]` under a `label.range-label` (value in `.range-val`), colour pickers are

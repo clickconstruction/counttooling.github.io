@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '7c66fdfdf6f9';
+const CACHE_VERSION = '636b30e5541a';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -251,7 +251,7 @@ const PRECACHE_SHA256 = {
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
   '/features/pdf-intake.js': '1347bec063701d22d61798a8f9e37a5bb71a8d7a84728adbaf5aa7150f1e891c',
   '/features/line-color.js': '2fd4c7594f1a3686fd9323b7bc4d97f5b9c151b32475d5a4428062a075378ecb',
-  '/features/custom-icon-upload.js': '24e2add3e3703bec15a947aaa4b8bc0b52f5a3d7c0927955aa0a980113a1e375',
+  '/features/custom-icon-upload.js': 'cf0d6731862f3baa8b7ed55cbfc89759df42934f52d1c22586ac37d3b406ab06',
   '/features/note.js': 'b7cc88aa00ac8a2450c59299959108ae3bd5b18b0e420fd61264533c23347d6b',
   '/features/zoom.js': 'cceb56f7ae4c91124aa17b246b276b9796463dc27ce93835a849f5a3d31f31fc',
   '/features/zoom-rail.js': 'd9fd46d047c55cac555c2c1cfac70f4d36b9f537302efc400a3e240d6edfbcc6',
@@ -269,7 +269,7 @@ const PRECACHE_SHA256 = {
   '/features/groups.js': '257d1e404ce5be5f7b6bf1d0f349724301c42fa715274203e5d2e2dc8b2c6521',
   '/features/grid.js': 'a0feb36ae0ac863f17dda7262e7feaa5bd8929f9bff01b926fd412518b069fa4',
   '/features/quick-line.js': '8a68ae922487c3fc962fa71017f1efcf475fdc6f44ddbdb5bedcd3ed9159393a',
-  '/features/counter.js': '2dd245d41b12355508e09327629556e87944f28f3db82f39840e1767712609a2',
+  '/features/counter.js': '438f0fcf471b49b6f783950c9cdfb4f1a4bdb02d96d19a193b6fd96bf8399476',
   '/features/save-status.js': '154fefaaaa277f4912d476f26bd22f49beced717155504d62ac2901060490123',
   '/features/status-bar.js': 'bd865585db183f316a4e236f63d048cc4b7f6d36f317b221bb0bd7d96408eedf',
   '/features/turn-in.js': '1793d17cb9b5dd13082fa7df55d9736b7e2e43e5c82918a22a6115c5395a8667',

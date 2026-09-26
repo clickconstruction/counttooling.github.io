@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(icons): a custom icon picked after an upload fills in the fixture units, as it did before (MAP-ICON-PREFILL, 2026-09-26)
+
+The decomposition map's defect D34. On the Create tab, picking a custom icon with the name field
+empty names the counter after the icon and fills Fixture units from the table (a Urinal reads 5 on a
+public job). Once an icon had been uploaded, that stopped: the upload rebuilt the Custom Icons grid
+with a click of its own that filled the name and counted the pick, but never re-read the table, so
+the field stayed empty and the counter went out with no fixture units unless she typed them.
+
+The grid has one builder now, `buildCreateCustomIconGrid` in features/counter.js (published as
+`App.buildCreateCustomIconGrid`). The Create panel's prep builds it, and the upload handler calls
+the same builder after it saves the new icon rather than wiring the cells itself, so the pick
+cannot drift from the boot one again. The upload's own autofill, which names an empty counter after
+the file, re-reads the table too, so an upload called Lavatory.svg fills the field as well. The
+Quick Count and Details grids were already right and are unchanged.
+
+Pinned by custom-icon-upload.spec.js: the Urinal picked before an upload and again after it reads
+the same name and the same fixture units, and an uploaded Lavatory fills the field both on the
+upload and on a later pick. It was red before the fix (5 before the upload, empty after).
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

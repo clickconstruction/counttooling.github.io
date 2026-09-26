@@ -1530,3 +1530,96 @@ test('uploadLocalPdfToCloudIfNeeded: every skip-ladder rung reports its reason',
   // Nothing in memory and nothing recoverable from the cache:
   assert.deepStrictEqual(await run({}), { skipped: true, reason: 'no_usable_buffer' });
 });
+
+// --- R21: the three folded blocks, pinned across the dedupe ------------------
+// adoptNewCloudProject (three adopt sites), turnInSaveBlocked (three
+// turn_in_blocked shapings), rawRpc (behind the two raw RPC twins).
+
+const ADOPTED = { projectOwnerId: 'u1', loadedViaViewLink: false, isViewer: false, canCheckOut: true, checkedOutBy: null, checkedOutAt: null, checkedOutEmail: null };
+const adoptedFields = (state) => Object.fromEntries(Object.keys(ADOPTED).map((k) => [k, state[k]]));
+
+test('adopt (R21): the autosave\'s first insert adopts the new row, subscribes to it and drops the anonymous local backup', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = saveTestState({
+    supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1' },
+    currentProjectId: null, currentProjectName: 'Bid A',
+    pages: [{ label: 'p1', canvases: [], scale: null, rotation: 0 }],
+    projectOwnerId: 'someone', loadedViaViewLink: true, canCheckOut: false,
+    checkedOutBy: 'x', checkedOutAt: 'T', checkedOutEmail: 'x@y',
+  });
+  routeFetch([{ match: '/rest/v1/projects', body: [{ id: 'p-new' }] }]);
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  const res = await engine.performAutoSave();
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(state.currentProjectId, 'p-new');
+  assert.strictEqual(state.currentProjectName, 'Bid A');
+  assert.deepStrictEqual(adoptedFields(state), ADOPTED);
+  assert.ok(calls.cleared >= 1, 'the expired attention is cleared for the new row');
+  assert.ok(idbDeletes.includes('local'), 'the anonymous local backup is dropped');
+  await new Promise((r) => setImmediate(r));
+  assert.ok(sub.channels.some((c) => c.name === 'projects-checkout-p-new'));
+});
+
+test('adopt (R21): the manual save\'s no-PDF insert adopts the new row the same way', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = saveTestState({
+    supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1' },
+    currentProjectId: null,
+    pages: [{ label: 'p1', canvases: [], scale: null, rotation: 0 }],
+    projectOwnerId: 'someone', loadedViaViewLink: true, canCheckOut: false,
+    checkedOutBy: 'x', checkedOutAt: 'T', checkedOutEmail: 'x@y',
+  });
+  routeFetch([{ match: '/rest/v1/projects', body: [{ id: 'p-man' }] }]);
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  const res = await engine.performSaveProjectToCloud({ name: 'Bid M', includePdf: false });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(state.currentProjectId, 'p-man');
+  assert.deepStrictEqual(adoptedFields(state), ADOPTED);
+  await new Promise((r) => setImmediate(r));
+  assert.ok(sub.channels.some((c) => c.name === 'projects-checkout-p-man'));
+});
+
+test('doTurnIn (R21): a failed pre-check-in autosave is logged with its label and stage, and hands back the save error', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]), { updateResult: { error: { message: 'row level security', status: 400 } } });
+  const state = saveTestState({ pdfStoragePath: 'cloud/p.pdf' });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  const res = await engine.doTurnIn();
+  assert.deepStrictEqual(res, { ok: false, error: 'row level security' });
+  const ev = engine.getSaveStatusLog().find((e) => e.kind === 'turn_in_blocked_by_save_err');
+  assert.strictEqual(ev.message, 'Turn In blocked: autosave failed before check-in');
+  const d = JSON.parse(ev.detail);
+  assert.strictEqual(d.message, 'row level security');
+  assert.strictEqual(d.stage, 'sync_to_cloud');
+  assert.ok(Number.isFinite(d.elapsedMs));
+});
+
+test('doTurnIn (R21): an auth error from the pre-check-in save asks for a refresh', async () => {
+  const { supabase } = makeChannelSupabase(rpcWithProjects([]), { updateResult: { error: { message: 'JWT expired', status: 400 } } });
+  const state = saveTestState({ pdfStoragePath: 'cloud/p.pdf' });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isAuthError: (e) => !!(e && /JWT/.test(e.message)) });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  assert.deepStrictEqual(await engine.doTurnIn(), { ok: false, error: 'Refresh the page to sync.' });
+});
+
+test('rawCheckInProject (R21): POSTs { p_project_id } to its RPC; a missing token throws before any fetch', async () => {
+  const calls = routeFetch([{ match: '/rest/v1/rpc/check_in_project', body: { ok: true } }]);
+  const engine = createSaveEngine(rawCtx().ctx);
+  await engine.rawCheckInProject('p9', undefined);
+  assert.ok(calls[0].url.endsWith('/rest/v1/rpc/check_in_project'));
+  assert.strictEqual(calls[0].init.body, JSON.stringify({ p_project_id: 'p9' }));
+  assert.strictEqual(calls[0].init.headers.Authorization, 'Bearer tok-1');
+  assert.strictEqual(calls[0].init.headers.apikey, 'anon');
+
+  const noTok = routeFetch([]);
+  const state = saveTestState({ supabaseSession: { user: { id: 'u1' } } });
+  const bare = createSaveEngine(makeCtx({ getState: () => state }).ctx);
+  await assert.rejects(bare.rawCheckInProject('p9', undefined), /No access token for raw check_in_project/);
+  await assert.rejects(bare.rawListAccessibleProjects(undefined), /No access token for raw list_accessible_projects/);
+  assert.strictEqual(noTok.length, 0);
+});

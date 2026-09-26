@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(settings): marker size, line width and Snap to 45° stay the way you set them after a reload (MAP-SETTINGS, 2026-09-26)
+
+The decomposition map's R18 (defect D03). The Counter and Line Type display settings (marker size,
+opacity, rings, number size, outline, line width, drop size and icon, label sizes, Snap to 45°, the
+Lines this-sheet toggle) lived in state and nowhere else, so every reload put them back to the
+defaults. AGENTS.md had listed `counterSettings` and `lineTypeSettings` as localStorage keys; nothing
+wrote or read them. The IndexedDB takeoff backup did carry both objects, but nothing restored them
+from it, and the cloud payload never had them.
+
+The call was made on 2026-09-25: they are the device's, like Hide marks and the sidebar filter, and
+never ride the project. app.js now starts both objects from `COUNTER_SETTINGS_DEFAULTS` /
+`LINE_TYPE_SETTINGS_DEFAULTS` (constants.js) and merges localStorage `counterSettings` /
+`lineTypeSettings` over them at boot through the pure `displaySettingsFields`, which keeps only the
+defaults' own keys, each of the default's type, so a key added later keeps its default and a corrupt
+field costs only itself. Every writer goes through one door, `App.saveDisplaySettings`: the two
+settings dialogs, the header Snap button, the J key and the Lines this-sheet button. The sidebar
+filter scope and its two legacy booleans stay out of the blob; they already had their own keys. Both
+new keys join the device key list that Clear cached data and reload (and the admin force reload)
+clears. A plain sign-out clears none of these device keys, the filter scope included; AGENTS.md now
+says so instead of calling that list "the sign-out key list" without explaining it.
+
+The two dialogs' hand-written slider and toggle handlers are now one row each in a `SLIDERS` /
+`TOGGLES` table, bound by one loop (the map's binder), with what each field opens at unchanged.
+
+Once Snap survived a reload, the blank tour's copy of it did not: it read Snap when it started and put
+it back when it stopped, in memory, so a reader who reloaded mid-tour kept Snap on for good. The tour
+now takes the lessons' own device snapshot, `App.lessonKit.rememberDevice({ searches: false })`,
+persisted in `clickcount-lesson-device-before` and put back on the next load, and `restoreDevice()`
+when it stops. The search words stay out of the tour's snapshot because the tour engine already
+clears and restores them under its own key; `restoreDevice` now leaves the words alone when a
+snapshot has none. The IndexedDB backup still writes both objects; it is not the restore path and was
+left as it is.
+
+Pinned by display-settings-persist.spec.js (marker size, opacity, number size, rings, line width,
+label size, Snap and the Lines toggle hold across a reload; a corrupt field falls back; the device
+wipe resets them; the blank tour puts Snap back after a reload and after a stop in-session, and the
+reader's search word still comes back) and constants.test.js (`displaySettingsFields`). The spec was
+red before the fix.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

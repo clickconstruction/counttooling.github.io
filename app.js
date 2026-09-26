@@ -296,7 +296,7 @@
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
     quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, stripPins: {}, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
-    counterSettings: { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false },
+    counterSettings: { ...COUNTER_SETTINGS_DEFAULTS },   // per device: merged from localStorage below (MAP-SETTINGS)
     iconNames: {},
     iconOrder: null,
     pagesListCollapsed: false,
@@ -311,7 +311,7 @@
     linesTypeExpanded: {},
     groupsListCollapsed: true,
     summaryListCollapsed: false,
-    lineTypeSettings: { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false, showOnlyLinesOnCurrentPage: false },
+    lineTypeSettings: { ...LINE_TYPE_SETTINGS_DEFAULTS },   // per device, like counterSettings
     legendSettings: { bgOpacity: 1, textOpacity: 1, bgColor: '#ffffff', showBorder: true, legendScale: 1, showResizeHighlight: false },
     // Duct Schedule knobs (DUCT unit D5) — per project, riding save/load +
     // export/import like legendSettings: the schedule's editable seam-&-waste
@@ -390,6 +390,21 @@
     userActivityViewMode: 'events'
   };
   state.showGroupColors = localStorage.getItem('groupColorDisplay') === '1';
+  // Counter and Line Type display settings persist per device (MAP-SETTINGS, decided
+  // 2026-09-25): a visual preference like Hide marks, never the project. The stored blob
+  // merges over the defaults field by field (displaySettingsFields in constants.js), so
+  // a key added later keeps its default and a corrupt entry costs only itself.
+  // saveDisplaySettings is every writer's one door: the two settings modals, the header
+  // Snap button, the J hotkey and the Lines this-sheet toggle.
+  const DISPLAY_SETTINGS_STORE = [['counterSettings', COUNTER_SETTINGS_DEFAULTS], ['lineTypeSettings', LINE_TYPE_SETTINGS_DEFAULTS]];
+  function saveDisplaySettings() {
+    DISPLAY_SETTINGS_STORE.forEach(([key, defaults]) => {
+      try { localStorage.setItem(key, JSON.stringify(displaySettingsFields(defaults, state[key]))); } catch (_) { /* private window: this session keeps them */ }
+    });
+  }
+  DISPLAY_SETTINGS_STORE.forEach(([key, defaults]) => {
+    try { Object.assign(state[key], displaySettingsFields(defaults, JSON.parse(localStorage.getItem(key) || 'null'))); } catch (_) { /* corrupt entry -> the defaults */ }
+  });
   // Sidebar usage-filter scope persists per device (idea recovered from the
   // unlanded claude/app-review-docs-bb19fa attempt): a big-palette user who
   // sets "this project" keeps it across sessions. The setters write these
@@ -4467,6 +4482,7 @@
   document.getElementById('lineTypeSnapToHVHeaderBtn').onclick = (e) => {
     e.stopPropagation();
     state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
+    saveDisplaySettings();
     const cb = document.getElementById('lineTypeSnapToHV');
     const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
     cb.checked = !!state.lineTypeSettings.snapToHorizontalVertical;
@@ -4608,6 +4624,7 @@
   if (linesShowOnlyOnPageBtn) {
     linesShowOnlyOnPageBtn.onclick = () => {
       state.lineTypeSettings.showOnlyLinesOnCurrentPage = !state.lineTypeSettings.showOnlyLinesOnCurrentPage;
+      saveDisplaySettings();
       linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
       // Narrate the two-state Lines toggle like the scope cycles do — this
       // button's meaning was otherwise only in its title attr.
@@ -5325,7 +5342,7 @@
       try {
         indexedDB.deleteDatabase('clickcount-pdf-cache');
       } catch (_) {}
-      const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+      const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'counterSettings', 'lineTypeSettings', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
       for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
@@ -7439,6 +7456,7 @@
     },
     toggleSnap: () => {
       state.lineTypeSettings.snapToHorizontalVertical = !state.lineTypeSettings.snapToHorizontalVertical;
+      saveDisplaySettings();
       const cb = document.getElementById('lineTypeSnapToHV');
       const snapBtn = document.getElementById('lineTypeSnapToHVBtn');
       const snapHeaderEl = document.getElementById('lineTypeSnapToHVHeaderBtn');
@@ -8293,6 +8311,8 @@
   App.getLineTypeListFilterScope = getLineTypeListFilterScope;
   App.setLineTypeListFilterScope = setLineTypeListFilterScope;
   App.syncFilterScopeSegment = syncFilterScopeSegment;
+  // MAP-SETTINGS: the display settings' one localStorage writer (the two settings modals call it on every change).
+  App.saveDisplaySettings = saveDisplaySettings;
   App.showSetScaleFirstToast = showSetScaleFirstToast;
   App.getPdfDocument = getPdfDocument;
   // Viewer scale sharing + view-only boot live in features/view-only.js

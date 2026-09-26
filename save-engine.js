@@ -2916,7 +2916,7 @@ function createSaveEngine(ctx) {
     // uses to offer the project back. Signed in with unsaved marks, autosave can create the cloud
     // project in the moment before this reload; without the pointer the reload landed on an empty
     // canvas with nothing offered, though the work was safe in the cloud.
-    const keysToRemove = ['recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
+    const keysToRemove = ['recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'counterSettings', 'lineTypeSettings', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
     for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
     location.reload();
   }

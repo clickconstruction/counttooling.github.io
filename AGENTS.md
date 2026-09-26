@@ -460,7 +460,11 @@
   follow-up "flip" PR makes the behavior the default and deletes the reads. Live flags are
   listed in that section's comment.
 - When adding a new persisted setting or per-project field, include it in
-  export/import and save/load.
+  export/import and save/load. A per-project field has one home for each (R12):
+  save-utils.js `projectPayloadFields` (every payload), annotation-model.js
+  `TAKEOFF_BACKUP_PROJECT_FIELDS` (+ `freshProjectFields`) and its two hydrators
+  (`hydrateStateFromProjectData`, which every intake calls, and
+  `applyTakeoffBackupToState`); annotation-model.test.js fails by name on a miss.
 
 ### `window.App` registry (splitting app.js)
 
@@ -606,8 +610,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   a Volume damper fittings row per tap; absent in pre-D8 saves ⇒ true), and the
   D11 static-path knob `terminalAllowanceInWg` (0.10 — the diffuser + flex
   allowance added once at the end of the critical path; on the Suggestions row);
-  defaults in app.js state init, restored by
-  every intake like `legendSettings`), `waterSettings` (WATER-PLAN rung 5 — `{ capFps: { cold, hot } }`, the Water Sizing
+  defaults are duct-model.js `DUCT_SETTINGS_DEFAULTS`; every intake reads the
+  saved knobs through `normalizeDuctSettings`, over the defaults, so a knob a
+  project never set is the default, never the last project's (R12)), `waterSettings` (WATER-PLAN rung 5 — `{ capFps: { cold, hot } }`, the Water Sizing
   schedule's velocity caps per side, defaulted from water-model's `WATER_SETTINGS_DEFAULTS` (8 / 5 fps) and normalized
   by `normalizeWaterSettings` on every intake ductSettings rides; the schedule's occupancy knob writes the codes blob), `groupsEnabled` (the Groups
   UI gate — the sidebar section + Assign-to-Group menus show only when this is

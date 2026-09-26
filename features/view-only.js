@@ -361,18 +361,11 @@
     const pdf = await App.getPdfDocument(buf).promise;
     clearPdfBitmapCache();
     state.pages = [];
-    const numPages = pdf.numPages;
     // B6 (J12 J14): page labels carry the plan name, not a hardcoded
     // "document.pdf" — the viewer's Pages sidebar / report headings should say
     // which plan this is (restore-last-session.js fixes the same root cause).
-    const planName = projectData.name || 'Untitled';
-    for (let i = 0; i < numPages; i++) {
-      const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? (planName + ', p' + (i + 1)) : planName;
-      const canvasId = uid();
-      state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: 0 });
-      state.activeCanvasIdByPage[i] = canvasId;
-    }
+    state.pages = await App.buildBlankPagesFromPdf(pdf, projectData.name || 'Untitled');
+    state.pages.forEach((pg, i) => { state.activeCanvasIdByPage[i] = pg.canvases[0].id; });
     App.hydrateStateFromProjectData(d);   // the shared intake (annotation-model.js)
     reconcileOrphanedCountersAndLineTypes();
     state.currentProjectId = projectData.projectId;

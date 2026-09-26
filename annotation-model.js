@@ -168,6 +168,45 @@ function purgeFromGhosts(ann, kind, id) {
   return out;
 }
 
+// --- The project's own fields (R12, one list) --------------------------------
+//
+// What a takeoff carries besides its sheets: the palette, and the fields that
+// belong to the PROJECT. One list, read by everything that must treat them as a
+// set: the boot pre-apply's Discard (app.js undoBootPreApply puts these back),
+// the session reset (resetLocalSessionState starts a project from
+// freshProjectFields), and annotation-model.test.js, which applies a backup with
+// every field set and checks that exactly these change. A new per-project field
+// goes here, in save-utils.js projectPayloadFields, and in both hydrators below;
+// the round-trip tests fail by name on a missed one.
+const PALETTE_FIELDS = ['counters', 'lineTypes', 'iconNames', 'iconOrder'];
+const TAKEOFF_BACKUP_PROJECT_FIELDS = [
+  'groups', 'groupsEnabled', 'stripPins', 'trade', 'ceilingHeightFt', 'makeUpFt', 'codes', 'bidCheck', 'rooms',
+  'activeCanvasIdByPage', 'numberKeyBindings', 'ductSettings', 'waterSettings',
+  'legendSettings', 'multiplyZoneSettings', 'scaleZoneSettings', 'showGridOverlay', 'gridSettings',
+];
+// The view settings among them that the session carries into the next project:
+// a project saved with them restores them, but closing one does not reset them.
+const CARRIED_VIEW_FIELDS = ['legendSettings', 'multiplyZoneSettings', 'scaleZoneSettings', 'showGridOverlay', 'gridSettings'];
+// Duct and water knobs through their models' normalizers (duct-model.js and
+// water-model.js load before this file; node tests that skip them get a copy).
+function normDuctSettings(raw) {
+  if (typeof normalizeDuctSettings === 'function') return normalizeDuctSettings(raw);
+  return raw && typeof raw === 'object' ? { ...raw } : {};
+}
+// The value each reset field starts from in a project that never set it (every
+// project field but the carried view settings). Fresh objects on every call.
+// stripPins is {} here ("follow the trade"); the session reset passes the device's
+// last arrangement instead.
+function freshProjectFields(overrides) {
+  const fresh = {
+    groups: [], groupsEnabled: false, stripPins: {}, trade: null, ceilingHeightFt: null, makeUpFt: null,
+    codes: null, bidCheck: { manual: {} }, rooms: [], activeCanvasIdByPage: {}, numberKeyBindings: {},
+    ductSettings: normDuctSettings(null),
+    waterSettings: typeof normalizeWaterSettings === 'function' ? normalizeWaterSettings(null) : null,
+  };
+  return Object.assign(fresh, overrides || {});
+}
+
 function createAnnotationModel(ctx) {
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], ductRuns: [], ductFittings: [], legend: null }; }
 
@@ -307,14 +346,8 @@ function createAnnotationModel(ctx) {
     return raw && raw.capFps ? { capFps: { ...raw.capFps } } : raw;
   }
   // Codes & jurisdiction (rulebook slice 4): keep only the strings a project chose.
-  function normCodes(raw) {
-    if (!raw || typeof raw !== 'object') return null;
-    const out = {};
-    ['plumbing', 'electrical', 'hvac', 'jurisdiction'].forEach((k) => { if (typeof raw[k] === 'string' && raw[k].trim()) out[k] = raw[k].trim(); });
-    // WATER-PLAN rung 1: the fixture-unit column (public | private), the same two values constants.js keeps.
-    if (raw.occupancy === 'public' || raw.occupancy === 'private') out.occupancy = raw.occupancy;
-    return Object.keys(out).length ? out : null;
-  }
+  // constants.js normalizeProjectCodes (loaded before this file) is the one rule.
+  function normCodes(raw) { return normalizeProjectCodes(raw); }
   // Header pins (D21), per project: a copy of the saved map, or {} (follow the trade).
   function normStripPins(raw) {
     return (raw && typeof raw === 'object' && !Array.isArray(raw)) ? { ...raw } : {};
@@ -363,7 +396,7 @@ function createAnnotationModel(ctx) {
     if (backup.pageLabels) backup.pageLabels.forEach((l, i) => { if (typeof l === 'string' && l && ctx.getState().pages[i]) ctx.getState().pages[i].label = l; });
     if (backup.pageBakeFrames) backup.pageBakeFrames.forEach((bf, i) => { if (ctx.getState().pages[i]) verifyPageBakeFrame(ctx.getState().pages[i], bf); });
     if (backup.legendSettings) ctx.getState().legendSettings = { ...ctx.getState().legendSettings, ...backup.legendSettings };
-    if (backup.ductSettings) ctx.getState().ductSettings = { ...ctx.getState().ductSettings, ...backup.ductSettings };
+    if (backup.ductSettings) ctx.getState().ductSettings = normDuctSettings(backup.ductSettings);   // R12: over the defaults, not the session's
     if (backup.waterSettings) ctx.getState().waterSettings = normWater(backup.waterSettings);   // WATER-PLAN rung 5
     if (backup.multiplyZoneSettings) ctx.getState().multiplyZoneSettings = { ...ctx.getState().multiplyZoneSettings, ...backup.multiplyZoneSettings };
     if (backup.scaleZoneSettings) ctx.getState().scaleZoneSettings = { ...ctx.getState().scaleZoneSettings, ...backup.scaleZoneSettings };
@@ -371,14 +404,29 @@ function createAnnotationModel(ctx) {
     if (backup.gridSettings) ctx.getState().gridSettings = backup.gridSettings;
   }
 
-  // The shared cloud-project hydration block: palettes, icon prefs, per-page
-  // annotations, and the per-project view settings. ONE home for the contract
-  // — used by the view-link boot (features/view-only.js) and the last-session
-  // restore (features/restore-last-session.js), which carried verbatim copies
-  // until 2026-07-30; a new persisted field added to one intake could silently
-  // drop from the other. Callers construct state.pages first; this fills in
-  // everything the project data payload carries.
-  function hydrateStateFromProjectData(d) {
+  // The shared project hydration block: palettes, icon prefs, per-page
+  // annotations, and the per-project view settings. ONE home for the contract.
+  // The view-link boot (features/view-only.js) and the last-session restore
+  // (features/restore-last-session.js) shared it from 2026-07-30; since R12
+  // (2026-09-26) every project intake does: cloud load's two canvas-only branches
+  // (features/load-project.js), the sheets built from a cloud PDF
+  // (features/copy-project.js), both PDF-first intakes (features/pdf-intake.js)
+  // and Import Canvas (features/import-clear.js), each of which carried its own
+  // copy and had drifted. Callers construct state.pages first (or leave it empty,
+  // canvas-only); this fills in everything the project data payload carries.
+  //
+  // opts (each off by default, for the intakes that need it):
+  //   scaleFallback: a sheet saved without a scale takes this one (Import Canvas's
+  //                   legacy top-level `scale`), passed to applyPageAnnotationsFromData;
+  //   legacyScales:  the old page-array scales (`pageScales`), or failing those one
+  //                   `scale` for every sheet, laid over the pages (the cloud-PDF and
+  //                   PDF-first intakes, which may read pre-pages or backup-shaped data);
+  //   trimLayers:    keep the chosen-layer map to the sheets this plan has (the
+  //                   intakes where the PDF in hand may not be the one saved).
+  // Returns { pageEntries, appliedPages }: how many saved sheets there were, and how
+  // many landed on a sheet of this plan (Import Canvas says so when it is fewer).
+  function hydrateStateFromProjectData(d, opts) {
+    const o = opts || {};
     const state = ctx.getState();
     state.counters = Array.isArray(d.counters) ? d.counters : [];
     state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
@@ -394,19 +442,39 @@ function createAnnotationModel(ctx) {
     if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
     if (Array.isArray(d.customIconPaths)) ctx.saveUserCustomIcons(d.customIconPaths);
-    (d.pages || []).forEach(p => {
-      applyPageAnnotationsFromData(state.pages[p.index], p);
+    const pageEntries = Array.isArray(d.pages) ? d.pages : [];
+    let appliedPages = 0;
+    pageEntries.forEach(p => {
+      if (!p) return;
+      if (state.pages[p.index]) appliedPages++;
+      applyPageAnnotationsFromData(state.pages[p.index], p, o.scaleFallback);
     });
-    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+    if (o.legacyScales) {
+      if (Array.isArray(d.pageScales)) d.pageScales.forEach((scale, i) => { if (state.pages[i]) state.pages[i].scale = scale; });
+      else if (d.scale) state.pages.forEach(pg => { pg.scale = d.scale; });
+    }
+    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') {
+      if (o.trimLayers) {
+        const kept = {};
+        Object.entries(d.activeCanvasIdByPage).forEach(([k, v]) => {
+          const idx = Number(k);
+          if (Number.isFinite(idx) && state.pages[idx]) kept[idx] = v;
+        });
+        state.activeCanvasIdByPage = kept;
+      } else {
+        state.activeCanvasIdByPage = d.activeCanvasIdByPage;
+      }
+    }
     applyQuickKeys(d.numberKeyBindings);   // MAP-QUICKKEYS: a restored cloud bid kept the last session's keys
     state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
     if (d.legendSettings) state.legendSettings = { ...state.legendSettings, ...d.legendSettings };
-    if (d.ductSettings) state.ductSettings = { ...state.ductSettings, ...d.ductSettings };
+    state.ductSettings = normDuctSettings(d.ductSettings);   // R12: the project's knobs over the defaults, never the last project's
     if (d.waterSettings) state.waterSettings = normWater(d.waterSettings);   // WATER-PLAN rung 5: the velocity caps
     if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...d.multiplyZoneSettings };
     if (d.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...d.scaleZoneSettings };
     if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
     if (d.gridSettings) state.gridSettings = d.gridSettings;
+    return { pageEntries: pageEntries.length, appliedPages };
   }
 
   function applyPageAnnotationsFromData(page, p, scaleFallback) {
@@ -1013,6 +1081,28 @@ function createAnnotationModel(ctx) {
       if (to2 == null) state.lastMeasure = null; else state.lastMeasure.pageIdx = to2;
     }
   }
+  // R12 (lifecycle-cloud:blank-pages-helper): one blank sheet, and one default name
+  // for it. Every intake that builds sheets from a PDF (cloud load, copy, the
+  // last-session restore, the view link, the PDF-first intakes, Prepare PDF) typed
+  // this literal and the "<plan>, p<n>" rule by hand; sheet-title-model.js
+  // isDefaultPageLabel is the rule's reader (a default name may be replaced by the
+  // sheet title the text layer holds).
+  function defaultPageLabel(planName, i, numPages) {
+    return numPages > 1 ? (planName + ', p' + (i + 1)) : planName;
+  }
+  function makeBlankPage(pdfPage, label, rotation) {
+    return { pdfPage, label, canvases: [{ id: ctx.uid(), name: 'Main', annotations: makeAnnotations() }], scale: null, rotation: rotation ?? 0 };
+  }
+  // Every page of a pdf.js document as a blank sheet named for the plan.
+  async function buildBlankPagesFromPdf(pdf, planName) {
+    const pages = [];
+    const numPages = pdf.numPages;
+    for (let i = 0; i < numPages; i++) {
+      pages.push(makeBlankPage(await pdf.getPage(i + 1), defaultPageLabel(planName, i, numPages), 0));
+    }
+    return pages;
+  }
+
   function deepCopyAnnotations(ann) {
     if (!ann) return makeAnnotations();
     return JSON.parse(JSON.stringify(ann));
@@ -1052,6 +1142,9 @@ function createAnnotationModel(ctx) {
     deepCopyAnnotations,
     deletePageAt,
     remapSessionPageIndices,
+    defaultPageLabel,
+    makeBlankPage,
+    buildBlankPagesFromPdf,
   };
 }
 
@@ -1062,5 +1155,5 @@ function createAnnotationModel(ctx) {
 
 // Dual-environment export (inert in the browser) for node --test + eslint.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode, purgeFromGhosts };
+  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode, purgeFromGhosts, PALETTE_FIELDS, TAKEOFF_BACKUP_PROJECT_FIELDS, CARRIED_VIEW_FIELDS, freshProjectFields };
 }

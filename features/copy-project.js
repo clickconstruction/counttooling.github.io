@@ -120,57 +120,17 @@
     const pdf = await App.getPdfDocument(bufPdf).promise;
     App.clearPdfBitmapCache();
     App.state.pages = [];
-    const numPages = pdf.numPages;
     // Default page labels carry the plan name, not a hardcoded "document.pdf"
     // (same root cause as B6's view-only.js / restore-last-session.js fix).
     // Saved labels — including owner renames — override these below via
     // applyPageAnnotationsFromData / applyTakeoffBackupToState.
-    const defaultName = planName || 'Untitled';
-    for (let i = 0; i < numPages; i++) {
-      const pdfPage = await pdf.getPage(i + 1);
-      const label = numPages > 1 ? (defaultName + ', p' + (i + 1)) : defaultName;
-      const canvasId = App.uid();
-      App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
-      App.state.activeCanvasIdByPage[i] = canvasId;
-    }
+    App.state.pages = await App.buildBlankPagesFromPdf(pdf, planName || 'Untitled');
+    App.state.pages.forEach((pg, i) => { App.state.activeCanvasIdByPage[i] = pg.canvases[0].id; });
     if (useIdbBackup && idbBackup.data) {
       App.applyTakeoffBackupToState(idbBackup.data);
     } else {
-      App.state.counters = Array.isArray(d.counters) ? d.counters : [];
-      App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-      App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-      App.state.groupsEnabled = !!d.groupsEnabled;
-      App.state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21
-      App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
-      App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
-      App.state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
-      App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
-      App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-      App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-      if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
-      if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
-      if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-      (d.pages || []).forEach(function (p) {
-        App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
-      });
-      if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') App.state.activeCanvasIdByPage = d.activeCanvasIdByPage;
-      // Project bindings replace when present; when absent, an artboard-seeded
-      // layout survives but a previous project's is dropped (quick-keys.js).
-      if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
-      else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
-      if (d.pageScales) {
-        d.pageScales.forEach(function (scale, i) { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
-      } else if (d.scale) {
-        App.state.pages.forEach(function (p) { p.scale = d.scale; });
-      }
-      App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-      if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-      if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
-      if (d.waterSettings) App.state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(d.waterSettings) : d.waterSettings;   // WATER-PLAN rung 5
-      if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-      if (d.scaleZoneSettings) App.state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
-      if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
-      if (d.gridSettings) App.state.gridSettings = d.gridSettings;
+      // R12: the shared intake (annotation-model.js); old saves may carry page-array scales.
+      App.hydrateStateFromProjectData(d, { legacyScales: true });
     }
     App.reconcileOrphanedCountersAndLineTypes();
     App.clearUndoStacks();

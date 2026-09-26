@@ -323,3 +323,47 @@ test.describe('signed-out trim step (B15b)', () => {
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
   });
 });
+
+// R12: a cloud bid opened without its PDF waits in state.pendingCanvasLoad, and
+// uploading the PDF hydrates it (pdf-intake.js matchPendingCanvasLoad), now through
+// the shared intake. Its own copy dropped the layer each sheet was on, and merged the
+// saved duct knobs over the LAST project's, so a knob this bid never set kept the last
+// bid's value. The pending load is seeded as load-project.js leaves it.
+test.describe('a canvas-only bid getting its PDF (R12)', () => {
+  test('comes back on the layer each sheet was on, with its own duct knobs and rooms', async ({ page }) => {
+    await bootApp(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      // The last bid's, still in the session.
+      s.ductSettings = { ...s.ductSettings, seamWastePct: 3, maxFlexFt: 9 };
+      s.rooms = [{ id: 'old-room', name: 'Old Room' }];
+      s.pendingCanvasLoad = {
+        projectId: 'p-canvas-only', name: 'Canvas Only Bid', pdf_hash: null,
+        data: {
+          counters: [{ id: 'pc', name: 'Pending Counter', icon: '', color: '#4a9eff' }],
+          lineTypes: [], groups: [],
+          pages: [{ index: 0, label: 'P-101', scale: null, rotation: 0, canvases: [
+            { id: 'cvMain', name: 'Main', annotations: {} },
+            { id: 'cvRough', name: 'Rough-in', annotations: { counterMarkers: { pc: [{ x: 40, y: 40, id: 'm1' }] } } },
+          ] }],
+          activeCanvasIdByPage: { 0: 'cvRough', 7: 'cvGone' },
+          ductSettings: { seamWastePct: 12 },
+        },
+      };
+    });
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForFunction(() => window.state.pendingCanvasLoad === null && window.state.pages.length > 0, null, { timeout: 10000 });
+    const after = await page.evaluate(() => ({
+      map: JSON.parse(JSON.stringify(window.state.activeCanvasIdByPage)),
+      layer: window.App.getActiveCanvas(window.state.pages[0]).name,
+      seam: window.state.ductSettings.seamWastePct,
+      maxFlex: window.state.ductSettings.maxFlexFt,
+      rooms: window.state.rooms.length,
+    }));
+    expect(after.map).toEqual({ 0: 'cvRough' });   // the sheet this PDF lacks is not kept
+    expect(after.layer).toBe('Rough-in');
+    expect(after.seam).toBe(12);
+    expect(after.maxFlex).toBe(6);                 // the default, not the last bid's 9
+    expect(after.rooms).toBe(0);
+  });
+});

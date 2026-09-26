@@ -101,6 +101,75 @@ memory, one toast), water-bidcheck, export-pdfs and output are green, as are the
 the panel (the three courses, lessons, tutorial, duct-static, duct-orientation, duct-b19b,
 bend-fittings, codes, rules-chip) and the model tests.
 
+## refactor(save): one payload builder and one hydrator for every project intake (R12, 2026-09-26)
+
+The decomposition map's R12, all five items. A project's fields were listed by hand in about fifteen
+places, and the copies had drifted. The cloud save, the autosave and Export Canvas each typed the
+project payload, and the IndexedDB backup a fourth copy. Six feature intakes carried their own copy of
+the hydrator: both canvas-only branches of cloud load, the sheets built from a cloud PDF, both
+PDF-first intakes and Import Canvas. The drift showed: a bid opened without its PDF kept the last
+project's rooms and zoom cap; uploading its PDF brought the marks back but not the layer each sheet
+was on; every intake merged the saved duct knobs over the CURRENT project's, so a knob a bid never
+saved took the last bid's value; one PDF intake set the trade and codes twice; and the boot pre-apply's
+Discard list missed the header pins, so a declined session's pins rode into the next plan.
+
+save-utils.js now writes the payload once. `buildProjectData(state, { customIconPaths, maxZoom,
+bakeFrame })` is the cloud row's `data` and the Export Canvas file: save-engine.js sends it for the
+manual save and the autosave through one `projectPayload()`, and app.js `buildCanvasExportData`
+returns it. `buildTakeoffBackupData` keeps the backup's own shape (the device's display and export
+preferences, the pages as arrays, no version or zoom cap) over the same `projectPayloadFields`. The
+payload is the same keys with the same values as before; only the key order changed.
+
+annotation-model.js `hydrateStateFromProjectData(d, opts)` is the one hydrator, and every intake calls
+it. The options carry what the intakes did differently: `scaleFallback` (Import Canvas's legacy one
+`scale`), `legacyScales` (the old page-array scales, for the cloud-PDF and PDF-first intakes), and
+`trimLayers` (the layer map kept to the sheets the plan has, for the PDF-first intakes and the
+import). It returns `{ pageEntries, appliedPages }`, which Import Canvas uses for its "Applied marks
+to N of M pages" toast. Each intake keeps its own extras: the toast, the reconcile, the undo clear and
+`hydrateProjectFromCloudRow`. `applyTakeoffBackupToState` stays separate, since the boot pre-apply and
+the spec seams rely on its merge (absent = keep).
+
+The project's own fields are one exported list: `TAKEOFF_BACKUP_PROJECT_FIELDS` beside
+`PALETTE_FIELDS`, with `CARRIED_VIEW_FIELDS` naming the legend, zone and grid settings among them
+and `freshProjectFields()` giving what a project that never set the rest starts from. The boot
+pre-apply's Discard restores exactly that list (the header pins are on it now), and
+`resetLocalSessionState` assigns `freshProjectFields`, which gives the same values it typed before.
+The codes read through constants.js `normalizeProjectCodes`, which the hydrator's own copy
+duplicated.
+
+duct-model.js `normalizeDuctSettings(raw)`, beside `DUCT_SETTINGS_DEFAULTS`, is the one rule for the
+Duct Schedule's knobs: the defaults under the saved values, then the clamps the schedule's getter
+applied. Both hydrators read the knobs through it, so a bid saved without one gets the default. The
+schedule's getter normalizes `state.ductSettings` in place (a caller holding the object still writes
+to state's own copy), and its six knob inputs and the ductulator suggestion fall back to the table
+instead of typing 15, 40, 0.08, 1200, 0.10 and 6 again. No number in the table changed.
+
+The blank sheet every PDF intake starts from is `makeBlankPage(pdfPage, label, rotation)`, and a
+whole document is `buildBlankPagesFromPdf(pdf, planName)`, with the "plan, p2" name in
+`defaultPageLabel`. Cloud load, the last-session restore, the view link, the fresh upload, Load test
+PDF and both Prepare PDF paths use them, and the append preview uses the name rule. All three are
+published on App. The three App registrations the old intakes read and nothing reads now
+(`DUCT_SETTINGS_DEFAULTS`, `normalizeProjectCodes`, `normalizeWaterSettings`) are gone.
+
+What an estimator sees change: a bid opened without its PDF no longer carries the last project's
+rooms, zoom cap or duct knobs, and gets back the layer each sheet was on when its PDF is uploaded; a
+bid saved without a duct knob gets the default rather than the last bid's; and discarding the
+last-session offer puts the header pins back too.
+
+Pinned by save-utils.test.js (the payload, the empty-session defaults the hand-typed payloads wrote,
+and the backup's shape over the shared fields), duct-model.test.js (the normalizer: nothing saved,
+a saved knob, and every illegal value reading as its default), and annotation-model.test.js. The
+MAP-QUICKKEYS round trip now reads its key lists from the two builders, and an espree walk proves that
+neither save-engine.js nor app.js types a payload and that the manual save, the autosave, Export
+Canvas and the backup each call a builder. New cases: a backup with every field set changes exactly
+the palette, the project fields and the sheets; `freshProjectFields` covers every project field but
+the carried ones; the duct knobs over the defaults in both hydrators; each option; the canvas-only
+hydrate; and the blank-page helpers. pdf-upload.spec.js adds a canvas-only bid getting its PDF
+(the layer map, trimmed to the PDF's sheets, the duct knobs over the defaults, the rooms dropped),
+red on the old pdf-intake.js. Left: the backup applier still copies Quick Keys plain (the lifecycle
+rule would clear the Artboard-seed flag, which the pre-apply's Discard does not restore), and the
+legend, zone and grid settings are still merged over the session and carried into the next project.
+
 ## feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command (R06, 2026-09-26)
 
 The decomposition map's R06, both items. Every new shell file cost four hand steps, and one of

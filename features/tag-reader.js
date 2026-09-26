@@ -71,7 +71,6 @@
   // features subscribe through App.pageTextLoadedListeners instead. The list
   // lives on App (not in this closure) so a feature file that loads BEFORE
   // this one can push to it at its own load time — the registry idiom.
-  function addPageTextLoadedListener(fn) { if (typeof fn === 'function') (App.pageTextLoadedListeners = App.pageTextLoadedListeners || []).push(fn); }
   // D24: the cached items WITHOUT triggering a fetch — for painters, which run
   // on every frame for every page and must never be the reason a page's text
   // layer is fetched (D10's laziness: the first fetch happens only when a
@@ -335,7 +334,6 @@
 
   App.pageTextItems = pageTextItems;
   App.textItemsFromContent = textItemsFromContent;             // SHEET-TITLE: the intake reads a title block before a page row exists
-  App.addPageTextLoadedListener = addPageTextLoadedListener;   // D24
   App.peekPageTextItems = peekPageTextItems;                   // D24: canvas-draw's non-fetching read
   App.queryPdfTextNear = queryPdfTextNear;
   App.drawTagOverlay = drawTagOverlay;

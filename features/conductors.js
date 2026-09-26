@@ -29,8 +29,6 @@
  *     #counterLineTypeDetailsModal (features/item-details.js calls it on open).
  *   - renderLineConductorOverride(line, lineType) — the per-line override
  *     field inside #linePropertiesModal.
- *   - lineTypeConductorChip(lt) — the short "3/4" EMT · 3 #12 + G" label the
- *     sidebar / lines list can show.
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
@@ -121,16 +119,6 @@
       if (wire.length || cable.length) byGroup[gid] = { wire, cable };
     });
     return { byGroup };
-  }
-
-  // Short label for a line type's electrical facts: '3/4" EMT · 3 #12 + 1 #12 G'.
-  function lineTypeConductorChip(lt) {
-    const cm = CM();
-    if (!lt || !cm) return '';
-    const parts = [];
-    if (lt.raceway && lt.raceway.kind) parts.push(cm.racewayLabel(lt.raceway));
-    if (lt.conductors && lt.conductors.length) parts.push(cm.formatConductorSpec(lt.conductors));
-    return parts.join(' · ');
   }
 
   // --- edit UI: the details modal --------------------------------------------
@@ -256,5 +244,4 @@
   App.getConductorTotals = getConductorTotals;
   App.renderConductorsSection = renderConductorsSection;
   App.renderLineConductorOverride = renderLineConductorOverride;
-  App.lineTypeConductorChip = lineTypeConductorChip;
 })();

@@ -449,8 +449,5 @@
   App.getDuctFittingCounts = getDuctFittingCounts;
   App.tryOpenDuctContextMenu = tryOpenDuctContextMenu;
   App.setDuctRunOrientation = setRunOrientation;   // D12 (spec seam + the sidebar)
-  App.setDuctVerticalFt = setVerticalFt;           // D18 (spec seam)
   App.removeDuctVerticalFt = removeVerticalFt;     // D18 (spec seam)
-  App.hideDuctFittingMenu = hideDuctFittingMenu;
-  App.isDuctFittingMenuOpen = () => menuOpen;   // spec seam
 })();

@@ -37,12 +37,13 @@
  * reference takeoff (every fixture, every run), and a compare step (a body that is a
  * FUNCTION, rendered live) sets the reader's quantities beside the reference's, run by run.
  *
- * Progress is per device: localStorage `clickcount-course-done`, { 'plumbing:<id>': ISO }.
+ * Progress is per device: localStorage `clickcount-course-done`, { 'plumbing:<id>': ISO },
+ * the one map every course shares (lessonKit.courseDone / markCourseDone, App.courseDone).
  * Doors: the Learn menu's course section (#learnCourseList-plumbing), the empty-canvas
  * "plumbing course" link, Project Settings → Help → "plumbing course", /app/?course=plumbing
  * (the menu, at the course) and /app/?chapter=plumbing:<id>.
  *
- * Registrations: renderCourseList(nextId), startChapter(id), courseChapterIds(), courseDone(),
+ * Registrations: renderCourseList(nextId), startChapter(id), courseChapterIds(),
  * courseReference() (the reference quantities, for the spec).
  * Boundary rule: read shared deps from App.* at call time, never captured at load.
  */
@@ -50,7 +51,6 @@
   'use strict';
   const App = (window.App = window.App || {});
   const COURSE = 'plumbing';
-  const DONE_KEY = 'clickcount-course-done';
   const K = () => App.lessonKit;
   const T = () => App.tourKit;
   const S = () => App.state;
@@ -758,8 +758,8 @@
   ];
 
   // ----- progress, the menu section, the doors ---------------------------------------------
-  function courseDone() { try { return JSON.parse(localStorage.getItem(DONE_KEY) || '{}') || {}; } catch (_) { return {}; } }
-  function markDone(id) { try { const d = courseDone(); d[key(id)] = new Date().toISOString(); localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } }
+  const courseDone = () => K().courseDone();
+  const markDone = (id) => K().markCourseDone(key(id));
   const suggested = () => { const d = courseDone(); return (CHAPTERS.find((c) => !d[key(c.id)]) || {}).id || null; };
 
   CHAPTERS.forEach((chapter, idx) => {
@@ -819,6 +819,5 @@
   (App.courseSections = App.courseSections || []).push({ id: COURSE, render: renderCourseList });
   App.startChapter = startChapter;
   App.courseChapterIds = () => CHAPTERS.map((c) => c.id);
-  App.courseDone = courseDone;
   App.courseReference = () => ({ feet: referenceFeet(), counts: COUNTS().map(([tag, spots, label]) => [label, spots.length]) });
 })();

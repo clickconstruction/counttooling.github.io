@@ -17,7 +17,6 @@
  *         crossCheck: [{ panel, onPlan, scheduled, verdict }] }
  *     Circuits are grouped by panel (groups with a circuit but no panel land
  *     under '—'); panels sorted naturally; empty when no group is a circuit.
- *   - getPanelCrossCheck() — the pure check over state.groups / state.counters.
  *   - renderGroupCircuitFields(g) / applyGroupCircuitFields(grp) — the Panel /
  *     Circuit / Load row in #groupModal (features/groups.js calls both).
  *   - renderPanelSection(kind, item) — Panel name + poles on a counter, and the
@@ -239,11 +238,9 @@
   }
 
   App.getCircuitSchedule = getCircuitSchedule;
-  App.getPanelCrossCheck = getPanelCrossCheck;
   App.renderGroupCircuitFields = renderGroupCircuitFields;
   App.applyGroupCircuitFields = applyGroupCircuitFields;
   App.renderPanelSection = renderPanelSection;
   App.renderLineHomerun = renderLineHomerun;
   App.renderPanelFooter = renderPanelFooter;
-  App.isHomerunLine = isHomerun;
 })();

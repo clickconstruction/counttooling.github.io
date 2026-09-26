@@ -7852,7 +7852,6 @@
   App.getUserCustomIcons = getUserCustomIcons;
   App.saveUserCustomIcons = saveUserCustomIcons;
   App.showToast = showToast;
-  App.pushRecentBid = pushRecentBid;
   App.forgetRecentBid = forgetRecentBid;
   App.getRecentBids = () => state.recentBids;
   App.formatBidAge = formatBidAge;
@@ -7887,13 +7886,12 @@
   App.saveLineModifiers = saveLineModifiers;
   App.getPlumbingModifiers = getPlumbingModifiers;
   App.getTradeModifiers = getTradeModifiers;
-  App.syncTradeSegment = syncTradeSegment;
   App.saveTradeModifiers = saveTradeModifiers;
   App.getQuickTrade = getQuickTrade;
   App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.confirmDialog = confirmDialog;   // B20 (X8): the one confirm — features await it instead of confirm()
-  App.resolveConfirm = resolveConfirm; // spec seam
+  App.resolveConfirm = resolveConfirm; // the confirm's Esc rung (features/esc-ladder.js)
   App.clearAuthGate = clearAuthGate;   // MAP-ESC: the authModal Esc rung (features/esc-ladder.js)
   App.planRoomLabels = (ann, pageIdx) => canvasDraw.planRoomLabels(ann, pageIdx);   // D24 spec seam
   App.setProjectTrade = setProjectTrade;
@@ -7955,7 +7953,7 @@
   App.filterUserActivityRows = filterUserActivityRows;
   App.renderUserActivityAllUsersTableHtml = renderUserActivityAllUsersTableHtml;
   // updateStatus / updateSaveStatusIndicator / getCloudSaveSummary /
-  // invalidateFooterTotals / getFooterTotalsCached are registered from
+  // invalidateFooterTotals are registered from
   // features/status-bar.js. Publish-only deps for it:
   App.formatSaveTime = formatSaveTime;
   App.formatSaveTimeParts = formatSaveTimeParts;
@@ -7969,8 +7967,8 @@
   App.canUseDevAuth = canUseDevAuth;
   App.deleteProjectAsOwner = deleteProjectAsOwner;
   // Load Project modal deep deps (features/load-project.js): the project-load
-  // action is fused with the boot/engine path, so it reaches these internals.
-  App.SUPABASE_URL = SUPABASE_URL;
+  // action is fused with the boot/engine path, so it reaches these internals
+  // (App.SUPABASE_URL is published once, with the engine deps above).
   App.clearUndoStacks = clearUndoStacks;
   App.subscribeToProjectCheckoutChanges = subscribeToProjectCheckoutChanges;
   App.takeoffBackupGet = takeoffBackupGet;
@@ -7996,11 +7994,7 @@
   App.fetchUserAirboard = fetchUserAirboard;
   App.saveUserAirboard = saveUserAirboard;
   App.PLUMBING_DEFAULTS = PLUMBING_DEFAULTS;
-  App.TRADES = TRADES;
-  App.TRADE_LABELS = TRADE_LABELS;
   App.TRADE_QUICK_PROFILES = TRADE_QUICK_PROFILES;
-  App.ELECTRICAL_DEFAULTS = ELECTRICAL_DEFAULTS;
-  App.HVAC_DEFAULTS = HVAC_DEFAULTS;
   App.DEFAULT_MAKE_UP_FT = DEFAULT_MAKE_UP_FT;
   App.LINE_DEFAULTS = LINE_DEFAULTS;
   // Output cluster deps (features/output.js).
@@ -8055,9 +8049,6 @@
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.parseMountHeightIn = parseMountHeightIn;
-  App.ConductorModel = (typeof window !== 'undefined' && window.ConductorModel) || null;
-  App.CircuitModel = (typeof window !== 'undefined' && window.CircuitModel) || null;
-  App.BidCheckModel = (typeof window !== 'undefined' && window.BidCheckModel) || null;   // S5 pure rule table (bid-check-model.js)   // S4 pure circuit model (circuit-model.js)   // S3 pure raceway / conductor model (conductor-model.js)
   App.formatMountHeightIn = formatMountHeightIn;
   App.defaultVerticalFeet = defaultVerticalFeet;
   App.getActiveAnnotations = getActiveAnnotations;
@@ -8115,13 +8106,12 @@
   App.getRecentDrops = () => state.recentDrops || [];
   App.pushRecentDrop = pushRecentDrop;
   App.commitMeasurePoint = commitMeasurePoint;     // features/tutorial.js ("Do it for me" on the Measure step)
-  App.DUCT_SETTINGS_DEFAULTS = DUCT_SETTINGS_DEFAULTS;
+  App.DUCT_SETTINGS_DEFAULTS = DUCT_SETTINGS_DEFAULTS;   // duct-model.js data table (features/duct-schedule.js seeds from it; rulebook-pinned)
   App.getProjectCodes = getProjectCodes;                // rulebook slice 4 (features/rules.js popover, bid-check.js footer, codes.spec.js)
   App.setProjectCodes = setProjectCodes;
   App.normalizeProjectCodes = normalizeProjectCodes;
   App.normalizeWaterSettings = normalizeWaterSettings;   // WATER-PLAN rung 5: every intake restores the caps through it
-  App.CODE_EDITIONS = CODE_EDITIONS;
-  App.syncProjectSettingsRows = syncProjectSettingsRows;   // duct-model.js data table (features/duct-schedule.js seeds from it; rulebook-pinned)
+  App.syncProjectSettingsRows = syncProjectSettingsRows;
   App.logDropSetEvent = logDropSetEvent;
   App.toCanvas = toCanvas;
   App.showContextMenu = showContextMenu;               // spec seam (drop-mode.spec.js)

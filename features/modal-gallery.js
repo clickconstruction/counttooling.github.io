@@ -442,7 +442,6 @@
   App.modalGalleryReloadCss = reloadCss;
   App.modalGalleryLoadSample = loadSample;
   App.modalGalleryOpenLive = (id) => { const n = document.getElementById(id); if (n) openLive(n); };
-  App.modalGalleryExitLive = exitLive;
   App.modalGalleryPopulate = (id, variant) => {
     // Headless seam for scripts/build-modal-gallery.js: run a tile's opener by
     // id (and variant label, for a modal with several) and report the outcome.

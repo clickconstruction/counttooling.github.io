@@ -122,22 +122,6 @@
     return null;
   }
 
-  // Ring the callout that was read (device px; env.fontScale = zoom × DPR) —
-  // the tag-reader idiom, in the run's airside color.
-  function drawDuctCalloutRing(ctx, env, offer, color) {
-    if (!offer || !App.toCanvas) return;
-    const fontScale = (env && env.fontScale) || 1;
-    const a = App.toCanvas({ x: offer.x, y: offer.y });
-    const b = App.toCanvas({ x: offer.x + offer.w, y: offer.y + offer.h });
-    const pad = 3 * fontScale;
-    ctx.save();
-    ctx.strokeStyle = color || '#e8c547';
-    ctx.lineWidth = Math.max(1, 1.2 * fontScale);
-    ctx.setLineDash([3 * fontScale, 2 * fontScale]);
-    ctx.strokeRect(Math.min(a.x, b.x) - pad, Math.min(a.y, b.y) - pad, Math.abs(b.x - a.x) + pad * 2, Math.abs(b.y - a.y) + pad * 2);
-    ctx.restore();
-  }
-
   // --- the S-popover section (order 3 — FIRST, ahead of D6's suggestion at 5:
   // the plan's printed size is the answer when it exists) ----------------------
   App.registerDuctPopoverSection && App.registerDuctPopoverSection({
@@ -233,7 +217,6 @@
 
   App.getDuctCalloutOffer = getDuctCalloutOffer;
   App.getDuctCursorLine = getDuctCursorLine;
-  App.drawDuctCalloutRing = drawDuctCalloutRing;
   App.syncDuctCalloutPrefill = syncDuctCalloutPrefill;
   App.onPageTextLoaded = onPageTextLoaded;
 })();

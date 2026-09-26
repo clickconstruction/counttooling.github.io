@@ -452,7 +452,6 @@
     return (page) => window.getMergedAnnotationsForPage(page, App.getPageCanvases(page).filter((c) => extra.has(layerNameOf(c))).map((c) => c.id));
   }
   function lockedLayerNames(mode) { return layerPickerModel(mode).layers.filter((l) => l.locked).map((l) => l.name); }
-  App.copyLayerPickerModel = layerPickerModel;   // spec seam
 
   function bindPickerScopeHover(menuEl, pickerId, optionClass) {
     if (!menuEl) return;
@@ -838,7 +837,6 @@
     downloadPdfBuffer(buf, sanitizeForFilename(App.state.currentProjectName) + '.pdf');
     App.logUserEvent('export_pdf', App.state.currentProjectId, { source: 'project-pdf' });
   }
-  App.doOpenTakeoffTooling = doOpenTakeoffTooling;
   App.sanitizeForFilename = sanitizeForFilename;
   App.downloadPdfBuffer = downloadPdfBuffer;
   App.downloadProjectPdf = downloadProjectPdf;

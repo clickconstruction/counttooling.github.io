@@ -19,8 +19,8 @@
  * - The page collectors: App.collectWaterFixtures(pageIdx, ann) (every placed
  *   mark of a counter with fixture units, its loads per side from water-model's
  *   waterFixtureLoads × the multiply zone), App.getWaterRuns(pageIdx, ann),
- *   App.getWaterServed(pageIdx) → { [runId]: { side, wsfu, fixtures } }, and
- *   App.getWaterServedForLine(line, pageIdx) for the sidebar rows.
+ *   App.getWaterServed(pageIdx) → { [runId]: { side, wsfu, fixtures } }; the
+ *   sidebar rows read one run's through the local getWaterServedForLine.
  * - The stray rescue: App.waterStrayTarget(marker, counter, ann) — a fixture
  *   with a side no run within snap serves, and a run of that side within reach:
  *   app.js's strayDeviceAttachTarget asks it after the CFM rule, so the same
@@ -200,12 +200,10 @@
   App.syncWaterSideForm = syncForm;
   App.resetWaterSideForm = resetForm;
   App.loadWaterSideForm = loadForm;
-  App.waterSideFieldValue = fieldValue;
   App.applyWaterSideToLineType = applyFieldToLineType;
   App.collectWaterFixtures = collectWaterFixtures;
   App.getWaterRuns = getWaterRuns;
   App.getWaterServed = getWaterServed;
-  App.getWaterServedForLine = getWaterServedForLine;
   App.waterStrayTarget = waterStrayTarget;
   App.waterLineTypeMetaHtml = waterLineTypeMetaHtml;
   App.waterLineMetaHtml = waterLineMetaHtml;

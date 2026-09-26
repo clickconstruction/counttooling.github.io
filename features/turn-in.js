@@ -297,7 +297,5 @@
     }
   };
 
-  App.tryTurnIn = tryTurnIn;
-  App.doTurnInAndHandleResult = doTurnInAndHandleResult;
   App.openForceTurnInNoticeModal = openForceTurnInNoticeModal;
 })();

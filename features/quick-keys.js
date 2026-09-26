@@ -260,5 +260,4 @@
   App.getQuickKeySlotFor = getQuickKeySlotFor;
   App.seedQuickKeysFromArtboard = seedQuickKeysFromArtboard;
   App.applyProjectQuickKeys = applyProjectQuickKeys;
-  App.QUICK_KEY_SLOTS = SLOTS;
 })();

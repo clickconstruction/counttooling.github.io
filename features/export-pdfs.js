@@ -492,9 +492,7 @@
   });
 
   App.openSpecificPagesModal = openSpecificPagesModal;
-  App.setSpecificPagesToMarksOnly = setSpecificPagesToMarksOnly;
   App.readSpecificPagesOptionsFromDom = readSpecificPagesOptionsFromDom;
-  App.runSpecificPagesExport = runSpecificPagesExport;
   // Spec seam: a copy of the dialog's current per-page selection.
   App.getSpecificPagesSelections = () => ({ selections: { ...specificPagesSelections }, canvasMode: { ...specificPagesCanvasMode }, preset: activePreset ? { ...activePreset } : null });
 })();

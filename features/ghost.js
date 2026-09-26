@@ -255,6 +255,5 @@
   App.handleGhostCanvasClick = handleGhostCanvasClick;
   App.handleGhostEscape = handleGhostEscape;
   App.tryOpenGhostMenuAt = tryOpenGhostMenuAt;
-  App.hideGhostMenu = hideGhostMenu;
   App.purgeFromEveryGhost = purgeFromEveryGhost;
 })();

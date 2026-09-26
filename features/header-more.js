@@ -146,7 +146,6 @@
   }
   App.setStripPin = setStripPin;
   App.isToolOverflowed = isOverflowed;         // spec seam
-  App.applyStripOverflow = applyOverflowClasses;
 
   let menuOpen = false;
 

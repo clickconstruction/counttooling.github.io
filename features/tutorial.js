@@ -59,9 +59,9 @@
  * project (MAP-TOUR-SHEET, 2026-09-26): its button resets a teaching set left open
  * (a lesson's sheets, the blank sheet) without asking, and puts the reader's own plan
  * through Close project, which asks. The list of teaching sets and that reset-or-close
- * live here, in the tourKit (`TEACHING_SETS`, `leaveForTeachingSet`, `openTeachingSet`),
- * for the lessons and the blank tour too. Progress is per session; a finished tour is
- * remembered per device under its own key (`clickcount-tour-done` electrical,
+ * live here: `TEACHING_SETS` and `leaveForTeachingSet` ride the tourKit for the lessons
+ * and the blank tour too, and `openTeachingSet` is the tours' own. Progress is per
+ * session; a finished tour is remembered per device under its own key (`clickcount-tour-done` electrical,
  * `clickcount-tour-done-plumbing`, `clickcount-tour-done-hvac` — H1, 2026-09-14) so the empty-canvas hint stops offering
  * THAT tour and keeps offering the other. Entry points: the hint's two links,
  * Project Settings → "plumbing tour" / "electrical tour", and ?tour=plumbing /
@@ -1795,7 +1795,7 @@
   App.setTutorialPending = (v) => { pending = !!v; };
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
-  App.tourKit = { q, el, wait, state, ann, markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, teachingSetGrown, leaveForTeachingSet, openTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
+  App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
     markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff

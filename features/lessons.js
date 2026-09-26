@@ -36,7 +36,8 @@
  * Settings → Help → "lessons", /app/?learn=1) and /app/?lesson=<id>, which the guides'
  * "Try it" links use.
  *
- * Registrations: openLearnMenu(), startLesson(id), lessonIds(), lessonsDone().
+ * Registrations: openLearnMenu(), startLesson(id), lessonIds(), lessonsDone(), courseDone()
+ * (every course's progress, one map; R16), and lessonKit (what a course runs on).
  * Boundary rule: read shared deps from App.* at call time, never captured at load.
  */
 (function () {
@@ -50,7 +51,6 @@
   // MAP-TOUR-SHEET), and so is the reset-or-close (`leaveForTeachingSet`).
   const LESSON_SET = { url: '/samples/sample-lessons.pdf', name: 'sample-lessons', pages: 4, trade: 'plumbing', word: 'four' };
   const setOf = (lesson) => (lesson && lesson.set) || LESSON_SET;
-  const SET_NAME = LESSON_SET.name;
   const DONE_KEY = 'clickcount-lessons-done';
   const K = () => App.tourKit;
   const S = () => App.state;
@@ -742,6 +742,12 @@
   const tourId = (id) => 'lesson:' + id;
   function lessonsDone() { try { return JSON.parse(localStorage.getItem(DONE_KEY) || '{}') || {}; } catch (_) { return {}; } }
   function markDone(id) { try { const d = lessonsDone(); d[id] = new Date().toISOString(); localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } }
+  // Every course's progress (features/course-*.js) is ONE map, { '<course>:<chapter>': ISO }: it
+  // lives here, beside the lessons', so App.courseDone answers for all three courses whichever
+  // of them loaded (R16, D23: it used to be registered by the plumbing course alone).
+  const COURSE_DONE_KEY = 'clickcount-course-done';
+  function courseDone() { try { return JSON.parse(localStorage.getItem(COURSE_DONE_KEY) || '{}') || {}; } catch (_) { return {}; } }
+  function markCourseDone(key) { try { const d = courseDone(); d[key] = new Date().toISOString(); localStorage.setItem(COURSE_DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } }
 
   LESSONS.forEach((lesson, idx) => {
     const next = LESSONS[idx + 1];
@@ -895,13 +901,15 @@
   }
   App.lessonIds = () => LESSONS.map((l) => l.id);
   App.lessonsDone = lessonsDone;
+  App.courseDone = courseDone;
   // What a COURSE needs to run on the lesson set (features/course-plumbing.js): the sheets'
   // geometry, the readers, the seeding and marking helpers, the open and done steps, and
   // the device bookkeeping a lesson does around a run. Read at call time, never captured.
   App.lessonKit = {
-    SET_NAME, LESSON_SET, P101, P401, P501, P601, P, FD, KITCHEN_FDS, BAR, STRAY, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, GI, NOTE_SPOT, RFI_SPOT, DETAIL,
-    pageAnn, onPage, isSetOpen, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, inRect, near, modalUp, measured,
-    dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, arm, hangerRuleFor, addNote, openStep, doneStep,
+    P101, P401, P501, P601, P, FD, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, DETAIL,
+    pageAnn, onPage, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, near, modalUp, measured,
+    dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, hangerRuleFor, addNote, openStep, doneStep,
+    courseDone, markCourseDone,   // a course's progress, read and ticked through here
     beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); },
     rememberDevice,   // the blank tour's door: rememberDevice({ searches: false })
     restoreDevice,

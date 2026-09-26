@@ -27,9 +27,8 @@
  * app's Esc ladder never sees the key while it is open), on an outside click,
  * and on its × button.
  *
- * Registrations: getRule(id), ruleChipHtml(id, opts), ruleChipLabel(rule),
- * openRulePopover(id, anchorEl), closeRulePopover(), isRulePopoverOpen(),
- * rulesReady() (a promise), rulesCount(). Slice 4 adds App.getProjectCodes,
+ * Registrations: getRule(id), ruleChipHtml(id, opts), openRulePopover(id, anchorEl),
+ * rulesReady() (a promise), rulesCount(), syncRuleChips(). Slice 4 adds App.getProjectCodes,
  * which the popover reads at call time for the "this project" line.
  *
  * Boundary rule: read shared deps from App.* at call time, never captured at
@@ -190,10 +189,7 @@
 
   App.getRule = getRule;
   App.ruleChipHtml = ruleChipHtml;
-  App.ruleChipLabel = ruleChipLabel;
   App.openRulePopover = openRulePopover;
-  App.closeRulePopover = closeRulePopover;
-  App.isRulePopoverOpen = isRulePopoverOpen;
   App.rulesReady = rulesReady;
   App.rulesCount = () => (rules ? rules.size : 0);
   App.syncRuleChips = syncChips;

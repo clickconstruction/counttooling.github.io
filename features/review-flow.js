@@ -105,5 +105,4 @@
   wireReviewFlow();
 
   App.setProjectReviewStatus = setProjectReviewStatus;
-  App.refreshSettingsReviewRow = refreshSettingsReviewRow;
 })();

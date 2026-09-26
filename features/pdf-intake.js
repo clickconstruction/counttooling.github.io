@@ -13,6 +13,7 @@
 
   let pendingImportCanvasAfterPdf = false;
   let pendingAddAdditionalPages = false;
+  let pendingTeachingOpen = false;   // LESSON-UPLOAD: set by App.markTeachingOpen, cleared on the next change
 
   function titleFromPdfFilename(name) {
     if (!name) return 'Untitled';
@@ -549,10 +550,18 @@
     // uses Upload PDF from elsewhere).
     const isAddAdditional = pendingAddAdditionalPages;
     pendingAddAdditionalPages = false;
+    const isTeachingOpen = pendingTeachingOpen;
+    pendingTeachingOpen = false;
     const files = e.target.files;
     if (!files?.length) {
       pendingImportCanvasAfterPdf = false;
       return;
+    }
+    // LESSON-UPLOAD: the reader's own PDF onto a lesson's, course's or tour's sample sheets opens as
+    // their own new plan, not a page of the sample (features/lessons.js asks first while one runs).
+    // The sample openers mark their own upload (App.markTeachingOpen) so it is never taken for theirs.
+    if (!isTeachingOpen && App.isTeachingSetOpen && App.isTeachingSetOpen()) {
+      if (!(await App.leaveTeachingSheetsForUpload())) { e.target.value = ''; pendingImportCanvasAfterPdf = false; return; }
     }
     if (isAddAdditional && App.state.currentProjectId && App.state.pages.length > 0) {
       await handleAppendPages(e, Array.from(files));
@@ -590,5 +599,6 @@
   App.loadTestPdf = loadTestPdf;
   App.titleFromPdfFilename = titleFromPdfFilename;
   App.setPendingAddAdditionalPages = (v) => { pendingAddAdditionalPages = !!v; };
-  App.resetPdfIntakeFlags = () => { pendingAddAdditionalPages = false; pendingImportCanvasAfterPdf = false; };
+  App.markTeachingOpen = () => { pendingTeachingOpen = true; };   // the next #pdfInput change is a sample sheet a lesson or tour opens
+  App.resetPdfIntakeFlags = () => { pendingAddAdditionalPages = false; pendingImportCanvasAfterPdf = false; pendingTeachingOpen = false; };
 })();

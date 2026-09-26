@@ -169,7 +169,7 @@
   async function openBlankSheet() {
     const s = S();
     if (s.pages && s.pages.length) {
-      if (TEACHING_SETS.includes(s.currentProjectName)) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
+      if (TEACHING_SETS.includes(s.currentProjectName) && !(App.isTeachingSetGrown && App.isTeachingSetGrown())) { App.resetLocalSessionState({ keepArtboard: true }); App.updateUI(); App.renderPdf(); }
       else if (!(await App.closeProject({ route: 'tour' }))) return;   // their own plan: the app's one Close project, which asks
     }
     if (App.beginTeachingPalette) App.beginTeachingPalette();   // LEARN-LEAK: what the tour makes leaves with the sheet (features/lessons.js)
@@ -180,6 +180,7 @@
     dt.items.add(file);
     const inp = el('pdfInput');
     inp.files = dt.files;
+    if (App.markTeachingOpen) App.markTeachingOpen();   // the tour's own sheet, not the reader's (LESSON-UPLOAD)
     inp.dispatchEvent(new Event('change', { bubbles: true }));
     // A signed-in device sees Trim your set on every fresh upload: keep both sheets.
     for (let i = 0; i < 150 && !modalUp('preparePdfModal') && !sheetOpen(); i++) await wait(100);

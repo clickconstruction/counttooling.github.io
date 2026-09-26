@@ -235,6 +235,46 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     expect(errors).toEqual([]);
   });
 
+  // LESSON-UPLOAD (2026-09-25): the reader's own PDF uploaded onto the sample sheets used to become page 5 of
+  // "sample-lessons", where the next lesson cleared it without asking.
+  test('the reader\'s own PDF uploaded onto the lesson sheets opens as their own plan; a running lesson asks first', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/', errors);
+    await page.evaluate(() => { window.state.counters.push({ id: 'mine', name: 'My Counter', icon: window.App.getOrderedIcons()[0].value, color: '#fff' }); window.App.updateUI(); });
+    const plan = () => page.evaluate(() => [window.state.currentProjectName, window.state.pages.length, window.App.tutorialStepId()]);
+    // 1. a lesson still running: the question, and Cancel keeps the lesson and its sheets
+    expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await page.evaluate(() => window.App.tutorialDoStep());   // the lesson's Floor Drain
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await page.locator('#pdfInput').setInputFiles('test-page.pdf');
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/, { timeout: 5000 });
+    await expect(page.locator('#confirmTitle')).toHaveText('Leave the lesson?');
+    await page.click('#confirmCancel');
+    await page.waitForTimeout(600);
+    expect(await plan()).toEqual(['sample-lessons', 4, 'place']);
+    // 2. Open my plan: the lesson stops, the sample closes (what it made goes with it), the PDF opens alone
+    await page.locator('#pdfInput').setInputFiles('test-page.pdf');
+    await expect(page.locator('#confirmTitle')).toHaveText('Leave the lesson?', { timeout: 5000 });
+    await page.click('#confirmOk');
+    await page.waitForFunction(() => window.state.currentProjectName === 'test-page', null, { timeout: 15000 });
+    expect(await plan()).toEqual(['test-page', 1, null]);
+    expect(await page.evaluate(() => window.state.counters.map((c) => c.name))).toEqual(['My Counter']);
+    // 3. a lesson no longer running: no question, the sample just closes
+    await page.evaluate(() => { const s = window.state; s.pages.length = 0; s.currentProjectName = ''; window.App.updateUI(); });
+    expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'note', null, { timeout: 30000 });
+    await page.click('#tourLeave');
+    await page.locator('#pdfInput').setInputFiles('test-page.pdf');
+    await page.waitForFunction(() => window.state.currentProjectName === 'test-page', null, { timeout: 15000 });
+    await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
+    expect(await plan()).toEqual(['test-page', 1, null]);
+    expect(errors).toEqual([]);
+  });
+
   test('the card never sits on the control it points at, takes the corner a step asks for, and drags', async ({ page }) => {
     test.setTimeout(90000);
     const errors = [];

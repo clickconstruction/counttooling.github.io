@@ -65,14 +65,7 @@
       const buf = await res.arrayBuffer();
       const bufForDisplay = buf.slice(0);
       const pdf = await App.getPdfDocument(buf).promise;
-      const numPages = pdf.numPages;
-      const pages = [];
-      for (let i = 0; i < numPages; i++) {
-        const pdfPage = await pdf.getPage(i + 1);
-        const label = numPages > 1 ? ('Test PDF, p' + (i + 1)) : 'Test PDF';
-        const canvasId = App.uid();
-        pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
-      }
+      const pages = await App.buildBlankPagesFromPdf(pdf, 'Test PDF');
       App.openPreparePdfModal(pages, bufForDisplay, 'Test PDF');
       App.clearPdfBitmapCache();
       App.state.pages = [];
@@ -117,8 +110,7 @@
         const numPages = pdf.numPages;
         for (let i = 0; i < numPages; i++) {
           const pdfPage = await pdf.getPage(i + 1);
-          const label = numPages > 1 ? (f.name + ', p' + (i + 1)) : f.name;
-          newPages.push({ pdfPage, label, rotation: 0 });
+          newPages.push({ pdfPage, label: App.defaultPageLabel(f.name, i, numPages), rotation: 0 });
         }
       }
       await applySheetTitles(newPages);
@@ -155,44 +147,9 @@
       try { App.clearCheckoutExpiredAttention(); } catch (_) {}
     } else {
       const projName = App.state.pendingCanvasLoad.name;
-      App.state.counters = Array.isArray(d.counters) ? d.counters : [];
-      App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-      App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-      App.state.groupsEnabled = !!d.groupsEnabled;   // D44: the Groups gate rides every intake
-      App.state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21 header pins
-      App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-      if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
-      if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
-      if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-      (d.pages || []).forEach(p => {
-        App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
-      });
-      // MAP-QUICKKEYS: the project's Quick Keys, by quick-keys.js's replace-or-keep rule.
-      if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
-      else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
-      if (d.pageScales) {
-        d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
-      } else if (d.scale) {
-        App.state.pages.forEach(p => { p.scale = d.scale; });
-      }
-      App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-    App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
-    App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
-    App.state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
-    App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
-    App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-      App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
-      App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
-      App.state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
-      App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
-    App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-      if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-      if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
-      if (d.waterSettings) App.state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(d.waterSettings) : d.waterSettings;   // WATER-PLAN rung 5
-      if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-      if (d.scaleZoneSettings) App.state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
-      if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
-      if (d.gridSettings) App.state.gridSettings = d.gridSettings;
+      // R12: the shared intake (annotation-model.js). The saved data may be a device
+      // backup (page-array scales), and the layer map keeps to the sheets this PDF has.
+      App.hydrateStateFromProjectData(d, { legacyScales: true, trimLayers: true });
       App.reconcileOrphanedCountersAndLineTypes();
       App.clearUndoStacks();
       App.state.pendingCanvasLoad = null;
@@ -244,50 +201,9 @@
       });
       if (!ok) return;
     }
-    App.state.counters = Array.isArray(d.counters) ? d.counters : [];
-    App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-    App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-    App.state.groupsEnabled = !!d.groupsEnabled;   // D44: the Groups gate rides every intake
-    App.state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21 header pins
-    App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
-    if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
-    if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
-    if (Array.isArray(d.customIconPaths)) App.saveUserCustomIcons(d.customIconPaths);
-    cloudPages.forEach(p => {
-      if (App.state.pages[p.index]) App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
-    });
-    // B2: Sanitize activeCanvasIdByPage to indices that exist in the
-    // current PDF so we never reference canvases on pages that aren't
-    // present.
-    if (d.activeCanvasIdByPage && typeof d.activeCanvasIdByPage === 'object') {
-      const sanitized = {};
-      Object.entries(d.activeCanvasIdByPage).forEach(([k, v]) => {
-        const idx = Number(k);
-        if (Number.isFinite(idx) && App.state.pages[idx]) sanitized[idx] = v;
-      });
-      App.state.activeCanvasIdByPage = sanitized;
-    }
-    // Same replace-or-keep rule as cloud load (quick-keys.js).
-    if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
-    else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
-    if (d.pageScales) {
-      d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
-    } else if (d.scale) {
-      App.state.pages.forEach(p => { p.scale = d.scale; });
-    }
-    App.state.maxZoom = d.maxZoom != null ? d.maxZoom : null;
-    App.state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;
-    App.state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;
-    App.state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
-    App.state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
-    App.state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-    if (d.legendSettings) App.state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-    if (d.ductSettings) App.state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
-    if (d.waterSettings) App.state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(d.waterSettings) : d.waterSettings;   // WATER-PLAN rung 5
-    if (d.multiplyZoneSettings) App.state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-    if (d.scaleZoneSettings) App.state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
-    if (d.showGridOverlay != null) App.state.showGridOverlay = !!d.showGridOverlay;
-    if (d.gridSettings) App.state.gridSettings = d.gridSettings;
+    // R12: the shared intake (annotation-model.js). B2: marks for sheets this PDF does
+    // not have are skipped, and so is their chosen layer.
+    App.hydrateStateFromProjectData(d, { legacyScales: true, trimLayers: true });
     App.reconcileOrphanedCountersAndLineTypes();
     App.clearUndoStacks();
     // B1b: Shared helper sets currentProjectId/Name, checkout/permissions,
@@ -429,15 +345,10 @@
         if (!firstBuf) firstBuf = bufCopy;
         buffersForMerge.push(bufCopy);
         const pdf = await App.getPdfDocument(buf).promise;
-        const numPages = pdf.numPages;
-        for (let i = 0; i < numPages; i++) {
-          const pdfPage = await pdf.getPage(i + 1);
-          const label = numPages > 1 ? (f.name + ', p' + (i + 1)) : f.name;
-          const canvasId = App.uid();
-          const idx = App.state.pages.length;
-          App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation: 0 });
-          App.state.activeCanvasIdByPage[idx] = canvasId;
-        }
+        (await App.buildBlankPagesFromPdf(pdf, f.name)).forEach((pg) => {
+          App.state.activeCanvasIdByPage[App.state.pages.length] = pg.canvases[0].id;
+          App.state.pages.push(pg);
+        });
       }
       readingName = null;   // past the per-file reads; a later failure is the merge, not one file
       if (App.SUPABASE_ENABLED && buffersForMerge.length > 0) {

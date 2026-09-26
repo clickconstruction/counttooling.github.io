@@ -443,9 +443,9 @@
       const {
         state, hideModal, showToast,
         hydrateProjectFromCloudRow, clearCheckoutExpiredAttention,
-        saveUserCustomIcons, reconcileOrphanedCountersAndLineTypes,
+        reconcileOrphanedCountersAndLineTypes,
         clearUndoStacks, checkInCurrentProjectIfHeld, takeoffBackupGet,
-        resolvePdfBufferForCloudProject, ensureGroupColors,
+        resolvePdfBufferForCloudProject,
         openCanvasOnlyNeedsPdfModal, buildPagesFromPdfArrayBufferAndProjectData,
         backupDataToProjFormat, fitZoom, updateUI,
         setAutoSaveDirty, setLastModifiedAt, setLastSaveIncludedPdf,
@@ -481,29 +481,8 @@
               state.pdfBufferSize = 0;
               App.clearPdfBitmapCache && App.clearPdfBitmapCache();
               state.pages = [];
-              state.counters = Array.isArray(d.counters) ? d.counters : [];
-              state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
-              state.groups = ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
-              state.groupsEnabled = !!d.groupsEnabled;
-              state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21
-              state.trade = typeof d.trade === 'string' && d.trade ? d.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
-              state.ceilingHeightFt = typeof d.ceilingHeightFt === 'number' && d.ceilingHeightFt > 0 ? d.ceilingHeightFt : null;   // S2 vertical-by-default
-              state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(d.codes) : null;   // rulebook slice 4
-              state.makeUpFt = typeof d.makeUpFt === 'number' && d.makeUpFt >= 0 ? d.makeUpFt : null;
-              state.bidCheck = (d.bidCheck && typeof d.bidCheck === 'object') ? { ...d.bidCheck, manual: { ...(d.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-              if (d.iconNames && typeof d.iconNames === 'object') state.iconNames = d.iconNames;
-              if (Array.isArray(d.iconOrder)) state.iconOrder = d.iconOrder;
-              if (Array.isArray(d.customIconPaths)) saveUserCustomIcons(d.customIconPaths);
-              if (d.legendSettings) state.legendSettings = { ...App.state.legendSettings, ...d.legendSettings };
-              if (d.ductSettings) state.ductSettings = { ...App.state.ductSettings, ...d.ductSettings };
-              if (d.waterSettings) state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(d.waterSettings) : d.waterSettings;   // WATER-PLAN rung 5
-              if (d.multiplyZoneSettings) state.multiplyZoneSettings = { ...App.state.multiplyZoneSettings, ...d.multiplyZoneSettings };
-              if (d.scaleZoneSettings) state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
-              if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
-              if (d.gridSettings) state.gridSettings = d.gridSettings;
-              // MAP-QUICKKEYS: the project's Quick Keys, by quick-keys.js's replace-or-keep rule.
-              if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
-              else state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
+              // R12: the shared intake (annotation-model.js), with no sheets to fill yet.
+              App.hydrateStateFromProjectData(d);
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               hydrateProjectFromCloudRow(proj, { reusePdfHash: null, source: 'load_project' });
@@ -547,30 +526,8 @@
         state.pdfBufferSize = 0;
         App.clearPdfBitmapCache && App.clearPdfBitmapCache();
         state.pages = [];
-        const canvasData = useIdbBackup && idbBackup.data ? idbBackup.data : d;
-        state.counters = Array.isArray(canvasData.counters) ? canvasData.counters : [];
-        state.lineTypes = Array.isArray(canvasData.lineTypes) ? canvasData.lineTypes : [];
-        state.groups = ensureGroupColors(Array.isArray(canvasData.groups) ? canvasData.groups : []);
-        state.groupsEnabled = !!canvasData.groupsEnabled;
-        state.stripPins = (canvasData.stripPins && typeof canvasData.stripPins === 'object') ? { ...canvasData.stripPins } : {};   // D21
-        state.trade = typeof canvasData.trade === 'string' && canvasData.trade ? canvasData.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
-        state.ceilingHeightFt = typeof canvasData.ceilingHeightFt === 'number' && canvasData.ceilingHeightFt > 0 ? canvasData.ceilingHeightFt : null;   // S2 vertical-by-default
-        state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(canvasData.codes) : null;   // rulebook slice 4
-        state.makeUpFt = typeof canvasData.makeUpFt === 'number' && canvasData.makeUpFt >= 0 ? canvasData.makeUpFt : null;
-        state.bidCheck = (canvasData.bidCheck && typeof canvasData.bidCheck === 'object') ? { ...canvasData.bidCheck, manual: { ...(canvasData.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-        if (canvasData.iconNames && typeof canvasData.iconNames === 'object') state.iconNames = canvasData.iconNames;
-        if (Array.isArray(canvasData.iconOrder)) state.iconOrder = canvasData.iconOrder;
-        if (Array.isArray(canvasData.customIconPaths)) saveUserCustomIcons(canvasData.customIconPaths);
-        if (canvasData.legendSettings) state.legendSettings = { ...state.legendSettings, ...canvasData.legendSettings };
-        if (canvasData.ductSettings) state.ductSettings = { ...state.ductSettings, ...canvasData.ductSettings };
-        if (canvasData.waterSettings) state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(canvasData.waterSettings) : canvasData.waterSettings;   // WATER-PLAN rung 5
-        if (canvasData.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...canvasData.multiplyZoneSettings };
-        if (canvasData.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...canvasData.scaleZoneSettings };
-        if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
-        if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
-        // MAP-QUICKKEYS: the project's Quick Keys, by quick-keys.js's replace-or-keep rule.
-        if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(canvasData.numberKeyBindings);
-        else state.numberKeyBindings = (canvasData.numberKeyBindings && typeof canvasData.numberKeyBindings === 'object') ? canvasData.numberKeyBindings : {};
+        // R12: the shared intake (annotation-model.js), with no sheets to fill yet.
+        App.hydrateStateFromProjectData(useIdbBackup && idbBackup.data ? idbBackup.data : d);
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         setAutoSaveDirty(false);

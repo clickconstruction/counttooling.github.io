@@ -17,7 +17,8 @@
  *
  * Two publish-only deps were added for this split: App.applyPageAnnotationsFromData
  * (the shared per-page deserialize funnel, also used by cloud load / view mode)
- * and App.getActiveCanvas. The shared custom-icon upload handler that lived in
+ * and App.getActiveCanvas. Since R12 (2026-09-26) the import reads the whole file
+ * through App.hydrateStateFromProjectData, the intake every project load shares. The shared custom-icon upload handler that lived in
  * the same app.js section has since moved to features/custom-icon-upload.js
  * (registry split #37).
  * Boundary rule: read shared deps from App.* at call time, never captured at
@@ -46,57 +47,19 @@
       const state = App.state;
       try {
         const data = JSON.parse(r.result);
-        state.counters = Array.isArray(data.counters) ? data.counters : [];
-        state.lineTypes = Array.isArray(data.lineTypes) ? data.lineTypes : [];
-        state.groups = App.ensureGroupColors(Array.isArray(data.groups) ? data.groups : []);
-        state.groupsEnabled = !!data.groupsEnabled;
-        state.stripPins = (data.stripPins && typeof data.stripPins === 'object') ? { ...data.stripPins } : {};   // D21
-        state.trade = typeof data.trade === 'string' && data.trade ? data.trade : null;   // 'plumbing' | 'electrical' | 'hvac' | null
-        state.ceilingHeightFt = typeof data.ceilingHeightFt === 'number' && data.ceilingHeightFt > 0 ? data.ceilingHeightFt : null;   // S2 vertical-by-default
-        state.codes = App.normalizeProjectCodes ? App.normalizeProjectCodes(data.codes) : null;   // rulebook slice 4
-        state.makeUpFt = typeof data.makeUpFt === 'number' && data.makeUpFt >= 0 ? data.makeUpFt : null;
-        state.bidCheck = (data.bidCheck && typeof data.bidCheck === 'object') ? { ...data.bidCheck, manual: { ...(data.bidCheck.manual || {}) } } : { manual: {} };   // S5 Bid Check ticks + defaults
-        state.rooms = Array.isArray(data.rooms) ? data.rooms : [];
-        // Same replace-or-keep rule as cloud load (quick-keys.js).
-        if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(data.numberKeyBindings);
-        else state.numberKeyBindings = (data.numberKeyBindings && typeof data.numberKeyBindings === 'object') ? data.numberKeyBindings : {};
-        if (data.iconNames && typeof data.iconNames === 'object') state.iconNames = data.iconNames;
-        if (Array.isArray(data.iconOrder)) state.iconOrder = data.iconOrder;
-        if (data.legendSettings) state.legendSettings = { ...state.legendSettings, ...data.legendSettings };
-        if (data.ductSettings) state.ductSettings = { ...state.ductSettings, ...data.ductSettings };
-        if (data.waterSettings) state.waterSettings = App.normalizeWaterSettings ? App.normalizeWaterSettings(data.waterSettings) : data.waterSettings;   // WATER-PLAN rung 5
-        if (data.multiplyZoneSettings) state.multiplyZoneSettings = { ...state.multiplyZoneSettings, ...data.multiplyZoneSettings };
-        if (data.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...data.scaleZoneSettings };
-        if (data.showGridOverlay != null) state.showGridOverlay = !!data.showGridOverlay;
-        if (data.gridSettings) state.gridSettings = data.gridSettings;
-        if (Array.isArray(data.customIconPaths)) App.saveUserCustomIcons(data.customIconPaths);
-        // B2 / J10: count how many of the export's page entries actually land
-        // on a page of THIS plan — a shorter plan used to drop the extras
-        // silently (applyPageAnnotationsFromData no-ops on a missing page).
-        const pageEntries = Array.isArray(data.pages) ? data.pages : [];
-        let appliedPages = 0;
-        pageEntries.forEach(p => {
-          if (state.pages[p.index]) appliedPages++;
-          App.applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
-        });
-        // D19: the layer each sheet was on comes back too (Export Canvas writes it),
-        // kept to the sheets this plan has.
-        if (data.activeCanvasIdByPage && typeof data.activeCanvasIdByPage === 'object') {
-          const active = {};
-          Object.entries(data.activeCanvasIdByPage).forEach(([k, v]) => {
-            const idx = Number(k);
-            if (Number.isFinite(idx) && state.pages[idx]) active[idx] = v;
-          });
-          state.activeCanvasIdByPage = active;
-        }
-        if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
+        // R12: the shared intake (annotation-model.js). An old export's one `scale`
+        // fills the sheets saved without one; D19: the layer each sheet was on comes
+        // back, kept to the sheets this plan has. B2 / J10: it counts how many of the
+        // export's sheets land on a sheet of THIS plan (a shorter plan used to drop the
+        // extras silently), for the toast below.
+        const { pageEntries, appliedPages } = App.hydrateStateFromProjectData(data, { scaleFallback: data.scale || null, trimLayers: true });
         App.reconcileOrphanedCountersAndLineTypes();
         App.clearUndoStacks();
         App.markProjectDirty();
         App.updateUI();
         App.renderPdf();
-        if (pageEntries.length && appliedPages < pageEntries.length) {
-          App.showToast('Applied marks to ' + appliedPages + ' of ' + pageEntries.length +
+        if (pageEntries && appliedPages < pageEntries) {
+          App.showToast('Applied marks to ' + appliedPages + ' of ' + pageEntries +
             ' pages. The plan has fewer pages than the export.', 6000);
         }
       } catch (err) {

@@ -221,3 +221,70 @@ test('pickBootRestoreCandidate: qualification, held preference, and data-only fa
   assert.deepStrictEqual(s.pickBootRestoreCandidate({ pdfBlob: blob, lastModifiedAt: 5 }, null),
     { candidate: null, from: null, promptable: false });
 });
+
+// --- R12: one project payload ------------------------------------------------
+// The cloud save, the autosave and Export Canvas all send buildProjectData; the
+// IndexedDB backup sends buildTakeoffBackupData, which shares the project fields.
+function payloadState() {
+  const pdfPage = { tag: 'pdf' };
+  return {
+    counters: [{ id: 'c1' }], lineTypes: [{ id: 'lt1' }], iconNames: { p: 'P' }, iconOrder: ['p'],
+    groups: [{ id: 'g1' }], groupsEnabled: true, stripPins: { ductBtn: true }, trade: 'hvac',
+    ceilingHeightFt: 9, makeUpFt: 1, codes: { plumbing: 'IPC 2021' }, bidCheck: { manual: { a: true } },
+    rooms: [{ id: 'r1' }], ductSettings: { seamWastePct: 12 }, waterSettings: { capFps: { cold: 8, hot: 5 } },
+    legendSettings: { style: 'full' }, multiplyZoneSettings: { a: 1 }, scaleZoneSettings: { b: 2 },
+    showGridOverlay: true, gridSettings: { spacing: 3 }, activeCanvasIdByPage: { 0: 'cv' },
+    numberKeyBindings: { 1: { kind: 'counter', id: 'c1' } },
+    counterSettings: { markerSize: 22 }, lineTypeSettings: { lineWidth: 2 }, exportSettings: { markerScale: 1 }, recentLineColors: ['#123456'],
+    pages: [{ pdfPage, label: 'P-101', canvases: [{ id: 'cv' }], scale: { feet: 8 }, rotation: 90 }, { pdfPage, label: 'P-102', canvases: [], scale: null }],
+  };
+}
+const frame = (p) => (p.pdfPage ? { w: 1, h: 2, intrinsic: 0 } : null);
+
+test('buildProjectData: the project payload, pages with their bake frames', () => {
+  const st = payloadState();
+  const d = s.buildProjectData(st, { customIconPaths: [{ value: 'x' }], maxZoom: 6, bakeFrame: frame });
+  assert.strictEqual(d.version, 1);
+  assert.strictEqual(d.maxZoom, 6);
+  assert.deepStrictEqual(d.customIconPaths, [{ value: 'x' }]);
+  assert.strictEqual(d.counters, st.counters);
+  assert.deepStrictEqual(d.stripPins, { ductBtn: true });
+  assert.deepStrictEqual(d.codes, { plumbing: 'IPC 2021' });
+  assert.notStrictEqual(d.codes, st.codes, 'codes is copied');
+  assert.deepStrictEqual(d.numberKeyBindings, st.numberKeyBindings);
+  assert.deepStrictEqual(d.pages, [
+    { index: 0, label: 'P-101', canvases: [{ id: 'cv' }], scale: { feet: 8 }, rotation: 90, bakeFrame: { w: 1, h: 2, intrinsic: 0 } },
+    { index: 1, label: 'P-102', canvases: [], scale: null, rotation: 0, bakeFrame: { w: 1, h: 2, intrinsic: 0 } },
+  ]);
+  // device preferences never ride the project
+  ['counterSettings', 'lineTypeSettings', 'exportSettings', 'recentLineColors'].forEach((k) => assert.ok(!(k in d), k));
+});
+
+test('buildProjectData: an empty session writes the same defaults the three hand-typed payloads did', () => {
+  const d = s.buildProjectData({ pages: [] }, { customIconPaths: [], maxZoom: 4 });
+  assert.deepStrictEqual(d, {
+    version: 1, counters: undefined, lineTypes: undefined, iconNames: {}, iconOrder: null, customIconPaths: [],
+    groups: [], groupsEnabled: false, stripPins: {}, trade: null, ceilingHeightFt: null, makeUpFt: null, codes: null,
+    bidCheck: { manual: {} }, rooms: [], ductSettings: undefined, waterSettings: undefined, legendSettings: undefined,
+    multiplyZoneSettings: undefined, scaleZoneSettings: undefined, showGridOverlay: undefined, gridSettings: undefined,
+    activeCanvasIdByPage: {}, numberKeyBindings: {}, maxZoom: 4, pages: [],
+  });
+});
+
+test('buildTakeoffBackupData: the project fields, the device preferences and the page arrays; no version, maxZoom or pages', () => {
+  const st = payloadState();
+  const b = s.buildTakeoffBackupData(st, { customIconPaths: [{ value: 'x' }], bakeFrame: frame });
+  const shared = s.projectPayloadFields(st, [{ value: 'x' }]);
+  Object.keys(shared).forEach((k) => assert.deepStrictEqual(b[k], shared[k], k));
+  ['version', 'maxZoom', 'pages'].forEach((k) => assert.ok(!(k in b), k));
+  assert.deepStrictEqual(b.counterSettings, { markerSize: 22 });
+  assert.deepStrictEqual(b.recentLineColors, ['#123456']);
+  assert.deepStrictEqual(b.pageCanvases, [[{ id: 'cv' }], []]);
+  assert.deepStrictEqual(b.pageLabels, ['P-101', 'P-102']);
+  assert.deepStrictEqual(b.pageScales, [{ feet: 8 }, null]);
+  assert.deepStrictEqual(b.pageRotations, [90, 0]);
+  assert.deepStrictEqual(b.pageBakeFrames, [{ w: 1, h: 2, intrinsic: 0 }, { w: 1, h: 2, intrinsic: 0 }]);
+  // the project payload is the shared fields plus version, maxZoom and pages
+  const d = s.buildProjectData(st, { customIconPaths: [{ value: 'x' }], maxZoom: 4, bakeFrame: frame });
+  assert.deepStrictEqual(Object.keys(d).sort(), Object.keys(shared).concat(['version', 'maxZoom', 'pages']).sort());
+});

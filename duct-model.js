@@ -365,12 +365,34 @@ function ductRowLabel(row) {
 }
 
 // DATA TABLE — the Duct Schedule's per-project knob defaults (state.ductSettings
-// is seeded from a copy; every intake restores the saved values over it).
-// Rulebook: content/rules/hvac/duct-schedule-factors.md.
+// is seeded from normalizeDuctSettings below; every intake reads the saved values
+// through it). Rulebook: content/rules/hvac/duct-schedule-factors.md.
 // D8 adds deckHeightFt (project deck height, null = unset — arms the auto-riser
 // on equipment-started runs), maxFlexFt (single-drop flex warning cap) and
 // countVdPerTap (a volume damper counted at every tap).
 const DUCT_SETTINGS_DEFAULTS = { seamWastePct: 15, fittingFactorPct: 40, fittingMode: 'counted', frictionInPer100ft: 0.08, maxVelocityFpm: 1200, deckHeightFt: null, maxFlexFt: 6, countVdPerTap: true, terminalAllowanceInWg: 0.10 };
+
+// R12: a project's knobs, read over the defaults. The Duct Schedule's getter, every
+// project intake (annotation-model.js) and the knob fallbacks go through this, so a
+// project saved without a knob gets the default, never the last project's value. A
+// saved value that is not a legal knob reads as its default (0 is legal for the two
+// percentages and the terminal allowance; deckHeightFt stays null until set;
+// countVdPerTap is on unless it was turned off). Keys it does not know ride along.
+// Pure: returns a new object and never writes raw or the table.
+function normalizeDuctSettings(raw) {
+  const D = DUCT_SETTINGS_DEFAULTS;
+  const ds = { ...D, ...(raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) };
+  if (!Number.isFinite(ds.seamWastePct) || ds.seamWastePct < 0) ds.seamWastePct = D.seamWastePct;
+  if (!Number.isFinite(ds.fittingFactorPct) || ds.fittingFactorPct < 0) ds.fittingFactorPct = D.fittingFactorPct;
+  if (ds.fittingMode !== 'factor') ds.fittingMode = D.fittingMode;
+  if (!Number.isFinite(ds.frictionInPer100ft) || ds.frictionInPer100ft <= 0) ds.frictionInPer100ft = D.frictionInPer100ft;
+  if (!Number.isFinite(ds.maxVelocityFpm) || ds.maxVelocityFpm <= 0) ds.maxVelocityFpm = D.maxVelocityFpm;
+  if (!Number.isFinite(ds.terminalAllowanceInWg) || ds.terminalAllowanceInWg < 0) ds.terminalAllowanceInWg = D.terminalAllowanceInWg;
+  if (!(ds.deckHeightFt > 0)) ds.deckHeightFt = null;
+  if (!Number.isFinite(ds.maxFlexFt) || ds.maxFlexFt <= 0) ds.maxFlexFt = D.maxFlexFt;
+  ds.countVdPerTap = ds.countVdPerTap !== false;
+  return ds;
+}
 
 // DATA TABLE — gauge schedule keyed by pressure class (in. w.g., as strings)
 // then by the LARGER side dimension (rect: max(w,h); round: diameter), inches.
@@ -2200,26 +2222,21 @@ const DUCT_BID_CHECK_ROWS = [
 /**
  * Resolve the table against live inputs + the project's ticks. Returns
  * [{ id, kind: 'auto' | 'manual', label, short, rule?, verdict, detail, done,
- * upgraded }] — a manual row whose evaluator answered arrives as kind 'auto'
+ * upgraded }]: a manual row whose evaluator answered arrives as kind 'auto'
  * with upgraded: true (its tick, if any, is ignored: the app knows). Manual
- * rows carry verdict 'done' | 'open'.
+ * rows carry verdict 'done' | 'open'. R13: the resolver is bid-check-model.js's
+ * `resolveBidCheckRows`, shared with the water table; the unresolved split is
+ * its `bidCheckUnresolved` (auto ⚠ first, then unticked manual; the gate
+ * toast names the first, the badge counts both).
  */
-function ductBidCheckRows(inputs, manualState) {
-  const ticks = manualState || {};
-  return DUCT_BID_CHECK_ROWS.map(row => {
-    const r = row.evaluate ? row.evaluate(inputs || {}) : null;
-    if (r) return { id: row.id, kind: 'auto', label: row.label, short: row.short || row.label, rule: row.rule, verdict: r.verdict, detail: r.detail, done: false, upgraded: row.kind === 'manual' };
-    const done = !!ticks[row.id];
-    return { id: row.id, kind: 'manual', label: row.label, short: row.short || row.label, verdict: done ? 'done' : 'open', detail: '', done: done, upgraded: false };
-  });
-}
-
-/** Unresolved rows in panel order — auto ⚠ first, then unticked manual
- * (the gate toast names the first; the badge counts both). */
-function ductBidCheckUnresolved(rows) {
-  const auto = (rows || []).filter(r => r.kind === 'auto' && r.verdict === 'warn');
-  const manual = (rows || []).filter(r => r.kind === 'manual' && !r.done);
-  return { auto: auto, manual: manual, first: auto[0] || manual[0] || null };
+function ductBidCheckRows(inputs, manualState) { return ductBidCheckModel().resolveBidCheckRows(DUCT_BID_CHECK_ROWS, inputs, manualState); }
+function ductBidCheckUnresolved(rows) { return ductBidCheckModel().bidCheckUnresolved(rows); }
+// bid-check-model.js loads before this file: window.BidCheckModel in the
+// browser; under node --test a guarded `module.require` (the footer's own
+// guard), so this module keeps no cross-file global in its eslint group.
+function ductBidCheckModel() {
+  if (typeof window !== 'undefined' && window.BidCheckModel) return window.BidCheckModel;
+  return typeof module !== 'undefined' && module.require ? module.require('./bid-check-model.js') : null;
 }
 
 // --- 8. Plan-and-spec callout reading (unit D10) -----------------------------
@@ -2391,7 +2408,7 @@ if (typeof module !== 'undefined' && module.exports) {
     roomTargetCfm, pointInRoomBox, roomServedCfm, roomAirBalance,
     ductSystemDesignedCfm, ductEquipmentPosForGroup, suggestSystemsForCfm,
     // gauge
-    SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES, DUCT_SETTINGS_DEFAULTS,
+    SHEET_WEIGHT_LB_PER_SQFT, DUCT_GAUGE_TABLE, DUCT_PRESSURE_CLASSES, DUCT_SETTINGS_DEFAULTS, normalizeDuctSettings,
     ductGoverningDimIn, selectGauge,
     // material (D25)
     DUCT_MATERIALS, DUCT_MATERIAL_IDS, ductMaterialOf, isGreaseMaterial, selectGaugeFor, ductRowLabel,

@@ -25,14 +25,15 @@
  * Everything a lesson has comes from App.lessonKit (features/lessons.js) at call time; a
  * chapter names its set (`set`) and stands alone (its first step opens the set fresh and
  * seeds what earlier chapters produced). Point lists are FLAT (teaching-labels.test.js).
- * Progress: localStorage `clickcount-course-done`, { 'electrical:<id>': ISO }, the one map
- * every course shares (lessonKit.courseDone / markCourseDone, App.courseDone). Doors: the
- * Learn menu's section (#learnCourseList-electrical), the empty-canvas "power" link,
- * Project Settings → Help → "electrical course", /app/?course=electrical,
- * /app/?chapter=electrical:<id>.
+ * The runner is the lessonKit's `registerCourse` (R15): progress in localStorage
+ * `clickcount-course-done`, { 'electrical:<id>': ISO }, the one map every course shares
+ * (App.courseDone), and the doors: the Learn menu's section (#learnCourseList-electrical),
+ * the empty-canvas "power" link, Project Settings → Help → "electrical course",
+ * /app/?course=electrical, /app/?chapter=electrical:<id>.
  *
  * Registrations: startChapterElectrical(id), courseElectricalIds(), courseElectricalReference().
- * Boundary rule: read shared deps from App.* at call time, never captured at load.
+ * Boundary rule: read shared deps from App.* at call time, never captured at load; the one
+ * exception is the registerCourse call at the foot (lessons.js loads first).
  */
 (function () {
   'use strict';
@@ -45,8 +46,6 @@
   const S = () => App.state;
   const el = (id) => document.getElementById(id);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const tourId = (id) => 'course:' + COURSE + ':' + id;
-  const key = (id) => COURSE + ':' + id;
 
   // ----- the sheets, in PDF points ------------------------------------------------------------
   // E-101 and E-201 sit on P-101's shell: a plan point is (60 + 0.75·x, 70 + 0.75·y), K().P.
@@ -71,8 +70,7 @@
   };
   const SCHEDULE_BOX = { x1: 110, y1: 130, x2: 870, y2: 262 };      // E-501: the lighting fixture schedule
   const DW_ROW = { x1: 112, y1: 540, x2: 860, y2: 558 };            // E-501: the dishwasher's row of the panel schedule
-  const pts = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push(P(flat[i], flat[i + 1])); return out; };
-  const planFeet = (flat) => { let px = 0; for (let i = 2; i + 1 < flat.length; i += 2) px += Math.hypot(flat[i] - flat[i - 2], flat[i + 1] - flat[i - 1]); return px / 12; };
+  const pts = (flat) => K().pts(flat), planFeet = (flat) => K().planFeet(flat);   // the kit's flat-list readers
   const CEILING_FT = 10, MAKE_UP_FT = 1;
   const MOUNT = { duplex: 18, gfci: 44, panel: 78, meter: 60, disconnect: 60 };
 
@@ -100,7 +98,6 @@
   // ----- on-sheet targets (the engine's) ------------------------------------------------------------
   const ZR = 14;
   const circlesOn = (pageIdx, c, spots, r) => T().markZones(pageIdx, (c || {}).id || '__none__', spots, r || ZR);
-  const guide = (spots, r, done) => spots.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: !!done }));
   const runsOn = (re, pageIdx) => { const pls = polylinesOn(re, pageIdx).map((pl) => pl.points || []); const d = S().drawingPolyline; return d && d.points && typeIds(re).has(d.lineTypeId) ? pls.concat([d.points]) : pls; };
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
@@ -123,10 +120,8 @@
   };
   // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
   // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
-  // on the card. Built on first use: the tour kit registers after this file loads.
-  const proofs = {};
-  const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
-  const proveE101 = () => proof('E101', () => ({ page: E101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
+  // on the card. Built once, on first use, through the kit's memo.
+  const proveE101 = () => K().memoProof('electrical:E101', () => ({ page: E101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
   function pick(tag) {
     const t = TAGS[tag];
     const have = counter(t[0]);
@@ -143,13 +138,7 @@
     S().counters.push(c);
     return c;
   }
-  function markMissing(c, spots, pageIdx) {
-    const a = App.ensureActiveCanvas(S().pages[pageIdx]).annotations;
-    const have = (a.counterMarkers[c.id] || []);
-    const todo = spots.filter((pt) => !have.some((m) => K().near(m, pt, 4)));
-    if (todo.length) K().mark(pageIdx, c, todo);
-    return todo.length;
-  }
+  const markMissing = (c, spots, pageIdx) => K().markMissing(c, spots, pageIdx);
   const scaleE101 = () => K().setScale(E101, 9, '1/8" = 1\'');
   // Chapter 7's RFI on the hood's shunt trip, and chapter 9 lays it again so Copy RFI Flags has it.
   function flagShuntTrip() { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.hood)[0]; if (a.notes.some((n) => /^\s*RFI/i.test(n.text) && K().near(n, spot, 60))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Who furnishes the shunt-trip breaker on circuit 12 and wires it to the hood suppression?', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); }
@@ -221,19 +210,6 @@
     return g;
   }
   const circuit1 = () => (S().groups || []).find((x) => x.panel === 'LP-1' && String(x.circuit) === '1');
-  function dropAt(spot, ft, pageIdx) {
-    const a = pageAnn(pageIdx); if (!a) return;
-    const nodes = App.collectDropNodes(a, 1) || [];
-    let best = null, d = Infinity;
-    nodes.forEach((n) => { const dd = Math.hypot(n.x - spot.x, n.y - spot.y); if (dd < d) { d = dd; best = n; } });
-    if (!best || !App.applyDropToNode(a, best, ft, 'ft', true)) return;
-    App.pushUndoSnapshotCurrentPage();
-    App.applyDropToNode(a, best, ft, 'ft');
-    App.pushRecentDrop(ft, 'ft');
-    K().dirty();
-  }
-  function tick(id) { const s = S(); s.bidCheck = s.bidCheck || { manual: {} }; s.bidCheck.manual = s.bidCheck.manual || {}; if (s.bidCheck.manual[id]) return; App.pushUndoSnapshot(); s.bidCheck.manual[id] = true; s.bidCheckCollapsed = false; K().dirty(); }
-  const openBidCheck = () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); };
 
   // ----- the reference takeoff -------------------------------------------------------------------------
   const COUNTS = () => [
@@ -247,9 +223,7 @@
     { name: '0.75in EMT HR', re: RE.hr, exclude: null, feet: () => planFeet(G.homerun1), label: 'the homerun from the west wall to LP-1' },
     { name: '2in EMT', re: RE.emt2, exclude: null, feet: () => planFeet(G.feeder) + 5, label: 'the feeder from the main to LP-1, with its 5 ft rise' },
   ];
-  // A run inside a group is prefixed with the group in brackets in the summary.
-  function readerFeet() { const out = {}; String(window.getPipeToolingSummary ? window.getPipeToolingSummary() : '').split('\n').forEach((line) => { const m = /^(?:\[.*?\]\s*)?ft of (.+?)\t([\d.]+)/.exec(line); if (m) out[m[1]] = Number(m[2]); }); return out; }
-  const feetFor = (re, exclude) => { const f = readerFeet(); let n = 0; Object.keys(f).forEach((name) => { if (re.test(name) && !(exclude && exclude.test(name))) n += f[name]; }); return n; };
+  // The reader's feet are the kit's feetFor, read off the summary Copy to /Tooling copies.
   const fmtFt = (n) => (Math.round(n * 10) / 10).toFixed(1);
   const countOk = ([tag, spots, pageIdx]) => { const c = counterFor(tag); return !!c && spots.every((pt) => markNear(c, pt, 8, pageIdx)); };
   function layEverything() {
@@ -262,21 +236,21 @@
     Object.keys(LIGHT_TYPES).forEach((t) => markMissing(pickLight(t), pts(G[t]), E201));
     markMissing(pick('os'), pts(G.OS), E201);
     if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101);
-    if (!polylinesOn(RE.emt2, E101).length) { tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); dropAt(pts(G.feeder)[0], 5, E101); }
+    if (!polylinesOn(RE.emt2, E101).length) { tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], 5, E101); }
     const g = circuitOne(); g.loadAmps = 6;
     K().goPage(E101);
     K().dirty();
   }
-  const takeoffComplete = () => RUNS.every((r) => feetFor(r.re, r.exclude) >= r.feet() * 0.95) && COUNTS().every(countOk);
+  const takeoffComplete = () => RUNS.every((r) => K().feetFor(r.re, r.exclude) >= r.feet() * 0.95) && COUNTS().every(countOk);
   function takeoffHint() {
-    const run = RUNS.find((r) => feetFor(r.re, r.exclude) < r.feet() * 0.95);
+    const run = RUNS.find((r) => K().feetFor(r.re, r.exclude) < r.feet() * 0.95);
     if (run) return 'Not yet traced: ' + run.label;
     const c = COUNTS().find((x) => !countOk(x));
     return c ? 'Not all counted: ' + c[3] + (c[2] === E201 ? ' (E-201)' : '') : '';
   }
   function compareBody() {
     const lines = ['Reference on the left, from the sheets\' own geometry. Yours on the right, from your Summary.'];
-    RUNS.forEach((r) => { const ref = r.feet(), mine = feetFor(r.re, r.exclude); const ok = mine >= ref * 0.95 && mine <= ref * 1.05; lines.push(r.name + ': ' + fmtFt(ref) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref * 0.95 ? ', short: ' + r.label : ', over: check for a doubled run')); });
+    RUNS.forEach((r) => { const ref = r.feet(), mine = K().feetFor(r.re, r.exclude); const ok = mine >= ref * 0.95 && mine <= ref * 1.05; lines.push(r.name + ': ' + fmtFt(ref) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref * 0.95 ? ', short: ' + r.label : ', over: check for a doubled run')); });
     const bad = COUNTS().filter((x) => !countOk(x)).map((x) => x[3]);
     lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: twelve device types, sixty-nine marks across the two plans.');
     lines.push('The wire under the conduit rows is derived from the runs, never marked, so it cannot drift; the report\'s circuit schedule lists circuit 1 with its four devices, its feet and its farthest device.');
@@ -311,7 +285,7 @@
           check: () => markNear(counter(RE.panel), pts(G.panel)[0], 14, E101),
           hint: () => (counter(RE.panel) && marksOf(counter(RE.panel), E101).length ? 'Not there. Follow any homerun arrow: LP-1 is on the west wall of STORAGE' : (K().armedNamed(RE.panel) ? 'The counter is armed: click LP-1' : '')),
           action: { label: 'Find it for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('panel'), pts(G.panel), E101); K().dirty(); } } },
-        { id: 'clearance', title: 'The space in front of it', kind: 'do', cardAt: 'tl', page: E101, zones: () => guide(pts(G.clearance), 12, K().measured(E101, 3, 0.3)),
+        { id: 'clearance', title: 'The space in front of it', kind: 'do', cardAt: 'tl', page: E101, zones: () => K().guide(pts(G.clearance), 12, K().measured(E101, 3, 0.3)),
           rules: ['elec.mount-height.defaults'],
           body: 'LP-1, on the west wall of STORAGE, with a mount height the counter already carries: 78 in to the top, the rule the app applies. The engineer drew a dashed box in front of it.\n1. Click [[Measure]] (or press D).\n2. Click the two circled ends of the box, wall to its outer edge.\nHow deep is it?',
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(E101, 3, 0.3),
@@ -448,7 +422,7 @@
           rules: ['elec.conduit.fill-limit'],
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe first row is judged already: Conduit fill within the table limit, 3 #12 and a ground in 3/4" EMT, about a tenth of the conduit, with the § chip naming the rule. Three or more conductors may fill 40% of a raceway (NEC Chapter 9, Table 1); the app does the areas.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
-          action: { label: 'Open it', run: openBidCheck } },
+          action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'straps', title: 'A support row of your own', kind: 'do',
           rulesExempt: 'no rulebook entry: NEC 358.30 EMT support (the card says the rulebook has no strap row yet)',
           body: 'EMT is fastened within 3 ft of every box and every 10 ft along the run (NEC 358.30). The rulebook has no strap row for conduit yet, so write one.\n1. Click the pencil beside 0.75in EMT.\n2. Under [[Child counts]], add a row: Strap, 1 per 10 ft.\n3. Click [[Done]].',
@@ -491,7 +465,7 @@
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nVoltage drop within 3% to the farthest device: the app walked the homerun and the chain to the receptacle farthest from LP-1, assumed 12 A on the circuit, and warns, naming the gauge that would pass. The Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note), and the rulebook chip carries the K constant it used.\nIs the engineer wrong?',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!bidRow('voltage-drop') && bidRow('voltage-drop').verdict !== 'na',
           hint: () => { const r = bidRow('voltage-drop'); return S().bidCheckCollapsed === false && r && r.verdict === 'na' ? 'Not judged yet. ' + r.detail + ' Right-click the homerun and a west-wall receptacle, Assign to group, and pick the circuit' : ''; },
-          action: { label: 'Open it', run: openBidCheck } },
+          action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'load', title: 'The load the engineer scheduled', kind: 'do',
           rules: ['elec.voltage-drop.branch-limit'],
           body: 'Not yet. The app assumed 12 A because you did not say. E-501 schedules circuit 1 at 720 VA, which is 6 A at 120 V.\n1. Under GROUPS, click the pencil beside the circuit.\n2. In Load, type 6. Click [[Done]].\nThe row turns to a tick: at 6 A the drop is under 3% on #12. When the schedule gives a load, use it; when it does not, the default is the honest warning.',
@@ -554,15 +528,15 @@
           check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)),
           hint: () => { const lt = lineType(RE.emt2); return lt && !(lt.conductors || []).length ? 'The type exists: give it the conductors, 4 #3/0 THHN + 1 #6 G' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeFeeder(); if (!polylinesOn(RE.emt2, E101).length) tracePlan(lt, G.feeder, 'Feeder', E101); } } },
-        { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => guide([pts(G.feeder)[0]], 14, polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0)),
+        { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => K().guide([pts(G.feeder)[0]], 14, polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0)),
           body: 'Seven feet on the plan. The main disconnect is at 5 ft on the outside wall and the panel top at 6 ft 6 in inside; the feeder comes through the wall and up. The one-line calls the whole feeder 12 ft.\n1. Click [[Drop]] (or press B), choose or type 5 ft, and click the circled end at the main disconnect.',
           target: ['#dropPanel', '#dropBtn'], check: () => polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0),
-          action: { label: 'Add the 5 ft rise for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); dropAt(pts(G.feeder)[0], 5, E101); } } },
+          action: { label: 'Add the 5 ft rise for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], 5, E101); } } },
         { id: 'fill', title: 'Fill on the feeder', kind: 'do',
           rules: ['elec.conduit.fill-limit'],
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill within the table limit now judges the feeder too: four 3/0 and a #6 in 2" EMT, about a third of the raceway, under the 40% the table allows for three or more conductors (NEC Chapter 9, Table 1). Had the engineer written 1-1/2", the row would say so and name the size that fits.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
-          action: { label: 'Open it', run: openBidCheck } },
+          action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'gear', title: 'Count the gear', kind: 'do', cardAt: 'br', page: E101, zones: () => circlesOn(E101, counter(RE.meter), [pts(G.meter)[0]], 12).concat(circlesOn(E101, counter(RE.disc), [pts(G.mdp)[0]], 12)),
           body: 'The service is gear the bid carries at a price nothing else on the sheet approaches.\n1. Make a Meter counter (Category Panel, Variant Meter) and click the meter, the M outside the south wall.\n2. Make a Disconnect counter (Category Disconnect, Variant Disconnect) and click the MDP beside it.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => markNear(counter(RE.meter), pts(G.meter)[0], 12, E101) && markNear(counter(RE.disc), pts(G.mdp)[0], 12, E101),
@@ -603,7 +577,7 @@
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nFour rows marked AUTO the app judges from your runs: conduit fill, voltage drop, circuits against the panel schedule, every device on a circuit. The rest are yours.',
-          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: openBidCheck } },
+          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           rulesExempt: 'no rulebook entry: NEC 358.26 bends between pull points',
           body: 'The manual rows read: fire alarm devices at rated corridors and doors, lighting controls meet the energy code, equipment connections coordinated with HVAC and plumbing, temporary power and lighting included, pull points within 360° of bends on every run.\nWhich of them did this set already answer?',
@@ -612,7 +586,7 @@
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
           body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\n2. Click Lighting controls meet the energy code.\n3. Click Equipment connections coordinated with HVAC and plumbing.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('lighting-controls') && manual('equipment-connections'),
-          action: { label: 'Tick the three for me', run: () => { tick('scale-verified'); tick('lighting-controls'); tick('equipment-connections'); } } },
+          action: { label: 'Tick the three for me', run: () => { K().tickManual('scale-verified'); K().tickManual('lighting-controls'); K().tickManual('equipment-connections'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the GFCI total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits. This is what you open when the GC questions the number.',
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', counter(RE.gfci)), '#summarySectionTitle'), check: () => K().modalUp('summaryCountDetailModal'),
@@ -625,66 +599,11 @@
     },
   ];
 
-  // ----- progress, the menu section, the doors -----------------------------------------------------
-  const courseDone = () => K().courseDone();
-  const markDone = (id) => K().markCourseDone(key(id));
-  const suggested = () => { const d = courseDone(); return (CHAPTERS.find((c) => !d[key(c.id)]) || {}).id || null; };
-
-  CHAPTERS.forEach((chapter, idx) => {
-    const next = CHAPTERS[idx + 1];
-    App.registerTour(tourId(chapter.id), {
-      steps: [K().openStep(chapter)].concat(chapter.steps, [K().doneStep(chapter, chapter.done)]),
-      doneKey: null,
-      onStop(finished) {
-        K().restoreDevice();
-        if (!finished) return;
-        markDone(chapter.id);
-        App.openLearnMenu(undefined, { course: COURSE, chapter: next ? next.id : null });
-      },
-    });
-  });
-
-  function startChapter(id) {
-    if (!CHAPTERS.some((c) => c.id === id)) return false;
-    if (App.hideModal) App.hideModal('learnModal');
-    K().beginTeaching();
-    return App.startTutorial(tourId(id));
-  }
-  function renderCourseList(nextId) {
-    const list = el('learnCourseList-' + COURSE);
-    if (!list) return;
-    const done = courseDone();
-    const lit = nextId === undefined ? suggested() : nextId;
-    const count = CHAPTERS.filter((c) => done[key(c.id)]).length;
-    const esc = App.escapeHtml || ((t) => String(t));
-    list.innerHTML = CHAPTERS.map((c, i) => '<button type="button" class="learn-row' + (done[key(c.id)] ? ' learn-row-done' : '') + (c.id === lit ? ' learn-row-next' : '') + '" data-chapter="' + c.id + '">'
-      + '<span class="learn-row-no">' + (done[key(c.id)] ? '✓' : (i + 1)) + '</span>'
-      + '<span class="learn-row-text"><span class="learn-row-title">' + esc(c.title.replace(/^Chapter \d+: /, '')) + '</span><span class="learn-row-sub">' + esc(c.intro) + '</span></span>'
-      + '<span class="learn-row-min">' + c.minutes + ' min</span></button>').join('');
-    const prog = el('learnCourseProgress-' + COURSE);
-    if (prog) prog.textContent = count === CHAPTERS.length ? 'All ' + CHAPTERS.length + ' chapters done' : count + ' of ' + CHAPTERS.length + ' done';
-    list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => startChapter(row.dataset.chapter); });
-  }
-  const openAtCourse = () => App.openLearnMenu(undefined, { course: COURSE, chapter: suggested() });
-
-  // wiring (static DOM)
-  el('canvasEmptyHintCourseElectrical') && (el('canvasEmptyHintCourseElectrical').onclick = (e) => { e.preventDefault(); openAtCourse(); });
-  el('settingsCourseElectrical') && (el('settingsCourseElectrical').onclick = () => { App.hideModal('settingsModal'); openAtCourse(); });
-  try {
-    const params = new URLSearchParams(location.search);
-    const chapter = String(params.get('chapter') || '');
-    const want = chapter.startsWith(COURSE + ':') ? chapter.slice(COURSE.length + 1) : null;
-    if (want && CHAPTERS.some((c) => c.id === want)) {
-      App.setTutorialPending(true);
-      setTimeout(() => { App.setTutorialPending(false); startChapter(want); }, 600);
-    } else if (params.get('course') === COURSE) {
-      App.setTutorialPending(true);
-      setTimeout(() => { App.setTutorialPending(false); openAtCourse(); }, 600);
-    }
-  } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
-
-  (App.courseSections = App.courseSections || []).push({ id: COURSE, render: renderCourseList });
-  App.startChapterElectrical = startChapter;
+  // ----- the runner, the lessonKit's (R15) ------------------------------------------------------
+  // The chapters' tours, the Learn menu section, the doors and the routes, /app/?course=electrical
+  // and /app/?chapter=electrical:<id>. The one lessonKit read at load: lessons.js loads first.
+  const course = K().registerCourse({ id: COURSE, chapters: CHAPTERS, doors: { hint: 'canvasEmptyHintCourseElectrical', settings: 'settingsCourseElectrical' } });
+  App.startChapterElectrical = course.start;
   App.courseElectricalIds = () => CHAPTERS.map((c) => c.id);
   App.courseElectricalReference = () => ({ feet: RUNS.reduce((o, r) => { o[r.name] = r.feet(); return o; }, {}), counts: COUNTS().map((c) => [c[3], c[1].length]) });
 })();

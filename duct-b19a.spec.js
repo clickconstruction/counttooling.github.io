@@ -282,7 +282,7 @@ test.describe('B19 part 1 (D18)', () => {
       { id: 'scope-vs-drawings', verdict: 'unchecked' },
     ]);
     expect(typeof ack.at).toBe('string');
-    expect(await page.evaluate(() => window.App.isDuctBidGateAcknowledged())).toBe(true);
+    expect(await page.evaluate(() => window.App.isBidGateAcknowledged())).toBe(true);
 
     // Second press, same set: no toast — straight to the dialog. Same for the copy.
     await page.click('#specificPages');
@@ -296,7 +296,7 @@ test.describe('B19 part 1 (D18)', () => {
 
     // A manual row ticked → the set changed → re-armed.
     await page.evaluate(() => { window.state.bidCheck.manual['addenda'] = true; window.App.updateUI(); });
-    expect(await page.evaluate(() => window.App.isDuctBidGateAcknowledged())).toBe(false);
+    expect(await page.evaluate(() => window.App.isBidGateAcknowledged())).toBe(false);
     await page.click('#specificPages');
     await expect(page.locator('#bidGateToastModal')).toHaveClass(/visible/);
     await page.click('#bidGateExportAnyway');
@@ -315,10 +315,10 @@ test.describe('B19 part 1 (D18)', () => {
     await expect(page.locator('#bidGateToastModal')).toHaveClass(/visible/);
     await page.click('#bidGateExportAnyway');
     await page.click('#specificPagesCancel');
-    expect(await page.evaluate(() => window.App.isDuctBidGateAcknowledged())).toBe(true);
+    expect(await page.evaluate(() => window.App.isBidGateAcknowledged())).toBe(true);
     // An auto ⚠ resolving is a change too (deck raised → the roof row clears).
     await setDeck(page, 12.5);
-    expect(await page.evaluate(() => window.App.isDuctBidGateAcknowledged())).toBe(false);
+    expect(await page.evaluate(() => window.App.isBidGateAcknowledged())).toBe(false);
     await page.click('#specificPages');
     await expect(page.locator('#bidGateToastText')).toHaveText('Bid Check: Fire dampers at rated walls?');
     await page.click('#bidGateExportAnyway');
@@ -328,10 +328,10 @@ test.describe('B19 part 1 (D18)', () => {
     const data = await page.evaluate(() => JSON.parse(JSON.stringify(window.App.buildCanvasExportData())));
     expect(data.bidCheck.acknowledgedGate.rows.length).toBe(8);
     await page.evaluate(() => { window.state.bidCheck = { manual: {} }; window.App.updateUI(); });
-    expect(await page.evaluate(() => window.App.isDuctBidGateAcknowledged())).toBe(false);
+    expect(await page.evaluate(() => window.App.isBidGateAcknowledged())).toBe(false);
     await page.evaluate((d) => window.App.hydrateStateFromProjectData(d), data);
     await page.evaluate(() => window.App.updateUI());
-    expect(await page.evaluate(() => window.App.isDuctBidGateAcknowledged())).toBe(true);
+    expect(await page.evaluate(() => window.App.isBidGateAcknowledged())).toBe(true);
     await page.click('#specificPages');
     await expect(page.locator('#specificPagesModal')).toHaveClass(/visible/);
     await expect(page.locator('#bidGateToastModal.visible')).toHaveCount(0);

@@ -37,7 +37,8 @@
  * "Try it" links use.
  *
  * Registrations: openLearnMenu(), startLesson(id), lessonIds(), lessonsDone(), courseDone()
- * (every course's progress, one map; R16), and lessonKit (what a course runs on).
+ * (every course's progress, one map; R16), and lessonKit (what a course runs on: its runner,
+ * registerCourse, and the helpers the three courses used to copy; R15).
  * Boundary rule: read shared deps from App.* at call time, never captured at load.
  */
 (function () {
@@ -167,15 +168,74 @@
     if (!m[counter.id]) m[counter.id] = [];
     spots.forEach((pt) => m[counter.id].push({ x: pt.x, y: pt.y, id: App.uid(), group: null }));
   }
-  // The Scale lesson's proof, built once on first use (the kit registers after this file loads):
-  // the span, the circle that ticks as its click lands, and the hint that names the miss.
-  let proveP401Memo = null;
-  const proveP401 = () => proveP401Memo || (proveP401Memo = K().measureProof({ page: P401, ends: DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
+
+  // ----- what the courses share (R15): lessonKit's helpers for features/course-*.js ----------------
+  // Every course set sits on P-101's shell (the electrical and HVAC plans too), and a course's point
+  // lists are FLAT (x, y, x, y…) so teaching-labels.test.js reads no nested pairs: `pts` turns a flat
+  // list of plan points into sheet points, `raw` a flat list already in sheet points, and `planFeet`
+  // measures a flat plan list at the figures' 12 px/ft.
+  const pts = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push(P(flat[i], flat[i + 1])); return out; };
+  const raw = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push({ x: flat[i], y: flat[i + 1] }); return out; };
+  const planFeet = (flat) => { let px = 0; for (let i = 2; i + 1 < flat.length; i += 2) px += Math.hypot(flat[i] - flat[i - 2], flat[i + 1] - flat[i - 1]); return px / 12; };
+  // Marks a counter at the spots it does not yet cover, so a seam run twice adds nothing. P-101 (the
+  // first sheet of every set) unless a page is named.
+  function markMissing(c, spots, pageIdx) {
+    const i = pageIdx == null ? P101 : pageIdx;
+    const a = App.ensureActiveCanvas(S().pages[i]).annotations;
+    const have = (a.counterMarkers[c.id] || []);
+    const todo = spots.filter((pt) => !have.some((m) => near(m, pt, 4)));
+    if (todo.length) mark(i, c, todo);
+    return todo.length;
+  }
+  // A rise or fall of `ft` on the line end nearest `spot`, through the Drop tool's own commit.
+  function dropAt(spot, ft, pageIdx) {
+    const a = pageAnn(pageIdx == null ? P101 : pageIdx); if (!a) return;
+    const nodes = App.collectDropNodes(a, 1) || [];
+    let best = null, d = Infinity;
+    nodes.forEach((n) => { const dd = Math.hypot(n.x - spot.x, n.y - spot.y); if (dd < d) { d = dd; best = n; } });
+    if (!best || !App.applyDropToNode(a, best, ft, 'ft', true)) return;
+    App.pushUndoSnapshotCurrentPage();
+    App.applyDropToNode(a, best, ft, 'ft');
+    App.pushRecentDrop(ft, 'ft');
+    dirty();
+  }
+  // Bid Check expanded, and a manual row ticked. features/bid-check.js publishes no writer for the
+  // tick (the row's own click toggles it inline), so the kit writes the same field; a row already
+  // ticked stays ticked, where the row's click would clear it.
+  function openBidCheck() { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); }
+  function tickManual(id) {
+    const s = S();
+    s.bidCheck = s.bidCheck || { manual: {} };
+    s.bidCheck.manual = s.bidCheck.manual || {};
+    if (s.bidCheck.manual[id]) return;
+    App.pushUndoSnapshot();
+    s.bidCheck.manual[id] = true;
+    s.bidCheckCollapsed = false;
+    dirty();
+  }
+  // The reader's feet by line type, read off the same summary Copy to /Tooling copies (a run inside
+  // a group is prefixed with the group in brackets), and the sum over every type a word names.
+  function readerFeet() {
+    const out = {};
+    String(window.getPipeToolingSummary ? window.getPipeToolingSummary() : '').split('\n').forEach((line) => {
+      const m = /^(?:\[.*?\]\s*)?ft of (.+?)\t([\d.]+)/.exec(line);
+      if (m) out[m[1]] = Number(m[2]);
+    });
+    return out;
+  }
+  const feetFor = (re, exclude) => { const f = readerFeet(); let n = 0; Object.keys(f).forEach((name) => { if (re.test(name) && !(exclude && exclude.test(name))) n += f[name]; }); return n; };
+  // A Prove it step's proof (the tourKit's measureProof: the span, a circle that ticks as its click
+  // lands, the hint that names the miss), built once per key on first use, since the kit is read at
+  // call time. Keys are namespaced by their owner: 'lesson:…', '<course>:…'.
+  const proofs = {};
+  const memoProof = (key, make) => proofs[key] || (proofs[key] = K().measureProof(make()));
+
+  // The Scale lesson's proof: the 12'-0" string over WOMEN.
+  const proveP401 = () => memoProof('lesson:P401', () => ({ page: P401, ends: DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
   // Prove the zone takes the same proof, so its circles tick as each click lands and a 4'-0" read
   // off somewhere else on the sheet does not pass (by hand, 2026-09-25).
-  let proveZoneMemo = null;
   let zoneEntryMeasure = null;   // the measure standing when Prove the zone opened
-  const proveZoneP401 = () => proveZoneMemo || (proveZoneMemo = K().measureProof({ page: P401, ends: DETAIL.proveZone, r: 12, ft: 4, tol: 0.25, stated: '4\'-0"' }));
+  const proveZoneP401 = () => memoProof('lesson:P401zone', () => ({ page: P401, ends: DETAIL.proveZone, r: 12, ft: 4, tol: 0.25, stated: '4\'-0"' }));
   function measure(a, b) {
     const s = S();
     s.tool = App.TOOL.MEASURE;
@@ -468,7 +528,7 @@
           page: P101,
           zones: () => guide([GAS_MAIN[0]], 15, meterDrop()),
           check: () => meterDrop(),
-          action: { label: 'Add a 4 ft riser for me', run: () => { goPage(P101); const a = pageAnn(P101); if (!a) return; const nodes = App.collectDropNodes(a, 1) || []; let best = null, d = Infinity; nodes.forEach((n) => { const dd = Math.hypot(n.x - GAS_MAIN[0].x, n.y - GAS_MAIN[0].y); if (dd < d) { d = dd; best = n; } }); if (!best || !App.applyDropToNode(a, best, 4, 'ft', true)) return; App.pushUndoSnapshotCurrentPage(); App.applyDropToNode(a, best, 4, 'ft'); App.pushRecentDrop(4, 'ft'); dirty(); } } },
+          action: { label: 'Add a 4 ft riser for me', run: () => { goPage(P101); dropAt(GAS_MAIN[0], 4); } } },
         { id: 'read', title: 'Read the run', kind: 'read',
           body: '1. In the left sidebar, look at SUMMARY.\nThe run reads its plan length plus the 4 ft riser, and under it the elbows it counted for itself. None of those are marks, so they can never drift from the pipe: move a corner and they follow.\nMore: [Measuring runs](/guides/measuring-runs-lines-and-polylines/).',
           target: ['#summaryList', '#summarySectionTitle'], check: () => true },
@@ -640,7 +700,7 @@
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => K().foldBidCheck(), hold: true, body: 'The lesson chained three fixtures on 1/2in PEX and counted the kitchen drains.\n1. In the left sidebar, click BID CHECK to expand it.\nThe badge beside it counts what is still open. Rows marked AUTO are judged by the app. The rest are yours to tick.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false,
-          action: { label: 'Open it', run: () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); } } },
+          action: { label: 'Open it', run: () => openBidCheck() } },
         { id: 'fix', title: 'Close an open row', kind: 'do',
           rules: ['plumb.hanger.pex'],
           body: 'The row Hangers on every supported run is open: the PEX has no hanger rule.\n1. Under LINE TYPES, click the pencil beside 1/2in PEX.\n2. Under [[Child counts]], click [[Add]] on the suggested hanger.\n3. Click [[Done]].\nThe row turns to a tick by itself.',
@@ -650,7 +710,7 @@
         { id: 'tick', title: 'Sign what only you can', kind: 'do',
           body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\nYour ticks are saved with the bid. Hand off with a row still open and the app asks once, then remembers your answer until something changes. It never blocks you.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual['scale-verified']),
-          action: { label: 'Tick it for me', run: () => { const s = S(); s.bidCheck = s.bidCheck || { manual: {} }; s.bidCheck.manual = s.bidCheck.manual || {}; if (s.bidCheck.manual['scale-verified']) return; App.pushUndoSnapshot(); s.bidCheck.manual['scale-verified'] = true; s.bidCheckCollapsed = false; dirty(); } } },
+          action: { label: 'Tick it for me', run: () => tickManual('scale-verified') } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the Floor Drain total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits, zones already applied. This is what you open when the number is questioned.',
           target: () => K().ladder('#summaryCountDetailModal .modal-card', K().summaryRowOf('counter', counterNamed(FD_RE)), '#summarySectionTitle'), check: () => modalUp('summaryCountDetailModal'),
@@ -805,36 +865,41 @@
     deviceBefore = null;
     App.updateUI();
   }
+  // A lesson or a chapter starting: the per-run flags cleared and the reader's device remembered.
+  function beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); }
   function startLesson(id) {
     const lesson = LESSONS.find((l) => l.id === id);
     if (!lesson) return false;
     if (App.hideModal) App.hideModal('learnModal');
-    sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null;
-    rememberDevice();
+    beginTeaching();
     return App.startTutorial(tourId(id));
   }
-  function renderLearnList(nextId) {
-    const list = el('learnList');
+  // One Learn list, the lessons' or a course's: a row per item, ticked when done, the suggested one
+  // lit, its minutes (a read-only lesson says so), a click that starts it, and the "n of m done" line.
+  // `attr` names the row's data attribute (data-lesson, data-chapter: the specs find rows by it), and
+  // only the lessons' list scrolls its lit row into view (a course's section is scrolled to by
+  // openLearnMenu instead).
+  function renderRows({ list, prog, items, isDone, lit, title, attr, noun, start, scroll }) {
     if (!list) return;
-    const done = lessonsDone();
-    const count = LESSONS.filter((l) => done[l.id]).length;
+    const count = items.filter(isDone).length;
     const esc = App.escapeHtml || ((t) => String(t));
-    list.innerHTML = LESSONS.map((l, i) => '<button type="button" class="learn-row' + (done[l.id] ? ' learn-row-done' : '') + (l.id === nextId ? ' learn-row-next' : '') + '" data-lesson="' + l.id + '">'
-      + '<span class="learn-row-no">' + (done[l.id] ? '✓' : (i + 1)) + '</span>'
-      + '<span class="learn-row-text"><span class="learn-row-title">' + esc(l.title) + '</span><span class="learn-row-sub">' + esc(l.intro) + '</span></span>'
-      + '<span class="learn-row-min">' + l.minutes + ' min' + (l.readOnly ? ' · read' : '') + '</span></button>').join('');
-    const prog = el('learnProgress');
-    if (prog) prog.textContent = count === LESSONS.length ? 'All ' + LESSONS.length + ' lessons done' : count + ' of ' + LESSONS.length + ' done';
-    list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => startLesson(row.dataset.lesson); });
-    const lit = list.querySelector('.learn-row-next');
-    if (lit && lit.scrollIntoView) lit.scrollIntoView({ block: 'nearest' });
+    list.innerHTML = items.map((it, i) => '<button type="button" class="learn-row' + (isDone(it) ? ' learn-row-done' : '') + (it.id === lit ? ' learn-row-next' : '') + '" data-' + attr + '="' + it.id + '">'
+      + '<span class="learn-row-no">' + (isDone(it) ? '✓' : (i + 1)) + '</span>'
+      + '<span class="learn-row-text"><span class="learn-row-title">' + esc(title(it)) + '</span><span class="learn-row-sub">' + esc(it.intro) + '</span></span>'
+      + '<span class="learn-row-min">' + it.minutes + ' min' + (it.readOnly ? ' · read' : '') + '</span></button>').join('');
+    if (prog) prog.textContent = count === items.length ? 'All ' + items.length + ' ' + noun + ' done' : count + ' of ' + items.length + ' done';
+    list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => start(row.getAttribute('data-' + attr)); });
+    const on = scroll && list.querySelector('.learn-row-next');
+    if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
   }
-  // courseNext: a course (features/course-plumbing.js) handing back to the menu names the
-  // chapter to light; the menu then scrolls to the course. Undefined leaves the course's
-  // own suggestion (its first unfinished chapter).
+  function renderLearnList(nextId) {
+    const done = lessonsDone();
+    renderRows({ list: el('learnList'), prog: el('learnProgress'), items: LESSONS, isDone: (l) => !!done[l.id], lit: nextId, title: (l) => l.title, attr: 'lesson', noun: 'lessons', start: startLesson, scroll: true });
+  }
   // courseNext: a course handing back to the menu names itself and the chapter to light,
   // { course, chapter }; the menu renders every registered course section
-  // (App.courseSections, each { id, render(nextChapterId) }) and scrolls to that one.
+  // (App.courseSections, each { id, render(nextChapterId) }) and scrolls to that one. Undefined
+  // leaves each course's own suggestion (its first unfinished chapter).
   function openLearnMenu(nextId, courseNext) {
     const done = lessonsDone();
     const suggested = nextId === undefined ? ((LESSONS.find((l) => !done[l.id]) || {}).id || null) : nextId;
@@ -843,6 +908,63 @@
     App.showModal('learnModal');
     if (courseNext) { const rule = el('learnCourseRule-' + courseNext.course); if (rule && rule.scrollIntoView) rule.scrollIntoView({ block: 'start' }); }
     return true;
+  }
+
+  // ----- the course runner (R15): one for every course ------------------------------------------
+  // A course file (features/course-*.js) holds its chapters and calls this once, at load:
+  //   registerCourse({ id, chapters, doors: { hint, settings } })
+  // It registers a 'course:<id>:<chapter>' tour per chapter (the lesson's open step, the chapter's
+  // steps, the done step; its finish ticks '<id>:<chapter>' in the one course map and hands back to
+  // the menu at the course, the next chapter lit), adds the course's section to the Learn menu
+  // (App.courseSections: #learnCourseList-<id>, #learnCourseProgress-<id>), wires its two doors (the
+  // empty-canvas link `hint` and Project Settings → Help's `settings`, element ids) and its routes,
+  // /app/?course=<id> (the menu, at the course) and /app/?chapter=<id>:<chapter>. It returns
+  // { start(chapterId) }, which the course publishes under the name its spec reads.
+  function registerCourse({ id, chapters, doors }) {
+    const key = (ch) => id + ':' + ch;
+    const tourOf = (ch) => 'course:' + id + ':' + ch;
+    const suggested = () => { const d = courseDone(); return (chapters.find((c) => !d[key(c.id)]) || {}).id || null; };
+    chapters.forEach((chapter, idx) => {
+      const next = chapters[idx + 1];
+      App.registerTour(tourOf(chapter.id), {
+        steps: [openStep(chapter)].concat(chapter.steps, [doneStep(chapter, chapter.done)]),
+        doneKey: null,
+        onStop(finished) {
+          restoreDevice();
+          if (!finished) return;
+          markCourseDone(key(chapter.id));
+          openLearnMenu(undefined, { course: id, chapter: next ? next.id : null });   // back to the menu, at the course, the next chapter lit
+        },
+      });
+    });
+    function start(ch) {
+      if (!chapters.some((c) => c.id === ch)) return false;
+      if (App.hideModal) App.hideModal('learnModal');
+      beginTeaching();
+      return App.startTutorial(tourOf(ch));
+    }
+    function render(nextId) {
+      const done = courseDone();
+      renderRows({ list: el('learnCourseList-' + id), prog: el('learnCourseProgress-' + id), items: chapters, isDone: (c) => !!done[key(c.id)], lit: nextId === undefined ? suggested() : nextId, title: (c) => c.title.replace(/^Chapter \d+: /, ''), attr: 'chapter', noun: 'chapters', start, scroll: false });
+    }
+    const openAtCourse = () => openLearnMenu(undefined, { course: id, chapter: suggested() });
+    const d = doors || {};
+    el(d.hint) && (el(d.hint).onclick = (e) => { e.preventDefault(); openAtCourse(); });
+    el(d.settings) && (el(d.settings).onclick = () => { App.hideModal('settingsModal'); openAtCourse(); });
+    try {
+      const params = new URLSearchParams(location.search);
+      const chapter = String(params.get('chapter') || '');
+      const want = chapter.startsWith(id + ':') ? chapter.slice(id.length + 1) : null;
+      if (want && chapters.some((c) => c.id === want)) {
+        App.setTutorialPending(true);   // the boot's restore offer waits, as it does for ?tour= and ?lesson=
+        setTimeout(() => { App.setTutorialPending(false); start(want); }, 600);
+      } else if (params.get('course') === id) {
+        App.setTutorialPending(true);
+        setTimeout(() => { App.setTutorialPending(false); openAtCourse(); }, 600);
+      }
+    } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
+    (App.courseSections = App.courseSections || []).push({ id, render });
+    return { start };
   }
 
   // wiring (static DOM)
@@ -902,15 +1024,19 @@
   App.lessonIds = () => LESSONS.map((l) => l.id);
   App.lessonsDone = lessonsDone;
   App.courseDone = courseDone;
-  // What a COURSE needs to run on the lesson set (features/course-plumbing.js): the sheets'
-  // geometry, the readers, the seeding and marking helpers, the open and done steps, and
-  // the device bookkeeping a lesson does around a run. Read at call time, never captured.
+  // What a COURSE needs (features/course-*.js): the runner that registers it, the sheets'
+  // geometry, the readers, the seeding and marking helpers, the Bid Check and proof helpers
+  // every course shared a copy of (R15), and the device bookkeeping a lesson does around a
+  // run. A course calls registerCourse at load (this file loads first); everything else is
+  // read at call time, never captured.
   App.lessonKit = {
+    registerCourse,
     P101, P401, P501, P601, P, FD, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, DETAIL,
-    pageAnn, onPage, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, near, modalUp, measured,
-    dirty, goPage, setScale, makeCounter, makeLineType, mark, measure, hangerRuleFor, addNote, openStep, doneStep,
+    pts, raw, planFeet,   // flat point lists on the P-101 shell
+    pageAnn, onPage, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, near, modalUp, measured, readerFeet, feetFor, rectsOf,
+    dirty, goPage, setScale, makeCounter, makeLineType, mark, markMissing, dropAt, measure, hangerRuleFor, addNote, openStep, doneStep, guide, memoProof,
+    openBidCheck, tickManual,
     courseDone, markCourseDone,   // a course's progress, read and ticked through here
-    beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); },
     rememberDevice,   // the blank tour's door: rememberDevice({ searches: false })
     restoreDevice,
   };

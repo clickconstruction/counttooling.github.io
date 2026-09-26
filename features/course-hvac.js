@@ -23,13 +23,15 @@
  *
  * Everything a lesson has comes from App.lessonKit (features/lessons.js) at call time; a
  * chapter names its set (`set`) and stands alone. Point lists are FLAT (teaching-labels.test.js).
- * Progress: localStorage `clickcount-course-done`, { 'hvac:<id>': ISO }, the one map every
- * course shares (lessonKit.courseDone / markCourseDone, App.courseDone). Doors: the Learn
- * menu's section (#learnCourseList-hvac), the empty-canvas "air" link, Project Settings →
- * Help → "hvac course", /app/?course=hvac, /app/?chapter=hvac:<id>.
+ * The runner is the lessonKit's `registerCourse` (R15): progress in localStorage
+ * `clickcount-course-done`, { 'hvac:<id>': ISO }, the one map every course shares
+ * (App.courseDone), and the doors: the Learn menu's section (#learnCourseList-hvac), the
+ * empty-canvas "air" link, Project Settings → Help → "hvac course", /app/?course=hvac,
+ * /app/?chapter=hvac:<id>.
  *
  * Registrations: startChapterHvac(id), courseHvacIds(), courseHvacReference().
- * Boundary rule: read shared deps from App.* at call time, never captured at load.
+ * Boundary rule: read shared deps from App.* at call time, never captured at load; the one
+ * exception is the registerCourse call at the foot (lessons.js loads first).
  */
 (function () {
   'use strict';
@@ -42,8 +44,6 @@
   const S = () => App.state;
   const el = (id) => document.getElementById(id);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const tourId = (id) => 'course:' + COURSE + ':' + id;
-  const key = (id) => COURSE + ':' + id;
 
   // ----- the sheets, in PDF points ----------------------------------------------------------------
   // M-101 sits on P-101's shell: a plan point is (60 + 0.75·x, 70 + 0.75·y), K().P. These lists
@@ -66,10 +66,8 @@
   const SECTION = { prove: [140, 208, 140, 640], plenum: [180, 208, 180, 316], depth: [640, 238, 640, 286] };   // M-601, sheet points at 36 pt/ft
   const SCHEDULE_BOX = { x1: 110, y1: 290, x2: 760, y2: 430 };     // M-501: the diffuser and grille schedule
   const KITCHEN_ROW = { x1: 112, y1: 610, x2: 640, y2: 628 };       // M-501: KITCHEN 105 in the room air schedule
-  const pts = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push(P(flat[i], flat[i + 1])); return out; };
-  const raw = (flat) => { const out = []; for (let i = 0; i + 1 < flat.length; i += 2) out.push({ x: flat[i], y: flat[i + 1] }); return out; };
+  const pts = (flat) => K().pts(flat), raw = (flat) => K().raw(flat), planFeet = (flat) => K().planFeet(flat);   // the kit's flat-list readers
   const rect = (flat) => ({ x1: P(flat[0], flat[1]).x, y1: P(flat[0], flat[1]).y, x2: P(flat[2], flat[3]).x, y2: P(flat[2], flat[3]).y });
-  const planFeet = (flat) => { let px = 0; for (let i = 2; i + 1 < flat.length; i += 2) px += Math.hypot(flat[i] - flat[i - 2], flat[i + 1] - flat[i - 1]); return px / 12; };
   const RS = (w, h) => (typeof makeRectSize === 'function' ? makeRectSize(w, h) : { kind: 'rect', w, h });
   const RD = (d) => (typeof makeRoundSize === 'function' ? makeRoundSize(d) : { kind: 'round', d });
   const sizeKey = (s) => (s && s.kind === 'round' ? s.d + '"ø' : s ? s.w + 'x' + s.h : '');
@@ -93,12 +91,10 @@
   // ----- on-sheet targets (the engine's) -----------------------------------------------------------------
   const ZR = 14;
   const circlesOn = (pageIdx, c, spots, r) => T().markZones(pageIdx, (c || {}).id || '__none__', spots, r || ZR);
-  const guide = (spots, r, done) => spots.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r, done: !!done }));
   const ductPaths = (pageIdx) => { const runs = ductRuns(pageIdx).map((r) => r.vertices || []); const d = S().drawingDuct; return d && d.vertices ? runs.concat([d.vertices]) : runs; };
   const traceZones = (spots, pageIdx) => T().pathZones(spots, 15, ductPaths(pageIdx));
   const allDone = (zs) => T().allDone(zs);
-  const rectsOf = (pageIdx, keyName, test) => { const a = pageAnn(pageIdx); return ((a && a[keyName]) || []).filter((z) => !test || test(z)); };
-  const roomBoxZone = (room) => { const r = roomNamed(new RegExp(room.name, 'i')); return T().boxZone(rectsOf(M101, 'roomBoxes', (b) => r && b.roomId === r.id), rect(room.inner), rect(room.outer), 'Drag your box around ' + room.name + ', anywhere in here'); };
+  const roomBoxZone = (room) => { const r = roomNamed(new RegExp(room.name, 'i')); return T().boxZone(K().rectsOf(M101, 'roomBoxes', (b) => r && b.roomId === r.id), rect(room.inner), rect(room.outer), 'Drag your box around ' + room.name + ', anywhere in here'); };
   const missing = (c, spots, labels, d, pageIdx) => { const ms = marksOf(c, pageIdx); const out = []; spots.forEach((pt, i) => { if (!ms.some((m) => K().near(m, pt, d || 10))) out.push(labels[i]); }); return out.length ? out.length + ' more: ' + out.join(', ') : ''; };
 
   // ----- the counters, the way the Quick tab and the schedule reader make them -----------------------------
@@ -109,14 +105,12 @@
   };
   // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
   // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
-  // on the card. Built on first use: the tour kit registers after this file loads.
-  const proofs = {};
-  const proof = (key, make) => proofs[key] || (proofs[key] = T().measureProof(make()));
-  const proveM101 = () => proof('M101', () => ({ page: M101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
-  const proveM601 = () => proof('M601', () => ({ page: M601, ends: raw(SECTION.prove), r: 13, ft: 12, tol: 0.4, stated: '12\'-0"' }));
+  // on the card. Built once, on first use, through the kit's memo.
+  const proveM101 = () => K().memoProof('hvac:M101', () => ({ page: M101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
+  const proveM601 = () => K().memoProof('hvac:M601', () => ({ page: M601, ends: raw(SECTION.prove), r: 13, ft: 12, tol: 0.4, stated: '12\'-0"' }));
   // the depth string beside the wrapped main, on the same proof: its circles tick as each click lands
   // and a 1'-4" read off anywhere else does not pass (by hand, 2026-09-25)
-  const depthM601 = () => proof('M601depth', () => ({ page: M601, ends: raw(SECTION.depth), r: 12, ft: 1.33, tol: 0.15, stated: '1\'-4"' }));
+  const depthM601 = () => K().memoProof('hvac:M601depth', () => ({ page: M601, ends: raw(SECTION.depth), r: 12, ft: 1.33, tol: 0.15, stated: '1\'-4"' }));
   let depthEntryMeasure = null;   // the 12'-0" read on the step before is still the sheet's last measure
   const AIR_TAGS = ['SD-1', 'SD-2', 'SD-3', 'EG-1', 'MA-1'];   // the counters the schedule gives a CFM
   function pickTag(tag) {
@@ -133,13 +127,7 @@
     S().counters.push(c);
     return c;
   }
-  function markMissing(c, spots, pageIdx) {
-    const a = App.ensureActiveCanvas(S().pages[pageIdx]).annotations;
-    const have = (a.counterMarkers[c.id] || []);
-    const todo = spots.filter((pt) => !have.some((m) => K().near(m, pt, 4)));
-    if (todo.length) K().mark(pageIdx, c, todo);
-    return todo.length;
-  }
+  const markMissing = (c, spots, pageIdx) => K().markMissing(c, spots, pageIdx);
   const scaleM101 = () => K().setScale(M101, 9, '1/8" = 1\'');
   // The schedule reader over M-501's diffuser schedule: six counters named by their tag, each
   // then given the CFM its row prints (the reader reads names, not numbers).
@@ -268,8 +256,6 @@
   const fdCounter = () => counter(RE.fd);
   const fdStray = () => { const c = fdCounter(); if (!c) return null; const spots = pts(G.fd); return marksOf(c, M101).find((m) => !spots.some((p) => K().near(m, p, 14))) || null; };
   function seedMain() { if (!mainDone()) traceMain(); if (!runWith(['16x10'])) layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' }); attachAll(); }
-  function tick(id) { const s = S(); s.bidCheck = s.bidCheck || { manual: {} }; s.bidCheck.manual = s.bidCheck.manual || {}; if (s.bidCheck.manual[id]) return; App.pushUndoSnapshot(); s.bidCheck.manual[id] = true; s.bidCheckCollapsed = false; K().dirty(); }
-  const openBidCheck = () => { S().bidCheckCollapsed = false; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); };
   function seedRooms() { ['dining', 'kitchen', 'hall'].forEach((k) => { const room = ROOMS[k]; if (roomNamed(new RegExp(room.name, 'i'))) return; const r = { id: App.uid(), name: room.name, color: '#4a9eff', roomType: 'custom', targetCfmOverride: room.cfm }; S().rooms = S().rooms || []; S().rooms.push(r); const a = App.ensureActiveCanvas(S().pages[M101]).annotations; if (!a.roomBoxes) a.roomBoxes = []; a.roomBoxes.push(Object.assign({ id: App.uid(), heightFt: 9, roomId: r.id }, rect(room.inner))); }); if (App.setDuctDeckHeight) App.setDuctDeckHeight(12); }
   function seedDiffusers() { Object.keys(TAGS).forEach(pickTag); markMissing(byTag('SD-1'), pts(G.SD1), M101); markMissing(byTag('SD-2'), pts(G.SD2), M101); markMissing(byTag('SD-3'), pts(G.SD3), M101); }
 
@@ -380,7 +366,7 @@
           body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around DINING 100, anywhere inside the shaded boundary. The name fills in from the plan.\n3. In Ceiling, type 9. In Deck height, type 12. Click [[Apply]].\n4. Under ROOMS in the left sidebar, click DINING to open Edit Room. Set Room type to Custom and Target CFM to 1200, the schedule\'s number, and save.',
           target: () => roomLadder([ROOMS.dining]),
           check: () => roomReady(ROOMS.dining),
-          hint: () => { const r = roomNamed(/dining/i); if (!r) return T().boxMiss(rectsOf(M101, 'roomBoxes'), rect(ROOMS.dining.inner), rect(ROOMS.dining.outer)); return r.targetCfmOverride === 1200 ? '' : 'The box is there: now give the room its 1,200 CFM (click DINING under ROOMS: Room type Custom, Target CFM 1200)'; },
+          hint: () => { const r = roomNamed(/dining/i); if (!r) return T().boxMiss(K().rectsOf(M101, 'roomBoxes'), rect(ROOMS.dining.inner), rect(ROOMS.dining.outer)); return r.targetCfmOverride === 1200 ? '' : 'The box is there: now give the room its 1,200 CFM (click DINING under ROOMS: Room type Custom, Target CFM 1200)'; },
           action: { label: 'Box it for me', run: () => boxRoom(ROOMS.dining) } },
         { id: 'needs', title: 'What the room says now', kind: 'read',
           body: '1. In the left sidebar, look at ROOMS.\nDINING reads needs 1,200 · served 0, with a warning. The app knows what the room wants and has seen no diffuser yet. That badge is the whole chapter 3.',
@@ -537,7 +523,7 @@
           target: () => (K().onPage(M101) ? ['#bidCheckSectionTitle'] : ['#pagesList']),   // the card's first line is M-101 (by hand, 2026-09-25)
           check: () => { const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
           hint: () => { if (!K().onPage(M101)) return T().pagesFoldedHint('M-101'); const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },
-          action: { label: 'Open it for me', run: () => { K().goPage(M101); seedMain(); if (App.setDuctDeckHeight) App.setDuctDeckHeight(12); openBidCheck(); } } },
+          action: { label: 'Open it for me', run: () => { K().goPage(M101); seedMain(); if (App.setDuctDeckHeight) App.setDuctDeckHeight(12); K().openBidCheck(); } } },
         { id: 'static', title: 'Will it blow?', kind: 'read',
           rules: ['hvac.duct.schedule-factors'],
           body: 'Beside it, Static path within unit ESP turned from a question into a number the moment RTU-1 had its 1.0" of static and a run to walk: the app found the longest path from the unit to a diffuser, in equivalent feet, straight duct and every elbow and transition on the way, and priced it in inches of water against the unit.\nWhat is the estimator supposed to do with that row?',
@@ -622,7 +608,7 @@
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe duct rows: Every room served, Systems within capacity, Flex drops within max and Scale set are judged from your takeoff; Fits the roof and Static path judge themselves once they know enough; the rest are yours.',
-          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: openBidCheck } },
+          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           rulesExempt: 'no rulebook entry: IMC 403 outdoor air',
           body: 'Fire dampers at rated walls, OA meets code, Curb & power coordinated, Controls and stat locations set.\nWhich of them did this set already answer?',
@@ -631,7 +617,7 @@
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
           body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\n2. Click OA meets code.\n3. Click Fire dampers at rated walls.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('duct-oa-code') && manual('duct-fire-dampers'),
-          action: { label: 'Tick them for me', run: () => { tick('scale-verified'); tick('duct-oa-code'); tick('duct-fire-dampers'); } } },
+          action: { label: 'Tick them for me', run: () => { K().tickManual('scale-verified'); K().tickManual('duct-oa-code'); K().tickManual('duct-fire-dampers'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the SD-1 total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits. This is what you open when the GC questions the number.',
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', byTag('SD-1')), '#summarySectionTitle'), check: () => K().modalUp('summaryCountDetailModal'),
@@ -644,66 +630,11 @@
     },
   ];
 
-  // ----- progress, the menu section, the doors -----------------------------------------------------------
-  const courseDone = () => K().courseDone();
-  const markDone = (id) => K().markCourseDone(key(id));
-  const suggested = () => { const d = courseDone(); return (CHAPTERS.find((c) => !d[key(c.id)]) || {}).id || null; };
-
-  CHAPTERS.forEach((chapter, idx) => {
-    const next = CHAPTERS[idx + 1];
-    App.registerTour(tourId(chapter.id), {
-      steps: [K().openStep(chapter)].concat(chapter.steps, [K().doneStep(chapter, chapter.done)]),
-      doneKey: null,
-      onStop(finished) {
-        K().restoreDevice();
-        if (!finished) return;
-        markDone(chapter.id);
-        App.openLearnMenu(undefined, { course: COURSE, chapter: next ? next.id : null });
-      },
-    });
-  });
-
-  function startChapter(id) {
-    if (!CHAPTERS.some((c) => c.id === id)) return false;
-    if (App.hideModal) App.hideModal('learnModal');
-    K().beginTeaching();
-    return App.startTutorial(tourId(id));
-  }
-  function renderCourseList(nextId) {
-    const list = el('learnCourseList-' + COURSE);
-    if (!list) return;
-    const done = courseDone();
-    const lit = nextId === undefined ? suggested() : nextId;
-    const count = CHAPTERS.filter((c) => done[key(c.id)]).length;
-    const esc = App.escapeHtml || ((t) => String(t));
-    list.innerHTML = CHAPTERS.map((c, i) => '<button type="button" class="learn-row' + (done[key(c.id)] ? ' learn-row-done' : '') + (c.id === lit ? ' learn-row-next' : '') + '" data-chapter="' + c.id + '">'
-      + '<span class="learn-row-no">' + (done[key(c.id)] ? '✓' : (i + 1)) + '</span>'
-      + '<span class="learn-row-text"><span class="learn-row-title">' + esc(c.title.replace(/^Chapter \d+: /, '')) + '</span><span class="learn-row-sub">' + esc(c.intro) + '</span></span>'
-      + '<span class="learn-row-min">' + c.minutes + ' min</span></button>').join('');
-    const prog = el('learnCourseProgress-' + COURSE);
-    if (prog) prog.textContent = count === CHAPTERS.length ? 'All ' + CHAPTERS.length + ' chapters done' : count + ' of ' + CHAPTERS.length + ' done';
-    list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => startChapter(row.dataset.chapter); });
-  }
-  const openAtCourse = () => App.openLearnMenu(undefined, { course: COURSE, chapter: suggested() });
-
-  // wiring (static DOM)
-  el('canvasEmptyHintCourseHvac') && (el('canvasEmptyHintCourseHvac').onclick = (e) => { e.preventDefault(); openAtCourse(); });
-  el('settingsCourseHvac') && (el('settingsCourseHvac').onclick = () => { App.hideModal('settingsModal'); openAtCourse(); });
-  try {
-    const params = new URLSearchParams(location.search);
-    const chapter = String(params.get('chapter') || '');
-    const want = chapter.startsWith(COURSE + ':') ? chapter.slice(COURSE.length + 1) : null;
-    if (want && CHAPTERS.some((c) => c.id === want)) {
-      App.setTutorialPending(true);
-      setTimeout(() => { App.setTutorialPending(false); startChapter(want); }, 600);
-    } else if (params.get('course') === COURSE) {
-      App.setTutorialPending(true);
-      setTimeout(() => { App.setTutorialPending(false); openAtCourse(); }, 600);
-    }
-  } catch (_) { App.setTutorialPending && App.setTutorialPending(false); }
-
-  (App.courseSections = App.courseSections || []).push({ id: COURSE, render: renderCourseList });
-  App.startChapterHvac = startChapter;
+  // ----- the runner, the lessonKit's (R15) ------------------------------------------------------------
+  // The chapters' tours, the Learn menu section, the doors and the routes, /app/?course=hvac and
+  // /app/?chapter=hvac:<id>. The one lessonKit read at load: lessons.js loads first.
+  const course = K().registerCourse({ id: COURSE, chapters: CHAPTERS, doors: { hint: 'canvasEmptyHintCourseHvac', settings: 'settingsCourseHvac' } });
+  App.startChapterHvac = course.start;
   App.courseHvacIds = () => CHAPTERS.map((c) => c.id);
   App.courseHvacReference = () => ({ feet: REF_DUCT.reduce((o, [k, ft]) => { o[k] = ft(); return o; }, {}), counts: COUNTS().map(([t, sp]) => [t, sp.length]) });
 })();

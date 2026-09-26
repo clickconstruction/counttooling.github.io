@@ -13,6 +13,163 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(learn): the three courses run on one runner in the lesson kit, and share its helpers (R15, 2026-09-26)
+
+The decomposition map's R15, both items. The plumbing, electrical and HVAC courses each ended in
+the same sixty lines: the progress map, a loop registering a `course:<id>:<chapter>` tour per
+chapter, `startChapter`, the Learn menu section's renderer, the empty-canvas and Project Settings
+doors, and the `?course=` / `?chapter=` routes. They differed only in the course id and the two
+door ids. Now features/lessons.js has `lessonKit.registerCourse({ id, chapters, doors: { hint,
+settings } })`, which does all of it and returns `{ start }`, and each course's tail is one call
+plus the three names its spec and the persona driver read (`App.startChapter…`, `…Ids`,
+`…Reference`), unchanged.
+
+The Learn list's row markup was a fourth copy, in `renderLearnList`. The map's skeptic doubted
+sharing it was worth it (the lessons' list adds the read-only suffix, `data-lesson` and a scroll to
+the lit row); all three fit a parameter, so the lessons' list and every course section now draw
+through one `renderRows`: the row's data attribute, the noun in "All 9 chapters done" and the
+scroll are passed in, and a chapter has no `readOnly`, so its minutes read as before.
+
+The helpers the courses had copied moved into the kit, and the lessons use them where they had
+their own inline copy: `pts` / `raw` / `planFeet` (flat point lists on the P-101 shell),
+`markMissing(c, spots, pageIdx)` (P-101 unless a page is named, the plumbing copy's default),
+`dropAt(spot, ft, pageIdx)` (also the Measuring lesson's riser), `openBidCheck()` and
+`tickManual(id)` (also the Check lesson's Open it and Tick it), `readerFeet` / `feetFor`, `guide`,
+`rectsOf`, and `memoProof(key, make)`, the once-built measure proofs, keyed `lesson:…` and
+`<course>:…` so no two owners share one. The HVAC course's `guide` was never called and is gone.
+`byTag` and `circlesOn` stay in each course: they differ on purpose.
+
+`tickManual` keeps the kit's own writer. The map asked for the tick to go through a door
+features/bid-check.js publishes, so the row's writer and its telemetry would be used, but there is
+none: the row's click toggles `bidCheck.manual` inline, and a toggle is not what a step's action
+wants (a tick already made must stay made). A registered writer in bid-check.js is the follow-up,
+left for the Bid Check work in progress there.
+
+Nothing a reader sees changes, and a step's shape does not: `check-lesson-rules` reads the same 292
+steps, teaching-labels.test.js finds the same six files, and `App.tutorialDoStep` runs the same
+actions. The courses still read the kit once at load, for `registerCourse` (lessons.js loads
+first; the map's D38), and everything else at call time. The three course files went from 823,
+690 and 709 lines to 725, 609 and 640; lessons.js grew from 917 to 1,043. Pinned by
+course-plumbing.spec.js, course-electrical.spec.js and course-hvac.spec.js (every chapter's
+do-it-for-me path, courseDone, the doors and the routes), lessons.spec.js (the Learn menu, every
+lesson) and tutorial.spec.js.
+
+## refactor(bid-check): Bid Check owns the export gate, works out its rows once per redraw, and resolves every contributed table one way (R13, 2026-09-26)
+
+The decomposition map's R13, with its defect D25, in the map's order.
+
+**Once per redraw (D25).** On a project with duct or water runs, every updateUI built the whole
+Bid Check twice. `renderBidCheck` computed it for the sidebar, then asked for the badges on Copy
+to /Tooling and Export PDFs, and the badge code's `gateStatus` computed it again from nothing: the
+full duct schedule, a static-path walk per ESP group per sheet, the water schedule, and on an
+electrical bid the circuit schedule. Now `renderBidCheck` hands the check it has to
+`renderBidGateBadges(check)`, and `gateStatus(check)` reads it. Only the gate's click
+(`runBidGate`) computes a fresh one, since the runs and ticks may have moved since the last
+redraw. No memo per `dirtyGeneration`: with the second walk gone nothing else in a redraw computes
+the check, and report.js's reads belong to a report build, not a redraw.
+
+**The gate moved.** The export gate, its acknowledgment memory (D18), its one toast and the badges
+moved from features/duct-bidcheck.js to features/bid-check.js. They read the whole panel and have
+served water since WATER-PLAN rung 6, so they were never duct's, and the two files called each
+other (the panel asked duct-bidcheck.js for the badges, which asked the panel for the check).
+`gateScope` is now `GATE_CONTRIBUTORS`, a list of predicates (`App.hasDuctRuns`,
+`App.hasWaterRuns`); a trade that contributes a table adds one. The names follow the owner:
+`App.runBidGate` and the spec seam `App.isBidGateAcknowledged`; `ductBidGateHandles` is the
+file-local `bidGateHandles`, since the advisory beside it was its only reader. The rename
+was mechanical, so the two callers (features/output.js `runGatedCopy`, features/export-pdfs.js's
+`#specificPages`) and duct-b19a.spec.js changed in the same commit and no alias was kept:
+output.js reads the gate guarded, and an alias would have hidden a caller the rename missed.
+duct-bidcheck.js keeps `getDuctBidCheck`, the statics, `hasDuctRuns` and the depth line. No new
+shell file, and nothing an estimator sees changes: the same toast, badges, wording and telemetry.
+
+**One row resolver.** duct-model.js and water-model.js carried the same resolver and the same
+unresolved split, line for line. Both are bid-check-model.js's now, `resolveBidCheckRows(table,
+inputs, ticks)` and `bidCheckUnresolved(rows)`, with two node cases, and `ductBidCheckRows`,
+`waterBidCheckRows` and their `*Unresolved` twins are one-line delegates, so duct-model.test.js
+and water-model.test.js pass unchanged. The map's skeptic warned that both models sit in the plain
+browserModule eslint group with no cross-file globals, and that their tests require them bare. The
+choice: a guarded lookup beside each footer's own guard, `window.BidCheckModel` in the browser
+(bid-check-model.js loads before both) and `module.require('./bid-check-model.js')` under node, so
+neither the eslint group nor any test preamble changed. The scope and ticks both contributors
+copied (`scopeOf`, `manualTicks`) are one helper, `App.bidCheckScope(opts)` returning
+`{ pageIndices, getAnn, ticks }`, which getBidCheck reads too.
+
+Pinned by the new D25 case in duct-bidcheck.spec.js: a duct trunk and a cold water run, one
+`App.updateUI()`, and counters on `App.getDuctBidCheck` and `App.getWaterBidCheck` read 1 and 1
+(2 and 2 on main), with the badges still showing. bid-check, duct-bidcheck, duct-b19a (gate
+memory, one toast), water-bidcheck, export-pdfs and output are green, as are the specs that read
+the panel (the three courses, lessons, tutorial, duct-static, duct-orientation, duct-b19b,
+bend-fittings, codes, rules-chip) and the model tests.
+
+## refactor(save): one payload builder and one hydrator for every project intake (R12, 2026-09-26)
+
+The decomposition map's R12, all five items. A project's fields were listed by hand in about fifteen
+places, and the copies had drifted. The cloud save, the autosave and Export Canvas each typed the
+project payload, and the IndexedDB backup a fourth copy. Six feature intakes carried their own copy of
+the hydrator: both canvas-only branches of cloud load, the sheets built from a cloud PDF, both
+PDF-first intakes and Import Canvas. The drift showed: a bid opened without its PDF kept the last
+project's rooms and zoom cap; uploading its PDF brought the marks back but not the layer each sheet
+was on; every intake merged the saved duct knobs over the CURRENT project's, so a knob a bid never
+saved took the last bid's value; one PDF intake set the trade and codes twice; and the boot pre-apply's
+Discard list missed the header pins, so a declined session's pins rode into the next plan.
+
+save-utils.js now writes the payload once. `buildProjectData(state, { customIconPaths, maxZoom,
+bakeFrame })` is the cloud row's `data` and the Export Canvas file: save-engine.js sends it for the
+manual save and the autosave through one `projectPayload()`, and app.js `buildCanvasExportData`
+returns it. `buildTakeoffBackupData` keeps the backup's own shape (the device's display and export
+preferences, the pages as arrays, no version or zoom cap) over the same `projectPayloadFields`. The
+payload is the same keys with the same values as before; only the key order changed.
+
+annotation-model.js `hydrateStateFromProjectData(d, opts)` is the one hydrator, and every intake calls
+it. The options carry what the intakes did differently: `scaleFallback` (Import Canvas's legacy one
+`scale`), `legacyScales` (the old page-array scales, for the cloud-PDF and PDF-first intakes), and
+`trimLayers` (the layer map kept to the sheets the plan has, for the PDF-first intakes and the
+import). It returns `{ pageEntries, appliedPages }`, which Import Canvas uses for its "Applied marks
+to N of M pages" toast. Each intake keeps its own extras: the toast, the reconcile, the undo clear and
+`hydrateProjectFromCloudRow`. `applyTakeoffBackupToState` stays separate, since the boot pre-apply and
+the spec seams rely on its merge (absent = keep).
+
+The project's own fields are one exported list: `TAKEOFF_BACKUP_PROJECT_FIELDS` beside
+`PALETTE_FIELDS`, with `CARRIED_VIEW_FIELDS` naming the legend, zone and grid settings among them
+and `freshProjectFields()` giving what a project that never set the rest starts from. The boot
+pre-apply's Discard restores exactly that list (the header pins are on it now), and
+`resetLocalSessionState` assigns `freshProjectFields`, which gives the same values it typed before.
+The codes read through constants.js `normalizeProjectCodes`, which the hydrator's own copy
+duplicated.
+
+duct-model.js `normalizeDuctSettings(raw)`, beside `DUCT_SETTINGS_DEFAULTS`, is the one rule for the
+Duct Schedule's knobs: the defaults under the saved values, then the clamps the schedule's getter
+applied. Both hydrators read the knobs through it, so a bid saved without one gets the default. The
+schedule's getter normalizes `state.ductSettings` in place (a caller holding the object still writes
+to state's own copy), and its six knob inputs and the ductulator suggestion fall back to the table
+instead of typing 15, 40, 0.08, 1200, 0.10 and 6 again. No number in the table changed.
+
+The blank sheet every PDF intake starts from is `makeBlankPage(pdfPage, label, rotation)`, and a
+whole document is `buildBlankPagesFromPdf(pdf, planName)`, with the "plan, p2" name in
+`defaultPageLabel`. Cloud load, the last-session restore, the view link, the fresh upload, Load test
+PDF and both Prepare PDF paths use them, and the append preview uses the name rule. All three are
+published on App. The three App registrations the old intakes read and nothing reads now
+(`DUCT_SETTINGS_DEFAULTS`, `normalizeProjectCodes`, `normalizeWaterSettings`) are gone.
+
+What an estimator sees change: a bid opened without its PDF no longer carries the last project's
+rooms, zoom cap or duct knobs, and gets back the layer each sheet was on when its PDF is uploaded; a
+bid saved without a duct knob gets the default rather than the last bid's; and discarding the
+last-session offer puts the header pins back too.
+
+Pinned by save-utils.test.js (the payload, the empty-session defaults the hand-typed payloads wrote,
+and the backup's shape over the shared fields), duct-model.test.js (the normalizer: nothing saved,
+a saved knob, and every illegal value reading as its default), and annotation-model.test.js. The
+MAP-QUICKKEYS round trip now reads its key lists from the two builders, and an espree walk proves that
+neither save-engine.js nor app.js types a payload and that the manual save, the autosave, Export
+Canvas and the backup each call a builder. New cases: a backup with every field set changes exactly
+the palette, the project fields and the sheets; `freshProjectFields` covers every project field but
+the carried ones; the duct knobs over the defaults in both hydrators; each option; the canvas-only
+hydrate; and the blank-page helpers. pdf-upload.spec.js adds a canvas-only bid getting its PDF
+(the layer map, trimmed to the PDF's sheets, the duct knobs over the defaults, the rooms dropped),
+red on the old pdf-intake.js. Left: the backup applier still copies Quick Keys plain (the lifecycle
+rule would clear the Artboard-seed flag, which the pre-apply's Discard does not restore), and the
+legend, zone and grid settings are still merged over the session and carried into the next project.
+
 ## feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command (R06, 2026-09-26)
 
 The decomposition map's R06, both items. Every new shell file cost four hand steps, and one of

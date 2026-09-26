@@ -565,9 +565,9 @@
           const keptOrigIdx = kept[i - startIdx];
           const label = preparePdfPages[keptOrigIdx]?.label || ('Page ' + (i + 1));
           const rotation = preparePdfPages[keptOrigIdx]?.rotation ?? 0;
-          const canvasId = App.uid();
-          newPages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation });
-          App.state.activeCanvasIdByPage[i] = canvasId;
+          const blank = App.makeBlankPage(pdfPage, label, rotation);
+          newPages.push(blank);
+          App.state.activeCanvasIdByPage[i] = blank.canvases[0].id;
         }
         // Re-bind existing state.pages to the merged pdf so all pages share a
         // single pdfjs document. This avoids holding the old detached buffer.
@@ -608,9 +608,9 @@
       const origIdx = kept[i];
       const label = preparePdfPages[origIdx]?.label || ('Page ' + (i + 1));
       const rotation = preparePdfPages[origIdx]?.rotation ?? 0;
-      const canvasId = App.uid();
-      App.state.pages.push({ pdfPage, label, canvases: [{ id: canvasId, name: 'Main', annotations: App.makeAnnotations() }], scale: null, rotation });
-      App.state.activeCanvasIdByPage[i] = canvasId;
+      const blank = App.makeBlankPage(pdfPage, label, rotation);
+      App.state.pages.push(blank);
+      App.state.activeCanvasIdByPage[i] = blank.canvases[0].id;
     }
     App.state.pdfBuffer = trimmedBuf;
     App.state.pdfBufferSize = trimmedBufSize;

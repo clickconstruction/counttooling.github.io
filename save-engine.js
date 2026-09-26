@@ -145,6 +145,13 @@ function createSaveEngine(ctx) {
     return !!(state && state.pendingCanvasLoad && !(state.pages && state.pages.length));
   }
 
+  // R12: the cloud row's `data`, for the manual save and the autosave alike. The one
+  // builder is save-utils.js buildProjectData (Export Canvas sends the same); the
+  // app-side inputs arrive through ctx.
+  function projectPayload() {
+    return buildProjectData(ctx.getState(), { customIconPaths: ctx.getUserCustomIcons(), maxZoom: ctx.getMaxZoom(), bakeFrame: (p) => ctx.computePageBakeFrame(p) });
+  }
+
   function markProjectDirty() {
     const state = ctx.getState();
     if (state.isViewer || !state.pages.length && !state.currentProjectId) return;
@@ -360,40 +367,8 @@ function createSaveEngine(ctx) {
         } catch (_) {}
       }
     }
-    const data = {
-      counters: state.counters,
-      lineTypes: state.lineTypes,
-      groups: state.groups || [],
-      groupsEnabled: !!state.groupsEnabled,
-      stripPins: state.stripPins || {},
-      trade: state.trade || null,
-      ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null,
-      makeUpFt: state.makeUpFt != null ? state.makeUpFt : null,
-      codes: state.codes ? { ...state.codes } : null,
-      bidCheck: state.bidCheck || { manual: {} },
-      rooms: state.rooms || [],
-      ductSettings: state.ductSettings,
-      waterSettings: state.waterSettings,
-      counterSettings: state.counterSettings,
-      lineTypeSettings: state.lineTypeSettings,
-      exportSettings: state.exportSettings,
-      recentLineColors: state.recentLineColors,
-      iconNames: state.iconNames || {},
-      iconOrder: state.iconOrder || null,
-      customIconPaths: ctx.getUserCustomIcons(),
-      legendSettings: state.legendSettings,
-      multiplyZoneSettings: state.multiplyZoneSettings,
-      scaleZoneSettings: state.scaleZoneSettings,
-      showGridOverlay: state.showGridOverlay,
-      gridSettings: state.gridSettings,
-      pageCanvases: state.pages.map(p => p.canvases),
-      activeCanvasIdByPage: state.activeCanvasIdByPage || {},
-      numberKeyBindings: state.numberKeyBindings || {},
-      pageLabels: state.pages.map(p => p.label),
-      pageScales: state.pages.map(p => p.scale),
-      pageRotations: state.pages.map(p => p.rotation ?? 0),
-      pageBakeFrames: state.pages.map(p => ctx.computePageBakeFrame(p))
-    };
+    // R12: the project fields come from the same builder as the cloud payload (save-utils.js).
+    const data = buildTakeoffBackupData(state, { customIconPaths: ctx.getUserCustomIcons(), bakeFrame: (p) => ctx.computePageBakeFrame(p) });
     const lastMod = (state.currentProjectId && ctx.getLastModifiedAt()) ? ctx.getLastModifiedAt() : Date.now();
     // localPdfHash: the in-memory hash of a locally-uploaded (never-saved) PDF,
     // stamped by features/pdf-intake.js. Signed-out backups carry it so the
@@ -2145,34 +2120,7 @@ function createSaveEngine(ctx) {
       try { requestAnimationFrame(settle); } catch (_) { /* no rAF: timer path */ }
       setTimeout(settle, (typeof document !== 'undefined' && document.hidden) ? 0 : 150);
     });
-    const data = {
-      version: 1,
-      counters: ctx.getState().counters,
-      lineTypes: ctx.getState().lineTypes,
-      iconNames: ctx.getState().iconNames || {},
-      iconOrder: ctx.getState().iconOrder || null,
-      customIconPaths: ctx.getUserCustomIcons(),
-      maxZoom: ctx.getMaxZoom(),
-      groups: ctx.getState().groups || [],
-      groupsEnabled: !!ctx.getState().groupsEnabled,
-      stripPins: ctx.getState().stripPins || {},
-      trade: ctx.getState().trade || null,
-      ceilingHeightFt: ctx.getState().ceilingHeightFt != null ? ctx.getState().ceilingHeightFt : null,
-      makeUpFt: ctx.getState().makeUpFt != null ? ctx.getState().makeUpFt : null,
-      codes: ctx.getState().codes ? { ...ctx.getState().codes } : null,
-      bidCheck: ctx.getState().bidCheck || { manual: {} },
-      rooms: ctx.getState().rooms || [],
-      ductSettings: ctx.getState().ductSettings,
-      waterSettings: ctx.getState().waterSettings,
-      legendSettings: ctx.getState().legendSettings,
-      multiplyZoneSettings: ctx.getState().multiplyZoneSettings,
-      scaleZoneSettings: ctx.getState().scaleZoneSettings,
-      showGridOverlay: ctx.getState().showGridOverlay,
-      gridSettings: ctx.getState().gridSettings,
-      pages: ctx.getState().pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: ctx.computePageBakeFrame(p) })),
-      activeCanvasIdByPage: ctx.getState().activeCanvasIdByPage || {},
-      numberKeyBindings: ctx.getState().numberKeyBindings || {}
-    };
+    const data = projectPayload();   // R12: save-utils.js buildProjectData, the one project payload
     const counts = getProjectCounts(data);
     const tJson = Date.now();
     const dataJson = JSON.stringify(data);
@@ -2622,34 +2570,7 @@ function createSaveEngine(ctx) {
     const t0 = Date.now();
     const genAtEntry = getDirtyGeneration();
     autoSaveDirty = false;
-    const data = {
-      version: 1,
-      counters: ctx.getState().counters,
-      lineTypes: ctx.getState().lineTypes,
-      iconNames: ctx.getState().iconNames || {},
-      iconOrder: ctx.getState().iconOrder || null,
-      customIconPaths: ctx.getUserCustomIcons(),
-      maxZoom: ctx.getMaxZoom(),
-      groups: ctx.getState().groups || [],
-      groupsEnabled: !!ctx.getState().groupsEnabled,
-      stripPins: ctx.getState().stripPins || {},
-      trade: ctx.getState().trade || null,
-      ceilingHeightFt: ctx.getState().ceilingHeightFt != null ? ctx.getState().ceilingHeightFt : null,
-      makeUpFt: ctx.getState().makeUpFt != null ? ctx.getState().makeUpFt : null,
-      codes: ctx.getState().codes ? { ...ctx.getState().codes } : null,
-      bidCheck: ctx.getState().bidCheck || { manual: {} },
-      rooms: ctx.getState().rooms || [],
-      ductSettings: ctx.getState().ductSettings,
-      waterSettings: ctx.getState().waterSettings,
-      legendSettings: ctx.getState().legendSettings,
-      multiplyZoneSettings: ctx.getState().multiplyZoneSettings,
-      scaleZoneSettings: ctx.getState().scaleZoneSettings,
-      showGridOverlay: ctx.getState().showGridOverlay,
-      gridSettings: ctx.getState().gridSettings,
-      pages: ctx.getState().pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: ctx.computePageBakeFrame(p) })),
-      activeCanvasIdByPage: ctx.getState().activeCanvasIdByPage || {},
-      numberKeyBindings: ctx.getState().numberKeyBindings || {}
-    };
+    const data = projectPayload();   // R12: save-utils.js buildProjectData, the one project payload
     const counts = getProjectCounts(data);
     const dataSize = JSON.stringify(data).length;
     ctx.perfLog('performAutoSave JSON.stringify', Date.now() - t0, { dataSize, pages: ctx.getState().pages.length });

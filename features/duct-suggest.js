@@ -203,9 +203,11 @@
       devices: devices,
     });
     if (!remaining || !(remaining.cfm > 0)) return null;
-    const ds = App.getDuctSettings ? App.getDuctSettings() : {};
-    const frictionRate = ds.frictionInPer100ft > 0 ? ds.frictionInPer100ft : 0.08;
-    const maxVelocityFpm = ds.maxVelocityFpm > 0 ? ds.maxVelocityFpm : 1200;
+    // The knobs come normalized (duct-model.js normalizeDuctSettings), so a junk or
+    // missing rate is already the default.
+    const ds = App.getDuctSettings ? App.getDuctSettings() : normalizeDuctSettings(App.state.ductSettings);
+    const frictionRate = ds.frictionInPer100ft;
+    const maxVelocityFpm = ds.maxVelocityFpm;
     const s = suggestRoundAndRect(remaining.cfm, { frictionRate: frictionRate, maxVelocityFpm: maxVelocityFpm });
     if (!s) return null;
     // D8 round-first dual suggestion (the master walkthrough): BOTH sizes are

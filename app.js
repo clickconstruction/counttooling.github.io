@@ -269,7 +269,7 @@
   function computePageBakeFrame(p) { return annotationModel.computePageBakeFrame(p); }
   function applyTakeoffBackupToState(backup) { return annotationModel.applyTakeoffBackupToState(backup); }
   function applyPageAnnotationsFromData(page, p, scaleFallback) { return annotationModel.applyPageAnnotationsFromData(page, p, scaleFallback); }
-  function hydrateStateFromProjectData(d) { return annotationModel.hydrateStateFromProjectData(d); }
+  function hydrateStateFromProjectData(d, opts) { return annotationModel.hydrateStateFromProjectData(d, opts); }
   function reconcileOrphanedCountersAndLineTypes() { return annotationModel.reconcileOrphanedCountersAndLineTypes(); }
   function planPaletteRelink(incomingCounters, incomingLineTypes) { return annotationModel.planPaletteRelink(incomingCounters, incomingLineTypes); }
   function applyPaletteRelink(plan) { return annotationModel.applyPaletteRelink(plan); }
@@ -913,27 +913,20 @@
     saveEngine.resetLocalBackupState();
     lastSaveIncludedPdf = false;
     state.pendingCanvasLoad = null;
-    state.groups = [];
-    state.groupsEnabled = false;
-    state.trade = null;
-    state.stripPins = readDeviceStripPins();   // D21: per project — the next project starts from the device's last arrangement
+    // R12: every project field from the one list (annotation-model.js
+    // freshProjectFields): groups, trade, codes, ceiling and make-up, Bid Check
+    // ticks, rooms, the layer map, the duct and water knobs, and the Quick Keys.
+    // The header pins start from the device's last arrangement (D21). The view
+    // settings (legend, zones, grid) ride the project but carry into the next.
+    // Quick Keys are unconditional: this reset doubles as the SIGN-OUT wipe, so
+    // bindings (and their artboard-seed lineage flag) never leak to the next user
+    // on a shared machine. The seed survives the normal new-bid flow (sign in ->
+    // upload PDF), which never passes through here.
+    Object.assign(state, freshProjectFields({ stripPins: readDeviceStripPins() }));
+    state.numberKeyBindingsSeededFromArtboard = false;
     state.counterAirMoreOpen = null;   // D19: the next project follows its own trade, not this one's override
     state.parkedScaleDraft = null;
-    state.ceilingHeightFt = null;
-    state.codes = null;
-    state.makeUpFt = null;
-    state.bidCheck = { manual: {} };
-    state.rooms = [];
-    state.ductSettings = { ...DUCT_SETTINGS_DEFAULTS };
-    state.waterSettings = normalizeWaterSettings(null);
     state.maxZoom = null;
-    state.activeCanvasIdByPage = {};
-    // Unconditional: this reset doubles as the SIGN-OUT wipe, so Quick Key
-    // bindings (and their artboard-seed lineage flag) never leak to the next
-    // user on a shared machine. The seed survives the normal new-bid flow
-    // (sign in -> upload PDF), which never passes through here.
-    state.numberKeyBindings = {};
-    state.numberKeyBindingsSeededFromArtboard = false;
     state.checkedOutBy = null;
     state.checkedOutAt = null;
     state.checkedOutEmail = null;
@@ -4772,9 +4765,10 @@
   // plus the palette, small enough to keep and re-import onto the same PDF
   // (matched by hash). Shared with the bid-basis manifest
   // (features/bid-basis.js), which stores it on the PipeTooling bid as the
-  // "which marks did we bid to" snapshot.
+  // "which marks did we bid to" snapshot. R12: the same payload the cloud save
+  // writes, from the one builder (save-utils.js buildProjectData).
   function buildCanvasExportData() {
-    return { version: 1, counters: state.counters, lineTypes: state.lineTypes, iconNames: state.iconNames || {}, iconOrder: state.iconOrder || null, customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), groups: state.groups || [], groupsEnabled: !!state.groupsEnabled, trade: state.trade || null, stripPins: state.stripPins || {}, codes: state.codes ? { ...state.codes } : null, ceilingHeightFt: state.ceilingHeightFt != null ? state.ceilingHeightFt : null, makeUpFt: state.makeUpFt != null ? state.makeUpFt : null, bidCheck: state.bidCheck || { manual: {} }, rooms: state.rooms || [], ductSettings: state.ductSettings, waterSettings: state.waterSettings, legendSettings: state.legendSettings, multiplyZoneSettings: state.multiplyZoneSettings, scaleZoneSettings: state.scaleZoneSettings, showGridOverlay: state.showGridOverlay, gridSettings: state.gridSettings, pages: state.pages.map((p, i) => ({ index: i, label: p.label, canvases: p.canvases, scale: p.scale, rotation: p.rotation ?? 0, bakeFrame: computePageBakeFrame(p) })), activeCanvasIdByPage: state.activeCanvasIdByPage || {}, numberKeyBindings: state.numberKeyBindings || {} };
+    return buildProjectData(state, { customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), bakeFrame: computePageBakeFrame });
   }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
@@ -7738,6 +7732,11 @@
   // Page delete (features/pages-list.js): the splice + page-index reindex is
   // the model's (MAP-PAGE-DELETE).
   App.deletePageAt = (i) => annotationModel.deletePageAt(i);
+  // R12: one blank sheet and its default name, for every intake that builds sheets
+  // from a PDF (copy-project, restore-last-session, view-only, pdf-intake, prepare-pdf).
+  App.defaultPageLabel = (planName, i, numPages) => annotationModel.defaultPageLabel(planName, i, numPages);
+  App.makeBlankPage = (pdfPage, label, rotation) => annotationModel.makeBlankPage(pdfPage, label, rotation);
+  App.buildBlankPagesFromPdf = (pdf, planName) => annotationModel.buildBlankPagesFromPdf(pdf, planName);
   // features/lines-list.js deps (publish-only). formatArea/polygonArea are
   // geometry.js globals — lint-invisible to the features eslint group, so they
   // route through the registry (the pilot-#13 ptDist pattern).
@@ -7974,11 +7973,8 @@
   App.getRecentDrops = () => state.recentDrops || [];
   App.pushRecentDrop = pushRecentDrop;
   App.commitMeasurePoint = commitMeasurePoint;     // features/tutorial.js ("Do it for me" on the Measure step)
-  App.DUCT_SETTINGS_DEFAULTS = DUCT_SETTINGS_DEFAULTS;   // duct-model.js data table (features/duct-schedule.js seeds from it; rulebook-pinned)
   App.getProjectCodes = getProjectCodes;                // rulebook slice 4 (features/rules.js popover, bid-check.js footer, codes.spec.js)
   App.setProjectCodes = setProjectCodes;
-  App.normalizeProjectCodes = normalizeProjectCodes;
-  App.normalizeWaterSettings = normalizeWaterSettings;   // WATER-PLAN rung 5: every intake restores the caps through it
   App.syncProjectSettingsRows = syncProjectSettingsRows;
   App.logDropSetEvent = logDropSetEvent;
   App.toCanvas = toCanvas;
@@ -8207,7 +8203,10 @@
       // PDF opened inherits the declined session's groups, trade, codes, Bid Check ticks, rooms and
       // Quick Keys (by hand, 2026-09-25: a lesson set opened with Groups already on, the switch
       // locked). The palette stays: signed out, the backup may be the only copy of it.
-      const PRE_APPLY_PROJECT_FIELDS = ['groups', 'groupsEnabled', 'trade', 'ceilingHeightFt', 'makeUpFt', 'codes', 'bidCheck', 'rooms', 'activeCanvasIdByPage', 'numberKeyBindings', 'legendSettings', 'ductSettings', 'waterSettings', 'multiplyZoneSettings', 'scaleZoneSettings', 'showGridOverlay', 'gridSettings'];
+      // R12: the list is the applier's own (annotation-model.js), pinned by
+      // annotation-model.test.js to exactly what the applier changes besides the
+      // palette and the sheets, so a new field cannot escape Discard.
+      const PRE_APPLY_PROJECT_FIELDS = TAKEOFF_BACKUP_PROJECT_FIELDS;
       const beforePreApply = {};
       PRE_APPLY_PROJECT_FIELDS.forEach((k) => { beforePreApply[k] = state[k]; });
       applyTakeoffBackupToState(backupToApply);

@@ -12,9 +12,13 @@ const assert = require('node:assert');
 Object.assign(globalThis, require('./geometry.js'));
 Object.assign(globalThis, require('./icons.js'));
 Object.assign(globalThis, require('./constants.js'));   // UNDO_STACK_SIZE
+Object.assign(globalThis, require('./duct-model.js'));   // R12: normalizeDuctSettings (the hydrators read it bare)
+Object.assign(globalThis, require('./water-model.js'));  // normalizeWaterSettings (freshProjectFields)
+const { DUCT_SETTINGS_DEFAULTS } = require('./duct-model.js');
+const { normalizeWaterSettings } = require('./water-model.js');
 const { UNDO_STACK_SIZE } = require('./constants.js');
 
-const { createAnnotationModel } = require('./annotation-model.js');
+const { createAnnotationModel, PALETTE_FIELDS, TAKEOFF_BACKUP_PROJECT_FIELDS, CARRIED_VIEW_FIELDS, freshProjectFields } = require('./annotation-model.js');
 const { createUndoStack } = require('./undo-stack.js');
 
 let nextId = 0;
@@ -993,11 +997,13 @@ test('rotateAnnotations rotates duct run vertices and free fitting positions; in
   assert.deepStrictEqual(f2.position, expected);
 });
 
-// --- MAP-QUICKKEYS: every key the payload builders write comes back ----------
-// The key lists are READ from the builders (save-engine.js's cloud payloads and
-// its IndexedDB backup, app.js buildCanvasExportData), not typed here, so a field
-// added to a builder without a hydrator line fails below instead of saving a
-// value no intake reads back (the Quick Keys and the header pins did exactly that).
+// --- MAP-QUICKKEYS / R12: every key the payload builders write comes back ----
+// The key lists are READ from the builders, not typed here, so a field added to a
+// builder without a hydrator line fails below instead of saving a value no intake
+// reads back (the Quick Keys and the header pins did exactly that). Since R12 there
+// is one project builder, save-utils.js buildProjectData (the cloud save, the
+// autosave and Export Canvas), and one backup builder, buildTakeoffBackupData; the
+// espree walk below proves no caller types its own payload any more.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -1025,11 +1031,26 @@ function payloadLiterals(file, mustHave) {
   })(ast);
   return found;
 }
-const PROJECT_PAYLOADS = [
-  ...payloadLiterals('save-engine.js', ['version', 'pages', 'numberKeyBindings']),   // manual save + autosave
-  ...payloadLiterals('app.js', ['version', 'pages', 'numberKeyBindings']),           // buildCanvasExportData
-];
-const BACKUP_PAYLOADS = payloadLiterals('save-engine.js', ['pageCanvases', 'numberKeyBindings']);
+// How many calls to `name` (a bare identifier) `file` makes.
+function callsOf(file, name) {
+  const src = fs.readFileSync(path.join(__dirname, file), 'utf8');
+  const ast = espree.parse(src, { ecmaVersion: 'latest', sourceType: 'script' });
+  let n = 0;
+  (function walk(node) {
+    if (!node || typeof node.type !== 'string') return;
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === name) n++;
+    for (const k of Object.keys(node)) {
+      const v = node[k];
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v.type === 'string') walk(v);
+    }
+  })(ast);
+  return n;
+}
+const { buildProjectData, buildTakeoffBackupData, projectPayloadFields } = require('./save-utils.js');
+const KEY_STATE = { pages: [{ label: 'P-101', canvases: [], scale: null, rotation: 0 }] };
+const PROJECT_KEYS = Object.keys(buildProjectData(KEY_STATE, { customIconPaths: [], maxZoom: 4 }));
+const BACKUP_KEYS = Object.keys(buildTakeoffBackupData(KEY_STATE, { customIconPaths: [] }));
 
 // One valid, recognizable value per payload key. A new builder key with no row
 // here fails the round trip by name.
@@ -1115,6 +1136,8 @@ function assertCameBack(key, state, calls, quickKeysCalls, withPages) {
     case 'pageScales': assert.deepStrictEqual(state.pages[0].scale, { feet: 8 }, why); return;
     case 'pageRotations': assert.strictEqual(state.pages[0].rotation, 90, why); return;
     case 'pageBakeFrames': assert.strictEqual(state.pages[0].bakeMismatch, true, why); return;
+    // R12: the knobs read over the defaults (duct-model.js normalizeDuctSettings)
+    case 'ductSettings': assert.deepStrictEqual(state.ductSettings, { ...DUCT_SETTINGS_DEFAULTS, ...s }, why); return;
     default: assert.deepStrictEqual(state[key], s, why);
   }
 }
@@ -1126,17 +1149,30 @@ function withWindowApp(app, fn) {
   try { return fn(); } finally { if (had) globalThis.window = prev; else delete globalThis.window; }
 }
 
-test('the builders agree: the cloud save, the autosave and Export Canvas write one key list', () => {
-  assert.strictEqual(PROJECT_PAYLOADS.length, 3, 'expected 2 save-engine payloads + buildCanvasExportData');
-  const [a, ...rest] = PROJECT_PAYLOADS.map((k) => k.slice().sort());
-  rest.forEach((k) => assert.deepStrictEqual(k, a));
-  assert.strictEqual(BACKUP_PAYLOADS.length, 1, 'expected the one IndexedDB backup payload');
+test('the builders are one: the cloud save, the autosave and Export Canvas call buildProjectData, and nobody types a payload', () => {
+  // (customIconPaths + stripPins mark a payload: app.js's state initializer names
+  // counters and stripPins, the Artboard read the icon list, but only a payload has both.)
+  ['save-engine.js', 'app.js'].forEach((f) => {
+    assert.deepStrictEqual(payloadLiterals(f, ['counters', 'customIconPaths', 'stripPins', 'numberKeyBindings']), [], f + ' types a project payload by hand');
+    assert.deepStrictEqual(payloadLiterals(f, ['pageCanvases']), [], f + ' types a backup payload by hand');
+  });
+  assert.strictEqual(callsOf('save-engine.js', 'buildProjectData'), 1, 'the engine builds the cloud payload in one place (projectPayload)');
+  assert.strictEqual(callsOf('save-engine.js', 'projectPayload'), 2, 'the manual save and the autosave both send it');
+  assert.strictEqual(callsOf('app.js', 'buildProjectData'), 1, 'Export Canvas (buildCanvasExportData) sends it');
+  assert.strictEqual(callsOf('save-engine.js', 'buildTakeoffBackupData'), 1, 'the IndexedDB backup');
+});
+
+test('the field lists agree: the payload\'s project fields are the palette, the project fields and the user\'s icons', () => {
+  const payload = Object.keys(projectPayloadFields({}, [])).sort();
+  assert.deepStrictEqual(payload, [...PALETTE_FIELDS, ...TAKEOFF_BACKUP_PROJECT_FIELDS, 'customIconPaths'].sort());
+  // the project payload adds only its stamp, the zoom cap and the sheets
+  assert.deepStrictEqual(PROJECT_KEYS.filter((k) => !payload.includes(k)).sort(), ['maxZoom', 'pages', 'version']);
 });
 
 for (const withPages of [true, false]) {
   const mode = withPages ? 'full' : 'canvas-only (no pages yet)';
   test('hydrateStateFromProjectData round trip, ' + mode + ': every key the builder writes comes back', () => {
-    const keys = PROJECT_PAYLOADS[0];
+    const keys = PROJECT_KEYS;
     const state = freshState(withPages);
     const { ctx, calls } = makeCtx(state);
     const m = createAnnotationModel(ctx);
@@ -1167,7 +1203,7 @@ test('hydrateStateFromProjectData: a project saved without header pins follows i
 });
 
 test('applyTakeoffBackupToState round trip: every key the IndexedDB backup writes comes back', () => {
-  const keys = BACKUP_PAYLOADS[0];
+  const keys = BACKUP_KEYS;
   const state = freshState(true);
   const { ctx, calls } = makeCtx(state);
   const m = createAnnotationModel(ctx);
@@ -1180,6 +1216,113 @@ test('applyTakeoffBackupToState: header pins absent from an older backup keep th
   const m = createAnnotationModel(makeCtx(state).ctx);
   m.applyTakeoffBackupToState({ counters: [] });
   assert.deepStrictEqual(state.stripPins, { measureBtn: true });
+});
+
+// --- R12: one field list, one hydrator for every intake ----------------------
+
+test('a backup with every field set changes exactly the palette, the project fields and the sheets (the boot pre-apply\'s Discard list)', () => {
+  const state = freshState(true);
+  Object.assign(state, { iconNames: {}, iconOrder: null, codes: null, bidCheck: { manual: {} }, ceilingHeightFt: null, makeUpFt: null, waterSettings: null, showGridOverlay: false, gridSettings: null });
+  const before = {};
+  Object.keys(state).forEach((k) => { before[k] = JSON.stringify(state[k]); });
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.applyTakeoffBackupToState(sentinelPayload(BACKUP_KEYS));
+  const keys = new Set([...Object.keys(before), ...Object.keys(state)]);
+  const changed = [...keys].filter((k) => before[k] !== JSON.stringify(state[k])).sort();
+  assert.deepStrictEqual(changed, [...PALETTE_FIELDS, ...TAKEOFF_BACKUP_PROJECT_FIELDS, 'pages'].sort());
+});
+
+test('freshProjectFields: every project field but the carried view settings, fresh objects each call', () => {
+  const fresh = freshProjectFields();
+  const keys = Object.keys(fresh);
+  CARRIED_VIEW_FIELDS.forEach((k) => assert.ok(!keys.includes(k), k + ' is carried, not reset'));
+  assert.deepStrictEqual([...keys, ...CARRIED_VIEW_FIELDS].sort(), TAKEOFF_BACKUP_PROJECT_FIELDS.slice().sort());
+  assert.deepStrictEqual(fresh.ductSettings, DUCT_SETTINGS_DEFAULTS);
+  assert.notStrictEqual(fresh.ductSettings, DUCT_SETTINGS_DEFAULTS);
+  assert.deepStrictEqual(fresh.waterSettings, normalizeWaterSettings(null));
+  assert.deepStrictEqual(fresh.bidCheck, { manual: {} });
+  const again = freshProjectFields();
+  assert.notStrictEqual(again.groups, fresh.groups);
+  assert.notStrictEqual(again.bidCheck, fresh.bidCheck);
+  assert.deepStrictEqual(freshProjectFields({ stripPins: { measureBtn: true } }).stripPins, { measureBtn: true });
+});
+
+test('hydrateStateFromProjectData: a project saved without duct knobs gets the defaults, not the last project\'s', () => {
+  const state = freshState(true);
+  state.ductSettings = { ...DUCT_SETTINGS_DEFAULTS, seamWastePct: 3, deckHeightFt: 14 };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.hydrateStateFromProjectData({});
+  assert.deepStrictEqual(state.ductSettings, DUCT_SETTINGS_DEFAULTS);
+  m.hydrateStateFromProjectData({ ductSettings: { maxFlexFt: 8, fittingMode: 'bogus' } });
+  assert.deepStrictEqual(state.ductSettings, { ...DUCT_SETTINGS_DEFAULTS, maxFlexFt: 8 });
+});
+
+test('applyTakeoffBackupToState: the backup\'s duct knobs read over the defaults; none keeps the session\'s', () => {
+  const state = freshState(true);
+  state.ductSettings = { ...DUCT_SETTINGS_DEFAULTS, maxFlexFt: 9 };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.applyTakeoffBackupToState({ counters: [] });
+  assert.strictEqual(state.ductSettings.maxFlexFt, 9);
+  m.applyTakeoffBackupToState({ ductSettings: { seamWastePct: 12 } });
+  assert.deepStrictEqual(state.ductSettings, { ...DUCT_SETTINGS_DEFAULTS, seamWastePct: 12 });
+});
+
+function twoSheetState() {
+  const state = freshState(true);
+  state.pages.push({ label: 'plan, p2', canvases: [], scale: null, rotation: 0 });
+  return state;
+}
+
+test('hydrateStateFromProjectData: counts the saved sheets and the ones that landed on this plan', () => {
+  const state = twoSheetState();
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const r = m.hydrateStateFromProjectData({ pages: [{ index: 0, canvases: [] }, { index: 1 }, { index: 4, canvases: [] }] });
+  assert.deepStrictEqual(r, { pageEntries: 3, appliedPages: 2 });
+  assert.deepStrictEqual(m.hydrateStateFromProjectData({}), { pageEntries: 0, appliedPages: 0 });
+});
+
+test('hydrateStateFromProjectData scaleFallback: a sheet saved without a scale takes it (Import Canvas\'s legacy scale)', () => {
+  const state = twoSheetState();
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.hydrateStateFromProjectData({ pages: [{ index: 0, scale: { feet: 8 } }, { index: 1 }] }, { scaleFallback: { feet: 4 } });
+  assert.deepStrictEqual(state.pages[0].scale, { feet: 8 });
+  assert.deepStrictEqual(state.pages[1].scale, { feet: 4 });
+  m.hydrateStateFromProjectData({ pages: [{ index: 1 }] });
+  assert.strictEqual(state.pages[1].scale, null, 'no fallback asked for: no scale');
+});
+
+test('hydrateStateFromProjectData legacyScales: page-array scales, else one scale for every sheet; off by default', () => {
+  const state = twoSheetState();
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.hydrateStateFromProjectData({ pageScales: [{ feet: 2 }, { feet: 3 }, { feet: 9 }] }, { legacyScales: true });
+  assert.deepStrictEqual(state.pages.map((p) => p.scale), [{ feet: 2 }, { feet: 3 }]);
+  m.hydrateStateFromProjectData({ scale: { feet: 5 } }, { legacyScales: true });
+  assert.deepStrictEqual(state.pages.map((p) => p.scale), [{ feet: 5 }, { feet: 5 }]);
+  m.hydrateStateFromProjectData({ scale: { feet: 7 }, pageScales: [{ feet: 1 }] });
+  assert.deepStrictEqual(state.pages.map((p) => p.scale), [{ feet: 5 }, { feet: 5 }], 'without the option the legacy fields are not read');
+});
+
+test('hydrateStateFromProjectData trimLayers: the chosen-layer map keeps only the sheets this plan has', () => {
+  const state = twoSheetState();
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.hydrateStateFromProjectData({ activeCanvasIdByPage: { 0: 'a', 1: 'b', 5: 'x', junk: 'y' } }, { trimLayers: true });
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 0: 'a', 1: 'b' });
+  m.hydrateStateFromProjectData({ activeCanvasIdByPage: { 0: 'a', 5: 'x' } });
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 0: 'a', 5: 'x' }, 'without the option the map is taken whole');
+  m.hydrateStateFromProjectData({});
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 0: 'a', 5: 'x' }, 'a project saved without one keeps the map the sheets were built with');
+});
+
+test('hydrateStateFromProjectData canvas-only: a project opened without its PDF drops the last project\'s rooms, zoom cap and knobs', () => {
+  const state = freshState(false);
+  Object.assign(state, { rooms: [{ id: 'old' }], maxZoom: 9, ductSettings: { ...DUCT_SETTINGS_DEFAULTS, seamWastePct: 1 } });
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const r = m.hydrateStateFromProjectData({ counters: [{ id: 'c' }], pages: [{ index: 0, canvases: [] }] });
+  assert.deepStrictEqual(r, { pageEntries: 1, appliedPages: 0 });
+  assert.deepStrictEqual(state.pages, []);
+  assert.deepStrictEqual(state.rooms, []);
+  assert.strictEqual(state.maxZoom, null);
+  assert.deepStrictEqual(state.ductSettings, DUCT_SETTINGS_DEFAULTS);
 });
 
 // MAP-PAGE-DELETE (DECOMPOSITION_MAP R11 / D18): deleting a page is a model op.
@@ -1449,4 +1592,45 @@ test('purgeFromGhosts: tolerant of annotations with no ghosts, a ghost with no s
   const full = typicalAnn();
   assert.deepStrictEqual(purgeFromGhosts(full, 'nope', 'wc'), { changed: 0, removedGhostIds: [] });
   assert.strictEqual(full.ghosts[0].src.counterMarkers.wc.length, 2);
+});
+
+// --- R12: one blank sheet (lifecycle-cloud:blank-pages-helper) ---------------
+
+test('defaultPageLabel: a one-sheet plan is named for the plan, a set numbers its sheets', () => {
+  const m = createAnnotationModel(makeCtx({ pages: [] }).ctx);
+  assert.strictEqual(m.defaultPageLabel('Office TI', 0, 1), 'Office TI');
+  assert.strictEqual(m.defaultPageLabel('Office TI', 0, 3), 'Office TI, p1');
+  assert.strictEqual(m.defaultPageLabel('plan.pdf', 2, 3), 'plan.pdf, p3');
+  // sheet-title-model.js reads the same rule back (a default name may be replaced by the title block's)
+  const { isDefaultPageLabel } = require('./sheet-title-model.js');
+  assert.ok(isDefaultPageLabel(m.defaultPageLabel('plan.pdf', 1, 2)));
+  assert.ok(isDefaultPageLabel(m.defaultPageLabel('Test PDF', 1, 2)));
+});
+
+test('makeBlankPage: one Main layer with the canonical empty marks, a fresh id each time', () => {
+  const m = createAnnotationModel(makeCtx({ pages: [] }).ctx);
+  const pdfPage = { tag: 'p' };
+  const a = m.makeBlankPage(pdfPage, 'P-101', 90);
+  assert.strictEqual(a.pdfPage, pdfPage);
+  assert.strictEqual(a.label, 'P-101');
+  assert.strictEqual(a.scale, null);
+  assert.strictEqual(a.rotation, 90);
+  assert.strictEqual(a.canvases.length, 1);
+  assert.strictEqual(a.canvases[0].name, 'Main');
+  assert.deepStrictEqual(a.canvases[0].annotations, m.makeAnnotations());
+  const b = m.makeBlankPage(pdfPage, 'P-102');
+  assert.strictEqual(b.rotation, 0);
+  assert.notStrictEqual(b.canvases[0].id, a.canvases[0].id);
+});
+
+test('buildBlankPagesFromPdf: every page of the document, in order, named for the plan', async () => {
+  const m = createAnnotationModel(makeCtx({ pages: [] }).ctx);
+  const pdf = { numPages: 3, getPage: async (n) => ({ n }) };
+  const pages = await m.buildBlankPagesFromPdf(pdf, 'Office TI');
+  assert.deepStrictEqual(pages.map((p) => p.pdfPage.n), [1, 2, 3]);
+  assert.deepStrictEqual(pages.map((p) => p.label), ['Office TI, p1', 'Office TI, p2', 'Office TI, p3']);
+  assert.ok(pages.every((p) => p.rotation === 0 && p.scale === null && p.canvases.length === 1));
+  assert.strictEqual(new Set(pages.map((p) => p.canvases[0].id)).size, 3);
+  const one = await m.buildBlankPagesFromPdf({ numPages: 1, getPage: async () => ({}) }, 'Office TI');
+  assert.strictEqual(one[0].label, 'Office TI');
 });

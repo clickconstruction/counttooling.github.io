@@ -1677,6 +1677,47 @@ test('DUCT_FITTING_EQ_FT / ductFittingEqFt: band boundaries by governing dimensi
   assert.strictEqual(dm.DUCT_SETTINGS_DEFAULTS.terminalAllowanceInWg, 0.10);
 });
 
+// R12: one normalizer for the Duct Schedule knobs, over the defaults. The
+// schedule's getter, every project intake and the knob fallbacks read through it.
+test('normalizeDuctSettings: nothing saved reads as the defaults, a fresh copy each time', () => {
+  [undefined, null, 'junk', 7, []].forEach((raw) => {
+    assert.deepStrictEqual(dm.normalizeDuctSettings(raw), dm.DUCT_SETTINGS_DEFAULTS);
+  });
+  const a = dm.normalizeDuctSettings(null);
+  a.seamWastePct = 99;
+  assert.strictEqual(dm.DUCT_SETTINGS_DEFAULTS.seamWastePct, 15, 'the defaults table is never written');
+  assert.notStrictEqual(dm.normalizeDuctSettings(null), dm.normalizeDuctSettings(null));
+});
+
+test('normalizeDuctSettings: a saved knob wins, a missing one is the default, never the last project\'s', () => {
+  const raw = { seamWastePct: 12, fittingMode: 'factor', deckHeightFt: 14, countVdPerTap: false };
+  const ds = dm.normalizeDuctSettings(raw);
+  assert.deepStrictEqual(ds, { ...dm.DUCT_SETTINGS_DEFAULTS, seamWastePct: 12, fittingMode: 'factor', deckHeightFt: 14, countVdPerTap: false });
+  assert.notStrictEqual(ds, raw, 'a new object; the saved one is not written');
+  assert.deepStrictEqual(raw, { seamWastePct: 12, fittingMode: 'factor', deckHeightFt: 14, countVdPerTap: false });
+  // 0 is a legal percentage and a legal terminal allowance
+  const zero = dm.normalizeDuctSettings({ seamWastePct: 0, fittingFactorPct: 0, terminalAllowanceInWg: 0 });
+  assert.strictEqual(zero.seamWastePct, 0);
+  assert.strictEqual(zero.fittingFactorPct, 0);
+  assert.strictEqual(zero.terminalAllowanceInWg, 0);
+  // a key this version does not know rides along
+  assert.strictEqual(dm.normalizeDuctSettings({ futureKnob: 3 }).futureKnob, 3);
+});
+
+test('normalizeDuctSettings: a knob that is not legal reads as its default', () => {
+  const ds = dm.normalizeDuctSettings({
+    seamWastePct: -1, fittingFactorPct: 'forty', fittingMode: 'weird',
+    frictionInPer100ft: 0, maxVelocityFpm: -5, terminalAllowanceInWg: -0.1,
+    deckHeightFt: 0, maxFlexFt: NaN, countVdPerTap: undefined,
+  });
+  assert.deepStrictEqual(ds, dm.DUCT_SETTINGS_DEFAULTS);
+  // countVdPerTap is on unless it was turned off (pre-D8 saves have no key)
+  assert.strictEqual(dm.normalizeDuctSettings({ countVdPerTap: 0 }).countVdPerTap, true);
+  assert.strictEqual(dm.normalizeDuctSettings({ countVdPerTap: false }).countVdPerTap, false);
+  // deckHeightFt is null until set
+  assert.strictEqual(dm.normalizeDuctSettings({ deckHeightFt: -3 }).deckHeightFt, null);
+});
+
 // A scaled network: raw units ÷ 10 = feet. Trunk 0→400 east with a 10' auto
 // riser at vertex 0; Branch A taps at x=100 and runs 300 south; Branch B
 // taps at x=300, runs 100 south then 50 east (a 90° elbow).

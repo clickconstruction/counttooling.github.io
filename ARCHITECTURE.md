@@ -28,7 +28,7 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 8,637 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 8,628 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,125 | Done — the extracted save/sync seam module (Stages 1–6), 44 node tests. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,930 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
@@ -334,6 +334,7 @@ modules. Candidates in priority order:
 | [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js) | Node tests for the user-activity event allowlist (R2): the newest `supabase/migrations/*log_user_event*` re-creation accepts every `logUserEvent('…')` / `reportClientError('…')` literal in app.js, features/*.js, save-engine.js and report.js (the one non-literal call, reportClientError's `kind` pass-through, is asserted to be the only one); each re-creation in the chain carries every earlier type with no duplicates; the catch-up migration carries its fifteen. Text reads only, no database. |
 | [scripts/lib/markers.js](scripts/lib/markers.js) + [markers.test.js](markers.test.js) | Shared seam for the committed-artifact generators: `spliceMarkedRegion` (BEGIN/END generated-region splice used by build-toc / build-macros) and `findConflictMarkerLine`/`assertNoConflictMarkers` — the "resolve merge conflicts before stamping" guard build-toc / build-filemap / build-macros / build-sw all run before touching a committed file (why: see the build-sw bullet under PWA/offline). [markers.test.js](markers.test.js) pins both with `node:test`; `npm run test:unit` |
 | [hotkeys.spec.js](hotkeys.spec.js) | Playwright regression for hotkeys-as-data — the executable half of the contract (`build:macros --check` gates the rendered half): every non-bespoke `HOTKEYS` entry resolves to a registered runner (`App.__hotkeyRunnerNames`) or a real element, both directions; behavior smoke through the real keydown path (d arms Measure on a scaled page, m resets, j toggles snap); viewer gating riding the table (h no-ops for viewers, d still works); and every runnable key lit on the Keyboard Map end-to-end. `npx playwright test hotkeys.spec.js` |
+| [tool-resets.spec.js](tool-resets.spec.js) | Playwright regression for MAP-RESETS (R09: D05, D17, D21, D26): V, one room corner, then M leaves no corner and no room band in Move; Esc drops a half-drawn schedule box with the tool; a zone corner does not survive the Note button, nor a highlight corner Quick Line; a note, a zone and a ghost dragged off the canvas are committed and marked dirty, and a ghost comes back in only while the button is held. The bands are read off `#annCanvas` pixels against the sheet's own baseline. `npx playwright test tool-resets.spec.js` |
 | [eslint.config.js](eslint.config.js) | ESLint v9 flat config for all `.js` (browser modules + Node tooling + `app.js`); `npm run lint`. Enumerates report.js's cross-file project globals as `readonly` so `no-undef`/`no-redeclare` stay on. The `app.js` group auto-derives the sibling modules' exports as `readonly` globals (via `require()`, including [idb.js](idb.js), [format.js](format.js), [icon-render.js](icon-render.js), and [line-metrics.js](line-metrics.js)) and runs the recommended set as warnings with `no-undef` re-raised to error. The constants-only pure-module group (`idb.js` + `format.js`) gets a constants-only global set, [icon-render.js](icon-render.js) gets its own icons-only group (`icons.js` globals), and [line-metrics.js](line-metrics.js) gets a geometry-only group (`geometry.js` globals) — in all cases not their own exports, which would trip `no-redeclare`. A `features/*.js` group lints the registry feature files (browser globals + `module` readonly, `sourceType: 'script'`, `no-undef` error, `no-unused-vars` off since they exist to publish onto `App`). Now that the JS lives in `app.js` (not an inline `<script>`), the whole app is linted |
 
 High level: the `<head>` of [index.html](index.html) loads `config.js`, the
@@ -640,59 +641,59 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1611 - PDF render bitmap cache
 - L1665 - Sharp crop tile (deep-zoom sharpening + window-first commits)
 - L1676 - PDF Rendering
-- L2511 - Recent bids
-- L2538 - UI Render Functions
-- L3170 - Placing selection (setActiveCounterType / setActiveLineType)
-- L3234 - Inline rename & polyline edit mode
-- L3350 - Modal primitives (showModal / hideModal)
-- L3491 - Toasts & line color picker
-- L3559 - Airboard cloud sync
-- L3604 - Supabase RPC & presence heartbeat
-- L3644 - User activity / event telemetry
-- L3703 - Supabase auth & dev auth
-- L3889 - [sync] Checkout subscription & permission refresh
-- L3899 - Modals & Handlers
-- L3967 - PDF intake (upload, test PDF, hashing)
-- L3975 - Toolbar tool buttons
-- L4187 - Tool sidebar buttons & legend overlay
-- L4278 - Add Line Type modal
-- L4474 - Line color & sidebar handlers
-- L4685 - Polyline modal & drawing
-- L4741 - Zoom bar & page navigation
-- L4767 - Export canvas JSON
-- L4791 - PDF download helpers
-- L4800 - View-link URL helpers & show-highlights/notes
-- L4872 - Custom icon upload handler
-- L4882 - Export & report dropdown menus
-- L4975 - Sidebar drawer toggles
-- L5006 - Mobile actions burger menu pointer & header logo
-- L5018 - User Activity pointer (format.js + features/user-activity.js)
-- L5030 - My Settings pointer (features/my-settings.js)
-- L5055 - Project Settings doors & local rows
-- L5170 - Auth & settings entry buttons
-  - L5215 - Project Settings checkout & Save Status bell
-  - L5322 - [sync] Checkout expired recovery
-  - L5378 - [sync] Turn In
-  - L5443 - Share modal pointer & copy-project openers
-  - L5474 - Settings menu actions
-  - L5486 - Auth sign-in form
-  - L5511 - Save Project modal
-  - L5523 - Checkout expired recovery modal wiring
-  - L5628 - Last-session restore prompt
-  - L5635 - Canvas Repair modal wiring
-- L5823 - Canvas Event Handlers
-- L6369 - Event Binding
-- L6379 - Aim loupe (mobile press-hold precise placement)
-- L6532 - Zoom transform preview & commit
-- L6611 - Canvas mouse, wheel & touch handlers
-- L7412 - Global dropdown dismissal & keyboard hotkeys
-- L7819 - [sync] Manual save to cloud
-- L7829 - [sync] Auto-save
-- L7836 - [sync] Local backup (IndexedDB takeoff state)
-- L7969 - [sync] Checkout keep-alive
-- L7983 - App feature registry
-- L8360 - View-only mode
-- L8366 - Init / boot
+- L2513 - Recent bids
+- L2540 - UI Render Functions
+- L3166 - Placing selection (setActiveCounterType / setActiveLineType)
+- L3276 - Inline rename & polyline edit mode
+- L3392 - Modal primitives (showModal / hideModal)
+- L3533 - Toasts & line color picker
+- L3601 - Airboard cloud sync
+- L3646 - Supabase RPC & presence heartbeat
+- L3686 - User activity / event telemetry
+- L3745 - Supabase auth & dev auth
+- L3931 - [sync] Checkout subscription & permission refresh
+- L3941 - Modals & Handlers
+- L4009 - PDF intake (upload, test PDF, hashing)
+- L4017 - Toolbar tool buttons
+- L4178 - Tool sidebar buttons & legend overlay
+- L4263 - Add Line Type modal
+- L4459 - Line color & sidebar handlers
+- L4670 - Polyline modal & drawing
+- L4727 - Zoom bar & page navigation
+- L4753 - Export canvas JSON
+- L4777 - PDF download helpers
+- L4786 - View-link URL helpers & show-highlights/notes
+- L4858 - Custom icon upload handler
+- L4868 - Export & report dropdown menus
+- L4961 - Sidebar drawer toggles
+- L4992 - Mobile actions burger menu pointer & header logo
+- L5004 - User Activity pointer (format.js + features/user-activity.js)
+- L5016 - My Settings pointer (features/my-settings.js)
+- L5041 - Project Settings doors & local rows
+- L5156 - Auth & settings entry buttons
+  - L5201 - Project Settings checkout & Save Status bell
+  - L5308 - [sync] Checkout expired recovery
+  - L5364 - [sync] Turn In
+  - L5429 - Share modal pointer & copy-project openers
+  - L5460 - Settings menu actions
+  - L5472 - Auth sign-in form
+  - L5497 - Save Project modal
+  - L5509 - Checkout expired recovery modal wiring
+  - L5614 - Last-session restore prompt
+  - L5621 - Canvas Repair modal wiring
+- L5809 - Canvas Event Handlers
+- L6355 - Event Binding
+- L6365 - Aim loupe (mobile press-hold precise placement)
+- L6518 - Zoom transform preview & commit
+- L6597 - Canvas mouse, wheel & touch handlers
+- L7402 - Global dropdown dismissal & keyboard hotkeys
+- L7808 - [sync] Manual save to cloud
+- L7818 - [sync] Auto-save
+- L7825 - [sync] Local backup (IndexedDB takeoff state)
+- L7958 - [sync] Checkout keep-alive
+- L7972 - App feature registry
+- L8351 - View-only mode
+- L8357 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -819,7 +820,7 @@ Annotated, in rough order:
 - Event Binding — the canvas-wrapper handle + the bitmap-prefetch cancellation guards
 - Aim loupe (mobile press-hold precise placement) — the loupe core only: `isAimingTool`, `enterAiming`/`cancelAiming`, `drawAimLoupe`, `commitAimPoint`, `abortVertexDrag` (its call sites live in the mouse/touch handlers below)
 - Zoom transform preview & commit — `lastRenderedZoom`, `updateContainerTransform`, `syncZoomIndicators`, `commitWheelZoom`/`commitPinchZoom`
-- Canvas mouse, wheel & touch handlers — the mousedown/mousemove/mouseup stack (pan, legend drag/resize, note drag/resize, vertex drag, aim-loupe entry), the wheel-zoom rAF, the touch pinch/pan/tap/long-press stack, `handleTouchAsCanvasTap`
+- Canvas mouse, wheel & touch handlers — the mousedown/mousemove/mouseup stack (pan, legend drag/resize, note drag/resize, vertex drag, aim-loupe entry; every mark drag ends in `endPointerDrag`, from the canvas mouseup or, for a release off the canvas, the window mouseup, MAP-RESETS), the wheel-zoom rAF, the touch pinch/pan/tap/long-press stack, `handleTouchAsCanvasTap`
 - Global dropdown dismissal & keyboard hotkeys — the document-level click-outside closer for every dropdown + the hotkey/Escape/arrow-key handler
 - [sync] Manual save to cloud — `performSaveProjectToCloud`
 - [sync] Auto-save — `performAutoSave`, `noteAutoSaveOutcome`, `recordAutosaveLatency`
@@ -911,6 +912,7 @@ Annotated, in rough order:
 | Grid overlay | `showGridOverlay` or `gridSettingsModal` or `drawGrid` or `snapToGrid` |
 | Undo / Redo | `undoStack` or `redoStack` or `pushUndoSnapshot` |
 | Quick Keys (number row) | `numberKeyBindings` or `triggerQuickKey` or `quickKeysModal` (features/quick-keys.js); the shared selection path: `setActiveCounterType` / `setActiveLineType` (app.js) |
+| Tool starts / Move reset | `clearToolStarts` (every tool's pending start, the one list) or `resetToMove` (#moveBtn and M); both on `App`. Drag end: `endPointerDrag` / `pointerDragLive` (app.js) |
 | Macros / Keyboard Map | `macrosModal` or `macrosSeeKeyboard`; the board: `openKeyboardMapModal` / `keyboardMapBoard` / `collectMacroKeys` (features/keyboard-map.js) |
 | Middle mouse pan | `state.isPanning` or `state.panStart` |
 | Show Highlights / Notes | `addHighlightsToPdf` or `addNotesToPdf` or `hasAnyNotes` |

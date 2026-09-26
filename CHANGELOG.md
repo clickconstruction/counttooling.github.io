@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(icons): a built-in icon picked after an icon search fills in the fixture units, as it did before (MAP-ICON-SEARCH, 2026-09-26)
+
+Found while fixing MAP-ICON-PREFILL. On the Create tab, picking a built-in icon with the name field
+empty names the counter after the icon and fills Fixture units from the table (a Shower reads 4 on
+a public job). Once she had typed in Search icons, that stopped: the search rebuilt the built-in grid
+with a click of its own that filled the name and counted the pick, but never re-read the table, so
+the field stayed empty and the counter went out with no fixture units unless she typed them. Clearing
+the search did not help, because the cleared grid was rebuilt by the same copy.
+
+The built-in grid has one builder now, `buildCreateIconGrid(icons, selectedIdx)` in
+features/counter.js, beside MAP-ICON-PREFILL's builder for the custom grid. The Create panel's prep
+builds it and the search rebuilds through it, so the pick cannot drift from the one on open again.
+The search keeps its empty state for a word no icon matches and still selects its first result
+unless a custom icon is selected.
+
+Pinned by water-fixtures.spec.js: the Shower picked before a search, after searching "shower" and
+after clearing the search reads the same name and the same fixture units. It was red before the fix
+(4 before the search, empty after).
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

@@ -13,6 +13,39 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(status-bar): a signed-in estimator sees the tool hint and the live readouts (MAP-HINTS, 2026-09-26)
+
+The decomposition map's R05 / D01, after the owner's call of 2026-09-25. The status bar's tool
+hint ("Click start point", "Tap second corner") and the live numbers that ride it, the feet-inches
+of a Line or Polyline being drawn, the duct trace's "S = size" and pounds, the Chain tool's next
+drop and the tag the plan reads beside the Counter cursor, were composed only in the signed-out
+branch of features/status-bar.js `updateStatus`. Every production estimator is signed in, so none
+of them ever saw any of it, and every spec that pinned the hint ran signed out.
+
+The ladder is now `toolHintFor(state, press, readouts, enums)` in a new pure module,
+[status-hint-model.js](status-hint-model.js) (`window.StatusHintModel`, guarded CommonJS footer),
+returning `{ text, keyed }`: the hint as shown, and the same hint with any live readout swapped for
+its fixed worst-case placeholder, which is what the one-line fit cache measures. The readouts go in
+as readers and only the armed tool's is called, so the other three cost nothing per mousemove.
+`updateStatus` is four passes: renderSyncIndicators (the dot, square, labels and the mode text the
+sync state owns), composeMode (that text plus the hint, negotiated onto the bar), renderTotals and
+renderMeasureChip. Signed in, the hint stands alone in the mode, never behind a leading bar; a
+signed-in viewer's "Viewing, … is editing" line is unchanged; the signed-in labels ride the fit key,
+since "Canvas Uploading..." is wider than "Canvas" at the same width.
+
+One rule changed with it. The fit asked whether the actions still shared the mode's row, which only
+holds while the bar without a hint is one line. Signed in, the sync labels alone make it two rows at
+769 to 900 px and on a phone, so the hint would never have shown there, even on a phone where the
+mode has a zero flex basis and takes no room. The fit now asks whether the hint costs the bar a row
+(the bar's height against the narrowest bare text); on a one-line bar that is the old answer, and
+the signed-out D19 ladder is unchanged.
+
+Pinned by status-hint-model.test.js (every TOOL's hint in both press words, every readout's keyed
+placeholder, a new TOOL fails until it is given a hint or none) and footer-hint.spec.js "MAP-HINTS":
+the Line, Duct and Measure hints on a signed-in bar with the readout live and an autosave in flight,
+the viewer line exact with Measure armed, a sweep from 1500 px to 375 px where the hint never adds a
+row or overflows, and a real dev-auth sign-in that self-skips without DEV_AUTH_*.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

@@ -16,9 +16,10 @@
  * Clicks stage vertices (45° snap + bounds, the commitPolylinePoint recipe);
  * `S` / tapping the cursor size chip / the finish-bar Size button open the
  * step popover (features/duct-size-popover.js — that file owns the surface,
- * THIS file owns what a pick means: applyDuctSizeStep ends the current
- * segment at the LAST placed vertex and starts the next at the new size,
- * recording the step on sizeSteps). Enter / double-click / the finish bar
+ * THIS file routes a pick: applyDuctSizeStep ends the current segment at the
+ * LAST placed vertex and starts the next at the new size, recording the step
+ * on sizeSteps; the draft math itself, and Esc's vertex pop, are duct-model's
+ * ductDraftApplySizeStep / ductDraftPopVertex, node-pinned). Enter / double-click / the finish bar
  * commit the draft through duct-model's makeDuctRun onto the active canvas's
  * annotations.ductRuns (drawn by canvas-draw.js, so runs re-render on reload
  * and ride save/load/undo untouched). Esc is the staged T2-02 ladder: close
@@ -350,24 +351,13 @@
 
   // A popover pick: end the current segment at the LAST placed vertex, start
   // the next at the new size, and record the step (D3's transition input).
-  // With no vertex placed yet (or a second pick at the same vertex) the
-  // boundary already exists — the size is REPLACED, not stacked, so the
-  // duct-model "startVertexIdx strictly ascending" invariant holds.
+  // What a pick does to the draft is duct-model's ductDraftApplySizeStep
+  // (node-pinned): a second pick at the same vertex REPLACES the size, and
+  // a pick back to the previous segment's size undoes the step
+  // (MAP-DUCT-STEP), so no phantom transition is priced.
   function applyDuctSizeStep(newSize) {
     const draft = App.state.drawingDuct;
-    if (!draft || !isDuctSize(newSize)) return;
-    const from = currentDuctSize();
-    if (from && formatDuctSize(from) === formatDuctSize(newSize)) return;   // no-op pick
-    const last = draft.segments[draft.segments.length - 1];
-    const lastVertexIdx = draft.vertices.length - 1;
-    if (draft.vertices.length === 0 || last.startVertexIdx === lastVertexIdx) {
-      last.size = cloneDuctSize(newSize);
-      const step = draft.sizeSteps.find((s) => s.vertexIdx === last.startVertexIdx);
-      if (step) step.to = cloneDuctSize(newSize);
-    } else {
-      draft.segments.push({ startVertexIdx: lastVertexIdx, size: cloneDuctSize(newSize) });
-      draft.sizeSteps.push({ vertexIdx: lastVertexIdx, from: cloneDuctSize(from), to: cloneDuctSize(newSize) });
-    }
+    if (!draft || !ductDraftApplySizeStep(draft, newSize)) return;
     App.renderAnnotations();
     App.updateUI();
   }
@@ -477,17 +467,9 @@
     if (App.isDuctPopoverOpen && App.isDuctPopoverOpen()) { App.closeDuctSizePopover(); return true; }
     const draft = state.drawingDuct;
     if (!draft) return false;
-    if (draft.vertices.length > 0) {
-      draft.vertices.pop();
-      const n = draft.vertices.length;
-      // Prune segment boundaries (and their recorded steps) that no longer
-      // have a vertex to sit on; the starting segment always survives.
-      while (draft.segments.length > 1 && draft.segments[draft.segments.length - 1].startVertexIdx >= n) {
-        const dropped = draft.segments.pop();
-        draft.sizeSteps = draft.sizeSteps.filter((s) => s.vertexIdx !== dropped.startVertexIdx);
-      }
-      // D8: rise/drop entries anchored to the popped vertex go with it.
-      if (draft.verticalFt) draft.verticalFt = draft.verticalFt.filter((e) => e.vertexIdx < n);
+    // duct-model's ductDraftPopVertex pops one vertex and prunes the segment
+    // boundaries, steps and D8 rise/drop entries that no longer have a vertex.
+    if (ductDraftPopVertex(draft)) {
       App.renderAnnotations();
       App.updateUI();
     } else {

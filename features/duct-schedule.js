@@ -642,7 +642,8 @@
   });
   // D8: deck height (empty clears — the auto-riser disarms), max-flex cap
   // (re-renders the body so the ⚠ labels track), VD-per-tap toggle (re-renders
-  // so the Volume damper rows appear/disappear live).
+  // so the Volume damper rows appear/disappear live). Both also run updateUI,
+  // like friction and the terminal allowance: the Bid Check reads them.
   const deckInput = document.getElementById('ductDeckHeight');
   if (deckInput) deckInput.addEventListener('change', () => {
     const v = parseFloat(deckInput.value);
@@ -660,6 +661,7 @@
     syncDesignRow();
     App.markProjectDirty();
     renderScheduleBody();
+    App.updateUI();   // MAP-DUCT-STEP: the Bid Check's "Flex drops within max" row re-reads it
   });
   const vdBtn = document.getElementById('ductVdPerTapBtn');
   if (vdBtn) vdBtn.onclick = () => {
@@ -668,6 +670,7 @@
     syncDesignRow();
     App.markProjectDirty();
     renderScheduleBody();
+    App.updateUI();   // MAP-DUCT-STEP: the static path's per-tap VD feet (Bid Check row, system headers) re-read it
   };
   const copyBtn = document.getElementById('ductScheduleCopy');
   if (copyBtn) copyBtn.onclick = async () => {

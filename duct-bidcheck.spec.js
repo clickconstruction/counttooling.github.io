@@ -199,6 +199,38 @@ test.describe('Duct Bid Check (D9)', () => {
     expect(errors).toEqual([]);
   });
 
+  test('the schedule\'s Max flex knob refreshes the Bid Check flex row at once, with no other action (MAP-DUCT-STEP)', async ({ page }) => {
+    await page.evaluate(() => {
+      const s = window.state;
+      s.groups.push({ id: 'g1', name: 'RTU-1', color: '#e05d5d', equipmentTag: 'RTU-1' });
+      s.groupsEnabled = true;
+      const icon = window.App.getOrderedIcons()[0].value;
+      s.counters.push({ id: 'c-b', name: 'Diffuser B', icon, color: '#4a9eff', cfm: 200, flexDropFt: 9 });
+      const ann = window.App.ensureActiveCanvas(s.pages[0]).annotations;
+      ann.ductRuns = [window.makeDuctRun({
+        id: 'run-1', name: 'Trunk', airside: 'supply', pressureClass: '1', systemGroupId: 'g1',
+        vertices: [{ x: 100, y: 100 }, { x: 500, y: 100 }],
+        segments: [{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }],
+      })];
+      ann.counterMarkers['c-b'] = [{ x: 400, y: 108, id: 'm2' }];
+      window.App.reinferDuctFittings(0);
+      window.App.updateUI();
+    });
+    await page.click('#bidCheckSectionTitle');   // expand the panel (collapsed by default)
+    const flexDetail = page.locator('#bidCheckList .bid-check-row[data-row-id="duct-flex-max"] .bid-check-detail');
+    await expect(flexDetail).toHaveText("1 drop over 6' max ⚠ (RTU-1)");
+
+    // The knob lives on the schedule's Polish row. A change must reach the
+    // panel by itself; the short timeout keeps a later autosave or an
+    // unrelated redraw from passing it by accident.
+    await page.evaluate(() => window.App.openDuctScheduleModal());
+    await page.locator('#ductMaxFlex').fill('10');
+    await page.locator('#ductMaxFlex').dispatchEvent('change');
+    await expect(flexDetail).toHaveText("1 drop · all within 10' ✓", { timeout: 1000 });
+    await expect(page.locator('#bidCheckList .bid-check-row[data-row-id="duct-flex-max"]')).toHaveClass(/\bok\b/, { timeout: 1000 });
+    expect(errors).toEqual([]);
+  });
+
   test('export gate: badge, the "Review · Export anyway" toast on Export PDFs and Copy to /Tooling, Review flashes the row, resolved = silent, no duct = no gate', async ({ page }) => {
     // No duct: Export PDFs opens its modal straight away, no badge, no toast.
     await page.evaluate(() => { window.state.counters.push({ id: 'c1', name: 'Thing', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547' }); window.App.ensureActiveCanvas(window.state.pages[0]).annotations.counterMarkers.c1 = [{ x: 50, y: 50, id: 'm0' }]; window.App.updateUI(); });

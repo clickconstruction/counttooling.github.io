@@ -13,6 +13,35 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(duct): changing your mind back to the previous size prices no transition, and the flex and damper knobs refresh the Bid Check (MAP-DUCT-STEP, 2026-09-26)
+
+The decomposition map's R04 (defects D07 and D08). Tracing duct, picking a new size at a vertex and
+then the size you had before, at that same vertex, left a boundary with the same size on both
+sides: the pick replaced the new segment's size but never looked at the one before it. The
+committed run carried a size step from 24×12 to 24×12, and the fitting walk
+(`inferAutoDuctFittings`) logged a transition at every boundary without comparing, so the
+schedule, the sidebar and the static path priced a fitting that was not there. A pick that lands
+back on the previous segment's size now undoes the step: the segment and its recorded step go.
+And the walk skips a boundary whose two sides are the same size, so a run saved with the phantom
+boundary stops pricing it the next time its sheet's fittings are worked out.
+
+What a pick and an Esc pop do to the draft is now pure: duct-model.js's `ductDraftApplySizeStep`
+and `ductDraftPopVertex` (the pop carries the rise/drop prune Esc already did), and
+features/duct-tool.js's `applyDuctSizeStep` / `handleDuctEscape` delegate to them.
+
+Separately, on the Duct Schedule's Polish row, the Max flex field and the VD-per-tap toggle
+re-rendered the schedule but never ran `updateUI`, so the Bid Check's "Flex drops within max" row
+and the static path's damper feet stayed as they were until something else redrew. Both now call
+`App.updateUI()`, as the friction and terminal-allowance fields already did.
+
+Pinned by duct-model.test.js (the step, the no-op, the same-vertex replace, the re-pick back at
+vertex 1 and deeper in a run, the pop's prunes, and the walk skipping an equal-size boundary);
+duct-fittings.spec.js "MAP-DUCT-STEP" (a re-pick back at vertex 1 commits one segment, no step,
+no transition); duct-bidcheck.spec.js "MAP-DUCT-STEP" (Max flex 6 to 10 turns the rendered flex
+row from ⚠ to ✓ with nothing else done); duct-static.spec.js "MAP-DUCT-STEP" (VD-per-tap off
+takes the damper out of the rendered static-path row, 62 to 60 eq ft). All three specs are red on
+the pre-fix code.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

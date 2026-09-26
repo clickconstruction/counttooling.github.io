@@ -230,7 +230,7 @@
       .sidebar-checkout-banner.supabase-only.edit-status-expired,
       .sidebar-checkout-banner.supabase-only.edit-status-viewing { display: flex; }
       body.mobile-view-mode .sidebar-tool-buttons #moveBtnSidebar { order: -1; }
-      .sidebar-logo-icons.supabase-only { display: flex; }
+      .sidebar-logo-icons { display: flex; }
       .sidebar-header-buttons { display: flex; }
       .sidebar-header-buttons #setScaleSidebar { display: flex; justify-content: center; align-items: center; }
       .sidebar-tool-buttons { display: flex; }
@@ -324,7 +324,7 @@
       #canvasSwitcher .canvas-pills, #canvasSwitcher #addCanvasBtn { display: none !important; }
       .canvas-switcher.canvas-layers-desktop-visible .canvas-layers-btn { display: flex !important; }
       body.sidebar-collapsed .sidebar { width: 0; min-width: 0; overflow: hidden; padding: 0; border-right: none; flex-shrink: 0; }
-      body.supabase-enabled .header #settingsGearBtn.supabase-only { display: inline-flex !important; }
+      .header #settingsGearBtn { display: inline-flex !important; }
       body.supabase-enabled .header #saveStatusBtnHeader.supabase-only { display: inline-flex !important; }
       body.supabase-enabled:not(.has-project) .header #saveStatusBtnHeader.supabase-only { display: none !important; }
       .status-bar #statusBarQuickKeys.status-bar-desktop-only { display: inline-flex !important; }

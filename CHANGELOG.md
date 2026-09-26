@@ -13,6 +13,42 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(settings): with Supabase off, the Hide marks eye works and Project Settings has a door (MAP-NOSUPA, 2026-09-26)
+
+The decomposition map's D16, the bug half of R23. A deploy with no cloud config (no
+`SUPABASE_URL` / `SUPABASE_ANON_KEY`, so `SUPABASE_ENABLED` is false) is meant to stay a working
+takeoff app, and two things were dead in it. The Hide marks eye showed once a plan was open but
+did nothing, because its click was bound inside app.js's `if (SUPABASE_ENABLED)` block. And
+Project Settings could not be opened at all: `openProjectSettings`, both gears' clicks and every
+local row in the modal sat in that same block, and both gears were hidden besides. The header
+gear carried `.supabase-only`, and the phone's sidebar-logo gear sat inside the
+`.sidebar-logo-icons` wrapper, which carried it too. So Close project, Add pages, Download PDF
+and Advanced (Export, Import, Canvas Repair, Empty cache) had no way in.
+
+They are bound above the block now, in a new `// SECTION: Project Settings doors & local rows`:
+`openProjectSettings` (it touches the checkout strip only when Supabase is on), both gears, the
+eye, the modal's ×, Add pages, Download PDF, Help, Advanced and its local rows, and
+`closeProject` with its Project Settings row (`App.closeProject` is published there, and the
+check-in it makes goes through `App.checkInCurrentProjectIfHeld` when the block defined it). The
+header gear lost `.supabase-only` and shows on every desktop (its `!important` rule no longer asks
+for `body.supabase-enabled`); on the sidebar logo the class moved from the wrapper to the user
+icon, so the gear shows on a phone and the user icon still hides. The cloud rows in the modal
+(checkout strip, Share, Bid review, Load, Manage, the admin reload) were already hidden by the
+`.supabase-only` pass in `updateUI`; Save Project to Cloud was not, and now hides too. With
+Supabase on nothing changes.
+
+The map had it as about three lines: it counted the eye and the gear's click, but the gears were
+hidden and the modal's own rows were bound in the same block, so the eye and the modal came back
+dead without them. The R23 feature-file split is still to do.
+
+Pinned by supabase-disabled.spec.js, which boots with `/config.js` routed to an empty script (the
+committed config is the only thing that turns the cloud on, so that is the whole seam): on a
+desktop the eye blanks and restores the overlay, the header gear opens Project Settings with no
+cloud row showing, Help and Advanced open, the × closes, and Close project clears the plan after
+the house confirm; on a phone the sidebar-logo gear shows and opens it while the user icon stays
+hidden; and with the committed config the phone still shows the user icon beside the gear. The
+first two were red before the fix.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

@@ -155,6 +155,38 @@ the Line, Duct and Measure hints on a signed-in bar with the readout live and an
 the viewer line exact with Measure armed, a sweep from 1500 px to 375 px where the hint never adds a
 row or overflows, and a real dev-auth sign-in that self-skips without DEV_AUTH_*.
 
+## fix(tour): a trade tour started from Learn opens the sample plan, never the sheets that were open (MAP-TOUR-SHEET, 2026-09-26)
+
+The decomposition map's D06 (R03). The three trade tours' welcome passed the moment any plan was
+open, and nothing reset it. So a reader who finished a lesson, which hands back to the Learn menu,
+and pressed Plumbing tour there ran the tour on the lesson set: the welcome ticked itself on its
+four sheets, and the circles of the steps after it sat at the sample plan's coordinates on P-101,
+where the 20'-0" dimension they ring is not. Over the reader's own local plan the same thing
+happened, and the plumbing and HVAC welcomes stamped their trade onto that plan as well. The
+lessons and the blank tour already reset a sample set or asked; the trade tours did neither, and the
+two lists of what counts as a sample set disagreed (the lessons knew four, the blank tour six).
+
+Now the tourKit (features/tutorial.js) owns one list, `TEACHING_SETS` (each set's name, the pages it
+comes with, and whether LEARN-LEAK watches its palette: every set but the engineered sample plan,
+which the reader opens to practise on), and one reset-or-close, `leaveForTeachingSet(route)`: a
+teaching set as it came is reset without asking, anything else is the reader's own plan and goes
+through Close project, which asks. `openTeachingSet(url, fileName, route)` is that, then the palette
+watch, then the intake. The trade tours' Open the sample plan goes through it, and their welcome
+passes only once `sample-plan` is the open project, so the trade is only ever stamped on the sample.
+The lessons (`openSheetsFor`) and the blank tour (`openBlankSheet`, whose sheet is bytes, so only the
+clearing is shared) call the same branch; lessons.js's own `KNOWN_SETS`, `SET_PAGES` and the unread
+`App.isTeachingSetGrown` are gone, and LESSON-UPLOAD's `App.isTeachingSetOpen` reads the kit. One
+behavior moves with the list: a lesson opened over the tours' sample plan or the engineered sample
+plan now resets it without asking, as the blank tour already did.
+
+Pinned by tutorial.spec.js: a lesson's sheets are open, the Plumbing tour starts from Learn, the
+welcome waits for its button, which opens the sample plan with no question, clean and stamped
+plumbing, and the Measure step's two circles ring the 20'-0" dimension in the open sheet's own text
+layer; and over the reader's own plan the welcome waits without stamping a trade, its button asks
+Close project, Cancel keeps the plan and its mark, and agreeing opens the sample plan with the
+reader's palette. Both are red on the old welcome. lessons.spec.js's guard that a lesson never
+replaces the reader's plan unasked stays green.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

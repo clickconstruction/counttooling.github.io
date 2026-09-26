@@ -81,6 +81,16 @@
           if (state.pages[p.index]) appliedPages++;
           App.applyPageAnnotationsFromData(state.pages[p.index], p, data.scale || null);
         });
+        // D19: the layer each sheet was on comes back too (Export Canvas writes it),
+        // kept to the sheets this plan has.
+        if (data.activeCanvasIdByPage && typeof data.activeCanvasIdByPage === 'object') {
+          const active = {};
+          Object.entries(data.activeCanvasIdByPage).forEach(([k, v]) => {
+            const idx = Number(k);
+            if (Number.isFinite(idx) && state.pages[idx]) active[idx] = v;
+          });
+          state.activeCanvasIdByPage = active;
+        }
         if (data.maxZoom != null) state.maxZoom = data.maxZoom; else state.maxZoom = null;
         App.reconcileOrphanedCountersAndLineTypes();
         App.clearUndoStacks();

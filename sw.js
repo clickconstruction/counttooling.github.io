@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'd576f61290ad';
+const CACHE_VERSION = '7292960a75bc';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -239,7 +239,7 @@ const PRECACHE_SHA256 = {
   '/idb.js': 'ae6bf34b5675883ed82c23229597911165036a2f12e7566dbbd949b86f316f05',
   '/format.js': '8957d41b6a883fe315b79aaf6b4b34f89cc0063970394f00aa16fcbd8a0339a2',
   '/save-utils.js': '3ba2623bcd4981c6289555e2172805a9592ba4c789ea180fc7623f6aa27c9c25',
-  '/annotation-model.js': 'c4d5b6b3d807b73a1a5147cf85de024841aa85c8131926d67437f3b3967a8d50',
+  '/annotation-model.js': 'fa50771737f671423657a7a64b2872e0577d8ed4d06e6cc535f6b81443a9ac67',
   '/undo-stack.js': '981aa3e990f7ab52b9ff93046f274aaf7e43b867ec4b6532005a5a24e9cd5711',
   '/save-engine.js': 'f404367950efe5f0d593c78a5da687f7af6f4e329c4c7434c8ea37672c890cb1',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
@@ -247,7 +247,7 @@ const PRECACHE_SHA256 = {
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
-  '/features/pdf-intake.js': 'd850dd9be7688cbda83b946f8e1c6928b7a9ab5de9d8951870c8daf0fa594911',
+  '/features/pdf-intake.js': '1347bec063701d22d61798a8f9e37a5bb71a8d7a84728adbaf5aa7150f1e891c',
   '/features/line-color.js': '2fd4c7594f1a3686fd9323b7bc4d97f5b9c151b32475d5a4428062a075378ecb',
   '/features/custom-icon-upload.js': '24e2add3e3703bec15a947aaa4b8bc0b52f5a3d7c0927955aa0a980113a1e375',
   '/features/note.js': 'b7cc88aa00ac8a2450c59299959108ae3bd5b18b0e420fd61264533c23347d6b',
@@ -273,7 +273,7 @@ const PRECACHE_SHA256 = {
   '/features/turn-in.js': '1793d17cb9b5dd13082fa7df55d9736b7e2e43e5c82918a22a6115c5395a8667',
   '/features/manage-projects.js': '45d9d7418dd748b6a18089bb1ea9b6daa67a86ad8d3233945cb24a3a762f4a93',
   '/features/user-admin.js': 'f038517632e11bb24f6cc01254611534ead640264baa7fa6152de542791914ec',
-  '/features/load-project.js': 'd3d185bfbfec813d1235577e7f56a1aa4a7356ca6a3118fbfabbd60fe727074a',
+  '/features/load-project.js': '6f46ad20963a6c8aee61ba8a0910c819ab558af62df28694fcc0edef21703204',
   '/features/bid-board.js': '9b566cfd9ea3346fff1f7d0e71637cf1508a3edbda6c6630a938aa680feea8bf',
   '/features/review-flow.js': 'c8fa38b8391329961e85310ec0f7860c094b450796d3599e125e23f66007acf5',
   '/features/copy-project.js': '4f6d61d216687e199d1fa57859306ba1499220bf0e476642238038b936fc7788',
@@ -285,7 +285,7 @@ const PRECACHE_SHA256 = {
   '/features/rfi-flags.js': 'c4165e15ca970b4352e05a9e77a3636211e8e22e77c379a21ddbdb919f408162',
   '/features/notes-ledger.js': '7238cc1f232aaa179bc7cb642f4c1a4fbb1f06ae61e09d14c6e83222d49420a2',
   '/features/share-links.js': '4f7fcaf5af80c431064081b1d3d3d7388943b48ef94983cb83fb1f2c3dab33a9',
-  '/features/import-clear.js': 'e743af49bd39686aba8985bcd30c831fdc6c9b518a206255263cba125a99e3d4',
+  '/features/import-clear.js': '1c137cc87c102c3cf3feab06de444817f094653b54eba4aa6261371607755053',
   '/features/zone-modals.js': '0c72999abd1666415e1cb0d4371dd7d4314d8aeef0b786c8987342ce560556a5',
   '/features/restore-last-session.js': '4203b69c9248a5beb0fbbf44390b0e1568a50a45344f452083801fd1ed201f8c',
   '/features/summary-detail.js': 'd47742a59b401b0f35bda3469b8f7bad7425cda14fcaf88cfb2023caea7b3892',

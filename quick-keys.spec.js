@@ -366,4 +366,73 @@ test.describe('Quick Keys', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // MAP-QUICKKEYS: the shared hydrator (restore-last-session.js when the cloud copy
+  // is newer, and the view-link boot) never applied the project's Quick Keys or its
+  // header pins, so the session kept the last bid's and the next autosave wrote them
+  // over this one's. Driven through the published App seam, signed out: the cloud
+  // fetch around it is the only part a signed-out run cannot reach.
+  test('a restored cloud bid brings back its own Quick Keys and header pins', async ({ page }) => {
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    const after = await page.evaluate(() => {
+      const s = window.state;
+      // The last bid's layout, still in the session.
+      s.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' } };
+      s.stripPins = {};
+      window.App.hydrateStateFromProjectData({
+        counters: [{ id: 'rc', name: 'Restored Counter', icon: '', color: '#4a9eff' }],
+        lineTypes: [],
+        stripPins: { polylineBtn: true },
+        pages: [],
+        numberKeyBindings: { 3: { kind: 'counter', id: 'rc' } },
+      });
+      window.App.updateUI();
+      return {
+        bindings: JSON.parse(JSON.stringify(s.numberKeyBindings)),
+        seeded: s.numberKeyBindingsSeededFromArtboard,
+        polylineBehindMore: window.App.isToolOverflowed('polylineBtn'),
+      };
+    });
+    expect(after.bindings).toEqual({ 3: { kind: 'counter', id: 'rc' } });
+    expect(after.seeded).toBe(false);                 // through applyProjectQuickKeys: the project owns them now
+    expect(after.polylineBehindMore).toBe(false);     // the project's pin, not the trade default
+    await pressDigit(page, '3');
+    expect(await selection(page)).toMatchObject({ counter: 'rc' });
+  });
+
+  // MAP-QUICKKEYS / D44: a cloud project opened without its PDF waits in
+  // state.pendingCanvasLoad; uploading the PDF hydrates it (pdf-intake.js
+  // matchPendingCanvasLoad), which skipped the Quick Keys, the header pins and the
+  // Groups gate. The pending load is seeded as load-project.js leaves it.
+  test('a canvas-only bid gets its Quick Keys, header pins and Groups gate when its PDF is uploaded', async ({ page }) => {
+    await page.evaluate(() => {
+      const s = window.state;
+      s.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' } };   // the last bid's
+      s.stripPins = {};
+      s.groupsEnabled = false;
+      s.pendingCanvasLoad = {
+        projectId: 'p-canvas-only', name: 'Canvas Only Bid', pdf_hash: null,
+        data: {
+          counters: [{ id: 'pc', name: 'Pending Counter', icon: '', color: '#4a9eff' }],
+          lineTypes: [], groups: [], groupsEnabled: true,
+          stripPins: { polylineBtn: true },
+          pages: [],
+          numberKeyBindings: { 6: { kind: 'counter', id: 'pc' } },
+        },
+      };
+    });
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForFunction(() => window.state.pendingCanvasLoad === null && window.state.pages.length > 0, null, { timeout: 10000 });
+    const after = await page.evaluate(() => ({
+      name: window.state.currentProjectName,
+      bindings: JSON.parse(JSON.stringify(window.state.numberKeyBindings)),
+      groupsEnabled: window.state.groupsEnabled,
+      polylineBehindMore: window.App.isToolOverflowed('polylineBtn'),
+    }));
+    expect(after.name).toBe('Canvas Only Bid');
+    expect(after.bindings).toEqual({ 6: { kind: 'counter', id: 'pc' } });
+    expect(after.groupsEnabled).toBe(true);
+    expect(after.polylineBehindMore).toBe(false);
+  });
 });

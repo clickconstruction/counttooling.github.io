@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = 'eb9a67d08fed';
+const CACHE_VERSION = '70db5eeef5b9';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -241,11 +241,11 @@ const PRECACHE_SHA256 = {
   '/idb.js': 'ae6bf34b5675883ed82c23229597911165036a2f12e7566dbbd949b86f316f05',
   '/format.js': '8957d41b6a883fe315b79aaf6b4b34f89cc0063970394f00aa16fcbd8a0339a2',
   '/save-utils.js': '3ba2623bcd4981c6289555e2172805a9592ba4c789ea180fc7623f6aa27c9c25',
-  '/annotation-model.js': 'fa50771737f671423657a7a64b2872e0577d8ed4d06e6cc535f6b81443a9ac67',
+  '/annotation-model.js': '5a2e87285105079fdbc180f671cf170e5b6492073b37ff3536b03e2dae8c9df8',
   '/undo-stack.js': '981aa3e990f7ab52b9ff93046f274aaf7e43b867ec4b6532005a5a24e9cd5711',
   '/save-engine.js': 'f404367950efe5f0d593c78a5da687f7af6f4e329c4c7434c8ea37672c890cb1',
   '/pdf-tile-cache.js': 'd9d520d6399480191df2b97038ce0b453803666d79f1b804a995484e98fc5772',
-  '/app.js': 'fcc3ac49b1fc6cba827e2d4da37bbff4fb5537813dda52f6e3cd60b383b2b0d8',
+  '/app.js': '6c26da0902ee8196be6d315a3a59d078bc86281441310d22818945965d3e3ff8',
   '/features/canvas-repair.js': 'd07714d342ca087e382424751718f1d827754c35f82da63a923ac8ce5781ce15',
   '/features/view-only.js': 'e821262d3ffc7a9751a62c9d86f90c416d9a2d7a81ed72238649e76da2781cfb',
   '/features/save-project.js': 'f907072c269081c3a53fb8f72625df9fc4616b7ef27d8ffccb45d012da6282a5',
@@ -306,7 +306,7 @@ const PRECACHE_SHA256 = {
   '/features/tool-context-menu.js': 'b3eaa212bea057c6497afddaba467cc9ce0a03f4f922559b49b914824fbe1266',
   '/features/bend-override.js': '8de5e5c77f6cb8675a810c46c890f571165787be15f296f3f8846bcddf2541ee',
   '/features/lines-list.js': '84517cb4fe787e74fb94b7f0c2e28bb4e9960208e8a2d838541e85329614fcc6',
-  '/features/pages-list.js': 'dda86248a882058fb9f1e981de6eeafa21476920689af794e2cb33ec34b85ca2',
+  '/features/pages-list.js': 'e14cd8e1f470f7f1b53fd46398028fcaf825acf49affeef60c92b8f778fc39b5',
   '/features/sidebar-lists.js': 'adfd181f3ccb6f61e93d121b7c5b54927b76f5bf3c671c1f2da44a71c19c5b5f',
   '/features/quick-keys.js': 'b7e42d61f4010da4f3db67407b5e5febd210882e1c5aca98a4ce280b674c2705',
   '/features/keyboard-map.js': '32253988b54563a25c1827faacceb13609a9b8e7d15735dc0df8cc00d2c2b278',

@@ -1181,3 +1181,81 @@ test('applyTakeoffBackupToState: header pins absent from an older backup keep th
   m.applyTakeoffBackupToState({ counters: [] });
   assert.deepStrictEqual(state.stripPins, { measureBtn: true });
 });
+
+// MAP-PAGE-DELETE (DECOMPOSITION_MAP R11 / D18): deleting a page is a model op.
+// Everything the session keys by page INDEX shifts with the splice, or the
+// later pages' chosen layers (and the saved map) point at the wrong sheets.
+function threePageState() {
+  const mkPage = (n) => ({ label: 'P' + n, canvases: [{ id: 'main' + n, name: 'Main', annotations: null }, { id: 'waste' + n, name: 'Waste', annotations: null }] });
+  return {
+    pages: [mkPage(1), mkPage(2), mkPage(3)],
+    currentPage: 0,
+    activeCanvasIdByPage: { 1: 'waste2', 2: 'waste3' },
+    peekCanvasIdsByPage: { 0: ['waste1'], 2: [] },
+    selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null,
+    selectedDuctRunId: null, selectedDuctRunPageIdx: null,
+    editingPolyline: null, editingPolyIndex: null,
+    chainStart: null, lastMeasure: null,
+  };
+}
+
+test('deletePageAt: deleting page 1 of 3 shifts every later page\'s chosen layer and peek down one', () => {
+  const state = threePageState();
+  state.currentPage = 2;
+  state.selectedLineId = 'L'; state.selectedLinePageIdx = 2;
+  state.selectedDuctRunId = 'D'; state.selectedDuctRunPageIdx = 1;
+  state.chainStart = { x: 1, y: 2, page: 2 };
+  state.lastMeasure = { text: 'Distance: 4 ft', pageIdx: 1 };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  const map = state.activeCanvasIdByPage;
+  assert.strictEqual(m.deletePageAt(0), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P2', 'P3']);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 0: 'waste2', 1: 'waste3' });
+  assert.strictEqual(state.activeCanvasIdByPage, map, 'reindexed in place: a holder of the map sees the shift');
+  assert.deepStrictEqual(state.peekCanvasIdsByPage, { 1: [] }, 'the deleted page\'s peek goes with it');
+  assert.strictEqual(m.getActiveCanvas(state.pages[0]).id, 'waste2');
+  assert.strictEqual(m.getActiveCanvas(state.pages[1]).id, 'waste3');
+  assert.strictEqual(state.currentPage, 1);
+  assert.deepStrictEqual([state.selectedLineId, state.selectedLinePageIdx], ['L', 1]);
+  assert.deepStrictEqual([state.selectedDuctRunId, state.selectedDuctRunPageIdx], ['D', 0]);
+  assert.strictEqual(state.chainStart.page, 1);
+  assert.strictEqual(state.lastMeasure.pageIdx, 0);
+});
+
+test('deletePageAt: deleting the current page drops what lived on it and lands on the next sheet', () => {
+  const state = threePageState();
+  state.currentPage = 1;
+  state.selectedLineId = 'L'; state.selectedLineIsPoly = true; state.selectedLinePageIdx = 1;
+  state.selectedDuctRunId = 'D'; state.selectedDuctRunPageIdx = 1;
+  state.editingPolyline = { id: 'poly' }; state.editingPolyIndex = 2;
+  state.chainStart = { x: 1, y: 2, page: 1 };
+  state.lastMeasure = { text: 'Distance: 4 ft', pageIdx: 1 };
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  assert.strictEqual(m.deletePageAt(1), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P3']);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 1: 'waste3' });
+  assert.deepStrictEqual(state.peekCanvasIdsByPage, { 0: ['waste1'], 1: [] });
+  assert.strictEqual(state.currentPage, 1, 'the sheet after the deleted one takes its place');
+  assert.deepStrictEqual([state.selectedLineId, state.selectedLinePageIdx], [null, null]);
+  assert.deepStrictEqual([state.selectedDuctRunId, state.selectedDuctRunPageIdx], [null, null]);
+  assert.strictEqual(state.editingPolyIndex, 1, 'an edit on a later page follows it');
+  assert.strictEqual(state.chainStart, null);
+  assert.strictEqual(state.lastMeasure, null);
+});
+
+test('deletePageAt: deleting the last page steps back; the only page is never deleted', () => {
+  const state = threePageState();
+  state.currentPage = 2;
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  assert.strictEqual(m.deletePageAt(2), true);
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1', 'P2']);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, { 1: 'waste2' });
+  assert.deepStrictEqual(state.peekCanvasIdsByPage, { 0: ['waste1'] });
+  assert.strictEqual(state.currentPage, 1);
+  assert.strictEqual(m.deletePageAt(1), true);
+  assert.strictEqual(m.deletePageAt(0), false, 'the only page stays');
+  assert.strictEqual(m.deletePageAt(5), false, 'out of range is a no-op');
+  assert.deepStrictEqual(state.pages.map((p) => p.label), ['P1']);
+  assert.deepStrictEqual(state.activeCanvasIdByPage, {});
+  assert.strictEqual(state.currentPage, 0);
+});

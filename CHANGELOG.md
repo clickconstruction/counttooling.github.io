@@ -53,6 +53,33 @@ case that sets up one run under a flush-valve WC's 1″ minimum and one over a c
 reads each row's Check in the modal and in `buildReportHtml` and wants them identical. Both were red
 before the fix.
 
+## fix(pages): deleting a page keeps every later sheet on the layer it was on (MAP-PAGE-DELETE, 2026-09-26)
+
+The decomposition map's R11 (defect D18). The layer an estimator has chosen on a sheet is kept by
+page number, in `activeCanvasIdByPage`, and so is the show-layers peek's pick
+(`peekCanvasIdsByPage`). Deleting a page from the Pages list moved every later sheet up one but
+left both maps where they were, so each later sheet looked up the layer chosen for the sheet
+before it, found no such layer, and fell back to its first one. The stale map was then saved with
+the bid. The delete lived in the Pages list's renderer and fixed the current page, the selected
+line and the edit by hand; the maps were never on its list.
+
+The delete is a model operation now: annotation-model.js `deletePageAt(i)`, published as
+`App.deletePageAt`. It splices the page and reindexes, in place, everything the session keys by
+page number: both maps, the current page, the selected line and the selected duct run, the
+polyline being edited, the Chain tool's start and the last measurement. What lived on the deleted
+page goes with it, and every number past it steps down one. The Pages list keeps its part: the
+confirm, the undo step, ending an edit on that page, and the redraw. It refuses the only page, as
+the trash button already did.
+
+Undo of a page delete is unchanged and still wrong: the snapshot's pages are laid back over the
+shorter list by index, so the sheet after the deleted one takes its marks, label and scale.
+
+Pinned by annotation-model.test.js (delete page 1 of 3 with layers chosen on pages 2 and 3, delete
+the current page, delete the last page and the only one) and delete-page.spec.js "MAP-PAGE-DELETE"
+(three sheets, a second layer active on sheet 3; delete sheet 2 from the Pages list, and sheet 2,
+which was 3, still shows its layer, with the shifted map in the saved payload). Both were red before
+the fix.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

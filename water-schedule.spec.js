@@ -131,4 +131,48 @@ test.describe('Water Sizing schedule (rung 5)', () => {
     await expect(page.locator('#waterScheduleBtn')).toBeHidden();
     expect(errors).toEqual([]);
   });
+
+  // MAP-REPORT-WATER (D33): the printed report once carried its own verdict copy, with
+  // no size in "under the fixture supply minimum" and no "no size passes". Both now read
+  // WaterModel.waterRowVerdict, so a failing row says the same thing in both places.
+  test('the report prints the modal\'s check for every row, word for word', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await load(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      s.lineTypes.push({ id: 'lt-cold', name: '3/4in copper cold', color: '#4a9eff', curveStyle: 'straight', waterSide: 'cold' });
+      s.lineTypes.push({ id: 'lt-hot', name: '1/2in PEX hot', color: '#e85447', curveStyle: 'straight', waterSide: 'hot' });
+      s.counters.push({ id: 'c-wc', name: 'WC flush valve', icon: 'M0 0h10v10H0z', color: '#a47fff', wsfu: 10 });
+      s.counters.push({ id: 'c-lav', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#47c88e', wsfu: 2 });
+      // a hot cap no size can meet: the hot run is over with nothing that passes
+      s.waterSettings = { capFps: { cold: 8, hot: 0.25 } };
+      const ann = s.pages[0].canvases[0].annotations;
+      // a flush-valve WC on a 3/4 in cold run (under its 1 in minimum); a lavatory on the hot run
+      ann.quickLines.push({ id: 'q-cold', name: 'WC branch', lineTypeId: 'lt-cold', color: '#4a9eff', x1: 100, y1: 200, x2: 400, y2: 200 });
+      ann.quickLines.push({ id: 'q-hot', name: 'Lav hot', lineTypeId: 'lt-hot', color: '#e85447', x1: 100, y1: 500, x2: 400, y2: 500 });
+      ann.counterMarkers['c-wc'] = [{ x: 250, y: 205 }];
+      ann.counterMarkers['c-lav'] = [{ x: 250, y: 505 }];
+      window.App.updateUI();
+    });
+    await page.locator('#waterScheduleBtn').click();
+    await expect(page.locator('#waterScheduleModal')).toHaveClass(/visible/);
+    const modal = await page.locator('#waterScheduleBody table tr:not(:first-child) td:last-child').allTextContents();
+    await page.locator('#waterScheduleClose').click();
+    const report = await page.evaluate(() => {
+      const doc = new DOMParser().parseFromString(window.buildReportHtml(), 'text/html');
+      const h = Array.from(doc.querySelectorAll('h3')).find((x) => x.textContent === 'Water Sizing');
+      let t = h && h.nextElementSibling;
+      while (t && t.tagName !== 'TABLE') t = t.nextElementSibling;
+      return Array.from(t ? t.querySelectorAll('tr') : []).map((tr) => Array.from(tr.children))
+        .filter((c) => /^(Cold|Hot) · /.test(c[0].textContent))
+        .map((c) => c[c.length - 1].textContent);
+    });
+    expect(modal.length).toBe(2);
+    expect(modal[0]).toMatch(/^⚠ under the 1″ fixture supply minimum → /);
+    expect(modal[1]).toBe('⚠ over 0.25 fps, no size passes');
+    expect(report).toEqual(modal);
+    expect(errors).toEqual([]);
+  });
 });

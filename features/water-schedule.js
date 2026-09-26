@@ -133,12 +133,8 @@
     const un = Object.values(unserved).map((u) => ({ ...u, wsfu: Math.round(u.wsfu * 100) / 100 }));
     return { rows, totals, unserved: un, served: servedSides, warnings: totals.cold.warn + totals.hot.warn, unsized: totals.cold.unsized + totals.hot.unsized, capFps: { ...ws.capFps }, occupancy: App.getProjectOccupancy ? App.getProjectOccupancy() : 'public' };
   }
-  function verdictText(r) {
-    if (r.unsized) return r.material ? 'no size in the name' : 'no material in the name';
-    if (r.underMin) return '⚠ under the ' + (WM() ? WM().sizeFraction(r.supplyMinIn) : r.supplyMinIn) + '″ fixture supply minimum' + (r.suggestLabel ? ' → ' + r.suggestLabel : '');
-    if (r.over) return '⚠ over ' + fmt(r.capFps) + ' fps' + (r.suggestLabel ? ' → ' + r.suggestLabel : ', no size passes');
-    return '✓';
-  }
+  // The Check cell: water-model's one wording, which the printed report prints too (MAP-REPORT-WATER).
+  function verdictText(r) { return WM().waterRowVerdict(r).text; }
   function servesText(r) { return fmt(r.wsfu) + ' WSFU' + (r.fixtures ? ' · ' + r.fixtures + (r.fixtures === 1 ? ' fixture' : ' fixtures') : ''); }
 
   // --- the modal ------------------------------------------------------------------------

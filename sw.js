@@ -21,7 +21,7 @@
  * visit once the CDN has settled. The app's admin "global force reload" clears caches
  * as a backstop.
  */
-const CACHE_VERSION = '7c66fdfdf6f9';
+const CACHE_VERSION = '7a60e6224970';
 const CACHE_NAME = `counttooling-shell-${CACHE_VERSION}`;
 
 // The full same-origin app shell. Source of truth = the <script>/<link> tags in
@@ -224,7 +224,7 @@ const PRECACHE_SHA256 = {
   '/tag-model.js': '73cd905aac6670c05139607d458a081218ebac55fa2bf230531eec4638cd064d',
   '/sheet-title-model.js': 'f4af651077942b4b14a4eec23effcbcf6099713125031270a868d3a21a2737cd',
   '/support-model.js': 'a1fba42dfd24cfc5dfd662e6dcb67bced82bb656f7589b828110f5d08088eb69',
-  '/water-model.js': 'de4ac32ceb56b64225db71fc7e6af9575e4e0dc892b3e621c008c3288e7109e4',
+  '/water-model.js': '1a05acb776cab4c0ce54635955cc52118af3a4521c6bf2545e4aa177ad74a6fa',
   '/fitting-model.js': '60aef6daecbf4ea7205224b2656d3bdaca033fa9ce9f896885f56e5618b6b9b1',
   '/duct-model.js': '9add987fe296d166b5308928cb893b2d9dc3d710299dff630f58817fd274ca33',
   '/bid-basis-model.js': '825fc0a1cfd1a765dbb3bab5f06eb49c9780253d071def87784939e194a834f0',
@@ -321,7 +321,7 @@ const PRECACHE_SHA256 = {
   '/features/water-fixtures.js': 'bc7480a8869ec98efab4a9b01654cb1d43b57073522a2b83cb194780020f32c3',
   '/features/water-runs.js': '7cdb6339f56f474389e66d99fba1e9d6953b7af0df22aa0a02a24a9ee4012d8a',
   '/features/water-size.js': '228c010f6c4d29d25dc86fe7ae49e17d6c1c7af8e89b47df4a22583f8a290e30',
-  '/features/water-schedule.js': '6950eaea800f44ec56aa949300392e39b4bf1c2e2fbd3c38cd113513afcb8f40',
+  '/features/water-schedule.js': '6e57173b476b49f7547a2697442566db39539f081b4c0c005c47bed45e46f30c',
   '/features/water-bidcheck.js': 'de66353620a924f006e1cf4411f93a90f559a2810adcd48e4a8a6de06bbce1e2',
   '/features/duct-callouts.js': 'db36b2ad7773a3cfe0f1c3d890ad0d24a70a8d058d156d272ec3cd149a2a4eaa',
   '/features/drop-peek.js': '07b8990e4b1cbed96b1b4416b440ac39f5f5b1c9fd5159b34867c34e502263dc',
@@ -342,7 +342,7 @@ const PRECACHE_SHA256 = {
   '/features/tour-blank.js': '6717434d8b99d1e87a5d17d7b8d95d66df050100ff9069102b5527ee9423999e',
   '/features/twin-badge.js': '714ef6850ba7f430ff181ec8c91795485553e9c27dae9c8ebd40ea75d63943bf',
   '/features/auth-magic-link.js': '56c0ffb89518846f1ac22c7ed458ffdc8d991e45838784e51203696689e5cdc5',
-  '/report.js': '2279bf02b07467ff8eeaa108d607963cb32298a61e0858b8f958970cb199989e',
+  '/report.js': '8a0f1f9c16b226e69d88270457677631886ad99a0596122837b506e6607acf18',
   '/vendor/pdf.min-3.11.174.js': '5b5799e6f8c680663207ac5b42ee14eed2a406fa7af48f50c154f0c0b1566946',
   '/vendor/pdf.worker.min-3.11.174.js': 'feabdf309770ed24bba31a5467836cdc8cf639c705af27d52b585b041bb8527b',
   '/vendor/pdf-lib-1.17.1.min.js': '0f9a5cad07941f0826586c94e089d89b918c46e5c17cf2d5a3c6f666e3bc694f',

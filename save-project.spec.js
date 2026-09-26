@@ -125,4 +125,60 @@ test.describe('Save Project (features/save-project.js)', () => {
     expect(r.calls.recoveryModal).toBe(1);
     expect(r.checkedOutBy).toBe(null);   // zeroed because refresh did not reassign the lock
   });
+
+  // MAP-MANUAL-SAVE: a cloud bid opened without its PDF (load-project.js's canvas-only
+  // branch: project open, pages [], the saved marks waiting in pendingCanvasLoad). A
+  // manual Save there wrote pages: [] over the marks. The dialog now says why it can't
+  // save and has no live Save button, and the engine sends nothing even when called.
+  test('canvas-only: the Save dialog says the marks cannot be saved until the PDF is back, and nothing is sent', async ({ page }) => {
+    const writes = [];
+    await page.route('**/rest/v1/**', (route) => {
+      const m = route.request().method();
+      if (m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS') writes.push(m + ' ' + route.request().url());
+      return route.abort();
+    });
+    await page.evaluate(() => {
+      const s = window.state;
+      s.supabaseSession = { user: { id: 'u1', email: 'me@example.com' }, access_token: 'x' };
+      s.currentProjectId = 'p-canvas-only';
+      s.currentProjectName = 'Clinic';
+      s.checkedOutBy = 'u1';
+      s.checkedOutAt = new Date().toISOString();
+      s.pages = [];
+      s.pdfStoragePath = 'u1/p-canvas-only/document.pdf';   // the pdf_missing branch keeps pdf_path
+      s.pendingCanvasLoad = {
+        projectId: 'p-canvas-only', name: 'Clinic', pdf_hash: null,
+        data: { counters: [{ id: 'wc', name: 'WC' }], lineTypes: [], pages: [{ index: 0, canvases: [{ id: 'c', name: 'Main', annotations: { counterMarkers: { wc: [{ x: 10, y: 20 }] } } }] }] },
+      };
+      document.getElementById('saveProjectBtn').click();
+    });
+    await expect(page.locator('#saveProjectModal')).toHaveClass(/visible/);
+    const note = page.locator('#saveProjectNoPdfMessage');
+    await expect(note).toBeVisible();
+    await expect(note).toHaveText(/PDF is not attached, so its marks can.t be saved yet/);
+    await expect(page.locator('#saveProjectContentsList')).toBeHidden();
+    await expect(page.locator('#saveProjectDo')).toBeDisabled();
+    // The engine holds the write on its own, too: a caller that reaches it anyway
+    // (not the dialog) gets a hold, not a failure, and no request leaves the page.
+    const res = await page.evaluate(async () => {
+      const r = await window.App.performSaveProjectToCloud({ name: 'Renamed', includePdf: true });
+      return { ok: r.ok, skipped: !!r.skipped, reason: r.reason || null, name: window.state.currentProjectName };
+    });
+    expect(res).toEqual({ ok: true, skipped: true, reason: 'canvas_only_pending_pdf', name: 'Clinic' });
+    expect(writes).toEqual([]);
+    // Once the PDF is back (no pending load), the dialog is the ordinary one again.
+    await page.evaluate(() => {
+      window.App.hideModal('saveProjectModal');
+      window.state.pendingCanvasLoad = null;
+      window.state.pdfStoragePath = null;
+      document.getElementById('saveProjectBtn').click();
+    });
+    await expect(page.locator('#saveProjectModal')).toHaveClass(/visible/);
+    await expect(note).toHaveText('Canvas only. Upload a PDF first to include it in saves.');
+    await expect(page.locator('#saveProjectDo')).toBeEnabled();
+    await page.evaluate(() => {
+      window.App.hideModal('saveProjectModal');
+      Object.assign(window.state, { supabaseSession: null, currentProjectId: null, currentProjectName: null, checkedOutBy: null, checkedOutAt: null });
+    });
+  });
 });

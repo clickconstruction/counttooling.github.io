@@ -1148,6 +1148,41 @@ test('canvas-only: performAutoSave never sends pages: [] over the saved marks, a
   assert.strictEqual(sub.updates[0].payload.data.pages.length, 1);
 });
 
+test('canvas-only: a manual Save sends no pages: [] over the saved marks, and Turn In still releases (MAP-MANUAL-SAVE)', async () => {
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([]));
+  const state = canvasOnlyState({ currentProjectName: 'Clinic' });
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  engine.setAutoSaveDirty(true);
+  // Both toggle positions: the pdf_missing branch keeps pdf_path, so the dialog can
+  // offer Include PDF on; the no_pdf_stored branch leaves it off.
+  for (const includePdf of [false, true]) {
+    const res = await engine.performSaveProjectToCloud({ name: 'Renamed', includePdf });
+    const sentPages = sub.updates.map((u) => u.payload.data && u.payload.data.pages);
+    assert.deepStrictEqual(sentPages, [], 'the manual save wrote data.pages = ' + JSON.stringify(sentPages) + ' over the saved marks');
+    assert.strictEqual(res.ok, true, 'a held save is not a failed one (includePdf=' + includePdf + ')');
+    assert.strictEqual(res.skipped, true);
+    assert.strictEqual(res.reason, 'canvas_only_pending_pdf');
+  }
+  assert.strictEqual(state.currentProjectName, 'Clinic', 'nothing was written, so the name did not change either');
+  assert.strictEqual(engine.wasLastCloudSaveAttemptFailed(), false);
+  assert.ok(!logKinds(engine).includes('manual_save_err'));
+  assert.strictEqual(engine.getAutoSaveDirty(), false);
+  // Turn In after the held Save still releases the lock, still without a write.
+  engine.setAutoSaveDirty(true);
+  const turnIn = await engine.doTurnIn();
+  assert.strictEqual(turnIn.ok, true);
+  assert.strictEqual(sub.updates.length, 0);
+  // With the PDF back, the same manual Save writes the sheet.
+  state.pages = [{ label: 'P-101', canvases: state.pendingCanvasLoad.data.pages[0].canvases, scale: null, rotation: 0 }];
+  state.pendingCanvasLoad = null;
+  state.checkedOutBy = state.supabaseSession.user.id;
+  const after = await engine.performSaveProjectToCloud({ name: 'Renamed', includePdf: false });
+  assert.strictEqual(after.ok, true);
+  assert.strictEqual(sub.updates.length, 1);
+  assert.strictEqual(sub.updates[0].payload.data.pages.length, 1);
+});
+
 test('canvas-only: the 5s takeoff backup does not overwrite the device copy with no pages (MAP-EMPTY-SAVE)', async () => {
   const { ctx } = makeCtx({ getState: () => canvasOnlyState(), getLastModifiedAt: () => 0 });
   await createSaveEngine(ctx).writeTakeoffStateBackup();

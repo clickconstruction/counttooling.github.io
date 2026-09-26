@@ -368,3 +368,24 @@ test('rung 6: the Bid Check rows over the schedule, and the ticks', () => {
   assert.ok(na.filter((x) => x.kind === 'auto').every((x) => x.verdict === 'na'));
   assert.strictEqual(w.waterBidCheckUnresolved(na).auto.length, 0);
 });
+
+test('waterRowVerdict: one wording for the schedule modal and the printed report (MAP-REPORT-WATER)', () => {
+  const sized = { material: 'copper', sizeIn: 1, capFps: 8, over: false, underMin: false, unsized: false };
+  // a passing row
+  assert.deepStrictEqual(w.waterRowVerdict(sized), { text: '✓', ok: true });
+  // under a served fixture's supply minimum: the minimum is named, then the size that passes
+  assert.deepStrictEqual(w.waterRowVerdict({ ...sized, sizeIn: 0.75, underMin: true, supplyMinIn: 1, suggestLabel: '1-1/4″' }), { text: '⚠ under the 1″ fixture supply minimum → 1-1/4″', ok: false });
+  assert.strictEqual(w.waterRowVerdict({ ...sized, sizeIn: 0.25, underMin: true, supplyMinIn: 0.375, suggestLabel: null }).text, '⚠ under the 3/8″ fixture supply minimum');
+  // over the cap: the size that passes, or says none does
+  assert.deepStrictEqual(w.waterRowVerdict({ ...sized, over: true, suggestLabel: '2″' }), { text: '⚠ over 8 fps → 2″', ok: false });
+  assert.deepStrictEqual(w.waterRowVerdict({ ...sized, over: true, capFps: 0.25, suggestLabel: null }), { text: '⚠ over 0.25 fps, no size passes', ok: false });
+  // the under-minimum reading wins over the velocity one, as it always has
+  assert.strictEqual(w.waterRowVerdict({ ...sized, over: true, underMin: true, supplyMinIn: 1, suggestLabel: '2″' }).text, '⚠ under the 1″ fixture supply minimum → 2″');
+  // no size or no material in the type's name
+  assert.deepStrictEqual(w.waterRowVerdict({ ...sized, unsized: true, sizeIn: null }), { text: 'no size in the name', ok: false });
+  assert.strictEqual(w.waterRowVerdict({ ...sized, unsized: true, material: null }).text, 'no material in the name');
+  // a raw waterScheduleRow (no suggestLabel yet) reads its suggestSizeIn
+  const raw = w.waterScheduleRow({ side: 'cold', material: 'copper', sizeIn: 0.75, wsfu: 10, flushValve: true, supplyMinIn: 1 });
+  assert.strictEqual(w.waterRowVerdict({ ...raw, material: 'copper', supplyMinIn: 1 }).text, '⚠ under the 1″ fixture supply minimum → ' + w.sizeFraction(raw.suggestSizeIn) + '″');
+  assert.strictEqual(w.waterRowVerdict(null).ok, false);
+});

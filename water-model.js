@@ -553,6 +553,20 @@ function waterScheduleRow(opts) {
   if (underMin && Number(o.supplyMinIn) > (suggestSizeIn || 0)) suggestSizeIn = Number(o.supplyMinIn);
   return { column, gpm, capFps: cap, sizeIn, velocityFps: v, over, underMin, suggestSizeIn, unsized: sizeIn == null || !o.material, ok: !over && !underMin && sizeIn != null && !!o.material };
 }
+// A schedule row's Check cell, the one wording the schedule modal, its Copy
+// Schedule text and the printed report all print (MAP-REPORT-WATER): no size or
+// material in the name; under a served fixture's supply minimum, naming it; over
+// the cap, with the size that passes or that none does; else ✓. Reads the row the
+// schedule builds (suggestLabel), or a bare waterScheduleRow's suggestSizeIn.
+function waterRowVerdict(row) {
+  const r = row || {};
+  const n = (x) => (Number.isInteger(x) ? String(x) : String(Math.round(x * 100) / 100));
+  const sug = r.suggestLabel != null ? r.suggestLabel : (r.suggestSizeIn != null ? sizeFraction(r.suggestSizeIn) + '″' : null);
+  if (!row || r.unsized) return { text: r.material ? 'no size in the name' : 'no material in the name', ok: false };
+  if (r.underMin) return { text: '⚠ under the ' + sizeFraction(r.supplyMinIn) + '″ fixture supply minimum' + (sug ? ' → ' + sug : ''), ok: false };
+  if (r.over) return { text: '⚠ over ' + n(r.capFps) + ' fps' + (sug ? ' → ' + sug : ', no size passes'), ok: false };
+  return { text: '✓', ok: true };
+}
 
 // --- rung 6: Bid Check ---------------------------------------------------------------
 // The water rows of Bid Check, the duct table's shape: auto rows evaluate live
@@ -636,7 +650,7 @@ function waterBidCheckUnresolved(rows) {
 
 const WATER_MODEL_API = {
   WATER_BID_CHECK_ROWS, waterBidCheckRows, waterBidCheckUnresolved,
-  WATER_SETTINGS_DEFAULTS, normalizeWaterSettings, waterScheduleRow,
+  WATER_SETTINGS_DEFAULTS, normalizeWaterSettings, waterScheduleRow, waterRowVerdict,
   waterChildLinks, waterPolylineLength, waterDraftRemainingLoad, waterDownstreamByRun, waterDraftSuggestion, waterSizeLadder, replaceSizeInName,
   WATER_SIDE_LABELS, WATER_ATTACH_SNAP_PDF, WATER_ATTACH_SEARCH_PDF, waterSideFromName, waterFixtureLoads, waterRunsFromAnnotations,
   waterNearestOnPolyline, attachWaterFixtures, waterFixtureLeaders, waterNearestRunPoint, waterServedByRun,

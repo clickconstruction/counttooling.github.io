@@ -32,6 +32,27 @@ Pinned by custom-icon-upload.spec.js: the Urinal picked before an upload and aga
 the same name and the same fixture units, and an uploaded Lavatory fills the field both on the
 upload and on a later pick. It was red before the fix (5 before the upload, empty after).
 
+## fix(report): the printed report's Water Sizing check says what the schedule says (MAP-REPORT-WATER, 2026-09-26)
+
+The decomposition map's D33. The Water Sizing schedule and the printed report each wrote the Check
+cell themselves, and the report's copy had fallen behind. A run under a served fixture's supply
+minimum read "under the 1″ fixture supply minimum → 1-1/4″" in the modal and "under the fixture
+supply minimum → 1-1/4″" in the PDF, and a run over the cap with no size that passes read "over
+5 fps, no size passes" in the modal and just "over 5 fps" in the PDF, which reads as if a bigger
+pipe would fix it.
+
+The wording now lives once, in the pure water-model.js: `waterRowVerdict(row)` gives the cell's text
+and whether the row is fine. The schedule modal, its Copy Schedule text and report.js's Water Sizing
+table all print it (report.js through `window.WaterModel`, the way it reads SupportModel), so the
+same row says the same thing on screen, in the clipboard and on paper. The modal's wording was the
+right one and is unchanged.
+
+Pinned by water-model.test.js (a passing row, the minimum named, "no size passes", the minimum
+winning over the cap, both unsized readings, a bare `waterScheduleRow`) and a water-schedule.spec.js
+case that sets up one run under a flush-valve WC's 1″ minimum and one over a cap nothing meets, then
+reads each row's Check in the modal and in `buildReportHtml` and wants them identical. Both were red
+before the fix.
+
 ## fix(water): a finger reaches the pipe sizes, and a rule used by Water Sizing says so (MAP-WATER-TAP, 2026-09-26)
 
 Two of the decomposition map's confirmed bugs (R03, D09 and D10).

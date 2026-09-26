@@ -115,6 +115,59 @@ function applyDropToNode(ann, node, value, unit, dryRun) {
   return changed;
 }
 
+// --- Purging a deleted type or group from ghosts (Typicals) -----------------
+//
+// A ghost's src is annotation-shaped ({ counterMarkers, quickLines, polylines })
+// but sits OUTSIDE the live marks, so the delete cascades (features/item-details.js
+// performDeleteCounterLineType, features/groups.js deleteGroup) have to reach in
+// here as well. Otherwise the Typical keeps the deleted counter's markers (drawn
+// as a default circle), the deleted line type's runs, or the deleted group's id,
+// and Stamp puts them back as marks no tally counts (MAP-GHOST-DELETE, D32).
+//
+// kind: 'counter' (drop counterMarkers[id]), 'lineType' (drop runs whose
+// lineTypeId is id), 'group' (null every mark's and run's group id). A ghost
+// left holding nothing is removed from ann.ghosts: capture never makes an empty
+// one, and an empty one has no bounds to click. Mutates ann in place. Returns
+// { changed, removedGhostIds }: changed counts the marks removed or ungrouped.
+// No state, no DOM; the caller owns the undo snapshot, dirty and re-render.
+function purgeFromGhosts(ann, kind, id) {
+  const out = { changed: 0, removedGhostIds: [] };
+  if (!ann || !Array.isArray(ann.ghosts) || id == null) return out;
+  const touched = [];
+  ann.ghosts.forEach(g => {
+    const src = g && g.src;
+    if (!src) return;
+    let n = 0;
+    if (kind === 'counter') {
+      const arr = src.counterMarkers && src.counterMarkers[id];
+      if (arr) { n += arr.length; delete src.counterMarkers[id]; }
+    } else if (kind === 'lineType') {
+      ['quickLines', 'polylines'].forEach(key => {
+        if (!Array.isArray(src[key])) return;
+        const kept = src[key].filter(l => l.lineTypeId !== id);
+        n += src[key].length - kept.length;
+        src[key] = kept;
+      });
+    } else if (kind === 'group') {
+      const clear = (m) => { if (m && (m.group || null) === id) { m.group = null; n++; } };
+      Object.values(src.counterMarkers || {}).forEach(arr => (arr || []).forEach(clear));
+      (src.quickLines || []).forEach(clear);
+      (src.polylines || []).forEach(clear);
+    }
+    if (n) { out.changed += n; touched.push(g); }
+  });
+  const isEmpty = (g) => {
+    let marks = 0;
+    Object.values(g.src.counterMarkers || {}).forEach(arr => { marks += (arr || []).length; });
+    return !marks && !(g.src.quickLines || []).length && !(g.src.polylines || []).length;
+  };
+  touched.filter(isEmpty).forEach(g => {
+    out.removedGhostIds.push(g.id);
+    ann.ghosts.splice(ann.ghosts.indexOf(g), 1);
+  });
+  return out;
+}
+
 function createAnnotationModel(ctx) {
   function makeAnnotations() { return { counterMarkers: {}, polylines: [], quickLines: [], highlights: [], notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [], ductRuns: [], ductFittings: [], legend: null }; }
 
@@ -992,5 +1045,5 @@ function createAnnotationModel(ctx) {
 
 // Dual-environment export (inert in the browser) for node --test + eslint.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode };
+  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode, purgeFromGhosts };
 }

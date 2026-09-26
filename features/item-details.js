@@ -1,19 +1,20 @@
 /*
  * features/item-details.js - the item detail & properties modals, extracted from
  * the app.js IIFE as the twenty-fifth feature-file split under the window.App
- * registry pattern. Three related surfaces move together: the Counter / Line Type
+ * registry pattern. Two related surfaces live here: the Counter / Line Type
  * details modal (`#counterLineTypeDetailsModal`, with its delete-confirm modal
- * `#deleteCounterLineTypeConfirmModal`), the Line Properties modal
- * (`#linePropertiesModal`, name/color/drops/vertex-edit), and the heavier
- * deleteGroup mutation (whose App.deleteGroup registration moves here from
- * app.js's registry tail - features/groups.js keeps consuming it via App.* at
- * call time, so load order between the two feature files does not matter).
+ * `#deleteCounterLineTypeConfirmModal`) and the Line Properties modal
+ * (`#linePropertiesModal`, name/color/drops/vertex-edit). The deleteGroup
+ * mutation that once lived here moved to features/groups.js (MAP-GHOST-DELETE,
+ * DECOMPOSITION_MAP R17). performDeleteCounterLineType prunes the live marks
+ * and then every ghost (Typical) through App.purgeFromEveryGhost
+ * (features/ghost.js), so Stamp cannot bring a deleted type back.
  *
  * Loaded as a classic <script src="/features/item-details.js"> AFTER app.js. Its
  * own IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
  * openCounterLineTypeDetailsModal + openLinePropertiesModal +
- * closeLinePropertiesModal + deleteGroup back onto App, and binds the
+ * closeLinePropertiesModal back onto App, and binds the
  * counterLineTypeDetailsClose / linePropertiesClose / deleteCounterLineType
  * confirm+cancel handlers at load.
  *
@@ -373,6 +374,9 @@
         state.selectedLineId = null; state.selectedLineIsPoly = false; state.selectedLinePageIdx = null;
       }
     }
+    // MAP-GHOST-DELETE: the Typicals copied these marks, so they go from every
+    // ghost too, or Stamp puts back marks no tally counts (features/ghost.js).
+    App.purgeFromEveryGhost(kind === 'counter' ? 'counter' : 'lineType', item.id);
     App.markProjectDirty();
     App.updateUI();
     App.renderAnnotations();
@@ -519,34 +523,6 @@
     App.renderAnnotations();
   }
 
-  // B20: async — the confirm is the app's dialog now, so the ONE caller
-  // (features/groups.js Delete) awaits the boolean.
-  async function deleteGroup(groupId) {
-    const state = App.state;
-    const g = (state.groups || []).find(x => x.id === groupId);
-    if (!g) return false;
-    const count = App.countItemsInGroup(groupId);
-    if (count > 0 && !(await App.confirmDialog({ title: 'Remove this group?', body: 'It has ' + count + ' item' + (count === 1 ? '' : 's') + '. They stay on the sheet and lose the group assignment.', confirmLabel: 'Remove group', danger: true }))) return false;
-    App.pushUndoSnapshot();   // FULL snapshot — group removal clears assignments on every page
-    state.groups = (state.groups || []).filter(x => x.id !== groupId);
-    if (state.activeGroupId === groupId) state.activeGroupId = null;
-    state.pages.forEach(p => {
-      App.getPageCanvases(p).forEach(c => {
-        const ann = c.annotations || App.makeAnnotations();
-        Object.values(ann.counterMarkers || {}).forEach(arr => arr.forEach(m => { if ((m.group || null) === groupId) m.group = null; }));
-        (ann.quickLines || []).forEach(q => { if ((q.group || null) === groupId) q.group = null; });
-        (ann.polylines || []).forEach(poly => { if ((poly.group || null) === groupId) poly.group = null; });
-        // DUCT unit D4: duct runs reference groups as their SYSTEM — clear
-        // the inherited id so a deleted group leaves no dangling reference.
-        (ann.ductRuns || []).forEach(run => { if ((run.systemGroupId || null) === groupId) run.systemGroupId = null; });
-      });
-    });
-    App.markProjectDirty();
-    App.updateUI();
-    App.renderAnnotations();
-    return true;
-  }
-
   // Modal close / confirm bindings (moved from app.js's zone & page-action
   // handler block; the elements exist at load, handlers fire on user action).
   document.getElementById('counterLineTypeDetailsClose').onclick = () => { counterLineTypeDetailsItem = null; App.hideModal('counterLineTypeDetailsModal'); };
@@ -575,7 +551,6 @@
   App.openCounterLineTypeDetailsModal = openCounterLineTypeDetailsModal;
   App.openLinePropertiesModal = openLinePropertiesModal;
   App.closeLinePropertiesModal = closeLinePropertiesModal;
-  App.deleteGroup = deleteGroup;
   // Core-function -> feature callback: hideModal('counterLineTypeDetailsModal')
   // resets the private details item through this.
   App.onCounterLineTypeDetailsHidden = () => { counterLineTypeDetailsItem = null; };

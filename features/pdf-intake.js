@@ -158,6 +158,8 @@
       App.state.counters = Array.isArray(d.counters) ? d.counters : [];
       App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
       App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+      App.state.groupsEnabled = !!d.groupsEnabled;   // D44: the Groups gate rides every intake
+      App.state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21 header pins
       App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
       if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
       if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;
@@ -165,6 +167,9 @@
       (d.pages || []).forEach(p => {
         App.applyPageAnnotationsFromData(App.state.pages[p.index], p);
       });
+      // MAP-QUICKKEYS: the project's Quick Keys, by quick-keys.js's replace-or-keep rule.
+      if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
+      else App.state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
       if (d.pageScales) {
         d.pageScales.forEach((scale, i) => { if (App.state.pages[i]) App.state.pages[i].scale = scale; });
       } else if (d.scale) {
@@ -242,6 +247,8 @@
     App.state.counters = Array.isArray(d.counters) ? d.counters : [];
     App.state.lineTypes = Array.isArray(d.lineTypes) ? d.lineTypes : [];
     App.state.groups = App.ensureGroupColors(Array.isArray(d.groups) ? d.groups : []);
+    App.state.groupsEnabled = !!d.groupsEnabled;   // D44: the Groups gate rides every intake
+    App.state.stripPins = (d.stripPins && typeof d.stripPins === 'object') ? { ...d.stripPins } : {};   // D21 header pins
     App.state.rooms = Array.isArray(d.rooms) ? d.rooms : [];
     if (d.iconNames && typeof d.iconNames === 'object') App.state.iconNames = d.iconNames;
     if (Array.isArray(d.iconOrder)) App.state.iconOrder = d.iconOrder;

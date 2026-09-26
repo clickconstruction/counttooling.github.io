@@ -68,6 +68,37 @@ row from ⚠ to ✓ with nothing else done); duct-static.spec.js "MAP-DUCT-STEP"
 takes the damper out of the rendered static-path row, 62 to 60 eq ft). All three specs are red on
 the pre-fix code.
 
+## fix(save): a restored bid comes back with its own Quick Keys and header pins (MAP-QUICKKEYS, 2026-09-26)
+
+The decomposition map's R02, with its defects D13, D19 and D44. The shared hydrator
+(annotation-model.js `hydrateStateFromProjectData`, which the last-session restore uses whenever
+the cloud copy is newer than the device's backup, and the view-link boot) never read the project's
+Quick Keys or its header pins. The session kept whatever it had, the boot's older bindings, an
+Artboard seed or the last bid's, and the next autosave wrote them over this bid's. A cloud bid
+opened without its PDF lost its Quick Keys the same way on both canvas-only branches of
+features/load-project.js and again when the PDF was uploaded (features/pdf-intake.js
+`matchPendingCanvasLoad`), and both pdf-intake paths skipped the header pins and the Groups gate,
+as did the device backup applier (`applyTakeoffBackupToState`) for the pins. Import Canvas dropped
+the layer each sheet was on, which Export Canvas writes.
+
+The hydrator now applies Quick Keys through `App.applyProjectQuickKeys`, read at call time because
+features/quick-keys.js loads after the model is built (node, and a shell without the feature, copy
+them plain), and sets the pins from the project, {} when it has none so the trade decides. The
+backup applier takes the pins when the backup carries them and keeps the session's when it does
+not, like the rest of its merge. The two canvas-only branches and the PDF match apply Quick Keys by
+the same replace-or-keep rule; both pdf-intake paths set the pins and the Groups gate. Import Canvas
+reads the layer map back, kept to the sheets the plan has.
+
+Pinned by annotation-model.test.js, which reads the key lists out of the builders themselves (the
+two save-engine.js cloud payloads, app.js `buildCanvasExportData` and the IndexedDB backup) with
+espree, checks the three project builders write one list, and sends a recognizable value for every
+key through the hydrator, with the sheets loaded and canvas-only, and through the backup applier: a
+key that does not come back fails by name, and so does a new builder key with no sentinel. Red
+before the fix on the pins and then on Quick Keys. quick-keys.spec.js adds a restored bid (through
+the published hydrator, signed out) and a canvas-only bid getting its PDF; import-clear.spec.js adds
+the layer map. All three were red before the fix. Left for the one-contract refactor (R12): the PDF
+match still drops the layer map, and the backup applier still copies Quick Keys plain.
+
 ## fix(chooser): a line-type name, a color or an icon path is text on every surface (MAP-XSS, 2026-09-26)
 
 The first of the decomposition map's confirmed bugs (R01 / D02). The Line chooser

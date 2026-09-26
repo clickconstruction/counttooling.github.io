@@ -189,6 +189,37 @@ test.describe('Import Canvas & Clear Page (features/import-clear.js)', () => {
     expect(toast.visible).toBe(false);
   });
 
+  // D19 (MAP-QUICKKEYS): Export Canvas writes the layer each sheet was on, and the
+  // import dropped it, so a two-layer sheet came back on whichever layer is first.
+  // An entry for a sheet the plan lacks is not kept.
+  test('import brings back the layer each sheet was on', async ({ page }) => {
+    await page.goto('/app/');
+    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+
+    const exportJson = JSON.stringify({
+      counters: [{ id: 'c1', name: 'Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }],
+      lineTypes: [],
+      groups: [],
+      pages: [
+        { index: 0, label: 'Sheet 1', canvases: [
+          { id: 'cvMain', name: 'Main', annotations: {} },
+          { id: 'cvRough', name: 'Rough-in', annotations: { counterMarkers: { c1: [{ x: 40, y: 40, id: 'mA' }] } } },
+        ], scale: null, rotation: 0 },
+      ],
+      activeCanvasIdByPage: { 0: 'cvRough', 5: 'cvGone' },
+    });
+    await page.locator('#importInput').setInputFiles({ name: 'layers.json', mimeType: 'application/json', buffer: Buffer.from(exportJson) });
+    await page.waitForFunction(() => window.state.counters.some((c) => c.id === 'c1'));
+    const after = await page.evaluate(() => ({
+      map: JSON.parse(JSON.stringify(window.state.activeCanvasIdByPage)),
+      active: window.App.getActiveCanvas(window.state.pages[0]).name,
+    }));
+    expect(after.map).toEqual({ 0: 'cvRough' });
+    expect(after.active).toBe('Rough-in');
+  });
+
   test('sidebar Clear Page is visible and live at desktop width', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

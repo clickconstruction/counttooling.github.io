@@ -501,6 +501,9 @@
               if (d.scaleZoneSettings) state.scaleZoneSettings = { ...App.state.scaleZoneSettings, ...d.scaleZoneSettings };
               if (d.showGridOverlay != null) state.showGridOverlay = !!d.showGridOverlay;
               if (d.gridSettings) state.gridSettings = d.gridSettings;
+              // MAP-QUICKKEYS: the project's Quick Keys, by quick-keys.js's replace-or-keep rule.
+              if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(d.numberKeyBindings);
+              else state.numberKeyBindings = (d.numberKeyBindings && typeof d.numberKeyBindings === 'object') ? d.numberKeyBindings : {};
               reconcileOrphanedCountersAndLineTypes();
               clearUndoStacks();
               hydrateProjectFromCloudRow(proj, { reusePdfHash: null, source: 'load_project' });
@@ -565,6 +568,9 @@
         if (canvasData.scaleZoneSettings) state.scaleZoneSettings = { ...state.scaleZoneSettings, ...canvasData.scaleZoneSettings };
         if (canvasData.showGridOverlay != null) state.showGridOverlay = !!canvasData.showGridOverlay;
         if (canvasData.gridSettings) state.gridSettings = canvasData.gridSettings;
+        // MAP-QUICKKEYS: the project's Quick Keys, by quick-keys.js's replace-or-keep rule.
+        if (App.applyProjectQuickKeys) App.applyProjectQuickKeys(canvasData.numberKeyBindings);
+        else state.numberKeyBindings = (canvasData.numberKeyBindings && typeof canvasData.numberKeyBindings === 'object') ? canvasData.numberKeyBindings : {};
         reconcileOrphanedCountersAndLineTypes();
         clearUndoStacks();
         setAutoSaveDirty(false);

@@ -992,3 +992,192 @@ test('rotateAnnotations rotates duct run vertices and free fitting positions; in
   assert.strictEqual(f1.vertexIdx, 1);
   assert.deepStrictEqual(f2.position, expected);
 });
+
+// --- MAP-QUICKKEYS: every key the payload builders write comes back ----------
+// The key lists are READ from the builders (save-engine.js's cloud payloads and
+// its IndexedDB backup, app.js buildCanvasExportData), not typed here, so a field
+// added to a builder without a hydrator line fails below instead of saving a
+// value no intake reads back (the Quick Keys and the header pins did exactly that).
+
+const fs = require('node:fs');
+const path = require('node:path');
+const espree = require('espree');
+
+function objectKeys(node) {
+  return node.properties.filter((p) => p.type === 'Property' && p.key).map((p) => p.key.name || p.key.value);
+}
+// Every object literal in `file` that names all of `mustHave`, as a key list.
+function payloadLiterals(file, mustHave) {
+  const src = fs.readFileSync(path.join(__dirname, file), 'utf8');
+  const ast = espree.parse(src, { ecmaVersion: 'latest', sourceType: 'script' });
+  const found = [];
+  (function walk(n) {
+    if (!n || typeof n.type !== 'string') return;
+    if (n.type === 'ObjectExpression') {
+      const keys = objectKeys(n);
+      if (mustHave.every((k) => keys.includes(k))) found.push(keys);
+    }
+    for (const k of Object.keys(n)) {
+      const v = n[k];
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v.type === 'string') walk(v);
+    }
+  })(ast);
+  return found;
+}
+const PROJECT_PAYLOADS = [
+  ...payloadLiterals('save-engine.js', ['version', 'pages', 'numberKeyBindings']),   // manual save + autosave
+  ...payloadLiterals('app.js', ['version', 'pages', 'numberKeyBindings']),           // buildCanvasExportData
+];
+const BACKUP_PAYLOADS = payloadLiterals('save-engine.js', ['pageCanvases', 'numberKeyBindings']);
+
+// One valid, recognizable value per payload key. A new builder key with no row
+// here fails the round trip by name.
+const SENTINELS = {
+  version: 1,
+  counters: [{ id: 'c1', name: 'WC-1' }],
+  lineTypes: [{ id: 'lt1', name: 'CW' }],
+  iconNames: { p: 'Custom' },
+  iconOrder: ['p'],
+  customIconPaths: [{ value: 'p', name: 'Custom' }],
+  maxZoom: 7,
+  groups: [{ id: 'g1', name: 'Level 1' }],
+  groupsEnabled: true,
+  stripPins: { ductBtn: true, polylineBtn: false },
+  trade: 'hvac',
+  ceilingHeightFt: 9.5,
+  makeUpFt: 1,
+  codes: { plumbing: 'IPC 2021', occupancy: 'private' },
+  bidCheck: { manual: { 'fill-1': true }, loadAmps: 20 },
+  rooms: [{ id: 'r1', name: 'Office' }],
+  ductSettings: { seamWastePct: 12 },
+  waterSettings: { capFps: { cold: 7, hot: 4 } },
+  legendSettings: { style: 'full' },
+  multiplyZoneSettings: { showLabel: false },
+  scaleZoneSettings: { show: false },
+  showGridOverlay: true,
+  gridSettings: { spacing: 3 },
+  pages: [{ index: 0, label: 'P-101', canvases: [{ id: 'cv', name: 'Main', annotations: { quickLines: [{ id: 'q' }] } }], scale: { feet: 8 }, rotation: 90, bakeFrame: null }],
+  activeCanvasIdByPage: { 0: 'cv' },
+  numberKeyBindings: { 1: { kind: 'counter', id: 'c1' }, 2: { kind: 'lineType', id: 'lt1' } },
+  // The IndexedDB backup's page arrays
+  pageCanvases: [[{ id: 'cv', name: 'Main', annotations: {} }]],
+  pageLabels: ['P-101'],
+  pageScales: [{ feet: 8 }],
+  pageRotations: [90],
+  pageBakeFrames: [{ w: 1, h: 1, intrinsic: 0 }],
+  counterSettings: {}, lineTypeSettings: {}, exportSettings: {}, recentLineColors: [],
+};
+// Keys a hydrator is right to skip, and why.
+const NOT_STATE = { version: 'the payload\'s format stamp' };
+// The IndexedDB backup also carries device preferences, which live in localStorage, not the project.
+const DEVICE_SETTINGS = { counterSettings: 1, lineTypeSettings: 1, exportSettings: 1, recentLineColors: 1 };
+
+function freshState(withPages) {
+  return {
+    // A fake pdf.js page whose frame differs from pageBakeFrames' sentinel, so a
+    // consumed bake frame shows as bakeMismatch.
+    pages: withPages ? [{ pdfPage: { rotate: 0, getViewport: () => ({ width: 600, height: 400 }) }, label: 'plan, p1', canvases: [], scale: null, rotation: 0 }] : [],
+    counters: [], lineTypes: [], groups: [], groupsEnabled: false, stripPins: { measureBtn: true },
+    trade: null, rooms: [], activeCanvasIdByPage: {}, numberKeyBindings: { 9: { kind: 'counter', id: 'stale' } },
+    legendSettings: {}, ductSettings: {}, multiplyZoneSettings: {}, scaleZoneSettings: {},
+  };
+}
+function sentinelPayload(keys) {
+  const payload = {};
+  keys.forEach((k) => { payload[k] = SENTINELS[k] === undefined ? null : JSON.parse(JSON.stringify(SENTINELS[k])); });
+  return payload;
+}
+
+// Where each key lands. Default: state[key] equals the sentinel.
+function assertCameBack(key, state, calls, quickKeysCalls, withPages) {
+  const s = SENTINELS[key];
+  assert.ok(s !== undefined, 'no sentinel for payload key "' + key + '": add one here and a hydrator line for it');
+  const why = 'payload key "' + key + '" did not come back through the hydrator';
+  switch (key) {
+    case 'customIconPaths': assert.deepStrictEqual(calls.savedIcons[0], s, why); return;
+    case 'groups': assert.deepStrictEqual(state.groups, s, why); assert.ok(calls.groupColors >= 1, why); return;
+    case 'numberKeyBindings':
+      if (quickKeysCalls) assert.deepStrictEqual(quickKeysCalls, [s], why + ' (through App.applyProjectQuickKeys)');
+      else assert.deepStrictEqual(state.numberKeyBindings, s, why);
+      return;
+    case 'pages':
+    case 'pageCanvases':
+      if (!withPages) { assert.deepStrictEqual(state.pages, [], 'canvas-only: no pages to fill'); return; }
+      assert.strictEqual(state.pages[0].canvases[0].id, 'cv', why);
+      if (key === 'pages') {
+        assert.strictEqual(state.pages[0].label, 'P-101', why);
+        assert.deepStrictEqual(state.pages[0].scale, { feet: 8 }, why);
+        assert.strictEqual(state.pages[0].rotation, 90, why);
+      }
+      return;
+    case 'pageLabels': assert.strictEqual(state.pages[0].label, 'P-101', why); return;
+    case 'pageScales': assert.deepStrictEqual(state.pages[0].scale, { feet: 8 }, why); return;
+    case 'pageRotations': assert.strictEqual(state.pages[0].rotation, 90, why); return;
+    case 'pageBakeFrames': assert.strictEqual(state.pages[0].bakeMismatch, true, why); return;
+    default: assert.deepStrictEqual(state[key], s, why);
+  }
+}
+
+function withWindowApp(app, fn) {
+  const had = Object.prototype.hasOwnProperty.call(globalThis, 'window');
+  const prev = globalThis.window;
+  globalThis.window = { App: app };
+  try { return fn(); } finally { if (had) globalThis.window = prev; else delete globalThis.window; }
+}
+
+test('the builders agree: the cloud save, the autosave and Export Canvas write one key list', () => {
+  assert.strictEqual(PROJECT_PAYLOADS.length, 3, 'expected 2 save-engine payloads + buildCanvasExportData');
+  const [a, ...rest] = PROJECT_PAYLOADS.map((k) => k.slice().sort());
+  rest.forEach((k) => assert.deepStrictEqual(k, a));
+  assert.strictEqual(BACKUP_PAYLOADS.length, 1, 'expected the one IndexedDB backup payload');
+});
+
+for (const withPages of [true, false]) {
+  const mode = withPages ? 'full' : 'canvas-only (no pages yet)';
+  test('hydrateStateFromProjectData round trip, ' + mode + ': every key the builder writes comes back', () => {
+    const keys = PROJECT_PAYLOADS[0];
+    const state = freshState(withPages);
+    const { ctx, calls } = makeCtx(state);
+    const m = createAnnotationModel(ctx);
+    // Registered AFTER the model is built: the hydrator must read it at call time
+    // (features/quick-keys.js loads after app.js, which builds the model).
+    const quickKeysCalls = [];
+    withWindowApp({ applyProjectQuickKeys: (b) => quickKeysCalls.push(b) }, () => m.hydrateStateFromProjectData(sentinelPayload(keys)));
+    keys.filter((k) => !(k in NOT_STATE)).forEach((k) => assertCameBack(k, state, calls, quickKeysCalls, withPages));
+  });
+}
+
+test('hydrateStateFromProjectData without Quick Keys loaded (node, or a shell missing the feature) copies the bindings', () => {
+  const state = freshState(true);
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.hydrateStateFromProjectData({ numberKeyBindings: SENTINELS.numberKeyBindings });
+  assert.deepStrictEqual(state.numberKeyBindings, SENTINELS.numberKeyBindings);
+  m.hydrateStateFromProjectData({});   // a project with none drops the previous project's
+  assert.deepStrictEqual(state.numberKeyBindings, {});
+});
+
+test('hydrateStateFromProjectData: a project saved without header pins follows its trade, not the last bid', () => {
+  const state = freshState(true);
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.hydrateStateFromProjectData({ stripPins: { ductBtn: true } });
+  assert.deepStrictEqual(state.stripPins, { ductBtn: true });
+  m.hydrateStateFromProjectData({});
+  assert.deepStrictEqual(state.stripPins, {});
+});
+
+test('applyTakeoffBackupToState round trip: every key the IndexedDB backup writes comes back', () => {
+  const keys = BACKUP_PAYLOADS[0];
+  const state = freshState(true);
+  const { ctx, calls } = makeCtx(state);
+  const m = createAnnotationModel(ctx);
+  m.applyTakeoffBackupToState(sentinelPayload(keys));
+  keys.filter((k) => !(k in NOT_STATE) && !(k in DEVICE_SETTINGS)).forEach((k) => assertCameBack(k, state, calls, null, true));
+});
+
+test('applyTakeoffBackupToState: header pins absent from an older backup keep the session\'s', () => {
+  const state = freshState(true);
+  const m = createAnnotationModel(makeCtx(state).ctx);
+  m.applyTakeoffBackupToState({ counters: [] });
+  assert.deepStrictEqual(state.stripPins, { measureBtn: true });
+});

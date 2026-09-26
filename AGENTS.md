@@ -8,6 +8,12 @@
   `app/index.html`), the per-file "Files" table (the **single source of truth**
   for what each file owns), and the full feature catalog ("Features Beyond
   Spec").
+- [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) — **where to decompose next**: the
+  ranked refactor shortlist, per-area verdicts, and the defects found while mapping.
+  It is a dated reading of `npm run build:projectmap`, which regenerates the measured
+  skeleton under it (`project-map/`, gitignored: registry graph, state writes, modal
+  ownership, big functions, near-duplicate blocks, churn since the last map) in a
+  few seconds. Run it before planning a split; don't hand-count.
 - [CHANGELOG.md](CHANGELOG.md) — implementation history (the sync-hardening PRs and
   other detail). Consult when you need the "why" behind the save/sync machinery.
 - [PUNCHLIST.md](PUNCHLIST.md) — **every open item, one line each**. An index, not
@@ -136,7 +142,7 @@
   [ARCHITECTURE.md](ARCHITECTURE.md) "Files" table** — keep it there, don't
   re-duplicate it here. Load-order summary:
   - [app/index.html](app/index.html) — the app shell: HTML structure + every
-    modal (~2.3k lines; no inline JS logic except two deliberate snippets: the
+    modal (~3.8k lines; no inline JS logic except two deliberate snippets: the
     head supabase-enabled body-class stamp, and the body-tail boot sanity
     guard that surfaces the reload banner when app.js itself failed to load).
     Its `<script>`/`<link>` refs are root-absolute. Loads, in order:
@@ -181,7 +187,7 @@
     `createSaveEngine(ctx)`; app.js instantiates it with live-value
     accessors and keeps same-named wrappers; staged extraction, Stage 1:
     global force reload + checkout keep-alive).
-  - [app.js](app.js) — the main IIFE (~6.5k lines), the bulk of the app
+  - [app.js](app.js) — the main IIFE (~8.6k lines), the bulk of the app
     logic. Resolves the sibling modules' values by bare name, publishes the
     shared surface onto the `window.App` registry near its tail
     (`// SECTION: App feature registry`), and exposes its own helpers to
@@ -241,6 +247,11 @@
   the "N `features/*.js` registry files" figure above — between its
   `<!-- feature-count -->` markers — are generated; see
   [scripts/build-filemap.js](scripts/build-filemap.js))
+  + `build:projectmap --check` (three structural invariants, not counts: every
+  shell script and `features/*.js` has an ARCHITECTURE.md Files row, no `App.*`
+  read at LOAD time names something a later script registers, no unguarded
+  `App.*` read names something nothing registers; see
+  [scripts/build-projectmap.js](scripts/build-projectmap.js))
   + `build:macros --check` (the Macros table rows in app/index.html are
   generated from `HOTKEYS` in constants.js — edit the table there, then run
   `npm run build:macros` AND `npm run build:sw`)
@@ -253,7 +264,7 @@
   resolves) + `check-lesson-rules` (a tour, lesson or course step that states a
   rulebook number or cites a code section names the rule, `rules: ['<id>']`, or says
   why not, `rulesExempt: '<why>'`, and its number is the rule's; see the rulebook
-  bullet) — twelve steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  bullet) — thirteen steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is
@@ -333,7 +344,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~6.5k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~8.6k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -426,7 +437,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~6.5k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~8.6k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").

@@ -517,8 +517,10 @@
           <div class="duct-hint-card" id="ductHintCard" aria-hidden="true" hidden></div>
           <!-- WATER-PLAN rung 4: the water trace's suggestion card (features/water-size.js),
                the duct card twinned: "3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts".
-               A tap opens the size popover. -->
-          <div class="duct-hint-card water-hint-card" id="waterHintCard" aria-hidden="true" hidden></div>
+               Pipe size (or a tap anywhere on the card) opens the size popover: the touch
+               way to what S does, which a tablet has no key for (persona calibration C4,
+               2026-09-25). The text rides #waterHintText. -->
+          <div class="duct-hint-card water-hint-card" id="waterHintCard" hidden><button type="button" id="waterHintSize" class="water-hint-size" title="The pipe sizes for this run (S)">Pipe size</button><span id="waterHintText" class="water-hint-text"></span></div>
           <div class="canvas-container" id="canvasContainer">
             <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             <canvas id="cropCanvas" class="crop-canvas"></canvas>

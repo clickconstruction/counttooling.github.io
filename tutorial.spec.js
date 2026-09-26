@@ -93,7 +93,7 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'welcome');
     await page.evaluate(() => window.App.tutorialGoTo('size'));
     await waitForStep(page, 'size');
-    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => o.start))).toEqual([1, 3, 4]);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => o.start))).toEqual([1, 3, 5]);
   });
 
   test('the do-it-for-me path builds a real takeoff and the tour advances on real state', async ({ page }) => {
@@ -954,12 +954,13 @@ test.describe('The tours, by hand on a returning estimator\'s device', () => {
 // text, small enough to read after every action.
 test.describe('The persona seams', () => {
   // The plumbing tour's card text as it read BEFORE the hints took reason codes (captured on the
-  // untouched engine, 2026-09-25; `size` as #201 reworded it): the codes must not change a character the reader sees.
+  // untouched engine, 2026-09-25; `size` as #201 reworded it, `size` and `hangers` as the persona calibration's
+  // C4 and C21 reworded them): the codes must not change a character the reader sees.
   const CARD_BEFORE = {
     measure: 'Measure a dimension the drawing gives, and the scale proves itself.\n\nIn the header, click Measure (or press D).\nClick inside circle 1, at the top of the 20\'-0" dimension on the left edge.\nClick inside circle 2, at its bottom.',
     place: 'The counter tool is armed, and the three water closets in the stalls of Women 108 are circled.\n\nClick inside the first circle.\nClick inside the second.\nClick inside the third.\n\nAnywhere in a circle counts. One click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
-    hangers: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n\nIn the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\nUnder Child counts, find Hanger · 1 per 32 in (the IPC spacing for PEX at 1 in, read off the type\'s name).\nClick Add.\n\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
-    size: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n\nIn the header, click \u22ef, then Polyline (or press P). It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\nClick the riser at the first lavatory, then inside the circle below it.\n\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n\nPress S and click 3/4\u2033.\n\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n\nClick inside the second circle, then press Enter.',   // as #201 (COURSE-WORDING) reworded it
+    hangers: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n\nIn the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\nUnder Child counts, find Hanger · 1 per 32 in (the International Plumbing Code (IPC) spacing for PEX at 1 in, read off the type\'s name).\nClick Add.\n\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
+    size: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n\nIn the header, click \u22ef, then Polyline (or press P). It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\nClick the riser at the first lavatory, then inside the circle below it.\n\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n\nOn that card, click Pipe size (or press S: while you trace a water pipe, S opens its sizes instead of Set Scale).\nIn the list of sizes, click 3/4\u2033.\n\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n\nClick inside the second circle.\nClick Finish under the sheet (or press Enter).',   // as #201 (COURSE-WORDING) reworded it, and the persona calibration's C4
     zone: 'This restroom core repeats on three floors.\n\nIn the header, click ⋯, then Multiply Zone (or press X).\nDrag a box around Women 108: start and end anywhere inside the shaded boundary.\nType 3.\nClick Apply.\n\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
     rfi: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n\nIn the header, click ⋯, then Note (or press N).\nClick inside the circle in Women 108.\nType RFI: and then the question, and click Done.\n\nUnder EXPORT OPTIONS, Copy RFI Flags collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
   };
@@ -1094,5 +1095,192 @@ test.describe('The persona seams', () => {
     expect(o.zones.map((z) => [z.n, z.kind])).toEqual([[null, 'box'], [1, 'circle']]);
     const tags = await page.locator('#tourZones text.tour-zone-tag').allTextContents();
     expect(tags).toEqual(o.zones.filter((z) => z.kind === 'circle').map((z) => String(z.n)));
+  });
+});
+
+// The plumbing tour's findings from the persona calibration (2026-09-25): each re-verified by real
+// clicks on the old and the current app, then fixed at the cause. C2 the Chain palette (card and
+// sheet off it; shown on a tablet), C3 a drop with no run end, C4 sizing by touch, C7 the toilet
+// symbol, C9 the Drop size palette named, C21 IPC spelled out, C23 the SUMMARY heading.
+test.describe('The plumbing tour\'s persona calibration findings', () => {
+  // walk the tour with the specs' seam up to `id` (each earlier step done for the reader)
+  async function walkTo(page, id, url) {
+    await page.goto(url || '/app/?tour=plumbing');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    while (await stepId(page) !== id) await doAndGo(page);
+    await page.waitForTimeout(900);   // the focus zoom
+  }
+  const rectOf = (page, sel) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }; }, sel);
+  const overlaps = (a, b) => a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1;
+  const circleBox = (z) => ({ x1: z.cx - z.r, y1: z.cy - z.r, x2: z.cx + z.r, y2: z.cy + z.r });
+  const litIs = (page, sel) => page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const a = e.getBoundingClientRect(), b = document.getElementById('tourSpot').getBoundingClientRect(); return b.width > 0 && Math.abs(a.left - 6 - b.left) < 3 && Math.abs(a.top - 6 - b.top) < 3; }, sel);
+
+  test.describe('at 1280 x 720', () => {
+    test.use({ viewport: { width: 1280, height: 720 } });
+    test('C2: the card keeps off the Chain palette, which the step lights and names where it opens', async ({ page }) => {
+      test.setTimeout(90000);
+      await walkTo(page, 'chain');
+      await expect(page.locator('#tourBody')).toContainText('In the Chain panel that opens at the top left');
+      await page.keyboard.press('t');
+      await expect(page.locator('#chainPanel')).toBeVisible();
+      await page.waitForTimeout(600);
+      await expect.poll(() => litIs(page, '#chainPanel')).toBe(true);
+      expect(overlaps(await rectOf(page, '#tourCard'), await rectOf(page, '#chainPanel'))).toBe(false);
+    });
+  });
+
+  test.describe('on a tablet', () => {
+    test.use({ viewport: { width: 768, height: 1024 }, hasTouch: true });
+    test('C2: Chain shows its palette, the circles move out from under it, and the lav battery chains by touch', async ({ page }) => {
+      test.setTimeout(120000);
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await walkTo(page, 'chain');
+      await page.tap('#chainBtn');
+      await expect(page.locator('#chainPanel')).toBeVisible();
+      await page.waitForTimeout(900);
+      await expect.poll(() => litIs(page, '#chainPanel')).toBe(true);
+      const panel = await rectOf(page, '#chainPanel');
+      let zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+      zs.forEach((z) => expect(overlaps(circleBox(z), panel)).toBe(false));
+      // + New counter is in the palette: a Lavatory made right there, Name lit first
+      await page.locator('#chainPanel .chain-new-row[data-new="counter"]').tap();
+      await expect(page.locator('#counterModal')).toHaveClass(/visible/);
+      // the ring follows on the tour's 400 ms tick and slides for 160 ms, so the lit checks poll: a
+      // fixed 500 ms read the ring mid-slide about one run in eight (review, 2026-09-25)
+      await expect.poll(() => litIs(page, '#counterName')).toBe(true);
+      await page.fill('#counterName', 'Lavatory');
+      await page.locator('#counterCreate').tap();
+      await expect(page.locator('#counterModal')).not.toHaveClass(/visible/);
+      await page.tap('#chainBtn').catch(() => {});
+      if (!(await page.evaluate(() => window.state.tool === window.App.TOOL.CHAIN))) await page.tap('#chainBtn');
+      await page.waitForTimeout(600);
+      expect(await page.evaluate(() => window.state.lineTypes.find((l) => l.id === window.state.activeLineTypeId).name)).toBe('1in PEX');
+      zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+      for (let i = 0; i < 3; i++) { zs = await page.evaluate(() => window.App.tutorialZoneScreen()); await page.touchscreen.tap(zs[i].cx, zs[i].cy); await page.waitForTimeout(350); }
+      await waitForStep(page, 'drop');
+      expect(errors).toEqual([]);
+    });
+
+    test('C4: the size step works by touch: the drawer\'s Polyline, the card\'s Pipe size, 3/4″, the second circle, Finish', async ({ page }) => {
+      test.setTimeout(120000);
+      const errors = [];
+      page.on('pageerror', (e) => errors.push(e.message));
+      await walkTo(page, 'size');
+      const body = await page.locator('#tourBody').textContent();
+      expect(body).not.toMatch(/press/i);
+      expect(body).toContain('Tap ☰ at the top left, then Polyline');
+      expect(body).toContain('On that card, click Pipe size');
+      expect(body).toContain('In the list of sizes, click 3/4″');
+      expect(body).toContain('Click Finish under the sheet');
+      const pt = (p) => page.evaluate((q) => { const c = document.getElementById('annCanvas'); const r = c.getBoundingClientRect(); const b = window.App.toCanvas(q); return { x: r.left + b.x * (r.width / c.width), y: r.top + b.y * (r.height / c.height) }; }, p);
+      await page.tap('#hamburger');
+      await page.waitForTimeout(500);
+      await page.tap('#polylineBtnSidebar');
+      await page.waitForTimeout(700);   // the drawer closes
+      let a = await pt({ x: 688.5, y: 369 });   // the riser at the first lavatory
+      await page.touchscreen.tap(a.x, a.y);
+      await page.waitForTimeout(350);
+      let zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+      await page.touchscreen.tap(zs[0].cx, zs[0].cy);
+      await expect(page.locator('#waterHintSize')).toBeVisible();
+      await page.waitForTimeout(700);
+      await expect.poll(() => litIs(page, '#waterHintSize')).toBe(true);
+      await page.tap('#waterHintSize');
+      await expect(page.locator('#waterSizePopover')).toBeVisible();
+      expect(await page.evaluate(() => window.state.drawingPolyline.points.length)).toBe(2);   // the card ate no vertex
+      await page.locator('.water-size-step', { hasText: '3/4″' }).tap();
+      await expect(page.locator('#waterSizePopover')).toBeHidden();
+      await page.waitForTimeout(700);
+      // the tour card docks at the top and the second circle is out from under it
+      zs = await page.evaluate(() => window.App.tutorialZoneScreen());
+      expect(overlaps(circleBox(zs[1]), await rectOf(page, '#tourCard'))).toBe(false);
+      // Finish lights only once the second circle is in, and the step waits for it: the circle alone
+      // used to end the step with the 3/4in run still a draft (review of the persona fixes, 2026-09-25)
+      expect(await litIs(page, '#finishPolyline')).toBe(false);
+      await page.touchscreen.tap(zs[1].cx, zs[1].cy);
+      await page.waitForTimeout(1500);
+      expect(await stepId(page)).toBe('size');
+      await expect.poll(() => litIs(page, '#finishPolyline')).toBe(true);
+      await page.tap('#finishPolyline');
+      await waitForStep(page, 'zone');
+      expect(await page.evaluate(() => window.state.lineTypes.filter((l) => l.waterSide === 'cold').map((l) => l.name).sort())).toEqual(['1in PEX', '3/4in PEX']);
+      expect(errors).toEqual([]);
+    });
+  });
+
+  test('C3 and C9: the drop step names the Drop size palette, and a click with no run in the circle says why', async ({ page }) => {
+    test.setTimeout(90000);
+    await walkTo(page, 'chain');
+    await page.click('#tourSkip');   // the chain never drawn: no run ends at the first lavatory
+    await waitForStep(page, 'drop');
+    await expect(page.locator('#tourBody')).toContainText('In the Drop size palette that opens at the top left, click 3 ft');
+    await page.keyboard.press('b');
+    await expect(page.locator('#dropPanel')).toBeVisible();
+    await page.fill('#dropCustomValue', '3');
+    await page.click('#dropCustomAdd');
+    const z = (await page.evaluate(() => window.App.tutorialZoneScreen()))[0];
+    await page.mouse.click(z.cx, z.cy);
+    await expect(page.locator('#airboardToastText')).toContainText('No runs on this sheet yet');
+    await expect(page.locator('#tourStatus')).toContainText('No run ends in the circle');
+    expect(await page.evaluate(() => window.App.tutorialObserve().code)).toBe('not-yet');
+    await page.click('#tourBack');
+    await waitForStep(page, 'chain');
+  });
+
+  test('C7: on a returning device the Create tab opens on the Water Fountain, and typing Water Closet lights the toilet', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.goto('/app/');
+    await ready(page);
+    await DEVICES.returning.seed(page);
+    await page.evaluate(() => window.App.startTutorial('plumbing'));
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() !== 'welcome' && window.state.pages.length > 0, null, { timeout: 30000 });
+    await page.evaluate(() => window.App.tutorialGoTo('counter'));
+    const body = await page.locator('#tourBody').textContent();
+    expect(body).not.toContain('plumbing set');
+    // a statement between the actions, not a numbered 'see that' (review of the persona fixes, 2026-09-25)
+    expect(body).toContain('Under Icon the toilet lights as you type the name: the symbol follows it');
+    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => [o.start, o.children.length]))).toEqual([[1, 3], [4, 2]]);
+    await page.click('#addCounter');
+    await page.click('#counterModal .counter-tab[data-tab="create"]');
+    const sel = () => page.evaluate(() => { const c = document.querySelector('#counterIconGrid .icon-cell.selected'); return c ? window.App.getIconName(c.dataset.path) : null; });
+    expect(await sel()).not.toBe('Water Closet');   // the standing Water Closet took the toilet's name
+    await page.fill('#counterName', 'Water Closet');
+    expect(await sel()).toBe('Water Closet');
+  });
+
+  test('C21: IPC is spelled out where the tour first says it; C23: the SUMMARY heading is never the thing to click', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/');
+    await ready(page);
+    const steps = (await page.evaluate(() => window.App.tutorialManifest('plumbing'))).steps;
+    const first = steps.findIndex((s) => /\bIPC\b/.test(s.body));
+    expect(steps[first].id).toBe('hangers');
+    expect(steps[first].body).toContain('the International Plumbing Code (IPC) spacing');
+    const proof = steps.find((s) => s.id === 'proof');
+    expect(proof.body).not.toMatch(/open SUMMARY/);
+    expect(proof.body).toContain('with its list already open');
+    // by real clicks: the heading springs the trap, the status says so and the ring is on the ×
+    await walkTo(page, 'proof');
+    await page.click('#summarySectionTitle');
+    await expect(page.locator('#legendSettingsModal')).toHaveClass(/visible/);
+    await expect(page.locator('#tourStatus')).toContainText('That is the Summary Legend');
+    expect(await page.evaluate(() => window.App.tutorialObserve().code)).toBe('wrong-item');
+    await expect.poll(() => litIs(page, '#legendSettingsModal [data-modal-close]')).toBe(true);
+    await page.click('#legendSettingsModal [data-modal-close]');
+    await expect(page.locator('#legendSettingsModal')).not.toHaveClass(/visible/);
+    await page.waitForTimeout(500);
+    const row = await page.evaluate(() => { const c = window.state.counters.find((x) => /water closet/i.test(x.name)); return '#summaryList .summary-item-clickable[data-type="counter"][data-id="' + c.id + '"]'; });
+    await expect.poll(() => litIs(page, row)).toBe(true);
+    await page.click(row);
+    await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/);
+    await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    expect(errors).toEqual([]);
   });
 });

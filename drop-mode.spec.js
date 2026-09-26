@@ -186,4 +186,27 @@ test.describe('Drop tool', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // Persona calibration C3 (2026-09-25): an armed click where no line ends did nothing at all, no
+  // toast, so a reader whose run was not there never learned why. It says so now, and where.
+  test('an armed click with no line end near says so: another spot, or a sheet with no runs', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', (err) => { errors.push(err.message); });
+    await setupDropProject(page);
+    await page.click('#dropBtn');
+    await page.fill('#dropCustomValue', '3');
+    await page.click('#dropCustomAdd');
+    const ann = () => page.evaluate(() => JSON.stringify(window.App.getActiveAnnotations(window.state.pages[0]).quickLines));
+    const before = await ann();
+    // a real click on the sheet, far from both runs' ends
+    const at = await page.evaluate(() => { const c = document.getElementById('annCanvas'); const r = c.getBoundingClientRect(); const b = window.App.toCanvas({ x: 150, y: 300 }); return { x: r.left + b.x * (r.width / c.width), y: r.top + b.y * (r.height / c.height) }; });
+    await page.mouse.click(at.x, at.y);
+    await expect(page.locator('#airboardToastText')).toHaveText('No line end here. Click one of the ringed line ends to drop 3 ft.');
+    expect(await ann()).toBe(before);
+    // no runs at all on the sheet: the toast says a run comes first
+    await page.evaluate(() => { window.App.getActiveAnnotations(window.state.pages[0]).quickLines = []; window.App.renderAnnotations(); });
+    await page.mouse.click(at.x, at.y);
+    await expect(page.locator('#airboardToastText')).toHaveText('No runs on this sheet yet. Drop adds its size to the end of a line: draw a run, then click its end.');
+    expect(errors).toEqual([]);
+  });
 });

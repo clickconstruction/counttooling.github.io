@@ -35,6 +35,117 @@ asks. Pinned by lessons.spec.js (a running lesson asks, Cancel keeps it, Open my
 alone with the reader's palette; a lesson no longer running closes without asking) and
 tutorial.spec.js (a running tour asks "Leave the tour?").
 
+## docs(map): the decomposition map, remeasured, with the tool that measures it (2026-09-25)
+
+The July map said 44 feature files and an `app.js` on its way to 6.3k lines. By September there were
+97 feature files and `app.js` was back at 8.6k, and nothing had noticed, because the map was a document
+agents wrote by reading every file. Now the facts it rests on are measured: `npm run build:projectmap`
+([scripts/build-projectmap.js](scripts/build-projectmap.js) on
+[scripts/lib/project-map.js](scripts/lib/project-map.js), espree) writes `project-map/` (gitignored) in a
+few seconds: the `window.App` registry as a graph with guarded hooks, load-time reads and spec readers;
+`state` reads and writes through every alias shape; DOM ids by owning modal; functions of 20+ lines by
+SECTION (anonymous listeners named, so the 327-line keydown handler shows); the specs that pin each file;
+churn since the map's head; near-duplicate blocks; unread registrations and hooks nothing registers.
+`--check` joins `npm run check` (thirteen steps, with the lesson rules check that landed the same day) with three invariants and no counts, so it never needs a
+restamp: a Files row for every shell script and feature file, no load-time `App` read of a name a later
+script registers (the July prepare-pdf bug), no unguarded read of a name nothing registers.
+[project-map.test.js](project-map.test.js) drives each invariant red.
+
+The first run found six files with no Files row (bid-chip, hotkey-peek, recent-bids, zoom-ladder, hotkeys,
+child-counts; rows added) and an `app.js` SECTION marker (Recent bids) that had swallowed `updateUI` and
+`updateUIInner`; the UI Render Functions marker moved below it and a Placing selection marker opens the
+selection helpers.
+
+[DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) is rewritten from one run of it: eight agents judged one area
+each from a fact packet cut from the skeleton, a skeptic per area re-read the code behind every larger
+claim and every defect (one defect refuted, about thirty claims corrected), and a synthesis ranked 25
+moves with their evidence, recipes and sequencing. The run cost about 4.0M subagent tokens, several times
+the estimate; the map says so, for the next refresh. It also turned up real bugs, now `MAP-*` rows in
+[PUNCHLIST.md](PUNCHLIST.md): a line-type name written raw into the Line chooser, Quick Keys lost on a
+cloud restore, the RFI and Notes ledger sheet names, about sixteen dialogs Esc does not close, leftover
+rubber bands after M, a phantom duct transition, and more. The agents also listed where the skeleton
+misled them; most of those are fixed in the generator, and the rest are the map's last section.
+
+## fix(tour): the plumbing tour's findings from the persona calibration (2026-09-25)
+
+The persona calibration replayed each finding by real clicks on the old app and the current one.
+Seven still held on the current app: C2, C3, C4, C7, C9, C21 and C23. Each was re-verified on this
+branch with the harness, on the device the finding names and at 1440 x 900, and fixed where it
+starts. C6, C24 and C25 are trade questions for a person, and this change leaves them alone.
+
+**C2, the Chain palette.** At 1280 x 720 the card already kept off the palette, because the step
+names `#chainPanel` and lights it. It now keeps off a palette the step does not name as well: the
+Chain and Drop palettes, the water size popover and the water card are keep-off boxes for every
+step (`FLOATING` in features/tutorial.js). On a tablet no palette showed at all. The cause was one
+line in styles.css from the Chain tool's first commit, when the palette was a centred two-column
+dialog: `display: none !important` below 769 px. The Chain button stayed in the header strip, so
+a tablet or phone could arm Chain but could not pick the counter or the line type, and a tap on
+the sheet placed whatever counter was already active. The palette now shows at every width and
+fits a phone. On a 768 px tablet it covered the first lavatory's circle, so the engine now moves
+the sheet out from under a shown palette, once per palette per step, the same way it does for the
+card. The card says where the palette opens and to name the new counter Lavatory. While `+ New
+counter`'s dialog is open, the ring lights Name before Create Counter. The palettes sit above the
+dialogs (z-index 300 over 200), so once they showed on a phone the Counter dialog opened under the
+Chain palette, and on a tablet a tap on Name changed the chain's line type: every palette (Chain,
+Drop, Highlights) now steps aside while a dialog is open and comes back when it closes.
+The palette's own `+ New counter` then made the counter but left the Counter tool armed (the
+create surfaces arm their own tool), so the three clicks placed plain marks and no branch: the
+circles read 3 of 3 done and the step never passed, with no hint. The PERSONA-PROBER build found
+this through the harness. A `+ New` from the palette now hands the new item back to Chain, selected,
+with the other half of the pair kept (features/chain.js `returnToChain`), as the palette's comment
+always said it did. chain.spec.js pins both the counter and the line type.
+
+**C3 and C9, the riser.** With Drop armed and a size picked, a click where no line ends did
+nothing. The Drop tool now shows a toast: "No line end here. Click one of the ringed line ends to
+drop 3 ft.", or "No runs on this sheet yet…" when the sheet has no runs. The drop step has a hint,
+`not-yet`, for a circle with no run end in it: click Back and chain the lavatories first. It also
+has `not-armed` for a click in the circle while Drop is off. The card names the palette by the
+title it shows, the Drop size palette, and says it opens at the top left.
+
+**C4, sizing by touch.** On touch the engine drops "Press …" lines, so the size step lost its
+only instruction. There was also no way to open the sizes by touch. The water card had the duct
+card's `pointer-events: none`, and its own tap handler was wired only on the first S. The card
+now has a Pipe size button (`#waterHintSize`), and on a touch screen a tap anywhere on the card
+opens the popover too; with a mouse the rest of the card still lets a click through to the sheet,
+and its text wraps rather than cutting off the size it suggests. The card is wired the first time it shows. It keeps its presses to itself: the canvas
+wrapper had read a tap on the card as a click on the sheet, and on touch its touchend handler
+re-sent the tap to the sheet and swallowed the button's own click. On touch the card hides the
+"S accepts" key. The step now says: Pipe size on the card, or S; inside a water trace S opens the
+sizes rather than Set Scale; 3/4″; the second circle; then Finish (or Enter). Finish is lit only
+once the second circle is in, and the step is done only when the run is finished (it had passed on
+the second circle with the 3/4in run still a draft). Below 769 px it
+says Polyline is behind ☰. A hint now reads like a card body on touch, so its "(or press …)"
+goes too. One more cause was in the engine. On a narrow screen the card is docked by the
+stylesheet, but the sheet nudge measured it where it would have been placed. Once the ring moved
+to the water card at the foot of the sheet, the card docked at the top, sat on the main's second
+circle, and the tap landed on the card. The nudge now measures the card where it is docked.
+
+**C7, the toilet.** "Pick the Toilet symbol from the plumbing set" named no set on screen. On a
+returning device it was also wrong. The Create tab selects the first icon whose name no counter
+uses, so with a Water Closet already in the palette it opened on the Water Fountain, and a
+"Water Closet" created there got the fountain icon. The symbol now follows the typed name while
+nothing has been picked (features/counter.js `nameIconPath`). The match is on an icon's exact
+name. A CFM, a click in the grid, or words in Search icon still take precedence. The card says
+the toilet lights as the name is typed and that the Search icon box finds another, as a statement
+between the numbered actions rather than a numbered "see that".
+
+**C21 and C23.** The hangers step spells out the International Plumbing Code (IPC), the first
+place any step says IPC. The proof step no longer says "open SUMMARY". The list is already open,
+and the heading opens the Summary Legend settings. The card says so, and the ring skips the
+heading. If the list is folded, the ring lights the ▶. If the heading's dialog is open, the ring
+lights its × and the hint is `wrong-item`. The electrical tour's summary step had the same words
+and gets the same wording. The heading opening settings is the house pattern (PAGES opens Page
+Settings the same way), so whether the heading should fold the list is left for a product call.
+
+Pinned by real clicks and taps: tutorial.spec.js ("The plumbing tour's persona calibration
+findings": the palette and the card at 1280 x 720, the lav battery chained by touch on a tablet,
+the size step by touch through Finish, the drop miss and its code, the returning device's toilet,
+the SUMMARY heading's dialog and its ×), chain.spec.js (the palette at 768 and 375 px, and the Counter
+dialog over it), drop-mode.spec.js (both toasts), water-size.spec.js (Pipe size by touch, no vertex
+under the card, the card's text whole at 768 px, a mouse click through the card body) and counter.spec.js (the symbol follows the name until a pick).
+
+---
+
 ## feat(persona): the prober and the cheaper live pass (2026-09-25)
 
 PERSONA-PROBER, the harness changes the calibration asked for ([PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md)
@@ -120,6 +231,8 @@ leaves with its sheets"): the lesson's Floor Drain and a hand-made counter and l
 Close project, the reader's own counter stays, the next plan opens with their palette alone, and a
 project loaded over a second lesson's sheets keeps its own palette. tutorial.spec.js pins the tour:
 the plumbing tour's Water Closet goes on Close project, the reader's own counter stays.
+
+---
 
 ## feat(persona): the seams simulated readers run on, and the rules a lesson teaches named (2026-09-25)
 

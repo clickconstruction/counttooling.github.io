@@ -12,13 +12,11 @@
  * existing spec selector keep working.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 async function boot(page) {
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await bootApp(page);
+  await uploadPdf(page, 'test-page.pdf');
 }
 
 // A canvas click point safely inside the page bounds (the letter-size test
@@ -36,9 +34,7 @@ async function pointInPage(page, fx, fy) {
 
 test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
   test('a live toast blocks nothing: canvas takes clicks and a counter mark lands', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     await boot(page);
 
     await page.evaluate(() => {
@@ -71,13 +67,11 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
     // Nothing dims: the region never paints a backdrop.
     const bg = await page.evaluate(() => getComputedStyle(document.getElementById('toastRegion')).backgroundColor);
     expect(bg).toBe('rgba(0, 0, 0, 0)');
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('toasts paint above open modals (z-order contract)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     await boot(page);
 
     await page.evaluate(() => {
@@ -117,13 +111,11 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
     expect(hitPassive.inModal).toBe(true);
 
     await page.evaluate(() => window.App.hideModal('counterModal'));
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('two simultaneous toasts stack without overlap, each on its own timer', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     await boot(page);
 
     await page.evaluate(() => {
@@ -143,13 +135,11 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
     await page.waitForFunction(() => !document.getElementById('outOfBoundsModal').classList.contains('visible'), { timeout: 4000 });
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     await page.waitForFunction(() => !document.getElementById('airboardToastModal').classList.contains('visible'), { timeout: 5000 });
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('pointer-events contract: region none, cards inherit, .toast-interactive opts in (T2-06 hook)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     await boot(page);
 
     const pe = await page.evaluate(() => {
@@ -165,13 +155,11 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
     expect(pe.regionPe).toBe('none');
     expect(pe.cardPe).toBe('none');
     expect(pe.interactivePe).toBe('auto');
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('Escape is never eaten by a toast: one press reaches the open modal; the toast self-dismisses', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     await boot(page);
 
     await page.evaluate(() => {
@@ -188,13 +176,11 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
 
     // …and still dismisses on its own timer.
     await page.waitForFunction(() => !document.getElementById('airboardToastModal').classList.contains('visible'), { timeout: 4000 });
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('T2-06: the interactive gate-toast card blocks nothing outside itself — a canvas click away from the card still lands', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     await boot(page);
 
     // Scaled page + armed counter, then raise the gate toast directly (the
@@ -233,6 +219,6 @@ test.describe('Toast region (non-blocking toasts + honest stacking)', () => {
     expect(placed).toBe(1);
 
     await page.evaluate(() => window.App.hideModal('setScaleFirstModal'));
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

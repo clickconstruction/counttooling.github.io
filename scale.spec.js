@@ -12,20 +12,16 @@
  * out of scope (needs simulated canvas geometry).
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.describe('window.App registry pilot - Scale modal', () => {
   test('registry wired; preset + custom-fraction apply set page scale with no errors', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     // 1. Upload a 2-page PDF.
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await uploadPdf(page);
 
     // 2. Registry contract: the two entry points + the published presets constant.
     const wired = await page.evaluate(() => ({
@@ -72,18 +68,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(afterCustom.unit).toBe('ft');
     expect(afterCustom.label).toBe('1/4" = 4 ft');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('two-point flow: friendly info, no-quote unit-aware placeholder, inline value+unit, applies', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Simulate the two-point "Select on PDF" finish (151 pt apart), then open the modal.
     await page.evaluate(() => {
@@ -133,18 +125,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(scale.unit).toBe('ft');
     expect(scale.pixelsPerUnit).toBeCloseTo(151 / 5.75, 6);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('degenerate scale line (identical points) is rejected, not applied', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Two identical points -> the modal opens, but Set Scale must reject it.
     await page.evaluate(() => {
@@ -176,18 +164,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     const applied = await page.evaluate(() => window.state.pages[window.state.currentPage].scale);
     expect(applied.pixelsPerUnit).toBeCloseTo(151 / 10, 6);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('Escape while picking scale points clears the SCALE tool state (no stray crosshair)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // "Select on PDF" mid-flow: SCALE tool active, first point placed, modal hidden.
     await page.evaluate(() => {
@@ -208,18 +192,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(s.a).toBeNull();
     expect(s.b).toBeNull();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('two-point scale stores a refLine; preset has none; checkbox toggles the view flag', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Two-point apply stores the segment on page.scale.refLine; default checkbox is on.
     await page.evaluate(() => {
@@ -267,7 +247,7 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(toggled.ls).toBe('false');
     expect(toggled.refStillThere).toBe(true);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // T1-04: a corrected preset/custom apply hands off into the two-point verify (escapable).
@@ -283,14 +263,10 @@ test.describe('window.App registry pilot - Scale modal', () => {
   });
 
   test('correction-in-play preset apply flows into the two-point verify; Esc keeps the applied scale', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     await stubNonStandardSheet(page);
     await page.evaluate(() => window.App.openScaleModal());
@@ -332,18 +308,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(afterEsc.checkMode).toBe(false);
     expect(afterEsc.scale).toEqual(afterApply.scale);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('correction-in-play custom apply hands off; standard sheet keeps the plain toast', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Custom fraction + feet with a correction in play -> same hand-off.
     await stubNonStandardSheet(page);
@@ -386,18 +358,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(afterStandard.tool).toBe(afterStandard.noneTool);
     expect(afterStandard.scale.correctionFactor).toBeUndefined();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('verify hand-off completes: Check shows the delta, Use measured recalibrates', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await stubNonStandardSheet(page);
 
     // Corrected preset apply -> hand-off armed. Wait out the coaching toast (it is a
@@ -464,7 +432,7 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(recal.checkMode).toBe(false);
     expect(recal.tool).toBe(recal.noneTool);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // T1-07: zone preset/custom applies inherit the page scale's stamped sheet correction
@@ -513,14 +481,10 @@ test.describe('window.App registry pilot - Scale modal', () => {
     window.App.sheetCorrectionFactor(1224, 792, window.App.STANDARD_SHEETS.find(s => s.id === 'ANSI_D')));
 
   test('zone preset inherits the page sheet correction; label carries the sheet suffix', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     await stubNonStandardSheet(page);
     await setPageScaleFirstPreset(page);
@@ -555,18 +519,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(after.pageScale).toEqual(pageScale);
     expect(after.target).toBeNull();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('zone custom apply inherits the correction; two-point zone calibration stays raw', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     await stubNonStandardSheet(page);
     await setPageScaleFirstPreset(page);
@@ -605,18 +565,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(zones[0].scale.pixelsPerUnit).toBeCloseTo(151 / 10, 6);
     expect(zones[0].scale.correctionFactor).toBeUndefined();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('uncorrected page: zone preset applies the raw preset unchanged', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // No stub: the standard-size test PDF applies a plain page scale (no correction).
     await setPageScaleFirstPreset(page);
@@ -630,18 +586,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(zones[0].scale.correctionFactor).toBeUndefined();
     expect(zones[0].scale.label).toBe('1/4" = 1\'');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('edit-mode re-apply does not compound the factor', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     await stubNonStandardSheet(page);
     await setPageScaleFirstPreset(page);
@@ -668,18 +620,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     expect(re.pixelsPerUnit).toBeCloseTo(first.pixelsPerUnit, 9);
     expect(re.correctionFactor).toBeCloseTo(factor, 9);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('no eaten clicks: verify picks and a Scale Zone corner register while the post-apply toast is up (J3/J6 regression, T2 #15)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await stubNonStandardSheet(page);
 
     // Corrected preset apply -> verify armed AND the coaching toast fires. Do
@@ -724,18 +672,14 @@ test.describe('window.App registry pilot - Scale modal', () => {
     await page.mouse.click(box.x + pts[0].x, box.y + pts[0].y);
     expect(await page.evaluate(() => !!window.state.scaleZoneStart)).toBe(true);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('T2-06: arm-time gate toast link opens the scale modal in normal mode; Escape closes it cleanly', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => errors.push(err.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Arm Quick Line on the unscaled page: the gate toast fires and its
     // wording keeps the "Set Scale … first to use {tool}." shape.
@@ -756,6 +700,6 @@ test.describe('window.App registry pilot - Scale modal', () => {
     await page.evaluate(() => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
     await page.waitForFunction(() => !document.getElementById('scaleModal')?.classList.contains('visible'), { timeout: 5000 });
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

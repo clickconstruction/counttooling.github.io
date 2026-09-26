@@ -19,15 +19,13 @@
  * (`window.__releaseBoot`) to reproduce the slow-runner shape deterministically.
  */
 const { test, expect } = require('@playwright/test');
+const { bootApp, collectConsoleErrors, reloadApp, uploadPdf, waitForBoot } = require('./spec-helpers');
 
 test.describe('Last-session restore (features/restore-last-session.js)', () => {
   test('registry contract, prompt, discard, local keep restore', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     // --- Registry contract ---
     const contract = await page.evaluate(() => ({
@@ -115,7 +113,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(restored.scale).toBe(10);
     expect(restored.modalOpen).toBe(false);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   // --- T1-01: signed-out boot offer + backup-clobber guard -----------------
@@ -157,8 +155,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
 
   test('signed-out boot offer, clobber guard, keep-after-9s, post-Keep lifecycle', async ({ page }) => {
     test.setTimeout(120000);
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await seedLocalBackup(page);
     await page.reload();
 
@@ -224,8 +221,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
   });
 
   test('ignored prompt survives reloads; Discard consumes both records', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     await seedLocalBackup(page);
 
     // Ignore the prompt across TWO reloads: still offered, markers intact.
@@ -244,8 +240,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
       const local = await window.__takeoffBackupGetForTest('local', null);
       return held === null && local === null;
     }, HELD_ID);
-    await page.reload();
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await reloadApp(page);
     await page.waitForTimeout(1500);
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
   });
@@ -254,8 +249,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
   // settings must not ride into the next PDF (by hand, 2026-09-25: a lesson set opened with
   // Groups already on, its switch locked, and the last bid's Bid Check ticks set). The palette stays.
   test('Discard takes the declined session\'s project settings back out; a backup with no PDF never lends them to the next plan', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
     const seed = (withPdf) => page.evaluate(async (pdf) => {
       const blob = pdf ? await (await fetch('/test-page.pdf')).blob() : null;
       const data = {
@@ -277,8 +271,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(await project()).toEqual(clean);
     // no PDF in the backup: no offer, and only the palette comes through
     await seed(false);
-    await page.reload();
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await reloadApp(page);
     await page.waitForTimeout(1000);
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
     const { palette, ...fields } = await project();   // (the page's own backup writes can replace the palette before the reload)
@@ -297,11 +290,8 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
   });
 
   test('deferred behind an open modal: no write hold, shows when the modal hides', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
 
     await page.evaluate(() => {
       window.App.showModal('keyboardMapModal');
@@ -332,22 +322,19 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     });
     await page.waitForTimeout(300);
     expect(await page.evaluate(promptState)).toEqual({ visible: false, pending: false, deferred: false });
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('RESTORE-LATE: a cloud offer is dropped once a plan is open; an on-device offer still shows', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
     const cloud = { cloudLast: { projectId: 'p1', projectName: 'Bid A', userId: 'u1' } };
 
     // 1. The offer arrives late behind a dialog, and the user opens a plan meanwhile (the slow
     //    connection shape): when the dialog goes, nothing lands on the plan.
     await page.evaluate((c) => { window.App.showModal('keyboardMapModal'); window.App.openLastSessionRestorePrompt(c); }, cloud);
     expect(await page.evaluate(promptState)).toEqual({ visible: false, pending: false, deferred: true });
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
     await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
     await page.evaluate(() => window.App.hideModal('keyboardMapModal'));
     await page.waitForTimeout(1300);   // past the retry's macrotask and the 1 s safety poll
@@ -365,7 +352,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await page.keyboard.press('Escape');   // dismiss: nothing consumed
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => window.state.pages.length)).toBe(1);
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   /** Hold the real boot at its storage-persist await until __releaseBoot(). */
@@ -381,7 +368,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
   const releaseBoot = async (page) => {
     await page.waitForFunction(() => typeof window.__releaseBoot === 'function');
     await page.evaluate(() => window.__releaseBoot());
-    await page.waitForFunction(() => window.App.bootSettled === true);
+    await waitForBoot(page);
   };
   const markerCountOnPage0 = () => {
     const a = window.App.getActiveAnnotations(window.state.pages[0]);
@@ -390,11 +377,8 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
 
   test('real boot: a running tour defers the offer and keeps its takeoff; a busy session is never pre-applied over', async ({ page }) => {
     test.setTimeout(90000);
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
     await seedLocalBackup(page);
     await holdBoot(page);
 
@@ -451,8 +435,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     //    arrives — the prompt still comes, but nothing lands on their pages.
     await seedLocalBackup(page);
     await page.reload();
-    await page.locator('#pdfInput').setInputFiles('test-2pages.pdf');
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page);
     await page.evaluate(() => window.App.markProjectDirty());
     await releaseBoot(page);
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/);
@@ -475,13 +458,11 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(await page.evaluate(() => ({ pages: window.state.pages.length, wc: window.state.counters.some((c) => c.name === 'WC') }))).toEqual({ pages: 0, wc: true });
     await page.evaluate(() => document.getElementById('lastSessionRestoreDiscard').click());
     await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
   test('BOOT RACE: the boot outruns the feature scripts (a warm cache, a quick backup read) and the offer still arrives', async ({ page }) => {
-    const errors = [];
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.goto('/app/');
-    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });   // the app's own ready signal, not a quiet network
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);   // the app's own ready signal, not a quiet network
     await seedLocalBackup(page);
     // The feature that owns the offer arrives 1.5 s late, so app.js's async boot gets to the
     // offer first. Before 2026-09-21 that threw "App.openLastSessionRestorePrompt is not a
@@ -490,6 +471,6 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await page.reload();
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
     expect(await page.evaluate(() => window.App.bootSettled)).toBe(true);
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

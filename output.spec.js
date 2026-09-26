@@ -15,20 +15,16 @@
  * registered.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
 test.describe('Output cluster (features/output.js)', () => {
   test('copy summary, copy to PipeTooling, download current page', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Seed a scale, a counter with 2 markers, and a 10-ft quick line.
     await page.evaluate(() => {
@@ -89,18 +85,14 @@ test.describe('Output cluster (features/output.js)', () => {
     // --- Share-revoke callback registered by the feature ---
     expect(await page.evaluate(() => typeof window.App.onViewLinkRevoked)).toBe('function');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('scale check gates Copy to /Tooling: unscaled line pages flag, counter-only pages do not', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Page 1: NO scale, counters only (must not flag — pages without line
     // marks are never counted). Page 2: NO scale + a line (must flag).
@@ -172,18 +164,14 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(await page.evaluate(() => document.getElementById('toolingScaleCheckModal').classList.contains('visible'))).toBe(false);
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('of Copper');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('scale check gates Copy Summary too (T1-05)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // An unscaled page with a summarized line — the exact case that used to
     // copy a silent px-summed "ft" total straight to the clipboard.
@@ -224,18 +212,14 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(emailText).toContain('px of Copper');
     expect(emailText).toContain('no scale set');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('view-link sessions get the accurate no-link toast (branch order, B3)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // A view-link session shape: project id present, loadedViaViewLink set,
     // no supabase session. Before B3 the sign-in branch shadowed the accurate
@@ -259,18 +243,14 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(toast).not.toContain('Sign in');
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Floor Drain');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('copy scope drop-ups anchor to their buttons and close each other (B3)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await page.evaluate(() => {
       const s = window.state, App = window.App;
       s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
@@ -307,18 +287,14 @@ test.describe('Output cluster (features/output.js)', () => {
     await expect(page.locator('#forPipeToolingMenu')).toHaveClass(/visible/);
     await expect(page.locator('#copySummaryTextMenu')).not.toHaveClass(/visible/);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('1 page / 1 canvas skips the scope chooser on both copy buttons (B3/J13)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
     await page.evaluate(() => {
       const s = window.state, App = window.App, p = s.pages[0];
       p.scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' };
@@ -345,18 +321,14 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(await page.evaluate(() => document.getElementById('copySummaryTextMenu').classList.contains('visible'))).toBe(false);
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain('Floor Drain');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('Copy again resumes the copy after the Set-scale detour (B3/J11)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Page 2: unscaled line — the gate flags it. Spy logUserEvent to prove the
     // unscaled_ft_block event still fires from this surface.
@@ -400,22 +372,18 @@ test.describe('Output cluster (features/output.js)', () => {
     expect(copied).toContain('of Copper');
     expect(copied).not.toContain('px of Copper');   // scaled now — real feet, not pixels
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('clipboard failure speaks plain words, not a raw DOMException (B3/J11)', async ({ page }) => {
-    const errors = [];
     // The failure path intentionally console.errors the raw error for
     // diagnosis — filter it from the no-console-errors assertion.
-    page.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('[copy]')) errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page, { ignore: ['[copy]'] });
     // B20 (X8): the failure speaks through a toast, never alert().
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
     await page.evaluate(() => {
       const s = window.state, App = window.App;
       s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
@@ -438,18 +406,14 @@ test.describe('Output cluster (features/output.js)', () => {
     // No false "Copied to clipboard." card.
     expect(await page.evaluate(() => document.getElementById('pipeToolingCopiedModal').classList.contains('visible'))).toBe(false);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('B4 export naming: one trade dialect across the scope menus, layer qualifiers only when a page has layers', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     const label = (sel) => page.evaluate((s) => document.querySelector(s)?.textContent.replace(/\s+/g, ' ').trim(), sel);
     const hidden = (sel) => page.evaluate((s) => document.querySelector(s)?.style.display === 'none', sel);
@@ -500,19 +464,15 @@ test.describe('Output cluster (features/output.js)', () => {
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
     // No marks -> the empty-summary alert path; just assert no crash happened.
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('B4 export naming: cloud menu "Original PDF (no marks)", Export PDFs is the yellow primary, Highlight/Note Pages renamed', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     // The wrong-file-to-GC trap (J10): the original-PDF row says what it is.
     expect(await page.evaluate(() =>
@@ -558,6 +518,6 @@ test.describe('Output cluster (features/output.js)', () => {
     await expect(page.locator('#airboardToastModal')).toHaveClass(/visible/);
     await expect(page.locator('#airboardToastText')).toContainText('Highlight Pages (PDF) requires jsPDF');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

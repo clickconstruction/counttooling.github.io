@@ -7,13 +7,11 @@
  * the wrap measurement's (text @ width) cache key across resizes.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 async function bootWithLineTool(page) {
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await bootApp(page);
+  await uploadPdf(page, 'test-page.pdf');
   await page.evaluate(() => {
     const s = window.state;
     s.currentProjectName = 'MF-P0002_PCT_IPRP-ChapterI Long Project Name For Wrap Test';
@@ -59,10 +57,8 @@ test.describe('Status-bar tool hint (one-line-only)', () => {
 // the wrap cache keys on a fixed worst-case placeholder so a growing number
 // never re-measures or wraps the bar mid-draw.
 async function bootForReadout(page, { scale = { pixelsPerUnit: 9, unit: 'ft' } } = {}) {
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await bootApp(page);
+  await uploadPdf(page, 'test-page.pdf');
   await page.evaluate((sc) => {
     const s = window.state;
     s.currentProjectName = 'Readout';
@@ -181,14 +177,9 @@ test.describe('Live length readout while drawing (T2 #21)', () => {
 
 test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
   test('measure result rides the footer, outlives the old 5s toast, follows its sheet, and is replaced by a new measure', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.setViewportSize({ width: 1600, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page, { viewport: { width: 1600, height: 800 } });
+    await uploadPdf(page);
 
     await page.evaluate(() => {
       window.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
@@ -245,18 +236,13 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
     expect(secondText).toMatch(/^Distance: /);
     expect(secondText).not.toBe(firstText);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('double-tap guard swallows only same-spot taps — Measure and Set Scale', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
-    await page.setViewportSize({ width: 1600, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    const errors = collectConsoleErrors(page);
+    await bootApp(page, { viewport: { width: 1600, height: 800 } });
+    await uploadPdf(page);
 
     // Synchronous dispatch guarantees the taps land well inside the 400ms window.
     const measured = await page.evaluate(() => {
@@ -315,7 +301,7 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
     expect(scaled.afterDoubleTap.modalOpen).toBe(false);
     expect(scaled.modalOpen).toBe(true);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });
 
@@ -325,12 +311,9 @@ test.describe('Distance chip (#statusMeasure, T2 #15)', () => {
 // object on state, with the committed config's SUPABASE_ENABLED), so CI without dev-auth
 // secrets covers it; the last one signs in for real and self-skips without DEV_AUTH_*.
 async function bootSignedInSeam(page, { width = 1600, height = 800 } = {}) {
-  await page.setViewportSize({ width, height });
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+  await bootApp(page, { viewport: { width, height } });
   if (!(await page.evaluate(() => !!window.App.SUPABASE_ENABLED))) return false;
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  await uploadPdf(page, 'test-page.pdf');
   await page.evaluate(() => {
     const s = window.state;
     s.currentProjectName = 'Signed-in plan';
@@ -346,9 +329,7 @@ async function bootSignedInSeam(page, { width = 1600, height = 800 } = {}) {
 
 test.describe('Signed-in bar shows the tool hint and live readouts (MAP-HINTS)', () => {
   test('Line, Duct and Measure hints ride the signed-in bar, readout and all, with no leading bar', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     if (!(await bootSignedInSeam(page))) { test.skip(true, 'Supabase disabled in this config'); return; }
     const mode = page.locator('#statusMode');
     // Signed in: the Canvas label is the cloud branch's, and Move shows no hint.
@@ -393,7 +374,7 @@ test.describe('Signed-in bar shows the tool hint and live readouts (MAP-HINTS)',
       window.App.updateStatus();
     });
     await expect(mode).toHaveText('Click first point (or hold to aim)');
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('a signed-in viewer\'s line stays exactly as it was, Measure armed or not', async ({ page }) => {
@@ -468,14 +449,12 @@ test.describe('Signed-in bar shows the tool hint and live readouts (MAP-HINTS)',
   });
 
   test('signed in for real (dev auth): the Line hint and its live readout', async ({ page }) => {
-    await page.setViewportSize({ width: 1600, height: 800 });
-    await page.goto('/app/?devAuth=1');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page, { url: '/app/?devAuth=1', viewport: { width: 1600, height: 800 } });
     const signedIn = await page.waitForFunction(() => !!window.state?.supabaseSession?.user, null, { timeout: 8000 }).catch(() => null);
     if (!signedIn) { test.skip(true, 'Dev auth not configured or failed; set DEV_AUTH_EMAIL and DEV_AUTH_PASSWORD in config.local.js'); return; }
     await page.evaluate(() => { if (window.App.isRestorePromptPending && window.App.isRestorePromptPending()) window.App.dismissLastSessionRestorePrompt(); });
     // Open a plan and mark nothing, so no autosave creates a cloud project.
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
     const opened = () => page.waitForFunction(() => window.state.pages.length === 1 && !document.querySelector('.modal-overlay.visible'), null, { timeout: 30000 });
     const door = await Promise.race([
       page.locator('#loadAnnotationsModal.visible').waitFor({ timeout: 30000 }).then(() => 'loadAnnotations'),

@@ -13,6 +13,42 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(specs): a spec boots, opens a plan and collects its console errors through one shared helper (R07, 2026-09-26)
+
+The decomposition map's R07, first tranche. Every Playwright spec carried its own copy of the same
+three pieces: the boot wait on `App.bootSettled`, the upload through `#pdfInput` followed by the
+wait for the pages list, and a console-error collector with its no-errors assertion. The copies had
+drifted: about 180 collectors took every console error, about 70 dropped the config.local.js 404,
+and prepare-pdf kept its own pdf.js allowance. A fresh worktree without the stub failed some 150
+specs on that 404 alone.
+
+spec-helpers.js at the repo root holds them once. `collectConsoleErrors(page, { ignore })` returns
+the live array, minus a line whose source is config.local.js and minus `BENIGN_ERRORS` (today the
+pdf.js "multiple render() operations" race), with a non-enumerable `assertNoErrors()`, so an
+existing `expect(errors).toEqual([])` still holds. `bootApp(page, { url, viewport, timeout, ready })`
+opens `/app/` (or the url) and waits for `App.bootSettled`, plus an optional `ready` condition;
+`waitForBoot` and `reloadApp` are the same wait without the goto, or after a reload.
+`uploadPdf(page, file, { timeout, waitForPages })` takes a path (a bare name resolves from the repo
+root, the default is test-2pages.pdf) or a setInputFiles payload. The helper is not a `*.spec.js`,
+so `testMatch` never collects it, and eslint's Node group lints it.
+
+Converted, 332 lines out of fifteen specs for the helper's 110: scale, output, import-clear,
+pdf-upload, room-sizer, footer-hint, restore-last-session, bid-switcher, choose-create-line-type,
+toast-region, pdf-bundle, header-more, mobile-burger-menu, zoom-canvas-cap and my-settings. They
+were chosen by copied lines, leaving out the specs other branches were editing. Two collectors
+that allowed one line of their own (output's `[copy]` diagnosis, choose-create-line-type's refused
+path data) pass it as `ignore`. restore-last-session's boot-race test now collects console errors
+as well as page errors, and still passes. The 127 tests ran the same before and after: 126 passed,
+1 skipped (footer-hint's dev-auth test, which needs cloud credentials).
+
+scripts/lib/project-map.js reads a spec's `App.*` names to list the specs that pin each file.
+With the boot wait moved into the helper, header-more.spec.js dropped off app.js's list. A spec
+that requires a root helper now counts the helper's `App.*` reads as its own (the reads only, not
+its text, so a path in a helper's comment pins nothing), and the lists match main's again.
+
+Left for the follow-up, in DECOMPOSITION_MAP.md R07's Landed line: the other specs, 157 of which
+still carry 246 copies of the boot wait.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

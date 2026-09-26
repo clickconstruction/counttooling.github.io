@@ -13,19 +13,12 @@
  * at 390px the ⋯ is gone and Duct is reachable via B9's padded strip scroll.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
-
-async function loadPdf(page) {
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
-}
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.describe('Header ⋯ More tools overflow', () => {
   test('wide header: group still tucked behind ⋯ (unconditional); priority order holds', async ({ page }) => {
-    await page.setViewportSize({ width: 1700, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await loadPdf(page);
+    await bootApp(page, { viewport: { width: 1700, height: 800 } });
+    await uploadPdf(page, 'test-page.pdf');
 
     // Even with room to spare, the low-frequency group stays in the menu.
     await expect(page.locator('#headerMoreBtn')).toBeVisible();
@@ -41,14 +34,10 @@ test.describe('Header ⋯ More tools overflow', () => {
   });
 
   test('menu rows click through; active state tracks; stays engaged when widening', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.setViewportSize({ width: 1000, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await loadPdf(page);
+    await bootApp(page, { viewport: { width: 1000, height: 800 } });
+    await uploadPdf(page, 'test-page.pdf');
 
     // More mode engaged: ⋯ visible, the group hidden, everyday tools inline.
     await expect(page.locator('#headerMoreBtn')).toBeVisible();
@@ -104,18 +93,14 @@ test.describe('Header ⋯ More tools overflow', () => {
     await expect(page.locator('#headerMoreBtn')).toBeVisible();
     await expect(page.locator('#multiplyZoneBtn')).toBeHidden();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('D14: Duct rides the ⋯ menu WITHOUT leaving the strip; desktop order unchanged', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.setViewportSize({ width: 1000, height: 800 });
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await loadPdf(page);
+    await bootApp(page, { viewport: { width: 1000, height: 800 } });
+    await uploadPdf(page, 'test-page.pdf');
 
     // D21 (J5-D): D14's arrangement survives as the unstated AND the HVAC case.
     // Inline: Duct stays VISIBLE in the strip at its shipped DOM position —
@@ -148,18 +133,15 @@ test.describe('Header ⋯ More tools overflow', () => {
     await page.evaluate(() => { document.getElementById('ductBtn').classList.add('active'); window.App.onHeaderMoreSync(); });
     await expect(page.locator('#headerMoreBtn')).not.toHaveClass(/active/);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('D14: at 390px the ⋯ is gone and Duct is reachable via the padded strip scroll', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize({ width: 390, height: 844 });   // B9's mobile-touch.spec viewport
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await loadPdf(page);
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     await expect(page.locator('body')).not.toHaveClass(/header-more/);
     await expect(page.locator('#headerMoreBtn')).toBeHidden();
@@ -183,6 +165,6 @@ test.describe('Header ⋯ More tools overflow', () => {
     await page.locator('#ductBtn').click();
     expect(await page.evaluate(() => window.__ductClicks)).toBe(1);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

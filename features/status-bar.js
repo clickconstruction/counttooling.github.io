@@ -497,7 +497,6 @@
   };
 
   App.invalidateFooterTotals = invalidateFooterTotals;
-  App.getFooterTotalsCached = getFooterTotalsCached;
   App.updateStatus = updateStatus;
   App.getCloudSaveSummary = getCloudSaveSummary;
   App.updateSaveStatusIndicator = updateSaveStatusIndicator;

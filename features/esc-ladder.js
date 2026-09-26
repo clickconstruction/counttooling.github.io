@@ -27,7 +27,7 @@
  * the tool under it. It used to re-dispatch a synthetic Escape through the whole ladder.
  *
  * Registers: App.handleEscape(e) (app.js's keydown calls it synchronously, so listener
- * order is unchanged), App.dismissOverlay(el), App.topmostOverlay() (spec seam).
+ * order is unchanged), App.dismissOverlay(el).
  * Reads at call time: App.state, TOOL, SCALE_MODES, showModal, hideModal, updateUI,
  * renderAnnotations, resolveConfirm, clearAuthGate, clearToolStarts, resetToMove,
  * exitEditMode, and each feature's own close (the rungs name them).
@@ -246,5 +246,4 @@
 
   App.handleEscape = handleEscape;
   App.dismissOverlay = dismissOverlay;
-  App.topmostOverlay = topmostOverlay;   // spec seam
 })();

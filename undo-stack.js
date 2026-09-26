@@ -12,7 +12,9 @@
 /*
  * The undo/redo stack — annotation-data snapshots over the same state seam.
  * ctx: getState, uid, ensureGroupColors (snapshot restore) + markProjectDirty,
- * renderPdf, updateUI (the undo/redo commit hooks).
+ * renderPdf, updateUI (the undo/redo commit hooks) + remapSessionPageIndices
+ * (annotation-model.js; the page-list restore moves the selections with their
+ * sheets).
  */
 function createUndoStack(ctx) {
   let undoStack = [];
@@ -20,8 +22,8 @@ function createUndoStack(ctx) {
 
   // getProjectCounts(data) lives in save-utils.js (loaded before this IIFE).
 
-  function getUndoableSnapshot() {
-    return {
+  function getUndoableSnapshot(opts) {
+    const snap = {
       pages: ctx.getState().pages.map(p => ({
         canvases: JSON.parse(JSON.stringify(p.canvases || [])),
         scale: p.scale ? { ...p.scale } : null,
@@ -37,6 +39,8 @@ function createUndoStack(ctx) {
       // so Ctrl+Z puts the size back like any other drag.
       legendSettings: ctx.getState().legendSettings ? JSON.parse(JSON.stringify(ctx.getState().legendSettings)) : null
     };
+    if (opts && opts.pageList) snap.pageList = getPageListShape();
+    return snap;
   }
 
   function pushUndoSnapshot() {
@@ -44,6 +48,54 @@ function createUndoStack(ctx) {
     undoStack.push(getUndoableSnapshot());
     if (undoStack.length > UNDO_STACK_SIZE) undoStack.shift();
     redoStack = [];
+  }
+
+  // MAP-PAGE-UNDO: the step for a change to the page LIST itself (today, a page
+  // delete). An ordinary full step lays its pages back over the live list by
+  // index, which is right while the list keeps its shape; after a delete it put
+  // the deleted sheet's marks, label and scale on the sheet after it. This step
+  // also records the list: the page OBJECTS in order (references, so the PDF
+  // page, bake frame and anything else on a page come back with it; the
+  // canvases, scale, rotation and label are still copied as in any full step)
+  // and the two page-index-keyed maps. Undo puts that list back, then applies
+  // the copies by index, which now line up; redo does the same with the list
+  // as it was after the change. Only this step restores the list: an ordinary
+  // step must not, since sheets appended without a step (the Prepare PDF
+  // append) would vanish on undo. Entries recorded before the change stay
+  // right, because the stack is last in, first out: this step is undone first,
+  // so the list is back to the shape they were recorded against.
+  function getPageListShape() {
+    const state = ctx.getState();
+    return {
+      refs: state.pages.slice(),
+      activeCanvasIdByPage: { ...(state.activeCanvasIdByPage || {}) },
+      peekCanvasIdsByPage: JSON.parse(JSON.stringify(state.peekCanvasIdsByPage || {}))
+    };
+  }
+  function pushUndoSnapshotPageList() {
+    if (ctx.getState().isViewer || !ctx.getState().pages.length) return;
+    undoStack.push(getUndoableSnapshot({ pageList: true }));
+    if (undoStack.length > UNDO_STACK_SIZE) undoStack.shift();
+    redoStack = [];
+  }
+  // Put the recorded list back IN PLACE (holders of state.pages and of the maps
+  // see it), then carry every session index to its sheet's new position by
+  // identity: the sheet on screen stays on screen, a selection follows its
+  // sheet, and one on a sheet the list no longer has is dropped.
+  function restorePageList(shape) {
+    const state = ctx.getState();
+    const before = state.pages.slice();
+    state.pages.splice(0, state.pages.length, ...shape.refs);
+    const to = (idx) => { const k = state.pages.indexOf(before[idx]); return k >= 0 ? k : null; };
+    [['activeCanvasIdByPage', shape.activeCanvasIdByPage], ['peekCanvasIdsByPage', shape.peekCanvasIdsByPage]].forEach(([key, saved]) => {
+      if (!state[key] || typeof state[key] !== 'object') state[key] = {};
+      const map = state[key];
+      Object.keys(map).forEach((k) => { delete map[k]; });
+      Object.assign(map, JSON.parse(JSON.stringify(saved || {})));
+    });
+    const cur = to(state.currentPage);
+    state.currentPage = cur != null ? cur : Math.min(Math.max(0, state.currentPage || 0), Math.max(0, state.pages.length - 1));
+    if (ctx.remapSessionPageIndices) ctx.remapSessionPageIndices(to);
   }
 
   // Page-scoped snapshot for the HIGH-FREQUENCY page-local mutations (placing
@@ -89,6 +141,7 @@ function createUndoStack(ctx) {
       applySharedSnapshotTail(snap);
       return;
     }
+    if (snap.pageList) restorePageList(snap.pageList);
     ctx.getState().pages.forEach((p, i) => {
       if (snap.pages[i]) {
         if (Array.isArray(snap.pages[i].canvases)) p.canvases = snap.pages[i].canvases;
@@ -125,7 +178,7 @@ function createUndoStack(ctx) {
   function undo() {
     if (undoStack.length === 0 || ctx.getState().isViewer) return false;
     const prev = undoStack.pop();
-    redoStack.push(prev.scope === 'page' ? getPageSnapshot(prev.pageIdx) : getUndoableSnapshot());
+    redoStack.push(prev.scope === 'page' ? getPageSnapshot(prev.pageIdx) : getUndoableSnapshot({ pageList: !!prev.pageList }));
     applySnapshot(prev);
     ctx.markProjectDirty();
     ctx.renderPdf();
@@ -136,7 +189,7 @@ function createUndoStack(ctx) {
   function redo() {
     if (redoStack.length === 0 || ctx.getState().isViewer) return false;
     const next = redoStack.pop();
-    undoStack.push(next.scope === 'page' ? getPageSnapshot(next.pageIdx) : getUndoableSnapshot());
+    undoStack.push(next.scope === 'page' ? getPageSnapshot(next.pageIdx) : getUndoableSnapshot({ pageList: !!next.pageList }));
     applySnapshot(next);
     ctx.markProjectDirty();
     ctx.renderPdf();
@@ -153,7 +206,7 @@ function createUndoStack(ctx) {
   function canRedo() { return redoStack.length > 0; }
   function undoDepth() { return undoStack.length; }
   function redoDepth() { return redoStack.length; }
-  return { getUndoableSnapshot, pushUndoSnapshot,
+  return { getUndoableSnapshot, pushUndoSnapshot, pushUndoSnapshotPageList,
     pushUndoSnapshotPage, applySnapshot, undo, redo, clearUndoStacks, canUndo, canRedo,
     undoDepth, redoDepth };
 }

@@ -11,6 +11,7 @@
  * Stage 0 pins the deletion of that costume. Later stages add the bid chip.
  */
 const { test, expect } = require('@playwright/test');
+const { collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 function realErrors(errors) {
   return errors.filter((e) =>
@@ -19,9 +20,7 @@ function realErrors(errors) {
 
 test.describe('Empty-state header: one upload door, no decoy', () => {
   test('the Export control does not impersonate Upload PDF', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
@@ -51,14 +50,11 @@ test.describe('Empty-state header: one upload door, no decoy', () => {
   });
 
   test('with a plan open the Export menu is back and opens', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'test-page.pdf');
 
     const btn = page.locator('#exportDropdownBtn');
     await expect(btn).toBeVisible();
@@ -89,9 +85,7 @@ async function openFakeBid(page, name, id) {
 
 test.describe('The bid chip (features/bid-chip.js)', () => {
   test('names the bid you are in, and says so when there is none', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
@@ -104,8 +98,7 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     // Nothing open: there is room and no bid to name, so the wordmark stays.
     await expect(page.locator('#headerLogo')).toBeVisible();
 
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'test-page.pdf');
     await openFakeBid(page, 'Sysco Cold Box · P-101');
 
     await expect(page.locator('#headerBidChipName')).toHaveText('Sysco Cold Box · P-101');
@@ -120,8 +113,7 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
   test('a long bid name ellipsises and keeps the full name on the title', async ({ page }) => {
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'test-page.pdf');
     const LONG = 'Bastrop ISD High School Field House Addition · M-201';
     await openFakeBid(page, LONG);
 
@@ -146,8 +138,7 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     test('at ' + width + 'px the chip does not tip the header into collapsed mode', async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await page.goto('/app/');
-      await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-      await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+      await uploadPdf(page, 'test-page.pdf');
       await openFakeBid(page, 'Bastrop ISD High School Field House Addition \u00b7 M-201');
 
       const r = await page.evaluate(async () => {
@@ -177,8 +168,7 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
   test('a view-link recipient gets no chip: they have no bids to switch between', async ({ page }) => {
     await page.setViewportSize({ width: 1380, height: 800 });
     await page.goto('/app/');
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'test-page.pdf');
     const hidden = await page.evaluate(() => {
       const s = window.App.state;
       s.loadedViaViewLink = true; s.isViewer = true;
@@ -195,8 +185,7 @@ test.describe('The bid chip (features/bid-chip.js)', () => {
     await page.goto('/app/');
     await page.waitForFunction(() => !!(window.App && window.App.state), null, { timeout: 15000 });
 
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'test-page.pdf');
     await openFakeBid(page, 'Sysco Cold Box \u00b7 P-101', 'aaa');
     const link = page.locator('#headerSidebarToggle');
     await expect(link).toBeVisible();
@@ -223,16 +212,13 @@ const WEEK = [
 
 test.describe('The bid menu (features/bid-chip.js)', () => {
   test('lists the recents, marks the open bid inert, and offers the two doors', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize({ width: 1440, height: 800 });
     await page.goto('/app/');
     await seedRecents(page, WEEK);
     await page.reload();
-    await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+    await uploadPdf(page, 'test-page.pdf');
     await openFakeBid(page, 'Sysco Cold Box \u00b7 P-101', 'aaa');
 
     await page.locator('#headerBidChip').click();
@@ -333,9 +319,7 @@ async function stubCloud(page, rows) {
 
 test.describe('Opening a recent bid (stage 4)', () => {
   test('a clean session opens the bid straight from the menu', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
     await page.setViewportSize({ width: 1440, height: 800 });
     await page.goto('/app/');
@@ -438,8 +422,7 @@ test.describe('The wordmark only yields where the chip can take over', () => {
     test('at ' + width + 'px the wordmark is ' + (chipExpected ? 'replaced' : 'kept'), async ({ page }) => {
       await page.setViewportSize({ width, height: 820 });
       await page.goto('/app/');
-      await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'test-page.pdf'));
-      await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
+      await uploadPdf(page, 'test-page.pdf');
       await openFakeBid(page, 'Sysco Cold Box \u00b7 P-101', 'aaa');
 
       const r = await page.evaluate(() => ({

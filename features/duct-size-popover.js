@@ -246,7 +246,6 @@
   }
 
   App.registerDuctPopoverSection = registerDuctPopoverSection;
-  App.ductStepDownCandidates = ductStepDownCandidates;   // spec seam (duct-tool.spec.js)
   App.openDuctSizePopover = openDuctSizePopover;
   App.closeDuctSizePopover = closeDuctSizePopover;
   App.toggleDuctSizePopover = toggleDuctSizePopover;

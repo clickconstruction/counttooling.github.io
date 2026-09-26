@@ -210,8 +210,6 @@
     shownNodeKey = null;
     pinnedNodeKey = null;
   }
-  // Exposed for page/project teardowns that swap the sheet under the chip.
-  App.hideDropPeek = hideChip;
 
   // --- app.js hooks ---------------------------------------------------------
 

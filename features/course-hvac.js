@@ -23,7 +23,8 @@
  *
  * Everything a lesson has comes from App.lessonKit (features/lessons.js) at call time; a
  * chapter names its set (`set`) and stands alone. Point lists are FLAT (teaching-labels.test.js).
- * Progress: localStorage `clickcount-course-done`, { 'hvac:<id>': ISO }. Doors: the Learn
+ * Progress: localStorage `clickcount-course-done`, { 'hvac:<id>': ISO }, the one map every
+ * course shares (lessonKit.courseDone / markCourseDone, App.courseDone). Doors: the Learn
  * menu's section (#learnCourseList-hvac), the empty-canvas "air" link, Project Settings →
  * Help → "hvac course", /app/?course=hvac, /app/?chapter=hvac:<id>.
  *
@@ -34,7 +35,6 @@
   'use strict';
   const App = (window.App = window.App || {});
   const COURSE = 'hvac';
-  const DONE_KEY = 'clickcount-course-done';
   const MSET = { url: '/samples/sample-hvac.pdf', name: 'sample-hvac', pages: 3, trade: 'hvac', word: 'three' };
   const M101 = 0, M501 = 1, M601 = 2;
   const K = () => App.lessonKit;
@@ -645,8 +645,8 @@
   ];
 
   // ----- progress, the menu section, the doors -----------------------------------------------------------
-  function courseDone() { try { return JSON.parse(localStorage.getItem(DONE_KEY) || '{}') || {}; } catch (_) { return {}; } }
-  function markDone(id) { try { const d = courseDone(); d[key(id)] = new Date().toISOString(); localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } }
+  const courseDone = () => K().courseDone();
+  const markDone = (id) => K().markCourseDone(key(id));
   const suggested = () => { const d = courseDone(); return (CHAPTERS.find((c) => !d[key(c.id)]) || {}).id || null; };
 
   CHAPTERS.forEach((chapter, idx) => {

@@ -281,7 +281,7 @@ module.exports = [
     // configs. Playwright page.evaluate() callbacks run in the browser, so
     // browser globals are included alongside the Node ones, plus the handful
     // of app functions the specs reach for inside the page context.
-    files: ['*.test.js', '*.spec.js', 'cloud-test-helpers.js', 'scripts/**/*.js', 'playwright.config.js', 'takeoff-eval.js'],
+    files: ['*.test.js', '*.spec.js', 'spec-helpers.js', 'cloud-test-helpers.js', 'scripts/**/*.js', 'playwright.config.js', 'takeoff-eval.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',

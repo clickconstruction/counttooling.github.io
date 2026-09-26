@@ -27,8 +27,15 @@ const RENDERED_IN_JS = {
 // Labels the app no longer shows. Add one here when a control is renamed.
 const RETIRED = ['Copy to PipeTooling', 'Legend Settings]]', 'Snap to horizontal/vertical'];
 
+// The teaching files are FOUND, never listed (R16, D24): the tour engine and the lessons by
+// name, any tour-* or course-* file, and any feature file that registers a tour through
+// App.registerTour. A new tour or course is checked the day it lands, with no edit here.
+const TEACHING_NAME = /^(tutorial|lessons|tour-.+|course-.+)\.js$/;
 function tourSources() {
-  return ['features/tutorial.js'].concat(['features/lessons.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js', 'features/tour-blank.js'].filter((f) => fs.existsSync(path.join(ROOT, f))));
+  return fs.readdirSync(path.join(ROOT, 'features'))
+    .filter((f) => f.endsWith('.js') && (TEACHING_NAME.test(f) || read('features/' + f).includes('App.registerTour(')))
+    .sort()
+    .map((f) => 'features/' + f);
 }
 function chipsOf(src) {
   return [...new Set([...src.matchAll(/\[\[(.+?)\]\]/g)].map((m) => m[1].replace(/\\'/g, "'")))];
@@ -37,6 +44,15 @@ function chipsOf(src) {
 function actionLabels(src) {
   return new Set([...src.matchAll(/label:\s*'((?:[^'\\]|\\.)*)'/g)].map((m) => m[1].replace(/\\'/g, "'")));
 }
+
+test('the teaching files are found by pattern, the tours and courses among them', () => {
+  const found = tourSources();
+  // a floor, so a finder that matches nothing cannot pass the two checks below vacuously
+  ['features/tutorial.js', 'features/lessons.js', 'features/tour-blank.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js']
+    .forEach((f) => assert.ok(found.includes(f), f + ' is a teaching file'));
+  fs.readdirSync(path.join(ROOT, 'features')).filter((f) => f.endsWith('.js') && read('features/' + f).includes('App.registerTour('))
+    .forEach((f) => assert.ok(found.includes('features/' + f), f + ' registers a tour, so its labels are checked'));
+});
 
 test('every [[control]] a tour names is a control the app shows', () => {
   const labels = shellLabels();

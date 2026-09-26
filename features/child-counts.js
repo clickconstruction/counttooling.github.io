@@ -280,5 +280,4 @@
 
   App.getChildCountTotals = getChildCountTotals;
   App.renderChildCountsSection = renderChildCountsSection;
-  App.childCountRuleLabel = ruleLabel;
 })();

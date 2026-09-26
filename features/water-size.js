@@ -320,7 +320,6 @@
   App.getWaterDraftSuggestion = getWaterDraftSuggestion;
   App.isWaterDrawing = isWaterDrawing;
   App.drawWaterOverlay = drawWaterOverlay;
-  App.openWaterSizePopover = openWaterSizePopover;
   App.closeWaterSizePopover = closeWaterSizePopover;
   App.toggleWaterSizePopover = toggleWaterSizePopover;
   App.isWaterPopoverOpen = isWaterPopoverOpen;

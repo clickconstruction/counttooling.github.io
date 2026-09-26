@@ -132,12 +132,6 @@
     return map.size ? map : null;
   }
 
-  function notePinInfo(n) {
-    if (!isPinNote(n)) return null;
-    const row = collectNotesLedger().find((r) => r.note === n);
-    return row ? { num: row.num, color: row.kind === 'rfi' ? RFI_COLOR : NOTE_COLOR, resolved: row.resolved, r: PIN_R } : null;
-  }
-
   // ---- hover chip -----------------------------------------------------------
 
   let chipEl = null;
@@ -450,15 +444,10 @@
   wireChip();
   wireDrawer();
 
-  App.noteKind = noteKind;
-  App.noteTitle = noteTitle;
   App.isPinNote = isPinNote;
-  App.notePinInfo = notePinInfo;
   App.getNotesPinMap = getNotesPinMap;
   App.collectNotesLedger = collectNotesLedger;
-  App.getNotesDisplayMode = getDisplayMode;
   App.setNotesDisplayMode = setDisplayMode;
   App.openNotesLedger = openNotesLedger;
-  App.closeNotesLedger = closeNotesLedger;
   App.onNotesLedgerSync = onNotesLedgerSync;
 })();

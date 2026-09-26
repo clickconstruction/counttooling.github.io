@@ -119,16 +119,27 @@
   `vendor/` / `vendor/fonts/` (version-pinned filenames — not CDN), so the app is
   same-origin except Supabase. [sw.js](sw.js) precaches the whole shell for offline use;
   [manifest.webmanifest](manifest.webmanifest) + head meta make it installable.
-  **`CACHE_VERSION` and `PRECACHE_SHA256` in [sw.js](sw.js) are GENERATED — never edit
-  them by hand.** Both are stamped by `npm run build:sw`
-  ([scripts/build-sw.js](scripts/build-sw.js)): the joint content hash that names the
-  cache, and the per-file sha256 map the install uses to verify every fetched asset
-  before caching it (a mid-deploy CDN serving a mixed shell aborts the install instead
-  of poisoning the cache). Run it after changing any precached file
-  (`npm run check` includes `build:sw -- --check` and fails when stale; the admin
-  global-force-reload is the backstop). When you add/rename a shell file (a
-  `features/*.js`, a `vendor/*` lib, a font), update the app/index.html tag **and**
-  `PRECACHE_URLS` in sw.js (still hand-maintained), then run `npm run build:sw`.
+  **`CACHE_VERSION`, `PRECACHE_URLS` and `PRECACHE_SHA256` in [sw.js](sw.js) are
+  GENERATED: never edit them by hand.** All three are stamped by `npm run build:sw`
+  ([scripts/build-sw.js](scripts/build-sw.js)): the precache list (R06: every
+  root-absolute `<script src>` / `<link href>` in app/index.html in document order, the
+  fonts `vendor/fonts/fonts.css` names, the icons the manifest names, then the short
+  hand-kept `PRECACHE_EXTRA` in build-sw.js for what code fetches at run time: `/app/`,
+  the two workers, `rules/rules.json`), the joint content hash that names the cache, and
+  the per-file sha256 map the install uses to verify every fetched asset before caching
+  it (a mid-deploy CDN serving a mixed shell aborts the install instead of poisoning the
+  cache). Run it after changing any precached file (`npm run check` includes
+  `build:sw -- --check` and fails when stale, listing the URLs the list gains or loses;
+  the admin global-force-reload is the backstop). When you add/rename a shell file (a
+  `features/*.js`, a `vendor/*` lib, a stylesheet), change only its app/index.html tag,
+  then run `npm run build:sw`; a font needs only its `fonts.css` rule. Only an asset that
+  code fetches with no tag (a new worker, a fetched JSON) goes in `PRECACHE_EXTRA`.
+  **A merge that conflicts in sw.js**: resolve the other files first, then
+  `npm run build:sw -- --resolve` and `git add sw.js`. When every conflict hunk sits in
+  the three generated blocks it takes our side and restamps from the merged files; a
+  conflict in the worker's hand-written code is refused, for you to settle by hand (then
+  plain `build:sw`). A script, not a `.gitattributes` merge driver, because a driver
+  needs a `git config` step in every clone and fails silently without it.
   Regen icons with `npm run build:pwa-icons`.
   After a deploy, a returning tab renders one "mixed shell" (network-first HTML + the
   previous version's cached assets) until the updated SW takes control; the app.js boot
@@ -246,6 +257,12 @@
   runs them on full-ICU (browser-equivalent / CI Node 20). Naming split (enforced by `testMatch` in
   [playwright.config.js](playwright.config.js)): `*.spec.js` = Playwright,
   `*.test.js` = Node unit tests.
+  **A new spec boots through [spec-helpers.js](spec-helpers.js)** (R07): `const errors =
+  collectConsoleErrors(page)` before the goto, `await bootApp(page)` (or `bootApp(page, { url,
+  viewport })`, `reloadApp(page)`), `await uploadPdf(page)` (test-2pages.pdf, or a named file),
+  and `errors.assertNoErrors()` at the end. The collector already drops the config.local.js 404
+  and the suite's other known-benign lines; pass `{ ignore: [...] }` for a line the spec expects.
+  Don't paste a copy of the boot wait, the upload or the collector into a spec.
 - **Aggregate check**: `npm run check` runs [scripts/check.js](scripts/check.js),
   which executes EVERY step and reports all failures at once (one stale stamp
   no longer hides the next): lint + `test:unit` + `build:toc --check`
@@ -507,7 +524,9 @@ length label size and orientation, `snapToHorizontalVertical` (the 8-way 45° sn
 the key keeps its original H/V-era name), and the Lines `showOnlyLinesOnCurrentPage`
 toggle. app.js starts state from `COUNTER_SETTINGS_DEFAULTS` / `LINE_TYPE_SETTINGS_DEFAULTS`
 (constants.js) and merges the stored JSON over them at boot through `displaySettingsFields`
-(only the defaults' own keys, each of the default's type, so a new key keeps its default);
+(only the defaults' own keys, each of the default's type, so a new key keeps its default;
+a number under its slider's minimum, `DISPLAY_SETTINGS_MINIMUMS`, reads as the default: the
+ring size default is 100, it was 1 under the slider's 50 until MAP-RING-DEFAULT);
 every change writes both through `App.saveDisplaySettings` (the two settings modals, the
 header Snap button, the J hotkey, the Lines this-sheet button). Wiped by the sign-out key
 list. The IndexedDB takeoff backup still carries both objects but nothing restores from

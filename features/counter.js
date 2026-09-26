@@ -156,6 +156,29 @@
     return customGrid;
   }
   App.buildCreateCustomIconGrid = buildCreateCustomIconGrid;
+  // MAP-ICON-SEARCH: the ONE builder for the Create panel's built-in grid, its
+  // cells and its pick. The panel's prep calls it, and so does the
+  // #counterIconSearch handler on every keystroke, so a pick behaves the same
+  // before and after a search: it fills an empty name, counts as a pick (D16),
+  // refreshes the CFM chip and re-reads the fixture units for the name. The
+  // search's own copy of this click once skipped that last step.
+  // `selectedIdx` marks one cell (-1 marks none).
+  function buildCreateIconGrid(icons, selectedIdx) {
+    const grid = document.getElementById('counterIconGrid');
+    const customGrid = document.getElementById('counterIconGridCustom');
+    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === selectedIdx);
+    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
+      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+      if (customGrid) customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
+      c.classList.add('selected');
+      createIconPicked = true;
+      const path = c.dataset.path;
+      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
+      syncCreateCfmChip();   // D18: an explicit pick replaces the chip's icon
+      if (App.syncWsfuForm) App.syncWsfuForm('create');   // the pick may have named the counter
+    });
+    return grid;
+  }
   function syncCreateIconToCfm() {
     if (createIconPicked) { syncCreateCfmChip(); return; }
     const v = parseFloat(document.getElementById('counterCfm')?.value);
@@ -293,20 +316,8 @@
       if (defEl) defEl.textContent = dropFt != null ? dropFt + "'" : 'the default';
     }
     document.getElementById('counterIconSearch').value = '';
-    const grid = document.getElementById('counterIconGrid');
-    const customGrid = document.getElementById('counterIconGridCustom');
-    grid.innerHTML = App.iconGridCellsHtml(icons, App.iconVbFor, (ic, i) => i === prefillIdx);
+    buildCreateIconGrid(icons, prefillIdx);
     buildCreateCustomIconGrid();
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected');
-      createIconPicked = true;
-      const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
-      syncCreateCfmChip();   // D18: an explicit pick replaces the chip's icon
-      if (App.syncWsfuForm) App.syncWsfuForm('create');   // the pick may have named the counter
-    });
     if (cfmEl) cfmEl.oninput = syncCreateIconToCfm;
     // WATER-PLAN rung 2: the Fixture units field, prefilled from the name for
     // the project's occupancy while the estimator has not typed in it.
@@ -431,19 +442,10 @@
     // ability to change the icon". Zero matches keeps the grid area with an
     // honest empty state instead.
     if (q && filtered.length === 0) {
-      grid.innerHTML = '<p class="icon-grid-empty">No icons match &ldquo;' + App.escapeHtml(q) + '&rdquo; &mdash; clear the search to see every icon.</p>';
+      grid.innerHTML = '<p class="icon-grid-empty">No icons match &ldquo;' + App.escapeHtml(q) + '&rdquo;. Clear the search to see every icon.</p>';
       return;
     }
-    grid.innerHTML = App.iconGridCellsHtml(filtered, App.iconVbFor, (ic, i) => i === 0 && !hadCustomSelected);
-    grid.querySelectorAll('.icon-cell').forEach(c => c.onclick = () => {
-      grid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      customGrid.querySelectorAll('.icon-cell').forEach(x => x.classList.remove('selected'));
-      c.classList.add('selected');
-      createIconPicked = true;
-      const path = c.dataset.path;
-      if (path && !document.getElementById('counterName').value.trim()) document.getElementById('counterName').value = App.getIconName(path);
-      syncCreateCfmChip();
-    });
+    buildCreateIconGrid(filtered, hadCustomSelected ? -1 : 0);
   };
   document.getElementById('counterCancel').onclick = () => App.hideModal('counterModal');
   document.getElementById('counterCreate').onclick = () => {

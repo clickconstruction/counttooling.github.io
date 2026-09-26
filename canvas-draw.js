@@ -21,6 +21,9 @@
 //   iconRenderVb(iconPath) / iconRenderCenter(iconPath)  -> vb num / {x,y}
 //   formatDropLabel(value, unit)                         -> "3 ft" | "" (the
 //                     recent-drops.js formatter; drives the drop-size labels)
+//   getDisplaySettingsDefaults('counterSettings' | 'lineTypeSettings')
+//                     -> constants.js COUNTER_ / LINE_TYPE_SETTINGS_DEFAULTS (the
+//                     fallbacks for a missing settings blob and the ring size)
 //
 // drawAnnotationsCore(ctx, ann, env) walks the persisted mark kinds in the
 // frozen paint order (quickLines -> polylines -> highlights -> multiplyZones
@@ -452,12 +455,18 @@ function createCanvasDraw(deps) {
     });
   }
 
+  // MAP-RING-DEFAULT: the Counter / Line Type display defaults are constants.js's, which
+  // loads after this file, so they arrive through deps; a settings blob missing from state
+  // reads them. ({} only in a harness that passes no defaults.)
+  const displaySettingsDefaults = (key) => (deps.getDisplaySettingsDefaults && deps.getDisplaySettingsDefaults(key)) || {};
+  const displaySettings = (state, key) => state[key] || displaySettingsDefaults(key);
+
   // The unified persisted-marks painter. See the env divergence register in
   // the file header; anything not in env reads state via deps at call time.
   function drawAnnotationsCore(ctx, ann, env) {
     const state = deps.getState();
     const tc = env.tc;
-    const lts = state.lineTypeSettings || { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false };
+    const lts = displaySettings(state, 'lineTypeSettings');
     const lw = env.lineWidth;
     const lo = env.lineOpacity;
 
@@ -1201,7 +1210,8 @@ function createCanvasDraw(deps) {
       }
       ctx.restore();
     });
-    const cs = state.counterSettings || { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 1, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+    const csDefaults = displaySettingsDefaults('counterSettings');
+    const cs = displaySettings(state, 'counterSettings');
     const s = env.counterSize;
     const opacity = cs.opacity;
     Object.entries(ann.counterMarkers || {}).forEach(([typeId, markers]) => {
@@ -1235,13 +1245,13 @@ function createCanvasDraw(deps) {
           ctx.restore();
         }
         if (cs.showRings) {
-          const ringScale = (cs.ringSize || 100) / 100;
+          const ringScale = (cs.ringSize || csDefaults.ringSize) / 100;
           const ringSizePx = s * ringScale;
           ctx.save();
           ctx.translate(p.x, p.y);
           ctx.scale(ringSizePx / 640, ringSizePx / 640);
           ctx.translate(-320, -320);
-          ctx.globalAlpha = cs.ringOpacity != null ? cs.ringOpacity : 1;
+          ctx.globalAlpha = cs.ringOpacity ?? csDefaults.ringOpacity;
           if (cs.ringSolid) {
             ctx.fillStyle = color;
             ctx.fill(new Path2D(RING_PATH));

@@ -13,6 +13,266 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(tooling): a new shell file needs only its tag, and a sw.js stamp conflict resolves with one command (R06, 2026-09-26)
+
+The decomposition map's R06, both items. Every new shell file cost four hand steps, and one of
+them was copying its path into sw.js's `PRECACHE_URLS`, which the build only checked one way
+(a tag with no list entry failed; the list itself was typed by hand). Now `npm run build:sw`
+writes the whole `PRECACHE_URLS` literal the way it already wrote `CACHE_VERSION` and
+`PRECACHE_SHA256`: every root-absolute `<script src>` and `<link href>` in app/index.html in
+document order, the font files `vendor/fonts/fonts.css` names, the icons the manifest names, and
+last a short `PRECACHE_EXTRA` kept by hand in scripts/build-sw.js for what code fetches with no
+tag (`/app/` and `/app/index.html` for the offline shell, the render worker, the pdf.js worker,
+`rules/rules.json`), each with its reason beside it. Each group carries a comment line in sw.js.
+`--check` fails when the list is stale and names the URLs it would gain or lose, so a new shell
+file needs only its tag and a rerun. A relative `src` or `href` in the shell is now a build error
+(it would resolve under `/app/` and precache the wrong path). The old one-way coverage gate is
+gone, since the list can no longer miss a tag.
+
+The list holds the same 167 URLs as before, none added and none dropped; the order changed (tags
+first, in the shell's own order), so `CACHE_VERSION` changed once and returning browsers install
+the worker again, a normal deploy.
+
+The second half: both sides of nearly every merge restamp sw.js, and the stamp lines conflicted
+by hand ever since. `npm run build:sw -- --resolve` settles it: it splits a conflicted sw.js into
+its two sides (plain or diff3 markers), and when they differ only inside the three generated
+blocks it keeps our side and restamps from the merged files, so either side would do. A hunk in
+the worker's hand-written code is refused with the file untouched, for a person to settle. This
+was chosen over the map's `.gitattributes` merge driver, which needs a `git config` line in every
+clone and quietly falls back to a normal conflict without one. Resolve the other files first, then
+run it and `git add sw.js`.
+
+New [build-sw.test.js](build-sw.test.js) (`npm run test:unit`): the tag, font and icon readers, the
+derived list holding every tag, font, icon and extra exactly once, a fresh stamp being a fixed
+point, a sw.js missing `/app.js` failing `--check` with `+ /app.js` and the build putting it back,
+the `PRECACHE_EXTRA` entries coming back after a restamp that lost them, `--resolve` settling a
+conflict in all three blocks (one in diff3 style) to the fresh stamp, and refusing one in
+`CACHE_NAME`. The CLI cases run the real script on a scratch copy through a new `--sw <file>`
+option. AGENTS.md's PWA bullet and ARCHITECTURE.md's PWA / offline section say the new steps, and
+the Files table gains a row for sw.js and its stamper.
+
+## fix(settings): Counter Settings shows the ring size its slider sits at (MAP-RING-DEFAULT, 2026-09-26)
+
+The ring size default was 1 while the Ring size slider runs 50 to 200, so Counter Settings
+showed "1" beside a slider sitting at 50. The draw reads ring size as a percent of the marker,
+and a ring 1% of a 22 px marker is under a pixel: turning Show ring on without moving the
+slider drew nothing at all (a pixel probe of one counter at export scale 4 counted the same
+pixels with the ring on as off). The draw's own fallback was 100, but only for a 0.
+
+The default is 100 now, the value the slider's markup, the dialog's table and the draw's
+fallback already named: a ring the marker's size. Behind the default round marker at full
+opacity it sits under the marker, as today's ring did (the probe: 4 more antialiased edge
+pixels out of about 4,000); where a marker's shape or opacity leaves it uncovered, it shows. A device that
+never turned rings on sees no change. Exact parity with the old 1 was not on offer, since no
+slider stop draws nothing.
+
+MAP-SETTINGS (earlier today) started storing the settings per device, so a device that saved
+any counter setting since then stored the old 1. `displaySettingsFields` now drops a number
+under its slider's minimum (`DISPLAY_SETTINGS_MINIMUMS`, ring size 50, in constants.js), so
+that stored 1 reads as the default at boot and is written back as 100 on the next change.
+
+The display-settings fallbacks in app.js (the live and export renders) and canvas-draw.js no
+longer repeat the defaults as literals: app.js reads `COUNTER_SETTINGS_DEFAULTS` /
+`LINE_TYPE_SETTINGS_DEFAULTS`, and canvas-draw.js, which loads before constants.js, gets them
+through a new `getDisplaySettingsDefaults` dep, the ring size and opacity fallbacks included.
+The render-pixels baselines are unchanged.
+
+Pinned by counter-settings.spec.js (every slider's number is the one it sits at, on a fresh
+device and over a stored ring size of 1) and constants.test.js.
+
+## fix(save): a manual Save of a bid opened without its PDF no longer saves its sheets away (MAP-MANUAL-SAVE, 2026-09-26)
+
+MAP-EMPTY-SAVE held the autosave, the dirty flag and the takeoff backup in the canvas-only state
+(a cloud bid open, `state.pages` empty, the saved marks waiting in `pendingCanvasLoad` for their
+PDF). The Save dialog was the door it left open. It stayed fully usable there: with the PDF's
+storage path still on the row (the pdf_missing branch) it showed Contents with "PDF (in project)",
+without it only the "Canvas only" note, and either way Save called `performSaveProjectToCloud`,
+which builds the pages from `state.pages` and wrote `data.pages: []` over every mark on every sheet.
+A node test sent exactly that payload before the fix.
+
+The engine now refuses the write there: `performSaveProjectToCloud` answers
+`{ ok: true, skipped: true, reason: 'canvas_only_pending_pdf' }` the way the autosave does, sends
+nothing, clears dirty, and logs a `manual_save_held` event, so no "Save failed" toast and no yellow
+bell. The dialog says so before anyone clicks. The Save dialog already carries its "can't save"
+states in its own body (the Canvas only note, the sign-in and view-only lines), and a toast would
+arrive only after the estimator had chosen to save, so the note is reworded in place instead: the
+bid's PDF is not attached, its marks can't be saved yet, choose the PDF first. The Contents list is
+hidden and Save is disabled. The dialog reads the state through `App.isCanvasOnlyPending`, the
+engine's own test published by app.js. Turn In and the save-before-load gate never reach this path
+in that state (they save through `performAutoSave`, which already skips with ok, and Turn In's PDF
+upload needs pages), so both still release the lock.
+
+Pinned by save-engine.test.js "canvas-only: a manual Save" (both Include PDF positions send no
+update and answer ok, the name is not changed, Turn In still releases, and the same Save writes one
+sheet once the PDF is back) and save-project.spec.js "canvas-only" (the reworded note, no Contents,
+Save disabled, no write request leaves the page, and the ordinary note and a live Save come back
+once the pending load is gone). Both were red on the pre-fix code.
+
+## fix(undo): undoing a page delete puts the sheet back where it was, with its own marks (MAP-PAGE-UNDO, 2026-09-26)
+
+The other half of the decomposition map's R11. Deleting a sheet from the Pages list pushed an
+ordinary undo step, and an ordinary step lays its pages back over the live list by position. After a
+delete the live list is one shorter, so Ctrl+Z did not bring the sheet back at all: the sheet after
+it took the deleted sheet's marks, label and scale, lost its own until redo, and the last sheet's
+copy fell off the end. The layer chosen on each sheet came back wrong the same way, and an undo
+step recorded on a later sheet before the delete had no sheet left to land on.
+
+The delete now pushes a page-list step, undo-stack.js `pushUndoSnapshotPageList` (published as
+`App.pushUndoSnapshotPageList`). It is the ordinary full step plus a record of the list itself: the
+page objects in order, which carry the PDF page, the bake frame and the rest with them, and copies
+of the two maps kept by page number (`activeCanvasIdByPage`, `peekCanvasIdsByPage`). Undo puts that
+list and those maps back in place first, then lays the copied marks, scales and labels over them,
+which now line up. The session's own page numbers (the sheet on screen, the selected line and duct
+run, the polyline being edited, the Chain start, the last measurement) follow their sheets by
+identity, so the estimator stays on the sheet she was looking at. That list of fields is
+annotation-model.js `remapSessionPageIndices`, which `deletePageAt` now uses too, so a new field
+kept by page number is added in one place. Undo and redo record the opposite step with the same
+shape, so redo deletes the sheet again and a second undo brings it back.
+
+Only this step touches the list. An ordinary step still lays pages over by position, since sheets
+added without a step (the Prepare PDF append) must survive an undo of an earlier edit. Entries
+recorded before a delete are not cleared: the stack is last in, first out, so the delete's step is
+always undone before them and the list is back to the shape they were recorded against.
+
+Pinned by annotation-model.test.js (a mark on sheet 3, delete sheet 2, undo: every sheet is its own
+object again with its marks, scale, label and layer, the maps are restored in place, the sheet on
+screen and the selection follow; the older sheet-3 step then undoes on sheet 3; redo and undo again
+round-trip; and an ordinary step leaves an appended sheet alone) and delete-page.spec.js
+"MAP-PAGE-UNDO" (three sheets with their own label, scale, highlight and chosen layer; delete sheet
+2 from the Pages list, Ctrl+Z, and every sheet, the saved payload and the layer on screen are as
+they were; Ctrl+Shift+Z deletes it again). Both were red before the fix.
+
+## fix(icons): a built-in icon picked after an icon search fills in the fixture units, as it did before (MAP-ICON-SEARCH, 2026-09-26)
+
+Found while fixing MAP-ICON-PREFILL. On the Create tab, picking a built-in icon with the name field
+empty names the counter after the icon and fills Fixture units from the table (a Shower reads 4 on
+a public job). Once she had typed in Search icons, that stopped: the search rebuilt the built-in grid
+with a click of its own that filled the name and counted the pick, but never re-read the table, so
+the field stayed empty and the counter went out with no fixture units unless she typed them. Clearing
+the search did not help, because the cleared grid was rebuilt by the same copy.
+
+The built-in grid has one builder now, `buildCreateIconGrid(icons, selectedIdx)` in
+features/counter.js, beside MAP-ICON-PREFILL's builder for the custom grid. The Create panel's prep
+builds it and the search rebuilds through it, so the pick cannot drift from the one on open again.
+The search keeps its empty state for a word no icon matches and still selects its first result
+unless a custom icon is selected.
+
+Pinned by water-fixtures.spec.js: the Shower picked before a search, after searching "shower" and
+after clearing the search reads the same name and the same fixture units. It was red before the fix
+(4 before the search, empty after).
+
+## refactor(input): a touch tap and a click share one commit path; the touch copy is gone (R08, 2026-09-26)
+
+The decomposition map's R08, with its defect D22. app.js carried `handleTouchAsCanvasTap`, a
+144-line copy of `handleCanvasClick` for Quick Line, Highlight, Multiply Zone, Scale Zone, Room,
+Delete Zone and Note, called from touchend only when the long-press timer was running. That timer
+starts only for a tool that is not an aim tool, and every tool the copy handled became an aim tool
+with the loupe work, so a quick tap on any of them already went the other way: the aim timer's
+synthetic click into `handleCanvasClick`. Proved before the delete: with a `throw` at the top of the
+copy, 40 touch tests (mobile-touch, aim-loupe-phase2, measure-loupe, mobile-burger-menu,
+bend-fittings, chain, water-size and tutorial's tablet walks) stayed green, and the only way to reach
+it was to change the tool between touchstart and touchend.
+
+The copy is deleted, with the 25px tap allowance it shared (it named only aim tools, so the 10px
+move test was always the one in force) and `state.longPressStart`, which only that allowance read.
+The long-press branch of touchend now always sends the synthetic click, so a tap on Move or Edit
+polyline reaches `handleCanvasClick` the way it did.
+
+D22: the Multiply Zone dialog opens with the caret in the multiplier, and the comment on
+`App.focusMultiplyZoneInput` said mouse opens only, since on a phone the keyboard would cover the
+preview. The guard it counted on was the copy, which never ran, so a tap focused the field on touch
+too. The guard is in `App.focusMultiplyZoneInput` itself now (features/zone-modals.js): nothing on a
+coarse pointer (`App.isCoarsePointer`). A mouse still gets the caret, which the Repeats lesson's
+"Type 4" relies on.
+
+Pinned by the new R08 case in mobile-touch.spec.js: real touch taps at phone width place a Counter
+marker, three Polyline vertices, a Highlight, a Multiply Zone (the multiplier left unfocused, red on
+main) and a Note, then reopen the Note with a tap on it. zone-modals, note and tool-resets are
+unchanged and green.
+
+## test(specs): a spec boots, opens a plan and collects its console errors through one shared helper (R07, 2026-09-26)
+
+The decomposition map's R07, first tranche. Every Playwright spec carried its own copy of the same
+three pieces: the boot wait on `App.bootSettled`, the upload through `#pdfInput` followed by the
+wait for the pages list, and a console-error collector with its no-errors assertion. The copies had
+drifted: about 180 collectors took every console error, about 70 dropped the config.local.js 404,
+and prepare-pdf kept its own pdf.js allowance. A fresh worktree without the stub failed some 150
+specs on that 404 alone.
+
+spec-helpers.js at the repo root holds them once. `collectConsoleErrors(page, { ignore })` returns
+the live array, minus a line whose source is config.local.js and minus `BENIGN_ERRORS` (today the
+pdf.js "multiple render() operations" race), with a non-enumerable `assertNoErrors()`, so an
+existing `expect(errors).toEqual([])` still holds. `bootApp(page, { url, viewport, timeout, ready })`
+opens `/app/` (or the url) and waits for `App.bootSettled`, plus an optional `ready` condition;
+`waitForBoot` and `reloadApp` are the same wait without the goto, or after a reload.
+`uploadPdf(page, file, { timeout, waitForPages })` takes a path (a bare name resolves from the repo
+root, the default is test-2pages.pdf) or a setInputFiles payload. The helper is not a `*.spec.js`,
+so `testMatch` never collects it, and eslint's Node group lints it.
+
+Converted, 332 lines out of fifteen specs for the helper's 110: scale, output, import-clear,
+pdf-upload, room-sizer, footer-hint, restore-last-session, bid-switcher, choose-create-line-type,
+toast-region, pdf-bundle, header-more, mobile-burger-menu, zoom-canvas-cap and my-settings. They
+were chosen by copied lines, leaving out the specs other branches were editing. Two collectors
+that allowed one line of their own (output's `[copy]` diagnosis, choose-create-line-type's refused
+path data) pass it as `ignore`. restore-last-session's boot-race test now collects console errors
+as well as page errors, and still passes. The 127 tests ran the same before and after: 126 passed,
+1 skipped (footer-hint's dev-auth test, which needs cloud credentials).
+
+scripts/lib/project-map.js reads a spec's `App.*` names to list the specs that pin each file.
+With the boot wait moved into the helper, header-more.spec.js dropped off app.js's list. A spec
+that requires a root helper now counts the helper's `App.*` reads as its own (the reads only, not
+its text, so a path in a helper's comment pins nothing), and the lists match main's again.
+
+Left for the follow-up, in DECOMPOSITION_MAP.md R07's Landed line: the other specs, 157 of which
+still carry 246 copies of the boot wait.
+
+## refactor(registry): 53 App registrations and 18 teaching-kit members nothing read are gone (R16, 2026-09-26)
+
+The decomposition map's R16, with its defects D23 and D24. A registration is a promise that
+something reads it, and 53 of them were promises to no one. The project map listed 59 names
+registered and read by no other file, spec or script; a whole-word grep of every .js and .html
+confirmed 53 of them dead, and the others have readers the map does not see (below). Nothing a user sees changes: every function behind a deleted
+line is still called where it was, by its own file.
+
+Gone from app.js: `pushRecentBid`, `syncTradeSegment` (quick-modals.js keeps its own), the
+constants `TRADES`, `TRADE_LABELS`, `ELECTRICAL_DEFAULTS`, `HVAC_DEFAULTS` and `CODE_EDITIONS`
+(features read constants by bare name), the three model publishes `ConductorModel`,
+`CircuitModel` and `BidCheckModel` (every reader uses `window.*`), and the second
+`App.SUPABASE_URL`. Gone from the features: `isBendVertexMenuOpen`, `toggleBidMenu`,
+`childCountRuleLabel`, `getPanelCrossCheck`, `isHomerunLine`, `lineTypeConductorChip`,
+`hideDropPeek`, `drawDuctCalloutRing`, `hideDuctFittingMenu`, `isDuctFittingMenuOpen`,
+`setDuctVerticalFt`, `ductRepeatsLabel`, `ductStepDownCandidates`, `applyDeckHeightToRuns`,
+`topmostOverlay`, `runSpecificPagesExport`, `setSpecificPagesToMarksOnly`, `hideGhostMenu`,
+`applyStripOverflow`, `modalGalleryExitLive`, `noteKind`, `noteTitle`, `notePinInfo`,
+`getNotesDisplayMode`, `closeNotesLedger`, `copyLayerPickerModel`, `doOpenTakeoffTooling`,
+`titleFromPdfFilename`, `QUICK_KEY_SLOTS`, `refreshSettingsReviewRow`, `ruleChipLabel`,
+`closeRulePopover`, `isRulePopoverOpen`, `getFooterTotalsCached`, `addPageTextLoadedListener`,
+`blankTourSteps`, `tryTurnIn`, `doTurnInAndHandleResult`, `getWaterServedForLine`,
+`waterSideFieldValue`, `getWaterSettings`, `buildWaterScheduleText` and `openWaterSizePopover`.
+Several were labelled spec seams that no spec ever read. Four functions existed only to be
+registered and went with their line: `drawDuctCalloutRing` (unpainted since 30ffd6f),
+`lineTypeConductorChip`, `notePinInfo` and `addPageTextLoadedListener`.
+
+The teaching kits lost the members no lesson, course, tour, spec or script reads: tourKit's
+`q`, `el`, `wait`, `state`, `ann`, `teachingSetGrown` and `openTeachingSet` (the last two stay,
+the tours' own), and lessonKit's `SET_NAME`, `LESSON_SET`, `KITCHEN_FDS`, `BAR`, `STRAY`, `GI`,
+`NOTE_SPOT`, `RFI_SPOT`, `isSetOpen`, `inRect` and `arm`.
+
+Kept, because something does read them: `pickScaleForLineType` (lines-list.spec.js checks it by
+name), `applyCanvasRepair` and `noteViewerTempScale` (their specs), `lessonIds` (the persona
+driver), `modalGalleryReloadCss` (the gallery's phone-width embed calls it in the iframe),
+`pageTextLoadedListeners` (tag-reader notifies it), `resolveConfirm` and `closeBidMenu` (the Esc
+ladder), `tutorialZones` and `startBlankTour` (specs). Where the project map called one of these
+dead, the reason is written into DECOMPOSITION_MAP.md's blind spots.
+
+D23: `App.courseDone` was registered by the plumbing course alone, and the electrical and HVAC
+specs called it, passing only because all three courses share one localStorage map and the
+plumbing file happened to load. The map now lives in lessons.js, which registers
+`App.courseDone`; each course reads and ticks it through `lessonKit.courseDone` and
+`markCourseDone` instead of its own copy of the key. D24: teaching-labels.test.js named its six
+teaching files; it now finds them (tutorial.js, lessons.js, any tour-* or course-* file, and any
+feature file that calls `App.registerTour`), so a fourth course is checked the day it lands.
+
 ## fix(esc): Esc and a dialog's × close the dialog on top, never the tool under it (MAP-ESC, 2026-09-26)
 
 The decomposition map's R10, with its defects D04 and D12. Esc walked a 190-line if/else in

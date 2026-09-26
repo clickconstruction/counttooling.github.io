@@ -17,18 +17,14 @@
  * open a 0'-0" x 0'-0" Room Size dialog.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.describe('Room Sizer (features/room-sizer.js)', () => {
   test('registry contract, create/edit/delete, totals, sidebar, roundtrip', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     // --- Registry contract ---
     const contract = await page.evaluate(() => ({
@@ -183,18 +179,14 @@ test.describe('Room Sizer (features/room-sizer.js)', () => {
     await page.evaluate(() => window.App.updateUI());
     await expect(page.locator('#roomsSection')).toBeHidden();
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });
 
 test('rooms-only project exposes Show Report / Export PDFs / Copy Summary, and the report has the Room Volumes table (regression: the export buttons gated on counts/lines only, T1-10)', async ({ page }) => {
-  const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  const errors = collectConsoleErrors(page);
+  await bootApp(page);
+  await uploadPdf(page, 'test-page.pdf');
 
   // No annotations at all: both probes false, every export button hidden.
   expect(await page.evaluate(() => window.getPipeToolingHasData())).toBe(false);
@@ -240,17 +232,13 @@ test('rooms-only project exposes Show Report / Export PDFs / Copy Summary, and t
   expect(outputs.email).toContain('--- Rooms ---');
   expect(outputs.tooling).toBe('');                     // confirms the /Tooling carve-out
 
-  expect(errors).toEqual([]);
+  errors.assertNoErrors();
 });
 
 test('context-menu Delete removes a room box (regression: the ctxDelete switch lacked a roomBox branch)', async ({ page }) => {
-  const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  const errors = collectConsoleErrors(page);
+  await bootApp(page);
+  await uploadPdf(page);
   await page.waitForFunction(() => document.getElementById('pdfCanvas') && document.getElementById('pdfCanvas').width > 0);
 
   // Seed a room + box, then right-click inside the box.
@@ -286,17 +274,13 @@ test('context-menu Delete removes a room box (regression: the ctxDelete switch l
   }));
   expect(after.boxes).toBe(0);           // the box is actually gone now
   expect(after.menuVisible).toBe(false);
-  expect(errors).toEqual([]);
+  errors.assertNoErrors();
 });
 
 test('empty ceiling height error toast is VISIBLE above the still-open dialog (J7 occlusion regression, T2 #15)', async ({ page }) => {
-  const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  const errors = collectConsoleErrors(page);
+  await bootApp(page);
+  await uploadPdf(page, 'test-page.pdf');
 
   await page.evaluate(() => {
     window.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
@@ -326,17 +310,13 @@ test('empty ceiling height error toast is VISIBLE above the still-open dialog (J
   });
   expect(hit.onScreen).toBe(true);
   expect(hit.inToast).toBe(true);
-  expect(errors).toEqual([]);
+  errors.assertNoErrors();
 });
 
 test('~zero-size room box is refused: same-spot clicks open NO dialog; a real box still opens it (T2-10)', async ({ page }) => {
-  const errors = [];
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-  page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/app/');
-  await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-  await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-  await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+  const errors = collectConsoleErrors(page);
+  await bootApp(page);
+  await uploadPdf(page, 'test-page.pdf');
   await page.evaluate(() => {
     window.state.pages[0].scale = { pixelsPerUnit: 10, unit: 'ft' };
     window.state.tool = window.App.TOOL.ROOM;
@@ -381,5 +361,5 @@ test('~zero-size room box is refused: same-spot clicks open NO dialog; a real bo
   const pend = await page.evaluate(() => window.state.pendingRoomBox);
   expect(Math.abs(pend.x2 - pend.x1)).toBeGreaterThan(0);
   await page.locator('#roomBoxCancel').click();
-  expect(errors).toEqual([]);
+  errors.assertNoErrors();
 });

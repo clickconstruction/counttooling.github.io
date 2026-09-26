@@ -129,5 +129,4 @@
 
   App.tryOpenBendVertexMenu = tryOpenBendVertexMenu;
   App.hideBendVertexMenu = hideMenu;
-  App.isBendVertexMenuOpen = () => menuOpen;   // spec seam
 })();

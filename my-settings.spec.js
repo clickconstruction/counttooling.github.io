@@ -18,18 +18,15 @@
  * palette + marker keys.
  */
 const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
 test.describe('My Settings (features/my-settings.js)', () => {
   test('opener fallback, export + clear artboard, close binding', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     // B20 (X8): confirms go through the app's confirm modal, never confirm().
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     expect(await page.evaluate(() => typeof window.App?.openMySettings)).toBe('function');
 
@@ -68,12 +65,11 @@ test.describe('My Settings (features/my-settings.js)', () => {
     });
     await expect(page.locator('#mySettingsModal')).not.toHaveClass(/visible/);
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('Load from Cloud applies custom icons + Quick Key bindings (stubbed fetch)', async ({ page }) => {
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
+    await bootApp(page);
 
     // Stub the cloud fetch; drive the REAL #mySettingsLoadAirboard handler so
     // the apply wiring (including the previously-dead customIconPaths branch
@@ -105,15 +101,11 @@ test.describe('My Settings (features/my-settings.js)', () => {
   });
 
   test('Clear Artboard with a plan open: honest confirm copy, and undo restores the palette (B14)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-page.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
 
     await page.evaluate(() => {
       const s = window.state;
@@ -131,19 +123,15 @@ test.describe('My Settings (features/my-settings.js)', () => {
     await page.waitForFunction(() => window.state.counters.length === 1 && window.state.lineTypes.length === 1);
     expect(await page.evaluate(() => window.state.counters[0].name)).toBe('Drain');
 
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 
   test('Load from Cloud re-links placed marks by name and pushes an undo snapshot (stubbed fetch)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    page.on('pageerror', (e) => errors.push(e.message));
+    const errors = collectConsoleErrors(page);
     page.on('dialog', async (d) => { errors.push('native dialog: ' + d.message()); await d.dismiss().catch(() => {}); });
 
-    await page.goto('/app/');
-    await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
-    await page.locator('#pdfInput').setInputFiles(path.join(__dirname, 'test-2pages.pdf'));
-    await page.waitForSelector('#pagesList .sidebar-item', { timeout: 10000 });
+    await bootApp(page);
+    await uploadPdf(page);
 
     // Seed the OLD palette + placed marks: 3 markers under name-matched
     // counters, 2 under a counter absent from the cloud artboard, and one
@@ -236,6 +224,6 @@ test.describe('My Settings (features/my-settings.js)', () => {
     expect(undone.lineTypeId).toBe('old-cu');
 
     // (e) no console/page errors.
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
   });
 });

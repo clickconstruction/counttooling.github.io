@@ -186,7 +186,10 @@
     reading model — tag tokens, nearest tag, schedule rows; `window.TagModel`),
     [status-hint-model.js](status-hint-model.js) (the pure status-bar tool hint:
     `toolHintFor` returns `{ text, keyed }` with the live readouts passed in, shown
-    signed in and signed out; `window.StatusHintModel`), [canvas-draw.js](canvas-draw.js) (the unified annotation
+    signed in and signed out; `window.StatusHintModel`), [canvas-legend.js](canvas-legend.js)
+    (the sheet legend and the grid overlay, `createCanvasLegend(deps)`; split out of
+    canvas-draw.js in R24, loads right before it and is composed by it, so its keys
+    ride `canvasDraw.*`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
     env-builders over it, so a new mark kind is drawn once; after geometry.js +
@@ -242,7 +245,7 @@
   [save-utils.test.js](save-utils.test.js), [idb.test.js](idb.test.js),
   [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js),
   [line-metrics.test.js](line-metrics.test.js),
-  [canvas-draw.test.js](canvas-draw.test.js),
+  [canvas-draw.test.js](canvas-draw.test.js), [canvas-legend.test.js](canvas-legend.test.js),
   [render-service.test.js](render-service.test.js),
   [save-engine.test.js](save-engine.test.js),
   [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js),

@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(draw): the sheet legend is its own file, and the duct pass is one function (R24, 2026-09-26)
+
+The decomposition map's R24, all three items. canvas-draw.js had grown from 766 lines in July to
+1,940, and two stretches of it were separate things sharing a file. Nothing drawn changes: a
+37-scenario call-log dump (every duct sub-pass, selection and export envs, all three legend styles
+on the plan and in ink, the grid) is byte-identical before and after, and render-pixels.spec.js
+passes against its committed baselines before and after. canvas-draw.js is 1,409 lines now.
+
+**The sheet legend and the grid are canvas-legend.js.** `createCanvasLegend(deps)` owns
+`computeLegendRows`, `legendHasRows`, `resolveLegendStyle`, `legendSheetFactor`,
+`drawSheetLegend`, `drawLegend` and `drawGrid`, moved verbatim. It reads nothing of
+`drawAnnotationsCore`'s, only deps and the geometry, icon and duct-model helpers by bare name.
+`hexToRgb`, `lineStyleToDash` and `DUCT_LEGEND_SWATCH` moved with it, since the legend and the
+grid were their only readers. It loads right before canvas-draw.js, and `createCanvasDraw` composes
+it over the same deps and returns the same keys in the same order, so app.js's `canvasDraw.*`
+reads did not change. Under node, canvas-draw.js reaches the file through a guarded
+`module.require`. The legend, grid and helper tests moved to canvas-legend.test.js and call
+`createCanvasLegend`; canvas-draw.test.js keeps one test that the composed keys paint exactly
+what the legend's own do. The new file has its tag, its precache entry (build:sw), an eslint group
+and a Files row.
+
+**The duct pass is `drawDuctOverlay`.** About 240 lines of duct painting inside
+`drawAnnotationsCore` (the true-width ghost, the flex leaders, the run strokes and size chips, the
+fitting markers, the rise and drop markers) are one closure-level function, called at the same
+point in the paint order, after the polylines and before the highlights. It takes
+`(ctx, ann, env, state, lo)`: the map's recipe also passed `lw`, which the pass never reads.
+
+**One end tick and one ghost band.** The quick-line and polyline passes each built an identical
+`drawPerpTick` closure; it is one top-level `drawPerpTick(ctx, tc, endPdf, tangentPdf, tickLen,
+color, lw)` now. `strokeDuctGhostSpans(ctx, verts, spans, orientation, eff, pxPerPt, tc, color)`
+is the ghost band's stroke, exported beside `ductGhostWidthPx` and called by both the committed
+painter and the live draft in features/duct-tool.js. The draft clears its dash and resolves its
+own scale (the page's when there are no annotations yet) before the call, so the committed path
+never touches the dash. canvas-draw.test.js pins both helpers.
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

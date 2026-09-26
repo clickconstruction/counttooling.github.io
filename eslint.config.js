@@ -39,6 +39,7 @@ const moduleGlobals = Object.fromEntries(
       Object.keys(require('./tag-model.js')),
       Object.keys(require('./sheet-title-model.js')),
       Object.keys(require('./water-model.js')),
+      Object.keys(require('./canvas-legend.js')),
       Object.keys(require('./canvas-draw.js')),
       Object.keys(require('./render-service.js')),
       Object.keys(require('./duct-model.js')),
@@ -191,10 +192,14 @@ module.exports = [
   // line-metrics.js: loaded after geometry.js; reads the geometry helpers
   // (ptDist / polylineDistance / bezier / zone locators) by bare name.
   browserModule(['line-metrics.js'], geometryGlobals),
+  // canvas-legend.js (R24): the sheet legend + grid (createCanvasLegend(deps));
+  // loaded after geometry.js, icons.js and duct-model.js and before
+  // canvas-draw.js, reads the three by bare name.
+  browserModule(['canvas-legend.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals }),
   // canvas-draw.js: the annotation draw core (createCanvasDraw(deps));
   // loaded after geometry.js + icons.js, reads both by bare name; everything
-  // state-coupled arrives via deps.
-  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...waterModelGlobals, ...conductorModelGlobals, ...circuitModelGlobals }),
+  // state-coupled arrives via deps. It composes canvas-legend.js's factory.
+  browserModule(['canvas-draw.js'], { ...geometryGlobals, ...iconsGlobals, ...ductModelGlobals, ...waterModelGlobals, ...conductorModelGlobals, ...circuitModelGlobals, createCanvasLegend: 'readonly' }),
   // render-service.js: the raster seam (createRenderService(deps)) — browser
   // globals only (Worker, OffscreenCanvas, navigator); the rest arrives via deps.
   browserModule(['render-service.js']),
@@ -242,10 +247,10 @@ module.exports = [
     ...ductModelGlobals,
     DUCT_AIRSIDE_COLORS: 'readonly',
     // D13: the true-width ghost helpers (canvas-draw.js) the live duct trace
-    // shares with the committed painter.
-    DUCT_GHOST_ALPHA: 'readonly',
+    // shares with the committed painter (R24: strokeDuctGhostSpans, the stroke itself).
     ductPxPerPdfPt: 'readonly',
     ductGhostWidthPx: 'readonly',
+    strokeDuctGhostSpans: 'readonly',
   }),
   {
     // sw.js — the PWA service worker; its own ServiceWorkerGlobalScope (self,

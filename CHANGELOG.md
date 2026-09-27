@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): the electrical course's sensor step holds until a stray OS mark is undone (PP-OS-STRAY, 2026-09-26)
+
+The persona pass's prober put a fourth OS mark on a plain S switch in chapter 3's `lighting:os`
+and the step passed: its check read only that the MEN, WOMEN and STORAGE doors were marked, so
+the extra sensor rode into the tally and every card after it. The step now applies the rule the
+same pass gave the tours' `place` steps: it passes when the three doors are marked AND the OS
+counter has no mark on E-201 outside those three circles (the tourKit's `markZones` /
+`strayMarks`, radius 12, the one the door check already used; no new kit helper). While a
+stray stands, the hint says where it is, "The OS mark at the DISH door is a plain S switch, and
+it still counts in the tally", when it sits on one of the sheet's four plain switches (named
+the front exit, the server station, the kitchen (west), the DISH door), or "An OS mark away from
+the three doors" otherwise, and says to undo it with Ctrl+Z or a right-click Delete. The step
+still draws no circles (finding the three is the question), and Count the three for me still
+marks only the three. Pinned by a course-electrical.spec.js case: three doors plus a mark on the
+DISH door's switch holds the step and names it; the stray removed, the step passes.
+
 ## feat(rules): the HVAC rules the course teaches enter the rulebook (RULEBOOK-GAPS, 2026-09-26)
 
 The HVAC third of RULEBOOK-GAPS. The HVAC course's six `rulesExempt` steps, the ones the lesson

@@ -192,6 +192,25 @@ test.describe('The electrical course: a question is answered with a click', () =
     expect(errors).toEqual([]);
   });
 
+  test('the sensor step holds while an OS mark sits on a plain S switch, names where it is, and passes once it is undone (PP-OS-STRAY, 2026-09-26)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=electrical:lighting', errors);
+    await openSheets(page);
+    await gotoStep(page, 'os');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'os');
+    // the three doors, and a fourth OS mark on the plain S switch at the DISH door
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'Switch Occupancy', icon: window.App.getOrderedIcons()[0].value, color: '#47c88e', mountHeightIn: 48, lesson: true }; window.state.counters.push(c); k.mark(1, c, [k.P(668, 258), k.P(802, 258), k.P(806, 478), k.P(690, 478)]); k.dirty(); });
+    await page.waitForTimeout(500);
+    expect((await page.evaluate(() => window.App.tutorialStepInfo())).done).toBe(false);
+    await expect(page.locator('#tourStatus')).toHaveText(/the DISH door is a plain S switch/);
+    await expect(page.locator('#tourStatus')).toHaveText(/Ctrl\+Z/);
+    // the stray undone: the step passes
+    await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Switch Occupancy'); const a = window.App.getActiveAnnotations(window.state.pages[1]); a.counterMarkers[c.id] = a.counterMarkers[c.id].slice(0, 3); window.App.lessonKit.dirty(); });
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true || window.App.tutorialStepId() !== 'os', null, { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
   test('the card keeps off every control a step names, not only the one it points at: COUNTERS + Add beside a sheet target (by hand, 2026-09-24)', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];

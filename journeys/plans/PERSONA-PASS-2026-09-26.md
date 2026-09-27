@@ -87,7 +87,8 @@ the list: a recall signal for the method, not a new row.
   22"Ø / 26×16 from 2,550 CFM, not the printed sizes. Is the sample's sizing, the ductulator's
   0.08" per 100 ft, or the course's air per room the one to trust? (row PP-DUCT-SUGGEST)
 - The electrical course's `lighting:os` passes with extra OS marks on plain S switches: its check
-  reads only that the three doors are marked. (row PP-OS-STRAY, an agent can fix it)
+  reads only that the three doors are marked. Fixed 2026-09-26: the step now holds until a stray OS
+  mark is undone, and the hint names the plain switch it sits on (PP-OS-STRAY, CHANGELOG).
 
 ## Calls
 

@@ -84,15 +84,15 @@ values:
     code: water-model.js#fixtureSupplyMinLabel("water-closet", "one-piece")
 source:
   code: IPC
-  section: 604.4, Table 604.4
+  section: 604.5, Table 604.5
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/
 amendments: []
 used_by: [waterSchedule]
-updated: 2026-09-23
+updated: 2026-09-27
 ---
 
-Whatever the fixture-unit arithmetic says, a fixture's supply pipe has a floor. A flush-valve water closet needs a 1-inch supply because the valve draws hard and briefly; a lavatory's 3/8-inch stop and riser are enough for its faucet. The floor is on the pipe to the fixture, and it applies from the branch to the stop.
+Whatever the fixture-unit arithmetic says, a fixture's supply pipe has a floor. A flush-valve water closet needs a 1-inch supply because the valve draws hard and briefly; a lavatory's 3/8-inch stop and riser are enough for its faucet. The floor is on the fixture supply, the pipe from the branch to the fixture, which the code ends within 30 inches of its point of connection to the fixture.
 
 ## What the app does with it
 
@@ -100,4 +100,10 @@ When a fixture is attached to a water run (rung 3 of the water-sizing ladder), t
 
 ## What it does not do
 
-It does not size the fixture's own supply riser or stop; those are counted with the fixture. The code also caps how far the fixture supply may run past its stop (30 inches); the app does not measure that.
+It does not size the fixture's own supply riser or stop; those are counted with the fixture. It does not measure the 30 inches from the end of the fixture supply to the fixture.
+
+It does not apply the table's footnote for a parallel (manifold) system: there a line from the manifold to one fixture may be one nominal size smaller than the table, when the line is short and the pressure at the meter is high enough (the table's footnote sets both limits). The Water Sizing schedule and Bid Check still flag such a line as under its fixture's minimum; an estimator who has read the footnote on a home-run PEX job leaves the size as drawn.
+
+## Verify against your edition
+
+Every value matched the 2021 text of Table 604.5 as state adoptions print it, and the 2018 edition carries the same table under the same number. (This rule, water-model.js and the water-sizing plan cited it as Table 604.4 until 2026-09-27; 604.4 is the maximum flow rate table.) The footnote's two limits, the developed length and the meter pressure, are not stated here: read them in your edition. Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

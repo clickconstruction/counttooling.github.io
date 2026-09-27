@@ -168,8 +168,12 @@ U-1 reads 2 DFU; P-101 carries six cleanouts; the wet wall, the hand sink and th
   1002.2; the IPC trap-arm table is 906.1, and UPC Table 1002.2 would fail this 4' arm at 1-1/2"
   (*from memory*). The step's check also reads only the value, so the FD arm's 4'-0" passes too
   (the check fixed 2026-09-27, DS-AGENT-NITS: a click at each end of the lavatory's arm).
+  **Settled 2026-09-27:** the IPC table is 909.1 (2018 and 2021); both cards and riser note 2 now
+  say Table 909.1, lesson set regenerated (TESTER-DOSSIER-PLUMBING-RULES, "Settled 2026-09-27").
 - **Gas hanger spacing** (`gas` chapter ~598): cited as IPC 308.5 at 12 ft; gas piping support
   is the fuel gas code (IFGC 415.1), about 10 ft for 1-1/4" steel (*from memory*).
+  **Settled 2026-09-27:** IFGC Table 415.1, 10 ft at 1-1/4" and larger; the card teaches 1 per
+  10 ft under the new rule plumb.hanger.gas-steel, and plumb.hanger.steel is water and drainage steel.
 - **The gas main's sizes** (`gas:meter` to `gas:trace`, ~570-580): the reveal teaches 1-1/2" from
   the meter stepping to 1-1/4", then the course makes one 1.25in BI type and traces the whole main
   with it (so does the reference). Two types split at the WH tee, or trace from the change.

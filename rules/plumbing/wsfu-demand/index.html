@@ -55,7 +55,7 @@
   "@type": "TechArticle",
   "headline": "Demand curve: fixture units to gallons per minute",
   "description": "The design flow a load of water supply fixture units stands for, in gallons per minute, read off the code's demand table in its flush-tank and flush-valve columns.",
-  "dateModified": "2026-09-23",
+  "dateModified": "2026-09-27",
   "url": "https://counttooling.com/rules/plumbing/wsfu-demand/",
   "publisher": {
     "@type": "Organization",
@@ -196,12 +196,14 @@
         </dl>
         <p class="rule-kind-blurb">A model code the authority having jurisdiction adopts.</p>
       </section>
-<p>Fixture units are not a flow. The code converts a load to a design flow with a demand table (the Hunter curve): the more fixtures on a pipe, the smaller the share that runs at once, so the flow climbs more slowly than the load. It prints two columns: systems predominantly for <strong>flush tanks</strong> and systems predominantly for <strong>flush valves</strong>, whose short heavy draws need more water at the same load. Between the printed points the code has you interpolate on a straight line.</p>
+<p>Fixture units are not a flow. The code converts a load to a design flow with a demand table (the Hunter curve): the more fixtures on a pipe, the smaller the share that runs at once, so the flow climbs more slowly than the load. It prints two columns: systems predominantly for <strong>flush tanks</strong> and systems predominantly for <strong>flush valves</strong>, whose short heavy draws need more water at the same load. The table prints points; between them the app interpolates on a straight line, which is how the table is ordinarily read (the code text itself gives no interpolation instruction that the sign-off could find).</p>
 <h2>What the app does with it</h2>
 <p>Every size suggestion in the water-sizing ladder starts here: the fixture units still to serve beyond a point on a run are converted to gallons per minute in the column the run&#39;s fixtures call for, then to a pipe size at the velocity cap. The app interpolates between the printed rows; a load under 1 WSFU reads down to zero with the load; a flush-valve load under 5 WSFU (below the first printed row) reads the flush-tank column; a load past 5,000 WSFU holds the last value, and the schedule says so, because a main that size is an engineer&#39;s calculation.</p>
 <h2>What it does not do</h2>
 <p>It does not size by pressure and developed length (Appendix E&#39;s full method, Tables E103.3(4) to E103.3(7)). That is the master&#39;s calculation, and the app leaves it to Bid Check as a manual row until the critical-path math exists.</p>
-      <p class="rule-foot">Cited by section, not reprinted: the code text belongs to its publisher. Company practice is not a rule here — it lives with your pricing. <span class="meta">Updated Sep 23, 2026.</span></p>
+<h2>Verify against your edition</h2>
+<p>All 100 points, both columns, matched the 2021 text of Table E103.3(3) as a state adoption prints it; the 2018 table was not opened. The three readings under <em>What the app does with it</em> (the flush-tank column under 5 WSFU for flush valves, down to zero under 1 WSFU, the last value held past 5,000) are the app&#39;s, not the code&#39;s: sensible for a walk-through size, and replaced by the engineer&#39;s calculation on a real design. Settled 2026-09-27 by Claude on the owner&#39;s delegation, from the dossier&#39;s research and the model code text; not checked against a printed book or a local amendment.</p>
+      <p class="rule-foot">Cited by section, not reprinted: the code text belongs to its publisher. Company practice is not a rule here — it lives with your pricing. <span class="meta">Updated Sep 27, 2026.</span></p>
     </article>
   </main>
   <footer class="site-footer">

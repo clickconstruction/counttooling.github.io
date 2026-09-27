@@ -799,7 +799,7 @@ function lessonRiserSheet() {
     '1. ONE OF EACH FIXTURE SHOWN,',
     '   TYPICAL OF BOTH RESTROOMS.',
     '2. TRAP ARM LENGTHS PER IPC',
-    '   TABLE 1002.2: 1-1/2" 6\'-0" MAX,',
+    '   TABLE 909.1: 1-1/2" 6\'-0" MAX,',
     '   2" 8\'-0", 4" 16\'-0".',
     '3. VENT TERMINAL 12" MIN. ABOVE',
     '   THE ROOF, 10\'-0" FROM ANY',

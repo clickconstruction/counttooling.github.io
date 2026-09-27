@@ -13,6 +13,126 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(rules): the plumbing rules dossier settled (WATER-TABLES, RULEBOOK-SIGN plumbing, 2026-09-27)
+
+Will delegated the plumbing rules dossier's questions to Claude. Every answer and its reason is in
+the dossier's new "Settled 2026-09-27" log (journeys/plans/TESTER-DOSSIER-PLUMBING-RULES-2026-09-27.md).
+Nobody opened a printed book: each rule signed says so in its Verify against your edition paragraph,
+and the thirteen drafts stay `status: draft`, since `applied` means an app surface uses the rule.
+
+- **Citations corrected.** The fixture supply minimums are IPC 604.5, Table 604.5 (604.4 is the flow
+  rate table), in the rule, water-model.js, the two water feature comments, WATER-PLAN.md and the
+  ARCHITECTURE.md row; WATER-PLAN's water service row now reads 603.1. The trap arm table is IPC
+  909.1: both plumbing course cards and P-601's riser note 2 said Table 1002.2, the UPC's
+  (samples/sample-lessons.pdf regenerated). Indirect waste cites 802.1.1 / 802.1.6 / 802.1.7 /
+  802.3.1 (2021 numbering), the grease interceptor 1003.3.1, cleanouts 708.1.1 / .3 / .4, the vent
+  terminal 903.1.1 / 903.1.2 (903.1 in 2018) and 903.5.
+- **Values.** Drain slope gains its missing row: 1/4 in/ft upstream of a grease interceptor at any
+  size (704.1). The building drain to sewer cleanout is "at the junction, or within 10 ft upstream"
+  (708.1.3). Indirect waste gains the pot and dish sink, air gap or air break (802.1.7). The vent
+  terminal's height above the roof is now the adopting jurisdiction's figure, not a number (the IPC
+  prints a blank), with Colorado's 6 in as an amendment.
+- **Gas hangers.** New draft rule `plumb.hanger.gas-steel`, IFGC Table 415.1 (6 / 8 / 10 ft by size,
+  every floor vertical). The plumbing course's gas card names it and teaches 1 per 10 ft on the
+  1-1/4 in black steel line (it taught 12 ft from IPC 308.5); its "do it for me" writes 10, and
+  course-plumbing.spec.js pins it. `plumb.hanger.steel` is re-scoped to steel water and drainage
+  pipe. SupportModel and Bid Check never read the steel rule, so no app behaviour changed.
+- **Words.** The velocity rule says the IPC prints no limit and the UPC caps copper at the same
+  8 / 5 fps (610.12, 2021), and tells the estimator to lower the hot cap above 140 °F. The demand
+  curve says the app interpolates, not the code. PEX bores are named as Uponor's. The vent card's
+  reveal says a foot above the roof is this job's number, from riser note 3.
+- **Still open** (PUNCHLIST WATER-TABLES and RULEBOOK-SIGN): the CPVC bores (the tolerance-allowing
+  basis is decided, the figures unread), Table 604.5's manifold footnote limits, and the NFPA 96
+  sub-section numbers under 10.4.
+
+## docs(course-electrical): the electrical dossier settled (EC-REVIEW, EC-TRADE, RULEBOOK-SIGN electrical, 2026-09-27)
+
+Will delegated the electrical tester dossier's questions ("go through and answer all these
+questions"). Claude decided them from the dossier's research and the model code text, applied them,
+and logged each one in the dossier's new "Settled 2026-09-27" section. Nobody opened a printed code
+book or a local amendment, and every signed rule says so.
+
+- **One edition.** The course speaks NEC 2023 (the app's own default), IECC 2021 and IBC 2021, and
+  `sheet:schedule` says so. The GFCI card cites the 2023 numbers: the kitchen by 210.8(B)(2), the bar
+  and the mop room by their sinks, (B)(7).
+- **The receptacle story (T2).** The engineer's missed kitchen receptacle is counted once, as a
+  GFCI. The `duplex` step wants the GFCI mark on it and ten plain duplex, and refuses a Duplex mark
+  there. The reference is 10 duplex and 11 GFCI, still sixty-nine marks. The RFI asks which circuit
+  too (R12).
+- **The feeder (T4).** Up 5 ft from the main into the 10 ft ceiling and down 3.5 ft into LP-1's top:
+  8.5 ft of vertical (`FEEDER_RISE_FT`). E-601 calls the feeder 16 ft, an E-101 keynote gives the
+  route, the reference is 15.83 ft, and the `rise` step now checks the 8.5 (a 5 ft drop holds with a
+  hint saying what it reads).
+- **The cards.** The dishwasher's row is asked for by its 30 A two-pole breaker (T1); every 20 A
+  circuit is #12; EF-1 takes two poles too; the clearance is measured from the panel's face (T5);
+  branch circuits are 2 #12 + G (R1); the dishwasher's breaker is GFCI since 2020 (R2); circuit 21
+  has a lock-on (R3); the dining room gets a time switch and the hall and mop room want sensors under
+  IECC 2021, taught as an RFI (R4); the roof's service receptacle (R6); a caution on the 720 VA
+  voltage-drop load (R7); the 30 A breaker explained (R8); the meter base (R11).
+- **The sheets** (`npm run build:sample-electrical`), words only, no device moved: E-101's branch
+  keynote 2 #12 + G and a feeder-route keynote; E-201's circuit 21 lock-on and the dining time
+  switch; E-501's dishwasher GFCI breaker, row 21's lock-on, note 6 "protected at 20 A max" (R10) and
+  note 7; E-601's note 2 names RTU-1 alone (T3), the lateral carries no ground and reads THHN/THWN-2
+  (R9), the feeder 16 ft, and the branch labels no longer overlap.
+- **The rulebook.** Fourteen of the fifteen electrical drafts are signed: `status: applied`,
+  `used_by: [course]`, a new surface in `USED_BY_LABEL` (the courses' cards, whose numbers
+  check-lesson-rules holds to the rule), each with the dossier's corrections (per-edition section
+  letters, the 2017 table name, 1008.3.4, C405.2.2, 220.88, the 440.14 wording) and the sign-off
+  line. elec.hood.shunt-trip stays a draft: NFPA 96 itself was not opened.
+- **Words.** lock-on, time switch and meter base join the course's first-use table and the Learn
+  guide's word list.
+- **The list.** EC-REVIEW and EC-TRADE are closed; RULEBOOK-SIGN names the one electrical rule and
+  the one 2023 letter still open. EC-TOUR-WIRE is new: the five-minute tour, the landing film and the
+  electrical guide still teach 3 #12 + G on one circuit.
+- **Specs.** course-electrical.spec.js pins 10 duplex and 11 GFCI, the refused Duplex mark on the
+  flagged receptacle, the circuit question, 2 #12 + G, the 8.5 ft drop and 15.83 ft, and a new test
+  for the 5 ft drop the rise step now holds on.
+
+## docs(hvac): the HVAC dossier settled: the sheets, the course and the four drafts (DOSSIER-HVAC, 2026-09-27)
+
+Will delegated the tester dossiers' questions ("a lot of these you can just decide"). This settles
+journeys/plans/TESTER-DOSSIER-HVAC-2026-09-27.md: punch rows HC-REVIEW and HC-TRADE, the
+PP-DUCT-SUGGEST entries and the HVAC four of RULEBOOK-SIGN, from the dossier's research and the model
+code text. Nobody opened a printed code book; local amendments still govern. The decision log, one
+line per entry, is the dossier's new "Settled 2026-09-27" section: 25 applied, 7 already done
+(P1, T4, A1, A2, A4, A5 all but `main:trace`, A6: PR #231 and the day's merges), 1 left open (A3).
+
+- **The sheets** (scripts/sample-hvac.js, samples/sample-hvac.pdf regenerated). M-101: the air
+  balance keynote balances outside air (RTU-1 OA 1,300 + make-up 2,000 in, exhaust 2,400 + 270 out,
+  building positive), never supply (R1); the mop room gets its own grille, EG-2 at 120 CFM (1.0 CFM
+  a sq ft), so EF-2 is 270 (R4); the main is drawn a stretch per size with a line across the duct
+  at each change and the size printed there, not 5 ft downstream (T3); MAU-1's drop is drawn, and
+  moved 22 px east off RTU-1's back-rooms run it sat on (T5); MA-1 is a 24x48 perforated register,
+  not a four-way diffuser (R7); the keynotes say flex the size of the neck (R6), a listed wrap on
+  the grease duct above the ceiling (R11) and IMC 607.5 (R13). M-501: an OA CFM column (R1), the
+  EG-2 row and MOP 104 at 120 (R4), transfer air cited to IMC 403.2.2 (R5), a ventless dishwasher
+  note (R16). M-601: the wrap note cites IECC C403 without a subsection (R15).
+- **The course** (features/course-hvac.js). Chapter 1's balance card reads outside air; chapter 2's
+  `rooms:why` says the cooling load sets the supply and ventilation how much of it is outside air
+  (R2), and names the outdoor-air rule; chapter 3 reads seven counters off the schedule, counts
+  EG-1 ×2 and EG-2 ×1, and its neck card drops "whistles" and the 400 to 600 band (T1); chapter 5
+  says "where the size changes" (T3) and that this engineer sized the main tighter than the
+  ductulator's 0.08, so the SUGGESTED row reads bigger and the drawing is what you bid (P2, R8);
+  chapter 7 cites 607.5 with a line on the sprinkler exception (R13, R14), lays its exhaust and
+  make-up runs on no system and lets RTU-1 go, so RTU-1 reads 2,350 there, not 4,575 of 3,000
+  (T2), and cites 508.1.1 for the tempering (S1); chapter 8's reference reads eight device types
+  and the 20x16 grows to 23.8 ft, and its lay card says to let RTU-1 go before the exhausts;
+  chapter 9's OA tick reads RTU-1's 1,300 (S4).
+- **The rules** (content/rules/hvac): the four drafts are signed in their Verify paragraphs and
+  stay `draft`, because the rulebook's `applied` means the app applies a rule and it applies none
+  of these. Hood make-up air: interlock 508.1, temperature 508.1.1 (10°F, Minnesota's amendment
+  listed), the balance building-wide. Neck velocity: rewritten on the makers' selection data and a
+  ceiling of about 1,000 fpm; the neck table's first two rows pinned to duct-model.js. Fire damper:
+  607.5 with its three subsections and their exceptions. Outdoor air: the dining room's 7.5 and
+  0.18, and the 62.1 note.
+- **Left open**: A3, how the app gives a NEW duct run its system (a new run joins the lit group
+  whatever its unit). A product call, PUNCHLIST DUCT-RUN-SYSTEM. HC-REVIEW and HC-TRADE are
+  deleted; RULEBOOK-SIGN keeps its plumbing and electrical wording and says the HVAC four are done.
+- **Tests**: sample-hvac.test.js (new, Node) pins the sheets' settled numbers (the balance, EF-2 as
+  its three rooms, the citations, each size within 27 plan px of its change, MAU-1's drop off the
+  back-rooms run); course-hvac.spec.js pins the seven counters, EG-2, RTU-1 at 2,350 with nothing of
+  chapter 7 on it, and the callout read at each change vertex.
+
 ## fix(learn): the plumbing course dossier settled: the gas main in two sizes, six cleanouts, the fixture units and the reasons on the cards (PC-REVIEW, PC-TRADE, PT-TRADE, 2026-09-27)
 
 Will delegated the plumbing course dossier's questions ("a lot of these you can just decide").

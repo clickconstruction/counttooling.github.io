@@ -133,7 +133,8 @@ const DEMAND_CURVE = {
   ],
 };
 // Design flow for a load, read off the curve with straight-line interpolation
-// between the printed points (the code says to interpolate). Below the first
+// between the printed points (the app's reading, the ordinary one; the code text
+// prints no interpolation instruction, plumb.wsfu.demand). Below the first
 // point of the flush-valve column the load is too small for a flush valve to be
 // on it, so the flush-tank column answers; below 1 WSFU the flow goes to zero
 // with the load; past the last point the last value holds (a load that size is
@@ -156,14 +157,18 @@ function demandGpm(wsfu, column) {
 function round1(n) { return Math.round(n * 10) / 10; }
 
 // DATA TABLE — the velocity the trade sizes water to, feet per second, per side.
-// Not a code table: the IPC's own method (Appendix E) sizes by pressure and
-// developed length; these are the design-practice caps the size suggestion uses,
+// Not an IPC table: the IPC's own method (Appendix E) sizes by pressure and
+// developed length (the UPC caps copper tube at the same 8 / 5, 610.12 in 2021;
+// plumb.water.velocity); these are the design-practice caps the size suggestion uses,
 // stamped "practice, not code" wherever they show. Editable per project (rung 5).
 const WATER_VELOCITY_CAP_FPS = { cold: 8, hot: 5 };
 
 // DATA TABLE — inside diameter, inches, per nominal size for the materials the
 // Quick Line knows, from the dimension standards (velocity = flow ÷ area).
-// Keys are the nominal size in decimal inches as a string.
+// Keys are the nominal size in decimal inches as a string. PEX is Uponor's
+// published AquaPEX bores (they allow for wall tolerance); CPVC is the outside
+// diameter less two minimum walls, the largest bore (the basis is an open
+// question in plumb.water.pipe-id's Verify paragraph).
 const PIPE_ID_IN = {
   pex: { label: 'PEX', standard: 'ASTM F876, SDR 9', sizes: { '0.375': 0.35, '0.5': 0.475, '0.75': 0.671, '1': 0.862, '1.25': 1.054, '1.5': 1.244, '2': 1.629 } },
   copper: { label: 'copper Type L', standard: 'ASTM B88', sizes: { '0.375': 0.43, '0.5': 0.545, '0.75': 0.785, '1': 1.025, '1.25': 1.265, '1.5': 1.505, '2': 1.985, '2.5': 2.465, '3': 2.945 } },
@@ -214,7 +219,7 @@ function suggestWaterSizeIn(gpm, material, side, cap) {
   return null;
 }
 
-// DATA TABLE — minimum size of the fixture supply pipe, inches (IPC Table 604.4),
+// DATA TABLE — minimum size of the fixture supply pipe, inches (IPC 604.5, Table 604.5),
 // keyed by fixture and, where the code splits it, the supply control.
 const FIXTURE_SUPPLY_MIN_IN = {
   bathtub: 0.5, bidet: 0.375, 'combination-fixture': 0.5, dishwasher: 0.5, 'drinking-fountain': 0.375, 'hose-bibb': 0.5,

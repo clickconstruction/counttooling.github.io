@@ -27,10 +27,13 @@ const DEVICES = {
   SD2: [[800, 282], [820, 506]],                                                                                                                   // 12x12, 100 CFM: hall, storage
   SD3: [[600, 440], [700, 440], [800, 440], [900, 440]],                                                                                            // 24x24, 200 CFM: the kitchen
   RG1: [[350, 300], [450, 300], [620, 460]],                                                                                                       // 24x24 return grilles, plenum return
-  EG1: [[630, 200], [766, 200], [885, 200]],                                                                                                       // 8x8 exhaust grilles: MEN, WOMEN, MOP
-  MA1: [[640, 372]],                                                                                                                               // make-up air register, 2,000 CFM
+  EG1: [[630, 200], [766, 200]],                                                                                                                   // 8x8 exhaust grilles, 75 CFM: MEN, WOMEN
+  EG2: [[885, 200]],                                                                                                                               // 10x10 exhaust grille, 120 CFM: MOP (1.0 CFM a sq ft, HC-REVIEW R4)
+  MA1: [[640, 372]],                                                                                                                               // make-up air register, 24x48 perforated, 2,000 CFM
   T: [[554, 300], [566, 440]],                                                                                                                     // thermostats
-  RTU1: [904, 328], EF1: [836, 323], EF2: [905, 150], MAU1: [904, 372],
+  // MAU-1 drops in 22 px east of the back-rooms run (it sat ON that run at x=904 until the
+  // 2026-09-27 dossier settle, T5: a make-up duct drawn teeing into RTU-1's back rooms)
+  RTU1: [904, 328], EF1: [836, 323], EF2: [905, 150], MAU1: [926, 372],
   // fire dampers: where a duct crosses the kitchen's 1-hr rated hall wall (y=296): the
   // kitchen branch at x=572, the main above the kitchen door header at x=904
   FD: [[572, 296], [904, 296]],
@@ -41,11 +44,14 @@ const DEVICES = {
 // The rated wall: the kitchen's hall wall, drawn with the one-dot rating pattern.
 const RATED_WALL = { y: 296, spans: [[560, 870], [910, 940]], label: [600, 291] };
 const DUCT = {
-  main: { path: [[904, 328], [904, 282], [560, 282], [180, 282]], sizes: [[904, 328, '24x12'], [560, 282, '20x12'], [420, 282, '16x10'], [300, 282, '12x10']] },
+  // the main steps down at a vertex just after the tap whose air made it; each stretch is
+  // drawn at its own width with a line across the duct at the change, and the new size
+  // printed beside that line (HC-TRADE T3: the callouts sat 5 ft downstream of the change)
+  main: { path: [[904, 328], [904, 282], [560, 282], [420, 282], [300, 282], [180, 282]], sizes: [[904, 328, '24x12'], [560, 282, '20x12'], [420, 282, '16x10'], [300, 282, '12x10']] },
   kitchen: { path: [[572, 282], [572, 440], [900, 440]], size: '16x10' },
   back: { path: [[904, 328], [904, 506], [596, 506]], size: '12x8' },
   bar: { path: [[260, 282], [260, 540]], size: '10x8' },
-  makeup: { path: [[904, 372], [640, 372]], size: '20x16' },
+  makeup: { path: [[926, 372], [640, 372]], size: '20x16' },
   exhaust: { path: [[630, 206], [905, 206], [905, 150]], size: '8"ø' },
   hoodExhaust: { at: [836, 323], size: '18"ø' },
   // the grease duct: from the hood collar, sloped back to the hood, an elbow with a cleanout,
@@ -55,7 +61,10 @@ const DUCT = {
     [200, 540, 260, 540], [330, 540, 260, 540]],
   keys: { rtu: [966, 300, 64, 56], mau: [966, 362, 64, 42], ef1: [966, 232, 64, 46], ef2: [972, 170, 44, 24] },
 };
-const AIR = { supply: 2650, capacity: 3000, hoodExhaust: 2400, makeup: 2000, restroomExhaust: 225 };
+// outsideAir: RTU-1's outdoor air (HC-REVIEW R1): the zones' breathing-zone OA by IMC Table
+// 403.3.1.1 is about 1,200 CFM (dining 778, bar 243, kitchen 124, the rest about 60), so the
+// schedule prints 1,300. The balance is outside air in against exhaust out, never supply.
+const AIR = { supply: 2650, capacity: 3000, outsideAir: 1300, hoodExhaust: 2400, makeup: 2000, restroomExhaust: 270 };
 
 // ---------------- symbols ------------------------------------------------------------------------
 const stroke = `fill="none" stroke="${INK}" stroke-width="1.1"`;
@@ -64,6 +73,9 @@ const sub = (x, y, t) => `<text x="${x}" y="${y}" font-family="${F}" font-size="
 const diffuser = (x, y, s, name, cfm) => `<g transform="translate(${x},${y})" ${stroke}><rect x="${-s / 2}" y="${-s / 2}" width="${s}" height="${s}"/><line x1="${-s / 2}" y1="${-s / 2}" x2="${s / 2}" y2="${s / 2}"/><line x1="${s / 2}" y1="${-s / 2}" x2="${-s / 2}" y2="${s / 2}"/></g>${tag(x + s / 2 + 3, y - 1, name)}${sub(x + s / 2 + 3, y + 7, cfm + ' CFM')}`;
 const grille = (x, y, s, name) => `<g transform="translate(${x},${y})" ${stroke}><rect x="${-s / 2}" y="${-s / 2}" width="${s}" height="${s}"/><line x1="${-s / 2}" y1="${s / 2}" x2="${s / 2}" y2="${-s / 2}"/></g>${tag(x + s / 2 + 3, y + 2, name)}`;
 const exhaustGrille = (x, y, name) => `<g transform="translate(${x},${y})" ${stroke}><rect x="-5" y="-5" width="10" height="10"/><line x1="-5" y1="-1" x2="5" y2="-1"/><line x1="-5" y1="2" x2="5" y2="2"/></g>${tag(x + 8, y + 2, name)}`;
+// A perforated make-up register: a 2x4 lay-in face of small holes, not a four-way diffuser
+// (HC-REVIEW R7: a four-way throw near a hood pushes the plume down).
+const perforatedRegister = (x, y, w, h, name, cfm) => { let dots = ''; for (let i = 1; i < 8; i++) for (let j = 1; j < 4; j++) dots += `<circle cx="${x - w / 2 + (i * w) / 8}" cy="${y - h / 2 + (j * h) / 4}" r="1.1" fill="${INK}"/>`; return `<rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" fill="#fff" stroke="${INK}" stroke-width="1.1"/>${dots}${name ? tag(x + w / 2 + 3, y - 1, name) + sub(x + w / 2 + 3, y + 7, cfm + ' CFM') : ''}`; };
 const thermostat = (x, y) => `<g transform="translate(${x},${y})" ${stroke}><circle r="4.5"/><text y="2.5" text-anchor="middle" font-family="${F}" font-size="6.5" fill="${INK}" stroke="none">T</text></g>`;
 const roofKey = ([x, y, w, h], lines) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="5 3"/>${lines.map((t, i) => `<text x="${x + w / 2}" y="${y + 10 + i * 8}" text-anchor="middle" font-family="${F}" font-size="${i ? 5.5 : 6.5}" ${i ? 'fill="#444"' : `font-weight="bold" fill="${INK}"`}>${t}</text>`).join('')}`;
 // A duct run drawn at its true width: a black band with a white core, size callouts along it.
@@ -72,6 +84,16 @@ function ductRun(path, sizes, dashed) {
   const w = widthOf(Array.isArray(sizes) ? sizes[0][2] : sizes);
   const p = path.map(([x, y]) => `${x},${y}`).join(' ');
   return `<polyline points="${p}" fill="none" stroke="${INK}" stroke-width="${w + 1.6}" stroke-linejoin="miter"${dashed ? ' stroke-dasharray="8 4"' : ''}/><polyline points="${p}" fill="none" stroke="#fff" stroke-opacity="0.82" stroke-width="${w}" stroke-linejoin="miter"/>`;
+}
+// The main, a stretch per size: each drawn at its own width, widest first, and a line across
+// the wider duct where it steps down (the reducer).
+function steppedRun(path, sizes) {
+  const at = (x, y) => path.findIndex(([px, py]) => px === x && py === y);
+  const starts = sizes.map(([x, y, s]) => [at(x, y), s]);
+  let out = '';
+  starts.forEach(([i, s], k) => { const j = k + 1 < starts.length ? starts[k + 1][0] : path.length - 1; out += ductRun(path.slice(i, j + 1), s); });
+  starts.slice(1).forEach(([i], k) => { const [x, y] = path[i]; const w = widthOf(starts[k][1]); out += `<line x1="${x}" y1="${y - w / 2 - 0.8}" x2="${x}" y2="${y + w / 2 + 0.8}" stroke="${INK}" stroke-width="1.2"/>`; });
+  return out;
 }
 const callout = (x, y, t, rot = 0) => `<text x="${x}" y="${y}" font-family="${F}" font-size="7" font-weight="bold" fill="${INK}"${rot ? ` transform="rotate(${rot} ${x} ${y})"` : ''}>${t}</text>`;
 // Welded grease duct: a solid band with a grey core, so it reads as a different metal.
@@ -92,11 +114,11 @@ function mechanicalPlan() {
   return `${restaurantShell({ lights: false, tags: false, drains: false })}
   <!-- the supply side: RTU-1 on the roof, its main sized down the hall and across the dining room, branches -->
   ${ductRun(U.makeup.path, U.makeup.size)}${callout(760, 369, U.makeup.size)}
-  ${ductRun(U.main.path, U.main.sizes)}
+  ${steppedRun(U.main.path, U.main.sizes)}
   ${ductRun(U.kitchen.path, U.kitchen.size)}${callout(578, 380, U.kitchen.size, -90)}
   ${ductRun(U.back.path, U.back.size)}${callout(910, 480, U.back.size, -90)}
   ${ductRun(U.bar.path, U.bar.size)}${callout(266, 470, U.bar.size, -90)}
-  ${U.main.sizes.map(([x, y, s]) => callout(x === 904 ? x + 16 : x - 60, y === 328 ? 310 : y - 15, s, x === 904 ? -90 : 0)).join('')}
+  ${U.main.sizes.map(([x, y, s]) => callout(x === 904 ? x + 16 : x - 27, y === 328 ? 310 : y - 15, s, x === 904 ? -90 : 0)).join('')}
   ${U.flex.map(flexLine).join('')}
   <!-- the exhaust side: restroom grilles to EF-2, the hood to EF-1 -->
   ${ductRun(U.exhaust.path, U.exhaust.size, true)}${callout(760, 218, U.exhaust.size)}
@@ -113,31 +135,33 @@ function mechanicalPlan() {
   ${D.SD3.map(([x, y]) => diffuser(x, y, 24, 'SD-3', 200)).join('')}
   ${D.RG1.map(([x, y]) => grille(x, y, 24, 'RG-1')).join('')}
   ${D.EG1.map(([x, y]) => exhaustGrille(x, y, 'EG-1')).join('')}
-  ${D.MA1.map(([x, y]) => diffuser(x, y, 24, 'MA-1', 2000)).join('')}
+  ${D.EG2.map(([x, y]) => exhaustGrille(x, y, 'EG-2')).join('')}
+  ${D.MA1.map(([x, y]) => perforatedRegister(x, y, 48, 24, 'MA-1', 2000)).join('')}
   ${D.T.map(([x, y]) => thermostat(x, y)).join('')}
   <!-- roof keys -->
   ${roofKey(U.keys.rtu, ['RTU-1 ON ROOF', '3,000 CFM · 7.5 TON', '1.0" ESP · 208V 3Φ'])}
   ${roofKey(U.keys.mau, ['MAU-1 ON ROOF', '2,000 CFM MAKE-UP', 'INTERLOCKED W/ EF-1'])}
   ${roofKey(U.keys.ef1, ['EF-1 ON ROOF', '2,400 CFM', 'HOOD EXHAUST'])}
-  ${roofKey(U.keys.ef2, ['EF-2', '225 CFM'])}
+  ${roofKey(U.keys.ef2, ['EF-2', '270 CFM'])}
   <text x="400" y="458" font-family="${F}" font-size="6.5" fill="#444" text-anchor="middle">RETURN AIR VIA CEILING PLENUM TO RTU-1</text>
-  <rect x="896" y="320" width="16" height="16" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="3 2"/><line x1="912" y1="328" x2="966" y2="328" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="912" y1="372" x2="966" y2="383" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="888" y1="400" x2="966" y2="278" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="905" y1="150" x2="972" y2="182" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/>
+  <rect x="896" y="320" width="16" height="16" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="3 2"/><line x1="912" y1="328" x2="966" y2="328" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><rect x="918" y="364" width="16" height="16" fill="none" stroke="${INK}" stroke-width="0.9" stroke-dasharray="3 2"/><line x1="934" y1="372" x2="966" y2="383" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="888" y1="400" x2="966" y2="278" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/><line x1="905" y1="150" x2="972" y2="182" stroke="${INK}" stroke-width="0.7" stroke-dasharray="3 2"/>
   `;
 }
-// The legend: eight rows in the space left of the title block.
+// The legend: nine rows in the space left of the title block.
 function legendM101() {
   const rows = [
     [`<g transform="translate(444,0)">${diffuser(0, 0, 11, '', '').replace(/<text[\s\S]*$/, '')}</g>`, 'SUPPLY DIFFUSER, TYPE AND CFM AS NOTED'],
     [`<g transform="translate(444,0)">${grille(0, 0, 11, '').replace(/<text[\s\S]*$/, '')}</g>`, 'RETURN GRILLE, TO CEILING PLENUM'],
     [`<g transform="translate(444,0) scale(0.85)">${exhaustGrille(0, 0, '').replace(/<text[\s\S]*$/, '')}</g>`, 'EXHAUST GRILLE'],
+    [perforatedRegister(444, 0, 22, 11, '', ''), 'MAKE-UP AIR REGISTER, PERFORATED FACE'],
     [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="7"/><line x1="432" y1="0" x2="456" y2="0" stroke="#fff" stroke-width="5"/>`, 'SUPPLY DUCT, SIZE AS NOTED, 1" W.G.'],
     [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="7" stroke-dasharray="4 2"/><line x1="432" y1="0" x2="456" y2="0" stroke="#fff" stroke-width="5"/>`, 'EXHAUST DUCT'],
     [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="7"/><line x1="432" y1="0" x2="456" y2="0" stroke="#9a9a9a" stroke-width="5"/>`, 'GREASE DUCT (GD), WELDED 16 GA BLACK STEEL'],
-    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="1" stroke-dasharray="3 3"/>`, 'FLEX DUCT, 8"ø, 6\'-0" MAX'],
+    [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="1" stroke-dasharray="3 3"/>`, 'FLEX DUCT, THE SIZE OF THE NECK, 6\'-0" MAX'],
     [`<line x1="432" y1="0" x2="456" y2="0" stroke="${INK}" stroke-width="2.5"/>${ratedWall(0, [[432, 456]])}<g transform="translate(464,0) scale(0.8)">${fireDamper(0, 0).replace(/<text[\s\S]*$/, '')}</g>`, '1-HR RATED WALL · FD: FIRE DAMPER, UL 555'],
   ];
-  return `<g font-family="${F}" font-size="9.5" fill="${INK}"><text x="430" y="652" font-size="12" font-weight="bold">LEGEND</text><line x1="430" y1="658" x2="700" y2="658" stroke="${INK}" stroke-width="1"/>
-    ${rows.map(([sym, text], i) => { const y = 673 + i * 13; return `<g transform="translate(0,${y})">${sym}</g><text x="482" y="${y + 3}">${text}</text>`; }).join('')}
+  return `<g font-family="${F}" font-size="9.5" fill="${INK}"><text x="430" y="639" font-size="12" font-weight="bold">LEGEND</text><line x1="430" y1="645" x2="700" y2="645" stroke="${INK}" stroke-width="1"/>
+    ${rows.map(([sym, text], i) => { const y = 660 + i * 13; return `<g transform="translate(0,${y})">${sym}</g><text x="482" y="${y + 3}">${text}</text>`; }).join('')}
   </g>`;
 }
 function sheetM101() {
@@ -151,20 +175,21 @@ function sheetM101() {
     'CEILINGS 9\'-0", ROOF DECK 12\'-0":',
     '  A 3\'-0" PLENUM. SEE SECTION, M-601.',
     'DIFFUSER TYPES AND CFM PER M-501.',
-    'FLEX DUCT 8"ø, 6\'-0" MAX, TO EACH',
-    '  DIFFUSER FROM A TAP W/ DAMPER.',
+    'FLEX DUCT THE SIZE OF THE NECK,',
+    '  6\'-0" MAX, FROM A TAP W/ DAMPER.',
     'HOOD EXHAUST (GD): 18"ø WELDED 16 GA',
     '  BLACK STEEL, SLOPE TO HOOD, C.O. AT',
-    '  THE ELBOW, 18" CLEAR OF COMBUSTIBLES,',
-    '  UP TO EF-1 (NFPA 96, IMC 506).',
+    '  THE ELBOW, LISTED WRAP (ASTM E2336)',
+    '  ABOVE THE CEILING, UP TO EF-1',
+    '  (NFPA 96, IMC 506).',
     'KITCHEN / HALL WALL IS 1-HR RATED:',
     '  UL 555 FIRE DAMPER AT EACH DUCT',
-    '  PENETRATION (IMC 607.5.1). NO DAMPER',
+    '  PENETRATION (IMC 607.5). NO DAMPER',
     '  OF ANY KIND IN THE GREASE DUCT.',
     'MAU-1 INTERLOCKED WITH EF-1.',
-    'AIR BALANCE: SUPPLY 2,650 + MAKE-UP',
-    '  2,000 · EXHAUST 2,400 + 225:',
-    '  BUILDING SLIGHTLY POSITIVE.',
+    'AIR BALANCE, OUTSIDE AIR: RTU-1 OA',
+    '  1,300 + MAKE-UP 2,000 IN · EXHAUST',
+    '  2,400 + 270 OUT: BUILDING POSITIVE.',
     'RTU-1: 3,000 CFM, 1.0" ESP.',
   ])}
   ${titleBlock({ sheet: 'M-101', sheetName: 'MECHANICAL PLAN', project: 'MAIN ST RESTAURANT', scale: '1/8" = 1&#39;-0"', date: '07/31/26' })}`;
@@ -172,22 +197,23 @@ function sheetM101() {
 
 // ---------------- M-501 SCHEDULES ----------------------------------------------------------------------
 const EQUIPMENT = [
-  ['RTU-1', 'ROOFTOP UNIT, GAS HEAT / DX COOL', '3,000', '1.0"', '7.5 TON', '208V 3Φ', '900 LB'],
-  ['EF-1', 'HOOD EXHAUST FAN, UPBLAST', '2,400', '1.25"', '-', '208V 1Φ', '150 LB'],
-  ['MAU-1', 'MAKE-UP AIR UNIT, TEMPERED', '2,000', '0.5"', '-', '208V 3Φ', '650 LB'],
-  ['EF-2', 'RESTROOM EXHAUST FAN', '225', '0.4"', '-', '120V', '40 LB'],
+  ['RTU-1', 'ROOFTOP UNIT, GAS HEAT / DX COOL', '3,000', '1,300', '1.0"', '7.5 TON', '208V 3Φ', '900 LB'],
+  ['EF-1', 'HOOD EXHAUST FAN, UPBLAST', '2,400', '-', '1.25"', '-', '208V 1Φ', '150 LB'],
+  ['MAU-1', 'MAKE-UP AIR UNIT, TEMPERED', '2,000', '2,000', '0.5"', '-', '208V 3Φ', '650 LB'],
+  ['EF-2', 'RESTROOM AND MOP EXHAUST FAN', '270', '-', '0.4"', '-', '120V', '40 LB'],
 ];
 const DIFFUSERS = [
   ['SD-1', 'SUPPLY DIFFUSER, 24X24 LAY-IN, 4-WAY', '8"ø', '150', 'DINING, BAR, DISH'],
   ['SD-2', 'SUPPLY DIFFUSER, 12X12 SURFACE', '6"ø', '100', 'HALL, STORAGE'],
   ['SD-3', 'SUPPLY DIFFUSER, 24X24 LAY-IN, 4-WAY', '10"ø', '200', 'KITCHEN'],
   ['RG-1', 'RETURN GRILLE, 24X24 LAY-IN, PLENUM', '-', '-', 'DINING, KITCHEN'],
-  ['EG-1', 'EXHAUST GRILLE, 8X8', '6"ø', '75', 'RESTROOMS, MOP'],
-  ['MA-1', 'MAKE-UP AIR REGISTER, 24X24', '20X16', '2000', 'KITCHEN'],
+  ['EG-1', 'EXHAUST GRILLE, 8X8', '6"ø', '75', 'RESTROOMS'],
+  ['EG-2', 'EXHAUST GRILLE, 10X10', '8"ø', '120', 'MOP'],
+  ['MA-1', 'MAKE-UP AIR REGISTER, 24X48 PERFORATED', '20X16', '2000', 'KITCHEN'],
 ];
 const ROOMS = [
   ['DINING 100', '1,104', '1,200', '-', 'RTU-1'], ['BAR 101', '261', '300', '-', 'RTU-1'], ['MEN 102', '148', '-', '75', 'EF-2'],
-  ['WOMEN 103', '137', '-', '75', 'EF-2'], ['MOP 104', '116', '-', '75', 'EF-2'], ['KITCHEN 105', '459', '800', '2,400', 'RTU-1 / EF-1 / MAU-1'],
+  ['WOMEN 103', '137', '-', '75', 'EF-2'], ['MOP 104', '116', '-', '120', 'EF-2'], ['KITCHEN 105', '459', '800', '2,400', 'RTU-1 / EF-1 / MAU-1'],
   ['DISH 106', '126', '150', '-', 'RTU-1'], ['HALL 107', '117', '100', '-', 'RTU-1'], ['STORAGE 108', '216', '100', '-', 'RTU-1'],
 ];
 function table(x, y, title, cols, head, rows, rowH = 18) {
@@ -201,23 +227,29 @@ function table(x, y, title, cols, head, rows, rowH = 18) {
 }
 function sheetM501() {
   return `${sheetFrame()}
-  ${table(120, 100, 'EQUIPMENT SCHEDULE', [120, 180, 470, 530, 590, 660, 740], ['TAG', 'DESCRIPTION', 'CFM', 'ESP', 'COOLING', 'ELEC', 'WEIGHT'], EQUIPMENT)}
+  ${table(120, 100, 'EQUIPMENT SCHEDULE', [120, 180, 410, 470, 530, 590, 660, 740], ['TAG', 'DESCRIPTION', 'CFM', 'OA CFM', 'ESP', 'COOLING', 'ELEC', 'WEIGHT'], EQUIPMENT)}
   ${table(120, 270, 'DIFFUSER AND GRILLE SCHEDULE', [120, 180, 470, 540, 600], ['TAG', 'DESCRIPTION', 'NECK', 'CFM', 'ROOMS'], DIFFUSERS)}
   ${table(120, 470, 'ROOM AIR SCHEDULE', [120, 260, 340, 430, 520], ['ROOM', 'AREA SQ FT', 'SUPPLY CFM', 'EXHAUST CFM', 'SERVED BY'], ROOMS)}
   ${notesColumn(900, 100, 'SCHEDULE NOTES', [
     '1. SUPPLY CFM PER ROOM FROM THE',
-    '   COOLING LOAD AND ASHRAE 62.1',
-    '   VENTILATION; USE THESE, NOT A',
-    '   RULE OF THUMB.',
+    '   COOLING LOAD. IT INCLUDES THE',
+    '   VENTILATION OA (IMC 403, ASHRAE',
+    '   62.1). USE THESE, NOT A RULE OF',
+    '   THUMB.',
     '2. RTU-1 SUPPLIES 2,650 CFM OF ITS',
     '   3,000; THE REST IS FUTURE.',
     '3. KITCHEN: HOOD EXHAUST 2,400 CFM',
     '   (EF-1), MAKE-UP 2,000 (MAU-1),',
     '   SUPPLY 800 (RTU-1).',
-    '4. RESTROOMS EXHAUST ONLY; AIR IS',
-    '   DRAWN FROM THE HALL UNDER THE',
-    '   DOORS (IMC 403, TABLE 403.3.1.1).',
-    '5. FLEX DUCT 6\'-0" MAX PER DROP.',
+    '4. RESTROOMS AND MOP EXHAUST ONLY;',
+    '   AIR IS DRAWN FROM THE HALL UNDER',
+    '   THE DOORS (IMC 403.2.2). EXHAUST',
+    '   RATES PER IMC TABLE 403.3.1.1.',
+    '5. FLEX DUCT THE SIZE OF THE NECK,',
+    '   6\'-0" MAX PER DROP.',
+    '6. DISH 106: VENTLESS DISHWASHER',
+    '   BY THE KITCHEN EQUIPMENT',
+    '   CONTRACTOR; NO HOOD.',
   ])}
   ${titleBlock({ sheet: 'M-501', sheetName: 'SCHEDULES', project: 'MAIN ST RESTAURANT', scale: 'NONE', date: '07/31/26' })}`;
 }
@@ -261,7 +293,7 @@ function sheetM601() {
     '   RETURN AIR THE PLENUM CARRIES.',
     '3. WRAP: 2" FIBERGLASS, FOIL FACED, ON',
     '   ALL SUPPLY DUCT IN THE PLENUM',
-    '   (IECC C403.11).',
+    '   (IECC C403, DUCT INSULATION).',
     '4. FLEX DUCT 6\'-0" MAX, NO SAG,',
     '   SUPPORTED AT 4\'-0" O.C.',
   ])}

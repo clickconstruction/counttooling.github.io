@@ -85,7 +85,7 @@
 > schedule (the Water button on the Line Types header, shown once a type has a side): one
 > row per water run with its size, the fixture units at its head (branches included), the
 > flow in the column its fixtures call for, the velocity at that size and the check (✓, ⚠
-> over the cap → the passing size, ⚠ under a served fixture's Table 604.4 minimum, or unsized
+> over the cap → the passing size, ⚠ under a served fixture's Table 604.5 minimum, or unsized
 > when the type's name carries no material or size), cold and hot totals, the fixtures no
 > run reaches; the velocity caps per side (`state.waterSettings.capFps`, every intake) and
 > the occupancy column at the foot; Copy Schedule; the report table; the
@@ -177,10 +177,10 @@ each other on every build). The slice, in the order the ladder needs it:
 |---|---|---|
 | `plumb.wsfu.fixtures` — load values per fixture, private and public columns, hot/cold/total | IPC Table E103.3(2) | the counter's WSFU prefill by name; the sidebar chip |
 | `plumb.wsfu.demand` — WSFU → gpm, flush-tank and flush-valve columns | IPC Table E103.3(3) | the design flow behind every suggestion |
-| `plumb.water.velocity` — maximum velocity per side (defaults: cold 8 fps, hot 5 fps) | not a code table: the trade's design practice (manufacturer / ASPE guidance; the IPC method sizes by pressure and length, §3 below) | the size pick; editable knob, stamped "practice, not code" |
+| `plumb.water.velocity` — maximum velocity per side (defaults: cold 8 fps, hot 5 fps) | not an IPC table: the trade's design practice (manufacturer / ASPE guidance; the IPC method sizes by pressure and length, §3 below); the UPC caps copper tube at the same 8 / 5 (610.12, 2021) | the size pick; editable knob, stamped "practice, not code" |
 | `plumb.water.pipe-id` — nominal size → inside diameter for the materials the Quick Line knows (PEX, copper L, CPVC, galvanized) | manufacturer / ASTM dimensions | velocity = gpm ÷ area |
-| `plumb.water.fixture-supply-min` — minimum fixture supply pipe size per fixture | IPC Table 604.4 | the ⚠ on a branch smaller than its fixture's minimum; a Bid Check row |
-| `plumb.water.distribution-min` — minimum building supply and distribution sizes | IPC 604.3 / 604.4 | a Bid Check row |
+| `plumb.water.fixture-supply-min` — minimum fixture supply pipe size per fixture | IPC 604.5, Table 604.5 (cited as 604.4 until 2026-09-27; 604.4 is the flow-rate table) | the ⚠ on a branch smaller than its fixture's minimum; a Bid Check row |
+| `plumb.water.distribution-min` — minimum water service size (3/4 in) | IPC 603.1 | a Bid Check row |
 
 **The values in the mockups are illustrative.** The slice is written by
 transcribing the code tables (2018 and 2021 editions, with the project's
@@ -216,7 +216,7 @@ Auto rows, arriving as their computations land:
    side. Names the run and the size that passes (*"Lav battery cold: 1/2″ at
    9.2 fps ⚠ → 3/4″ 4.1 fps ✓"*).
 2. **Fixture supply minimums** — a fixture attached to a branch smaller
-   than IPC Table 604.4 allows (*"WC flush valve on 3/4″; needs 1″"*).
+   than IPC Table 604.5 allows (*"WC flush valve on 3/4″; needs 1″"*).
 3. **Every fixture served** — the *strays* row: fixtures with a WSFU and no
    run (the *Attach to nearest run* rescue clears it).
 4. **Scale set on every water sheet** — the same rule duct has.

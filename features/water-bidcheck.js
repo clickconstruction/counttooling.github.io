@@ -9,7 +9,7 @@
  * WATER_BID_CHECK_ROWS resolved against what the schedule already computes
  * (features/water-schedule.js computeWaterSchedule):
  *   Every water run sized      the schedule's over-the-cap and unsized rows, naming the size that passes
- *   Fixture supply minimums    a run smaller than a served fixture's Table 604.4 minimum
+ *   Fixture supply minimums    a run smaller than a served fixture's Table 604.5 minimum
  *   Every fixture served       the schedule's not-reached list (the strays)
  *   Water service at least 3/4″  a run named service / meter under the 603.1 minimum (na until one is named)
  *   Scale set on every water sheet   App.collectUnscaledWaterPages, the gate's collector

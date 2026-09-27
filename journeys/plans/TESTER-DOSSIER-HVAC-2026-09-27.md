@@ -591,3 +591,47 @@ equipment schedule prints no OA CFM (R1). Confidence: **medium**.
 - **A6.** While probing I pushed three branch runs straight into the annotations and clicking Duct
   left one of them; that was a non-standard path (no undo snapshot, no dirty), so it may be nothing,
   but whoever touches A4 should check that arming the tool never drops a committed run.
+
+## Settled 2026-09-27
+
+Settled by Claude on the owner's delegation ("a lot of these you can just decide"), from this
+dossier's research and the model code text; nobody opened a printed code book, and local
+amendments still govern. Where two answers were defensible, the one that does not under-count
+material or under-size anything won. The four rules keep `status: draft`: the rulebook's
+`applied` means the app applies the rule (a surface in `used_by` and a code pointer, rules.test.js),
+and the app applies none of them; each carries the sign-off sentence in its Verify paragraph.
+Pinned by sample-hvac.test.js (the sheets' numbers) and course-hvac.spec.js.
+
+- **P1**: ALREADY DONE (DS-DUCT-DOWNSTREAM, PR #231). Rechecked on today's main: duct-suggest.spec.js reads 1,500 CFM, 18"Ø or 20×14, at the 20x12 change.
+- **P2**: APPLIED. Keep the sheet, change the words: `main:why` says the ductulator sizes at 0.08" per 100 ft and 1,200 fpm, this engineer sized the 16x10 and 12x10 at about twice that rate, so the SUGGESTED row reads bigger; bid the drawing, and chapter 6's Static path checks the fan can push it (0.21" of 1.0").
+- **R8**: APPLIED with P2: the card no longer calls 0.08 the engineer's rate.
+- **T1**: APPLIED. `diffusers:neck` drops "whistles" and the 400 to 600 band: 150 CFM through an 8" neck is about 430 fpm, makers keep a neck under about a thousand, the neck is picked from the maker's sound and throw tables and the push its flex costs; the app's table puts up to 150 CFM on 8" and 300 on 10".
+- **T2**: APPLIED in the course. Each fan is its own system: chapter 7's three trace actions lay the grease, restroom and make-up runs on no system, its seed lets RTU-1 go so a hand-traced run joins none, the `interlock` card says so and that RTU-1 still reads 2,350 (it read 4,575 of 3,000); chapter 8's `lay` card tells a hand-tracer to let RTU-1 go first. MA-1's 2,000 shows nowhere against RTU-1. The app's rule for a new run's system is A3, left open.
+- **T3**: APPLIED on the sheet. The reducers stay at the vertices just after the tap whose air made them (560, 420, 300); each stretch is now drawn at its own width with a line across the duct at the change and the new size printed just downstream of that line (it sat 5 ft downstream). `main:trace` says "where the size changes". The vertices did not move, so chapter 8's reference feet did not.
+- **T4**: ALREADY DONE (DS-AGENT-NITS).
+- **T5**: APPLIED. MAU-1's drop is drawn as a dashed square like RTU-1's, and moved 22 px east to (926,372): at (904,372) it sat on RTU-1's back-rooms run, so the 20x16 read as a tee off RTU-1 and a hand-traced make-up run tapped it. The 20x16 reference grows from 22.0 to 23.8 ft.
+- **R1**: APPLIED. The keynote balances outside air: RTU-1 OA 1,300 + make-up 2,000 in, exhaust 2,400 + 270 out, building positive. The equipment schedule gains an OA CFM column (RTU-1 1,300, MAU-1 2,000); `sheet:balance` explains it. 1,300 is above the rooms' breathing-zone sum by the table (about 1,205).
+- **R2**: APPLIED. `rooms:why`: the cooling load sets the supply; ventilation sets how much of it is outside air (about 780 of the dining room's 1,200); only a packed room with little heat has its supply pushed up by ventilation. M-501 note 1 says the supply includes the ventilation OA.
+- **R3**: APPLIED, signed as is; the dining room's 7.5 and 0.18 are now values of `hvac.ventilation.outdoor-air`, which `rooms:why` names.
+- **R4**: APPLIED. MOP 104 exhausts 120 (1.0 CFM a sq ft × 116, rounded up) through a new EG-2 (10x10, 8" neck, 120 CFM); EG-1 is the two restrooms; EF-2 is 270 on the schedule, the roof key and the balance. Chapter 3 counts EG-1 ×2 and EG-2 ×1 (the schedule reader now proposes seven counters), chapter 7's restroom card names EG-2, the reference reads eight device types, twenty-six marks.
+- **R5**: APPLIED. M-501 note 4: transfer air under the doors (IMC 403.2.2), exhaust rates per IMC Table 403.3.1.1.
+- **R6**: APPLIED. The keynote, the legend and M-501 note 5 say flex the size of the neck; the neck card gives the flex as part of the reason. M-601's 8"ø flex stays: it feeds an SD-1, whose neck is 8".
+- **R7**: APPLIED. MA-1 is drawn as a 24x48 perforated register, not the four-way diffuser symbol, with its own legend row; still one device on the same spot, so chapter 7's count and run are unchanged.
+- **R9**: APPLIED, signed as is: the 0.10" terminal allowance stays.
+- **R10**: APPLIED, signed as is; no joist-depth note.
+- **R11**: APPLIED. Wrap, not the clearance exception: the keynote gains a listed wrap (ASTM E2336) above the ceiling, `exhaust:why` says so, and the Schedule's 47 sq ft now matches the sheet (and `nodamper`'s "the wrap the keynote already calls for" is true).
+- **R12**: APPLIED, no change: 12 ft cleanouts (NFPA 96, the stricter; the IMC 20 ft is in Illinois' 2024 adoption).
+- **R13**: APPLIED. `exhaust:dampers` and the M-101 keynote cite IMC 607.5.
+- **R14**: APPLIED. `exhaust:dampers` adds that in a sprinklered building an exception can sometimes drop them, and this plan tags two, so bid two; the fire-damper rule names the exceptions.
+- **R15**: APPLIED. M-601 note 3 reads "(IECC C403, DUCT INSULATION)": no subsection, since the edition is not settled.
+- **R16**: APPLIED. M-501 note 6: the dish room's dishwasher is ventless, by the kitchen equipment contractor, no hood; words on the sheet, no count changes.
+- **S1**: APPLIED (signed, stays draft). The interlock is 508.1, the temperature 508.1.1 (10°F in the model code, Minnesota amends it), the balance is building-wide; `interlock` cites 508.1.1 as the reason it is tempered.
+- **S2**: APPLIED (signed, stays draft). Rewritten: the maker's sound and throw data pick the neck, makers keep it under about 1,000 fpm, and the app's table's first two rows are pinned by code pointers.
+- **S3**: APPLIED (signed, stays draft). Section 607.5 (607.5.1 fire walls, 607.5.2 fire barriers, 607.5.3 fire partitions); the value reads required unless an exception of 607.5.2 or 607.5.3 removes it; the body names the exceptions.
+- **S4**: APPLIED (signed, stays draft). The Verify paragraph says the table is ASHRAE 62.1's Ventilation Rate Procedure and some adoptions allow 62.1 directly; chapter 9's OA tick now reads RTU-1's 1,300 on the schedule (R1) beside the note.
+- **A1**: ALREADY DONE (DS-DINING-ATTACH).
+- **A2**: ALREADY DONE (DS-DINING-ATTACH).
+- **A3**: LEFT OPEN, a product call (PUNCHLIST DUCT-RUN-SYSTEM). T2 settles the trade side, but the app's rule for a NEW run's system is not a small change: going by airside misses make-up air (it is supply), and going by what the run touches strands a second trunk from the same unit off another drop, with no way in the app to put a run on a system afterwards. The course works around it (T2).
+- **A4**: ALREADY DONE (DS-DUCT-DOWNSTREAM).
+- **A5**: ALREADY DONE (DS-AGENT-NITS) for three; `main:trace`'s "the corner" APPLIED today with T3.
+- **A6**: ALREADY DONE (DS-DUCT-DOWNSTREAM pinned the tool; the course hint's `.pop()` was fixed the same day).

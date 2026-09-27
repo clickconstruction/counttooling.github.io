@@ -1,7 +1,7 @@
 {
  "source": "/guides/learning-the-app/",
  "heading": "Words the cards use",
- "count": 278,
+ "count": 281,
  "groups": [
   {
    "name": "The set and the sheet",
@@ -664,6 +664,10 @@
      "text": "A thousand VA."
     },
     {
+     "term": "Lock-on",
+     "text": "A clip on a breaker's handle so nobody switches the circuit off, such as the exit lights' circuit."
+    },
+    {
      "term": "Main disconnect",
      "text": "The switch that shuts off the whole building."
     },
@@ -674,6 +678,10 @@
     {
      "term": "MDP (main distribution panel)",
      "text": "The panel the service feeds first."
+    },
+    {
+     "term": "Meter base",
+     "text": "The socket the power company's meter plugs into. The bid carries the base; the power company brings the meter."
     },
     {
      "term": "Mount height",
@@ -730,6 +738,10 @@
     {
      "term": "Three phase",
      "text": "Power on all three phases, for motors like a rooftop unit's."
+    },
+    {
+     "term": "Time switch",
+     "text": "A clock that turns the lights off after hours, in the rooms that have no occupancy sensor."
     },
     {
      "term": "Utility transformer",

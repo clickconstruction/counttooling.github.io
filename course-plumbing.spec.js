@@ -129,7 +129,7 @@ const EXPECT = {
     expect(s).toMatch(/ft of 1\.5in BI\t13\.5/);                      // the meter to the kitchen wall
     expect(s).toMatch(/ft of 1\.25in BI\t22(\.0+)?\t/);               // 10.33 + 11.67 plan feet
     expect(s).toMatch(/90° elbow\t1/);
-    expect(await page.evaluate(() => { const l = window.state.lineTypes.find((x) => /1\.25in BI/.test(x.name)); return [l.bendFittings.enabled, l.childCounts[0].ftInterval]; })).toEqual([true, 12]);
+    expect(await page.evaluate(() => { const l = window.state.lineTypes.find((x) => /1\.25in BI/.test(x.name)); return [l.bendFittings.enabled, l.childCounts[0].ftInterval]; })).toEqual([true, 10]);                  // IFGC Table 415.1: 1-1/4" steel gas pipe
   },
   details: async (page) => {
     expect(await page.evaluate(() => window.App.getPageScale(1).pixelsPerUnit)).toBe(18);

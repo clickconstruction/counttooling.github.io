@@ -336,6 +336,36 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/plumbing/cleanouts/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/drainage-fixture-units/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/drainage-slope/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/gas-appliance-shutoff/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/gas-pipe-sizing/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/grease-interceptor/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/plumbing/hanger-spacing-cast-iron/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -352,6 +382,41 @@
   </url>
   <url>
     <loc>https://counttooling.com/rules/plumbing/hanger-spacing-pvc/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/hanger-spacing-steel/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/hood-gas-shutoff/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/indirect-waste/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/trap-arm-length/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/trap-seal/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/vent-terminal/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/plumbing/vents/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

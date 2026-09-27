@@ -252,6 +252,10 @@ The electrical twelve are drafted (2026-09-26): fifteen `status: draft` rules in
 content/rules/electrical/, named by the twelve steps' `rules:` (CHANGELOG "twelve electrical
 rules the course teaches enter the rulebook as drafts"); each still waits on a tester's signature.
 
+Plumbing drafted 2026-09-26: the eleven plumbing steps name thirteen `status: draft` rules
+(CHANGELOG "thirteen plumbing rules the course teaches enter the rulebook as drafts"), awaiting
+a tester's signature.
+
 ## Harness
 
 Built 2026-09-25 (build items 2, 5 and 6). Four scripts, all Node tooling, none in the shell:

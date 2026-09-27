@@ -102,6 +102,19 @@
   const traceZones = (re, spots, pageIdx) => T().pathZones(spots, 15, runsOn(re, pageIdx));
   const allDone = (zs) => T().allDone(zs);
   const missing = (c, spots, labels, d, pageIdx) => { const ms = marksOf(c, pageIdx); const out = []; spots.forEach((pt, i) => { if (!ms.some((m) => K().near(m, pt, d || 8))) out.push(labels[i]); }); return out.length ? out.length + ' more: ' + out.join(', ') : ''; };
+  // PP-OS-STRAY: an OS mark outside the three door circles (a plain S switch clicked as a sensor)
+  // still counts in the tally, so the sensor step holds until it is undone, and the hint says where.
+  const OS_DOORS = ['the MEN door', 'the WOMEN door', 'the STORAGE door'];
+  const PLAIN_S = ['the front exit', 'the server station', 'the kitchen (west)', 'the DISH door'];   // G.S, in order
+  const osZones = (c) => circlesOn(E201, c, pts(G.OS), 12);
+  const osStray = (c) => { const zs = osZones(c); return c ? marksOf(c, E201).find((m) => !zs.some((z) => T().inCircle(m, z))) : null; };
+  function osStrayHint(c) {
+    const m = osStray(c);
+    if (!m) return '';
+    const i = pts(G.S).findIndex((pt) => K().near(m, pt, 16));
+    const where = i >= 0 ? 'The OS mark at ' + PLAIN_S[i] + ' is a plain S switch' : 'An OS mark away from the three doors';
+    return { code: 'outside-zone', text: where + ', and it still counts in the tally. Press Ctrl+Z to undo it, or right-click it and click Delete' };
+  }
   const DUPLEX_LABELS = ['the dining west wall (top)', 'the dining west wall', 'the dining west wall', 'the dining west wall (bottom)', 'the dining north wall (west)', 'the dining north wall (middle)', 'the dining north wall (east)', 'the server station', 'storage (north wall)', 'storage (south wall)', 'the kitchen south wall'];
   const plainDuplex = () => pts(G.duplex).filter((pt) => !K().near(pt, pts(G.missed)[0], 2));
   const GFCI_LABELS = ['the bar (west)', 'the bar (east)', 'MEN', 'WOMEN', 'the mop room', 'the kitchen hand sink', 'the kitchen exit hand sink', 'the cook line (west)', 'the cook line (east)', 'the dish pit'];
@@ -378,8 +391,8 @@
         { id: 'os', title: 'Which rooms switch themselves off?', kind: 'do', cardAt: 'bl',
           rules: ['elec.emergency.battery-duration', 'elec.egress.illumination'],
           body: 'The exit signs and the emergency lights: Type X and Type EM, on circuit 21 with a battery in each, ninety minutes of light with the power out (NEC 700.12, IBC 1008). They cost more than a fixture: a battery, a test switch, and a circuit that must not be switched.\nThree switches on this plan are not switches.\n1. Make an OS counter: Category Switch, Variant Occupancy.\n2. Click the three OS marks on the plan.',
-          target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => { const c = counter(RE.os); return !!c && pts(G.OS).every((pt) => markNear(c, pt, 12, E201)); },
-          hint: () => (counter(RE.os) ? missing(counter(RE.os), pts(G.OS), ['the MEN door', 'the WOMEN door', 'the STORAGE door'], 12, E201) : ''),
+          target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => { const c = counter(RE.os); return !!c && pts(G.OS).every((pt) => markNear(c, pt, 12, E201)) && !T().strayMarks(E201, c.id, osZones(c)); },
+          hint: () => { const c = counter(RE.os); return c ? osStrayHint(c) || missing(c, pts(G.OS), OS_DOORS, 12, E201) : ''; },
           action: { label: 'Count the three for me', run: () => { K().goPage(E201); App.pushUndoSnapshotCurrentPage(); markMissing(pick('os'), pts(G.OS), E201); K().dirty(); } } },
         { id: 'why', title: 'Why those three rooms', kind: 'read', cardAt: 'bl',
           rules: ['elec.lighting.occupancy-sensors'],

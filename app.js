@@ -2765,7 +2765,28 @@
       const globalReloadBtn = document.getElementById('advancedGlobalForceReload');
       if (globalReloadBtn) globalReloadBtn.style.display = (loggedIn && state.isAdmin) ? '' : 'none';
       const statusBarAuth = document.getElementById('statusBarAuth');
-      if (statusBarAuth) { statusBarAuth.textContent = loggedIn ? (state.supabaseSession?.user?.email || 'Sign Out') : 'Sign In'; statusBarAuth.style.display = ''; }
+      if (statusBarAuth) {
+        // MAP-PHONE-BAR: signed in, the link carries the email (laptops) and a short
+        // "Account" twin (phones, 768px and under); CSS shows one. The full email stays
+        // in the title and the accessible name. It opens My Settings, where sign-out is.
+        const authEmail = loggedIn ? (state.supabaseSession?.user?.email || '') : '';
+        if (loggedIn) {
+          const full = document.createElement('span');
+          full.className = 'status-auth-full';
+          full.textContent = authEmail || 'Sign Out';
+          const short = document.createElement('span');
+          short.className = 'status-auth-short';
+          short.textContent = 'Account';
+          statusBarAuth.replaceChildren(full, short);
+          statusBarAuth.title = authEmail || 'Account';
+          statusBarAuth.setAttribute('aria-label', authEmail ? 'Account: ' + authEmail : 'Account');
+        } else {
+          statusBarAuth.textContent = 'Sign In';
+          statusBarAuth.removeAttribute('title');
+          statusBarAuth.removeAttribute('aria-label');
+        }
+        statusBarAuth.style.display = '';
+      }
       if (window.App?.renderTwinBanner) window.App.renderTwinBanner();
     } else {
       document.querySelectorAll('.supabase-only').forEach(el => { el.style.display = 'none'; });

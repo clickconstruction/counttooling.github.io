@@ -13,6 +13,72 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(status-bar): one line on a phone, and the tool hint reads in full (MAP-PHONE-BAR, 2026-09-27)
+
+Signed in on a phone, the bottom bar was two rows: the save words ("Canvas", "PDF Synced with
+Cloud"), the pointer numbers and the email link needed about 500 px of the 351 at 375 px wide, so
+the email fell to a second row and the tool hint got about 35 px ("Tap…" of "Tap start point").
+Will accepted the brief's recommended option: slim the phone bar. Laptops are unchanged.
+
+- **The save words** (`.status-indicator-label`) hide on phones (768px and under). The dot and the
+  square stay and keep their colour; the detail stays under Save Status in the phone menu.
+- **The pointer numbers** (`#statusCoords`) hide on phones; they mean nothing to a finger.
+- **The email link** reads "Account" on phones. app.js `updateUI` fills `#statusBarAuth` with two
+  spans, `.status-auth-full` (the email) and `.status-auth-short` ("Account"), and CSS shows one.
+  The email stays in the link's `title` and its accessible name ("Account: <email>"). It opens My
+  Settings, where sign-out is, as before. Signed out it still reads "Sign In".
+- **The dead phone rule** (`.status-bar { flex-wrap: nowrap }`, overridden by the base rule below
+  it) is gone, and the stale "phones never wrap" comment in features/status-bar.js `composeMode`
+  now says what holds. The bar keeps `wrap` as its fallback, so a bar that still can't fit (a long
+  Measure chip) takes a row instead of running off the screen.
+- **Measured** (chromium, signed in, one line, 26 px): the hint gets 210 px at 375 and 249 px at
+  414 for an estimator, 150 / 189 px for an admin with the "all bids" link ("Tap start point"
+  needs about 87).
+- **Pinned** by footer-hint.spec.js: a new test at 414 and 375, estimator and admin, idle and
+  uploading, asserts one line, "Tap start point" unclipped, the words and pointer numbers hidden,
+  the dot and square shown, "Account" with the email in title and aria-label, the words back on a
+  laptop, and "Sign In" signed out. The laptop-to-phone sweep now also asserts the bare phone bar
+  is one line.
+
+## fix(summary): the Summary counts every layer, and the by-page window shows the split (MAP-SUMMARY-LAYERS, 2026-09-27)
+
+Punch row MAP-SUMMARY-LAYERS (DECOMPOSITION_MAP D37); Will accepted the brief's recommended option.
+On a sheet with two or more layers the Summary counted only the layer each sheet was last left on,
+while the counter and line-type badges, the Counter window's pick list and the footer total counted
+every layer. One screen could read 12 on a badge and [9] in the Summary for the same fixture, and
+the Summary total moved when someone switched a layer on a sheet they were not looking at.
+
+- **The Summary** (features/summary-list.js): both the grouped and the flat paths tally each sheet's
+  merged layers (`App.getMergedAnnotationsForPage`, merged once per render), the badges' and the
+  footer's arithmetic. The child-count and wire / cable lines follow: `renderSummary` passes the same
+  getter to `App.getChildCountTotals` / `App.getConductorTotals` through their existing
+  `getAnnotations` option (their defaults are unchanged, so report.js, the exports and Bid Check
+  read exactly what they read before).
+- **Fixture units** (features/water-fixtures.js `getWsfuTotals`): the Summary's WSFU line counts
+  every layer too.
+- **The by-page window** (features/summary-detail.js): each sheet's number counts every layer. A
+  sheet with more than one layer adds its split under the sheet name, *Main 9 · Alternate 3*, or
+  *Main 1 (12.00 ft) · Alternate 1 (6.00 ft)* for a line type (`.summary-count-detail-layers`;
+  layers that do not hold the item are left out). Each share reads the merged sheet's multiply and
+  scale zones, so the split always sums to the row. The thumbnail draws every layer, keeping the
+  active layer's legend placement.
+- **Unchanged:** Show Report and its **Every sheet (active layer)** choice (the way to read a base
+  bid alone), Copy to /Tooling and every export, the `window.*` report.js contract, and Bid Check,
+  which still reads the layer showing on each sheet.
+- **Words:** the Canvas layers guide no longer says the sidebar totals stay on the active layer, and
+  says an alternate on its own layer is in the Summary total with the split one click away; Reports
+  and exports says the same beside Count detail; the Learning glossary's *Layer*, the Busy-sheet
+  lesson's layer card, the blank-sheet tour's layers card and the plumbing course's Waste-layer card
+  say the sidebar totals count every layer (they said each layer had "its own totals").
+- **Pinned** by the new summary-layers.spec.js: two layers on one sheet plus a one-layer sheet; the
+  badge, the Summary row, the line row, a child count and the Fixture units line all count every
+  layer and do not move when the sheet's active layer changes; the by-page window shows the split
+  only on the multi-layer sheet and hands the thumbnail every layer's marks. The single-layer comment
+  in sidebar-lists.spec.js now points there.
+
+Not built (the brief's other options): leave it; keep the Summary on the showing layer and label
+it; or move the badges and the footer to the showing layer as well.
+
 ## chore(water, save): the water events on for everyone, the lean permissions read live (WATER-TELEM, MAP-PERMS, 2026-09-27)
 
 On 2026-09-27 the owner had two migrations applied to the production database, and both were

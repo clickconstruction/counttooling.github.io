@@ -191,7 +191,62 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/electrical/conductor-ampacity/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/electrical/conduit-fill/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/disconnect-within-sight/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/egress-illumination/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/electrode-conductor-size/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/emergency-battery-duration/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/emt-bends/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/emt-support/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/equipment-ground-size/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/fixed-equipment-circuits/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/gfci-locations/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/hood-shunt-trip/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -206,12 +261,32 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/electrical/occupancy-sensors/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/service-load-calculation/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/small-conductor-protection/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/electrical/voltage-drop-k/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://counttooling.com/rules/electrical/voltage-drop-limit/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/electrical/working-space/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

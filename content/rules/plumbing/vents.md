@@ -18,7 +18,7 @@ source:
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 Water running down a drain pushes air ahead of it and pulls air behind it. Without a vent the pull would siphon the water out of the next trap downstream, and the push would blow sewer gas through it. So every trap has a vent behind it, a pipe that lets air in and out, and the code measures it by the pressure the seal may see.
@@ -31,4 +31,4 @@ Nothing yet: the app does not apply this rule. It is on a course card (the plumb
 
 ## Verify against your edition
 
-The ways to vent a trap (individual, common, wet, circuit, air admittance valves) and their limits are the rest of the IPC's Chapter 9, and a jurisdiction may restrict air admittance valves. The Uniform Plumbing Code states the same aim with the same figure (901.2 in recent editions).
+The ways to vent a trap (individual, common, wet, circuit, air admittance valves) and their limits are the rest of the IPC's Chapter 9, and a jurisdiction may restrict air admittance valves. The 1 inch of water column is 901.2 in the 2021 text. The Uniform Plumbing Code states the same aim with the same figure (its Chapter 9; not opened for this sign-off). Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

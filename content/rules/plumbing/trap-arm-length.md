@@ -23,12 +23,12 @@ values:
     unit: ft
 source:
   code: IPC
-  section: 909.1, Table 909.1 (the course and its riser note cite it as Table 1002.2)
+  section: 909.1, Table 909.1
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 The trap arm is the drain from a fixture's trap to its vent. Too long, and the drain can run full and siphon the trap when the fixture empties, or when a water closet flushes into the same pipe. The code caps the distance by trap size. The course's lavatory has a 1-1/2 inch arm of four feet, inside the six the table allows.
@@ -41,4 +41,4 @@ Nothing yet: the app does not apply this rule. It is on two course cards (the pl
 
 ## Verify against your edition
 
-The course card and the sample riser's note 2 cite this as IPC Table 1002.2. In the IPC the trap-to-vent table is 909.1 (906.1 before the 2018 edition); Table 1002.2 is the Uniform Plumbing Code's trap arm table, which is shorter: 3 feet 6 inches for a 1-1/2 inch arm. The six feet the card teaches is the IPC's figure. A tester should settle the citation on the card and the sheet before this rule is applied.
+All five rows matched the 2021 text of Table 909.1; the table had another number before the 2018 edition. The course cards and the sample riser's note 2 cited it as Table 1002.2 until 2026-09-27, which is the Uniform Plumbing Code's trap arm table, and they now say 909.1. The UPC table is shorter: 3 feet 6 inches for a 1-1/2 inch arm, so in a UPC jurisdiction the course's four-foot lavatory arm would fail. Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

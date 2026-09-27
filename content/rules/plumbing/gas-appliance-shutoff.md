@@ -18,7 +18,7 @@ source:
   url: https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 A range, a fryer or a water heater comes off the gas line for service, replacement or a leak, and the rest of the kitchen keeps cooking. So each appliance gets its own shutoff, close enough to reach and upstream of the flexible connector or the union it serves.
@@ -31,4 +31,4 @@ Nothing yet: the app does not apply this rule. It is on a course card (the plumb
 
 ## Verify against your edition
 
-The valve may sit in another spot the code allows for some appliances (a fireplace or a decorative appliance, for instance); read 409.5 in the edition your jurisdiction adopts. The Uniform Plumbing Code asks for the same valve within 6 feet (its Chapter 12). A hood with a suppression system also needs a valve the system shuts, which is its own rule (plumb.gas.hood-shutoff).
+409.5.1 sets the valve in the same room, within 6 feet of the appliance, upstream of the union, connector or quick disconnect it serves, and with access; a valve behind a movable cooking appliance such as a range or a fryer counts as having access, which is where the course's four drops put theirs. The valve may sit elsewhere for some appliances: a vented decorative appliance or a room heater may have a remote valve (409.5.2), and a valve at a manifold may be up to 50 feet away (409.5.3). Read 409.5 in the edition your jurisdiction adopts. The Uniform Plumbing Code asks for the same kind of valve in its Chapter 12 (not opened for this sign-off). Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment. A hood with a suppression system also needs a valve the system shuts, which is its own rule (plumb.gas.hood-shutoff).

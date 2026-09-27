@@ -305,7 +305,7 @@ source:
   url: https://codes.iccsafe.org/
 amendments: []
 used_by: [quickCreate]
-updated: 2026-09-23
+updated: 2026-09-27
 ---
 
 A fixture does not draw water all the time, so pipes are not sized by adding up faucets. The code assigns each fixture a load in water supply fixture units, a weight that stands for how much and how often it draws, and prints it in two columns: **private** (a dwelling, a hotel room, a private office) and **public** (everything the public or a workforce shares). The weight also depends on the supply control: a flush-valve water closet is twice a flush-tank one on the cold side. Cold and hot are printed apart because each side is sized on its own; the total is the code's own combined figure for a run that carries both, not the sum of the two.
@@ -317,3 +317,7 @@ When a counter's name says what the fixture is (*Lavatory*, *WC flush valve*, *U
 ## What it does not do
 
 It does not read fixture schedules off the drawings, and it does not decide flush tank versus flush valve for you: the counter's name or its control setting says which row applies. The code's own rows for fixtures it does not list ("Offices, etc." for the drinking fountain and the service sink, "Hotel, restaurant" for the kitchen sink) are the public column here.
+
+## Verify against your edition
+
+Every printed row, cold, hot and total, matched the 2021 text of Table E103.3(2) as a state adoption prints it, including the dashes where a fixture has no hot side. The book says *flushometer valve* where this page says flush valve. The 2018 table was not opened; nothing found says it changed. A local amendment may change a row. Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

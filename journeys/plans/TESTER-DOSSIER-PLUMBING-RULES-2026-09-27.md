@@ -629,3 +629,51 @@ system); and whether the slope card in Chapter 4 should say the grease line fall
 cards' and riser's 1002.2 for 909.1), in a missing row (the grease-interceptor slope), in one value's
 wording (the cleanout at the junction), and on one card (12 ft on a gas line that the fuel gas code
 hangs at 10).
+
+## Settled 2026-09-27
+
+Will delegated this dossier's questions to Claude ("a lot of these you can just decide"). Each entry
+below was re-checked against the dossier's sources, the sibling course dossier
+(TESTER-DOSSIER-PLUMBING-COURSE-2026-09-27.md, which opened the 2018 IPC and ICC's 2021 IFGC sample
+pages) and the model code text as Claude knows it. Nobody opened a printed book: every rule signed
+here says so in its Verify against your edition paragraph ("Settled 2026-09-27 by Claude on the
+owner's delegation, from the dossier's research and the model code text; not checked against a
+printed book or a local amendment."). The thirteen drafts keep `status: draft`, because the rulebook
+defines `applied` as "an app surface uses it" and the loader refuses `applied` with an empty
+`used_by`; the sign-off is the sentence in the file, not the status.
+
+**WATER-TABLES**
+
+- 1 `plumb.wsfu.fixtures`: signed as is; Verify paragraph added (2021 matched, 2018 not opened). APPLIED.
+- 2 `plumb.wsfu.demand`: values signed; the interpolation sentence now says the app interpolates, not the code; the three app conventions confirmed as the app's. APPLIED.
+- 3 `plumb.water.velocity` (judgment): stays `convention` with the ASPE / CDA source; the body and summary now say the IPC prints no limit and the UPC caps copper at the same 8 / 5 (610.12, 2021); no lower default hot cap, the body tells the estimator to lower the schedule's hot cap on a loop above 140 °F (2 to 3 fps). APPLIED.
+- 4 `plumb.water.pipe-id` (judgment): copper Type L, Schedule 40 steel and PEX signed; the body now says "Uponor's published AquaPEX bores". CPVC basis decided as the tolerance-allowing bore (the one that never suggests too small a pipe), but NOT applied: a maker's bores for 1-1/4 to 2 in are in no source read and the 1/2 to 1 in figures came from a search snippet, so the values would be invented. LEFT OPEN (needs a CPVC maker's published inside-diameter table, 1/2 to 2 in).
+- 5 `plumb.water.fixture-supply-min`: citation 604.4 → 604.5, Table 604.5 in the rule, water-model.js, WATER-PLAN.md, the two water feature comments and the ARCHITECTURE.md row; the 30-inch sentence fixed (the supply ends within 30 in of the fixture). APPLIED.
+- 6 `plumb.water.distribution-min`: signed; WATER-PLAN's stale "604.3 / 604.4" row now reads 603.1. APPLIED.
+- Side question, the Table 604.5 manifold footnote: noted in the rule's body; Bid Check and the schedule keep flagging (over-warning, never under-sizing), and the estimator leaves a home-run line as drawn. APPLIED for the decision. The footnote's two limits are LEFT OPEN: the dossier read 50 ft and 35 psi, Claude's memory of the text is 60 ft and 40 psi, so the body states neither.
+
+**RULEBOOK-SIGN (plumbing)**
+
+- 7 `plumb.waste.indirect`: signed; cites 802.1.1, 802.1.6, 802.1.7 and 802.3.1 (2021 numbering). APPLIED.
+- Side question, the pot sink under 802.1.7: a fourth value row added (a utensil, dish, pot and pan sink other than in a dwelling unit: air gap or air break). APPLIED on the rule. Whether the course's three-compartment sink needs its own indirect line is a card and sheet question for the course dossier. LEFT OPEN (not this dossier's files).
+- 8 `plumb.trap.seal`: signed as is (UPC 1005.1 / 1007.1 named for 2018). APPLIED.
+- 9 `plumb.drain.slope`: fourth row added, 1/4 in/ft upstream of a grease interceptor at any size (704.1, 2018 and 2021); body and summary say so. APPLIED.
+- Side question, the Chapter 4 slope card: yes, the card should say the grease line falls at 1/4. The card is the course dossier's (PC-REVIEW-1); not edited here. LEFT OPEN (course agent's).
+- 10 `plumb.waste.grease-interceptor`: cites 1003.3.1; the Verify paragraph now quotes the IPC's own "waste only from fixtures that allow fats, oils or grease" sentence and names 1003.3.2 for disposers. APPLIED.
+- 11 `plumb.drain.cleanouts`: junction value now "at the junction, or within 10 ft of developed length upstream of it" (708.1.3); sub-sections cited; base-of-stack noted as pre-2018 and the riser's note 4 as the engineer's. APPLIED.
+- 12 `plumb.vent.trap-protection`: signed as is. APPLIED.
+- 13 `plumb.trap.arm-length`: signed; the parenthetical dropped from `source.section`; both course cards (`riser:stack`, `bidcheck:rows`) and P-601 riser note 2 now say Table 909.1; samples/sample-lessons.pdf regenerated. APPLIED.
+- 14 `plumb.vent.terminal` (judgment): the height row is now "the adopting jurisdiction's figure" with no number (903.1.1, a blank in the model code), with Colorado's adopted 6 in as an `amendments` entry; citation 903.1.1 / 903.1.2 (903.1 in 2018), 903.5. The course card's reveal now says a foot above the roof is this job's number, from riser note 3. APPLIED.
+- 15 `plumb.gas.pipe-sizing`: signed; the length value and the Verify paragraph say "point of delivery" (the meter on the course's job). APPLIED.
+- 16 `plumb.gas.appliance-shutoff`: signed; 409.5.1's valve-behind-a-movable-appliance access and 409.5.2 / 409.5.3 named. APPLIED.
+- 17 `plumb.gas.hood-shutoff`: substance signed (automatic shutoff of every gas appliance under the hood, manual reset), from NFPA 1 (2021) 50.5.3's extract of NFPA 96. APPLIED for the substance. The sub-section numbers under NFPA 96 10.4 are LEFT OPEN: NFPA 96 was not opened, the numbers came from search snippets.
+- 18 `plumb.hanger.steel` (judgment): re-scoped to steel water and drainage pipe (IPC Table 308.5, 12 ft / 15 ft), signed on that scope. New draft rule `plumb.hanger.gas-steel` (IFGC Table 415.1: 1/2 in 6 ft, 3/4 or 1 in 8 ft, 1-1/4 in and larger 10 ft horizontal and every floor vertical, CSST per the maker), signed. The gas card (`gas:hangers`) names the new rule, cites IFGC Table 415.1 and teaches 1 per 10 ft; its action writes `ftInterval: 10`; course-plumbing.spec.js pins 10. SupportModel and Bid Check never read `plumb.hanger.steel` (no steel material row), so no app data changed. APPLIED.
+- 19 `plumb.drain.dfu-capacity`: signed as is. APPLIED.
+
+**Not trade: for an agent.** This dossier has no such section (the course dossier's is the course
+agent's). Nothing to do.
+
+Counts: 22 entries (15 confirm, 4 judgment, 3 side questions). APPLIED 17 in full, 2 applied with
+a part left open (the hood's 10.4 sub-numbers; the manifold footnote's limits), LEFT OPEN 1 (the
+CPVC bores), and 2 side questions decided here but left open for the course dossier's files (the
+pot sink's line, whose rule row did land; the slope card). ALREADY DONE: none (the rule's own 909.1 was already right; the cards and the note were not).

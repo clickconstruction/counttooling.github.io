@@ -101,6 +101,16 @@ salesperson, a spouse, a student), C.
 - The grade stays where it is (4 to 6); the sentence cap becomes 25 words on a card body.
 - The Learn guide's glossary is the one list; every gloss on a card matches it.
 
+**Landed (2026-09-27, wave 2, claude/plain-glossary).** The Learn guide's "Words the cards use" is
+the one list, 240 entries grouped by the set, the estimator, the codes, the building, each trade and
+the app. `scripts/score-courses.js` (`npm run check:courses`, and `check-courses` in `npm run check`)
+holds the three courses to it: the 25-word sentence cap, grade 6 at most, a `FIRST_USE` table per
+course (each word and the chapter that glosses it, a use before that chapter failing unless `EARLY`
+lists it) and every such word in the guide's list. The courses scored 3.7 (plumbing), 4.9
+(electrical) and 4.1 (HVAC), no sentence over 25 words. The `EARLY` rows and the words no card
+glosses (`--gaps`) are the next course pass's list. The tours and the lessons join with one line
+each once their rewrite lands.
+
 ## Not in this read
 
 The five-minute tours and the thirteen lessons were not scored; they are shorter and were

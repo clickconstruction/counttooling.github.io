@@ -37,7 +37,13 @@ async function walk(page) {
         await page.waitForFunction((was) => window.App.tutorialStepId() !== was || (window.App.tutorialStepInfo() || {}).done, id, { timeout: 25000 });
       } catch (_) { skipped.push(id); await page.click('#tourSkip'); }
     }
-    if (await stepId(page) === id) { await page.waitForFunction(() => !document.getElementById('tourNext').disabled, null, { timeout: 5000 }).catch(() => {}); await page.click('#tourNext'); }
+    // the whole Next button in the window: a revealed answer once pushed it below the bottom edge,
+    // a few px on a Mac, all of it on CI's Linux, where the click then waited out the test (2026-09-27)
+    if (await stepId(page) === id) {
+      await page.waitForFunction(() => !document.getElementById('tourNext').disabled, null, { timeout: 5000 }).catch(() => {});
+      await expect.poll(() => page.evaluate(() => { const b = document.getElementById('tourNext').getBoundingClientRect(); return b.top >= 0 && b.bottom <= window.innerHeight; }), { message: 'Next in the window on step ' + id }).toBe(true);
+      await page.click('#tourNext');
+    }
     await page.waitForTimeout(150);
   }
   return { walked, revealed, skipped };

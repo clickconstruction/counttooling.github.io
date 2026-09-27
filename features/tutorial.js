@@ -1168,7 +1168,12 @@
   // button-shaped chip (.tour-ui). Everything else is escaped text.
   const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   // [Guide name](/guides/slug/) is a link that opens beside the app (site paths only).
-  const chips = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>').replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
+  const chipsOf = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>').replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
+  // LEARN-TAPS: the plain text between the chips and the links goes through the card's word
+  // decorator (features/learn-taps.js), which underlines a word an earlier card glossed.
+  const chips = (t, words) => (words
+    ? String(t).split(/(\[\[.+?\]\]|\[(?:[^[\]]+)\]\(\/[^)\s]*\))/).map((part, i) => (i % 2 ? chipsOf(part) : words(part))).join('')
+    : chipsOf(t));
   // A body is lines: "1. …" lines are one action each and render as a numbered list;
   // any other line is a short paragraph around them.
   // A touch device has no keys and, under 768 px, no sidebar on screen: the
@@ -1184,15 +1189,15 @@
     if (isNarrow() && /left sidebar/i.test(b)) b = b.replace(/[Ii]n the left sidebar/, (m) => (m[0] === 'I' ? 'In the sidebar (tap ☰ at the top left to open it)' : 'in the sidebar (tap ☰ at the top left to open it)'));
     return b;
   };
-  const bodyHtml = (rawBody) => {
+  const bodyHtml = (rawBody, words) => {
     const body = isTouch() ? forTouch(rawBody) : rawBody;
     const out = []; let items = [], counted = 0;
     // A paragraph between two actions splits the list; the second part keeps counting (it read
     // 1, 2, 1, 1 on the size step, 2026-09-24), because the actions are one sequence.
-    const flush = () => { if (items.length) { out.push('<ol class="tour-steps"' + (counted ? ' start="' + (counted + 1) + '"' : '') + '>' + items.map((t) => '<li>' + chips(t) + '</li>').join('') + '</ol>'); counted += items.length; items = []; } };
+    const flush = () => { if (items.length) { out.push('<ol class="tour-steps"' + (counted ? ' start="' + (counted + 1) + '"' : '') + '>' + items.map((t) => '<li>' + chips(t, words) + '</li>').join('') + '</ol>'); counted += items.length; items = []; } };
     String(body).split('\n').forEach((line) => {
       const m = line.match(/^\s*\d+\.\s+(.*)$/);
-      if (m) items.push(m[1]); else { flush(); if (line.trim()) out.push('<p>' + chips(line) + '</p>'); }
+      if (m) items.push(m[1]); else { flush(); if (line.trim()) out.push('<p>' + chips(line, words) + '</p>'); }
     });
     flush(); return out.join('');
   };
@@ -1206,7 +1211,13 @@
     el('tourStepNo').textContent = (stepIdx + 1) + ' / ' + STEPS.length;
     el('tourTitle').textContent = step.title;
     const text = (b) => (typeof b === 'function' ? b() : b);
-    el('tourBody').innerHTML = bodyHtml(text(step.body)) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal)) + '</div>' : '');
+    let words = null;
+    try { words = App.cardWordTaps ? App.cardWordTaps(tourId, stepIdx) : null; } catch (_) { words = null; }
+    const html = bodyHtml(text(step.body), words) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal), words) + '</div>' : '');
+    // written only when it changed: a word under the reader's finger, or holding the keyboard's
+    // focus, is not replaced by the next tick
+    const bodyEl = el('tourBody');
+    if (bodyEl.__last !== html) { bodyEl.innerHTML = html; bodyEl.__last = html; }
     // The card never does the step for the reader. "Show me where" pulses the circle,
     // the boundary or the lit control; Next works only once the step is really done
     // (a reading step is done by reading); a quiet Skip keeps anyone from being stuck.
@@ -1657,6 +1668,7 @@
     lastSheetClick = null;
     revealed = false;
     hintsLogged = new Set(); statusCode = null;
+    App.onTourStepChanged && App.onTourStepChanged();   // a glossary entry open on the last card closes (features/learn-taps.js)
     closeStrayDialogs(STEPS[stepIdx]);
     // A step that asks the reader to open something first gets it closed on the way in, or it
     // passes before they touch it (Bid Check stayed open across chapters, 2026-09-24). Only
@@ -1730,6 +1742,7 @@
   }
   function stopTutorial(finished) {
     active = false;
+    App.onTourStepChanged && App.onTourStepChanged();
     if (timer) { clearInterval(timer); timer = null; }
     document.body.classList.remove('tour-active');
     if (zoneFrame) { cancelAnimationFrame(zoneFrame); zoneFrame = 0; }
@@ -1948,6 +1961,8 @@
   }
   App.tutorialIds = () => Object.keys(TOURS);
   App.tutorialManifest = manifestOf;
+  // Each step's card text alone, body then reveal, in step order: what features/learn-taps.js reads a run of cards from.
+  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? (def.steps || []).map((st) => stepText(st.body) + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
   App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake

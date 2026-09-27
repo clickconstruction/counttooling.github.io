@@ -66,7 +66,7 @@ the guide can stay if the opener is uncounted. Card 3 is a doing step, so the ro
 
 **BUILT 2026-09-27** (CHANGELOG "feat(learn): a Words search at the top of Learn"): the box, the
 generated `guides/words.json`, the precache line. While the box holds a query its matches replace
-the menu; twelve show at most. The tap targets below are not built; they are punch row LEARN-TAPS.
+the menu; twelve show at most. The tap targets below were built the same day as LEARN-TAPS (CHANGELOG "feat(learn): the glossed words are tap targets on the cards"), with one change: the entry opens under the card's text, from the same `guides/words.json`, where the plan said "its guide entry"; and the underlines are held to four a card.
 
 The plan as written:
 

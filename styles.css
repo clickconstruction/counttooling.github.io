@@ -1708,6 +1708,14 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-steps li { margin: 0 0 5px; padding-left: 2px; }
 .tour-steps li::marker { color: var(--accent); font-weight: 600; }
 /* a control named in a step body, drawn the way it looks on screen (the sidebar's + Add) */
+/* LEARN-TAPS (features/learn-taps.js): a word an earlier card explained wears a dotted underline;
+   a tap shows its glossary entry under the card's text. */
+.tour-word { text-decoration: underline dotted; text-decoration-color: var(--text3); text-underline-offset: 3px; cursor: help; border-radius: 3px; }
+.tour-word:hover, .tour-word:focus-visible { color: var(--text); text-decoration-color: var(--accent); outline: none; }
+.tour-word-entry { position: relative; margin: 0 0 12px; padding: 8px 30px 8px 10px; background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 6px; color: var(--text2); font-size: 0.84rem; line-height: 1.45; }
+.tour-word-term { color: var(--text); font-weight: 600; }
+.tour-word-close { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--text2); font-size: 1rem; line-height: 1; cursor: pointer; }
+.tour-word-close:hover { color: var(--text); background: var(--surface3); }
 .tour-ui { display: inline-block; padding: 0 8px; margin: 0 1px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.86em; font-weight: 500; line-height: 1.55; white-space: nowrap; vertical-align: baseline; }
 .tour-card-head { display: flex; align-items: center; gap: 10px; }
 .tour-step-no { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); white-space: nowrap; flex: 0 0 auto; }

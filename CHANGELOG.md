@@ -13,6 +13,34 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the glossed words are tap targets on the cards (LEARN-TAPS, 2026-09-27)
+
+The last step of [LEARN-START-HERE.md](journeys/plans/LEARN-START-HERE.md). A card says what a word
+means the first time its course uses it. Twenty cards later the reader has forgotten, and the
+card no longer says.
+
+- **The underline.** A word an earlier card explained wears a dotted underline on a later card.
+  A tap (or Enter on it) shows its entry from the guide's glossary under the card's text; a second
+  tap, the ×, the next card or leaving closes it. The inline gloss stays: the first card that uses
+  a word never underlines it. features/learn-taps.js; the list is the Words search's,
+  `guides/words.json`.
+- **Which card is later** is read off the tours themselves, in the language check's order: a
+  course is its chapters in order, the lessons are one run in the Learn menu's order, each tour
+  stands alone. So a reader who takes lesson 10 first still gets the words lessons 1 to 9 glossed.
+- **Restraint.** Underlining every glossary word came to seven a card and up to twenty-three, with
+  "A" (the amp) on every article. So: four words a card at most, the ones the course uses least
+  first; a word once a card; an acronym in its own case; no name under three letters; and a list of
+  words left alone, the everyday ones that are also verbs (set, run, count, check, mark) and the
+  parts of the screen every card names (sheet, header, sidebar, counter). That is about two words
+  a card, a quarter of the cards with none. All of them stay in the Words search.
+- **The engine** (features/tutorial.js) runs the plain text between the chips and the links
+  through the card's decorator, publishes `App.tutorialBodies(id)`, tells the feature when the
+  step changes, and writes the card's body only when its HTML changed (it rewrote it every 400 ms:
+  a word under the finger or holding the keyboard's focus was replaced mid-tap). A card's text is
+  unchanged; a control's label and a link are never underlined.
+- **Tests.** learn-taps.test.js (the names, the picks, the HTML, and the real glossary over the
+  real cards: never over the cap, about two a card) and learn-taps.spec.js. sw.js restamped.
+
 ## feat(learn): a Words search at the top of Learn (LEARN-WORDS, 2026-09-27)
 
 The second half of [LEARN-START-HERE.md](journeys/plans/LEARN-START-HERE.md): the Learn guide's

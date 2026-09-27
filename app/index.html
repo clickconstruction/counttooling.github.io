@@ -3400,6 +3400,8 @@
     <div class="tour-card-head"><span id="tourStepNo" class="tour-step-no">1 / 13</span><span id="tourDots" class="tour-dots"></span><button type="button" id="tourLeave" class="tour-leave" title="Leave the tour">×</button></div>
     <h3 id="tourTitle"></h3>
     <div id="tourBody" class="tour-body"></div>
+    <!-- LEARN-TAPS (features/learn-taps.js): the glossary entry of the underlined word the reader tapped -->
+    <div id="tourWord" class="tour-word-entry" aria-live="polite" hidden></div>
     <div class="tour-card-actions">
       <button type="button" id="tourShow" class="tour-action">Show me where</button>
       <button type="button" id="tourAlt" class="tour-action" style="display:none;"></button>
@@ -3723,6 +3725,7 @@
   <script src="/features/tutorial.js"></script>
   <script src="/features/lessons.js"></script>
   <script src="/features/learn-words.js"></script>
+  <script src="/features/learn-taps.js"></script>
   <script src="/features/course-plumbing.js"></script>
   <script src="/features/course-electrical.js"></script>
   <script src="/features/course-hvac.js"></script>

@@ -13,6 +13,123 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): one glossary, and a check that holds the courses, tours and lessons to it (2026-09-27)
+
+Wave 2 of COURSE-LANGUAGE option C (journeys/plans/COURSE-LANGUAGE-2026-09-27.md, "What to hold
+once it lands"). Wave 1 rewrote the courses, the tours and the lessons for a reader who has never
+seen a drawing; this keeps them that way.
+
+- **The one glossary.** The Learn guide's "Words the cards use" (content/guides/learning-the-app.md)
+  holds every word a course, tour or lesson card stops to explain: 278 entries in eight groups (the
+  set and the sheet, the estimator's words, codes and standards, the building, plumbing,
+  electrical, HVAC, the app), alphabetical in each, one line per word. Where two cards glossed a
+  word differently, one gloss fits both: a takeoff, a bid (the price, and one job you are pricing),
+  a change order, a keynote, gauge (wire and sheet metal), a drop, a branch, the main, a terminal,
+  the header (the app's tools, and the beam over a door), the gear, the hanger (a support, often a
+  strap), the legend (the engineer's key, and the app's own on the sheet), the palette (your
+  counters, and a tool's small panel), the leader, flex, a highlight, THHN, voltage drop, and
+  others. The groups are `####` headings inside the one section; marketing.css gains a `.prose h4`
+  rule for them.
+- **`scripts/score-courses.js`**, step fourteen of `npm run check` (`check-courses`; alone,
+  `npm run check:courses`). espree reads the cards (body, reveal, and each chapter's done text)
+  the way check-lesson-rules reads its steps, in eight entries: the three courses chapter by
+  chapter; the plumbing, electrical and HVAC tours and the blank-sheet tour card by card, each tour
+  standing alone (the shared scale and measure cards read in place in each); the thirteen lessons
+  lesson by lesson in the Learn menu's order. A plain run prints per entry and chapter the cards,
+  words, Flesch-Kincaid grade, average sentence, sentences over 25 words, and the words first used
+  there. `--check` fails a sentence over 25 words, an entry above grade 6, a word in the
+  `FIRST_USE` table (632 rows) used before the chapter or card that glosses it, and a `FIRST_USE`
+  word with no bold entry in the guide's list. `EARLY` holds only the other-sense uses (the verb
+  "run", "set the scale", the Chain panel); a row that stops matching fails as stale. Pinned by
+  score-courses.test.js.
+- **Glosses added where a tour or lesson used a word first.** The three tour welcomes say what a
+  scale is; the tours' counter cards say the tool is armed; the plumbing tour glosses the Drop size
+  palette, the Summary and an export on the hangers card (tutorial.spec.js's `CARD_BEFORE` pin
+  moves with it) and the chip; the electrical tour glosses Chain and the vertical on its counter
+  card and the export options on its summary card; the HVAC tour glosses the engineer, the main,
+  the totals tag, the chip, tracing and the SUMMARY heading. The blank-sheet tour glosses a mark,
+  a duct, the number row, a PDF and the export options, the clipboard and a multiply zone, and its
+  snap card says "level, upright or at 45°". The lessons gloss a PDF and a set on the opening step,
+  the sidebar, a detail, line types, a polyline, tracing, the gas main, the riser, a hanger, the
+  next lesson's chain and child counts, and a takeoff. Ids, targets, zones, checks, control labels
+  and numbers are unchanged; sw.js restamped.
+
+## feat(learn): the thirteen lessons, written for anyone at all (2026-09-27)
+
+Wave 2 of option C in the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md): the reader is
+anyone at all, and the three courses were rewritten for that reader first. This is the same pass on
+the thirteen lessons in features/lessons.js, their intros, step bodies and done lines.
+
+- **Every trade and app word glossed at its first use in each lesson**, since a lesson stands alone:
+  a bid set, the drawings a job is priced from; a takeoff, the count and the feet a price is built
+  on; the scale, how many feet of building one inch of paper stands for; the title block, the
+  fixture schedule, a dimension, a detail and TYP. OF 4; a counter, armed, the number row, the
+  Artboard; a line type, a run, a fitting, an elbow, a riser, a drop; a branch, a hanger, a child
+  count, the rulebook and the jurisdiction; a scale zone and a multiply zone; a group, a layer, an
+  alternate, an addendum, scope; an RFI and the GC; the legend, a thumbnail, decimal feet; and the
+  fixtures themselves, a floor drain, a lavatory, a hand sink, a mop sink, a water closet, a carrier,
+  a grease interceptor, PEX. Where the screen is (the header, the footer, the status bar, the More
+  button) is said once per lesson.
+- **A doing step leads with its numbered steps**, at most two sentences of orientation before step 1
+  and the why after; a line that asked for two or three actions is two or three lines (the chain,
+  the group assign, the layer, the undo).
+- **No sentence over 25 words**: 13 before, 0 after (the Trim your set line in the Sheets lesson's
+  opening step, a runner string only that lesson uses, is two sentences now too).
+
+What did not change: every step's id, kind, targets, zones, check, hint, action and `rules:`; every
+number; every `[[Control]]` label; the two lines lessons.spec.js pins ("choose Floor Drain 2", "and
+click Done"). Scored with the memo's method on intro, bodies and done lines: 3,325 words at grades
+3.1 to 6.4 before, 4,255 words at 2.8 to 5.2 after. Every card, measured open at 1280 × 720, keeps
+Next on screen (the tallest, Chain the top wall, is 563 px).
+
+## feat(learn): the four tours, written for anyone at all (2026-09-27)
+
+Wave 2 of the COURSE-LANGUAGE-2026-09-27 memo's option C: the reader is anyone at all, someone who
+has never read a construction drawing and has never estimated. The three five-minute tours
+(features/tutorial.js) and the blank-sheet tour (features/tour-blank.js) are rewritten card by card
+for that reader, the way wave 1 rewrote the three courses.
+
+- **Every trade and app word glossed at its first use in each tour**, in the same sentence or the
+  next: a takeoff, the count and the feet a price is built on; the bid, the price you send; the
+  scale, the header, the left sidebar, the footer, the title block, a dimension, a counter, armed,
+  a tally, a line type, a run, the set. The electrical tour adds a receptacle and a duplex, a
+  device, a mount height, conduit, EMT, a raceway, conductors, a ground, gauge, THHN, the box,
+  make-up, a circuit, a breaker, the panel, fill, voltage drop, the homerun and TakeoffTooling's
+  labor. The plumbing tour adds a water closet, a lavatory, a lav battery, a fixture, a branch, the
+  main, PEX, the slab, the riser, plan view, footage, a hanger, a child count, the IPC, a fixture
+  unit and WSFU, fps, a leader, a typical floor, a multiply zone, the ADA, an RFI and the GC. The
+  HVAC tour adds HVAC, design-build, a diffuser, CFM, the main, fittings, the deck, an RTU, a
+  system, the friction rate, elbows and a transition, gauge, lb/ft, SMACNA, seam & waste, the curb,
+  flex and an M-sheet. The blank tour glosses each tool as it presses it (Move, a polyline, a
+  fitting, Chain, the vertical, a duct, a typical, a detail, a ghost, a note, a layer, an alternate,
+  an addendum, the base bid, the cloud, read-only) beside the trade words it meets.
+- **A doing step leads with its steps.** At most two sentences of orientation come before step 1;
+  the teaching follows. The HVAC sign-off card, which opened with three sentences of verdicts, now
+  opens with Bid Check and its two steps.
+- **No sentence over 25 words**, and the grade stays under 6. The HVAC welcome's 44-word sentence
+  is four; the duct schedule's 39-word list is three lines.
+
+What did not change: every step's id, kind, targets, zones, check, hint, action and `rules:`;
+every number, code section and rule citation (check-lesson-rules agrees on all of them); every
+`[[Control]]` chip; every title. No step gained a button. The plumbing size card was already past a
+720 px window (726 px) and is now 665 px; every card of the four tours was measured at 1280 × 720
+with Next on screen; the next tallest is the HVAC duct card at 622 px.
+
+Scored with the memo's method (the scratchpad `score.js`, pointed at the tours' step arrays; a
+tablet/desktop branch scores both texts):
+
+| Tour | Cards | Words | Grade | Over 25 words |
+|---|---:|---:|---:|---:|
+| Electrical | 14 | 732 → 1,213 | 4.1 → 3.4 | 3 → 0 |
+| Plumbing | 17 | 1,293 → 1,632 | 4.3 → 3.8 | 9 → 0 |
+| HVAC | 14 | 848 → 1,300 | 3.7 → 3.3 | 4 → 0 |
+| Blank sheet | 37 | 2,529 → 2,986 | 3.8 → 3.5 | 7 → 0 |
+
+tutorial.spec.js's `CARD_BEFORE` (the six plumbing cards the persona seams pin, to prove the hint
+codes change no character) is re-taken from the new text; every other pin (the IPC spelled out on the
+hangers card, the Chain panel and Drop palette "that opens at the top left", the counter card's
+numbered lists, the size card's 1, 3, 5, the tablet doors) holds as it was.
+
 ## feat(learn): the HVAC course, written for anyone at all (2026-09-27)
 
 Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the

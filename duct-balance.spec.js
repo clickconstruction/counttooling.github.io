@@ -298,9 +298,14 @@ test.describe('Duct air balance (D7)', () => {
     await page.evaluate(() => { window.state.groupsEnabled = true; window.App.updateUI(); });
     await page.locator('#groupsSectionTitle').click();   // expand the collapsed-by-default section
     await page.locator('#addGroup').click();
+    // openGroupModal focuses Name one frame after it opens (requestAnimationFrame); a fill that
+    // starts before that frame has its focus stolen and lands in Name, so Done writes no capacity
+    // and the line stays (2026-09-27; the circuits.spec.js race of PR #227). Wait for that focus.
+    await expect(page.locator('#groupModalName')).toBeFocused();
     await page.locator('#groupModalName').fill('RTU-1 system');
     await page.locator('#groupModalEquipTag').fill('RTU-1');
     await page.locator('#groupModalCapacityCfm').fill('1200');
+    await expect(page.locator('#groupModalCapacityCfm')).toHaveValue('1200');
     await page.locator('#groupModalDone').click();
     await page.locator('#ductBtn').click();
     await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);

@@ -342,6 +342,7 @@ html[data-hero-trade="hvac"] .bidcheck-rows[data-trade="hvac"] { display: block;
 .prose > :first-child { margin-top: 0; }
 .prose h2 { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 1.7rem; margin: 34px 0 10px; }
 .prose h3 { font-size: 1.2rem; font-weight: 600; margin: 26px 0 8px; }
+.prose h4 { font-size: 1.02rem; font-weight: 600; margin: 22px 0 6px; }
 .prose p { margin: 0 0 16px; }
 .prose ul, .prose ol { margin: 0 0 16px 1.4em; }
 .prose li { margin-bottom: 6px; }

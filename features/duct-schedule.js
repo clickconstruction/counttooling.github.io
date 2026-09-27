@@ -54,9 +54,12 @@
  * at call time by report.js (the getRoomVolumeTotals precedent), so the
  * schedule lands as a Summary-section table in Show Report, the Export PDFs
  * report pages, and the pdf-bundle path — no frozen window.* contract change.
+ * R19: that table is built HERE too, `App.buildDuctReportHtml(schedule, esc)`,
+ * beside the modal and Copy Schedule it mirrors; report.js only places it.
  *
  * Pure duct math (runStraightItems, tallyStraightBySize, rollupDuct,
- * formatDuctSize, ductGoverningDimIn, DUCT_FITTING_TYPES) comes from
+ * formatDuctSize, ductGoverningDimIn, DUCT_FITTING_TYPES, the R19 label tables
+ * DUCT_FITTING_LABELS and ductJointsLabel) comes from
  * duct-model.js globals. Boundary rule: read shared deps from App.* at call
  * time, never captured at load. See ARCHITECTURE.md "Feature files /
  * window.App registry".
@@ -65,19 +68,14 @@
   'use strict';
   const App = (window.App = window.App || {});
 
-  const FITTING_LABELS = {
-    elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition',
-    tap: 'Tap', boot: 'Boot', offset: 'Offset', vd: 'Volume damper',
-  };
+  // A fitting row's Type: duct-model's one title table (R19), which names the derived VD row too.
+  const fittingLabel = (t) => DUCT_FITTING_LABELS[t] || t;
   // Row order for the fittings table: the D3 types in their canonical order,
   // then the derived VD rows (not a DUCT_FITTING_TYPES member).
   const fittingTypeOrder = (t) => {
     const i = DUCT_FITTING_TYPES.indexOf(t);
     return i < 0 ? DUCT_FITTING_TYPES.length : i;
   };
-  /** Spiral/round duct lands in 10' sticks — one joint per stick landed. */
-  const ROUND_JOINT_STICK_FT = 10;
-
   const fmtFt = (ft) => Math.round(ft).toLocaleString() + "'";
   const fmtLb = (lb) => Math.round(lb).toLocaleString();
   const fmtSqFt = (sf) => Math.round(sf).toLocaleString();
@@ -230,7 +228,7 @@
     // Big-to-small reads like a shop schedule; fittings in type order.
     straightRows.sort((a, b) => (ductGoverningDimIn(b.size) - ductGoverningDimIn(a.size)) || a.sizeKey.localeCompare(b.sizeKey));
     straightRows.forEach((row) => {
-      row.joints = row.size.kind === 'round' ? Math.ceil(row.lengthFt / ROUND_JOINT_STICK_FT) : null;
+      row.joints = row.size.kind === 'round' ? Math.ceil(row.lengthFt / DUCT_ROUND_STICK_FT) : null;
     });
     fittingRows.sort((a, b) =>
       (fittingTypeOrder(a.type) - fittingTypeOrder(b.type))
@@ -268,10 +266,10 @@
       + fmtFt(s.straightTotalFt) + ' · ' + fmtLb(s.straightTotalLb) + ' lb with repeats';
   }
 
-  // The LF cell — round rows carry the joint count ("40' · 4 joints @ 10'").
+  // The LF cell — round rows carry the joint count ("40' · 4 joints @ 10'", duct-model's ductJointsLabel).
   function lfLabel(row) {
     if (row.joints == null) return fmtFt(row.lengthFt);
-    return fmtFt(row.lengthFt) + ' · ' + row.joints + (row.joints === 1 ? ' joint' : ' joints') + " @ " + ROUND_JOINT_STICK_FT + "'";
+    return fmtFt(row.lengthFt) + ' · ' + ductJointsLabel(row);
   }
 
   // D8: the max-flex warning label — "3 drops over 6' max" ('' when clean).
@@ -325,7 +323,7 @@
         html += '<tr><td colspan="5" class="duct-schedule-empty-cell">No fittings counted. Corners, size steps, and taps count themselves as you trace.</td></tr>';
       }
       s.fittingRows.forEach((r) => {
-        html += '<tr><td>' + esc(FITTING_LABELS[r.type] || r.type) + '</td><td class="mono">' + esc(ductRowLabel(r)) + '</td><td class="mono">' + r.count + '</td><td class="mono">' + r.lbEach.toFixed(1) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
+        html += '<tr><td>' + esc(fittingLabel(r.type)) + '</td><td class="mono">' + esc(ductRowLabel(r)) + '</td><td class="mono">' + r.count + '</td><td class="mono">' + r.lbEach.toFixed(1) + '</td><td class="mono num">' + fmtLb(r.pounds) + '</td></tr>';
       });
       html += '<tr class="duct-schedule-total-row"><td>Fittings total</td><td></td><td></td><td></td><td class="mono num">' + fmtLb(s.fittingsCountedLb) + '</td></tr>';
       html += '</table>';
@@ -468,7 +466,7 @@
     if (s.fittingMode === 'counted') {
       lines.push('Fittings (counted)');
       s.fittingRows.forEach((r) => {
-        lines.push([(FITTING_LABELS[r.type] || r.type), ductRowLabel(r), String(r.count), r.lbEach.toFixed(1) + ' lb ea', fmtLb(r.pounds) + ' lb'].join('\t'));
+        lines.push([fittingLabel(r.type), ductRowLabel(r), String(r.count), r.lbEach.toFixed(1) + ' lb ea', fmtLb(r.pounds) + ' lb'].join('\t'));
       });
       lines.push(['Fittings total', '', '', '', fmtLb(s.fittingsCountedLb) + ' lb'].join('\t'));
     } else {
@@ -588,6 +586,48 @@
     return computeDuctSchedule(opts || {});
   }
 
+  // R19: the printed report's Duct Schedule table (Show Report, the Export PDFs
+  // report pages, the pdf-bundle path), built here beside the modal it mirrors:
+  // the bid-pounds rollup (straight duct by size, fittings as counted rows or the
+  // factor line following the modal's Counted|Factor pick, flex drops, the grease
+  // extras, insulation sq ft, seam & waste, the Bid weight line). report.js calls
+  // it with its own escapeHtml as `esc`, and only when the scope holds duct runs.
+  // The report's plain markup, not the modal's classes.
+  function buildDuctReportHtml(ds, esc) {
+    if (!ds) return '';
+    let html = '<h3 class="section-header">Duct Schedule</h3>';
+    html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
+    ds.straightRows.forEach((r) => {
+      html += '<tr><td>' + esc(ductRowLabel(r)) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + esc(lfLabel(r)) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLb(r.pounds) + '</td></tr>';
+    });
+    html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFt(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLb(ds.straightTotalLb) + '</strong></td></tr>';
+    // D17: multiply-zone honesty (T2-11), the placed figure beside the multiplied one.
+    if (ds.repeated) html += '<tr><td>Placed (before multiply zones)</td><td></td><td>' + fmtFt(ds.straightPlacedFt) + '</td><td></td><td>' + fmtLb(ds.straightPlacedLb) + '</td></tr>';
+    if (ds.fittingMode === 'counted') {
+      ds.fittingRows.forEach((r) => {
+        html += '<tr><td>' + esc(fittingLabel(r.type) + ' ' + ductRowLabel(r)) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLb(r.pounds) + '</td></tr>';
+      });
+      html += '<tr><td><strong>Fittings total</strong></td><td></td><td></td><td></td><td><strong>' + fmtLb(ds.fittingsCountedLb) + '</strong></td></tr>';
+    } else {
+      html += '<tr><td>Fittings, factor ' + ds.fittingFactorPct + '% of straight</td><td></td><td></td><td></td><td>' + fmtLb(ds.fittingFactorLb) + '</td></tr>';
+    }
+    // D8: per-system flex-drop rows, LF only: priced by the drop, never in the bid-weight pounds.
+    (ds.flexRows || []).forEach((r) => {
+      html += '<tr><td>Flex, ' + esc(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFt(r.totalFt) + '</td></tr>';
+    });
+    // D26: the grease-duct extras, by the piece and the square foot.
+    if (ds.grease) {
+      html += '<tr><td>Grease duct cleanouts</td><td></td><td>' + ds.grease.cleanouts.total + '</td><td></td><td></td></tr>';
+      html += '<tr><td>Grease duct listed wrap</td><td></td><td></td><td></td><td>' + fmtSqFt(ds.grease.wrapSqFt) + ' sq ft</td></tr>';
+    }
+    if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + fmtSqFt(ds.linerSqFt) + ' sq ft</td></tr>';
+    if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + fmtSqFt(ds.wrapSqFt) + ' sq ft</td></tr>';
+    html += '<tr><td>Seam &amp; waste (+' + ds.seamWastePct + '%)</td><td></td><td></td><td></td><td>' + fmtLb(ds.seamWasteLb) + '</td></tr>';
+    html += '<tr><td><strong>Bid weight</strong></td><td></td><td></td><td></td><td><strong>' + fmtLb(ds.bidWeightLb) + ' lb</strong></td></tr>';
+    html += '</table>';
+    return html;
+  }
+
   // --- wiring (static DOM — bound at load like duct-sidebar) ----------------
 
   const openBtn = document.getElementById('ductScheduleBtn');
@@ -673,6 +713,7 @@
   App.getDuctSettings = getDuctSettings;   // D6: duct-suggest.js reads the design knobs
   App.computeDuctSchedule = computeDuctSchedule;
   App.getDuctScheduleForReport = getDuctScheduleForReport;
+  App.buildDuctReportHtml = buildDuctReportHtml;   // R19: report.js's Duct Schedule table
   App.buildDuctScheduleText = buildDuctScheduleText;   // spec seam
   App.ductCopiedToastText = copiedToastText;   // D18 spec seam: the one-toast copy
   App.buildDuctCopyRows = buildDuctCopyRows;   // D17: report.js appends these to Copy Summary / Copy to /Tooling

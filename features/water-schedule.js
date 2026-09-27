@@ -29,8 +29,9 @@
  * as the other copy surfaces (App.runGatedCopy, with the water collector);
  * App.buildWaterCopyRows feeds report.js's "--- Water sizing ---" block in
  * Copy Summary / Copy to /Tooling, and App.getWaterScheduleForReport the
- * Show Report / Export PDFs table. The opener (#waterScheduleBtn on the Line
- * Types header) shows exactly when a line type has a water side
+ * Show Report / Export PDFs table, which App.buildWaterReportHtml builds here
+ * in the schedule's own words (R19; report.js only places it). The opener
+ * (#waterScheduleBtn on the Line Types header) shows exactly when a line type has a water side
  * (App.syncWaterScheduleBtn, called by the sidebar's line-type render).
  * Boundary rule: shared deps from App.* at call time.
  */
@@ -136,6 +137,13 @@
   // The Check cell: water-model's one wording, which the printed report prints too (MAP-REPORT-WATER).
   function verdictText(r) { return WM().waterRowVerdict(r).text; }
   function servesText(r) { return fmt(r.wsfu) + ' WSFU' + (r.fixtures ? ' · ' + r.fixtures + (r.fixtures === 1 ? ' fixture' : ' fixtures') : ''); }
+  // R19: the words the Copy Schedule rows and the printed report's table share.
+  const sideShort = (side) => SIDE_LABEL[side].replace(' water', '');
+  function runText(r) { return sideShort(r.side) + ' · ' + r.name + ' (' + r.typeName + ')'; }
+  function totalServesText(t) { return fmt(t.wsfu) + ' WSFU · ' + t.fixtures + (t.fixtures === 1 ? ' fixture' : ' fixtures'); }
+  function unservedText(u) { return u.counterName + ', ' + u.side + (u.count > 1 ? ' ×' + u.count : ''); }
+  // The modal's foot and the report's last row: the caps and the column, stated as practice.
+  function footText(capFps, occ) { return 'Sized at ' + fmt(capFps.cold) + ' fps cold / ' + fmt(capFps.hot) + ' fps hot, practice not code; the pressure check is Bid Check’s. Fixture units read the ' + occ + ' column.'; }
 
   // --- the modal ------------------------------------------------------------------------
   function renderBody() {
@@ -187,7 +195,7 @@
     const occ = App.getProjectOccupancy ? App.getProjectOccupancy() : 'public';
     document.querySelectorAll('#waterScheduleOccupancy button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.occupancy === occ)));
     const foot = document.getElementById('waterScheduleFoot');
-    if (foot) foot.textContent = 'Sized at ' + fmt(ws.capFps.cold) + ' fps cold / ' + fmt(ws.capFps.hot) + ' fps hot, practice not code; the pressure check is Bid Check’s. Fixture units read the ' + occ + ' column.';
+    if (foot) foot.textContent = footText(ws.capFps, occ);
   }
   function openWaterScheduleModal() {
     scheduleScope = 'project';
@@ -203,7 +211,7 @@
 
   // --- Copy Schedule / the report rows ----------------------------------------------------
   function copyRow(r) {
-    return [SIDE_LABEL[r.side].replace(' water', '') + ' · ' + r.name + ' (' + r.typeName + ')', r.sizeLabel, servesText(r), r.wsfu > 0 ? fmt1(r.gpm) + ' gpm' : '', r.velocityFps != null && r.wsfu > 0 ? fmt1(r.velocityFps) + ' fps' : '', verdictText(r)].join('\t');
+    return [runText(r), r.sizeLabel, servesText(r), r.wsfu > 0 ? fmt1(r.gpm) + ' gpm' : '', r.velocityFps != null && r.wsfu > 0 ? fmt1(r.velocityFps) + ' fps' : '', verdictText(r)].join('\t');
   }
   function buildWaterCopyRows(s) {
     if (!s) return [];
@@ -211,9 +219,9 @@
     SIDES.forEach((side) => {
       s.rows.filter((r) => r.side === side).forEach((r) => lines.push(copyRow(r)));
       const t = s.totals[side];
-      if (t.runs) lines.push([SIDE_LABEL[side] + ' total', '', fmt(t.wsfu) + ' WSFU · ' + t.fixtures + (t.fixtures === 1 ? ' fixture' : ' fixtures'), '', '', t.warn ? t.warn + ' ⚠' : '✓'].join('\t'));
+      if (t.runs) lines.push([SIDE_LABEL[side] + ' total', '', totalServesText(t), '', '', t.warn ? t.warn + ' ⚠' : '✓'].join('\t'));
     });
-    s.unserved.forEach((u) => lines.push(['Not reached · ' + u.counterName + ', ' + u.side + (u.count > 1 ? ' ×' + u.count : ''), '', fmt(u.wsfu) + ' WSFU', '', '', '⚠ no ' + u.side + ' run within reach'].join('\t')));
+    s.unserved.forEach((u) => lines.push(['Not reached · ' + unservedText(u), '', fmt(u.wsfu) + ' WSFU', '', '', '⚠ no ' + u.side + ' run within reach'].join('\t')));
     lines.push(['Sized at ' + fmt(s.capFps.cold) + ' fps cold / ' + fmt(s.capFps.hot) + ' fps hot, practice not code; ' + s.occupancy + ' fixture units', '', '', '', '', ''].join('\t'));
     return lines;
   }
@@ -252,6 +260,31 @@
     }
   }
   function getWaterScheduleForReport(opts) { return computeWaterSchedule(opts || {}); }
+
+  // R19: the printed report's Water Sizing table (Show Report, the Export PDFs report
+  // pages), built here with the schedule's own words and water-model's verdict: one row
+  // per water run, each side's total, the fixtures no run reaches, the caps line.
+  // report.js calls it with its own escapeHtml as `esc`, and only with water runs.
+  function buildWaterReportHtml(s, esc) {
+    if (!s) return '';
+    let html = '<h3 class="section-header">Water Sizing</h3>';
+    html += '<table class="report-table"><tr><th>Run</th><th>Size</th><th>Serves</th><th>gpm</th><th>fps</th><th>Check</th></tr>';
+    SIDES.forEach((side) => {
+      const rows = s.rows.filter((r) => r.side === side);
+      if (!rows.length) return;
+      rows.forEach((r) => {
+        html += '<tr><td>' + esc(runText(r)) + '</td><td>' + esc(r.sizeLabel) + '</td><td>' + esc(servesText(r)) + '</td><td>' + (r.wsfu > 0 ? fmt1(r.gpm) : '') + '</td><td>' + (r.velocityFps != null && r.wsfu > 0 ? fmt1(r.velocityFps) : '') + '</td><td>' + esc(verdictText(r)) + '</td></tr>';
+      });
+      const t = s.totals[side];
+      html += '<tr><td><strong>' + sideShort(side) + ' total</strong></td><td></td><td><strong>' + esc(totalServesText(t)) + '</strong></td><td></td><td></td><td>' + (t.warn ? t.warn + ' ⚠' : '✓') + '</td></tr>';
+    });
+    s.unserved.forEach((u) => {
+      html += '<tr><td>Not reached · ' + esc(unservedText(u)) + '</td><td></td><td>' + esc(fmt(u.wsfu) + ' WSFU') + '</td><td></td><td></td><td>⚠ no ' + esc(u.side) + ' run within reach</td></tr>';
+    });
+    html += '<tr><td colspan="6">' + esc(footText(s.capFps, s.occupancy)) + '</td></tr>';
+    html += '</table>';
+    return html;
+  }
 
   // --- wiring ---------------------------------------------------------------------------
   const openBtn = document.getElementById('waterScheduleBtn');
@@ -297,6 +330,7 @@
   App.computeWaterSchedule = computeWaterSchedule;
   App.getWaterScheduleForReport = getWaterScheduleForReport;
   App.buildWaterCopyRows = buildWaterCopyRows;
+  App.buildWaterReportHtml = buildWaterReportHtml;   // R19: report.js's Water Sizing table
   App.syncWaterScheduleBtn = syncWaterScheduleBtn;
   App.collectUnscaledWaterPages = collectUnscaledWaterPages;
 })();

@@ -52,7 +52,8 @@
  *      skipped) across the page's canvases, or the whole project with no
  *      arg. The D4 sidebar / D5 schedule consume this; no UI here.
  *
- * Pure duct math (inference, reconciliation, anchors, tallies, size labels)
+ * Pure duct math (inference, reconciliation, anchors, tallies, size labels,
+ * the R19 fitting names DUCT_FITTING_LABELS)
  * comes from duct-model.js globals. Boundary rule: read shared deps from
  * App.* at call time, never captured at load. See ARCHITECTURE.md "Feature
  * files / window.App registry".
@@ -60,11 +61,6 @@
 (function () {
   'use strict';
   const App = (window.App = window.App || {});
-
-  const FITTING_LABELS = {
-    elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition',
-    tap: 'Tap', boot: 'Boot', offset: 'Offset',
-  };
 
   function currentAnn() {
     const state = App.state;
@@ -217,11 +213,11 @@
     if (target.type === 'ductFitting') {
       const f = ann.ductFittings?.[target.index];
       if (!f || f.suppressed) return false;
-      const heading = (FITTING_LABELS[f.type] || f.type) + ' · ' + formatDuctSize(f.size)
+      const heading = (DUCT_FITTING_LABELS[f.type] || f.type) + ' · ' + formatDuctSize(f.size)
         + (f.auto ? ' · auto' : '');
       const actions = DUCT_FITTING_TYPES
         .filter((t) => t !== f.type)
-        .map((t) => ({ label: FITTING_LABELS[t], run: () => reclassifyFitting(target.index, t) }));
+        .map((t) => ({ label: DUCT_FITTING_LABELS[t], run: () => reclassifyFitting(target.index, t) }));
       // D8 §6: taps carry the per-fitting volume-damper toggle (only while
       // the project counts VDs at all — the schedule-modal knob).
       if (f.type === 'tap' && App.getDuctSettings && App.getDuctSettings().countVdPerTap) {

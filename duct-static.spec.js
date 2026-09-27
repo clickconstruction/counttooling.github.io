@@ -92,7 +92,13 @@ test.describe('Duct static path (D11)', () => {
     expect(data.groups[0].espInWg).toBe(0.8);
 
     // Clearing the field deletes the key (never null) — a D4-era system shape.
+    // openGroupModal focuses Name one frame after it opens (requestAnimationFrame); a fill that
+    // starts before that frame has its focus stolen and the clear lands in Name, so Done writes
+    // the 0.8 back (two runs in five, 2026-09-27; the circuits.spec.js race of PR #227). Wait for
+    // that focus before touching the field.
     await page.evaluate(() => { window.App.openGroupModal(window.state.groups[0]); });
+    await expect(page.locator('#groupModalName')).toBeFocused();
+    await expect(page.locator('#groupModalEspInWg')).toHaveValue('0.8');
     await page.locator('#groupModalEspInWg').fill('');
     await page.locator('#groupModalDone').click();
     g = await page.evaluate(() => JSON.parse(JSON.stringify(window.state.groups[0])));
@@ -100,6 +106,7 @@ test.describe('Duct static path (D11)', () => {
     expect(Object.keys(g).sort()).toEqual(['capacityCfm', 'color', 'equipmentTag', 'id', 'name', 'plenumReturn']);
     // Zero / junk is "no ESP" too.
     await page.evaluate(() => { window.App.openGroupModal(window.state.groups[0]); });
+    await expect(page.locator('#groupModalName')).toBeFocused();
     await page.locator('#groupModalEspInWg').fill('0');
     await page.locator('#groupModalDone').click();
     expect(await page.evaluate(() => 'espInWg' in window.state.groups[0])).toBe(false);

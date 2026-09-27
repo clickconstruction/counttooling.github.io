@@ -450,6 +450,234 @@
       "updated": "2026-09-09"
     },
     {
+      "id": "plumb.drain.cleanouts",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Cleanouts on drainage piping",
+      "summary": "A drain gets a cleanout wherever a snake has to go in, at the turns of more than 45 degrees, where the building drain meets the sewer, and at least every 100 feet along a horizontal run.",
+      "values": [
+        {
+          "when": "horizontal drain, building drain or building sewer, between cleanouts, at most",
+          "value": 100,
+          "unit": "ft"
+        },
+        {
+          "when": "a change of horizontal direction of more than 45 degrees",
+          "value": "a cleanout at the change",
+          "unit": ""
+        },
+        {
+          "when": "the junction of the building drain and the building sewer",
+          "value": "a cleanout near it, inside or outside the wall",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "708.1 Cleanouts required",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/cleanouts/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.drain.dfu-capacity",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Building drain and sewer capacity in drainage fixture units",
+      "summary": "How many drainage fixture units a building drain or sewer may carry by size and slope; at 1/8 inch per foot a 3 inch sewer carries 36 and the course's 4 inch carries 180.",
+      "values": [
+        {
+          "when": "3 in building drain or sewer, at 1/8 in per foot",
+          "value": 36,
+          "unit": "DFU"
+        },
+        {
+          "when": "3 in building drain or sewer, at 1/4 in per foot",
+          "value": 42,
+          "unit": "DFU"
+        },
+        {
+          "when": "3 in building drain or sewer, at 1/2 in per foot",
+          "value": 50,
+          "unit": "DFU"
+        },
+        {
+          "when": "4 in building drain or sewer, at 1/8 in per foot",
+          "value": 180,
+          "unit": "DFU"
+        },
+        {
+          "when": "4 in building drain or sewer, at 1/4 in per foot",
+          "value": 216,
+          "unit": "DFU"
+        },
+        {
+          "when": "4 in building drain or sewer, at 1/2 in per foot",
+          "value": 250,
+          "unit": "DFU"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "710.1, Table 710.1(1)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/drainage-fixture-units/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.drain.slope",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Slope of horizontal drainage pipe",
+      "summary": "Horizontal waste pipe falls at least 1/4 inch per foot at 2-1/2 inch and smaller, 1/8 inch per foot at 3 to 6 inch, and 1/16 inch per foot at 8 inch and larger.",
+      "values": [
+        {
+          "when": "2-1/2 in and smaller",
+          "value": "1/4",
+          "unit": "in/ft"
+        },
+        {
+          "when": "3 in to 6 in",
+          "value": "1/8",
+          "unit": "in/ft"
+        },
+        {
+          "when": "8 in and larger",
+          "value": "1/16",
+          "unit": "in/ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "704.1, Table 704.1",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/drainage-slope/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.gas.appliance-shutoff",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Appliance shutoff valves",
+      "summary": "Every gas appliance has its own shutoff valve, in the same room and within 6 feet of it, upstream of its connector, so one appliance can come off the line without shutting the rest.",
+      "values": [
+        {
+          "when": "each gas appliance",
+          "value": "its own shutoff valve",
+          "unit": ""
+        },
+        {
+          "when": "from the appliance it serves, in the same room, at most",
+          "value": 6,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IFGC",
+        "section": "409.5 Appliance shutoff valve (409.5.1 location)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/gas-appliance-shutoff/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.gas.pipe-sizing",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Gas pipe sizing",
+      "summary": "Each section of gas pipe is sized for the load it carries downstream, in Btu per hour, over the longest run from the meter to the farthest outlet, so like water it shrinks as it goes.",
+      "values": [
+        {
+          "when": "what a section of gas pipe is sized by",
+          "value": "the connected load downstream of it",
+          "unit": ""
+        },
+        {
+          "when": "the length it is sized over (the longest length method)",
+          "value": "the meter to the most remote outlet",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IFGC",
+        "section": "402 Pipe sizing (402.4 sizing methods, 402.4.1 longest length)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/gas-pipe-sizing/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.waste.grease-interceptor",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Grease interceptors",
+      "summary": "Kitchen, dish and bar fixtures that carry grease drain through a grease interceptor, and the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste only.",
+      "values": [
+        {
+          "when": "fixtures and equipment with grease-laden waste in a food preparation area (a restaurant, a kitchen, a bar)",
+          "value": "through a grease interceptor",
+          "unit": ""
+        },
+        {
+          "when": "water closets, urinals, lavatories and other fixtures without grease",
+          "value": "kept out of the interceptor",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "1003.3 Grease interceptors",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/grease-interceptor/",
+      "updated": "2026-09-26"
+    },
+    {
       "id": "plumb.hanger.cast-iron",
       "trade": "plumbing",
       "kind": "code",
@@ -603,6 +831,272 @@
       ],
       "url": "/rules/plumbing/hanger-spacing-pvc/",
       "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.hanger.steel",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Hanger spacing for steel pipe",
+      "summary": "How far apart steel pipe may be supported under the plumbing code: 12 feet horizontal, 15 feet vertical.",
+      "values": [
+        {
+          "when": "horizontal",
+          "value": 12,
+          "unit": "ft"
+        },
+        {
+          "when": "vertical",
+          "value": 15,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "308.5, Table 308.5",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-3-general-regulations"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hanger-spacing-steel/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.gas.hood-shutoff",
+      "trade": "plumbing",
+      "kind": "standard",
+      "status": "draft",
+      "title": "Gas shutoff tripped by the hood suppression system",
+      "summary": "When a kitchen hood's fire suppression system discharges, the gas to every appliance under the hood shuts off automatically, and stays off until someone resets it by hand, so the gas line carries a valve the system trips.",
+      "values": [
+        {
+          "when": "the hood suppression system discharges",
+          "value": "gas to the appliances under the hood shuts off automatically",
+          "unit": ""
+        },
+        {
+          "when": "after a discharge",
+          "value": "manual reset",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "NFPA 96",
+        "section": "10.4 Fuel and electric power shutoff",
+        "editions": [
+          2017,
+          2021
+        ],
+        "url": "https://www.nfpa.org/codes-and-standards/nfpa-96-standard-development/96"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hood-gas-shutoff/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.waste.indirect",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Indirect waste for food equipment",
+      "summary": "A sink or machine that handles food drains through an air gap to a floor sink or other receptor, never straight into the waste pipe, so a sewer backup rises onto the floor and not into the food side.",
+      "values": [
+        {
+          "when": "food storage, preparation and handling equipment (a prep sink)",
+          "value": "air gap",
+          "unit": ""
+        },
+        {
+          "when": "a commercial dishwashing machine",
+          "value": "air gap or air break",
+          "unit": ""
+        },
+        {
+          "when": "an air gap, above the receptor flood rim, at least",
+          "value": "twice the pipe opening",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "802 Indirect wastes",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-8-indirect-special-waste"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/indirect-waste/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.trap.arm-length",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Trap arms",
+      "summary": "How far a fixture's trap may sit from its vent along the drain, by trap size: 5 feet at 1-1/4 inch, 6 feet at 1-1/2 inch, 8 feet at 2 inch, 12 feet at 3 inch, 16 feet at 4 inch.",
+      "values": [
+        {
+          "when": "1-1/4 in trap, at 1/4 in per foot, at most",
+          "value": 5,
+          "unit": "ft"
+        },
+        {
+          "when": "1-1/2 in trap, at 1/4 in per foot, at most",
+          "value": 6,
+          "unit": "ft"
+        },
+        {
+          "when": "2 in trap, at 1/4 in per foot, at most",
+          "value": 8,
+          "unit": "ft"
+        },
+        {
+          "when": "3 in trap, at 1/8 in per foot, at most",
+          "value": 12,
+          "unit": "ft"
+        },
+        {
+          "when": "4 in trap, at 1/8 in per foot, at most",
+          "value": 16,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "909.1, Table 909.1 (the course and its riser note cite it as Table 1002.2)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/trap-arm-length/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.trap.seal",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Trap seal depth and protection",
+      "summary": "Every fixture trap holds a water seal 2 to 4 inches deep, and a trap that can dry out, a floor drain that sees no water for months, gets seal protection such as a trap primer.",
+      "values": [
+        {
+          "when": "trap seal depth, at least",
+          "value": 2,
+          "unit": "in"
+        },
+        {
+          "when": "trap seal depth, at most",
+          "value": 4,
+          "unit": "in"
+        },
+        {
+          "when": "an emergency floor drain, or a trap subject to evaporation",
+          "value": "seal protection (a trap primer or a barrier device)",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "1002.4 Trap seals, 1002.4.1 Trap seal protection",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/trap-seal/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.vent.terminal",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Vent terminals",
+      "summary": "A vent stack ends open above the roof, a foot up as the course teaches it, and clear of air intakes, at least 10 feet away from a door, window or intake unless it rises 3 feet above the top of it.",
+      "values": [
+        {
+          "when": "above the roof, as the course teaches it (the IPC leaves the height to the adopting jurisdiction)",
+          "value": 1,
+          "unit": "ft"
+        },
+        {
+          "when": "above a roof used for assembly, a promenade or a deck",
+          "value": 7,
+          "unit": "ft"
+        },
+        {
+          "when": "horizontally from a door, an openable window or an air intake, at least",
+          "value": 10,
+          "unit": "ft"
+        },
+        {
+          "when": "above the top of that opening, when closer than the distance above",
+          "value": 3,
+          "unit": "ft"
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "903 Vent terminals (903.1 roof extension, 903.5 location)",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/vent-terminal/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "plumb.vent.trap-protection",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Venting protects every trap seal",
+      "summary": "The drainage system carries vent piping that lets air in and out, so no fixture trap sees more than 1 inch of water column of pressure difference and no seal siphons out when the fixture upstream drains.",
+      "values": [
+        {
+          "when": "each fixture trap",
+          "value": "protected by a vent",
+          "unit": ""
+        },
+        {
+          "when": "pressure difference at a trap seal, at most",
+          "value": 1,
+          "unit": "in w.c."
+        }
+      ],
+      "source": {
+        "code": "IPC",
+        "section": "901.2 Trap seal protection",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/vents/",
+      "updated": "2026-09-26"
     },
     {
       "id": "plumb.water.distribution-min",

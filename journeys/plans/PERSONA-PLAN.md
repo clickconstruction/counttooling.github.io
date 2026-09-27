@@ -243,6 +243,10 @@ the learning base's backlog. Each becomes a rule file with `status: draft` in th
 cited by section, never the code text reprinted (content/rules/README.md). A person with the
 trade signs it before it is `applied`, and the step then names it in `rules:`.
 
+Plumbing drafted 2026-09-26: the eleven plumbing steps name thirteen `status: draft` rules
+(CHANGELOG "thirteen plumbing rules the course teaches enter the rulebook as drafts"), awaiting
+a tester's signature.
+
 ## Harness
 
 Built 2026-09-25 (build items 2, 5 and 6). Four scripts, all Node tooling, none in the shell:

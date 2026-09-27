@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): thirteen plumbing rules the course teaches enter the rulebook as drafts (RULEBOOK-GAPS, 2026-09-26)
+
+The plumbing third of RULEBOOK-GAPS. The eleven plumbing course steps that cited a section the
+rulebook did not hold (`rulesExempt`) now name a rule each, thirteen rules in all, because two
+steps cite two things a plumber reads as separate rules (indirect waste and trap primers,
+cleanouts and vents), and the trap-arm table is one rule the riser step and the Bid Check step
+both name. Each is `status: draft`, `used_by: []`, no `code:` pointer: written in the course's
+words and cited by section, never the code text, and applied by nothing in the app yet. A person
+with the trade signs each before it is `applied`.
+
+- `plumb.waste.indirect` (IPC 802), `plumb.trap.seal` (IPC 1002.4, seal 2 to 4 in):
+  "What the FD keynote costs".
+- `plumb.drain.slope` (IPC Table 704.1, 1/4, 1/8 and 1/16 in/ft by size),
+  `plumb.waste.grease-interceptor` (IPC 1003.3), `plumb.drain.cleanouts` (IPC 708.1, 100 ft),
+  `plumb.vent.trap-protection` (IPC 901.2, 1 in w.c.): Chapter 4.
+- `plumb.trap.arm-length` (IPC Table 909.1, 5 / 6 / 8 / 12 / 16 ft by trap size),
+  `plumb.vent.terminal` (IPC 903, 1 ft above the roof as the course teaches it, 10 ft and
+  3 ft from an opening, 7 ft on a used roof): Chapter 5; the arm rule also on "What the rows mean".
+- `plumb.gas.pipe-sizing` (IFGC 402.4), `plumb.gas.appliance-shutoff` (IFGC 409.5, 6 ft),
+  `plumb.gas.hood-shutoff` (NFPA 96 10.4), `plumb.hanger.steel` (IPC Table 308.5, 12 ft
+  horizontal, 15 ft vertical): Chapter 6.
+- `plumb.drain.dfu-capacity` (IPC Table 710.1(1), a 3 in and a 4 in drain at three slopes;
+  the course's 36 and 180 DFU): "What the rows mean".
+
+Three card sentences changed so the lesson rules check can hold them to their rule: the trap arm
+card says "six feet" (it said "six", which the check could not read as a length), the gas hanger
+card says the steel row "is still a draft" (it said the rulebook had none), and the Bid Check
+reveal writes the P-501 load as 47 fixture units and the sewer as 180 DFU at 1/8" per foot (a
+card that names the DFU rule may say DFU only for a number the rule holds). Two rule titles were
+narrowed so their subject words stop matching unrelated cards ("Trap arms", "Vent terminals").
+
+Doubts for the signing: the course card and the sample riser cite the trap-arm table as IPC
+Table 1002.2, which is the UPC's (3 ft 6 in at 1-1/2 in); the IPC's is Table 909.1, whose 6 ft
+the card teaches. The gas line's hanger at 12 ft is IPC Table 308.5's steel figure; the fuel gas
+code (IFGC Table 415.1) supports 1-1/4 in steel gas pipe at 10 ft. The IPC leaves the vent's
+height above the roof to the jurisdiction. Each rule's "Verify against your edition" names its own.
+`node scripts/check-lesson-rules.js --gaps` now lists only the electrical and HVAC steps.
+
 ## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
 
 The decomposition map's R20, both items, and its defect D43. The three floating palettes drag

@@ -6,7 +6,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const {
-  parseCourse, sentences, words, termRe, glossaryTerms, inGlossary, checkCourse, scoreCourse,
+  parseCourse, chaptersFor, sentences, words, termRe, glossaryTerms, inGlossary, checkCourse, scoreCourse,
   SENTENCE_CAP, GRADE_CEILING,
 } = require('./scripts/score-courses');
 
@@ -57,6 +57,23 @@ test('the parser finds chapters, cards, reveals, the chapter done and function b
   // a tour's `const X_STEPS = [...]` is one chapter
   const tour = parseCourse("const PLUMBING_STEPS = [{ id: 'a', title: 'A', body: 'One.' }, { id: 'b', title: 'B', body: 'Two.' }];", 't.js');
   assert.deepStrictEqual(tour.map((c) => [c.id, c.cards.length]), [['PLUMBING_STEPS', 2]]);
+});
+
+test('a shared step constant is read in place, and an entry can cut chapters and read card by card', () => {
+  const src = `
+    const SCALE_STEP = { id: 'scale', title: 'Scale', body: 'The scale sets the takeoff.' };
+    const PLUMBING_STEPS = [{ id: 'welcome', title: 'W', body: 'A takeoff is a count.' }, SCALE_STEP, { id: 'counter', title: 'C', body: 'A counter.' }];
+    const HVAC_STEPS = [{ id: 'welcome', title: 'W', body: 'HVAC is air.' }, SCALE_STEP];
+    const manifest = { id: st.id, title: st.title, body: stepText(st.body) };`;
+  // the constant is not a (file) card of its own, and a card needs a literal id
+  assert.deepStrictEqual(parseCourse(src, 't.js').map((c) => [c.id, c.cards.map((k) => k.id).join(',')]),
+    [['PLUMBING_STEPS', 'welcome,scale,counter'], ['HVAC_STEPS', 'welcome,scale']]);
+  const tour = chaptersFor({ file: 't.js', chapters: ['PLUMBING_STEPS'], unit: 'card' }, src);
+  assert.deepStrictEqual(tour.map((c) => c.id), ['welcome', 'scale', 'counter']);
+  assert.strictEqual(tour[1].cards[0].pieces[0].text, 'The scale sets the takeoff.');
+  // read card by card, a word on a card before the one that glosses it is early
+  const res = checkCourse({ course: 'tour', file: 't.js', chapters: tour, table: { takeoff: 'scale' }, glossary });
+  assert.deepStrictEqual(res.problems.filter((p) => p.kind === 'c').map((p) => p.msg), ['t.js:3 welcome/welcome: uses "takeoff" before chapter "scale" glosses it']);
 });
 
 test('sentences split at a stop before a capital and at every line, and a step number is not a word', () => {

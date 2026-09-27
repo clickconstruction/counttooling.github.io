@@ -298,7 +298,7 @@
   const ELECTRICAL_STEPS = [
     {
       id: 'welcome', title: 'A five-minute electrical takeoff', kind: 'do',
-      body: 'A takeoff is the count and the feet a price is built on. This tour does a small one on a sample plan, a practice drawing of an office.\n1. Click [[Open the sample plan]] below.\nYou will set the scale and prove it, then count wall outlets. You will draw the conduit to them, the pipe the wires run in. Then you read the wire and the checks.\nNothing here touches your projects.',
+      body: 'A takeoff is the count and the feet a price is built on. This tour does a small one on a sample plan, a practice drawing of an office.\n1. Click [[Open the sample plan]] below.\nYou will set the scale, how many feet an inch of paper stands for, and prove it. Then you will count wall outlets. You will draw the conduit to them, the pipe the wires run in. Then you read the wire and the checks.\nNothing here touches your projects.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       check: () => samplePlanOpen(),   // the sample plan, never whatever else is open (MAP-TOUR-SHEET)
       handsOff: true,   // fetching the sample is the app's job: this step's button does it
@@ -316,7 +316,7 @@
     {
       id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
       rules: ['elec.mount-height.defaults'],
-      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nA receptacle is a wall outlet you plug into. A duplex has two plugs.\nIt arrives with the receptacle symbol and a mount height of 18", measured up from the floor. In a moment the Chain tool turns that number into vertical conduit.',
+      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nA receptacle is a wall outlet you plug into. A duplex has two plugs.\nIt arrives with the receptacle symbol and a mount height of 18", measured up from the floor. In a moment Chain, the tool that counts and draws in one click, turns that number into vertical conduit: the pipe down the wall.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       // a duplex, the one the card names: a Single Pole variant mounts at 48" and the next cards' 9.5 ft read 7 (PERSONA-PASS prober)
       check: () => { const c = (state().counters || []).find((x) => isDuplex(x) && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
@@ -385,7 +385,7 @@
     },
     {
       id: 'summary', title: 'Read what the drawing knows', kind: 'read',
-      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS with its list already open. Its heading opens the settings for the legend, the key drawn on the sheet, not the list.\nIt lists the receptacles and the 3/4" EMT feet, the verticals inside them.\nBelow come the derived rows, worked out from the runs: #12 THHN by the foot. The green, the ground wire, has its own row.\nWire is never a mark, so it can never drift from the runs.',
+      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS, where the files you send out are made, with its list already open. Its heading opens the settings for the legend, the key drawn on the sheet, not the list.\nIt lists the receptacles and the 3/4" EMT feet, the verticals inside them.\nBelow come the derived rows, worked out from the runs: #12 THHN by the foot. The green, the ground wire, has its own row.\nWire is never a mark, so it can never drift from the runs.',
       target: ['#summaryList', '#summaryCollapseIcon'],
       check: () => true,
     },
@@ -505,7 +505,7 @@
   const PLUMBING_STEPS = [
     {
       id: 'welcome', title: 'A five-minute plumbing takeoff', kind: 'do',
-      body: 'A takeoff is the count and the feet a price is built on. This tour does a small one on a sample plan, a practice drawing of an office.\n1. Click [[Open the sample plan]] below.\nYou will set the scale and prove it, then count a restroom. You will draw a water pipe and its riser, the part that comes up from below.\nIts hangers, the straps that hold it up, count themselves. Then you hand it all to the bid, the price you send.\nNothing here touches your projects.',
+      body: 'A takeoff is the count and the feet a price is built on. This tour does a small one on a sample plan, a practice drawing of an office.\n1. Click [[Open the sample plan]] below.\nYou will set the scale, how many feet an inch of paper stands for, and prove it. Then you will count a restroom. You will draw a water pipe and its riser, the part that comes up from below.\nIts hangers, the straps that hold it up, count themselves. Then you hand it all to the bid, the price you send.\nNothing here touches your projects.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // A device whose last bid was electrical remembers that as its default
       // trade; the plumbing tour must speak plumbing, so the project is stamped
@@ -519,7 +519,7 @@
     PROVE_STEP,
     {
       id: 'counter', title: 'Make a Water Closet counter', kind: 'do',
-      body: 'A water closet is the trade\'s word for a toilet. A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet, unless it reads that already.\nUnder [[Icon]] the toilet lights as you type the name: the symbol follows it. Another symbol is a search away, in the Search icon box.\n4. Pick a colour.\n5. Click [[Create Counter]].\nThe left sidebar is the column of lists down the left side of the screen. The app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself: it switches on, ready to mark.',
+      body: 'A water closet is the trade\'s word for a toilet. A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Water Closet, unless it reads that already.\nUnder [[Icon]] the toilet lights as you type the name: the symbol follows it. Another symbol is a search away, in the Search icon box.\n4. Pick a colour.\n5. Click [[Create Counter]].\nThe left sidebar is the column of lists down the left side of the screen. The app ships the trade\'s icons, so the mark reads like the drawing. The counter tool arms itself: it is armed, switched on and ready to mark.',
       target: () => counterFormTargets(/water closet|toilet|\bwc\b/i),
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
@@ -556,7 +556,7 @@
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: 'The branch comes up from below the slab, the concrete floor. That upright piece is the riser.\n1. In the header, click [[Drop]] (or press B).\n2. In the Drop size palette that opens at the top left, click 3 ft. When 3 ft is not listed, type 3 in its box and click [[Add]].\n3. Click the end of the run, the pipe you just chained, inside the circle at the first lavatory. Every line end wears a ring while Drop is on.\nThe riser\'s 3 ft joins the footage, the run\'s total feet. Plan view, the drawing seen from above, never shows it; the bid needs it.\nClicking the same end again clears it.',
+      body: 'The branch comes up from below the slab, the concrete floor. That upright piece is the riser.\n1. In the header, click [[Drop]] (or press B).\n2. In the Drop size palette, the small panel that opens at the top left, click 3 ft. When 3 ft is not listed, type 3 in its box and click [[Add]].\n3. Click the end of the run, the pipe you just chained, inside the circle at the first lavatory. Every line end wears a ring while Drop is on.\nThe riser\'s 3 ft joins the footage, the run\'s total feet. Plan view, the drawing seen from above, never shows it; the bid needs it.\nClicking the same end again clears it.',
       target: ['#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
       check: () => dropAt(LAV_SPOTS[0], 14),
@@ -566,7 +566,7 @@
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
       rules: ['plumb.hanger.pex'],
-      body: 'Every foot of that branch hangs from a support, a hanger, and the bid has to count them. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in. That is the International Plumbing Code (IPC) spacing for PEX at 1 in.\n3. Click [[Add]].\nThe app read the size off the type\'s name. A child count is a count that rides along with the pipe.\nFrom now on every run of this type counts its own hangers into the Summary and every export. Each names the rule it came from. Delete a run and its hangers go with it.',
+      body: 'Every foot of that branch hangs from a support, a hanger, and the bid has to count them. The app can do it from the pipe.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\n2. Under [[Child counts]], find Hanger · 1 per 32 in. That is the International Plumbing Code (IPC) spacing for PEX at 1 in.\n3. Click [[Add]].\nThe app read the size off the type\'s name. A child count is a count that rides along with the pipe.\nFrom now on every run of this type counts its own hangers. They go into the Summary, the running totals, and every export, a file you send out. Each names the rule it came from. Delete a run and its hangers go with it.',
       target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
       check: () => { const lt = pLineType(); return !!lt && (lt.childCounts || []).length > 0; },
@@ -584,7 +584,7 @@
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
       rules: ['plumb.wsfu.fixtures'],
-      body: 'A fixture unit is the plumbing code\'s number for how much water a fixture draws. WSFU, water supply fixture units, come from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2.\n3. Click [[Done]].\nThe app reads 2 WSFU for a public lavatory off the IPC table. It shows that under the box, which stays empty until you type.\nThe 2 is hot and cold together. The table gives the lavatory 1.5 on each side, so the cold pipe carries 1.5 of it per lavatory.\nThe chip names the table row it read. The table has two columns: public (a restaurant, an office) and private (a house, a hotel room).\nClick the word public in the chip to move this one counter to the private column.',
+      body: 'A fixture unit is the plumbing code\'s number for how much water a fixture draws. WSFU, water supply fixture units, come from the IPC table.\n1. Under COUNTERS, click the pencil beside the lavatory counter.\n2. In [[Fixture units]], type 2.\n3. Click [[Done]].\nThe app reads 2 WSFU for a public lavatory off the IPC table. It shows that under the box, which stays empty until you type.\nThe 2 is hot and cold together. The table gives the lavatory 1.5 on each side, so the cold pipe carries 1.5 of it per lavatory.\nThe chip, the small label under the box, names the table row it read. The table has two columns: public (a restaurant, an office) and private (a house, a hotel room).\nClick the word public in the chip to move this one counter to the private column.',
       target: () => ladder('#counterLineTypeDetailsWsfuGroup', pencilOf('counter', pLav()), '#countersSectionTitle'),
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
       action: { label: 'Read the table for me', run: giveLavFixtureUnits },
@@ -681,7 +681,7 @@
   const HVAC_STEPS = [
     {
       id: 'welcome', title: 'A five-minute HVAC takeoff', kind: 'do',
-      body: 'A takeoff is the count and the feet a price is built on. HVAC is heating, ventilation and air conditioning: here, the ducts that carry the air.\n1. Click [[Open the sample plan]] below.\nThe sample plan is a practice drawing of an office. No engineer sized its ducts, so you and the app do: that is design-build.\nYou will set the scale and prove it, then box a room. You will place diffusers, the vents air blows out of, each with its CFM: cubic feet of air per minute.\nThe app sizes the main duct and counts the fittings, the bends and joints, and the pounds of metal. Then you sign off and hand it to the bid, the price you send.\nNothing here touches your projects.',
+      body: 'A takeoff is the count and the feet a price is built on. HVAC is heating, ventilation and air conditioning: here, the ducts that carry the air.\n1. Click [[Open the sample plan]] below.\nThe sample plan is a practice drawing of an office. No engineer, the designer who does the sums, sized its ducts, so you and the app do: that is design-build.\nYou will set the scale, how many feet an inch of paper stands for, and prove it. Then you will box a room. You will place diffusers, the vents air blows out of, each with its CFM: cubic feet of air per minute.\nThe app sizes the main duct, the big one from the unit, and counts the fittings, the bends and joints, and the pounds of metal. Then you sign off and hand it to the bid, the price you send.\nNothing here touches your projects.',
       target: ['#uploadPdf', '#uploadPdfSidebar'],
       // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
       check: () => { const ok = samplePlanOpen(); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
@@ -692,7 +692,7 @@
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\n1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9.\n5. In Deck height, type 12.\n6. Click [[Apply]].\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\nThe sheet gets one small totals tag, placed off the printed name.',
+      body: 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\n1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9.\n5. In Deck height, type 12.\n6. Click [[Apply]].\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\nThe sheet gets one small totals tag, a label, placed off the printed name.',
       // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
       target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'); },
       page: 0,
@@ -713,7 +713,7 @@
     },
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
-      body: 'A counter is a named tally: each click on the sheet with it adds one mark. This one also carries each diffuser\'s air.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip beside the field shows the symbol it will take.\n5. Click [[Create Counter]].\nThe left sidebar is the column of lists down the left side of the screen. A supply diffuser blows air into the room from the ceiling. The counter tool arms itself: it switches on, ready to mark.',
+      body: 'A counter is a named tally: each click on the sheet with it adds one mark. This one also carries each diffuser\'s air.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip, the small label beside the field, shows the symbol it will take.\n5. Click [[Create Counter]].\nThe left sidebar is the column of lists down the left side of the screen. A supply diffuser blows air into the room from the ceiling. The counter tool arms itself: it is armed, switched on and ready to mark.',
       target: () => counterFormTargets(/diffuser/i, ['#counterCfm']),
       // 150, the number the place, duct and Bid Check cards all do their arithmetic with (PERSONA-PASS prober)
       check: () => { const c = (state().counters || []).find((x) => x.id === tourCounterId && x.cfm === 150) || (state().counters || []).filter((x) => /diffuser/i.test(x.name || '') && x.cfm === 150 && (isFresh(x) || markCount(x.id) > 0)).pop(); if (c) tourCounterId = c.id; return !!c; },
@@ -731,7 +731,7 @@
     },
     {
       id: 'system', title: 'Name the system', kind: 'do',
-      body: 'RTU-1 is a rooftop unit: the box on the roof that heats, cools and pushes the air. A group with an equipment tag, the unit\'s name, is a system.\n1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type RTU-1.\n4. In Equipment tag, type RTU-1.\n5. In Capacity, type 2000, the air it can move in CFM.\n6. Click [[Done]].\nA group is a set of marks the app subtotals together. RTU-1 is now selected, lit in the sidebar, so the main you trace next belongs to it. Clicking it again would unselect it.\nThe header will weigh the air the system is drawn to deliver against its capacity.',
+      body: 'RTU-1 is a rooftop unit: the box on the roof that heats, cools and pushes the air. A group with an equipment tag, the unit\'s name, is a system.\n1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type RTU-1.\n4. In Equipment tag, type RTU-1.\n5. In Capacity, type 2000, the air it can move in CFM.\n6. Click [[Done]].\nA group is a set of marks the app subtotals together. RTU-1 is now selected, lit in the sidebar, so the main you trace next, clicking along it, belongs to it. Clicking it again would unselect it.\nThe header will weigh the air the system is drawn to deliver against its capacity.',
       target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },   // Groups are off on the sample plan (by hand, 2026-09-25)
       check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
       action: { label: 'Make RTU-1 for me', run: makeSystem },
@@ -780,7 +780,7 @@
     },
     {
       id: 'legend', title: 'What the sheet says now', kind: 'read',
-      body: 'Look at the sheet. The main is painted at its real width under the line, and a size chip rides each piece. The room wears its totals tag.\nThe legend, the key drawn on the sheet, lists duct by size and the room\'s air.\n1. Click the SUMMARY heading to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed. Show duct true width turns the wide band off when you want bare lines.',
+      body: 'Look at the sheet. The main is painted at its real width under the line, and a size chip rides each piece. The room wears its totals tag.\nThe legend, the key drawn on the sheet, lists duct by size and the room\'s air.\n1. Click the SUMMARY heading, over the running totals, to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed. Show duct true width turns the wide band off when you want bare lines.',
       target: ['#legendSettingsBtn', '#legendBtn', '#summarySectionTitle'],
       check: () => true,
     },

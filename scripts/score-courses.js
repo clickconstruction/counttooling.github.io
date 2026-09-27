@@ -7,7 +7,11 @@
  *
  * Static, no browser: each file in COURSES is parsed with espree (eslint's parser). A
  * chapter is an ObjectExpression with id + title + steps (a tour's `const X_STEPS = [...]`
- * is one chapter named by its variable; steps outside both are the file's own chapter).
+ * is one chapter named by its variable; steps outside both are the file's own chapter,
+ * `(file)`, read first). An entry can take some of a file's chapters (`chapters`), and read
+ * card by card (`unit: 'card'`): the three five-minute tours each stand alone, so each is
+ * its own entry and a word is glossed on or before the card that first uses it. The
+ * lessons are read lesson by lesson in the Learn menu's order, like a course's chapters.
  * A card is an ObjectExpression with id + title + body inside it; its text is the string
  * literals, template quasis and `+` concatenations in body / reveal, and the chapter's
  * `done` is one more card (id `(done)`). A function contributes the strings inside it; a
@@ -28,7 +32,8 @@
  * the score reads with the `[[Control]]` chips taken out (a control's label is the name of
  * a button, not the trade word) and a Markdown link read as its words.
  *
- * Adding a file is one line in COURSES and its FIRST_USE block (the tours and lessons next).
+ * Adding a file is one line in COURSES and its FIRST_USE block. Today: the three courses,
+ * the plumbing, electrical and HVAC tours, the blank-sheet tour and the thirteen lessons.
  *
  *   node scripts/score-courses.js            # the per-chapter score
  *   node scripts/score-courses.js --check    # the check (npm run check, npm run check:courses)
@@ -42,11 +47,16 @@ const espree = require('espree');
 
 const ROOT = path.join(__dirname, '..');
 
-// One line per file the score reads.
+// One line per entry the score reads: a course, a tour, the lessons.
 const COURSES = [
   { name: 'plumbing', file: 'features/course-plumbing.js' },
   { name: 'electrical', file: 'features/course-electrical.js' },
   { name: 'hvac', file: 'features/course-hvac.js' },
+  { name: 'tour-plumbing', file: 'features/tutorial.js', chapters: ['PLUMBING_STEPS'], unit: 'card' },
+  { name: 'tour-electrical', file: 'features/tutorial.js', chapters: ['ELECTRICAL_STEPS'], unit: 'card' },
+  { name: 'tour-hvac', file: 'features/tutorial.js', chapters: ['HVAC_STEPS'], unit: 'card' },
+  { name: 'tour-blank', file: 'features/tour-blank.js', unit: 'card' },
+  { name: 'lessons', file: 'features/lessons.js' },
 ];
 const SENTENCE_CAP = 25;     // words in one sentence on a card
 const GRADE_CEILING = 6;     // the whole course's Flesch-Kincaid grade (the memo holds 4 to 6)
@@ -177,15 +187,116 @@ const FIRST_USE = {
     // used, never glossed on a card
     'mark': 'bid',
   },
+  // The tours are read card by card (unit: 'card'): each tour stands alone, so a word is
+  // glossed on or before the card that first uses it, in that tour. The shared scale and
+  // measure cards (tutorial.js SCALE_STEP, MEASURE_STEP) sit second and third in each.
+  'tour-plumbing': {
+    'takeoff': 'welcome', 'bid': 'welcome', 'scale': 'welcome', 'riser': 'welcome', 'hanger': 'welcome',
+    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'counter': 'counter', 'water closet': 'counter', 'sidebar': 'counter', 'mark': 'counter', 'armed': 'counter',
+    'set': 'place',
+    'line type': 'linetype', 'PEX': 'linetype', 'branch': 'linetype', 'lavatory': 'linetype',
+    'chain': 'chain', 'lav battery': 'chain', 'fixture': 'chain',
+    'slab': 'drop', 'footage': 'drop', 'plan view': 'drop', 'palette': 'drop', 'run': 'drop',
+    'child count': 'hangers', 'IPC': 'hangers', 'summary': 'hangers', 'export': 'hangers',
+    'leader': 'waterside',
+    'fixture unit': 'wsfu', 'WSFU': 'wsfu', 'chip': 'wsfu', 'public': 'wsfu', 'private': 'wsfu',
+    'main': 'size', 'fps': 'size', 'trace': 'size',
+    'typical': 'zone', 'multiply zone': 'zone',
+    'ADA': 'rfi', 'RFI': 'rfi', 'GC': 'rfi', 'PipeTooling': 'rfi',
+    'legend': 'proof', 'clipboard': 'handoff', 'group': 'done',
+  },
+  'tour-electrical': {
+    'takeoff': 'welcome', 'scale': 'welcome', 'conduit': 'welcome',
+    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'trade': 'trade', 'counter': 'trade', 'sidebar': 'trade', 'mark': 'trade', 'E-sheet': 'trade', 'device': 'trade',
+    'mount height': 'trade', 'bid': 'trade',
+    'receptacle': 'counter', 'duplex': 'counter', 'vertical': 'counter', 'chain': 'counter',
+    'armed': 'place',
+    'line type': 'linetype', 'run': 'linetype', 'trace': 'linetype', 'EMT': 'linetype', 'raceway': 'linetype',
+    'conductor': 'linetype', 'gauge': 'linetype', 'THHN': 'linetype', 'ground': 'linetype',
+    'gear': 'ceiling', 'make-up': 'ceiling', 'drop': 'ceiling',
+    'footer': 'chain',
+    'circuit': 'circuit', 'breaker': 'circuit', 'panel': 'circuit', 'group': 'circuit', 'circuit schedule': 'circuit',
+    'tag': 'circuit',
+    'summary': 'summary', 'legend': 'summary', 'export': 'summary',
+    'bid check': 'bidcheck', 'fill': 'bidcheck', 'voltage drop': 'bidcheck', 'homerun': 'bidcheck',
+    'TakeoffTooling': 'handoff', 'labor': 'handoff',
+  },
+  'tour-hvac': {
+    'takeoff': 'welcome', 'HVAC': 'welcome', 'ventilation': 'welcome', 'duct': 'welcome', 'engineer': 'welcome',
+    'design-build': 'welcome', 'diffuser': 'welcome', 'CFM': 'welcome', 'main': 'welcome', 'fitting': 'welcome',
+    'bid': 'welcome', 'scale': 'welcome',
+    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'room sizer': 'room', 'deck': 'room', 'deck height': 'room', 'tag': 'room',
+    'counter': 'counter', 'sidebar': 'counter', 'chip': 'counter', 'mark': 'counter', 'armed': 'counter',
+    'system': 'system', 'RTU': 'system', 'rooftop unit': 'system', 'group': 'system', 'capacity': 'system',
+    'gear': 'system', 'trace': 'system',
+    'trunk': 'duct', 'friction rate': 'duct', 'elbow': 'duct', 'transition': 'duct',
+    'leader': 'attach', 'stray': 'attach',
+    'gauge': 'schedule', 'SMACNA': 'schedule', 'lb/ft': 'schedule', 'bid weight': 'schedule', 'clipboard': 'schedule',
+    'bid check': 'bidcheck', 'curb': 'bidcheck', 'GC': 'bidcheck', 'flex': 'bidcheck',
+    'scope': 'handoff', 'layer': 'handoff', 'Tooling': 'handoff',
+    'legend': 'legend', 'summary': 'legend',
+    'M-sheet': 'done', 'mechanical': 'done',
+  },
+  'tour-blank': {
+    'header': 'welcome', 'footer': 'welcome', 'sidebar': 'welcome', 'trade': 'welcome',
+    'scale': 'scale', 'title block': 'scale', 'dimension': 'scale',
+    'move': 'move',
+    'mark': 'move', 'counter': 'counter', 'palette': 'counter', 'armed': 'counter',
+    'quick key': 'quickkeys', 'status bar': 'quickkeys', 'number row': 'quickkeys', 'gear': 'quickkeys',
+    'run': 'linetype', 'line type': 'linetype', 'trace': 'linetype', 'footage': 'linetype',
+    'snap': 'snap', 'polyline': 'polyline', 'fitting': 'polyline', 'chain': 'chain',
+    'plan view': 'drop', 'vertical': 'drop', 'drop': 'drop',
+    'duct': 'linetype', 'gauge': 'duct', 'SMACNA': 'duct', 'schedule': 'duct',
+    'highlight': 'highlight', 'PDF': 'highlight', 'export': 'highlight',
+    'typical': 'multiply', 'bid': 'multiply', 'multiply zone': 'multiply',
+    'zone': 'multiply', 'detail': 'scalezone', 'scale zone': 'scalezone',
+    'room sizer': 'room', 'legend': 'room', 'HVAC': 'room',
+    'ghost': 'ghost', 'delete area': 'deletearea', 'note': 'note', 'RFI': 'note', 'GC': 'note',
+    'layer': 'layers', 'alternate': 'layers', 'addendum': 'layers', 'base bid': 'layers',
+    'set': 'pages', 'group': 'groups', 'summary': 'summary', 'takeoff': 'summary',
+    'bid check': 'bidcheck', 'fill': 'bidcheck', 'cloud': 'savestatus',
+    'read-only': 'share', 'clipboard': 'share', 'deliverable': 'exports', 'active layer': 'clearpage',
+  },
+  // The lessons are read in the Learn menu's order, each lesson a chapter; `(file)` is the
+  // step every lesson opens with (lessons.js sheetsStep).
+  lessons: {
+    'PDF': '(file)', 'set': '(file)',
+    'sidebar': 'plans', 'scale': 'plans', 'mark': 'plans', 'title block': 'plans', 'fixture schedule': 'plans',
+    'schedule': 'plans', 'fixture': 'plans', 'footer': 'plans', 'export': 'plans',
+    'header': 'scale', 'dimension': 'scale', 'detail': 'scale', 'scale zone': 'scale', 'zone': 'scale',
+    'counter': 'counting', 'armed': 'counting', 'bid': 'counting', 'quick key': 'counting', 'number row': 'counting',
+    'status bar': 'counting', 'Artboard': 'counting', 'line type': 'counting',
+    'snap': 'measuring', 'run': 'measuring', 'trace': 'measuring', 'main': 'measuring',
+    'meter': 'measuring', 'range': 'measuring', 'cook line': 'measuring', 'polyline': 'measuring', 'fitting': 'measuring',
+    'elbow': 'measuring', 'chip': 'measuring', 'drop': 'measuring', 'palette': 'measuring', 'riser': 'measuring',
+    'summary': 'measuring', 'chain': 'measuring', 'child count': 'measuring',
+    'lavatory': 'chain', 'PEX': 'chain', 'mop sink': 'chain', 'hanger': 'chain', 'rulebook': 'chain',
+    'jurisdiction': 'chain', 'water closet': 'chain', 'carrier': 'chain',
+    'hand sink': 'repeats', 'multiply zone': 'repeats',
+    'group': 'organize', 'layer': 'organize', 'alternate': 'organize', 'addendum': 'organize',
+    'scope': 'fixing', 'legend': 'fixing',
+    'interceptor': 'notes', 'RFI': 'notes', 'GC': 'notes', 'highlight': 'notes',
+    'takeoff': 'organize', 'bid check': 'check', 'hand off': 'check', 'thumbnail': 'check',
+    'PipeTooling': 'deliver', 'TakeoffTooling': 'deliver', 'decimal feet': 'deliver',
+    'estimator': 'cloud', 'view link': 'cloud', 'cloud': 'cloud',
+  },
 };
-// Known early uses: [course, term, chapter] where the course uses the term before the
-// chapter that glosses it. Findings for the next course pass, not fixed by this check; a
-// row that no longer matches an early use fails as stale, so the list only shrinks.
+// Known early uses: [entry, term, chapter] where an entry uses the word before the chapter
+// (or, for a tour, the card) that glosses it, in another sense: the verb "run", "the Chain
+// panel". A real early use is glossed where it happens instead; a row that no longer
+// matches an early use fails as stale, so the list only shrinks.
 const EARLY = [
   ['hvac', 'run', 'before'],                 // "Measure what is run", and "when it runs short of room"
   ['hvac', 'run', 'sheet'],                  // the verb, several times; the noun is glossed in Chapter 4
   ['hvac', 'run', 'rooms'],
   ['hvac', 'run', 'diffusers'],
+  ['tour-plumbing', 'set', 'welcome'],       // "You will set the scale": the verb; the place card glosses a set
+  ['tour-plumbing', 'set', 'measure'],       // "every time you set a scale"
+  ['tour-electrical', 'run', 'welcome'],     // "the pipe the wires run in": the verb; the linetype card glosses a run
+  ['tour-electrical', 'panel', 'chain'],     // "the Chain panel", the tool's box; the circuit card glosses a power panel
 ];
 
 // ===== parsing the course files ============================================================
@@ -245,46 +356,84 @@ const strOf = (n) => (isStr(n) ? n.value : flat(n).trim());
 const CARD_KEYS = ['body', 'reveal'];
 
 // The chapters of one file, in order: { id, title, line, cards: [{ id, line, pieces }] }.
-// A piece is { key, text, line }.
+// A piece is { key, text, line }. A step array's element that names a constant object
+// (tutorial.js's SCALE_STEP) is that card, in place, in every chapter that lists it. A card
+// needs a literal id. Cards that sit in no chapter (a step factory like lessons.js's
+// `sheets`) form a first chapter, `(file)`, when there are any.
 function parseCourse(src, file) {
   const ast = espree.parse(src, { ecmaVersion: 'latest', sourceType: 'script', loc: true });
+  const decls = new Map();
+  walk(ast, (n) => {
+    if (n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && n.init && n.init.type === 'ObjectExpression') decls.set(n.id.name, n.init);
+  });
+  const isChapter = (n) => n.type === 'ObjectExpression' && (() => { const m = propsOf(n); return m.has('id') && m.has('title') && m.has('steps'); })();
+  const isStepsDecl = (n) => n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && /STEPS$/.test(n.id.name)
+    && n.init && n.init.type === 'ArrayExpression';
+  const cardOf = (n) => {
+    if (n.type !== 'ObjectExpression') return null;
+    const m = propsOf(n);
+    if (!(m.has('id') && m.has('title') && m.has('body')) || !isStr(m.get('id').value)) return null;
+    const card = { id: m.get('id').value.value, line: m.get('id').loc.start.line, pieces: [] };
+    for (const k of CARD_KEYS) {
+      if (m.has(k)) card.pieces.push(...textPieces(m.get(k).value).map((p) => ({ ...p, key: k })));
+    }
+    return card;
+  };
+  const consumed = new Set();
+  const cardsUnder = (node) => {
+    const out = [];
+    const each = node.type === 'ArrayExpression' ? node.elements.filter(Boolean) : [node];
+    for (const el of each) {
+      if (el.type === 'Identifier' && decls.has(el.name)) {
+        const c = cardOf(decls.get(el.name));
+        if (c) { consumed.add(decls.get(el.name)); out.push(c); }
+        continue;
+      }
+      walk(el, (n) => {
+        const c = cardOf(n);
+        if (c) { consumed.add(n); out.push(c); return false; }
+        return undefined;
+      });
+    }
+    return out;
+  };
   const chapters = [];
+  walk(ast, (n) => {
+    if (isChapter(n)) {
+      const m = propsOf(n);
+      const ch = { id: strOf(m.get('id').value), title: strOf(m.get('title').value), line: n.loc.start.line, cards: cardsUnder(m.get('steps').value) };
+      if (m.has('done')) {
+        const pieces = textPieces(m.get('done').value).map((p) => ({ ...p, key: 'done' }));
+        ch.cards.push({ id: '(done)', line: m.get('done').loc.start.line, pieces });
+      }
+      chapters.push(ch);
+      return false;
+    }
+    if (isStepsDecl(n)) {
+      chapters.push({ id: n.id.name, title: n.id.name, line: n.loc.start.line, cards: cardsUnder(n.init) });
+      return false;
+    }
+    return undefined;
+  });
   const own = { id: '(file)', title: file, line: 1, cards: [] };
-  (function visit(node, chapter) {
-    walk(node, (n) => {
-      if (n !== node && n.type === 'ObjectExpression') {
-        const m = propsOf(n);
-        if (m.has('id') && m.has('title') && m.has('steps')) {
-          const ch = { id: strOf(m.get('id').value), title: strOf(m.get('title').value), line: n.loc.start.line, cards: [] };
-          chapters.push(ch);
-          visit(m.get('steps').value, ch);
-          if (m.has('done')) {
-            const pieces = textPieces(m.get('done').value).map((p) => ({ ...p, key: 'done' }));
-            ch.cards.push({ id: '(done)', line: m.get('done').loc.start.line, pieces });
-          }
-          return false;
-        }
-        if (m.has('id') && m.has('title') && m.has('body')) {
-          const card = { id: strOf(m.get('id').value), line: m.get('id').loc.start.line, pieces: [] };
-          for (const k of CARD_KEYS) {
-            if (m.has(k)) card.pieces.push(...textPieces(m.get(k).value).map((p) => ({ ...p, key: k })));
-          }
-          (chapter || own).cards.push(card);
-          return false;
-        }
-      }
-      if (n !== node && n.type === 'VariableDeclarator' && n.id.type === 'Identifier' && /STEPS$/.test(n.id.name)
-        && n.init && n.init.type === 'ArrayExpression') {
-        const ch = { id: n.id.name, title: n.id.name, line: n.loc.start.line, cards: [] };
-        chapters.push(ch);
-        visit(n.init, ch);
-        return false;
-      }
-      return undefined;
-    });
-  })(ast, null);
+  walk(ast, (n) => {
+    if (isChapter(n) || isStepsDecl(n) || consumed.has(n)) return false;
+    const c = cardOf(n);
+    if (c) { own.cards.push(c); return false; }
+    return undefined;
+  });
   if (own.cards.length) chapters.unshift(own);
   return chapters.filter((ch) => ch.cards.length);
+}
+
+// One entry of COURSES as the check reads it: the file's chapters, cut to `chapters` when
+// the entry names some, and with `unit: 'card'` every card its own chapter (a tour is read
+// card by card, so a word is glossed on or before the card that first uses it).
+function chaptersFor(entry, src) {
+  let chs = parseCourse(src, entry.file);
+  if (entry.chapters) chs = entry.chapters.map((id) => chs.find((c) => c.id === id)).filter(Boolean);
+  if (entry.unit === 'card') chs = chs.flatMap((c) => c.cards.map((card) => ({ id: card.id, title: card.id, line: card.line, cards: [card] })));
+  return chs;
 }
 
 // ===== reading the text ====================================================================
@@ -493,7 +642,7 @@ function checkCourse({ course, file, chapters, table, early = [], glossary, trac
 }
 
 function loadCourse(c) {
-  return parseCourse(fs.readFileSync(path.join(ROOT, c.file), 'utf8'), c.file);
+  return chaptersFor(c, fs.readFileSync(path.join(ROOT, c.file), 'utf8'));
 }
 function loadGlossary() {
   return glossaryTerms(fs.readFileSync(path.join(ROOT, GLOSSARY.file), 'utf8'));
@@ -540,13 +689,13 @@ function main(argv) {
     if (check) process.exit(1);
     return;
   }
-  const summary = `score-courses: ${COURSES.length} courses, ${termCount} first-use terms, ${earlyCount} known early uses, ${guideCount} glossed by the guide only.`;
+  const summary = `score-courses: ${COURSES.length} entries (courses, tours, lessons), ${termCount} first-use terms, ${earlyCount} known early uses, ${guideCount} glossed by the guide only.`;
   console.log(check ? `${summary} OK` : `\n${summary}`);
 }
 
 module.exports = {
   COURSES, FIRST_USE, EARLY, SENTENCE_CAP, GRADE_CEILING, GLOSSARY,
-  parseCourse, sentences, words, syllables, tally, grade, termRe, termText, scoreText,
+  parseCourse, chaptersFor, sentences, words, syllables, tally, grade, termRe, termText, scoreText,
   glossaryTerms, inGlossary, scoreCourse, termUses, checkCourse,
 };
 

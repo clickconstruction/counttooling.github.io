@@ -31,50 +31,62 @@ Every word a course card stops to explain, in one list. A card says what a word 
 
 #### The set and the sheet
 
+- **Detail.** A corner of the plan drawn again, larger, often at another scale on the same sheet.
 - **Dimension.** A length the engineer wrote on the drawing, like 31'-8". Only a dimension can prove the scale.
 - **Discipline.** The trade a sheet belongs to, the letter in its number: A architect, S structural, M mechanical, E electrical, P plumbing.
 - **Engineer.** The designer who drew a trade's sheets and did its sums. The estimator prices what the engineer drew.
 - **Enlarged plan.** Part of the plan drawn again at a bigger scale, so the clearances can be read. Count what is on it once, never on both sheets.
+- **E-sheet (M-sheet, P-sheet).** A sheet of one trade's drawings, named by its letter: E electrical, M mechanical (HVAC), P plumbing.
 - **Floor plan.** The building seen from above, as if the roof were lifted off.
 - **General notes.** The written rules for the whole job, printed on the sheet: the pipe material, where the waste runs, and so on.
 - **Keynote.** A short tag on the plan, a number or a few letters, that a column of notes spells out.
-- **Leader.** A thin pointer line from a label to the thing it names.
-- **Legend.** The key to a sheet's lines and symbols. An estimator reads it first.
+- **Leader.** A thin line from a label to the thing it names. The app draws one, dashed, from a fixture or a diffuser to its run.
+- **Legend.** The key to a sheet's lines and symbols. The app draws its own on the sheet too: each counter and line type with its total.
 - **Mechanical.** The M-sheets: the drawings for the air trade, HVAC.
 - **One-line.** A diagram of how the power gets from the street to the panel, drawn as a single line.
+- **PDF.** The drawing's file, the form a set of drawings arrives in.
+- **Plan view.** The drawing seen from above. It never shows a pipe or a duct going straight up or down.
 - **Riser diagram.** The pipes drawn standing up, as if the wall were cut open. Some are drawn to scale, so the upright pipe can be measured.
 - **Scale.** How many feet of building one inch of paper stands for, like 1/8" = 1'-0". Every sheet has its own.
 - **Scale bar.** A printed ruler on the sheet. A shrunk PDF shrinks it too, so it cannot prove the scale.
 - **Schedule (fixture schedule, panel schedule).** A table on a sheet, one row per kind of thing. It is the engineer's answer key: the sizes, the loads, the air.
 - **Section.** The building sliced through and seen from the side.
-- **Set.** All the drawings for one job, one sheet per page.
+- **Set.** All the drawings for one job, the whole stack, one sheet per page.
 - **Sheet.** One page of a set. Its number starts with its trade's letter: P-101, E-201, M-501.
 - **Tag.** A short label on the plan, like SD-1 or LP-1-1, that a schedule or a note spells out.
 - **Title block.** The box at the edge of a sheet with its name, its number and its scale.
+- **Trade.** A kind of work, such as plumbing, electrical or HVAC.
 - **Typical (TYP.).** Drawn once, built everywhere the note says. TYP. OF 4 means four of everything in it.
 
 #### The estimator's words
 
 - **Addendum.** A round of changes the designers send out before the bid is due.
-- **Bid.** The price a contractor offers to do the work. One of the bidders gets the job.
+- **Alternate.** A priced option the owner may buy on top of the base bid.
+- **Base bid.** The main price, before any alternates.
+- **Bid.** The price a contractor offers to do the work. In the app, a bid is also one job you are pricing.
 - **Callback.** A trip back to a finished job to fix something, usually unpaid.
 - **Change order.** A priced change after the contract is signed. The owner pays it when the drawing was wrong; one you eat, you pay yourself.
+- **Decimal feet.** Feet and tenths of a foot, rather than feet and inches. The app's totals are always in decimal feet.
+- **Deliverable.** What you send out: the report, the marked-up sheets, the paste into the bid.
 - **Design-build.** Work with no engineer, where the contractor designs the system too.
 - **Estimator.** The person who works out what a job will cost, from the drawings alone.
 - **Exclusion.** A line in the bid that says the price leaves something out.
+- **Footage.** A run's total feet.
 - **Foreman.** The crew's lead on site, who builds from the marked-up set.
 - **GC (general contractor).** The company that runs the whole job. Your questions reach the designer through the GC.
 - **Hand off.** Send the finished takeoff on to pricing.
+- **Labor.** The hours it takes to put an item in, from your own price book.
 - **Load.** What a thing draws or has to handle: an appliance's gas, a circuit's power, the heat a cooling unit removes.
 - **Reference.** The course's own finished takeoff, its answer key. The whole-set chapter lays yours beside it.
 - **RFI (request for information).** A written question to the designer, sent through the GC.
 - **Rule of thumb.** A quick figure from the floor area, for design-build work. On an engineered set, the schedule's number wins.
+- **Scope.** Which work you are pricing, and what is left out of it.
 - **Takeoff.** The count and the feet together: the numbers the price is built on. A miss in the takeoff is money lost.
 - **Temporary power.** The power and light the builders run on during construction. It is never on a drawing.
 
 #### Codes and standards
 
-- **ADA.** The Americans with Disabilities Act. It sets the reach range for switches and receptacles.
+- **ADA.** The Americans with Disabilities Act. It sets the room a wheelchair needs and the reach range for switches and receptacles.
 - **ASHRAE.** The heating and air engineers' society. Its standard 62.1 sets how much fresh air each room needs.
 - **FDA Food Code.** The model health code for restaurants. It wants a hand sink within reach of each food preparation area.
 - **IBC.** The International Building Code.
@@ -82,9 +94,10 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **IFGC.** The International Fuel Gas Code: how gas pipe is sized and valved.
 - **IMC.** The International Mechanical Code, the rule book the air work must meet by law.
 - **IPC.** The International Plumbing Code.
+- **Jurisdiction.** Your town or county. It decides which code edition the work must meet.
 - **NEC.** The National Electrical Code, the code book electrical work is built to.
 - **NFPA 96.** The National Fire Protection Association's standard for kitchen hoods and their grease ducts.
-- **SMACNA.** The sheet-metal trade's standards group. Its tables give a duct's gauge and weight by size.
+- **SMACNA.** The sheet-metal trade's standards group. Its book of tables gives a duct's gauge and weight by size.
 - **UL.** Underwriters Laboratories, the lab that tests safety equipment like fire dampers and lists what passes.
 
 #### The building
@@ -113,6 +126,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **BTU.** British thermal unit. Gas load is in BTU per hour: how fast the appliances burn gas.
 - **Building drain.** The main drain under the floor that the stacks empty into.
 - **Building sewer.** The pipe that takes all the building's waste out to the city sewer.
+- **Carrier.** The frame a wall-hung toilet hangs on, one under every water closet.
 - **Check valve.** A one-way valve.
 - **Cleanout.** A capped opening for clearing a drain. A grease duct has them too, to scrape the grease out.
 - **DFU.** Drainage fixture units: the code's number for how much a fixture drains.
@@ -121,17 +135,21 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Fixture unit.** The code's number for how much water a fixture draws (WSFU) or drains (DFU). The engineer sizes the pipe from the total.
 - **Floor sink.** A square drain set in the floor, that equipment drains into across an air gap.
 - **Flue.** The pipe that carries a gas water heater's exhaust out.
+- **fps.** Feet per second, the speed of water in a pipe.
 - **Grease waste (GW).** The kitchen's drains. They run to the grease interceptor, apart from the restrooms.
 - **Hand sink.** A sink kept only for washing hands.
-- **Hanger.** A support that holds a pipe or a duct up. The code says how far apart they go.
+- **Hanger.** A support, often a strap, that holds a pipe or a duct up. The code says how far apart they go.
 - **Hose bibb.** An outdoor faucet for a hose.
 - **Hot water return (HWR).** A pipe that carries unused hot water back to the heater, so every faucet runs hot fast. Most bids miss it.
 - **Indirect waste.** A drain that ends above a floor sink, across an air gap, instead of joining the pipe.
 - **Interceptor (grease interceptor, GI).** A tank outside where the kitchen's grease floats, cools and is pumped out.
+- **Lav battery.** Lavatories in a row on one branch.
 - **Lavatory.** A bathroom sink, a lav for short.
 - **Main.** The big pipe or duct the branches come off: the city's water main, the gas main, the main duct from the unit.
 - **Meter.** What counts the water, the gas or the power a building uses.
 - **Mop sink.** The low sink a mop bucket is filled and emptied at.
+- **Occupancy (public, private).** The fixture-unit table's two columns: public (a restaurant, an office) and private (a house, a hotel room).
+- **PEX.** Plastic water pipe that bends.
 - **PVC.** Plastic pipe, polyvinyl chloride.
 - **Riser.** A pipe or duct that goes straight up or down. A plan is drawn from above, so it never shows one.
 - **RPZ (backflow preventer).** A valve assembly where the water service comes in. It stops water flowing back into the city's main.
@@ -165,10 +183,12 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Branch circuit.** A circuit that runs from a panel out to its devices.
 - **Breaker.** A switch in the panel that shuts a circuit off when it draws too much.
 - **Circuit.** One breaker and the wires and devices it feeds.
+- **Circuit schedule.** A table of the circuits: each one's devices, its conduit and its wire.
 - **Conductor.** A wire.
 - **Conduit.** The metal pipe electrical wire runs in.
 - **Cord-and-plug.** The unit plugs into a receptacle instead of being wired in.
 - **Dedicated circuit.** A circuit that feeds one piece of equipment and nothing else.
+- **Device.** Anything wired, such as an outlet or a switch.
 - **Disconnect.** A switch at a unit that cuts its power for service.
 - **Drop.** A pipe, conduit or duct that comes down to what it feeds. The Drop tool adds that upright length to a run.
 - **Duplex.** The ordinary receptacle: two sockets in one.
@@ -199,12 +219,12 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Service lateral.** The buried wires from the utility to the building.
 - **Shunt trip.** A breaker that can be tripped from outside the panel, such as by the hood's fire system.
 - **Strap.** The clamp that holds conduit to the building.
-- **THHN.** The common building wire's insulation.
+- **THHN.** The everyday building wire, named for its insulation.
 - **Three phase.** Power on all three phases, for motors like a rooftop unit's.
 - **Utility transformer.** The power company's equipment at the street.
 - **VA (volt-amperes).** The load a circuit is sized for.
 - **Volt (V).** The measure of electrical push. The building has 120 V and 208 V.
-- **Voltage drop.** The voltage a wire loses along its length, so the far end gets less.
+- **Voltage drop.** The voltage, the electrical push, a wire loses along its length, so the far end gets less.
 
 #### HVAC
 
@@ -225,7 +245,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Exhaust fan (EF).** A fan that throws air outside, such as the hood's.
 - **Fire damper.** A shutter in a duct that closes in a fire, where the duct crosses a rated wall. Never in a grease duct.
 - **Fitting.** A shaped piece that joins or turns pipe or duct: an elbow, a transition, a tap.
-- **Flex.** The soft round hose from a duct to a diffuser.
+- **Flex.** The soft, bendable round duct from a bigger duct to a diffuser.
 - **fpm.** Feet per minute, the speed of the air.
 - **Friction rate.** How fast the duct uses up the fan's push, per 100 feet.
 - **Fusible link.** A link that melts in a fire and lets a fire damper drop shut.
@@ -236,6 +256,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **HVAC.** Heating, ventilation and air conditioning: the air trade, drawn on the M-sheets.
 - **Inches of water.** The measure of air pressure.
 - **Lay-in.** Sized to drop into one square of the ceiling grid.
+- **lb/ft.** Pounds per foot, the weight of a foot of duct.
 - **Liner.** Insulation that lines the inside of a duct.
 - **Listed enclosure.** A fire wrap a lab has tested and listed.
 - **Make-up air (MAU, make-up air unit).** Outside air brought in to replace what the hood throws out. The MAU is the unit that brings it.
@@ -253,6 +274,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Stat (thermostat).** The control on the wall that sets the temperature.
 - **Static pressure.** The push the fan has to give the air to get it through the duct.
 - **Stray.** A diffuser hung on no run. It counts toward no system.
+- **System.** A unit and the ducts and diffusers it serves. In the app, a group with an equipment tag.
 - **Tap.** Where a branch leaves a bigger duct.
 - **Tempered.** Heated or cooled first.
 - **Ton.** A unit's cooling size.
@@ -264,34 +286,50 @@ Every word a course card stops to explain, in one list. A card says what a word 
 
 #### The app
 
-- **Armed.** A tool or a counter is armed when the next click on the sheet uses it: an armed counter places one mark per click. Pressing **M** (Move) puts it down, and a number key or a click on the counter in the sidebar arms it again.
+- **Active layer.** The layer you are working on. New marks land on it, and Clear Page clears only it.
+- **Armed.** Switched on and ready to mark. A counter is armed when the next click on the sheet uses it: one mark per click. Pressing **M** (Move) puts it down, and a number key or a click on the counter in the sidebar arms it again.
+- **Artboard.** The counters, line types, quick keys and icons you keep for every job. They come to each new bid.
 - **Bid Check.** The app's checklist in the sidebar: what a bid must answer before it goes out. Some rows it judges itself, the rest you tick.
 - **Chain.** Count a fixture or a device and trace the run back to the last one, in one click.
 - **Check.** The fourth verb: Bid Check says what the takeoff is missing or what does not add up.
 - **Child count.** An item that rides along on a counter or a line type: so many per mark, or one per so many feet of run.
 - **Chip.** A small label beside a field or under the cursor, like the size the Duct tool reads off the plan. The § chip, a section mark, names the rule behind a row.
+- **Clipboard.** Where a copy waits until you paste it.
+- **Cloud.** The copy of your work kept online, in your account, once you sign in and save.
 - **Count.** Arm a counter and click each thing it counts: one click, one mark.
 - **Counter.** A named kind of mark, such as WC-1 Water Closet. Armed, every click places one.
+- **Delete area.** A box you draw that wipes everything inside it. Undo brings it back.
+- **Export.** A file the app makes for you to send out, such as a report or a marked-up PDF.
 - **Footer.** The strip under the sheet that turns the pages, zooms and switches layers.
 - **Gear.** In the app, the gear icon in the header opens Project Settings. In electrical, the gear is the heavy equipment of the service.
+- **Ghost.** A see-through copy of a typical, laid somewhere else to compare. It never counts.
 - **Group.** Marks and runs the app totals together: a circuit on its panel, or a system on its unit.
 - **Header.** The row of tools across the top of the app. On a drawing, a header is the beam over a door.
-- **Highlight.** A see-through color box dragged over part of a sheet.
+- **Highlight.** A see-through colour box dragged over part of a sheet, like a marker pen. It never counts.
 - **Layer.** A clear sheet laid over the plan, with its own marks and its own totals.
 - **The line beside Show me where.** Every card ends with one line that says what the step is still waiting for, one thing at a time. It turns red when your last try missed and says why, and reads **✓ Done** when the step is done. It is not the status bar at the bottom of the window, which shows the file, the save and the quick keys.
 - **Line type.** A named kind of run, by size and material, such as 1.5in Copper or 0.75in EMT. The app measures its feet.
 - **Mark.** One thing you placed on the sheet: a count, a run, a note.
+- **Move.** The resting tool, on when no other is. It drags the sheet, and a mark in the wrong place.
 - **Multiply zone.** A box whose counts are multiplied, for a typical drawn once and built many times.
-- **Palette.** Your counters and line types, the lists under **COUNTERS** and **LINE TYPES** in the left sidebar. A returning device keeps its palette from bid to bid.
+- **Note.** Words you pin to a spot on the sheet. A note that starts with RFI: is a flag.
+- **Number row.** The keys 1 to 0 above the letters. Each can hold a counter as a quick key.
+- **Palette.** Your counters and line types, the lists under **COUNTERS** and **LINE TYPES** in the left sidebar. A returning device keeps its palette from bid to bid. A tool's palette is the small panel it opens, like the Drop sizes.
+- **Polyline.** A run with corners, one click per corner.
 - **Quick key.** A counter put on a number key, so pressing the number arms it.
+- **Room Sizer.** The tool that boxes a room and reads its area and its air.
 - **Rulebook.** The app's list of the trade rules it applies, each one cited by its code section.
 - **Run.** The path a pipe, a wire or a duct takes, traced on the sheet. The app adds up its feet.
 - **Scale zone.** A box with its own scale, for a detail drawn at another scale.
-- **Sidebar.** The panel down the left: the sheets under **PAGES**, your counters and line types, the **SUMMARY** and **BID CHECK**.
+- **Sidebar.** The column of lists down the left side of the screen. It holds the sheets under **PAGES**, your counters and line types, the **SUMMARY** and **BID CHECK**.
+- **Snap.** Holds each piece you draw level, upright or at 45°, however your hand wobbles.
 - **Status bar.** The strip along the bottom of the window. It shows the file, the save and the quick keys.
 - **Summary.** The running totals, in the sidebar.
+- **Thumbnail.** A small picture of a sheet, showing where every mark sits.
 - **Tooling (PipeTooling, TakeoffTooling).** The pricing apps a finished takeoff is handed off to.
 - **Trace.** Click along a run, corner by corner. The app measures its feet.
+- **View link (read-only).** A link that lets someone open the marked-up sheets and the totals, and look without changing anything.
+- **Zone.** A box on the sheet that changes the scale or multiplies what is inside it.
 
 ## Start with your trade: the five-minute tours
 

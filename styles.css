@@ -421,6 +421,15 @@
     .sidebar-section h3.section-settings .collapse-icon { margin-left: auto; }
     .sidebar-section-header-row h3 { flex: 1; min-width: 0; }
     .sidebar-section .collapse-icon, .sidebar-section-header-row .collapse-icon { display: inline-block; padding: 8px 12px; margin: -8px -12px -8px 4px; cursor: pointer; }
+    /* HEADING-CLICK (2026-09-27): every title folds its list, so a section's settings sit
+       behind a small gear right beside its title. The title shrinks to its words and the
+       gear's auto right margin pushes "+ Add" and the chevron to the row's end. Page
+       Settings has no other entrance, so the gear stays visible when the list is folded,
+       and a coarse pointer (tablet, phone) gets a 40 px target. */
+    #pagesSectionTitle, #countersSectionTitle, #lineTypesSectionTitle, #summarySectionTitle { flex: 0 1 auto; }
+    .section-gear-btn { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 28px; height: 28px; margin: -4px auto -4px 2px; padding: 0; background: none; border: none; border-radius: 6px; color: var(--text2); cursor: pointer; }
+    .section-gear-btn:hover, .section-gear-btn:focus-visible { background: var(--surface2); color: var(--accent); }
+    @media (pointer: coarse) { .section-gear-btn { width: 40px; height: 40px; margin: -10px auto -10px 0; } }
     .modal-card input[type="range"] { width: 100%; padding: 0; height: 24px; }
     .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; cursor: pointer; min-height: 44px; }
     .sidebar-item.active { background: var(--surface2); border-radius: 6px; margin: 2px -4px; padding: 4px 12px 4px 8px; border-left: 3px solid var(--accent); }

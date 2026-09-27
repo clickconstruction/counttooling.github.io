@@ -1341,7 +1341,7 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
     expect(await sel()).toBe('Water Closet');
   });
 
-  test('C21: IPC is spelled out where the tour first says it; C23: the SUMMARY heading is never the thing to click', async ({ page }) => {
+  test('C21: IPC is spelled out where the tour first says it; C23: the SUMMARY heading folds its list and the gear opens the legend (HEADING-CLICK)', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
@@ -1354,9 +1354,18 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
     const proof = steps.find((s) => s.id === 'proof');
     expect(proof.body).not.toMatch(/open SUMMARY/);
     expect(proof.body).toContain('with its list already open');
-    // by real clicks: the heading springs the trap, the status says so and the ring is on the ×
+    expect(proof.body).toContain('The gear beside its heading opens the settings for the legend');
+    // by real clicks: the heading folds the list, the status says so and the ring is on the heading
     await walkTo(page, 'proof');
     await page.click('#summarySectionTitle');
+    await expect(page.locator('#summarySection')).toHaveClass(/collapsed/);
+    await expect(page.locator('#legendSettingsModal')).not.toHaveClass(/visible/);
+    await expect(page.locator('#tourStatus')).toContainText('SUMMARY is folded: click it to open the list');
+    await expect.poll(() => litIs(page, '#summarySectionTitle')).toBe(true);
+    await page.click('#summarySectionTitle');
+    await expect(page.locator('#summarySection')).not.toHaveClass(/collapsed/);
+    // the gear beside it is the legend's door: the status says so and the ring is on the ×
+    await page.click('#summarySettingsBtn');
     await expect(page.locator('#legendSettingsModal')).toHaveClass(/visible/);
     await expect(page.locator('#tourStatus')).toContainText('That is the Summary Legend');
     expect(await page.evaluate(() => window.App.tutorialObserve().code)).toBe('wrong-item');

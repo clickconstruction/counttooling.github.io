@@ -27,14 +27,14 @@ Turn on **Show group colors** and marks render in their group's color instead of
 
 - **Show only what's used**: both Counter Settings and Line Type Settings have a three-way filter (Off / This page / This project) that hides unplaced items from the sidebar lists: scope it to the sheet you're counting, or to anything used somewhere in the bid. The inline button next to each sidebar search box cycles the same three states, and a "hidden by filter" note with a **show all** link appears below the list so nothing ever looks lost.
 - **Search**: the Counters, Line Types, and Lines sections each have a search box; on a project with forty counter types, typing beats scrolling.
-- **Collapse sections**: click a section's collapse icon to fold it away; Groups and Lines start minimized to keep the sidebar tight.
+- **Collapse sections**: click a section's heading (or its arrow) to fold it away, and again to open it; Groups and Lines start minimized to keep the sidebar tight. A section's settings sit behind the small gear beside its heading.
 
 ## Make the marks themselves legible
 
-- **Counter Settings** (click the *Counters* heading): icon size, opacity, the count number's size, outline, and the ring, with its own size, opacity, and solid/hollow toggle. Tune once so marks read at your zoom level and at print scale.
+- **Counter Settings** (click the gear beside the *Counters* heading, or right-click the Counter button): icon size, opacity, the count number's size, outline, and the ring, with its own size, opacity, and solid/hollow toggle. Tune once so marks read at your zoom level and at print scale.
 
 ![Counter Settings: size, opacity, count numbers, outline, and the ring controls: one dialog tunes every placed mark.](/guides/img/counter-settings.png)
-- **Line Type Settings** (click the *Line Types* heading): line size, opacity, drop-marker size and icon style, length-label size, and whether labels orient along the line.
+- **Line Type Settings** (click the gear beside the *Line Types* heading, or right-click a line tool): line size, opacity, drop-marker size and icon style, length-label size, and whether labels orient along the line.
 - **Reorder the sidebar**: drag counter and line-type rows into the order you actually use; the reorder follows you into pickers and reports.
 
 ## The legend keeps score on-sheet

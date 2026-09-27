@@ -4014,10 +4014,10 @@
   // handlers; the emptied "// SECTION: Groups" marker was removed.
 
   // The Summary Legend settings modal (openLegendSettingsModal + its close / 8
-  // appearance handlers + the #summarySectionTitle opener) lives in
+  // appearance handlers + the #summarySettingsBtn gear opener) lives in
   // features/legend-settings.js (window.App registry); it is reached via
-  // App.openLegendSettingsModal at call time. The #summaryCollapseIcon toggle,
-  // drawLegend, and the legendBtn overlay stay here.
+  // App.openLegendSettingsModal at call time. The Summary fold is
+  // features/sidebar-lists.js's; drawLegend and the legendBtn overlay stay here.
   // The Multiply Zone settings modal (openMultiplyZoneSettingsModal + its
   // ShowLabel/LabelSize/Close handlers) lives in
   // features/multiply-zone-settings.js (window.App registry);
@@ -4025,7 +4025,7 @@
   // at call time. The Multiply Zone apply flow (X-tool draw + multiplyZoneModal)
   // stays here.
   // The Line Type settings modal (openLineTypeSettingsModal + its value handlers
-  // + close + reorder + the #lineTypesSectionTitle opener) lives in
+  // + close + reorder + the #lineTypesSettingsBtn gear opener) lives in
   // features/line-type-settings.js (window.App registry); reached via
   // App.openLineTypeSettingsModal at call time. The #lineTypeSnapToHVHeaderBtn,
   // the J-hotkey and the Escape-key close branch stay here; the sidebar inline
@@ -4053,8 +4053,8 @@
 
   // R14: the six section collapse toggles (Pages, Counters, Line Types, Summary, Lines,
   // Groups), the three sidebar search inputs, the inline filter buttons (+ their toast)
-  // and #sidebarReorderFinish live in features/sidebar-lists.js. The #pagesSectionTitle
-  // opener + the Page settings toggles are features/page-settings.js's. The filter-scope
+  // and #sidebarReorderFinish live in features/sidebar-lists.js. The #pagesSettingsBtn
+  // gear opener + the Page settings toggles are features/page-settings.js's. The filter-scope
   // getters/setters and syncFilterScopeSegment below stay here: boot calls the setters
   // before any feature file loads.
   // Sidebar usage-filter scope ('off' | 'page' | 'project'). The scope field
@@ -4085,13 +4085,13 @@
     if (!seg) return;
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scope === scope)));
   }
-  // The #summarySectionTitle opener (Summary Legend settings) moved to
+  // The #summarySettingsBtn gear opener (Summary Legend settings) lives in
   // features/legend-settings.js.
-  // The #countersSectionTitle opener + the counterSettings* value handlers +
+  // The #countersSettingsBtn gear opener + the counterSettings* value handlers +
   // counterSettingsClose + counterSettingsReorder (Counter settings modal) moved
   // to features/counter-settings.js (window.App registry); reached via
   // App.openCounterSettingsModal at call time.
-  // The #lineTypesSectionTitle opener + the lineTypeSettingsReorder handler moved
+  // The #lineTypesSettingsBtn gear opener + the lineTypeSettingsReorder handler moved
   // to features/line-type-settings.js (window.App registry).
   // The Page settings toggles (pageSettingsTruncate/HideUnmarked) + pageSettingsClose
   // moved to features/page-settings.js (window.App registry).

@@ -303,7 +303,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Delete area.** A box you draw that wipes everything inside it. Undo brings it back.
 - **Export.** A file the app makes for you to send out, such as a report or a marked-up PDF.
 - **Footer.** The strip under the sheet that turns the pages, zooms and switches layers.
-- **Gear.** In the app, the gear icon in the header opens Project Settings. In electrical, the gear is the heavy equipment of the service.
+- **Gear.** In the app, a gear icon opens settings: the one in the header opens Project Settings, and the small one beside a sidebar heading opens that section's. In electrical, the gear is the heavy equipment of the service.
 - **Ghost.** A see-through copy of a typical, laid somewhere else to compare. It never counts.
 - **Group.** Marks and runs the app totals together: a circuit on its panel, or a system on its unit.
 - **Header.** The row of tools across the top of the app. On a drawing, a header is the beam over a door.

@@ -15,17 +15,18 @@
  * app.js. Its own IIFE: it reaches the cross-cutting state + helpers through the
  * shared window.App registry that app.js populates during its own load,
  * registers openLineTypeSettingsModal back onto App, and binds the modal's value
- * handlers + close + reorder + the Line Types section-title opener at this
- * file's load.
+ * handlers + close + reorder + the Line Types gear opener (#lineTypesSettingsBtn)
+ * at this file's load. HEADING-CLICK (2026-09-27): the LINE TYPES title folds
+ * the list; the gear and the line tools' right-click menu open this modal.
  *
  * Scope is the Line Type *settings* modal only. The header snap button
  * (#lineTypeSnapToHVHeaderBtn), the sidebar inline show-only buttons
  * (#lineTypeShowOnlyOnPageInlineBtn / #linesShowOnlyOnPageBtn), the shared
  * #sidebarReorderFinish, the J-hotkey snap toggle, and the Escape-key close
  * branch all stay in app.js; they set state directly / sync the static modal DOM
- * by id, so they are independent of the moved JS. The 5 right-click
- * (#lineTypesSectionTitle.click()) entry points on the Quick Line / Polyline
- * buttons keep working because the opener stays bound to that element's onclick.
+ * by id, so they are independent of the moved JS. The right-click entry points
+ * on the Quick Line / Polyline buttons (features/tool-context-menu.js) call
+ * App.openLineTypeSettingsModal directly.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -82,10 +83,9 @@
     App.showModal('lineTypeSettingsModal');
   }
 
-  document.getElementById('lineTypesSectionTitle').onclick = (e) => {
-    if (e.target.closest('#lineTypesCollapseIcon')) return;
-    openLineTypeSettingsModal();
-  };
+  // HEADING-CLICK (2026-09-27): the gear beside the title opens the settings; the title
+  // itself folds the list (features/sidebar-lists.js bindCollapse).
+  document.getElementById('lineTypesSettingsBtn').onclick = () => openLineTypeSettingsModal();
 
   document.getElementById('lineTypeSettingsClose').onclick = () => App.hideModal('lineTypeSettingsModal');
 

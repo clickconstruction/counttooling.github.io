@@ -64,13 +64,13 @@
 - importBtnSidebar
 - tool twins: measureBtnSidebar, highlightBtnSidebar, multiplyZoneBtnSidebar, scaleZoneBtnSidebar, roomBtnSidebar, deleteZoneBtnSidebar, noteBtnSidebar, legendBtnSidebar, gridBtnSidebar, moveBtnSidebar, counterBtnSidebar, quickLineSidebar, polylineBtnSidebar, doneEditingSidebar
 - sidebarScaleDisplay (desktop-only scale readout)
-- Pages: pagesSectionTitle (click=Page Settings modal; arrow collapses) + pagesList rows
-- Counters: countersSectionTitle (click=Counter Settings), addCounter (+ Add), plumBtn (PLUM quick-add), counterSearchInput, counterShowOnlyOnPageInlineBtn
-- Line Types: lineTypesSectionTitle (click=Line Type Settings), addLineType, plumLineBtn, lineTypeSearchInput, lineTypeShowOnlyOnPageInlineBtn
+- Pages: pagesSectionTitle (click folds the list, HEADING-CLICK 2026-09-27), pagesSettingsBtn gear (Page Settings modal) + pagesList rows
+- Counters: countersSectionTitle (click folds), countersSettingsBtn gear (Counter Settings), addCounter (+ Add), plumBtn (PLUM quick-add), counterSearchInput, counterShowOnlyOnPageInlineBtn
+- Line Types: lineTypesSectionTitle (click folds), lineTypesSettingsBtn gear (Line Type Settings), addLineType, plumLineBtn, lineTypeSearchInput, lineTypeShowOnlyOnPageInlineBtn
 - Lines subsection: linesSectionTitle, linesSearchInput, linesShowOnlyOnPageBtn
 - Groups: groupsSectionTitle, addGroup, groupsList, showGroupColorsBtn toggle
 - Rooms: roomsSectionTitle + roomsList (shown when room boxes exist)
-- Summary: summarySectionTitle + summaryList (rows open summaryCountDetailModal)
+- Summary: summarySectionTitle (click folds), summarySettingsBtn gear (Summary Legend) + summaryList (rows open summaryCountDetailModal)
 - Export Options: printReport (Show Report dropdown: this-canvas / all-canvases-on-page / all-pages-current-canvas / all-pages-canvases)
 - specificPages (Export PDFs)
 - forPipeTooling (Copy to /Tooling dropdown: this-canvas / visible / all)

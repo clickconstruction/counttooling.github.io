@@ -29,7 +29,7 @@ The July tiers landed (pdf-tile-cache stages 1 and 2, the sidebar and status ren
 
 ## 1. Ranked shortlist
 
-**All 25 landed by 2026-09-26** (PRs #218 to #224; each heading below carries its Landed line and what it left). The bug rows became PUNCHLIST `MAP-*` rows and closed with them; MAP-PERMS (the lean permissions read, a developer item) and the two product calls (MAP-SUMMARY-LAYERS, MAP-PHONE-BAR) are what remains of the map in the punch list.
+**All 25 landed by 2026-09-26** (PRs #218 to #224; each heading below carries its Landed line and what it left). The bug rows became PUNCHLIST `MAP-*` rows and closed with them; MAP-PERMS (the lean permissions read, a developer item) and the product call MAP-SUMMARY-LAYERS are what remains (the other call, MAP-PHONE-BAR, landed 2026-09-27) of the map in the punch list.
 
 Best value for risk first. Yield is lines removed or moved out of the monolith (estimates, skeptic-corrected where marked). Each item lists the shard findings it came from; their evidence and recipes follow it.
 
@@ -136,7 +136,7 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 **Decided 2026-09-25:** signed-in estimators see the tool hints and live readouts. The call is made; this is now a build item (PUNCHLIST `MAP-HINTS`).
 
-**Landed 2026-09-26** (MAP-HINTS closed): the hint ladder is `toolHintFor` in status-hint-model.js (node-tested per TOOL, readouts passed in), `updateStatus` is renderSyncIndicators, composeMode, renderTotals and renderMeasureChip, and the signed-in bar composes the hint too; a signed-in viewer's line is unchanged. The one-line fit now asks whether the hint costs the bar a row, since a signed-in bar at 769 to 900 px and on a phone is two rows from its sync labels alone. CHANGELOG "fix(status-bar): a signed-in estimator sees the tool hint and the live readouts".
+**Landed 2026-09-26** (MAP-HINTS closed): the hint ladder is `toolHintFor` in status-hint-model.js (node-tested per TOOL, readouts passed in), `updateStatus` is renderSyncIndicators, composeMode, renderTotals and renderMeasureChip, and the signed-in bar composes the hint too; a signed-in viewer's line is unchanged. The one-line fit now asks whether the hint costs the bar a row, since a signed-in bar at 769 to 900 px and on a phone is two rows from its sync labels alone. CHANGELOG "fix(status-bar): a signed-in estimator sees the tool hint and the live readouts". The phone half closed 2026-09-27 (MAP-PHONE-BAR): on a phone the save words and pointer numbers hide and the email link reads "Account", so the signed-in bar is one line and "Tap start point" reads in full; CHANGELOG "fix(status-bar): one line on a phone".
 
 *Risk medium, yield ~60.* Every signed-in user loses tool hints and live readouts. Needs a ⚑ product call first.
 

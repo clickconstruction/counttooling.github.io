@@ -456,6 +456,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R21. Save-engine: dedupe inside the file, then Stage 7 timers, then a lean permissions read
 
+**Landed 2026-09-26** (two of three; part of MAP-SHORTLIST): the internal dedupe and Stage 7. save-engine.js has `adoptNewCloudProject` (the three adopt blocks; the autosave keeps its `'local'` backup delete), `turnInSaveBlocked` (nested in doTurnIn) and `rawRpc` behind the two raw RPC twins; `onVisibilityChange`, `onOnline`, `onOffline` and `autoSaveTick` hold the timer bodies with `lastHiddenAt`, and app.js keeps the three listeners and the interval under `// SECTION: [sync] Visibility & timers` (7,891 to 7,787 lines; six wrappers that lost their last caller went with them). save-engine.test.js pins the folds and drives the long-idle return with a fake clock. The lean permissions read waits on MAP-PERMS (a Supabase RPC migration, a developer item); the defect below is still open. CHANGELOG "refactor(save): the engine folds its repeated blocks and takes the visibility, connectivity and autosave timers".
+
 *Risk medium, yield ~165.* refreshProjectPermissions downloads every project's data to read one row. The timers move under node tests.
 
 - **`lifecycle-cloud:save-engine-internal-dedupe`** (internal-refactor, high confidence; check: confirmed) Fold save-engine's repeated adopt, Turn-In-blocked and raw-RPC blocks

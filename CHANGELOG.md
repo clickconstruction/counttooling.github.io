@@ -126,6 +126,54 @@ a one-layer sheet. pdf-bundle.spec.js adds the render count (one print render pe
 highlights and the notes bundles; it fails on the base with two). output, export-pdfs, bid-basis,
 pdf-bundle and copy-layers specs green.
 
+## refactor(save): the engine folds its repeated blocks and takes the visibility, connectivity and autosave timers (R21, 2026-09-26)
+
+The decomposition map's R21, its first two items. The third, the lean permissions read (map
+D28), needs a Supabase RPC migration and waits on PUNCHLIST `MAP-PERMS`; nothing here touches
+it. save-engine.js stays one file, as the map's section 5 asks: the work is inside it.
+
+**Three folds inside `createSaveEngine`.** A save that has just created a project's cloud row
+adopts it in three places (the manual save's no-PDF insert, its pending-hydration catch-up and
+the autosave's first insert), and each copied the same ten lines: the id, the cleared expiry
+attention, the checkout subscription, the owner, and the viewer and lock fields. They are
+`adoptNewCloudProject(projectId, ownerId)` now. The autosave's graduation cleanup of the
+anonymous `'local'` backup stays at its call site, as the map said. doTurnIn shaped a failed
+pre-check-in save three times (the autosave twice, the PDF upload once); `turnInSaveBlocked(result,
+label, stage)`, nested beside `tTurnIn`, logs `turn_in_blocked_by_save_err` and returns the
+result. `rawCheckInProject` and `rawListAccessibleProjects` were the same POST-and-parse body with
+a different path and body; `rawRpc(name, body, signal)` holds it and both are one line.
+`rawProjectsUpdate` and `rawProjectsInsert` keep their own error contracts. One wording changed:
+the check-in's HTTP failure reads `Raw check_in_project failed: …` (it said `Raw check_in`), the
+RPC's own name like its twin's. No test or spec read the old text.
+
+**Stage 7, the timers.** The bodies of the visibilitychange, online and offline listeners and
+the autosave interval moved into the engine as `onVisibilityChange(visibilityState)`,
+`onOnline()`, `onOffline()` and `autoSaveTick()`, with `lastHiddenAt` (read only by the
+visibility handler). app.js keeps the three `addEventListener` lines and the `setInterval`, so
+the timers are still found where they were, now under `// SECTION: [sync] Visibility & timers`.
+The bodies went over as they were, reading the client and the suspend flag through the ctx the
+engine already had. Six app.js wrappers lost their last caller in the move (`runRecoveryProbe`,
+`recycleClientIfWedgedOnIdleReturn`, `probeCheckoutLock`, `handleBackgroundCheckoutExpired`,
+`saveDebugRunId`, `uploadLocalPdfToCloudIfNeeded`) and are gone, so app.js lints with no
+warnings as before; the App registry's delegates for the ones features use are unchanged.
+app.js went from 7,891 lines to 7,787.
+
+**Tests.** save-engine.test.js gains fifteen cases. Five pin the folded blocks (both adopt paths
+set the owner and lock fields and subscribe to the new row, the autosave one drops the local
+backup; a failed pre-check-in save logs its label and stage and returns the save's message or
+the refresh prompt; the check-in RPC's body and the missing-token throw). They pass on the old
+file and the new one. Ten drive Stage 7 with a fake clock: hide flushes a dirty lock holder and
+not a non-holder or a suspended session; a return past `LONG_IDLE_PROBE_MS` runs the connection
+probe, forces the JWT refresh and adopts the new session, replaces a wedged client with the
+fresh session, probes the lock on the new client and reads the permissions through the raw-fetch
+twin (the client probe's failure marks supabase-js as recently bad); a short return only reads
+the session; a healthy client is kept and an expired lock goes to the background recovery; a
+signed-out return stops after the probe; online and offline log and repaint the bell, and online
+probes only after failures; a tick saves a dirty takeoff, skips clean, signed-out and suspended
+sessions, records a failure and backs off, and routes an expired checkout. The map said nothing
+covered the long-idle return; these ten were red before the move. The self-release classification
+and its dormant `?ff=self-release` flag are untouched (their save-engine.test.js cases pass).
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

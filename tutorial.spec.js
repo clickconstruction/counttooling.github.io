@@ -1051,7 +1051,13 @@ test.describe('The persona seams', () => {
     const ids = await page.evaluate(() => window.App.tutorialIds());
     for (const id of ['electrical', 'plumbing', 'hvac', 'blank']) expect(ids).toContain(id);
     expect(ids.filter((id) => id.startsWith('lesson:')).length).toBe(13);
-    for (const c of ['plumbing', 'electrical', 'hvac']) expect(ids.filter((id) => id.startsWith('course:' + c + ':')).length).toBe(9);
+    // nine chapters each, and a course that has its uncounted opener (chapter 0, COURSE-LANGUAGE) one more
+    const chapters = await page.evaluate(() => ({ plumbing: window.App.courseChapterIds(), electrical: window.App.courseElectricalIds(), hvac: window.App.courseHvacIds() }));
+    for (const c of ['plumbing', 'electrical', 'hvac']) {
+      expect(chapters[c].filter((id) => id !== 'before').length).toBe(9);
+      expect(ids.filter((id) => id.startsWith('course:' + c + ':')).length).toBe(chapters[c].length);
+    }
+    expect(chapters.plumbing[0]).toBe('before');
     const all = await page.evaluate((list) => list.map((id) => window.App.tutorialManifest(id)), ids);
     const FLAGS = ['hint', 'progress', 'action', 'handsOff', 'hold'];
     let steps = 0;

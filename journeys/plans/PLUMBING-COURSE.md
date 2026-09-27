@@ -75,6 +75,7 @@ depends on chapter 3 having been taken. Ids are `plumbing:<id>`.
 
 | # | id | The questions, answered by a click (or a reveal) | Doing (the app) |
 |---|---|---|---|
+| 0 | `before` | none: "Before you count", the uncounted opener (2026-09-27), five reading cards for a reader who has never seen a construction drawing: what a set and a P-sheet are, what an estimator does and what a takeoff is, the four verbs (count, trace, chain, check), where the sidebar, the header and the footer are, and how a card works (the line beside Show me where) | nothing: it opens the sheets and reads |
 | 1 | `sheet` | what a P-sheet is (reveal); find the fixture the eye skips (count the HB); which row drains the most (highlight WC-1); why a 4" sewer (reveal, from the DFU note) | set the scale, prove it on the 31'-8" string, turn P-501 |
 | 2 | `fixtures` | how much wall carries both restrooms (measure WC to WC); which hand sink serves the cook line (click it); which fixtures drain to a floor sink (click both); what TYP. on the FD keynote costs (a Trap primer child count) | counters from the schedule reader, every fixture counted with hints by room, Quick Keys |
 | 3 | `water` | the first thing the service meets (count the RPZ); why the trunk climbs the west walls (reveal); which line is the return (trace the HWR) | copper line types, trace the trunk, chain the branches, a drop, hangers from the copper rule, fittings from bends |
@@ -85,7 +86,16 @@ depends on chapter 3 having been taken. Ids are `plumbing:<id>`.
 | 8 | `whole` | the whole sheet, by hand as far as the reader likes, the rest laid by the button; then the compare card, run by run against the reference | the reference takeoff, Summary Legend, Export PDFs |
 | 9 | `bid` | which Bid Check rows the set already answers (reveal) | tick the rows, the proof view, the notes ledger, the hand-off |
 
-Nine chapters of five to eleven steps, about ninety minutes in all.
+Nine chapters of five to eleven steps, about ninety minutes in all, and chapter 0 ahead of them
+(about four minutes). Chapter 0's title carries no "Chapter N:", so the count stays nine.
+
+**The reader is anyone at all** (Todd's call on the
+COURSE-LANGUAGE-2026-09-27 read of the courses' words, option C): every trade and app word
+is glossed the first time the course uses it, in the same sentence or the next (a takeoff, the
+GC, an RFI, WSFU, a lavatory, a trap, a cleanout, a backflow preventer, the hot water return);
+the acronyms are spelled out once; the estimator's idioms keep their plain twin ("the change
+order you eat"). A doing card leads with its steps: the previous question's answer sits above
+them under "Answer:", the longer reasoning after them. No card sentence runs past 25 words.
 
 **The reference takeoff** (chapter 8) is computed from the same flat point lists the finish
 button lays, so it cannot drift from the drawing: every run by size and material with its

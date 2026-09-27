@@ -154,6 +154,9 @@
             if (inFlightRenderTask === renderTask) inFlightRenderTask = null;
           }
           if (gen !== detailRenderGen) return;   // cancelled while rastering
+          // LEGEND-FACE: the thumbnail draws the sheet legend too; wait for its face.
+          if (App.legendFaceReady) await App.legendFaceReady();
+          if (gen !== detailRenderGen) return;
           // Every layer (the number above counts them all); the sheet legend
           // keeps the active layer's placement.
           const drawAnn = Object.assign({}, it.ann, { legend: App.getActiveAnnotations(page, it.pageIdx)?.legend || null });

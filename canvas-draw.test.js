@@ -596,7 +596,7 @@ test('createCanvasDraw composes canvas-legend.js: the same legend keys, the same
   });
   const draw = createCanvasDraw(deps);
   const legend = createCanvasLegend(deps);
-  assert.deepStrictEqual(Object.keys(draw), ['drawRoomBoxesToContext', 'drawAnnotationsCore', 'drawGhosts', 'drawLegend', 'legendHasRows', 'planRoomLabels', 'resolveLegendStyle', 'legendSheetFactor', 'computeLegendRows', 'drawGrid']);
+  assert.deepStrictEqual(Object.keys(draw), ['drawRoomBoxesToContext', 'drawAnnotationsCore', 'drawGhosts', 'drawLegend', 'legendHasRows', 'planRoomLabels', 'resolveLegendStyle', 'legendSheetFactor', 'computeLegendRows', 'drawGrid', 'legendFaceReady', 'legendFaceLoaded']);
   const page = { pdfPage: { getViewport: () => ({ width: 612, height: 792 }) }, rotation: 0 };
   const ann = () => ({ legend: { x: 20, y: 20, w: 100, h: 60 }, counterMarkers: { c1: [{ x: 10, y: 10 }] }, quickLines: [{ x1: 0, y1: 0, x2: 120, y2: 0, lineTypeId: 'lt-straight' }], polylines: [], roomBoxes: [] });
   const a = makeCtx(), b = makeCtx();

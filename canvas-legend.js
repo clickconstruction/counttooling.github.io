@@ -21,6 +21,9 @@
 //   suggestNeckSize(cfm)        -> { neckDIn, overCapacity } (optional)
 //   getTrade()                  -> 'plumbing' | 'electrical' | 'hvac' | null (optional)
 //   iconRenderVb(iconPath) / iconRenderCenter(iconPath) -> vb num / {x,y}
+//   getFonts()                  -> the FontFaceSet the legend face loads into
+//                                  (optional; document.fonts by default)
+//   onLegendFaceLoaded()        -> redraw once Barlow Condensed has loaded (optional)
 //
 // hexToRgb and lineStyleToDash are pure top-level helpers (the legend
 // background and the grid are their only readers). Guarded CommonJS footer so
@@ -42,7 +45,65 @@ function lineStyleToDash(style) {
 // so no single airside color would be honest.
 const DUCT_LEGEND_SWATCH = '#8a919c';
 
+// LEGEND-FACE (2026-09-27): the sheet block (compact and full) is set in
+// Barlow Condensed, the narrow drafting face a printed E-sheet or M-sheet
+// legend uses, so the block is about a fifth narrower at the same text size.
+// Only the legend uses it: the tally list keeps its sans-serif and the rest of
+// the app keeps DM Sans. The four weights below are exactly the ones the F
+// table in drawSheetLegend draws; vendor/fonts/fonts.css names their files (so
+// build-sw precaches them and the face works offline).
+const LEGEND_FACE_FAMILY = '"Barlow Condensed"';
+const LEGEND_FACE = LEGEND_FACE_FAMILY + ', "DM Sans", sans-serif';
+const LEGEND_FACE_WEIGHTS = [400, 500, 600, 700];
+const LEGEND_FACE_TIMEOUT_MS = 4000;
+
+// A canvas draws with a web font only once it has LOADED: before that it falls
+// back silently and measureText measures the fallback, so the block would come
+// out at the wrong width and then change. The loader asks the page's
+// FontFaceSet for every weight once. `ready()` resolves (never rejects) when
+// they have loaded, or false after `timeoutMs` so an export never hangs on a
+// face that cannot arrive (it then draws in the DM Sans fallback);
+// `isLoaded()` is the synchronous read the draw path uses; `whenLoaded(fn)`
+// runs fn once the face arrives (the on-screen redraw).
+function createLegendFaceLoader(getFonts, timeoutMs) {
+  let all = null, loaded = false;
+  const waiting = [];
+  function start() {
+    if (all) return all;
+    const fonts = typeof getFonts === 'function' ? getFonts() : null;
+    if (!fonts || typeof fonts.load !== 'function') { all = Promise.resolve(false); return all; }
+    all = Promise.all(LEGEND_FACE_WEIGHTS.map(w => fonts.load(w + ' 10px ' + LEGEND_FACE_FAMILY)))
+      .then(lists => lists.every(l => l && l.length > 0), () => false)
+      .then(ok => {
+        loaded = ok;
+        if (ok) waiting.splice(0).forEach(fn => { try { fn(); } catch (_) { /* a redraw failing must not break the others */ } });
+        return ok;
+      });
+    return all;
+  }
+  function ready() {
+    const p = start();
+    if (loaded) return Promise.resolve(true);
+    let timer = null;
+    const late = new Promise(res => { timer = setTimeout(() => res(false), timeoutMs == null ? LEGEND_FACE_TIMEOUT_MS : timeoutMs); });
+    return Promise.race([p, late]).then(ok => { clearTimeout(timer); return ok; });
+  }
+  function whenLoaded(fn) {
+    if (loaded) { fn(); return; }
+    if (typeof fn === 'function' && !waiting.includes(fn)) waiting.push(fn);
+    start();
+  }
+  return { ready, isLoaded: () => loaded, whenLoaded };
+}
+
 function createCanvasLegend(deps) {
+  // deps.getFonts() -> the FontFaceSet (optional; the page's document.fonts by default).
+  const face = createLegendFaceLoader(typeof deps.getFonts === 'function' ? deps.getFonts
+    : () => (typeof document !== 'undefined' ? document.fonts : null));
+  // A sheet block drawn before the face arrived is redrawn once it does
+  // (deps.onLegendFaceLoaded, the app's renderAnnotations).
+  const redrawWhenFaceLoads = () => { if (typeof deps.onLegendFaceLoaded === 'function') deps.onLegendFaceLoaded(); };
+
   // The legend's row model, shared by drawLegend and the hitTest gate below.
   // Pure over (state, ann, pageIdx) — no ctx, no mutation.
   function computeLegendRows(ann, pageIdx) {
@@ -213,14 +274,18 @@ function createCanvasLegend(deps) {
     const legendScale = (state.legendSettings?.legendScale ?? 1) * legendSheetFactor(pageW, pageH);
     const es = scale * legendScale;   // canvas px per legend unit
     const full = style === 'full';
+    // LEGEND-FACE: measured and drawn in Barlow Condensed. Drawn before the
+    // face has loaded, this pass falls back to DM Sans and asks for one redraw
+    // when the face arrives (the exports await face.ready() before they draw).
+    if (!face.isLoaded()) face.whenLoaded(redrawWhenFaceLoads);
     const F = {
-      title: '700 ' + (7 * es) + 'px "DM Sans", sans-serif',
-      head: '600 ' + (5.5 * es) + 'px "DM Sans", sans-serif',
-      desc: '500 ' + (7 * es) + 'px "DM Sans", sans-serif',
-      spec: '400 ' + (5.5 * es) + 'px "DM Sans", sans-serif',
-      mid: '400 ' + (6.5 * es) + 'px "DM Sans", sans-serif',
-      qty: '700 ' + (7.5 * es) + 'px "DM Sans", sans-serif',
-      foot: '500 ' + (5.5 * es) + 'px "DM Sans", sans-serif',
+      title: '700 ' + (7 * es) + 'px ' + LEGEND_FACE,
+      head: '600 ' + (5.5 * es) + 'px ' + LEGEND_FACE,
+      desc: '500 ' + (7 * es) + 'px ' + LEGEND_FACE,
+      spec: '400 ' + (5.5 * es) + 'px ' + LEGEND_FACE,
+      mid: '400 ' + (6.5 * es) + 'px ' + LEGEND_FACE,
+      qty: '700 ' + (7.5 * es) + 'px ' + LEGEND_FACE,
+      foot: '500 ' + (5.5 * es) + 'px ' + LEGEND_FACE,
     };
     const trade = typeof deps.getTrade === 'function' ? deps.getTrade() : (state.trade || null);
     const tradeWord = trade === 'electrical' ? 'ELECTRICAL' : trade === 'hvac' ? 'MECHANICAL' : trade === 'plumbing' ? 'PLUMBING' : 'SYMBOL';
@@ -595,11 +660,15 @@ function createCanvasLegend(deps) {
     drawSheetLegend,
     drawLegend,
     drawGrid,
+    // LEGEND-FACE: the exports (pdf-bundle's raster, the Summary detail
+    // thumbnails) await this before they draw; app.js starts it at boot.
+    legendFaceReady: face.ready,
+    legendFaceLoaded: face.isLoaded,
   };
 }
 
 // Dual-env export so canvas-legend.test.js (and canvas-draw.js under node) can
 // require() the module; inert in the browser (classic script).
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createCanvasLegend, hexToRgb, lineStyleToDash, DUCT_LEGEND_SWATCH };
+  module.exports = { createCanvasLegend, createLegendFaceLoader, hexToRgb, lineStyleToDash, DUCT_LEGEND_SWATCH, LEGEND_FACE, LEGEND_FACE_WEIGHTS };
 }

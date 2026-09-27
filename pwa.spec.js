@@ -130,6 +130,8 @@ test.describe('PWA', () => {
     }));
     expect(libs.pdfjs).toBe('object');
     expect(libs.workerSrc).toContain('/vendor/pdf.worker.min-3.11.174.js');
+    // LEGEND-FACE: the sheet legend's condensed face loads from the precache too.
+    expect(await page.evaluate(() => window.App.legendFaceReady())).toBe(true);
 
     // Headline: upload + render a PDF while offline (reads the file locally; renders via
     // the cached worker — no network).

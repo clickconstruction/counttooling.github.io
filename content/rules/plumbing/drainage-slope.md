@@ -3,7 +3,7 @@ id: plumb.drain.slope
 title: Slope of horizontal drainage pipe
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: Horizontal waste pipe falls at least 1/4 inch per foot at 2-1/2 inch and smaller, 1/8 inch per foot at 3 to 6 inch, and 1/16 inch per foot at 8 inch and larger, except that pipe upstream of a grease interceptor falls at least 1/4 inch per foot at any size.
 values:
   - when: 2-1/2 in and smaller
@@ -24,7 +24,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

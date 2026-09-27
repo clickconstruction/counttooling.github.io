@@ -3,7 +3,7 @@ id: hvac.ventilation.outdoor-air
 title: Outdoor air for ventilation
 trade: hvac
 kind: code
-status: draft
+status: applied
 summary: Occupied spaces get a code minimum of outdoor air, set by the kind of room, the people in it and its floor area (a dining room 7.5 CFM a person plus 0.18 a square foot); on a bid the question is whether the plan's supply already carries it or a separate unit does.
 values:
   - when: outdoor air to an occupied space, by mechanical or natural ventilation
@@ -22,7 +22,7 @@ source:
   editions: [2021]
   url: https://codes.iccsafe.org/content/IMC2021P1/chapter-4-ventilation
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

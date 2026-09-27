@@ -3,7 +3,7 @@ id: plumb.gas.pipe-sizing
 title: Gas pipe sizing
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: Each section of gas pipe is sized for the load it carries downstream, in Btu per hour, over the longest run from the meter to the farthest outlet, so like water it shrinks as it goes.
 values:
   - when: what a section of gas pipe is sized by
@@ -16,7 +16,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

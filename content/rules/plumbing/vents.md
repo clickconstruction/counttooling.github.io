@@ -3,7 +3,7 @@ id: plumb.vent.trap-protection
 title: Venting protects every trap seal
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: The drainage system carries vent piping that lets air in and out, so no fixture trap sees more than 1 inch of water column of pressure difference and no seal siphons out when the fixture upstream drains.
 values:
   - when: each fixture trap
@@ -17,7 +17,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

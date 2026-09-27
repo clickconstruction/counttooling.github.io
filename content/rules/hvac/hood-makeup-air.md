@@ -3,7 +3,7 @@ id: hvac.exhaust.hood-makeup-air
 title: Make-up air for a kitchen hood
 trade: hvac
 kind: code
-status: draft
+status: applied
 summary: A commercial kitchen hood that exhausts air needs make-up air brought in to replace it, delivered while the hood runs and interlocked with its exhaust fan, so a hood on a plan means a second unit, its duct and its controls on the bid.
 values:
   - when: a commercial kitchen hood exhausting air, make-up air to replace it (508.1)
@@ -20,7 +20,7 @@ source:
 amendments:
   - jurisdiction: Minnesota
     note: Rule 1346.0508 amends the temperature limit to make-up air not less than 50°F at the diffuser.
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

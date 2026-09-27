@@ -286,12 +286,15 @@
   const eCounter = () => findCounter(tourCounterId, /receptacle/i);
   const receptacleIds = () => { const ids = (state().counters || []).filter((c) => /receptacle/i.test(c.name || '')).map((c) => c.id); return ids.length ? ids : ['-']; };
   const eLineType = () => findLineType(tourLineTypeId, (lt) => lt.raceway && lt.conductors && lt.conductors.length);
-  // The card's line type, all three parts: a 1/2" or RMC raceway, or two hots, passed and the Summary,
-  // fill and Bid Check cards after it read another takeoff than the reader's (PERSONA-PASS prober).
+  // The card's line type, all three parts: a 1/2" or RMC raceway, or the wrong wire, passed and the
+  // Summary, fill and Bid Check cards after it read another takeoff than the reader's (PERSONA-PASS prober).
+  // The wire is one 120 V circuit, 2 #12 + 1 #12 G (EC-TOUR-WIRE, the electrical dossier's R1): two
+  // current-carrying #12, whether written 2 #12 or 1 #12 + 1 #12 N, and one #12 ground.
+  const BRANCH_SPEC = '2 #12 THHN + 1 #12 G';
   const emtParts = (lt) => {
     const r = (lt && lt.raceway) || {}, cs = (lt && lt.conductors) || [];
     const n = (role) => cs.filter((c) => c.role === role && c.gauge === '#12').reduce((t, c) => t + (c.n || 0), 0);
-    return { emt: r.kind === 'EMT', size: /3\/4/.test(String(r.size || '')), wire: n('hot') === 3 && n('ground') === 1 && cs.every((c) => c.gauge === '#12') };
+    return { emt: r.kind === 'EMT', size: /3\/4/.test(String(r.size || '')), wire: n('hot') + n('neutral') === 2 && n('ground') === 1 && cs.every((c) => c.gauge === '#12') };
   };
   const isCardEmt = (lt) => { const p = emtParts(lt); return p.emt && p.size && p.wire; };
   const isDuplex = (c) => /receptacle/i.test(c.name || '') && /duplex/i.test(c.name || '');
@@ -335,7 +338,7 @@
     },
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
-      body: 'A line type is one kind of run: a length of pipe you trace on the sheet. The app measures its feet.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type 3/4" EMT, and add it.\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 3 #12 THHN + 1 #12 G.\nEMT is thin steel conduit. A raceway is any pipe the wires ride in, and conductors are the wires.\n3 #12 THHN + 1 #12 G reads: three #12 wires and one ground, the safety wire. #12 is the gauge, the wire\'s size. THHN is everyday building wire.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
+      body: 'A line type is one kind of run: a length of pipe you trace on the sheet. The app measures its feet.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type 3/4" EMT, and add it.\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 2 #12 THHN + 1 #12 G.\nEMT is thin steel conduit. A raceway is any pipe the wires ride in, and conductors are the wires.\n2 #12 THHN + 1 #12 G reads: two #12 wires and one ground, the safety wire. #12 is the gauge, the wire\'s size. One #12 is the live wire, the other the neutral, the one the current returns on. THHN is everyday building wire.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
       // the card's five lines in order: Name and Create in the + Add dialog, the new type's pencil, then
       // the raceway and the conductors in its details (the ring named another dialog's fields and lit
       // nothing; by hand, 2026-09-25)
@@ -352,9 +355,9 @@
         const lt = (state().lineTypes || []).filter((l) => isFresh(l) && l.raceway && (l.conductors || []).length && !isCardEmt(l)).pop();
         if (!lt) return '';
         const p = emtParts(lt);
-        return { code: 'wrong-value', text: !p.emt ? 'The raceway reads ' + (lt.raceway.kind || 'none') + ': set it to EMT' : !p.size ? 'The raceway size reads ' + (lt.raceway.size || 'none') + ': set it to 3/4"' : 'The conductors read otherwise: type 3 #12 THHN + 1 #12 G' };
+        return { code: 'wrong-value', text: !p.emt ? 'The raceway reads ' + (lt.raceway.kind || 'none') + ': set it to EMT' : !p.size ? 'The raceway size reads ' + (lt.raceway.size || 'none') + ': set it to 3/4"' : 'The conductors read otherwise: type ' + BRANCH_SPEC };
       },
-      action: { label: 'Create 3/4" EMT · 3 #12 + G', run: addEmtLineType },
+      action: { label: 'Create 3/4" EMT · 2 #12 + G', run: addEmtLineType },
     },
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
@@ -393,7 +396,7 @@
     {
       id: 'bidcheck', title: 'Bid Check', kind: 'do',
       rules: ['elec.conduit.fill-limit'],
-      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out.\n1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. Fill is how much of the pipe the wires take up.\nIt has also caught something. The receptacles you counted first were never wired, so they read as not reached by a run.\nVoltage drop is the power lost along a long wire. It is judged to the farthest device once a run is flagged as the homerun, the run back to the panel.\nThe panel cross-check wakes up once the panel is on the plan.\nBelow them are the calls only you can tick. It never blocks an export, a file you send out; it tells you what is open.',
+      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out.\n1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 7.5%. Fill is how much of the pipe the wires take up.\nIt has also caught something. The receptacles you counted first were never wired, so they read as not reached by a run.\nVoltage drop is the power lost along a long wire. It is judged to the farthest device once a run is flagged as the homerun, the run back to the panel.\nThe panel cross-check wakes up once the panel is on the plan.\nBelow them are the calls only you can tick. It never blocks an export, a file you send out; it tells you what is open.',
       target: ['#bidCheckSectionTitle'],
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
@@ -945,7 +948,7 @@
   function addEmtLineType() {
     const have = findLineType(tourLineTypeId, isCardEmt);
     if (have && isCardEmt(have)) return;
-    const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [];
+    const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec(BRANCH_SPEC).conductors : [];
     pushLineType({ id: App.uid(), name: '3/4" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors });
   }
   function chainThreeReceptacles() {

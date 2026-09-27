@@ -207,6 +207,13 @@ minute, prints the verdicts, the popover's chips and an audit) before spending a
 geometry lives in the constants above each script (`C7_RECEPTS`, `HOME_*`, `TRUNK_H`,
 `BRANCH_*`, `DIFF_*`), in plan pixels through `B()`.
 
+**The electrical film's wire, 2026-09-27 (punch row EC-TOUR-WIRE).** The descriptions above that
+type "3 #12 THHN + 1 #12 G" are the record. A 120 V branch circuit is a hot, a neutral and a
+ground, so the film now types `2 #12 THHN + 1 #12 G` and the caption reads "List the wires one
+circuit carries: two #12 conductors and a ground." The `--chapters-only` pass passed its Bid Check
+guard (fill 7.5%, voltage drop ok, every device reached) and the timings did not move. The MP4 and
+poster still carry the old spec until the film is rendered again.
+
 **HVAC, first cut, 2026-09-17, "Pounds, not feet" on A-101, 49.8 s, 3.4 MB, `img/hero-hvac.{mp4,png}`
 (`npm run build:hero-video -- --film hvac`).** Same spine, on camera. Prepare keeps A-101, M-101
 and M-201; the scale is proved on the 24'-0" bay. `V` arms the Room Sizer and three drags box
@@ -639,6 +646,12 @@ the rest are new setups.
    and a stepped-down chip beside that suggestion looks wrong. The trace frame is 880×660 now
    (the unit and the hint card both in frame). The proof panel's Bid Check rows further down the
    landing are marked illustrative and were left alone.
+8. **The electrical wire, 2026-09-27 (punch row EC-TOUR-WIRE).** `electricalBase` seeds the
+   conduit with `2 #12 THHN + 1 #12 G`, one 120 V circuit, as the course and the tour teach. The
+   three electrical captions follow, read off the app with that seed: two #12 and a ground on the
+   line type, circuit 11's 59.49 ft of EMT carrying 118.98 ft of #12 THHN, and fill at 7.5% (the
+   voltage drops are unchanged). The frames themselves wait for `npm run build:screenshots -- --set
+   spotlight`.
 
 About a day and a half in total. HVAC first because that is the visitor being prepared for.
 

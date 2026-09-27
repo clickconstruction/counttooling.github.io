@@ -1253,7 +1253,7 @@ async function electricalBase(page) {
     s.counters.push(r, w, l, pnl);
     ann.counterMarkers[pnl.id] = [{ x: lp1[0], y: lp1[1], id: uid(), group: null }];
     const cm = window.ConductorModel;
-    const emt = { id: uid(), name: '3/4in EMT', color: '#a47fff', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors: cm ? cm.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [] };
+    const emt = { id: uid(), name: '3/4in EMT', color: '#a47fff', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors: cm ? cm.parseConductorSpec('2 #12 THHN + 1 #12 G').conductors : [] };   // one 120 V circuit (EC-TOUR-WIRE)
     s.lineTypes.push(emt);
     s.counterSettings = Object.assign({}, s.counterSettings, { size: 40, outlineSize: 2 });
     // One circuit: the group with its panel, number and load; the chain, device to device, each

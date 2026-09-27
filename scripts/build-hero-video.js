@@ -832,7 +832,8 @@ async function recordElectrical(page, dir, setPdf) {
   await R.hold(0.3);
 
   // 5 · The conduit: a line type made on camera, then its raceway and conductors in the
-  //     details dialog. From here every run of it carries 3 #12 THHN + 1 #12 G.
+  //     details dialog. From here every run of it carries 2 #12 THHN + 1 #12 G, one 120 V
+  //     circuit's hot, neutral and ground (EC-TOUR-WIRE, the electrical dossier's R1).
   R.chapter('Wire');
   R.caption('', 'Create the conduit type: 3/4 inch EMT.');
   await R.moveToEl('#addLineType', 0.45); await R.click();
@@ -847,7 +848,7 @@ async function recordElectrical(page, dir, setPdf) {
   await page.evaluate(() => { const a = document.activeElement; if (a && a.blur) a.blur(); });
   await page.evaluate(endTool);
   await R.hold(0.25);
-  R.caption('', 'List the wires it carries: three #12 conductors and a ground.');
+  R.caption('', 'List the wires one circuit carries: two #12 conductors and a ground.');
   const emtId = await page.evaluate(() => window.state.lineTypes.find((l) => l.name === '3/4in EMT').id);
   await R.moveToEl('#lineTypesList .sidebar-item-line-type[data-line-type-id="' + emtId + '"] .edit-btn', 0.45); await R.click();
   await page.waitForSelector('#counterLineTypeDetailsModal.visible', { timeout: 5000 });
@@ -856,7 +857,7 @@ async function recordElectrical(page, dir, setPdf) {
   await R.moveToEl('#racewaySize', 0.3); await R.click();
   await page.selectOption('#racewaySize', '3/4"'); await R.hold(0.25);
   await R.moveToEl('#conductorsSpec', 0.35); await R.click();
-  await R.type('3 #12 THHN + 1 #12 G', 14);
+  await R.type('2 #12 THHN + 1 #12 G', 14);
   await page.keyboard.press('Enter');
   await R.hold(0.7);
   await R.moveToEl('#counterLineTypeDetailsClose', 0.35); await R.click();

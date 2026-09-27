@@ -150,7 +150,7 @@
       const syncHint = () => {
         const list = item.conductors || [];
         const rw = item.raceway;
-        if (!list.length) { condHint.textContent = rw && cm.isCableRaceway(rw.kind) ? 'Cable: list the conductors inside (2 #12 + 1 #12 G) and the run tallies as ' + cm.cableNameFor(rw, []) + '.' : 'e.g. 3 #12 THHN + 1 #12 G — wire tallies by gauge from every run.'; return; }
+        if (!list.length) { condHint.textContent = rw && cm.isCableRaceway(rw.kind) ? 'Cable: list the conductors inside (2 #12 + 1 #12 G) and the run tallies as ' + cm.cableNameFor(rw, []) + '.' : 'e.g. 2 #12 THHN + 1 #12 G — wire tallies by gauge from every run.'; return; }
         condHint.textContent = rw && cm.isCableRaceway(rw.kind)
           ? 'Tallies as ' + cm.cableNameFor(rw, list) + ' (cable, no wire rows).'
           : cm.conductorCount(list) + ' conductors → wire rows per gauge; ' + (item.tickMarks === false ? 'tick marks off.' : 'tick marks on the sheet.');
@@ -169,7 +169,7 @@
       sizeSel.onchange = writeRaceway;
       condEl.onblur = () => {
         const parsed = cm.parseConductorSpec(condEl.value);
-        if (parsed.bad.length) { condEl.classList.add('field-invalid'); condHint.textContent = 'Could not read: ' + parsed.bad.join(', ') + '. Write it like 3 #12 THHN + 1 #12 G'; return; }
+        if (parsed.bad.length) { condEl.classList.add('field-invalid'); condHint.textContent = 'Could not read: ' + parsed.bad.join(', ') + '. Write it like 2 #12 THHN + 1 #12 G'; return; }
         condEl.classList.remove('field-invalid');
         const next = parsed.conductors;
         const same = JSON.stringify(next) === JSON.stringify(item.conductors || []);

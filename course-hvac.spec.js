@@ -9,7 +9,7 @@
  * leaves the takeoff it claims (rooms that read served, the main at the engineer's four
  * sizes with its transitions, the kitchen branch and its tap, Fits the roof and Static path
  * resolved by the app, an exhaust run that is exhaust); the questions refuse the wrong click
- * and say why; the schedule reader builds the six tagged counters from M-501; the reference
+ * and say why; the schedule reader builds the seven tagged counters from M-501; the reference
  * and the compare card with the bid weight; a finished chapter ticks and hands back; the doors.
  */
 const { test, expect } = require('@playwright/test');
@@ -72,8 +72,8 @@ const EXPECT = {
   },
   diffusers: async (page) => {
     const tags = await page.evaluate(() => window.state.counters.filter((c) => c.tag).map((c) => [c.tag, c.cfm || 0, c.lesson === true]));
-    expect(tags).toEqual([['SD-1', 150, true], ['SD-2', 100, true], ['SD-3', 200, true], ['RG-1', 0, true], ['EG-1', 75, true], ['MA-1', 2000, true]]);   // from M-501, then each row's CFM
-    for (const [t, n] of [['SD-1', 11], ['SD-2', 2], ['SD-3', 4], ['RG-1', 3], ['EG-1', 3]]) expect([t, await countOf(page, t)]).toEqual([t, n]);
+    expect(tags).toEqual([['SD-1', 150, true], ['SD-2', 100, true], ['SD-3', 200, true], ['RG-1', 0, true], ['EG-1', 75, true], ['EG-2', 120, true], ['MA-1', 2000, true]]);   // from M-501, then each row's CFM (EG-2, the mop room at 1.0 CFM a sq ft: HC-REVIEW R4)
+    for (const [t, n] of [['SD-1', 11], ['SD-2', 2], ['SD-3', 4], ['RG-1', 3], ['EG-1', 2], ['EG-2', 1]]) expect([t, await countOf(page, t)]).toEqual([t, n]);
     const bal = await page.evaluate(() => window.App.getRoomAirBalance().map((r) => [r.name, Math.round(r.targetCfm), Math.round(r.servedCfm), !!r.under]));
     expect(bal.find((r) => r[0] === 'DINING')).toEqual(['DINING', 1200, 1200, false]);       // eight SD-1 at 150: the room reads ✓
     expect(bal.find((r) => r[0] === 'KITCHEN')).toEqual(['KITCHEN', 800, 800, false]);
@@ -119,6 +119,13 @@ const EXPECT = {
     expect([grease.airside, grease.material]).toEqual(['exhaust', 'black-steel']);
     expect(await countOf(page, 'MA-1')).toBe(1);
     expect(await countOf(page, 'Fire Damper')).toBe(2);                                          // the two rated-wall penetrations
+    // HC-TRADE T2 (settled 2026-09-27): the hood, restroom and make-up fans are their own systems.
+    // Nothing traced in this chapter lands on RTU-1, which still reads the main and the kitchen
+    // branch (it read 4,575 of 3,000 with the make-up and the restroom exhaust counted on it).
+    expect(await page.evaluate(() => window.state.activeGroupId)).toBeNull();
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).ductRuns.filter((r) => r.systemGroupId).map((r) => r.name).sort())).toEqual(['Kitchen branch', 'Supply main']);
+    expect(await page.evaluate(() => Math.round(window.App.getDuctSystemDesignedCfm(window.state.groups[0].id)))).toBe(2350);   // the interlock card's number
+    expect((await ductRow(page, 'duct-systems-capacity')).verdict).toBe('ok');
     const s = await schedule(page);
     expect(s.rows.some(([k, ft]) => /^8/.test(k) && Math.abs(ft - 27.58) < 0.2)).toBe(true);   // 275 + 56 plan px of round, in ten-foot sticks
     const gd = s.rows.find(([k]) => /^18/.test(k));
@@ -217,6 +224,22 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     expect(errors).toEqual([]);
   });
 
+  // HC-TRADE T3 (settled 2026-09-27): each size is printed at the line across the duct where it
+  // changes, so a click at the change reads the new size. The labels sat 5 ft downstream of it.
+  test('the plan prints each size at its change: the pointer at each change vertex reads that size', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:main', errors);
+    await openSheets(page);
+    await gotoStep(page, 'trace');
+    await page.evaluate(async () => { const k = window.App.lessonKit; document.getElementById('ductBtn').click(); await new Promise((r) => setTimeout(r, 100)); window.App.setDuctCreateSize({ kind: 'rect', w: 24, h: 12 }); document.getElementById('ductCreateStart').click(); await new Promise((r) => setTimeout(r, 50)); window.App.commitDuctClick(k.P(904, 328)); window.App.commitDuctClick(k.P(904, 282)); });
+    for (const [x, want] of [[560, '20x12'], [420, '16x10'], [300, '12x10']]) {
+      await page.waitForFunction(([px, w]) => { const k = window.App.lessonKit; window.state.mousePos = k.P(px, 282); const o = window.App.getDuctCalloutOffer(); return !!o && o.str.replace(/\s/g, '') === w; }, [x, want], { timeout: 10000 });
+      await page.evaluate(([px, w]) => { const k = window.App.lessonKit; window.App.commitDuctClick(k.P(px, 282)); const [a, b] = w.split('x').map(Number); window.App.applyDuctSizeStep({ kind: 'rect', w: a, h: b }); }, [x, want]);
+    }
+    expect(errors).toEqual([]);
+  });
+
   test('a committed main survives the trace step\'s hint being read (the hint used to pop it)', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
@@ -312,7 +335,7 @@ test.describe('The HVAC course, by hand', () => {
     expect(errors).toEqual([]);
   });
 
-  test('chapter 3: Read a schedule is offered on an HVAC project, and a drag over M-501 proposes the six counters', async ({ page }) => {
+  test('chapter 3: Read a schedule is offered on an HVAC project, and a drag over M-501 proposes the seven counters', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
     await boot(page, '/app/?chapter=hvac:diffusers', errors);
@@ -330,7 +353,7 @@ test.describe('The HVAC course, by hand', () => {
     expect(z && z.kind).toBe('box');   // the boundary the drag goes in, and the card keeps off it
     await dragBox(page, z);
     await expect(page.locator('#schedulePaletteModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#schedulePaletteList .schedule-palette-row')).toHaveCount(6);
+    await expect(page.locator('#schedulePaletteList .schedule-palette-row')).toHaveCount(7);
     await page.click('#schedulePaletteCreate');
     await page.waitForTimeout(600);
     const sd1 = await page.evaluate(() => window.state.counters.find((c) => c.tag === 'SD-1').id);

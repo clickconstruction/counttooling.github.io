@@ -60,17 +60,17 @@
     SD1: [190, 210, 300, 210, 410, 210, 520, 210, 190, 350, 300, 350, 410, 350, 520, 350, 200, 540, 330, 540, 596, 506],   // 150 CFM: dining 8, bar 2, dish 1
     SD2: [800, 282, 820, 506],                                                                                                 // 100 CFM: hall, storage
     SD3: [600, 440, 700, 440, 800, 440, 900, 440],                                                                             // 200 CFM: the kitchen
-    RG1: [350, 300, 450, 300, 620, 460], EG1: [630, 200, 766, 200, 885, 200], MA1: [640, 372], T: [554, 300, 566, 440],
+    RG1: [350, 300, 450, 300, 620, 460], EG1: [630, 200, 766, 200], EG2: [885, 200], MA1: [640, 372], T: [554, 300, 566, 440],   // EG-1 the restrooms, EG-2 the mop room
     rtu: [998, 328], ef1: [998, 255], ef2: [994, 182], mau: [998, 383],                                                         // the roof keys' centres
     main: [904, 328, 904, 282, 560, 282, 420, 282, 300, 282, 180, 282],                                                       // 24x12 to the hall, then 20x12, 16x10, 12x10 down the dining room
-    kitchen: [572, 282, 572, 440, 900, 440], back: [904, 328, 904, 506, 596, 506], bar: [260, 282, 260, 540], makeup: [904, 372, 640, 372],
+    kitchen: [572, 282, 572, 440, 900, 440], back: [904, 328, 904, 506, 596, 506], bar: [260, 282, 260, 540], makeup: [926, 372, 640, 372],   // MAU-1's drop, 22 px east of the back-rooms run (T5)
     exhaust: [630, 206, 905, 206, 905, 150],
     grease: [836, 323, 836, 400, 880, 400],                                                                                 // the hood collar, the elbow with its cleanout, the curb up to EF-1
     fd: [572, 296, 904, 296], notRated: [904, 470, 260, 470],                                                                 // the two rated-wall penetrations; two walls that are not rated
     dining: [130, 100, 560, 470], kitchen_room: [560, 296, 940, 470], hall: [560, 252, 940, 296],
   };
   const SECTION = { prove: [140, 208, 140, 640], plenum: [180, 208, 180, 316], depth: [640, 238, 640, 286] };   // M-601, sheet points at 36 pt/ft
-  const SCHEDULE_BOX = { x1: 110, y1: 290, x2: 760, y2: 430 };     // M-501: the diffuser and grille schedule
+  const SCHEDULE_BOX = { x1: 110, y1: 290, x2: 760, y2: 446 };     // M-501: the diffuser and grille schedule, seven rows
   const KITCHEN_ROW = { x1: 112, y1: 610, x2: 640, y2: 628 };       // M-501: KITCHEN 105 in the room air schedule
   const pts = (flat) => K().pts(flat), raw = (flat) => K().raw(flat), planFeet = (flat) => K().planFeet(flat);   // the kit's flat-list readers
   const rect = (flat) => ({ x1: P(flat[0], flat[1]).x, y1: P(flat[0], flat[1]).y, x2: P(flat[2], flat[3]).x, y2: P(flat[2], flat[3]).y });
@@ -107,7 +107,7 @@
   const icon = (variant) => (App.tradeIconForType && App.tradeIconForType('hvac', variant)) || (App.cfmDefaultIcon && App.cfmDefaultIcon()) || T().firstIcon();
   const TAGS = {
     'SD-1': ['Supply Diffuser', '#e8c547', 150], 'SD-2': ['Supply Diffuser', '#4a9eff', 100], 'SD-3': ['Supply Diffuser', '#47c88e', 200],
-    'RG-1': ['Return Grille', '#8a4bb0', 0], 'EG-1': ['Exhaust Grille', '#c8963a', 75], 'MA-1': ['Supply Diffuser', '#e85447', 2000],
+    'RG-1': ['Return Grille', '#8a4bb0', 0], 'EG-1': ['Exhaust Grille', '#c8963a', 75], 'EG-2': ['Exhaust Grille', '#a0522d', 120], 'MA-1': ['Supply Diffuser', '#e85447', 2000],
   };
   // Each Prove it step's proof (features/tutorial.js measureProof): the dimension drawn between its
   // circles, a circle that ticks as its click lands, a hint that names the miss, and the reading held
@@ -118,7 +118,7 @@
   // and a 1'-4" read off anywhere else does not pass (by hand, 2026-09-25)
   const depthM601 = () => K().memoProof('hvac:M601depth', () => ({ page: M601, ends: raw(SECTION.depth), r: 12, ft: 1.33, tol: 0.15, stated: '1\'-4"' }));
   let depthEntryMeasure = null;   // the 12'-0" read on the step before is still the sheet's last measure
-  const AIR_TAGS = ['SD-1', 'SD-2', 'SD-3', 'EG-1', 'MA-1'];   // the counters the schedule gives a CFM
+  const AIR_TAGS = ['SD-1', 'SD-2', 'SD-3', 'EG-1', 'EG-2', 'MA-1'];   // the counters the schedule gives a CFM
   function pickTag(tag) {
     const have = byTag(tag);
     const t = TAGS[tag];
@@ -273,7 +273,7 @@
     ['12x10', () => planFeet(G.main.slice(8, 12))], ['12x8', () => planFeet(G.back)], ['10x8', () => planFeet(G.bar)], ['20x16', () => planFeet(G.makeup)], ['8"ø', () => planFeet(G.exhaust)], ['18"ø', () => planFeet(G.grease)],
   ];
   const row = (tag, spots, labels) => [tag, spots, labels];   // no nested pairs in this source (the labels test)
-  const COUNTS = () => [row('SD-1', pts(G.SD1)), row('SD-2', pts(G.SD2)), row('SD-3', pts(G.SD3)), row('RG-1', pts(G.RG1)), row('EG-1', pts(G.EG1)), row('MA-1', pts(G.MA1)), row('Fire Damper', pts(G.fd))];
+  const COUNTS = () => [row('SD-1', pts(G.SD1)), row('SD-2', pts(G.SD2)), row('SD-3', pts(G.SD3)), row('RG-1', pts(G.RG1)), row('EG-1', pts(G.EG1)), row('EG-2', pts(G.EG2)), row('MA-1', pts(G.MA1)), row('Fire Damper', pts(G.fd))];
   const scheduleFeet = () => { const out = {}; const sch = App.computeDuctSchedule ? App.computeDuctSchedule() : null; ((sch && sch.straightRows) || []).forEach((r) => { const k = String(r.sizeKey || '').replace(/×/g, 'x').replace(/Ø/g, 'ø').replace(/\s/g, ''); out[k] = (out[k] || 0) + (r.lengthFt || 0); }); return { rows: out, lb: sch ? sch.bidWeightLb : 0, grease: sch ? sch.grease : null }; };
   const fmtFt = (n) => (Math.round(n * 10) / 10).toFixed(1);
   const countOk = ([tag, spots]) => { const c = byTag(tag); return !!c && marksOf(c, M101).length >= spots.length && spots.every((pt) => markNear(c, pt, 100, M101)); };   // attached, a diffuser sits on its run, up to the attach reach from the printed spot
@@ -282,7 +282,7 @@
     App.pushUndoSnapshotCurrentPage();
     seedRooms();
     seedDiffusers();
-    markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('MA-1'), pts(G.MA1), M101);
+    markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('EG-2'), pts(G.EG2), M101); markMissing(pickTag('MA-1'), pts(G.MA1), M101);
     markMissing(pickUnit(RE.stat, 'Thermostat', 'Thermostat', '#c8963a'), pts(G.T), M101);
     await makeSystem();
     // DS-DINING-ATTACH (A2). Every run but the bar, one attach, then the bar and the
@@ -292,15 +292,15 @@
     // branch and the main), and the dining room is hung before the bar branch that
     // crosses it is traced (in the room, the bar's run is nearer for one of them).
     // RTU-1 carries its own supply only: the make-up air and the two exhausts go on no
-    // system (MAU-1's, EF-1's and EF-2's air; chapter 4's 2,650); how the app gives a new
-    // run its system is the open product call (A3), not this action's. The make-up run
-    // goes from the register to the unit: on M-101 the back-rooms run passes over MAU-1's
-    // drop, and a run starting on another run taps it, which would hang MA-1's 2,000 on
-    // RTU-1's back rooms.
+    // system (MAU-1's, EF-1's and EF-2's air; chapter 4's 2,650; HC-TRADE T2, settled
+    // 2026-09-27); how the app gives a NEW run its system is the open product call (A3,
+    // PUNCHLIST DUCT-RUN-SYSTEM). The make-up run goes from MAU-1's drop to the register,
+    // the way the card traces it: the drop moved off the back-rooms run (T5), where a run
+    // starting on another run tapped it and hung MA-1's 2,000 on RTU-1.
     if (!mainDone()) traceMain();
     if (!runWith(['16x10'])) layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' });
     if (!runWith(['12x8'])) layRun(G.back, RS(12, 8), null, { name: 'Back rooms' });
-    if (!runWith(['20x16'])) layRun([G.makeup[2], G.makeup[3], G.makeup[0], G.makeup[1]], RS(20, 16), null, { name: 'Make-up air', noSystem: true });
+    if (!runWith(['20x16'])) layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air', noSystem: true });
     if (!runWith(['8"ø'])) layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust', noSystem: true });
     if (!greaseRun()) layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust', noSystem: true });
     attachAll();
@@ -325,7 +325,7 @@
     const lines = ['The reference, the course\'s answer key, is on the left, measured from the sheet\'s own drawing. Yours is on the right, from the Duct Schedule.'];
     REF_DUCT.forEach(([k, ft]) => { const ref = ft(), mine = f.rows[k] || 0; const ok = mine >= ref * 0.95 && mine <= ref * 1.05; lines.push(k + ': ' + fmtFt(ref) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref * 0.95 ? ', short' : ', over: check for a doubled run')); });
     const bad = COUNTS().filter((x) => !countOk(x)).map((x) => x[0]);
-    lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: seven device types, twenty-six marks.');
+    lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: eight device types, twenty-six marks.');
     if (f.grease) lines.push('Grease duct: ' + f.grease.cleanouts.total + ' cleanout' + (f.grease.cleanouts.total === 1 ? '' : 's') + ', ' + Math.round(f.grease.wrapSqFt) + ' sq ft of listed wrap, on their own lines.');
     lines.push('Bid weight: ' + Math.round(f.lb).toLocaleString() + ' lb, the straight duct by gauge with its fittings and seam and waste. That number, not the feet, is what a sheet-metal shop prices.');
     return lines.join('\n');
@@ -395,7 +395,7 @@
         { id: 'balance', title: 'Why the kitchen', kind: 'read', cardAt: 'br',
           rules: ['hvac.exhaust.hood-makeup-air'],
           body: 'KITCHEN 105: 800 CFM of supply, 2,400 CFM of exhaust. The hood, the canopy over the stoves, pulls out nearly as much air as RTU-1 makes.\nWhere does that air come from, and what happens if the engineer got it wrong?',
-          reveal: 'From MAU-1, the make-up air unit (MAU): 2,000 CFM of tempered outside air, heated or cooled first. It comes straight into the kitchen through MA-1, the make-up air register, a vent that can be shut. It is interlocked, wired so it runs whenever the hood does.\nThe keynote adds it up: 2,650 of supply and 2,000 of make-up against 2,400 and 225 of exhaust. So the building runs slightly positive, a little more air in than out, and the front door does not fight a vacuum.\nGet it wrong and the doors slam, the hood spills smoke, and the gas appliances starve. Make-up air is required with a hood (IMC 508). The IMC is the International Mechanical Code, the rule book this work must meet by law. And it is the line HVAC bids forget, the item left off the price, because it is a second unit for one room.',
+          reveal: 'From MAU-1, the make-up air unit (MAU): 2,000 CFM of tempered outside air, heated or cooled first. It comes straight into the kitchen through MA-1, the make-up air register, a vent that can be shut. It is interlocked, wired so it runs whenever the hood does.\nThe keynote balances outside air, not supply. Most of RTU-1\'s 2,650 is the building\'s own air, going round again. Only its outside air counts: 1,300, in the equipment schedule\'s outside air column.\nSo 1,300 and 2,000 come in, against 2,400 and 270 of exhaust. The building runs positive, more air in than out, and the front door does not fight a vacuum.\nGet it wrong and the doors slam, the hood spills smoke, and the gas appliances starve. Make-up air is required with a hood (IMC 508). The IMC is the International Mechanical Code, the rule book this work must meet by law. And it is the line HVAC bids forget, the item left off the price, because it is a second unit for one room.',
           target: [], check: () => true },
       ],
       done: 'The plan, the roof keys, the schedules, and the balance of air in and air out.\nNext: [[Learn]] → Chapter 2, the rooms.',
@@ -407,9 +407,9 @@
       seed() { scaleM101(); },
       steps: [
         { id: 'why', title: 'Where a room\'s CFM comes from', kind: 'read', cardAt: 'tl',
-          rules: ['hvac.room.airflow-defaults'],
+          rules: ['hvac.room.airflow-defaults', 'hvac.ventilation.outdoor-air'],
           body: 'The room air schedule gives DINING 100 1,200 CFM of supply, 1,104 sq ft: a little over one CFM per square foot. The bar gets 300 for 261.\nWhat sets those numbers, and why not a rule of thumb, a quick guess from the floor area?',
-          reveal: 'Two things, and the larger wins. One is the cooling load, the heat the unit must remove: people, lights, the sun through the glass, the kitchen next door. The other is ventilation, the fresh outside air the code requires for the people in the room.\nThe code is IMC 403, drawn from ASHRAE 62.1, the ventilation standard. It puts a dining room at 7.5 CFM per person plus 0.18 per square foot. The engineer ran both; the schedule is the answer.\nThe app\'s own rule of thumb, one CFM per square foot for an office, is for design-build work. That is work with no engineer, where the contractor designs the system too. On an engineered set, type the schedule\'s number in. Then let the app check it against the diffusers, the ceiling vents air comes out of.',
+          reveal: 'The cooling load sets it: the heat the unit must remove. That is people, lights, the sun through the glass, the kitchen next door.\nThe code then says how much of that air must be fresh outside air, for the people in the room. That is ventilation. The code is IMC 403, drawn from ASHRAE 62.1, the ventilation standard. It puts a dining room at 7.5 CFM per person plus 0.18 per square foot. Here that is about 780 of the 1,200.\nOnly in a packed room with little heat does ventilation push the supply up. The engineer ran both; the schedule is the answer.\nThe app\'s own rule of thumb, one CFM per square foot for an office, is for design-build work. That is work with no engineer, where the contractor designs the system too. On an engineered set, type the schedule\'s number in. Then let the app check it against the diffusers, the ceiling vents air comes out of.',
           target: [], check: () => true },
         { id: 'dining', title: 'Box the dining room', kind: 'do', cardAt: 'bl', page: M101, zones: () => [roomBoxZone(ROOMS.dining)],
           body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around DINING 100, in the shaded band outside the dashed line. The name fills in from the plan.\n3. In Ceiling, type 9. In Deck height, the underside of the roof, type 12. Click [[Apply]].\n4. Under ROOMS in the left sidebar, click DINING to open Edit Room. Set Room type to Custom and Target CFM to 1200, the schedule\'s number, and save.',
@@ -440,12 +440,12 @@
       seed() { scaleM101(); seedRooms(); },
       steps: [
         { id: 'schedule', title: 'Counters from the schedule', kind: 'do',
-          body: 'Every diffuser on M-101 carries a tag, a label like SD-1, and M-501 says what each one is.\n1. Under PAGES, click M-501.\n2. Under COUNTERS, click [[+ Add]], then the [[Create]] tab, then [[Read a schedule from the sheet…]].\n3. Drag a box over the DIFFUSER AND GRILLE SCHEDULE.\n4. Click [[Create counters]].\n5. Click each one\'s pencil, its edit button, and type its CFM from the schedule: SD-1 150, SD-2 100, SD-3 200, EG-1 75, MA-1 2000. RG-1 returns air and takes none.\nThe tags: SD is a supply diffuser, RG a return grille, EG an exhaust grille, and MA the make-up air register.',
+          body: 'Every diffuser on M-101 carries a tag, a label like SD-1, and M-501 says what each one is.\n1. Under PAGES, click M-501.\n2. Under COUNTERS, click [[+ Add]], then the [[Create]] tab, then [[Read a schedule from the sheet…]].\n3. Drag a box over the DIFFUSER AND GRILLE SCHEDULE.\n4. Click [[Create counters]].\n5. Click each one\'s pencil, its edit button, and type the CFM its row gives. SD-1 150, SD-2 100, SD-3 200, EG-1 75, EG-2 120, MA-1 2000. RG-1 returns air and takes none.\nThe tags: SD is a supply diffuser, RG a return grille, EG an exhaust grille, and MA the make-up air register.',
           // the ring follows the card (by hand, 2026-09-25): the sheet, then the Create tab's link, the
           // sheet itself while the box is drawn, then the pencil of the next counter still short of its CFM
           // the drag's boundary, once the Schedule tool is armed on M-501: it guides the box and keeps the
           // card off the table (at 1280 x 720 the card sat on the table's corner and swallowed the press)
-          zones: () => (S().tool === App.TOOL.SCHEDULE && K().onPage(M501) && !AIR_TAGS.some((t) => byTag(t)) ? [{ kind: 'box', inner: { x1: 118, y1: 316, x2: 566, y2: 422 }, outer: { x1: 95, y1: 278, x2: 790, y2: 445 }, done: false, label: 'Drag your box over the schedule\'s rows, inside here' }] : []),
+          zones: () => (S().tool === App.TOOL.SCHEDULE && K().onPage(M501) && !AIR_TAGS.some((t) => byTag(t)) ? [{ kind: 'box', inner: { x1: 118, y1: 316, x2: 566, y2: 440 }, outer: { x1: 95, y1: 278, x2: 790, y2: 452 }, done: false, label: 'Drag your box over the schedule\'s rows, inside here' }] : []),
           target: () => {
             const tagged = AIR_TAGS.filter((t) => byTag(t));
             if (!tagged.length && !K().onPage(M501)) return ['#pagesList'];
@@ -471,13 +471,13 @@
         { id: 'neck', title: 'Why the kitchen diffusers are bigger', kind: 'read', cardAt: 'tl',
           rules: ['hvac.diffuser.neck-velocity'],
           body: 'SD-1 and SD-3 are both 24x24 lay-in diffusers: two feet square, sized to sit in one square of the ceiling grid. But SD-3 carries 200 CFM on a 10" neck, where SD-1 carries 150 on an 8". The neck is the round collar on top that the duct connects to.\nWhat sets the neck?',
-          reveal: 'Velocity, the speed of the air. Air through an 8" neck at 150 CFM moves about 430 feet a minute; push 200 through it and it whistles. The engineer steps the neck up to 10" to keep the noise down. The trade\'s rule of thumb runs 400 to 600 fpm (feet per minute) at a neck.\nThe app carries the same rule: a counter with a CFM suggests its neck size, and the flex that feeds it follows the neck.\nOn the bid the neck size is also the flex size and the tap size. A tap is where a branch, a smaller duct, leaves a bigger one. So the diffuser schedule prices the branch: read it and you know what the branch costs.',
+          reveal: 'Not noise, on this sheet. Velocity, the speed of the air, runs low in these necks: 150 CFM through an 8" neck moves about 430 fpm, feet per minute. Makers keep a neck under about a thousand fpm, so 200 CFM would still be quiet.\nThe engineer picks the neck from the maker\'s tables: sound, and throw, how far the air carries across the room. The flex counts too. The keynote sizes each flex to its neck, and a 10" flex costs the fan far less push than an 8".\nThe app keeps a table like it: a counter with a CFM suggests its neck. It puts up to 150 CFM on an 8" neck and up to 300 on a 10".\nOn the bid the neck size is also the flex size and the tap size. A tap is where a branch, a smaller duct, leaves a bigger one. So the diffuser schedule prices the branch: read it and you know what the branch costs.',
           target: [], check: () => true },
-        { id: 'grilles', title: 'Return and exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, byTag('RG-1'), pts(G.RG1)).concat(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10)),
-          body: 'Return air here needs no duct: it goes up through a grille into the plenum, the space above the ceiling.\n1. Arm RG-1 and click the three return grilles.\n2. Arm EG-1 and click the three exhaust grilles in the restrooms and the mop room.',
-          target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(M101, byTag('RG-1'), pts(G.RG1))) && allDone(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10)),
-          hint: () => [row('RG-1', pts(G.RG1), ['the dining room (west)', 'the dining room (east)', 'the kitchen']), row('EG-1', pts(G.EG1), ['MEN', 'WOMEN', 'the mop room'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
-          action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); K().dirty(); } } },
+        { id: 'grilles', title: 'Return and exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, byTag('RG-1'), pts(G.RG1)).concat(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10), circlesOn(M101, byTag('EG-2'), pts(G.EG2), 10)),
+          body: 'Return air here needs no duct: it goes up through a grille into the plenum, the space above the ceiling.\n1. Arm RG-1 and click the three return grilles.\n2. Arm EG-1 and click the two exhaust grilles in the restrooms.\n3. Arm EG-2 and click the one in the mop room. It pulls more air than a restroom: 120 CFM.',
+          target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(M101, byTag('RG-1'), pts(G.RG1))) && allDone(circlesOn(M101, byTag('EG-1'), pts(G.EG1), 10)) && allDone(circlesOn(M101, byTag('EG-2'), pts(G.EG2), 10)),
+          hint: () => [row('RG-1', pts(G.RG1), ['the dining room (west)', 'the dining room (east)', 'the kitchen']), row('EG-1', pts(G.EG1), ['MEN', 'WOMEN']), row('EG-2', pts(G.EG2), ['the mop room'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
+          action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('EG-2'), pts(G.EG2), M101); K().dirty(); } } },
       ],
       done: 'Counters read from the schedule, every diffuser with its air, and rooms served in full, their ⚠ gone.\nNext: [[Learn]] → Chapter 4, the system.',
     },
@@ -515,7 +515,7 @@
           hint: () => { const d = S().drawingDuct; return d && d.segments && d.segments[0] && sizeKey(d.segments[0].size) === '24x12' && d.linerType !== 'wrap' ? { code: 'wrong-value', text: 'Insulation reads ' + (d.linerType || 'None') + '. Press Escape, open Duct again and set Insulation to Wrap, the plan\'s 2" wrap' } : ''; },
           action: { label: 'Arm it at 24x12 for me', run: async () => { K().goPage(M101); if (mainDone() || S().drawingDuct) return; if (el('ductBtn')) el('ductBtn').click(); await wait(100); if (App.setDuctCreateSize) App.setDuctCreateSize(RS(24, 12)); if (el('ductCreateLiner')) el('ductCreateLiner').value = 'wrap'; if (el('ductCreateStart')) el('ductCreateStart').click(); await wait(50); if (S().drawingDuct) { S().drawingDuct.linerType = 'wrap'; S().drawingDuct.linerThicknessIn = 2; } } } },
         { id: 'trace', title: 'Trace the main, stepping down where the plan does', kind: 'do', cardAt: 'bl', page: M101, zones: () => traceZones(pts(G.main), M101),
-          body: '1. Click the RTU-1 drop at the kitchen\'s east wall, then the corner in the hall.\n2. Follow the hall west. At the dining room wall the plan prints 20x12. The chip under the cursor, a small label, still reads 24x12. The hint at the bottom of the sheet reads Plan says 20x12 here, S to pick it.\n3. Click the corner and press S: the Duct size box opens. (S sets the scale only when no run is being drawn.) Under FROM THE PLAN, click 20x12.\n4. Do the same at 16x10 and at 12x10, then click the far end and press Enter.\nEach step down is a transition, a fitting that changes the duct from one size to another. A fitting is any shaped piece of duct that is not straight, and the app counts each one.',
+          body: '1. Click the RTU-1 drop at the kitchen\'s east wall, then the corner in the hall.\n2. Follow the hall west. At the dining room wall the duct narrows: the plan draws a line across it and prints 20x12 beside it. The chip under the cursor, a small label, still reads 24x12. The hint at the bottom of the sheet reads Plan says 20x12 here, S to pick it.\n3. Click that line, where the size changes, and press S: the Duct size box opens. (S sets the scale only when no run is being drawn.) Under FROM THE PLAN, click 20x12.\n4. Do the same at 16x10 and at 12x10, then click the far end and press Enter.\nEach step down is a transition, a fitting that changes the duct from one size to another. A fitting is any shaped piece of duct that is not straight, and the app counts each one.',
           target: ['#ductSizePopover', '#annCanvas'], check: mainDone,
           hint: () => {
             const d = S().drawingDuct;
@@ -530,7 +530,7 @@
         { id: 'why', title: 'Why the main shrinks', kind: 'read', cardAt: 'bl',
           rules: ['hvac.duct.schedule-factors', 'hvac.duct.gauge-schedule'],
           body: '24x12 out of the unit, 12x10 at the far end.\nThe engineer could have run 24x12 the whole way. Why step it down three times?',
-          reveal: 'Air leaves the main at every tap, so the far end carries a fraction of the flow. A duct sized for 3,000 CFM that carries 600 is sheet metal nobody needed: metal bought and hung for nothing.\nThe engineer sizes each stretch for the air still in it. The friction rate, how fast the duct uses up the fan\'s push, stays within what the unit has (0.08" per 100 ft here). The velocity stays low enough to be quiet.\nThe app\'s ductulator, its duct-sizing calculator, does the same sum live while you trace. The Duct size box\'s SUGGESTED row sizes each stretch from the air still in it. The plan\'s own size sits beside it, under FROM THE PLAN. Where the two differ, the engineer\'s drawing is what you bid.\nOn the bid each step is a transition fitting, and the pounds fall with the size. The Duct Schedule weighs 24x12 at 24 gauge and 12x10 at 26. Gauge is the metal\'s thickness: the higher the number, the thinner the sheet.',
+          reveal: 'Air leaves the main at every tap, so the far end carries a fraction of the flow. A duct sized for 3,000 CFM that carries 600 is sheet metal nobody needed: metal bought and hung for nothing.\nThe engineer sizes each stretch for the air still in it. The app\'s ductulator, its duct-sizing calculator, does the same sum live while you trace. It sizes at a friction rate of 0.08" per 100 ft: how fast the duct uses up the fan\'s push. It keeps the air under 1,200 fpm, so it stays quiet.\nThis engineer sized the main tighter. The 16x10 and the 12x10 run at about twice that friction rate. So the Duct size box\'s SUGGESTED row reads bigger than FROM THE PLAN, the plan\'s own size. The drawing is what you bid, and chapter 6 checks the fan can still push it.\nOn the bid each step is a transition fitting, and the pounds fall with the size. The Duct Schedule weighs 24x12 at 24 gauge and 12x10 at 26. Gauge is the metal\'s thickness: the higher the number, the thinner the sheet.',
           target: [], check: () => true },
         { id: 'kitchen', title: 'The kitchen branch', kind: 'do', cardAt: 'br', page: M101, zones: () => traceZones(pts(G.kitchen), M101),
           body: '1. Click [[Duct]] again. The size fills from the printed size nearest your last click: check it reads 16x10, and set it if not.\n2. Click [[Start Tracing]].\n3. Click the tap at the main, the corner at the kitchen\'s south wall, and the far end. Press Enter.\nThis 16x10 branch taps the main at the kitchen wall. It runs down the west wall and across to the four kitchen diffusers. The tap counts itself, with a volume damper (VD): a blade in the duct that sets how much air goes down the branch.',
@@ -589,22 +589,25 @@
     {
       id: 'exhaust', title: 'Chapter 7: Exhaust, grease and the rated wall', short: 'the air that leaves', minutes: 11, page: M101, noun: 'chapter', set: MSET,
       intro: 'The hood\'s grease duct, traced as what it is: welded black steel the gauge table must not touch. Then the two fire dampers where duct crosses the rated wall, the restroom exhaust, and the make-up air that keeps the doors from slamming.',
-      seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickTag('EG-1'), pts(G.EG1), M101); },
+      // T2 (settled 2026-09-27): the hood, restroom and make-up fans are their own systems, so
+      // RTU-1 is let go after the seed: a run traced here joins the active group, and none of
+      // this chapter's air is RTU-1's (it read 4,575 of 3,000 with RTU-1 still active).
+      seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('EG-2'), pts(G.EG2), M101); S().activeGroupId = null; },
       steps: [
         { id: 'grease', title: 'Which duct must not be galvanized?', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.grease), M101),
           rules: ['hvac.duct.gauge-schedule', 'hvac.duct.grease-duct'],
           body: 'One duct on this plan must not be galvanized, steel coated in zinc like the rest. The legend draws it darker.\n1. Click [[Duct]] (or press U).\n2. Set Round, 18, and Airside [[Exhaust]], the kind of air it carries. Set Material to Welded black steel.\n3. Click [[Start Tracing]].\n4. Click the hood collar, where the duct leaves the hood, then the elbow, then the curb where it rises to EF-1. Press Enter.\nEvery other supply and return duct is galvanized sheet, at the gauge the SMACNA table gives its size. Black steel is plain steel with no coating.',
           target: () => ductFormLadder({ shape: 'round', d: 18, airside: 'exhaust', material: 'black-steel' }).concat(['#ductBtn', '#annCanvas']), check: () => !!greaseRun(),
           hint: () => { const r = runWith(['18"ø']); if (r) return r.material === 'black-steel' ? '' : 'The run is there, but galvanized: right-click it and set its Material to Black steel'; const bs = ductRuns(M101).find((x) => x.material === 'black-steel'); return bs ? 'Black steel, but the hood duct is 18 inch round: check the size' : ''; },
-          action: { label: 'Trace it for me', run: () => { if (greaseRun()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust' }); K().dirty(); } } },
+          action: { label: 'Trace it for me', run: () => { if (greaseRun()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust', noSystem: true }); K().dirty(); } } },
         { id: 'why', title: 'Grease duct', kind: 'read', cardAt: 'bl',
           rules: ['hvac.duct.grease-duct', 'hvac.duct.gauge-schedule'],
-          body: 'The hood exhaust: 18"ø (18 inches round), welded, 16 gauge black steel. It slopes back to the hood, with a cleanout at the elbow, a capped opening to scrape the grease out. It runs 18 inches clear of anything that burns.\nWhy does the gauge table not apply, and what did the Schedule just do with it?',
+          body: 'The hood exhaust: 18"ø (18 inches round), welded, 16 gauge black steel. It slopes back to the hood, with a cleanout at the elbow, a capped opening to scrape the grease out. Above the ceiling it is wrapped in fire wrap that a lab has tested and listed.\nWhy does the gauge table not apply, and what did the Schedule just do with it?',
           reveal: 'A grease duct is a chimney for a fire: the grease inside it can burn. IMC 506.3.1.1 and NFPA 96, the fire standard for kitchen hoods, want it liquid-tight and continuously welded. The metal is carbon steel of at least 16 gauge, or stainless of at least 18. It takes cleanouts at every change of direction. It is kept 18 inches from combustibles, anything that burns, or wrapped in a listed enclosure: a fire wrap a lab has tested and listed.\nThe SMACNA schedule the Duct tool carries is for galvanized duct at low pressure. It would call an 18" round at 1" 24 gauge. It would weigh it at half what the welded duct weighs.\nSo the run carries a material. Under DUCT the run reads welded black steel. In the Schedule it sits on its own row, 18"Ø at 16 gauge, 11.8 lb a foot, and its elbow is priced the same way. The per-size gauge chip cannot touch it.\nUnder it, a Grease duct block prices what is not metal by the pound, on its own lines outside the bid weight. First the cleanouts: one at each change of direction and one per 12 feet of horizontal run (NFPA 96 7.4). So there is one here, at the elbow. Then the listed wrap, by the square foot of duct surface: 47 for this run. The welding labor is still yours: the app does not price it, so add it yourself.',
           target: [], check: () => true },
         { id: 'dampers', title: 'Where does a duct cross the rated wall?', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, fdCounter(), pts(G.fd), 16),
           rules: ['hvac.damper.fire-damper'],
-          body: 'The keynote says the kitchen\'s hall wall is one-hour rated: built to hold back a fire for an hour. The plan dots it.\n1. Under COUNTERS, click [[+ Add]].\n2. On the [[Quick]] tab set Type to Fire Damper and click [[Add Counter]].\n3. Click each place a duct crosses the rated wall.\nA fire damper is a shutter in the duct that closes in a fire. IMC 607.5.1 wants a listed one wherever a duct goes through the wall, and the plan tags each one FD.',
+          body: 'The keynote says the kitchen\'s hall wall is one-hour rated: built to hold back a fire for an hour. The plan dots it.\n1. Under COUNTERS, click [[+ Add]].\n2. On the [[Quick]] tab set Type to Fire Damper and click [[Add Counter]].\n3. Click each place a duct crosses the rated wall.\nA fire damper is a shutter in the duct that closes in a fire. IMC 607.5 wants a listed one wherever a duct goes through the wall, and the plan tags each one FD. In a building with sprinklers, an exception can sometimes drop them. This plan tags two, so bid two.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
           check: () => { const c = fdCounter(); return !!c && pts(G.fd).every((p) => markNear(c, p, 14, M101)) && !fdStray(); },
           hint: () => { const c = fdCounter(); if (!c) return ''; const stray = fdStray(); if (!stray) return marksOf(c, M101).length ? 'One more: the main crosses the same wall above the kitchen door' : ''; return pts(G.notRated).some((p) => K().near(stray, p, 16)) ? 'That wall is not rated. The keynote names the one that is, and the plan dots it' : 'No duct crosses the rated wall there'; },
@@ -615,18 +618,18 @@
           reveal: 'Nothing goes inside a grease duct that could catch grease, or close while the fire burns. So NFPA 96 forbids dampers in it of any kind. Where a grease duct passes a rated wall, it gets a listed enclosure or wrap for the rating instead. That is the wrap the keynote already calls for.\nA fire damper in the supply is a UL 555 frame with a curtain and a fusible link. UL, Underwriters Laboratories, is the lab that tests it. The fusible link melts in a fire and lets the curtain drop shut. An access door sits beside it so the link can be replaced, and a sleeve, a steel collar, carries it through the wall.\nThere are two on this plan, at the two penetrations, the places a duct goes through the wall. The main\'s sits above the kitchen door, because the header, the beam over the door, is part of the rated wall. Bid Check\'s Fire dampers row is now a count you can defend, one you can show your work for; chapter 9 ticks it.',
           target: [], check: () => true },
         { id: 'restroom', title: 'Trace the restroom exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.exhaust), M101),
-          body: 'The three EG-1 grilles run to EF-2, the restroom exhaust fan, on 8" round duct.\n1. Click [[Duct]] (or press U).\n2. Set the shape to round, the size to 8, and Airside to [[Exhaust]].\n3. Click [[Start Tracing]].\n4. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
+          body: 'The two EG-1 grilles in the restrooms and the mop room\'s EG-2 run to EF-2, the restroom exhaust fan, on 8" round duct.\n1. Click [[Duct]] (or press U).\n2. Set the shape to round, the size to 8, and Airside to [[Exhaust]].\n3. Click [[Start Tracing]].\n4. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
           target: () => ductFormLadder({ shape: 'round', d: 8, airside: 'exhaust' }).concat(['#ductBtn', '#annCanvas']), check: () => { const r = runWith(['8"ø']); return !!(r && r.airside === 'exhaust'); },
           hint: () => { const r = runWith(['8"ø']); return r && r.airside !== 'exhaust' ? 'The run is there but marked supply: right-click it and set its airside to Exhaust' : ''; },
-          action: { label: 'Trace it for me', run: () => { if (runWith(['8"ø'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust' }); K().dirty(); } } },
+          action: { label: 'Trace it for me', run: () => { if (runWith(['8"ø'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust', noSystem: true }); K().dirty(); } } },
         { id: 'makeup', title: 'The make-up air', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.makeup), M101).concat(runWith(['20x16']) ? circlesOn(M101, byTag('MA-1'), pts(G.MA1), 12) : []),   // line 2 is on the sheet too: its circle (by hand, 2026-09-25)
           body: 'Now the make-up air, outside air brought in to replace what the hood throws out.\n1. Click [[Duct]] again: 20x16, supply, then [[Start Tracing]].\n2. Click the MAU-1 drop at the east wall, then the register MA-1. Press Enter.\n3. Arm MA-1 and click the register.\nMAU-1 on the roof drops in at the east wall. A 20x16 rectangular duct carries its air west across the kitchen to MA-1.',
           target: () => ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList']), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
-          action: { label: 'Trace and count it for me', run: () => { K().goPage(M101); if (!runWith(['20x16'])) { if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air' }); } App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('MA-1'), pts(G.MA1), M101); K().dirty(); } } },
+          action: { label: 'Trace and count it for me', run: () => { K().goPage(M101); if (!runWith(['20x16'])) { if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air', noSystem: true }); } App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('MA-1'), pts(G.MA1), M101); K().dirty(); } } },
         { id: 'interlock', title: 'Why make-up air', kind: 'read',
           rules: ['hvac.exhaust.hood-makeup-air'],
           body: 'MAU-1: 2,000 CFM of tempered outside air, heated or cooled first. It is interlocked with EF-1, the hood\'s exhaust fan: wired so the two start together.\nWhat goes wrong without it, and who owns the interlock, whose job is it?',
-          reveal: 'The hood pulls 2,400 CFM out of a kitchen that RTU-1 feeds 800. Without make-up the room goes negative, more air out than in. The front door pulls hard, smoke rolls out of the hood, and the gas appliances starve for combustion air, the air a flame burns. The code requires make-up air with a commercial hood (IMC 508). It is tempered so the cooks are not standing in a January draft.\nThe interlock is controls, the wiring that starts and stops the units: the make-up unit starts when the exhaust fan does. Bid Check\'s Controls row is where you say whose wiring that is. The RFI, a written question to the designer, is the same one the plumber and the electrician wrote about the hood.',
+          reveal: 'The hood pulls 2,400 CFM out of a kitchen that RTU-1 feeds 800. Without make-up the room goes negative, more air out than in. The front door pulls hard, smoke rolls out of the hood, and the gas appliances starve for combustion air, the air a flame burns. The code requires make-up air with a commercial hood (IMC 508.1). IMC 508.1.1 keeps it within 10°F of the kitchen, so the cooks are not standing in a January draft.\nMAU-1, EF-1 and EF-2 are each their own system, with their own CFM on the schedule. None of their air counts against RTU-1\'s 3,000. So the runs you traced here joined no system, and RTU-1 still reads 2,350.\nThe interlock is controls, the wiring that starts and stops the units: the make-up unit starts when the exhaust fan does. Bid Check\'s Controls row is where you say whose wiring that is. The RFI, a written question to the designer, is the same one the plumber and the electrician wrote about the hood.',
           target: [], check: () => true },
       ],
       done: 'A grease run priced as the metal it is, and two fire dampers where the plan wants them. A round exhaust run with its joints, and the make-up air that balances the kitchen.\nNext: [[Learn]] → Chapter 8, the whole set.',
@@ -638,7 +641,7 @@
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time, and reads ✓ Done when nothing is.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
+          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time, and reads ✓ Done when nothing is.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\nA new run joins the group lit under GROUPS. Before the exhausts and the make-up duct, click RTU-1\'s row there to let it go: those fans are not RTU-1\'s.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything },
           // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
@@ -671,7 +674,7 @@
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           rules: ['hvac.ventilation.outdoor-air', 'hvac.damper.fire-damper'],
           body: 'Fire dampers at rated walls, OA meets code, Curb & power coordinated, Controls and stat locations set. OA is outdoor air; a stat is a thermostat.\nWhich of them did this set already answer?',
-          reveal: 'OA: the room air schedule\'s note says the supply CFM includes the ventilation (IMC 403). So read it, and tick. Curb and power: the equipment schedule gives every unit\'s weight and electrical. But who sets the curb and who runs the power is worked out with the GC, the general contractor, and the electrician. Nothing on an M-sheet answers it.\nFire dampers: the two you counted at the kitchen\'s rated wall in chapter 7, and none in the grease duct. So the row is a count you can defend. Controls: the thermostats are drawn, the interlock is named, the wiring is nobody\'s yet.\nTick what you have read. Write an RFI, a written question to the designer, for the rest.',
+          reveal: 'OA: the equipment schedule gives RTU-1 1,300 CFM of outside air. The room air schedule\'s note says the supply carries the ventilation (IMC 403). So read both, and tick. Curb and power: the equipment schedule gives every unit\'s weight and electrical. But who sets the curb and who runs the power is worked out with the GC, the general contractor, and the electrician. Nothing on an M-sheet answers it.\nFire dampers: the two you counted at the kitchen\'s rated wall in chapter 7, and none in the grease duct. So the row is a count you can defend. Controls: the thermostats are drawn, the interlock is named, the wiring is nobody\'s yet.\nTick what you have read. Write an RFI, a written question to the designer, for the rest.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => true },
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
           body: '1. In the left sidebar, under BID CHECK, click the row that reads Scale verified on every counted sheet. One click signs it off, ticked for the whole bid.\n2. Click OA meets code.\n3. Click Fire dampers at rated walls.',

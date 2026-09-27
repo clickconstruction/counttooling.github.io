@@ -33,8 +33,8 @@ The same Main St Restaurant, on `restaurantShell`: a diffuser on M-101 sits at a
 
 | Sheet | Carries | Teaches |
 |---|---|---|
-| **M-101 Mechanical plan** | 24 air devices tagged by the schedule (SD-1 ×11 at 150 CFM, SD-2 ×2 at 100, SD-3 ×4 at 200, RG-1 ×3, EG-1 ×3 at 75, MA-1 at 2,000) with their flex drops dashed; the supply main drawn at width with its size printed where it steps (24×12, 20×12, 16×10, 12×10) and a 2" wrap; the kitchen, back-room, bar and make-up branches; the restroom exhaust; the hood's grease duct drawn darker (GD) from the collar to the curb, sloped, with a cleanout at its elbow; the kitchen's hall wall dotted as 1-hr rated with an FD at each of its two duct penetrations; RTU-1, EF-1, EF-2 and MAU-1 keyed outside the east wall; two thermostats; the air-balance keynotes | reading air, the taps, the step-down, the grease duct as a material, the rated wall |
-| **M-501 Schedules** | the equipment schedule (RTU-1 3,000 CFM at 1.0" ESP, EF-1 2,400 for the hood, EF-2 225, MAU-1 2,000, with the interlock note), the diffuser schedule with neck sizes and CFM, the room air schedule (dining 1,200, kitchen 800, hall 100, with the note that supply includes ventilation) | the palette from the schedule, why the kitchen breathes hardest, why the necks differ, the OA row |
+| **M-101 Mechanical plan** | 24 air devices tagged by the schedule (SD-1 ×11 at 150 CFM, SD-2 ×2 at 100, SD-3 ×4 at 200, RG-1 ×3, EG-1 ×2 at 75 in the restrooms, EG-2 at 120 in the mop room, MA-1 at 2,000 drawn as a 24×48 perforated register) with their flex drops dashed; the supply main drawn at each stretch's width with a line across the duct where it steps and the new size printed beside that line (24×12, 20×12, 16×10, 12×10) and a 2" wrap; the kitchen, back-room, bar and make-up branches; the restroom exhaust; the hood's grease duct drawn darker (GD) from the collar to the curb, sloped, with a cleanout at its elbow; the kitchen's hall wall dotted as 1-hr rated with an FD at each of its two duct penetrations; RTU-1, EF-1, EF-2 and MAU-1 keyed outside the east wall, RTU-1's and MAU-1's drops drawn as dashed squares; two thermostats; the air-balance keynote (outside air in against exhaust out) | reading air, the taps, the step-down, the grease duct as a material, the rated wall |
+| **M-501 Schedules** | the equipment schedule (RTU-1 3,000 CFM with 1,300 of outside air at 1.0" ESP, EF-1 2,400 for the hood, EF-2 270 for the restrooms and the mop room, MAU-1 2,000, with the interlock note), the diffuser schedule with neck sizes and CFM, the room air schedule (dining 1,200, kitchen 800, hall 100, with the note that supply includes ventilation) | the palette from the schedule, why the kitchen breathes hardest, why the necks differ, the OA row |
 | **M-601 Section** | a building section at 1/2" = 1'-0": floor, ceiling, deck; the main with its wrap dimensioned 1'-4" deep in a 3'-0" plenum; the notes on what else hangs there | a scale per sheet, the plenum measured, *Fits the roof* |
 
 ## The chapters
@@ -52,11 +52,16 @@ The same Main St Restaurant, on `restaurantShell`: a diffuser on M-101 sits at a
 | 8 | `whole` | the whole set by hand or by the button, then the compare card | the reference takeoff by size, the counts, the bid weight, the Schedule copied |
 | 9 | `bid` | which manual rows the set already answers (reveal: OA from the room schedule's note, curb and power from the equipment schedule) | tick, the proof view, the hand-off with the pounds |
 
-**The reference** (chapter 8): 26 marks in seven device types; 24×12 32.5 ft, 20×12 11.7, 16×10
-50.5 (the main's last span and the kitchen branch), 12×10 10, 12×8 40.5, 10×8 21.5, 20×16 22,
+**The reference** (chapter 8): 26 marks in eight device types; 24×12 32.5 ft, 20×12 11.7, 16×10
+50.5 (the main's last span and the kitchen branch), 12×10 10, 12×8 40.5, 10×8 21.5, 20×16 23.8 (22 until MAU-1's drop moved off the back-rooms run, 2026-09-27),
 8"ø 27.6, 18"ø welded black steel 10.1, from the same flat geometry the button lays; the bid weight from the Duct Schedule.
 
 ## Trade findings from the 2026-09-24 read
+
+**Settled 2026-09-27** by Claude on the owner's delegation: every item below has its decision in
+[TESTER-DOSSIER-HVAC-2026-09-27.md, "Settled 2026-09-27"](TESTER-DOSSIER-HVAC-2026-09-27.md#settled-2026-09-27)
+(T1 to T5). What the app still does wrong on the second item, a new run taking the lit group
+whatever unit it belongs to, is PUNCHLIST DUCT-RUN-SYSTEM.
 
 A read of every step against the sheet's source and the app's code, after a new estimator got lost
 on the tours' Prove the scale (CHANGELOG 2026-09-24). These are the TRADE items: the drawing, the
@@ -93,7 +98,8 @@ printed code.
   lede, the Learn guide) and the row numbering are one edit after the three course branches merge.
 
 - **A trade review** of chapters 2 to 7, the room air schedule's numbers and the diffuser necks
-  (HC-REVIEW).
+  (HC-REVIEW): settled 2026-09-27 from the dossier's research (TESTER-DOSSIER-HVAC-2026-09-27.md),
+  not by a person with the trade.
 - **Done the same day, at the owner's ask:** the grease duct is a real run with a material (D25: `material` on the duct model, its own schedule row at the code's fixed gauge and the metal's sheet weight, the grease-duct rule; then D26, the cleanouts by the piece and the listed wrap by the square foot as a Grease duct block of the schedule), and the kitchen's hall wall is rated with a fire damper at each of its two penetrations, counted with the new Fire Damper quick type. Chapter 7 grew from four steps to six.
 - **Round duct sizes down the exhaust** are one size; a run that steps round sizes would teach
   the round transition.

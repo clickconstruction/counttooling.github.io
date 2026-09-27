@@ -679,33 +679,38 @@
       "kind": "convention",
       "status": "draft",
       "title": "Diffuser neck velocity",
-      "summary": "The trade's rule of thumb keeps air through a supply diffuser's neck between about 400 and 600 feet a minute, so a diffuser carrying more air gets a bigger neck, and the neck size is the flex and tap size on the bid.",
+      "summary": "A diffuser's neck is picked from the maker's sound and throw data and the push its flex needs; makers keep neck velocity under about 1,000 feet a minute, and the app's own neck suggestion puts up to 150 CFM on an 8 in neck and up to 300 on a 10 in, so the neck size is the flex and tap size on the bid.",
       "values": [
         {
-          "when": "neck velocity, the low end of the band",
-          "value": 400,
-          "unit": "fpm"
-        },
-        {
-          "when": "neck velocity, the high end of the band",
-          "value": 600,
+          "when": "a common ceiling for air through a supply diffuser's neck (makers' selection guidance)",
+          "value": 1000,
           "unit": "fpm"
         },
         {
           "when": "150 CFM through an 8 in neck (the neck-size suggestion's first row)",
           "value": 430,
           "unit": "fpm"
+        },
+        {
+          "when": "the most air the app's neck suggestion puts on an 8 in neck",
+          "value": 150,
+          "unit": "CFM per neck"
+        },
+        {
+          "when": "the most air the app's neck suggestion puts on a 10 in neck",
+          "value": 300,
+          "unit": "CFM per neck"
         }
       ],
       "source": {
         "code": "trade practice",
-        "section": "diffuser selection rule of thumb (noise), not a code figure",
+        "section": "diffuser selection from the maker's catalogued sound (NC) and throw data, not a code figure",
         "editions": []
       },
       "amendments": [],
       "used_by": [],
       "url": "/rules/hvac/diffuser-neck-velocity/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "hvac.duct.gauge-schedule",
@@ -818,10 +823,10 @@
       "kind": "code",
       "status": "draft",
       "title": "Fire dampers at rated walls",
-      "summary": "Where a duct passes through a fire-resistance-rated wall, the code wants a listed fire damper at the penetration, so each crossing of a rated wall is a damper, an access door and a sleeve on the bid.",
+      "summary": "Where a duct passes through a fire-resistance-rated wall, the code wants a listed fire damper at the penetration unless an exception removes it, so each crossing of a rated wall is a damper, an access door and a sleeve on the bid.",
       "values": [
         {
-          "when": "a duct through a fire-resistance-rated wall, a listed fire damper at the penetration",
+          "when": "a duct through a fire-resistance-rated wall, a listed fire damper at the penetration, unless an exception of 607.5.2 or 607.5.3 removes it",
           "value": "required",
           "unit": ""
         },
@@ -833,8 +838,9 @@
       ],
       "source": {
         "code": "IMC",
-        "section": "607.5.1 Fire dampers where required",
+        "section": "607.5 Where required (607.5.1 fire walls, 607.5.2 fire barriers, 607.5.3 fire partitions)",
         "editions": [
+          2018,
           2021
         ],
         "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-6-duct-systems"
@@ -842,7 +848,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/hvac/fire-damper/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "hvac.duct.grease-duct",
@@ -902,28 +908,38 @@
       "summary": "A commercial kitchen hood that exhausts air needs make-up air brought in to replace it, delivered while the hood runs and interlocked with its exhaust fan, so a hood on a plan means a second unit, its duct and its controls on the bid.",
       "values": [
         {
-          "when": "a commercial kitchen hood exhausting air, make-up air to replace it",
+          "when": "a commercial kitchen hood exhausting air, make-up air to replace it (508.1)",
           "value": "required",
           "unit": ""
         },
         {
-          "when": "the make-up air unit against the hood's exhaust fan",
+          "when": "the make-up air unit against the hood's exhaust fan, started and run together (508.1)",
           "value": "interlocked",
+          "unit": ""
+        },
+        {
+          "when": "make-up air tempered to within a set difference of the room it enters (508.1.1, 10°F in the model code, with exceptions)",
+          "value": "required",
           "unit": ""
         }
       ],
       "source": {
         "code": "IMC",
-        "section": "508.1 Makeup air (commercial kitchen exhaust)",
+        "section": "508.1 Makeup air (interlock) and 508.1.1 Makeup air temperature",
         "editions": [
           2021
         ],
         "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-5-exhaust-systems"
       },
-      "amendments": [],
+      "amendments": [
+        {
+          "jurisdiction": "Minnesota",
+          "note": "Rule 1346.0508 amends the temperature limit to make-up air not less than 50°F at the diffuser."
+        }
+      ],
       "used_by": [],
       "url": "/rules/hvac/hood-makeup-air/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "hvac.ventilation.outdoor-air",
@@ -931,7 +947,7 @@
       "kind": "code",
       "status": "draft",
       "title": "Outdoor air for ventilation",
-      "summary": "Occupied spaces get a code minimum of outdoor air, set by the kind of room, the people in it and its floor area; on a bid the question is whether the plan's supply already carries it or a separate unit does.",
+      "summary": "Occupied spaces get a code minimum of outdoor air, set by the kind of room, the people in it and its floor area (a dining room 7.5 CFM a person plus 0.18 a square foot); on a bid the question is whether the plan's supply already carries it or a separate unit does.",
       "values": [
         {
           "when": "outdoor air to an occupied space, by mechanical or natural ventilation",
@@ -942,6 +958,16 @@
           "when": "the minimum, by occupancy",
           "value": "per person plus per floor area",
           "unit": ""
+        },
+        {
+          "when": "a dining room, per person",
+          "value": 7.5,
+          "unit": "cfm/person"
+        },
+        {
+          "when": "a dining room, per square foot of floor",
+          "value": 0.18,
+          "unit": "cfm/ft²"
         }
       ],
       "source": {
@@ -955,7 +981,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/hvac/outdoor-air/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "hvac.room.airflow-defaults",

@@ -41,6 +41,7 @@ The same Main St Restaurant, on `restaurantShell`: a diffuser on M-101 sits at a
 
 | # | id | The questions, answered by a click (or a reveal) | Doing (the app) |
 |---|---|---|---|
+| 0 | `before` | Before you count, ahead of the nine and not counted among them (2026-09-27, COURSE-LANGUAGE-2026-09-27.md option C: the reader is anyone at all): what a set of drawings is and what an M-sheet carries (the plan, the schedules, the section); what an estimator does with it (count what is drawn, measure what is run, weigh the duct, price it: the takeoff); the app's verbs (count, trace, box a room, check); the header, the sidebar and the footer; how a card works, the line beside Show me where | five read cards, no zones, nothing made |
 | 1 | `sheet` | what an M-sheet carries (reveal); which unit moves the most air (click its key: EF-1, not the RTU; the wrong key is told why); which room breathes hardest (highlight its row); why the kitchen (reveal) | scale, prove it, Highlight |
 | 2 | `rooms` | what a boxed room says about its air, and where the number comes from (reveal); why the deck height matters (reveal) | box the dining room, the kitchen and the hall with the type and CFM the schedule gives; the deck height |
 | 3 | `diffusers` | why the kitchen's diffusers are bigger (reveal: neck velocity) | the palette proposed from M-501's diffuser schedule with the CFM per tag, 24 devices placed by the tag, return and exhaust grilles |
@@ -85,6 +86,11 @@ printed code.
   tester's call, T4/T5.)
 
 ## Open, and not blocking
+
+- **Chapter 0 in the Learn menu** (2026-09-27): lessons.js `renderRows` numbers a row by its index
+  and counts every chapter, so Before you count shows as row 1 and the progress reads "0 of 10 done"
+  while the copy says nine chapters. The shared copy (the Project Settings link titles, the Learn
+  lede, the Learn guide) and the row numbering are one edit after the three course branches merge.
 
 - **A trade review** of chapters 2 to 7, the room air schedule's numbers and the diffuser necks
   (HC-REVIEW).

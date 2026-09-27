@@ -359,6 +359,30 @@ test.describe('The HVAC course, by hand', () => {
     expect(await page.evaluate(() => window.App.tutorialStepInfo().done || window.App.tutorialStepId() !== 'depth')).toBe(true);
     expect(errors).toEqual([]);
   });
+
+  // CI-HVAC-PLENUM (2026-09-27): "Will it blow?" with its answer shown was 744 px tall at 1280 x 720.
+  // Its Next sat 23 px below the window on a Mac and wholly below it on CI's Linux, where the same
+  // text wraps a little taller, so the chapter could not be finished. The card now fits the window
+  // and scrolls inside itself, with Back and Next pinned at its foot. 600 px is shorter than CI's.
+  test('chapter 6: the longest card, its answer shown, fits a short window and Next stays on screen', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.setViewportSize({ width: 1280, height: 600 });
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:plenum', errors);
+    await openSheets(page);
+    await gotoStep(page, 'static');
+    await page.click('#tourReveal');
+    await expect(page.locator('.tour-reveal')).toBeVisible();
+    await page.waitForTimeout(300);
+    const box = await page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(); const n = document.getElementById('tourNext').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, nextTop: n.top, nextBottom: n.bottom, vh: window.innerHeight }; });
+    expect(box.top).toBeGreaterThanOrEqual(0);
+    expect(box.bottom).toBeLessThanOrEqual(box.vh);
+    expect(box.nextBottom).toBeLessThanOrEqual(box.bottom);
+    await page.click('#tourNext');
+    await page.waitForFunction(() => window.App.tutorialStepId() !== 'static', null, { timeout: 5000 });
+    expect(await page.evaluate(() => document.getElementById('tourCard').scrollTop)).toBe(0);   // the next card opens at its title
+    expect(errors).toEqual([]);
+  });
 });
 
 // DS-DINING-ATTACH (journeys/plans/TESTER-DOSSIER-HVAC-2026-09-27.md, A1 and A2).

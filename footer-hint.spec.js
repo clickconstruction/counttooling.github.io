@@ -434,15 +434,21 @@ test.describe('Signed-in bar shows the tool hint and live readouts (MAP-HINTS)',
       }, saving);
     };
     const rows = [];
-    for (const w of [1500, 1300, 1150, 1000, 900, 800, 769, 600, 414, 375]) {
+    for (const w of [1600, 1500, 1300, 1150, 1000, 900, 800, 769, 600, 414, 375]) {
       for (const saving of [false, true]) rows.push({ w, saving, ...(await sample(w, saving)) });
     }
     expect(rows.filter((r) => !r.noNewRow || !r.noOverflow), JSON.stringify(rows)).toEqual([]);
     // Where the bare bar is one line, it stays one line (the 2026-08-14 contract).
     expect(rows.filter((r) => r.oneLineBare && !r.actionsBesideMode), JSON.stringify(rows)).toEqual([]);
     // Wide, the hint is there in both label states (the fit key carries the labels).
-    expect(rows.find((r) => r.w === 1500 && !r.saving).hint).toBe(true);
-    expect(rows.find((r) => r.w === 1500 && r.saving).hint).toBe(true);
+    // "Wide" is 1600, not 1500 (fix(ci), 2026-09-27): at 1500 the uploading labels leave the
+    // duct hint's worst-case key only ~12px (1%) of a 1256px bar on a Mac, and Linux draws
+    // DM Sans about 2% wider (the CI trace's frames: the same bar's text runs ~10px longer by
+    // the totals chip), so CI dropped the hint there correctly, with no new row and no
+    // overflow, while this line wanted it. 1600 leaves ~110px. 1500 idle keeps ~80px.
+    expect(rows.find((r) => r.w === 1600 && !r.saving).hint, JSON.stringify(rows)).toBe(true);
+    expect(rows.find((r) => r.w === 1600 && r.saving).hint, JSON.stringify(rows)).toBe(true);
+    expect(rows.find((r) => r.w === 1500 && !r.saving).hint, JSON.stringify(rows)).toBe(true);
     // On a phone the mode has a zero flex basis and ellipsizes, so the hint takes no room
     // and rides; the signed-in bar's second row there is the sync labels' own, hint or not.
     for (const w of [414, 375]) expect(rows.find((r) => r.w === w && !r.saving).hint, JSON.stringify(rows)).toBe(true);

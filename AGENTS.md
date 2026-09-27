@@ -710,7 +710,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   `sb-request-id` lives server-side and is not browser-readable (CORS), so it is
   absent from the client events.
 - Sharing uses checkout/turn-in (one editor at a time, 30-minute inactivity expiry
-  with keep-alive). Admins can force turn-in. Expiry surfaces a recovery modal with
+  with keep-alive). Admins can force turn-in (Manage Projects; on the project open
+  and checked out in their own tab that row offers the normal Turn in instead,
+  `App.tryTurnIn`, R1-ADMIN). Expiry surfaces a recovery modal with
   silent auto-recheckout under it. Symbols: `doTurnIn`,
   `subscribeToProjectCheckoutChanges`, `refreshProjectPermissions`,
   `handleBackgroundCheckoutExpired`, `openCheckoutExpiredRecoveryModal`.
@@ -718,7 +720,10 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   blamed: our own release (the engine's self-release stamp `noteSelfRelease`,
   window `SELF_RELEASE_GRACE_MS`, scoped to the project that was released;
   `doTurnIn` and app.js's
-  `checkInCurrentProjectIfHeld` both stamp) → `self_release_refresh`, nothing
+  `checkInCurrentProjectIfHeld` both stamp; the window ENDS on our own
+  re-checkout, `clearSelfRelease` from `doCheckoutCurrentProject` and
+  `reCheckOutAfterExpiry`, and a read in flight across that re-checkout is
+  dropped as `self_release_refresh_superseded`, R1-WINDOW) → `self_release_refresh`, nothing
   shown; a stale lock → the expiry machinery; a LIVE lock cleared by someone
   else (an admin, or another tab/device signed in as this user — the RPC is
   per user) → the force-turn-in notice modal. **The self-release rung is

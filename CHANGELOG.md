@@ -177,6 +177,40 @@ in DM Sans, the same height). The plumbing tally and the rest of the app are unc
   Guide screenshots and landing films that show an electrical or HVAC legend will look different
   on their next re-render.
 
+## feat(sidebar): every title folds its list; settings move to a small gear (HEADING-CLICK, 2026-09-27)
+
+The persona calibration ([PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md#calibration-results-2026-09-25),
+C23) caught the sidebar keeping two opposite rules. A click on PAGES, COUNTERS, LINE TYPES or
+SUMMARY opened that section's settings, and only the small arrow folded the list. A click on
+Lines, Groups, Duct, Bid Check or Rooms folded the list. Every new reader expected a title to fold,
+and the tours had to steer around the trap. Will took the recommended option: one rule for all nine.
+
+- **Every title folds.** A click on any sidebar section title folds or opens its list; the arrow
+  still does the same (features/sidebar-lists.js `bindCollapse` now always binds the title, and an
+  arrow outside its title forwards to it). The four titles read *"Click to fold or open the list"*.
+- **Settings behind a gear.** PAGES, COUNTERS, LINE TYPES and SUMMARY each carry a small gear
+  beside the title (`#pagesSettingsBtn`, `#countersSettingsBtn`, `#lineTypesSettingsBtn`,
+  `#summarySettingsBtn`, class `.section-gear-btn`) that opens the same dialog the title used to:
+  Page Settings, Counter Settings, Line Type Settings, Summary Legend. The four settings files bind
+  the gear instead of the title. The gear stays when the list is folded, and on a coarse pointer
+  (tablet, phone) it is a 40 px target, since Page Settings has no other entrance.
+- **Right-click stays.** The Counter, Quick Line, Polyline and legend buttons' right-click menus
+  still open their settings (features/tool-context-menu.js, unchanged).
+- **Teaching.** The plumbing and electrical courses and the Check lesson say *"click the gear
+  beside the SUMMARY heading"* and light `#summarySettingsBtn`; the HVAC tour's legend card does
+  the same (its dead `#legendSettingsBtn` target is gone). The plumbing tour's proof card and the
+  electrical tour's summary card name the gear for the legend. The proof step lights the SUMMARY
+  heading when the list is folded and its hint says *"click it to open the list"*; the shared
+  PAGES-folded hint says the same. The blank-sheet tour's phone snap step and its summary card
+  name the LINE TYPES and SUMMARY gears. The counting lesson's tablet line taps the COUNTERS gear.
+  The HVAC course's *"click the heading to open it if it is folded"* is now simply true.
+- **Guides.** Organizing a busy sheet, Preparing a plan set, Electrical takeoff and the Learn
+  guide's *Gear* entry name the gears.
+- **Specs.** New [heading-click.spec.js](heading-click.spec.js): each title and arrow folds and opens
+  no dialog, each gear opens its dialog, the right-click routes stay, every gear is a 40 px tap
+  target that opens its dialog on a tablet and a phone, and no teaching card sends the reader to a
+  heading for settings. tutorial.spec.js C23 and legend-proof.spec.js J8 pin the new clicks.
+
 ## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
 
 The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))

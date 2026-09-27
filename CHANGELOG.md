@@ -74,6 +74,42 @@ HVAC ones stayed `draft` with the sign-off in their Verify paragraph.
   now "Gas Pipe", and the trace card says the plan prints two sizes and a real bid traces each as
   its own line type. The trace, its feet (39.5) and its elbows are unchanged. sw.js restamped.
 
+## fix(tour): one circuit's wire in the electrical tour, guide and film script (EC-TOUR-WIRE, 2026-09-27)
+
+The electrical dossier settled R1 on 2026-09-27: a 120 V branch circuit is 2 #12 + 1 #12 G, the hot,
+the neutral and the ground, not 3 #12 + G. The course took it that day. The five-minute tour, the
+electrical takeoff guide, the landing's electrical film and its spotlight still taught three #12;
+they teach two now. The figures the tour cards and the landing captions state were read off the
+app with the new spec.
+
+- **The tour** (features/tutorial.js, `ELECTRICAL_STEPS`). The `linetype` card has the reader type
+  `2 #12 THHN + 1 #12 G` and reads it as two #12 wires, the live one and the neutral, and one
+  ground. Its check wants two current-carrying #12 (written `2 #12` or `1 #12 + 1 #12 N`) and one
+  #12 ground, so 3 #12 + G now holds the step with the hint "type 2 #12 THHN + 1 #12 G". The
+  do-it-for-me action makes that type and its label reads 2 #12 + G. The `bidcheck` card's fill
+  figure is 7.5%, the app's own number for 2 #12 + G in 3/4" EMT (it said 10%).
+- **The guide** (content/guides/electrical-takeoff.md, rebuilt). The shorthand example is
+  `2 #12 THHN + 1 #12 G` for one 120 V circuit, the illustrative roll-up is twice the green (314 ft
+  of #12 against 157 ft of green), and the Bid Check picture's caption says 7.5%.
+- **The film script** (scripts/build-hero-video.js, the electrical film). It types
+  `2 #12 THHN + 1 #12 G` and the caption reads "List the wires one circuit carries: two #12
+  conductors and a ground." The three circuits and their typed 6 A loads are unchanged. The
+  `--chapters-only` pass passed the Bid Check guard (fill ok, voltage drop ok, every device
+  reached) and rewrote img/hero-electrical.chapters.json and the two end-card images; the timings
+  did not move.
+- **The landing.** The spotlight seed (scripts/build-screenshots.js `electricalBase`) makes the
+  same conduit, and the three electrical captions quote it: two #12 and a ground, three
+  conductors a run; circuit 11's 59.49 ft of EMT carrying 118.98 ft of #12 THHN; fill 7.5%.
+- **The conductor field's examples.** The Conductors placeholder (app/index.html) and the two
+  hints under it (features/conductors.js) say `2 #12 THHN + 1 #12 G`.
+- **Specs.** tutorial.spec.js pins the card's spec and its 7.5%, the line type's conductors, the
+  Bid Check fill detail and the wire row at twice the green row; the PERSONA-PASS test holds a
+  3 #12 + G type with the conductors hint.
+- **Still to shoot** (PUNCHLIST EC-TOUR-WIRE): the electrical film's MP4 and poster, the guide's
+  two electrical tour pictures and the three electrical spotlight frames. Also left: the conduit
+  fill rule's own example in content/rules/electrical/conduit-fill.md, which another change was
+  editing.
+
 ## docs(rules): the plumbing rules dossier settled (WATER-TABLES, RULEBOOK-SIGN plumbing, 2026-09-27)
 
 Will delegated the plumbing rules dossier's questions to Claude. Every answer and its reason is in

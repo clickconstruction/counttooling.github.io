@@ -217,7 +217,7 @@
     const v = pts(flat);
     const segments = [{ startVertexIdx: 0, size: firstSize }];
     Object.keys(steps || {}).map(Number).sort((a, b) => a - b).forEach((i) => segments.push({ startVertexIdx: i, size: steps[i] }));
-    const g = system();
+    const g = o.noSystem ? null : system();
     const run = typeof makeDuctRun === 'function'
       ? makeDuctRun({ name: o.name || '', airside: o.airside || 'supply', pressureClass: '1', linerType: o.wrap ? 'wrap' : null, linerThicknessIn: o.wrap ? 2 : 0, material: o.material || null, systemGroupId: g ? g.id : null, vertices: v, segments })
       : { id: App.uid(), name: o.name || '', airside: o.airside || 'supply', pressureClass: '1', linerType: o.wrap ? 'wrap' : null, linerThicknessIn: o.wrap ? 2 : 0, material: o.material || null, systemGroupId: g ? g.id : null, vertices: v, segments };
@@ -279,12 +279,26 @@
     markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('MA-1'), pts(G.MA1), M101);
     markMissing(pickUnit(RE.stat, 'Thermostat', 'Thermostat', '#c8963a'), pts(G.T), M101);
     await makeSystem();
-    seedMain();
+    // DS-DINING-ATTACH (A2). Every run but the bar, one attach, then the bar and the
+    // attach again. Each device then sits on the run the plan draws to it: the dish and
+    // storage diffusers on the back rooms, MA-1 on the make-up run and the EG-1 grilles on
+    // the restroom exhaust (an attach before their runs pulled them onto the kitchen
+    // branch and the main), and the dining room is hung before the bar branch that
+    // crosses it is traced (in the room, the bar's run is nearer for one of them).
+    // RTU-1 carries its own supply only: the make-up air and the two exhausts go on no
+    // system (MAU-1's, EF-1's and EF-2's air; chapter 4's 2,650); how the app gives a new
+    // run its system is the open product call (A3), not this action's. The make-up run
+    // goes from the register to the unit: on M-101 the back-rooms run passes over MAU-1's
+    // drop, and a run starting on another run taps it, which would hang MA-1's 2,000 on
+    // RTU-1's back rooms.
+    if (!mainDone()) traceMain();
+    if (!runWith(['16x10'])) layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' });
     if (!runWith(['12x8'])) layRun(G.back, RS(12, 8), null, { name: 'Back rooms' });
+    if (!runWith(['20x16'])) layRun([G.makeup[2], G.makeup[3], G.makeup[0], G.makeup[1]], RS(20, 16), null, { name: 'Make-up air', noSystem: true });
+    if (!runWith(['8"ø'])) layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust', noSystem: true });
+    if (!greaseRun()) layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust', noSystem: true });
+    attachAll();
     if (!runWith(['10x8'])) layRun(G.bar, RS(10, 8), null, { name: 'Bar' });
-    if (!runWith(['20x16'])) layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air' });
-    if (!runWith(['8"ø'])) layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust' });
-    if (!greaseRun()) layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust' });
     markMissing(pickUnit(RE.fd, 'Fire Damper', 'Fire Damper', '#e85447'), pts(G.fd), M101);
     attachAll();
     K().goPage(M101);

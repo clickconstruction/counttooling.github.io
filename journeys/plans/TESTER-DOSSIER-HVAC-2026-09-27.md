@@ -571,8 +571,10 @@ equipment schedule prints no OA CFM (R1). Confidence: **medium**.
   away against 68 to the main it hangs from on the plan) and the dish SD-1 onto the kitchen branch
   too. DINING reads "needs 1,200 · served 1,050 ⚠" from chapter 5 through 9, against chapter 3's
   "rows that read ✓".
+  **Fixed (DS-DINING-ATTACH, 2026-09-27):** the run over the diffuser's own room wins; DINING reads ✓.
 - **A2.** Chapter 8 `lay` ("Finish the takeoff for me"): RTU-1 reads 0 designed / 3,000 ✓ and Static
   path walks the restroom exhaust (38 eq ft), with all seven runs on RTU-1.
+  **Fixed (DS-DINING-ATTACH, 2026-09-27):** two runs off one drop are roots; RTU-1 reads 2,650 ✓.
 - **A3.** A new run takes the active group whatever its airside, so exhaust and make-up runs land on
   RTU-1 (4,575 / 3,000 ⚠ after chapter 7). A product call on how a system is assigned (T2 settles the
   trade side).

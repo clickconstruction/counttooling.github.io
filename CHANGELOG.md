@@ -13,6 +13,39 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(turn-in): checking out again ends the quiet period; your own open project turns in, not forces (R1-WINDOW + R1-ADMIN, 2026-09-27)
+
+Two calls Will made on the self-release fix (R1), built together because they touch the same
+turn-in code. Both ride the `?ff=self-release` flag, which stays off for everyone until
+R1-TEST is signed and R1-FLIP ships. Detail in
+[_TODO.md](journeys/plans/_TODO.md#r1--review-our-own-turn-in-was-reported-as-an-admin-force).
+
+- **R1-WINDOW: the 15 s window ends on re-checkout.** After your own Turn In, the app treats
+  losing edit rights on that project as your own doing for 15 s. The R1 notes said a longer
+  window cost nothing ("we are already a viewer"); that was wrong. A demotion only reaches you
+  inside the window if you checked the project out again inside it, and then a real force by
+  an admin, or by your other device, passed with no notice and no yellow bell. Now the window
+  ends the moment you check out again: save-engine.js `clearSelfRelease()`, called by
+  `reCheckOutAfterExpiry` and, through `App.clearSelfRelease`, by features/turn-in.js
+  `doCheckoutCurrentProject`. A permissions read already in flight across the re-checkout
+  started inside the window and describes the lock you gave up, so it is dropped
+  (`self_release_refresh_superseded`), not applied. Flag off: no change at all.
+- **R1-ADMIN: Manage Projects offers Turn in on your own open project.** Its "Force turn-in
+  (admin)" showed on every checked-out row, the admin's own open project included. Forcing
+  that row released without saving and brought up the "turned in while you had it checked
+  out" notice every time. That row (the project open here, held by this tab, checked out to
+  you on the server) now reads **Turn in** and runs the header's Turn In (`App.tryTurnIn`):
+  save first, then release, "Project turned in.". Other rows keep the force. Project
+  Settings' own force button is unchanged: it only shows when someone else holds the lock.
+  With the flag off, that Turn In behaves like the header's today (edits saved, then the
+  known false notice); with it on, quiet.
+- **Pinned** by four save-engine.test.js cases (three RED on the old engine; the fourth pins
+  flag off) and an always-run manage-projects.spec.js case (routed list, stubbed RPCs). The
+  cloud behavior is not walked here: R1-TEST gains Walk B2 (re-checkout, then a release from
+  the other browser, shows the notice) and Walk D (admins: the row's Turn in).
+- **Docs:** the admin handbook guide, the AGENTS.md save/sync bullet, the ARCHITECTURE rows,
+  and the R1 notes and R1-FLIP steps in _TODO.md.
+
 ## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
 
 The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))

@@ -4,7 +4,9 @@
  * feature-file split under the window.App registry pattern. It lists every
  * project via the list_projects_for_admin RPC, with per-row Delete
  * (admin-delete-project Edge Function) and an admin Force-turn-in
- * (force_check_in_project RPC).
+ * (force_check_in_project RPC). R1-ADMIN (2026-09-27): the row for the project
+ * open and checked out in this tab offers the normal Turn in instead
+ * (App.tryTurnIn, features/turn-in.js), which saves before it releases.
  *
  * Loaded as a classic <script src="features/manage-projects.js"> AFTER app.js.
  * Its own IIFE: it reaches the cross-cutting state + helpers through the shared
@@ -55,6 +57,7 @@
           return;
         }
         const esc = (s) => App.escapeHtml(s);
+        const myId = session.user?.id || null;
         listEl.innerHTML = data.map((p) => {
           const sizeStr = formatSizeMb(p.size_bytes);
           const dateStr = p.updated_at ? new Date(p.updated_at).toLocaleString() : '';
@@ -68,9 +71,17 @@
           const metaLine2 = metaLine2Parts.join(' · ');
           const canvasOnlyBadge = !p.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
           const showForceCheckIn = state.isAdmin && (p.checked_out_by || p.checked_out_email);
-          const forceCheckInBtn = showForceCheckIn
-            ? '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in (admin)</button>'
-            : '';
+          // R1-ADMIN (2026-09-27, Will's call): forcing the project you have open and
+          // checked out in THIS tab is really your own Turn In, so that row offers the
+          // normal one (save first, then release, "Project turned in."). A force there
+          // skipped the save and brought up the "turned in while you had it checked out"
+          // notice on your own release. Rows held by anyone else, or by you in a tab
+          // where the project is not the open, held one, keep the admin force.
+          const heldHere = isHeldInThisTab(p, myId);
+          const forceCheckInBtn = !showForceCheckIn ? ''
+            : heldHere
+              ? '<button type="button" class="settings-project-force-checkin settings-project-turn-in" data-project-id="' + esc(p.id) + '">Turn in</button>'
+              : '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in (admin)</button>';
           return '<div class="settings-user-row settings-project-row" data-project-id="' + esc(p.id) + '">' +
             '<div class="settings-project-info">' +
             '<span class="settings-project-name" title="' + esc(p.name) + '">' + esc(p.name || 'Untitled') + '</span>' +
@@ -88,10 +99,52 @@
           btn.onclick = () => deleteProject(btn.dataset.projectId, btn.dataset.projectName, btn);
         });
         listEl.querySelectorAll('.settings-project-force-checkin').forEach((btn) => {
-          btn.onclick = () => forceCheckInProjectFromManage(btn.dataset.projectId, btn);
+          btn.onclick = btn.classList.contains('settings-project-turn-in')
+            ? () => turnInOwnProjectFromManage(btn.dataset.projectId, btn)
+            : () => forceCheckInProjectFromManage(btn.dataset.projectId, btn);
         });
       })
       .catch((e) => { listEl.innerHTML = '<p style="color:var(--red);">' + ((e && e.message) || 'Network error').replace(/</g, '&lt;') + '</p>'; });
+  }
+
+  // R1-ADMIN: the list row is the project open in this tab and this tab holds its
+  // checkout (the same test that puts [Turn In] in the header), and the server
+  // agrees it is checked out to us.
+  function isHeldInThisTab(p, myId) {
+    const state = App.state;
+    return !!(myId && p && p.id === state.currentProjectId &&
+      p.checked_out_by === myId && state.checkedOutBy === myId && !state.isViewer);
+  }
+
+  // R1-ADMIN: the row's Turn in runs the header's Turn In (features/turn-in.js
+  // tryTurnIn: expired short-circuit, flush, release, "Project turned in."), then
+  // redraws the list. Its failure toasts are its own.
+  async function turnInOwnProjectFromManage(projectId, btnEl) {
+    const state = App.state;
+    if (state.currentProjectId !== projectId || typeof App.tryTurnIn !== 'function') {
+      openManageProjectsModal();
+      return;
+    }
+    btnEl.disabled = true;
+    const origText = btnEl.textContent;
+    btnEl.textContent = 'Turning in…';
+    let result = null;
+    try {
+      result = await App.tryTurnIn({});
+    } catch (e) {
+      App.showToast((e && e.message) || 'Failed to turn in', 3000);
+    }
+    if (result && result.ok) {
+      openManageProjectsModal();
+      return;
+    }
+    // An expired edit session routes to the recovery dialog; clear the way to it.
+    if (result && result.code === 'CHECKOUT_EXPIRED') {
+      App.hideModal('manageProjectsModal');
+      return;
+    }
+    btnEl.disabled = false;
+    btnEl.textContent = origText;
   }
 
   async function forceCheckInProjectFromManage(projectId, btnEl) {

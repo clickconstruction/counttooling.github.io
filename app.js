@@ -6652,6 +6652,10 @@
   App.isAutoSaveSuspended = () => suspendAutoSaveUntilCheckout;
   App.setLastCheckoutRefreshAt = (ms) => { lastCheckoutRefreshAt = ms; };
   App.doTurnIn = () => saveEngine.doTurnIn();
+  // R1-WINDOW: features/turn-in.js doCheckoutCurrentProject ends the engine's
+  // self-release window on a successful checkout (the engine's own
+  // reCheckOutAfterExpiry does it internally).
+  App.clearSelfRelease = () => saveEngine.clearSelfRelease();
   App.featureFlagEnabled = featureFlagEnabled;
   App.setTurnInProgress = (msg) => setTurnInProgress(msg);
   App.updateSettingsCheckoutSection = (...a2) => updateSettingsCheckoutSection(...a2);

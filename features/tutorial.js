@@ -1343,7 +1343,9 @@
       // circles out from under the card, sideways first, then up or down. Found by hand
       // 2026-09-25: the kitchen step's card kept off FD-1 in the sidebar and sat on the
       // kitchen-exit hand sink and the east floor drain, so both clicks landed on the card.
-      const left = place.left, top = place.top;
+      // A card as tall as the window (styles.css caps it at the window less 24 px) has no room
+      // for the corners' 40 px foot: it is never placed above the top edge.
+      const left = place.left, top = Math.max(edge, place.top);
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
       // A phone docks the card to an edge (styles.css, max-width 767px): the far
       // one from the control, so the card never covers what it is pointing at.
@@ -1370,7 +1372,7 @@
         const clear = (c) => !zs.some((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12);
         corner = corners.find(clear) || corners[0];
       }
-      const at = dragPos || corner;
+      const at = dragPos || (corner && { left: corner.left, top: Math.max(edge, corner.top) });
       if (at) { card.style.left = at.left + 'px'; card.style.top = at.top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = ''; }
       else if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
       else { card.style.left = '50%'; card.style.top = '50%'; card.style.right = ''; card.style.bottom = ''; card.style.transform = 'translate(-50%, -50%)'; }
@@ -1661,6 +1663,7 @@
   }
   function goTo(i) {
     dragPos = null; nudgedFor = -1; panelNudged = new Set();
+    const cardEl = el('tourCard'); if (cardEl) cardEl.scrollTop = 0;   // a long card scrolled to its foot opens the next one at its title
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;

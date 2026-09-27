@@ -281,7 +281,7 @@
     // seen a construction drawing. Read cards only, no zones, no rules; it stands ahead of the nine
     // chapters and is not counted among them.
     {
-      id: 'before', title: 'Before you count', short: 'the words, first', minutes: 4, page: E101, noun: 'course', set: ESET, readOnly: true,
+      id: 'before', title: 'Chapter 0: Before you count', short: 'the words, first', minutes: 4, page: E101, noun: 'chapter', set: ESET, readOnly: true,
       intro: 'Read this first if you have never seen a construction drawing. Five short cards, ahead of the nine chapters: what the sheets are, what an estimator does with them, and where the app keeps its tools.',
       seed() { /* nothing: the cards only read */ },
       steps: [

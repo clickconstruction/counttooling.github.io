@@ -328,7 +328,7 @@ test.describe('The electrical course: a question is answered with a click', () =
     await expect(page.locator('#learnCourseList-electrical .learn-row')).toHaveCount(ids.length);
     await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(await page.evaluate(() => window.App.courseChapterIds().length));
     await expect(page.locator('#learnCourseList-electrical .learn-row').first()).toHaveClass(/learn-row-next/);
-    await expect(page.locator('#learnCourseProgress-electrical')).toHaveText('0 of ' + ids.length + ' done');
+    await expect(page.locator('#learnCourseProgress-electrical')).toHaveText('0 of ' + (ids.length - 1) + ' done');   // the opener, row 0, is read, not counted
     await page.click('#learnModal [data-modal-close]');
     await page.click('#canvasEmptyHintCourseElectrical');
     await expect(page.locator('#learnModal')).toHaveClass(/visible/);

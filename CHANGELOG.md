@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(rules): the plumbing rules dossier settled (WATER-TABLES, RULEBOOK-SIGN plumbing, 2026-09-27)
+
+Will delegated the plumbing rules dossier's questions to Claude. Every answer and its reason is in
+the dossier's new "Settled 2026-09-27" log (journeys/plans/TESTER-DOSSIER-PLUMBING-RULES-2026-09-27.md).
+Nobody opened a printed book: each rule signed says so in its Verify against your edition paragraph,
+and the thirteen drafts stay `status: draft`, since `applied` means an app surface uses the rule.
+
+- **Citations corrected.** The fixture supply minimums are IPC 604.5, Table 604.5 (604.4 is the flow
+  rate table), in the rule, water-model.js, the two water feature comments, WATER-PLAN.md and the
+  ARCHITECTURE.md row; WATER-PLAN's water service row now reads 603.1. The trap arm table is IPC
+  909.1: both plumbing course cards and P-601's riser note 2 said Table 1002.2, the UPC's
+  (samples/sample-lessons.pdf regenerated). Indirect waste cites 802.1.1 / 802.1.6 / 802.1.7 /
+  802.3.1 (2021 numbering), the grease interceptor 1003.3.1, cleanouts 708.1.1 / .3 / .4, the vent
+  terminal 903.1.1 / 903.1.2 (903.1 in 2018) and 903.5.
+- **Values.** Drain slope gains its missing row: 1/4 in/ft upstream of a grease interceptor at any
+  size (704.1). The building drain to sewer cleanout is "at the junction, or within 10 ft upstream"
+  (708.1.3). Indirect waste gains the pot and dish sink, air gap or air break (802.1.7). The vent
+  terminal's height above the roof is now the adopting jurisdiction's figure, not a number (the IPC
+  prints a blank), with Colorado's 6 in as an amendment.
+- **Gas hangers.** New draft rule `plumb.hanger.gas-steel`, IFGC Table 415.1 (6 / 8 / 10 ft by size,
+  every floor vertical). The plumbing course's gas card names it and teaches 1 per 10 ft on the
+  1-1/4 in black steel line (it taught 12 ft from IPC 308.5); its "do it for me" writes 10, and
+  course-plumbing.spec.js pins it. `plumb.hanger.steel` is re-scoped to steel water and drainage
+  pipe. SupportModel and Bid Check never read the steel rule, so no app behaviour changed.
+- **Words.** The velocity rule says the IPC prints no limit and the UPC caps copper at the same
+  8 / 5 fps (610.12, 2021), and tells the estimator to lower the hot cap above 140 °F. The demand
+  curve says the app interpolates, not the code. PEX bores are named as Uponor's. The vent card's
+  reveal says a foot above the roof is this job's number, from riser note 3.
+- **Still open** (PUNCHLIST WATER-TABLES and RULEBOOK-SIGN): the CPVC bores (the tolerance-allowing
+  basis is decided, the figures unread), Table 604.5's manifold footnote limits, and the NFPA 96
+  sub-section numbers under 10.4.
+
 ## fix(status-bar): one line on a phone, and the tool hint reads in full (MAP-PHONE-BAR, 2026-09-27)
 
 Signed in on a phone, the bottom bar was two rows: the save words ("Canvas", "PDF Synced with

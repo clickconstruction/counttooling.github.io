@@ -10,7 +10,7 @@
  * waterDownstreamByRun), the design flow (IPC E103.3(3), the flush-valve column
  * when a flush valve is among them), the velocity at that size (water-model's
  * pipe bores), and the check: ✓, or ⚠ with the size that passes (over the
- * side's cap, or under a served fixture's supply minimum, IPC Table 604.4), or
+ * side's cap, or under a served fixture's supply minimum, IPC Table 604.5), or
  * "no size" when the type's name carries no material or size. Cold and hot
  * totals (fixture units attached to any run of the side, runs, ⚠ count) and
  * the fixtures no run of a side reaches ("Lavatory, hot ×2: no hot run within

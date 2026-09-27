@@ -7,7 +7,7 @@ status: draft
 summary: When a kitchen hood's fire suppression system discharges, the gas to every appliance under the hood shuts off automatically, and stays off until someone resets it by hand, so the gas line carries a valve the system trips.
 values:
   - when: the hood suppression system discharges
-    value: gas to the appliances under the hood shuts off automatically
+    value: gas to the appliances under the hood shuts off automatically, including an appliance under the hood that needs no protection of its own
   - when: after a discharge
     value: manual reset
 source:
@@ -17,7 +17,7 @@ source:
   url: https://www.nfpa.org/codes-and-standards/nfpa-96-standard-development/96
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 A fire on a cook line keeps burning as long as the burners do. When the hood's suppression system fires it has to shut off the fuel and power to everything it protects, and a gas appliance under the same hood goes off with them. The gas side of that is a valve on the gas line, ahead of the first drop so one valve cuts the whole line, tripped by the suppression system and reset by hand once the fire is out.
@@ -30,4 +30,4 @@ Nothing yet: the app does not apply this rule. It is on a course card (the plumb
 
 ## Verify against your edition
 
-The sub-section numbers under 10.4 move between editions. The valve is usually furnished with the suppression system and set in the gas line by the plumber, but who furnishes and who sets it is a contract question the sheets answer, not the standard. The electrical side of the same shutoff (a shunt trip on the circuits under the hood) is the electrician's.
+NFPA 96 itself was not opened for the sign-off. The substance was read in the fire code's extract of it (NFPA 1, 2021 edition, 50.5.3, "Fuel and Electric Power Shutoff"): on actuation every source of fuel and electric power that produces heat to the protected equipment shuts off automatically, a gas appliance under the same ventilation equipment shuts off too even if it needs no protection, and the shutoff is reset by hand. The International Fire Code's commercial cooking section asks for the same interconnection, which is the one an AHJ enforcing the I-codes reads first. For the two values above: Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment. The sub-section numbers under 10.4 are NOT settled: they move between editions and were seen only in search snippets, so read them in the edition of NFPA 96 your fire marshal enforces. The valve is usually furnished with the suppression system and set in the gas line by the plumber, but who furnishes and who sets it is a contract question the sheets answer, not the standard. The electrical side of the same shutoff (a shunt trip on the circuits under the hood) is the electrician's.

@@ -21,7 +21,7 @@ source:
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
 A trap is a bend that holds water, and the water is what keeps sewer gas in the pipe. A drain that sees no water for months, a floor drain in a restroom or a storage room, loses its seal to evaporation, and the room starts to smell of sewer. The code asks for seal protection on those traps. The course teaches the common one: a trap primer, a valve on a cold line that drips a little water into the trap.
@@ -34,4 +34,4 @@ Nothing yet: the app does not apply this rule. It is on a course card (the plumb
 
 ## Verify against your edition
 
-The code lists several ways to protect a seal besides a primer valve (a primer fed by waste water, a barrier-type device); which one the engineer means is on the plumbing schedule or the keynote. Some jurisdictions require a primer on every floor drain whatever its use. The Uniform Plumbing Code sets the same seal depth and asks for a primer on a floor drain that sees little use (its Chapter 10).
+The code lists several ways to protect a seal besides a primer valve (a primer fed by waste water, a barrier-type device); which one the engineer means is on the plumbing schedule or the keynote. Some jurisdictions require a primer on every floor drain whatever its use. The Uniform Plumbing Code sets the same seal depth and asks for a primer on a floor drain that sees little use (1005.1 and 1007.1 in the 2018 edition). Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

@@ -3359,6 +3359,13 @@
         <span class="modal-card-sub" id="learnProgress"></span>
         <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button>
       </div>
+      <!-- LEARN-WORDS (features/learn-words.js): a search over the Learn guide's glossary,
+           /guides/words.json; while it holds a query its matches replace the menu below. -->
+      <div class="learn-words">
+        <input type="search" id="learnWordsInput" class="learn-words-input" placeholder="Look up a word, such as title block" aria-label="Look up a word the cards use" autocomplete="off" spellcheck="false">
+        <button type="button" id="learnWordsClear" class="learn-words-clear" aria-label="Clear the search" title="Clear the search">×</button>
+      </div>
+      <div class="learn-words-results" id="learnWordsResults" aria-live="polite" hidden></div>
       <p class="learn-lede">Short lessons, two or three minutes each, on sample sheets the lesson opens for you. Each one circles where to click and shades where to drag on the sheet, and checks what you actually did. Take them in any order.</p>
       <div class="section-rule"><b>New here? One trade, start to finish</b></div>
       <div class="learn-tours">
@@ -3715,6 +3722,7 @@
   <script src="/features/tag-reader.js"></script>
   <script src="/features/tutorial.js"></script>
   <script src="/features/lessons.js"></script>
+  <script src="/features/learn-words.js"></script>
   <script src="/features/course-plumbing.js"></script>
   <script src="/features/course-electrical.js"></script>
   <script src="/features/course-hvac.js"></script>

@@ -23,6 +23,7 @@ const fs = require('fs');
 const path = require('path');
 const { extractAppIcon } = require('./lib/app-icons');
 
+const { wordsJson, SOURCE: WORDS_SOURCE } = require('./lib/guide-words');
 const { SITE, OG_IMAGE, escAttr, escHtml, fmtDate, parseFrontMatter, layout, breadcrumb, breadcrumbLd, sitemapXml } = require('./lib/site');
 const { loadRules } = require('./lib/rules');
 
@@ -342,6 +343,8 @@ function sitemap(articles) {
   for (const a of articles) outputs.set(path.join(OUT_DIR, a.slug, 'index.html'), articlePage(a, membershipsByArticle.get(a.slug) || []));
   for (const p of PATHS) outputs.set(path.join(OUT_DIR, 'path', p.slug, 'index.html'), pathPage(p, p.steps.map((s) => bySlug.get(s))));
   outputs.set(path.join(ROOT, 'sitemap.xml'), sitemap(articles));
+  // LEARN-WORDS: the Learn guide's glossary as data, for the app's Words search (features/learn-words.js).
+  outputs.set(path.join(OUT_DIR, 'words.json'), wordsJson(fs.readFileSync(path.join(ROOT, WORDS_SOURCE.file), 'utf8')));
 
   if (check) {
     const stale = [];

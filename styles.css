@@ -1766,6 +1766,24 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 /* Learn (features/lessons.js): the lesson list */
 .modal-card.learn-card { max-width: 640px; width: min(640px, calc(100vw - 24px)); max-height: min(86vh, 860px); display: flex; flex-direction: column; }
 .learn-lede { margin: 0 0 12px; color: var(--text2); font-size: 0.88rem; line-height: 1.45; }
+/* LEARN-WORDS (features/learn-words.js): the Words search at the top of Learn. While it holds a
+   query, its matches take the place of the tours, the lessons and the courses. */
+.learn-words { position: relative; margin: 0 0 12px; }
+.learn-words-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font: inherit; font-size: 0.9rem; padding: 9px 34px 9px 12px; }
+.learn-words-input::placeholder { color: var(--text3); }
+.learn-words-input:focus { outline: none; border-color: var(--accent); }
+.learn-words-input::-webkit-search-cancel-button { display: none; }
+.learn-words-clear { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: 0; border-radius: 50%; background: transparent; color: var(--text2); font-size: 1.1rem; line-height: 1; cursor: pointer; display: none; }
+.learn-words-clear:hover { color: var(--text); background: var(--surface3); }
+.learn-searching .learn-words-clear { display: block; }
+.learn-words-results:not([hidden]) { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }   /* the card scrolls as one region */
+.learn-words-count, .learn-words-note { margin: 0 0 4px; color: var(--text2); font-size: 0.8rem; line-height: 1.45; }
+.learn-word { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; }
+.learn-word-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.learn-word-term { font-weight: 600; font-size: 0.92rem; color: var(--text); }
+.learn-word-group { flex: 0 0 auto; font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--text3); white-space: nowrap; }
+.learn-word-text { margin-top: 3px; color: var(--text2); font-size: 0.84rem; line-height: 1.45; }
+.learn-card.learn-searching > .learn-lede, .learn-card.learn-searching > .section-rule, .learn-card.learn-searching > .learn-tours, .learn-card.learn-searching > .learn-list { display: none; }
 .learn-tours { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 14px; }
 .learn-tours button { flex: 1 1 108px; background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 0.86rem; cursor: pointer; }
 .learn-tours button:hover { border-color: var(--accent); color: var(--accent); }

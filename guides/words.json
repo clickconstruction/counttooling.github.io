@@ -1,0 +1,1159 @@
+{
+ "source": "/guides/learning-the-app/",
+ "heading": "Words the cards use",
+ "count": 278,
+ "groups": [
+  {
+   "name": "The set and the sheet",
+   "words": [
+    {
+     "term": "Detail",
+     "text": "A corner of the plan drawn again, larger, often at another scale on the same sheet."
+    },
+    {
+     "term": "Dimension",
+     "text": "A length the engineer wrote on the drawing, like 31'-8\". Only a dimension can prove the scale."
+    },
+    {
+     "term": "Discipline",
+     "text": "The trade a sheet belongs to, the letter in its number: A architect, S structural, M mechanical, E electrical, P plumbing."
+    },
+    {
+     "term": "Engineer",
+     "text": "The designer who drew a trade's sheets and did its sums. The estimator prices what the engineer drew."
+    },
+    {
+     "term": "Enlarged plan",
+     "text": "Part of the plan drawn again at a bigger scale, so the clearances can be read. Count what is on it once, never on both sheets."
+    },
+    {
+     "term": "E-sheet (M-sheet, P-sheet)",
+     "text": "A sheet of one trade's drawings, named by its letter: E electrical, M mechanical (HVAC), P plumbing."
+    },
+    {
+     "term": "Floor plan",
+     "text": "The building seen from above, as if the roof were lifted off."
+    },
+    {
+     "term": "General notes",
+     "text": "The written rules for the whole job, printed on the sheet: the pipe material, where the waste runs, and so on."
+    },
+    {
+     "term": "Keynote",
+     "text": "A short tag on the plan, a number or a few letters, that a column of notes spells out."
+    },
+    {
+     "term": "Leader",
+     "text": "A thin line from a label to the thing it names. The app draws one, dashed, from a fixture or a diffuser to its run."
+    },
+    {
+     "term": "Legend",
+     "text": "The key to a sheet's lines and symbols. The app draws its own on the sheet too: each counter and line type with its total."
+    },
+    {
+     "term": "Mechanical",
+     "text": "The M-sheets: the drawings for the air trade, HVAC."
+    },
+    {
+     "term": "One-line",
+     "text": "A diagram of how the power gets from the street to the panel, drawn as a single line."
+    },
+    {
+     "term": "PDF",
+     "text": "The drawing's file, the form a set of drawings arrives in."
+    },
+    {
+     "term": "Plan view",
+     "text": "The drawing seen from above. It never shows a pipe or a duct going straight up or down."
+    },
+    {
+     "term": "Riser diagram",
+     "text": "The pipes drawn standing up, as if the wall were cut open. Some are drawn to scale, so the upright pipe can be measured."
+    },
+    {
+     "term": "Scale",
+     "text": "How many feet of building one inch of paper stands for, like 1/8\" = 1'-0\". Every sheet has its own."
+    },
+    {
+     "term": "Scale bar",
+     "text": "A printed ruler on the sheet. A shrunk PDF shrinks it too, so it cannot prove the scale."
+    },
+    {
+     "term": "Schedule (fixture schedule, panel schedule)",
+     "text": "A table on a sheet, one row per kind of thing. It is the engineer's answer key: the sizes, the loads, the air."
+    },
+    {
+     "term": "Section",
+     "text": "The building sliced through and seen from the side."
+    },
+    {
+     "term": "Set",
+     "text": "All the drawings for one job, the whole stack, one sheet per page."
+    },
+    {
+     "term": "Sheet",
+     "text": "One page of a set. Its number starts with its trade's letter: P-101, E-201, M-501."
+    },
+    {
+     "term": "Tag",
+     "text": "A short label on the plan, like SD-1 or LP-1-1, that a schedule or a note spells out."
+    },
+    {
+     "term": "Title block",
+     "text": "The box at the edge of a sheet with its name, its number and its scale."
+    },
+    {
+     "term": "Trade",
+     "text": "A kind of work, such as plumbing, electrical or HVAC."
+    },
+    {
+     "term": "Typical (TYP.)",
+     "text": "Drawn once, built everywhere the note says. TYP. OF 4 means four of everything in it."
+    }
+   ]
+  },
+  {
+   "name": "The estimator's words",
+   "words": [
+    {
+     "term": "Addendum",
+     "text": "A round of changes the designers send out before the bid is due."
+    },
+    {
+     "term": "Alternate",
+     "text": "A priced option the owner may buy on top of the base bid."
+    },
+    {
+     "term": "Base bid",
+     "text": "The main price, before any alternates."
+    },
+    {
+     "term": "Bid",
+     "text": "The price a contractor offers to do the work. In the app, a bid is also one job you are pricing."
+    },
+    {
+     "term": "Callback",
+     "text": "A trip back to a finished job to fix something, usually unpaid."
+    },
+    {
+     "term": "Change order",
+     "text": "A priced change after the contract is signed. The owner pays it when the drawing was wrong; one you eat, you pay yourself."
+    },
+    {
+     "term": "Decimal feet",
+     "text": "Feet and tenths of a foot, rather than feet and inches. The app's totals are always in decimal feet."
+    },
+    {
+     "term": "Deliverable",
+     "text": "What you send out: the report, the marked-up sheets, the paste into the bid."
+    },
+    {
+     "term": "Design-build",
+     "text": "Work with no engineer, where the contractor designs the system too."
+    },
+    {
+     "term": "Estimator",
+     "text": "The person who works out what a job will cost, from the drawings alone."
+    },
+    {
+     "term": "Exclusion",
+     "text": "A line in the bid that says the price leaves something out."
+    },
+    {
+     "term": "Footage",
+     "text": "A run's total feet."
+    },
+    {
+     "term": "Foreman",
+     "text": "The crew's lead on site, who builds from the marked-up set."
+    },
+    {
+     "term": "GC (general contractor)",
+     "text": "The company that runs the whole job. Your questions reach the designer through the GC."
+    },
+    {
+     "term": "Hand off",
+     "text": "Send the finished takeoff on to pricing."
+    },
+    {
+     "term": "Labor",
+     "text": "The hours it takes to put an item in, from your own price book."
+    },
+    {
+     "term": "Load",
+     "text": "What a thing draws or has to handle: an appliance's gas, a circuit's power, the heat a cooling unit removes."
+    },
+    {
+     "term": "Reference",
+     "text": "The course's own finished takeoff, its answer key. The whole-set chapter lays yours beside it."
+    },
+    {
+     "term": "RFI (request for information)",
+     "text": "A written question to the designer, sent through the GC."
+    },
+    {
+     "term": "Rule of thumb",
+     "text": "A quick figure from the floor area, for design-build work. On an engineered set, the schedule's number wins."
+    },
+    {
+     "term": "Scope",
+     "text": "Which work you are pricing, and what is left out of it."
+    },
+    {
+     "term": "Takeoff",
+     "text": "The count and the feet together: the numbers the price is built on. A miss in the takeoff is money lost."
+    },
+    {
+     "term": "Temporary power",
+     "text": "The power and light the builders run on during construction. It is never on a drawing."
+    }
+   ]
+  },
+  {
+   "name": "Codes and standards",
+   "words": [
+    {
+     "term": "ADA",
+     "text": "The Americans with Disabilities Act. It sets the room a wheelchair needs and the reach range for switches and receptacles."
+    },
+    {
+     "term": "ASHRAE",
+     "text": "The heating and air engineers' society. Its standard 62.1 sets how much fresh air each room needs."
+    },
+    {
+     "term": "FDA Food Code",
+     "text": "The model health code for restaurants. It wants a hand sink within reach of each food preparation area."
+    },
+    {
+     "term": "IBC",
+     "text": "The International Building Code."
+    },
+    {
+     "term": "IECC",
+     "text": "The International Energy Conservation Code: how a building saves power, such as lights that switch themselves off."
+    },
+    {
+     "term": "IFGC",
+     "text": "The International Fuel Gas Code: how gas pipe is sized and valved."
+    },
+    {
+     "term": "IMC",
+     "text": "The International Mechanical Code, the rule book the air work must meet by law."
+    },
+    {
+     "term": "IPC",
+     "text": "The International Plumbing Code."
+    },
+    {
+     "term": "Jurisdiction",
+     "text": "Your town or county. It decides which code edition the work must meet."
+    },
+    {
+     "term": "NEC",
+     "text": "The National Electrical Code, the code book electrical work is built to."
+    },
+    {
+     "term": "NFPA 96",
+     "text": "The National Fire Protection Association's standard for kitchen hoods and their grease ducts."
+    },
+    {
+     "term": "SMACNA",
+     "text": "The sheet-metal trade's standards group. Its book of tables gives a duct's gauge and weight by size."
+    },
+    {
+     "term": "UL",
+     "text": "Underwriters Laboratories, the lab that tests safety equipment like fire dampers and lists what passes."
+    }
+   ]
+  },
+  {
+   "name": "The building",
+   "words": [
+    {
+     "term": "Clearance",
+     "text": "The free space a fixture or a panel needs around it, such as a wheelchair's turning circle."
+    },
+    {
+     "term": "Combustibles",
+     "text": "Anything that burns."
+    },
+    {
+     "term": "Cook line",
+     "text": "The row of ranges, fryers and griddles where the cooks work."
+    },
+    {
+     "term": "Curb",
+     "text": "A raised frame on the roof that a rooftop unit sits on."
+    },
+    {
+     "term": "Deck (deck height)",
+     "text": "The underside of the roof. The space between it and the ceiling holds the duct, the pipe and the wire."
+    },
+    {
+     "term": "Dish pit",
+     "text": "The dishwashing room."
+    },
+    {
+     "term": "Hood",
+     "text": "The canopy over the cook line that pulls out smoke and grease."
+    },
+    {
+     "term": "Penetration",
+     "text": "A place a duct or a pipe goes through a wall."
+    },
+    {
+     "term": "Range",
+     "text": "A stove."
+    },
+    {
+     "term": "Rated wall",
+     "text": "A wall built to hold back a fire for a set time, such as one hour."
+    },
+    {
+     "term": "Slab",
+     "text": "The concrete floor."
+    },
+    {
+     "term": "Suppression (fire suppression, hood suppression)",
+     "text": "The built-in extinguisher in a hood. When it fires, the gas and the power under the hood shut off."
+    },
+    {
+     "term": "Working space",
+     "text": "The clear space in front of a panel where an electrician stands to work on it."
+    }
+   ]
+  },
+  {
+   "name": "Plumbing",
+   "words": [
+    {
+     "term": "3-compartment sink",
+     "text": "A sink with three bowls: wash, rinse, sanitize."
+    },
+    {
+     "term": "Air gap",
+     "text": "Open air between the end of a drain pipe and the floor sink under it, so a backed-up sewer cannot reach the pipe."
+    },
+    {
+     "term": "Balancing valve",
+     "text": "A valve that sets how much water flows in a line, like the hot water return."
+    },
+    {
+     "term": "Black iron (BI)",
+     "text": "Black steel gas pipe, threaded together."
+    },
+    {
+     "term": "Branch",
+     "text": "A smaller pipe or duct off a bigger one, out to a fixture or a diffuser."
+    },
+    {
+     "term": "BTU",
+     "text": "British thermal unit. Gas load is in BTU per hour: how fast the appliances burn gas."
+    },
+    {
+     "term": "Building drain",
+     "text": "The main drain under the floor that the stacks empty into."
+    },
+    {
+     "term": "Building sewer",
+     "text": "The pipe that takes all the building's waste out to the city sewer."
+    },
+    {
+     "term": "Carrier",
+     "text": "The frame a wall-hung toilet hangs on, one under every water closet."
+    },
+    {
+     "term": "Check valve",
+     "text": "A one-way valve."
+    },
+    {
+     "term": "Cleanout",
+     "text": "A capped opening for clearing a drain. A grease duct has them too, to scrape the grease out."
+    },
+    {
+     "term": "DFU",
+     "text": "Drainage fixture units: the code's number for how much a fixture drains."
+    },
+    {
+     "term": "DWV",
+     "text": "Drain, waste and vent: pipe made for the drains."
+    },
+    {
+     "term": "Fixture",
+     "text": "In plumbing, anything that uses water: a sink, a toilet, a floor drain. A light fixture is a light."
+    },
+    {
+     "term": "Fixture unit",
+     "text": "The code's number for how much water a fixture draws (WSFU) or drains (DFU). The engineer sizes the pipe from the total."
+    },
+    {
+     "term": "Floor sink",
+     "text": "A square drain set in the floor, that equipment drains into across an air gap."
+    },
+    {
+     "term": "Flue",
+     "text": "The pipe that carries a gas water heater's exhaust out."
+    },
+    {
+     "term": "fps",
+     "text": "Feet per second, the speed of water in a pipe."
+    },
+    {
+     "term": "Grease waste (GW)",
+     "text": "The kitchen's drains. They run to the grease interceptor, apart from the restrooms."
+    },
+    {
+     "term": "Hand sink",
+     "text": "A sink kept only for washing hands."
+    },
+    {
+     "term": "Hanger",
+     "text": "A support, often a strap, that holds a pipe or a duct up. The code says how far apart they go."
+    },
+    {
+     "term": "Hose bibb",
+     "text": "An outdoor faucet for a hose."
+    },
+    {
+     "term": "Hot water return (HWR)",
+     "text": "A pipe that carries unused hot water back to the heater, so every faucet runs hot fast. Most bids miss it."
+    },
+    {
+     "term": "Indirect waste",
+     "text": "A drain that ends above a floor sink, across an air gap, instead of joining the pipe."
+    },
+    {
+     "term": "Interceptor (grease interceptor, GI)",
+     "text": "A tank outside where the kitchen's grease floats, cools and is pumped out."
+    },
+    {
+     "term": "Lav battery",
+     "text": "Lavatories in a row on one branch."
+    },
+    {
+     "term": "Lavatory",
+     "text": "A bathroom sink, a lav for short."
+    },
+    {
+     "term": "Main",
+     "text": "The big pipe or duct the branches come off: the city's water main, the gas main, the main duct from the unit."
+    },
+    {
+     "term": "Meter",
+     "text": "What counts the water, the gas or the power a building uses."
+    },
+    {
+     "term": "Mop sink",
+     "text": "The low sink a mop bucket is filled and emptied at."
+    },
+    {
+     "term": "Occupancy (public, private)",
+     "text": "The fixture-unit table's two columns: public (a restaurant, an office) and private (a house, a hotel room)."
+    },
+    {
+     "term": "PEX",
+     "text": "Plastic water pipe that bends."
+    },
+    {
+     "term": "PVC",
+     "text": "Plastic pipe, polyvinyl chloride."
+    },
+    {
+     "term": "Riser",
+     "text": "A pipe or duct that goes straight up or down. A plan is drawn from above, so it never shows one."
+    },
+    {
+     "term": "RPZ (backflow preventer)",
+     "text": "A valve assembly where the water service comes in. It stops water flowing back into the city's main."
+    },
+    {
+     "term": "Sanitary (SS, sanitary sewer)",
+     "text": "The waste from toilets and sinks, and the pipe that carries it."
+    },
+    {
+     "term": "Service",
+     "text": "What brings a utility into the building: the water service from the meter, or the power's path from the street to the panel."
+    },
+    {
+     "term": "Siphon",
+     "text": "To suck water out through a pipe, the way a hose drains a bucket."
+    },
+    {
+     "term": "Slope",
+     "text": "How far a drain falls per foot, like 1/8\" per foot. Waste has only gravity to move it."
+    },
+    {
+     "term": "Snake",
+     "text": "The plumber's cable for clearing a clog."
+    },
+    {
+     "term": "Supply",
+     "text": "What comes in: the water pipes to a fixture, or the duct that carries air to the rooms."
+    },
+    {
+     "term": "Terminal",
+     "text": "The open top of a vent, above the roof. In electrical, the place a wire is fastened."
+    },
+    {
+     "term": "Threaded",
+     "text": "Screwed together, the way steel gas pipe is joined."
+    },
+    {
+     "term": "Trap",
+     "text": "The U-bend under a drain that holds water, so sewer gas stays down."
+    },
+    {
+     "term": "Trap arm",
+     "text": "The pipe from a fixture's trap to its vent. The code limits how long it can be."
+    },
+    {
+     "term": "Trap primer",
+     "text": "A small line that drips water into a floor drain's trap so it never dries out."
+    },
+    {
+     "term": "Trench",
+     "text": "A ditch dug for a pipe under the slab, priced by its length and its depth."
+    },
+    {
+     "term": "Trunk",
+     "text": "The main pipe or duct the branches come off."
+    },
+    {
+     "term": "Vent",
+     "text": "In plumbing, the pipe that lets air into a drain, so the traps keep their water. In everyday talk, any opening air comes through."
+    },
+    {
+     "term": "Vent stack",
+     "text": "The upright pipe that lets the drains breathe. It goes out through the roof."
+    },
+    {
+     "term": "Vertical",
+     "text": "A pipe or conduit that runs up or down a wall. The plan view never shows it, so the takeoff adds it."
+    },
+    {
+     "term": "VTR",
+     "text": "Vent through roof: where a vent stack leaves the building."
+    },
+    {
+     "term": "Waste",
+     "text": "The drain out of a fixture, the W on a schedule."
+    },
+    {
+     "term": "Water closet",
+     "text": "The trade's word for a toilet."
+    },
+    {
+     "term": "Water heater (WH)",
+     "text": "The tank that heats the building's hot water."
+    },
+    {
+     "term": "Wet wall",
+     "text": "One wall that carries the pipes for the fixtures on both sides of it."
+    },
+    {
+     "term": "WSFU",
+     "text": "Water supply fixture units: the code's number for how much water a fixture draws."
+    }
+   ]
+  },
+  {
+   "name": "Electrical",
+   "words": [
+    {
+     "term": "Amp (A)",
+     "text": "The measure of current, how much electricity flows."
+    },
+    {
+     "term": "Ampacity",
+     "text": "The current a wire can carry without overheating."
+    },
+    {
+     "term": "Branch circuit",
+     "text": "A circuit that runs from a panel out to its devices."
+    },
+    {
+     "term": "Breaker",
+     "text": "A switch in the panel that shuts a circuit off when it draws too much."
+    },
+    {
+     "term": "Circuit",
+     "text": "One breaker and the wires and devices it feeds."
+    },
+    {
+     "term": "Circuit schedule",
+     "text": "A table of the circuits: each one's devices, its conduit and its wire."
+    },
+    {
+     "term": "Conductor",
+     "text": "A wire."
+    },
+    {
+     "term": "Conduit",
+     "text": "The metal pipe electrical wire runs in."
+    },
+    {
+     "term": "Cord-and-plug",
+     "text": "The unit plugs into a receptacle instead of being wired in."
+    },
+    {
+     "term": "Dedicated circuit",
+     "text": "A circuit that feeds one piece of equipment and nothing else."
+    },
+    {
+     "term": "Device",
+     "text": "Anything wired, such as an outlet or a switch."
+    },
+    {
+     "term": "Disconnect",
+     "text": "A switch at a unit that cuts its power for service."
+    },
+    {
+     "term": "Drop",
+     "text": "A pipe, conduit or duct that comes down to what it feeds. The Drop tool adds that upright length to a run."
+    },
+    {
+     "term": "Duplex",
+     "text": "The ordinary receptacle: two sockets in one."
+    },
+    {
+     "term": "EMT",
+     "text": "Electrical metallic tubing: thin-wall steel conduit."
+    },
+    {
+     "term": "Equipment ground",
+     "text": "The ground wire that rides with a feeder, sized from its breaker."
+    },
+    {
+     "term": "Feeder",
+     "text": "The heavy wires from the main disconnect to a panel."
+    },
+    {
+     "term": "Fill",
+     "text": "How much of a conduit's inside the wires take up."
+    },
+    {
+     "term": "GFCI (GFI)",
+     "text": "Ground-fault circuit interrupter: a receptacle that cuts the power when current leaks through a person. GFI is the drawing's short word."
+    },
+    {
+     "term": "Ground",
+     "text": "The green safety wire. The ground also ties the whole system to the earth."
+    },
+    {
+     "term": "Grounding electrode conductor",
+     "text": "The wire that ties the system to the earth, through the water pipe and metal rods driven into the ground."
+    },
+    {
+     "term": "Hard-wired",
+     "text": "Wired straight in, with no plug."
+    },
+    {
+     "term": "Homerun",
+     "text": "The conduit that carries a circuit's wires back to the panel. The plan shows it as a short arrow with a tag."
+    },
+    {
+     "term": "Interlocked",
+     "text": "Wired so one starts or stops the other: the make-up air unit with the hood fan, the breaker with the hood's fire system."
+    },
+    {
+     "term": "J-box (junction box)",
+     "text": "A metal box where wires are joined."
+    },
+    {
+     "term": "kVA",
+     "text": "A thousand VA."
+    },
+    {
+     "term": "Main disconnect",
+     "text": "The switch that shuts off the whole building."
+    },
+    {
+     "term": "Make-up",
+     "text": "The extra foot of conduit for the bend and the box. No drawing shows it."
+    },
+    {
+     "term": "MDP (main distribution panel)",
+     "text": "The panel the service feeds first."
+    },
+    {
+     "term": "Mount height",
+     "text": "How high a device hangs on the wall. The app uses it for the vertical."
+    },
+    {
+     "term": "Neutral",
+     "text": "The wire the current returns on."
+    },
+    {
+     "term": "Occupancy sensor (OS)",
+     "text": "A switch that turns the lights off when nobody is in the room."
+    },
+    {
+     "term": "Panel",
+     "text": "The metal cabinet of breakers that feeds the building's circuits."
+    },
+    {
+     "term": "Phase",
+     "text": "One of the three live wires the power arrives on."
+    },
+    {
+     "term": "Pole",
+     "text": "One breaker position in a panel. A two-pole breaker takes two."
+    },
+    {
+     "term": "Pull point",
+     "text": "A box the wire is pulled through. A run with too many bends between boxes needs one."
+    },
+    {
+     "term": "Raceway",
+     "text": "What the wire runs in, such as conduit."
+    },
+    {
+     "term": "Receptacle",
+     "text": "A wall outlet."
+    },
+    {
+     "term": "Service lateral",
+     "text": "The buried wires from the utility to the building."
+    },
+    {
+     "term": "Shunt trip",
+     "text": "A breaker that can be tripped from outside the panel, such as by the hood's fire system."
+    },
+    {
+     "term": "Strap",
+     "text": "The clamp that holds conduit to the building."
+    },
+    {
+     "term": "THHN",
+     "text": "The everyday building wire, named for its insulation."
+    },
+    {
+     "term": "Three phase",
+     "text": "Power on all three phases, for motors like a rooftop unit's."
+    },
+    {
+     "term": "Utility transformer",
+     "text": "The power company's equipment at the street."
+    },
+    {
+     "term": "VA (volt-amperes)",
+     "text": "The load a circuit is sized for."
+    },
+    {
+     "term": "Volt (V)",
+     "text": "The measure of electrical push. The building has 120 V and 208 V."
+    },
+    {
+     "term": "Voltage drop",
+     "text": "The voltage, the electrical push, a wire loses along its length, so the far end gets less."
+    }
+   ]
+  },
+  {
+   "name": "HVAC",
+   "words": [
+    {
+     "term": "Balancing report",
+     "text": "The test after install that measures the air at every vent."
+    },
+    {
+     "term": "Bid weight",
+     "text": "The total pounds of duct, the number a sheet-metal bid is built on."
+    },
+    {
+     "term": "Black steel",
+     "text": "Plain steel with no coating. A grease duct is welded black steel."
+    },
+    {
+     "term": "Capacity",
+     "text": "The most air a unit can move."
+    },
+    {
+     "term": "CFM",
+     "text": "Cubic feet per minute: how much air moves."
+    },
+    {
+     "term": "Combustion air",
+     "text": "The air a flame burns."
+    },
+    {
+     "term": "Controls",
+     "text": "The wiring that starts and stops the units, and the thermostats."
+    },
+    {
+     "term": "Diffuser",
+     "text": "A ceiling vent air comes out of."
+    },
+    {
+     "term": "Duct",
+     "text": "The sheet-metal pipe air travels through."
+    },
+    {
+     "term": "Ductulator",
+     "text": "The app's duct-sizing calculator."
+    },
+    {
+     "term": "Elbow",
+     "text": "A fitting that turns a pipe or a duct around a corner."
+    },
+    {
+     "term": "Equivalent feet",
+     "text": "The straight duct on a path, plus a length for each fitting on the way."
+    },
+    {
+     "term": "ESP (external static pressure)",
+     "text": "The push a unit has to spare for its duct."
+    },
+    {
+     "term": "Exhaust",
+     "text": "Air thrown outside, and the duct that carries it."
+    },
+    {
+     "term": "Exhaust fan (EF)",
+     "text": "A fan that throws air outside, such as the hood's."
+    },
+    {
+     "term": "Fire damper",
+     "text": "A shutter in a duct that closes in a fire, where the duct crosses a rated wall. Never in a grease duct."
+    },
+    {
+     "term": "Fitting",
+     "text": "A shaped piece that joins or turns pipe or duct: an elbow, a transition, a tap."
+    },
+    {
+     "term": "Flex",
+     "text": "The soft, bendable round duct from a bigger duct to a diffuser."
+    },
+    {
+     "term": "fpm",
+     "text": "Feet per minute, the speed of the air."
+    },
+    {
+     "term": "Friction rate",
+     "text": "How fast the duct uses up the fan's push, per 100 feet."
+    },
+    {
+     "term": "Fusible link",
+     "text": "A link that melts in a fire and lets a fire damper drop shut."
+    },
+    {
+     "term": "Galvanized",
+     "text": "Steel coated in zinc, the usual duct metal."
+    },
+    {
+     "term": "Gauge",
+     "text": "A size by number, for wire and for sheet metal. The higher the number, the thinner."
+    },
+    {
+     "term": "Grease duct",
+     "text": "The hood's exhaust duct: a chimney for a fire, of welded steel, with cleanouts."
+    },
+    {
+     "term": "Grille",
+     "text": "A barred vent in the ceiling. Return and exhaust air go through one."
+    },
+    {
+     "term": "HVAC",
+     "text": "Heating, ventilation and air conditioning: the air trade, drawn on the M-sheets."
+    },
+    {
+     "term": "Inches of water",
+     "text": "The measure of air pressure."
+    },
+    {
+     "term": "Lay-in",
+     "text": "Sized to drop into one square of the ceiling grid."
+    },
+    {
+     "term": "lb/ft",
+     "text": "Pounds per foot, the weight of a foot of duct."
+    },
+    {
+     "term": "Liner",
+     "text": "Insulation that lines the inside of a duct."
+    },
+    {
+     "term": "Listed enclosure",
+     "text": "A fire wrap a lab has tested and listed."
+    },
+    {
+     "term": "Make-up air (MAU, make-up air unit)",
+     "text": "Outside air brought in to replace what the hood throws out. The MAU is the unit that brings it."
+    },
+    {
+     "term": "Neck",
+     "text": "The round collar on top of a diffuser that the duct connects to."
+    },
+    {
+     "term": "Negative",
+     "text": "More air going out of a room than coming in."
+    },
+    {
+     "term": "OA (outdoor air)",
+     "text": "The fresh outside air a system brings in."
+    },
+    {
+     "term": "Plenum",
+     "text": "The space above the ceiling the return air comes back through."
+    },
+    {
+     "term": "Positive",
+     "text": "A little more air coming in than going out, so the doors do not fight a vacuum."
+    },
+    {
+     "term": "Register",
+     "text": "A vent that can be shut."
+    },
+    {
+     "term": "Return",
+     "text": "Air on its way back to the unit, and the grille or duct it comes through."
+    },
+    {
+     "term": "Roof key",
+     "text": "A dashed box on the plan with a roof unit's name, air and power, and a leader to its hole in the roof."
+    },
+    {
+     "term": "RTU (rooftop unit)",
+     "text": "A single box on the roof that heats, cools and blows the air."
+    },
+    {
+     "term": "Seam and waste",
+     "text": "The metal lost to seams and scrap, on its own line."
+    },
+    {
+     "term": "Sleeve",
+     "text": "A steel collar that carries a fire damper through the wall."
+    },
+    {
+     "term": "Stat (thermostat)",
+     "text": "The control on the wall that sets the temperature."
+    },
+    {
+     "term": "Static pressure",
+     "text": "The push the fan has to give the air to get it through the duct."
+    },
+    {
+     "term": "Stray",
+     "text": "A diffuser hung on no run. It counts toward no system."
+    },
+    {
+     "term": "System",
+     "text": "A unit and the ducts and diffusers it serves. In the app, a group with an equipment tag."
+    },
+    {
+     "term": "Tap",
+     "text": "Where a branch leaves a bigger duct."
+    },
+    {
+     "term": "Tempered",
+     "text": "Heated or cooled first."
+    },
+    {
+     "term": "Ton",
+     "text": "A unit's cooling size."
+    },
+    {
+     "term": "Transition",
+     "text": "A fitting that changes a duct from one size to another."
+    },
+    {
+     "term": "Velocity",
+     "text": "The speed of the air."
+    },
+    {
+     "term": "Ventilation",
+     "text": "The fresh outside air the code requires for the people in a room."
+    },
+    {
+     "term": "Volume damper (VD)",
+     "text": "A blade in the duct that sets how much air goes down a branch."
+    },
+    {
+     "term": "Wrap",
+     "text": "Insulation around the outside of a duct. A fire wrap is a listed one."
+    }
+   ]
+  },
+  {
+   "name": "The app",
+   "words": [
+    {
+     "term": "Active layer",
+     "text": "The layer you are working on. New marks land on it, and Clear Page clears only it."
+    },
+    {
+     "term": "Armed",
+     "text": "Switched on and ready to mark. A counter is armed when the next click on the sheet uses it: one mark per click. Pressing M (Move) puts it down, and a number key or a click on the counter in the sidebar arms it again."
+    },
+    {
+     "term": "Artboard",
+     "text": "The counters, line types, quick keys and icons you keep for every job. They come to each new bid."
+    },
+    {
+     "term": "Bid Check",
+     "text": "The app's checklist in the sidebar: what a bid must answer before it goes out. Some rows it judges itself, the rest you tick."
+    },
+    {
+     "term": "Chain",
+     "text": "Count a fixture or a device and trace the run back to the last one, in one click."
+    },
+    {
+     "term": "Check",
+     "text": "The fourth verb: Bid Check says what the takeoff is missing or what does not add up."
+    },
+    {
+     "term": "Child count",
+     "text": "An item that rides along on a counter or a line type: so many per mark, or one per so many feet of run."
+    },
+    {
+     "term": "Chip",
+     "text": "A small label beside a field or under the cursor, like the size the Duct tool reads off the plan. The § chip, a section mark, names the rule behind a row."
+    },
+    {
+     "term": "Clipboard",
+     "text": "Where a copy waits until you paste it."
+    },
+    {
+     "term": "Cloud",
+     "text": "The copy of your work kept online, in your account, once you sign in and save."
+    },
+    {
+     "term": "Count",
+     "text": "Arm a counter and click each thing it counts: one click, one mark."
+    },
+    {
+     "term": "Counter",
+     "text": "A named kind of mark, such as WC-1 Water Closet. Armed, every click places one."
+    },
+    {
+     "term": "Delete area",
+     "text": "A box you draw that wipes everything inside it. Undo brings it back."
+    },
+    {
+     "term": "Export",
+     "text": "A file the app makes for you to send out, such as a report or a marked-up PDF."
+    },
+    {
+     "term": "Footer",
+     "text": "The strip under the sheet that turns the pages, zooms and switches layers."
+    },
+    {
+     "term": "Gear",
+     "text": "In the app, the gear icon in the header opens Project Settings. In electrical, the gear is the heavy equipment of the service."
+    },
+    {
+     "term": "Ghost",
+     "text": "A see-through copy of a typical, laid somewhere else to compare. It never counts."
+    },
+    {
+     "term": "Group",
+     "text": "Marks and runs the app totals together: a circuit on its panel, or a system on its unit."
+    },
+    {
+     "term": "Header",
+     "text": "The row of tools across the top of the app. On a drawing, a header is the beam over a door."
+    },
+    {
+     "term": "Highlight",
+     "text": "A see-through colour box dragged over part of a sheet, like a marker pen. It never counts."
+    },
+    {
+     "term": "Layer",
+     "text": "A clear sheet laid over the plan, with its own marks and its own totals."
+    },
+    {
+     "term": "The line beside Show me where",
+     "text": "Every card ends with one line that says what the step is still waiting for, one thing at a time. It turns red when your last try missed and says why, and reads ✓ Done when the step is done. It is not the status bar at the bottom of the window, which shows the file, the save and the quick keys."
+    },
+    {
+     "term": "Line type",
+     "text": "A named kind of run, by size and material, such as 1.5in Copper or 0.75in EMT. The app measures its feet."
+    },
+    {
+     "term": "Mark",
+     "text": "One thing you placed on the sheet: a count, a run, a note."
+    },
+    {
+     "term": "Move",
+     "text": "The resting tool, on when no other is. It drags the sheet, and a mark in the wrong place."
+    },
+    {
+     "term": "Multiply zone",
+     "text": "A box whose counts are multiplied, for a typical drawn once and built many times."
+    },
+    {
+     "term": "Note",
+     "text": "Words you pin to a spot on the sheet. A note that starts with RFI: is a flag."
+    },
+    {
+     "term": "Number row",
+     "text": "The keys 1 to 0 above the letters. Each can hold a counter as a quick key."
+    },
+    {
+     "term": "Palette",
+     "text": "Your counters and line types, the lists under COUNTERS and LINE TYPES in the left sidebar. A returning device keeps its palette from bid to bid. A tool's palette is the small panel it opens, like the Drop sizes."
+    },
+    {
+     "term": "Polyline",
+     "text": "A run with corners, one click per corner."
+    },
+    {
+     "term": "Quick key",
+     "text": "A counter put on a number key, so pressing the number arms it."
+    },
+    {
+     "term": "Room Sizer",
+     "text": "The tool that boxes a room and reads its area and its air."
+    },
+    {
+     "term": "Rulebook",
+     "text": "The app's list of the trade rules it applies, each one cited by its code section."
+    },
+    {
+     "term": "Run",
+     "text": "The path a pipe, a wire or a duct takes, traced on the sheet. The app adds up its feet."
+    },
+    {
+     "term": "Scale zone",
+     "text": "A box with its own scale, for a detail drawn at another scale."
+    },
+    {
+     "term": "Sidebar",
+     "text": "The column of lists down the left side of the screen. It holds the sheets under PAGES, your counters and line types, the SUMMARY and BID CHECK."
+    },
+    {
+     "term": "Snap",
+     "text": "Holds each piece you draw level, upright or at 45°, however your hand wobbles."
+    },
+    {
+     "term": "Status bar",
+     "text": "The strip along the bottom of the window. It shows the file, the save and the quick keys."
+    },
+    {
+     "term": "Summary",
+     "text": "The running totals, in the sidebar."
+    },
+    {
+     "term": "Thumbnail",
+     "text": "A small picture of a sheet, showing where every mark sits."
+    },
+    {
+     "term": "Tooling (PipeTooling, TakeoffTooling)",
+     "text": "The pricing apps a finished takeoff is handed off to."
+    },
+    {
+     "term": "Trace",
+     "text": "Click along a run, corner by corner. The app measures its feet."
+    },
+    {
+     "term": "View link (read-only)",
+     "text": "A link that lets someone open the marked-up sheets and the totals, and look without changing anything."
+    },
+    {
+     "term": "Zone",
+     "text": "A box on the sheet that changes the scale or multiplies what is inside it."
+    }
+   ]
+  }
+ ]
+}

@@ -61,6 +61,9 @@ const PRECACHE_EXTRA = [
   // The machine-readable rulebook: features/rules.js fetches it for the rule chips
   // (rules-chip.spec.js pins that it is precached).
   '/rules/rules.json',
+  // The Learn guide's glossary as data: features/learn-words.js fetches it for the
+  // Words search at the top of Learn (build-guides.js writes it).
+  '/guides/words.json',
 ];
 
 const FONTS_CSS = '/vendor/fonts/fonts.css';

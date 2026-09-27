@@ -29,7 +29,7 @@ If your own plan is open, a lesson asks before it closes it. Lessons never run o
 
 ### Words the cards use
 
-Every word a course card stops to explain, in one list. A card says what a word means the first time its course uses it; this is where to look it up again.
+Every word a course card stops to explain, in one list. A card says what a word means the first time its course uses it; this is where to look it up again. In the app, the box at the top of [Learn](/app/?learn=1) searches this list: type a word, read what it means.
 
 #### The set and the sheet
 

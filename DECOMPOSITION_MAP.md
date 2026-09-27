@@ -473,6 +473,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R22. Mark context menu into features/mark-context-menu.js
 
+**Landed 2026-09-26** (part of MAP-SHORTLIST): features/mark-context-menu.js owns `showContextMenu`, the nine `#ctx*` row handlers, the `#contextMenu` capture-phase Escape and its click-away; app.js went from 7,891 lines to 7,596 and `handleContextMenu` dispatches through `App.showContextMenu`. The misnamed "Canvas Repair modal wiring" marker is deleted. Nothing new published: every dep was already on `App`, and `countItemsInRect` was never one. `strayDeviceAttachTarget` stayed in features/duct-suggest.js, where R14 had already moved it (the first finding's "with it" and its line numbers predate R14). The script tag sits after tool-context-menu.js, ahead of drop-peek.js and rules.js, so the Escape still registers before their capture listeners. CHANGELOG "refactor(context-menu): the right-click menu on a mark is its own feature file".
+
 *Risk medium, yield ~315.* The largest cohesive block left in app.js. Its SECTION marker is misnamed.
 
 - **`core-render-ui:mark-context-menu-feature`** (extract, medium confidence; check: confirmed) Mark right-click menu (showContextMenu plus the ctx* row handlers) into features/mark-context-menu.js

@@ -45,7 +45,9 @@ the trade claims are exactly as they were (EC-TRADE and RULEBOOK-SIGN still hold
   calls the electrician (a callback), nobody sizes to today's load (sized with room to grow).
 
 Scored with the memo's method (the scratchpad `score.js`): 3,398 words and 49 cards at grade 5.8
-with 34 sentences over 25 words before; 5,016 words and 54 cards at grade 4.8 with none after.
+with 34 sentences over 25 words before; 4,990 words and 54 cards at grade 4.9 with none after. The longer cards were walked at the
+spec's viewport: the first draft of the manual-rows card, revealed, pushed Next off the screen, and
+its glosses now ride inside the row list.
 course-electrical.spec.js walks the opener like any chapter (`before`, no reveals, nothing counted)
 and reads the section's row count from `courseElectricalIds()` and the plumbing count from
 `courseChapterIds()`, so the other two courses' openers cannot break it.

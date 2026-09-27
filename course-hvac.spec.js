@@ -208,6 +208,25 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a committed main survives the trace step\'s hint being read (the hint used to pop it)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:main', errors);
+    await openSheets(page);
+    await gotoStep(page, 'trace');
+    // three committed runs at the wrong size, pushed straight in the way a reader's own traces land
+    await page.evaluate(() => {
+      const a = window.App.getActiveAnnotations(window.state.pages[0]);
+      for (let i = 0; i < 3; i++) a.ductRuns.push(window.makeDuctRun({ vertices: [{ x: 900 - i * 10, y: 330 }, { x: 900 - i * 10, y: 280 }], startSize: { kind: 'rect', w: 24, h: 12 }, airside: 'supply' }));
+      window.App.updateUI();
+    });
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).ductRuns.length)).toBe(3);
+    await expect(page.locator('#tourStatus')).toHaveText(/That run went in as/);
+    await page.waitForTimeout(3000);   // the hint is re-read many times in three seconds
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).ductRuns.length)).toBe(3);
+    expect(errors).toEqual([]);
+  });
+
   test('the doors: the empty-canvas link, Project Settings, ?course=hvac; three courses in one menu', async ({ page }) => {
     const errors = [];
     await boot(page, '/app/?course=hvac', errors);

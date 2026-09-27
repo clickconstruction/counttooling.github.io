@@ -485,8 +485,10 @@
           hint: () => {
             const d = S().drawingDuct;
             if (d && d.segments) { const have = d.segments.map((s) => sizeKey(s.size)).join(' '); return have && !MAIN_SIZES.join(' ').startsWith(have) ? 'The plan says ' + MAIN_SIZES.join(', ') + ' along this run: press S at each printed size' : ''; }
-            // a finished run at the wrong sizes: the hint went quiet once it was committed
-            const done = !mainDone() && ductRuns(M101).pop();
+            // a finished run at the wrong sizes: the hint went quiet once it was committed.
+            // ductRuns() is the LIVE annotations array: read its last entry, never pop it (a
+            // .pop() here deleted the reader's committed run on every hint read, 2026-09-27).
+            const done = !mainDone() && ductRuns(M101).slice(-1)[0];
             return done ? 'That run went in as ' + runSizes(done).join(', ') + '. Press Ctrl+Z and trace it again, pressing S at 20x12, 16x10 and 12x10' : '';
           },
           action: { label: 'Trace it for me', run: () => { if (mainDone()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); traceMain(); K().dirty(); } } },

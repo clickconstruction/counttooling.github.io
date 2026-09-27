@@ -13,6 +13,16 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): the HVAC course's trace hint no longer deletes the reader's committed main (2026-09-27)
+
+Found by the DS-DUCT-DOWNSTREAM agent while proving the Duct tool never drops a run: chapter 5's
+`trace` step read the last committed run to name its sizes with `ductRuns(M101).pop()`, and
+`ductRuns` returns the live annotations array, so every read of the hint deleted the reader's last
+run. A main committed at the wrong sizes vanished as soon as the hint that describes it showed;
+three pushed runs were gone within three seconds. The hint reads the last entry now and touches
+nothing. Pinned by course-hvac.spec.js: three committed runs at the trace step survive the hint
+being read for three seconds; red on the old line (two of three left).
+
 ## fix(duct): the size suggestion reads the air that really passes a vertex (DS-DUCT-DOWNSTREAM, 2026-09-27)
 
 The Duct size box's SUGGESTED row sizes the air still downstream of the trace's tip

@@ -1666,6 +1666,7 @@
   }
   function goTo(i) {
     dragPos = null; nudgedFor = -1; panelNudged = new Set();
+    const cardEl = el('tourCard'); if (cardEl) cardEl.scrollTop = 0;   // a long card scrolled to its foot opens the next one at its title
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
     heldByBack = next < stepIdx;
     stepIdx = next;

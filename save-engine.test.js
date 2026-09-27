@@ -528,9 +528,10 @@ test('force reload: stale server stamp records state but does not reload', async
 const PGRST202 = { code: 'PGRST202', message: 'Could not find the function public.get_project_permissions(p_project_id) in the schema cache', details: null, hint: null };
 
 // list_accessible_projects responder for the permission-refresh tests.
-// get_project_permissions answers the way prod does until MAP-PERMS's
-// migration is applied (missing, PGRST202), unless outcomes.lean opts in to
-// the lean read, which filters the same rows to the asked project.
+// get_project_permissions answers missing (PGRST202, the way prod did before
+// MAP-PERMS's migration was applied on 2026-09-27) so these tests keep walking
+// the list fallback while it stays, unless outcomes.lean opts in to the lean
+// read, which filters the same rows to the asked project.
 function rpcWithProjects(rows, outcomes) {
   return async (name, args) => {
     if (name === 'get_project_permissions') {

@@ -102,10 +102,12 @@
 > it unchanged. The plumbing walkthrough gains its fourth step set, *Size the branch at S*
 > (give the pipe its water, fixture units on the lavatory, trace the main and take 3/4″ at S),
 > and the plumbing guide names the rows. Telemetry (§8): `water_run` and `wsfu_prefill` are
-> wired behind the `water-telemetry` feature flag with migration
-> `20260923190000_log_user_event_water.sql` in the repo, unapplied; punch row WATER-TELEM
-> applies it and flips the flag. Open, not blocking: WATER-TABLES (the trade check of the
-> rules) and the Quick Line trace (one segment) gets no card.
+> wired; they shipped behind a `water-telemetry` feature flag until the allowlist migration
+> `20260923190000_log_user_event_water.sql` was on prod. **2026-09-27:** the owner had the
+> migration applied to prod (verified there), and punch row WATER-TELEM removed the flag and
+> its reads, so both events fire for every signed-in session. Open, not blocking:
+> WATER-TABLES (the trade check of the rules) and the Quick Line trace (one segment) gets no
+> card.
 
 The thesis, in the words the Stage-6 doc used: fixture units → pipe size at
 the S moment is the plumbing analogue of duct-by-size, riding the seams
@@ -305,6 +307,14 @@ flush-tank water closet as 2.5 WSFU, so every velocity after it was low.)
 commit; `wsfu_prefill` (accepted / overwritten) on counter create;
 `bid_check_row_state` already carries the rows. The same read-only pull
 DUCT-PLAN got on day 7.
+
+**Live 2026-09-27.** The allowlist migration
+`supabase/migrations/20260923190000_log_user_event_water.sql` is applied to
+prod, and the `water-telemetry` feature flag is gone: `water_run`
+(features/water-size.js `onPolylineCommitted`) and `wsfu_prefill`
+(features/water-fixtures.js `applyFieldToCounter`) fire for everyone. As
+with every `logUserEvent`, a signed-out or Supabase-disabled session logs
+nothing.
 
 ## 9. The mockup round — what the walkthrough must decide
 

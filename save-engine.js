@@ -870,14 +870,15 @@ function createSaveEngine(ctx) {
   // --- [sync] The permissions read (MAP-PERMS) ----------------------------
   // get_project_permissions returns the one row refreshProjectPermissions
   // reads (can_edit, can_check_out, checked_out_*), where the list returned
-  // every visible project WITH its whole takeoff (`data`). Until its migration
+  // every visible project WITH its whole takeoff (`data`). Its migration
   // (supabase/migrations/20260927030000_get_project_permissions.sql) is on
-  // prod, PostgREST answers PGRST202 (function not in the schema cache): the
-  // read falls back to list_accessible_projects in the same refresh and
-  // latches, so the missing RPC is not asked again every refresh. A client
-  // recycle clears the latch (recreateSupabaseClient) so a long-open tab meets
-  // a freshly applied migration. Follow-up once prod has the function: delete
-  // the latch and the list fallback here.
+  // prod since 2026-09-27. Where the function is missing, PostgREST answers
+  // PGRST202 (function not in the schema cache): the read falls back to
+  // list_accessible_projects in the same refresh and latches, so the missing
+  // RPC is not asked again every refresh. A client recycle clears the latch
+  // (recreateSupabaseClient). The fallback stays as a safety net for a week of
+  // normal use; delete the latch and the list fallback here on or after
+  // 2026-10-04 (PUNCHLIST MAP-PERMS).
   let permissionsRpcMissing = false;
   // Both answer shapes of a missing RPC: supabase-js's PostgrestError carries
   // the code; rawRpc keeps RAW_RPC_HTTP_404 as the error code and hands the

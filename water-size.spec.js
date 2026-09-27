@@ -135,6 +135,50 @@ test.describe('The S moment for water (rung 4)', () => {
     await expect(page.locator('#scaleModal')).toHaveClass(/visible/);
   });
 
+  // WATER-TELEM (2026-09-27): the allowlist migration is on prod, so water_run fires for
+  // everyone; no `water-telemetry` feature flag is set or read any more.
+  test('a committed water run logs water_run with no feature flag; a plain polyline logs none', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await load(page);
+    await page.evaluate(() => {
+      // Stub the registry seam: onPolylineCommitted resolves App.logUserEvent at call time.
+      window.__waterEvents = [];
+      window.App.logUserEvent = (type, pid, meta) => { window.__waterEvents.push({ type, meta }); };
+      const s = window.state;
+      s.lineTypes.push({ id: 'lt-cold', name: '3/4in PEX cold', color: '#4a9eff', curveStyle: 'straight', waterSide: 'cold' });
+      s.lineTypes.push({ id: 'lt-waste', name: '3in PVC waste', color: '#888', curveStyle: 'straight' });
+      s.counters.push({ id: 'c-lav', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#47c88e', wsfu: 2 });
+      s.pages[0].canvases[0].annotations.counterMarkers['c-lav'] = [{ x: 150, y: 210 }, { x: 200, y: 210 }, { x: 250, y: 210 }];
+      s.activeLineTypeId = 'lt-cold';
+      s.tool = window.App.TOOL.POLYLINE;
+      s.drawingPolyline = { id: 'draft-t', name: 'Cold main', color: '#4a9eff', points: [{ x: 100, y: 200 }, { x: 300, y: 200 }], closed: false, lineTypeId: 'lt-cold', group: null };
+      window.App.updateUI();
+      window.App.renderAnnotations();
+    });
+    expect(await page.evaluate(() => localStorage.getItem('clickcount-ff-water-telemetry'))).toBe(null);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !window.state.drawingPolyline);
+    const runs = await page.evaluate(() => window.__waterEvents.filter((e) => e.type === 'water_run'));
+    expect(runs).toHaveLength(1);
+    expect(runs[0].meta).toMatchObject({ side: 'cold', sizeIn: 0.75, material: 'pex', segments: 1, suggestionTaken: false });
+    expect(runs[0].meta.wsfu).toBeGreaterThan(0);
+    expect(runs[0].meta.gpm).toBeGreaterThan(0);
+    // a plain (not water-sided) polyline commits without a water_run
+    await page.evaluate(() => {
+      const s = window.state;
+      s.activeLineTypeId = 'lt-waste';
+      s.tool = window.App.TOOL.POLYLINE;
+      s.drawingPolyline = { id: 'draft-w', name: 'Waste', color: '#888', points: [{ x: 100, y: 300 }, { x: 300, y: 300 }], closed: false, lineTypeId: 'lt-waste', group: null };
+      window.App.updateUI();
+    });
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => !window.state.drawingPolyline);
+    expect(await page.evaluate(() => window.__waterEvents.filter((e) => e.type === 'water_run').length)).toBe(1);
+    expect(errors).toEqual([]);
+  });
+
   // Persona calibration C4 (2026-09-25): S was the only way to the sizes, and a tablet has no S.
   // The card's Pipe size opens the same popover (before S was ever pressed: the card's own tap was
   // wired only on the first S), takes a tap, and never drops a vertex under the card.

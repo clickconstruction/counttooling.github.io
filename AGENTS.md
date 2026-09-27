@@ -344,10 +344,10 @@
 - Supabase is **optional** (gated by `SUPABASE_ENABLED`). When enabled it provides
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
   storage bucket, several RPCs (the permissions refresh asks `get_project_permissions`,
-  one project's checkout row without its takeoff, drafted in
-  `supabase/migrations/20260927030000_get_project_permissions.sql` and NOT yet on prod:
-  save-engine.js falls back to `list_accessible_projects` on its PGRST202 until it is,
-  PUNCHLIST MAP-PERMS), and Edge Functions (`admin-create-user`,
+  one project's checkout row without its takeoff,
+  `supabase/migrations/20260927030000_get_project_permissions.sql`, on prod since
+  2026-09-27; save-engine.js still falls back to `list_accessible_projects` on a PGRST202
+  until that fallback is deleted, PUNCHLIST MAP-PERMS), and Edge Functions (`admin-create-user`,
   `admin-delete-user` (optional `reassignToUserId`), `admin-reassign-projects`,
   `admin-set-password`, `admin-delete-project`, `admin-list-users`,
   `cleanup-test-accounts` (the pg_cron-invoked daily purge of week-old

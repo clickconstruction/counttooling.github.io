@@ -137,8 +137,8 @@ const projectGlobals = {
   SCALE_PRESETS: 'readonly',
   CUSTOM_ICONS: 'readonly',
   ICONS: 'readonly',
-  // duct-model.js (loaded before report.js): the D25 row label
-  ductRowLabel: 'readonly',
+  // (R19: no duct-model.js name. The Duct Schedule table, with its row and
+  // fitting labels, is features/duct-schedule.js's App.buildDuctReportHtml.)
   // CDN libraries loaded via <script> in index.html
   pdfjsLib: 'readonly',
   jspdf: 'readonly',

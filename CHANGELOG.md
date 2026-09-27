@@ -255,6 +255,55 @@ import-clear, view-only, bid-switcher, room-sizer, esc-dialogs, output and cours
 duct-deferred, bid-check): 94 of 95 passed, and the one miss, the scale lesson timing out on a
 shared machine, passed alone, as did lessons.spec.js whole (26 of 26).
 
+## refactor(report): the duct and water tables in the printed report are built by their schedules, and a fitting is named in one place (R19, 2026-09-26)
+
+The decomposition map's R19, both items, cut the way its skeptic asked: only the duct and water
+sections moved. The circuit schedule and Bid Check tables have no second copy anywhere, so moving
+them would only have split each one's HTML from its email text; they stay in report.js. Nothing an
+estimator sees changes.
+
+**The tables move to their schedules.** report.js built the Duct Schedule and Water Sizing tables
+itself, with its own fitting names, its own joint label and its own copies of the schedules'
+formatters, which is how its water verdicts drifted from the modal before MAP-REPORT-WATER. Now
+features/duct-schedule.js registers `App.buildDuctReportHtml(schedule, esc)` and
+features/water-schedule.js `App.buildWaterReportHtml(schedule, esc)`, built from the words the
+modal and Copy Schedule already use: the duct LF cell is the modal's `lfLabel`, and the water rows
+share new `runText`, `totalServesText`, `unservedText` and `footText` helpers with Copy Schedule and
+the modal's foot. `buildReportHtml` places them through one optional guard, `appBuild`: no schedule
+or no builder, no section. report.js passes its own `escapeHtml` as `esc`, so the markup and the
+escaping are what they were.
+
+**report.js's own repetition.** The seven registry adapters (rooms, duct, water, child counts,
+conductors, circuits, Bid Check) differed only in the App name and the fallback; they are one
+`appRollup(name, fallback)`. The prologue the builders shared (scope, annotation source, group
+names, the aggregation walk, the child and conductor rollups) is `rollup(options, untaggedName)`.
+The map counted three copies; getTakeoffToolingPayload carried a fourth. An untagged group is
+named 'Untagged' in the report and the email text and null in the /Tooling text and the payload,
+as before. The email text's five trailing blocks each re-opened the Takeoff Summary banner by
+hand; they go through `pushSection(heading, rows)`. report.js went from 991 lines to 872.
+
+**One fitting-label table.** A fitting type was named in five places: the schedule, the report,
+the reclassify menu (without the Volume damper row), the sidebar's per-run line, and the static
+path's words. duct-model.js now holds `DUCT_FITTING_LABELS` (the title, '90° elbow' to 'Volume
+damper') and `DUCT_FITTING_WORDS` (singular and plural) beside `DUCT_FITTING_TYPES`, exported, and
+`DUCT_EQ_FT_LABELS` is that words table rather than a copy of it. `DUCT_ROUND_STICK_FT` and
+`ductJointsLabel(row)` ("6 joints @ 10'") name the joint count once; the schedule's `lfLabel` reads
+them, and with the duct table gone from report.js that is every place the label prints. A new
+fitting type is now named in duct-model.js and nowhere else, and a duct-model.test.js case fails if
+the two tables and the type list fall out of step. report.js reads no duct-model.js name any more,
+so eslint's `projectGlobals` lost `ductRowLabel` rather than gaining the new names.
+
+**Proof.** A throwaway harness seeded twelve projects (empty; duct counted, factor, grease with flex
+and rooms, a multiply zone, an unscaled second sheet; water, public and private; electrical with
+circuits, child counts and a ticked Bid Check row; everything at once, as electrical and as HVAC)
+and wrote `buildReportHtml` (every sheet, each sheet, merged layers), `getEmailTextSummary`,
+`getPipeToolingSummary` (plain, scoped, one sheet), `getTakeoffToolingPayload`, the has-data probes
+and the paste summary: 180 outputs, identical byte for byte before and after, with the two new
+builders confirmed live in the after run. duct-schedule, water-schedule, circuits, bid-check,
+duct-sidebar, duct-fittings, takeoff-handoff and output pass unchanged, as do child-counts,
+bend-fittings, copy-tooling-feet, conductors, duct-b19b, copy-layers, duct-stumbles, room-sizer,
+water-bidcheck, duct-static, duct-bidcheck and export-pdfs.
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

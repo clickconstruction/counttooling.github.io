@@ -44,15 +44,6 @@
 
   const AIRSIDE_ORDER = ['supply', 'return', 'exhaust'];
   const AIRSIDE_LABELS = { supply: 'Supply', return: 'Return', exhaust: 'Exhaust' };
-  // Singular/plural fitting labels for the per-run fittings line.
-  const FITTING_WORDS = {
-    elbow90: ['elbow', 'elbows'],
-    elbow45: ['45° elbow', '45° elbows'],
-    transition: ['transition', 'transitions'],
-    tap: ['tap', 'taps'],
-    boot: ['boot', 'boots'],
-    offset: ['offset', 'offsets'],
-  };
 
   const fmtFt = (ft) => Math.round(ft).toLocaleString() + "'";
   const fmtLb = (lb) => Math.round(lb).toLocaleString();
@@ -101,7 +92,7 @@
     });
     const parts = [];
     byType.forEach((count, type) => {
-      const words = FITTING_WORDS[type] || [type, type + 's'];
+      const words = DUCT_FITTING_WORDS[type] || [type, type + 's'];   // duct-model's singular/plural table (R19)
       parts.push(count + ' ' + (count === 1 ? words[0] : words[1]));
     });
     return parts.join(' · ');

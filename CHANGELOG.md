@@ -13,6 +13,115 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): the HVAC rules the course teaches enter the rulebook (RULEBOOK-GAPS, 2026-09-26)
+
+The HVAC third of RULEBOOK-GAPS. The HVAC course's six `rulesExempt` steps, the ones the lesson
+rules check listed as teaching code the rulebook did not hold, now name rules, and
+`node scripts/check-lesson-rules.js --gaps` lists only the plumbing and electrical gaps. Four new
+rule files, all `status: draft` with an empty `used_by` until a person with the trade signs them:
+
+- `hvac.exhaust.hood-makeup-air` (IMC 508.1): a hood's exhaust is replaced by make-up air that
+  runs with it, interlocked with its fan. Both make-up steps name it (chapter 3's `balance`,
+  chapter 7's `interlock`).
+- `hvac.diffuser.neck-velocity` (convention): the 400 to 600 fpm band at a diffuser neck, and
+  the card's worked example, 150 CFM through an 8 in neck at 430 fpm. Draft with no code pointer,
+  on purpose: the app's neck suggestion reads a CFM-to-neck table (`NECK_SIZE_TABLE` in
+  duct-model.js), not the band, and that table's 14 in row runs near 655 fpm, above it, so there
+  is no number in code a pointer could pin. The body's Verify line names HC-TRADE, which questions
+  the band itself.
+- `hvac.damper.fire-damper` (IMC 607.5.1): a listed fire damper where a duct passes a rated wall,
+  none in a grease duct. Named by `dampers`, `nodamper` and chapter 9's `rows`. Its Verify line
+  asks which subsection the kitchen wall falls under (fire wall, barrier or partition carry
+  different exceptions).
+- `hvac.ventilation.outdoor-air` (IMC 403): the outdoor-air minimum, per person plus per floor
+  area, that chapter 9's OA row asks the estimator to find on the schedule. The card teaches no
+  rate and the rule states none.
+
+The NFPA 96 step (`nodamper`, no damper inside a grease duct) needed no new file: the applied
+`hvac.duct.grease-duct` already says a grease duct takes no damper of any kind, so the step names
+it. The values that are not numbers ("required", "interlocked") render as they are on the rule
+pages and in the § popover. One side effect worth knowing: fpm now belongs to two rules, so an
+fpm figure on an unannotated step is flagged only beside the subject of one of them, where
+before `hvac.duct.schedule-factors` owned the unit alone; no step's fpm was judged by it before
+(`--trace`).
+
+## feat(rules): twelve electrical rules the course teaches enter the rulebook as drafts (RULEBOOK-GAPS, 2026-09-26)
+
+The electrical third of the punch row RULEBOOK-GAPS. The electrical course had twelve steps
+that cite a code section the rulebook did not hold, each carrying a `rulesExempt:` that said so.
+Each section is now a rule file in content/rules/electrical/ with `status: draft`, written in
+the course's words and cited by section, and the twelve steps in features/course-electrical.js
+name them in `rules:` instead. Fifteen rules, because three steps cite more than one section
+and two sections are cited twice (240.4(D) by Read a row and Why #12, 310.16 by Read a row and
+Read the one-line), which is one rule each:
+
+- `elec.panel.working-space`: NEC 110.26(A), 36 in deep, 30 in wide, 6.5 ft high
+- `elec.conductor.small-protection`: NEC 240.4(D), 15 A on #14, 20 A on #12, 30 A on #10 copper
+- `elec.conductor.ampacity`: NEC 310.16, 200 A for #3/0 copper in the 75 °C column
+- `elec.gfci.non-dwelling`: NEC 210.8(B), restrooms, kitchens, 6 ft from a sink
+- `elec.emergency.battery-duration`: NEC 700.12, 90 min
+- `elec.egress.illumination`: IBC 1008.3, 90 min
+- `elec.lighting.occupancy-sensors`: IECC C405.2.1, the rooms on sensors (words, no number)
+- `elec.emt.support`: NEC 358.30(A), 3 ft from a box, 10 ft along the run
+- `elec.disconnect.within-sight`: NEC 440.14 (words)
+- `elec.hood.shunt-trip`: NFPA 96 10.4.1, a standard (words)
+- `elec.circuit.fixed-equipment`: NEC 210.23 (words)
+- `elec.ground.equipment-conductor`: NEC 250.122, #6 copper for a 200 A breaker
+- `elec.ground.electrode-conductor`: NEC 250.66, #4 copper for #3/0 service conductors
+- `elec.service.load-calculation`: NEC Article 220 (words)
+- `elec.emt.bends`: NEC 358.26, 360° of bends between pull points
+
+Every value row holds the number its card teaches, and the lesson rules check now reads the
+cards against them: `--trace` shows the working space's 36 in, the 20 A and 15 A, the 6 ft, the
+90 min, the strap's 3 ft and 10 ft, the feeder's 200 A and the 360° agreeing. None has a `code:`
+pointer and `used_by` is empty: the app applies none of them yet, and each page says so. Each
+body ends with a "Verify against your edition" paragraph naming what a tester should check
+(renumbered sections between editions, exceptions the card leaves out) before it is `applied`.
+
+Two units were picked so the check reads only what it should: the ampere is `A`, which only
+these rules carry, and the bends are `° of bends`, not `°`, so a "45°" snap or a "Rotate 90°"
+button elsewhere is not read as a bend. `rules/`, `sitemap.xml` and the `sw.js` stamps are
+regenerated. `node scripts/check-lesson-rules.js --gaps` now lists seventeen gaps, the plumbing
+and HVAC ones; the RULEBOOK-GAPS row stays open for them and for the tester's signature.
+
+## feat(rules): thirteen plumbing rules the course teaches enter the rulebook as drafts (RULEBOOK-GAPS, 2026-09-26)
+
+The plumbing third of RULEBOOK-GAPS. The eleven plumbing course steps that cited a section the
+rulebook did not hold (`rulesExempt`) now name a rule each, thirteen rules in all, because two
+steps cite two things a plumber reads as separate rules (indirect waste and trap primers,
+cleanouts and vents), and the trap-arm table is one rule the riser step and the Bid Check step
+both name. Each is `status: draft`, `used_by: []`, no `code:` pointer: written in the course's
+words and cited by section, never the code text, and applied by nothing in the app yet. A person
+with the trade signs each before it is `applied`.
+
+- `plumb.waste.indirect` (IPC 802), `plumb.trap.seal` (IPC 1002.4, seal 2 to 4 in):
+  "What the FD keynote costs".
+- `plumb.drain.slope` (IPC Table 704.1, 1/4, 1/8 and 1/16 in/ft by size),
+  `plumb.waste.grease-interceptor` (IPC 1003.3), `plumb.drain.cleanouts` (IPC 708.1, 100 ft),
+  `plumb.vent.trap-protection` (IPC 901.2, 1 in w.c.): Chapter 4.
+- `plumb.trap.arm-length` (IPC Table 909.1, 5 / 6 / 8 / 12 / 16 ft by trap size),
+  `plumb.vent.terminal` (IPC 903, 1 ft above the roof as the course teaches it, 10 ft and
+  3 ft from an opening, 7 ft on a used roof): Chapter 5; the arm rule also on "What the rows mean".
+- `plumb.gas.pipe-sizing` (IFGC 402.4), `plumb.gas.appliance-shutoff` (IFGC 409.5, 6 ft),
+  `plumb.gas.hood-shutoff` (NFPA 96 10.4), `plumb.hanger.steel` (IPC Table 308.5, 12 ft
+  horizontal, 15 ft vertical): Chapter 6.
+- `plumb.drain.dfu-capacity` (IPC Table 710.1(1), a 3 in and a 4 in drain at three slopes;
+  the course's 36 and 180 DFU): "What the rows mean".
+
+Three card sentences changed so the lesson rules check can hold them to their rule: the trap arm
+card says "six feet" (it said "six", which the check could not read as a length), the gas hanger
+card says the steel row "is still a draft" (it said the rulebook had none), and the Bid Check
+reveal writes the P-501 load as 47 fixture units and the sewer as 180 DFU at 1/8" per foot (a
+card that names the DFU rule may say DFU only for a number the rule holds). Two rule titles were
+narrowed so their subject words stop matching unrelated cards ("Trap arms", "Vent terminals").
+
+Doubts for the signing: the course card and the sample riser cite the trap-arm table as IPC
+Table 1002.2, which is the UPC's (3 ft 6 in at 1-1/2 in); the IPC's is Table 909.1, whose 6 ft
+the card teaches. The gas line's hanger at 12 ft is IPC Table 308.5's steel figure; the fuel gas
+code (IFGC Table 415.1) supports 1-1/4 in steel gas pipe at 10 ft. The IPC leaves the vent's
+height above the roof to the jurisdiction. Each rule's "Verify against your edition" names its own.
+`node scripts/check-lesson-rules.js --gaps` now lists only the electrical and HVAC steps.
+
 ## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
 
 The decomposition map's R20, both items, and its defect D43. The three floating palettes drag

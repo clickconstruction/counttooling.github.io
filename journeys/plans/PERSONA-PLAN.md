@@ -230,6 +230,8 @@ prober and the cheaper live pass"; how it came out is in the Harness section bel
 
 ## Rulebook gaps
 
+**All 29 gaps drafted 2026-09-26** (32 rules, three trade agents, one branch each): the courses' `rulesExempt` lines are gone and `--gaps` lists nothing. Every draft carries a Verify against your edition paragraph; PUNCHLIST `RULEBOOK-SIGN` is the tester's signing row, and a draft turns `applied` only with that signature.
+
 Found by the lesson rules check the day it was built (2026-09-25): the courses teach code the
 rulebook does not hold. `node scripts/check-lesson-rules.js --gaps` lists them, each with the step
 and the section it cites. There are 29: eleven in the plumbing course (indirect waste and trap
@@ -242,6 +244,19 @@ air, the diffuser neck velocity, fire dampers, no dampers in a grease duct, outd
 the learning base's backlog. Each becomes a rule file with `status: draft` in the course's words,
 cited by section, never the code text reprinted (content/rules/README.md). A person with the
 trade signs it before it is `applied`, and the step then names it in `rules:`.
+
+- **The HVAC six are done (2026-09-26):** four draft rules (`hvac.exhaust.hood-makeup-air`,
+  `hvac.diffuser.neck-velocity`, `hvac.damper.fire-damper`, `hvac.ventilation.outdoor-air`), and
+  the grease-duct step names the applied `hvac.duct.grease-duct`, which already held it; every
+  HVAC step names its rules and none is exempt. They wait on the tester's signature (CHANGELOG).
+
+The electrical twelve are drafted (2026-09-26): fifteen `status: draft` rules in
+content/rules/electrical/, named by the twelve steps' `rules:` (CHANGELOG "twelve electrical
+rules the course teaches enter the rulebook as drafts"); each still waits on a tester's signature.
+
+Plumbing drafted 2026-09-26: the eleven plumbing steps name thirteen `status: draft` rules
+(CHANGELOG "thirteen plumbing rules the course teaches enter the rulebook as drafts"), awaiting
+a tester's signature.
 
 ## Harness
 

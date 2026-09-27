@@ -411,9 +411,14 @@
     dirty();
     App.fitZoom();   // ONE raster for the page the lesson lands on: two back to back left the sheet blank
   }
+  // The open card is there to say one thing: this runs on sample sheets, and nothing done on them
+  // touches the reader's own work. By default it opens on the lesson's `intro` and closes on that
+  // promise. The intro is also the row's subtitle in Learn, so a reader who came from the menu has
+  // just read it: a lesson that gives an `opener` gets a card that is the opener and the one action,
+  // nothing repeated (Start here does; Will, 2026-09-27).
   const openStep = (lesson) => ({
     id: 'sheets', title: lesson.title, kind: 'do',
-    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF, a drawing file, with three sheets or more. It is where a 120-sheet set, the whole stack of drawings, becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].\nSigned in, click Open, not Save & open, so the sample stays out of your saved projects.' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
+    body: (lesson.opener || lesson.intro) + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF, a drawing file, with three sheets or more. It is where a 120-sheet set, the whole stack of drawings, becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].\nSigned in, click Open, not Save & open, so the sample stays out of your saved projects.' : '') + (lesson.opener ? '' : '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.'),
     // Trim your set's Open when it is up, else nothing: lighting the header's Upload PDF sent a reader to
     // a file picker with no lesson PDF in it, the card's own button being the door (PERSONA-PASS)
     target: ['#preparePdfDone'],
@@ -437,6 +442,7 @@
     {
       id: 'start', title: 'Start here', short: 'the lay of the land', minutes: 4, page: P101,
       intro: 'Four minutes for anyone new. What this app is, where things sit on the screen, and one real click on a sample sheet. Then pick your path.',
+      opener: 'This lesson runs on sample sheets: a small restaurant\'s plumbing plan, opened for you.\nNothing you do on them touches your own projects, so click freely.\nIf a plan of yours is open, the app asks before it closes it.',
       seed() { makeTbCounter(); },
       steps: [
         { id: 'what', title: 'What this is', kind: 'read',

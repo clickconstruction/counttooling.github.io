@@ -29,6 +29,8 @@ The July tiers landed (pdf-tile-cache stages 1 and 2, the sidebar and status ren
 
 ## 1. Ranked shortlist
 
+**All 25 landed by 2026-09-26** (PRs #218 to #224; each heading below carries its Landed line and what it left). The bug rows became PUNCHLIST `MAP-*` rows and closed with them; MAP-PERMS (the lean permissions read, a developer item) and the two product calls (MAP-SUMMARY-LAYERS, MAP-PHONE-BAR) are what remains of the map in the punch list.
+
 Best value for risk first. Yield is lines removed or moved out of the monolith (estimates, skeptic-corrected where marked). Each item lists the shard findings it came from; their evidence and recipes follow it.
 
 | # | Item | Risk | Yield |
@@ -422,6 +424,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R19. report.js trade tables move to their owners; one fitting-label table
 
+**Landed 2026-09-26** (part of MAP-SHORTLIST): both items, the duct and water halves only, as the skeptic said. report.js's seven adapters are one `appRollup(name, fallback)`, the four builders share `rollup(options, untaggedName)` (four copies, not three: getTakeoffToolingPayload carried the /Tooling one), and the email text's five trailing blocks go through `pushSection(heading, rows)`. The Duct Schedule and Water Sizing tables are features/duct-schedule.js's `App.buildDuctReportHtml` and features/water-schedule.js's `App.buildWaterReportHtml`, which `buildReportHtml` places through the same optional guard; the circuit and Bid Check tables stay. duct-model.js holds `DUCT_FITTING_LABELS`, `DUCT_FITTING_WORDS` (which `DUCT_EQ_FT_LABELS` now is, rather than a sixth copy), `DUCT_ROUND_STICK_FT` and `ductJointsLabel`; the joints label serves the schedule's `lfLabel`, since report.js no longer prints duct at all, and report.js's `projectGlobals` lost `ductRowLabel` instead of gaining the new names. The water verdict drift the item opened with was already closed by MAP-REPORT-WATER. Every report surface printed byte for byte the same over twelve seeded projects before and after. report.js 991 → 872 lines. CHANGELOG "refactor(report): the duct and water tables in the printed report are built by their schedules, and a fitting is named in one place".
+
 *Risk low, yield ~130.* The printed Water Sizing verdicts have already drifted from the modal. Keep the window.* contract.
 
 - **`draw-output-edit:report-trade-tables-to-owners`** (move, high confidence; check: adjusted) Move report.js's duct/water/circuit/Bid Check tables to their owners; collapse the adapter wrappers
@@ -438,6 +442,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R20. One draggable palette helper for Chain, Drop and Highlights (with pointercancel)
 
+**Landed 2026-09-26** (part of MAP-SHORTLIST): both items, as one. features/floating-panel.js holds `App.makeFloatingPanel({ panelId, headId, closeId, posKey, defaultWidth })` → `{ applyPos, wireDrag }`, and chain.js, drop-mode.js and highlight-labels.js each make theirs inside their own `wire()`, keeping their ids, their key (`chainPanelPos`, `dropPanelPos`, `highlightPanelPos`, unchanged) and their 300 / 200 width. A drag ends on pointerup or pointercancel (D43). A feature file, not the registry block: it is forty lines with no app.js dep, and app.js is where three other extractions are working today. The open / close lifecycle stayed in each tool, as the skeptic said. drop-mode.spec.js and highlight-labels.spec.js now pin drag persistence (the Drop case also the viewport-fit fallback), and mobile-touch.spec.js a touch drag cancelled mid-way on all three. CHANGELOG "refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go".
+
 *Risk low, yield ~70.* Three copies of the same helper, all missing pointercancel handling.
 
 - **`trades:floating-palette-dedupe`** (dedupe, high confidence; check: adjusted) One draggable palette helper for Chain, Drop and Highlights
@@ -453,6 +459,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
   - First: none
 
 ### R21. Save-engine: dedupe inside the file, then Stage 7 timers, then a lean permissions read
+
+**Landed 2026-09-26** (two of three; part of MAP-SHORTLIST): the internal dedupe and Stage 7. save-engine.js has `adoptNewCloudProject` (the three adopt blocks; the autosave keeps its `'local'` backup delete), `turnInSaveBlocked` (nested in doTurnIn) and `rawRpc` behind the two raw RPC twins; `onVisibilityChange`, `onOnline`, `onOffline` and `autoSaveTick` hold the timer bodies with `lastHiddenAt`, and app.js keeps the three listeners and the interval under `// SECTION: [sync] Visibility & timers` (7,891 to 7,787 lines; six wrappers that lost their last caller went with them). save-engine.test.js pins the folds and drives the long-idle return with a fake clock. The lean permissions read waits on MAP-PERMS (a Supabase RPC migration, a developer item); the defect below is still open. CHANGELOG "refactor(save): the engine folds its repeated blocks and takes the visibility, connectivity and autosave timers".
 
 *Risk medium, yield ~165.* refreshProjectPermissions downloads every project's data to read one row. The timers move under node tests.
 
@@ -473,6 +481,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R22. Mark context menu into features/mark-context-menu.js
 
+**Landed 2026-09-26** (part of MAP-SHORTLIST): features/mark-context-menu.js owns `showContextMenu`, the nine `#ctx*` row handlers, the `#contextMenu` capture-phase Escape and its click-away; app.js went from 7,891 lines to 7,596 and `handleContextMenu` dispatches through `App.showContextMenu`. The misnamed "Canvas Repair modal wiring" marker is deleted. Nothing new published: every dep was already on `App`, and `countItemsInRect` was never one. `strayDeviceAttachTarget` stayed in features/duct-suggest.js, where R14 had already moved it (the first finding's "with it" and its line numbers predate R14). The script tag sits after tool-context-menu.js, ahead of drop-peek.js and rules.js, so the Escape still registers before their capture listeners. CHANGELOG "refactor(context-menu): the right-click menu on a mark is its own feature file".
+
 *Risk medium, yield ~315.* The largest cohesive block left in app.js. Its SECTION marker is misnamed.
 
 - **`core-render-ui:mark-context-menu-feature`** (extract, medium confidence; check: confirmed) Mark right-click menu (showContextMenu plus the ctx* row handlers) into features/mark-context-menu.js
@@ -490,7 +500,7 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R23. Project Settings and the header output menus get their own feature files
 
-*The bug half landed 2026-09-26 (MAP-NOSUPA): the doors, the eye and the modal's local rows are bound outside the SUPABASE_ENABLED block in app.js. The feature-file split below remains.*
+**Landed 2026-09-26** (part of MAP-SHORTLIST): both items, 445 lines out of app.js (7,891 to 7,446). The bug half was MAP-NOSUPA's. New features/project-settings.js owns openProjectSettings and both doors, the eye, the per-project rows and syncProjectSettingsRows, the Groups gate, the local rows (Macros and Clear page included) and closeProject, and its `App.syncProjectSettingsChrome` is the settings-row slice of updateUIInner, called right after the `.supabase-only` pass. The skeptic was right that most of that stretch was other chrome; about forty lines moved, the Use groups switch's state among them. The cloud rows stay in the SUPABASE_ENABLED block. The output menus went into features/output.js as the skeptic said, not a new header-menus.js: the Export and Show Report openers bound at load, and `App.syncOutputMenus` called just before App.updateBurgerMenu. The copy menus' This sheet rows now sync there, before the drawer, beside their Everything rows; the drawer copies neither. CHANGELOG "refactor(settings): Project Settings has its own feature file, and the header output menus join the Copy and Download menus in output.js".
 
 *Risk medium, yield ~350.* Moves the wiring out of the SUPABASE_ENABLED block, which fixes the dead gear and Hide marks when Supabase is disabled.
 
@@ -508,6 +518,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
   - First: none
 
 ### R24. Split the sheet legend out of canvas-draw.js; lift the duct pass and ghost band
+
+**Landed 2026-09-26** (R24, all three items): canvas-legend.js holds `createCanvasLegend(deps)` (the legend, the sheet block and the grid, 605 lines), loaded before canvas-draw.js, whose factory composes it and re-exports the same keys, so app.js did not change; canvas-draw.js went from 1,940 lines to 1,409. The duct pass is the closure `drawDuctOverlay(ctx, ann, env, state, lo)`, called where it ran; the two tick closures are one top-level `drawPerpTick`; `strokeDuctGhostSpans` is the band's stroke for the committed painter and the draft. Where the map was off: the legend also needed `lineStyleToDash` (the grid) and the top-level `DUCT_LEGEND_SWATCH`, which moved with `hexToRgb` because nothing else reads them; the duct pass reads no `lw` (the fitting markers declare their own), so it takes five arguments, not six; the legend tests were thirteen, plus two grid and two helper tests, all now in canvas-legend.test.js. A 37-scenario call-log dump (every duct sub-pass, all three legend styles in both inks, the grid) was byte-identical before and after, and render-pixels passed before and after. CHANGELOG "refactor(draw): the sheet legend is its own file, and the duct pass is one function".
 
 *Risk medium, yield ~525.* A clean 500-line seam, and render-pixels runs in CI.
 
@@ -529,6 +541,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
   - Pinned by: duct-ghost.spec.js; render-pixels.spec.js locally
 
 ### R25. One page→JPEG→jsPDF pipeline for Download, Export PDFs and bundles
+
+**Landed 2026-09-26**: `rasterPageCanvas` / `rasterPageJpeg` and `addImagePage` in features/pdf-bundle.js, with `runSpecificPagesExport` moved there on top of them and registered again (`App.runSpecificPagesExport`, read by Export PDFs and the Download). `downloadCurrentPageAsPdf` builds its selections and layer mode per Download mode and keeps its names, progress and log source; the drift became options (`ensureActiveCanvas`, `captionSingleLayer`, `skipSheetsWithoutLayers`, `progressNoun`). The notes and highlights bundles render each sheet once per export (a one-sheet memo). The four Download modes were pinned first in output.spec.js (file name, page count, page size, captions via pdf-lib). The saving is smaller than the map's ~110: output.js and export-pdfs.js lost 160 lines, pdf-bundle.js gained 143 (the helpers, the moved export, its option notes). CHANGELOG "refactor(export): Download, Export PDFs and the note and highlight pages render sheets through one pipeline".
 
 *Risk medium, yield ~110.* Nine copies. First pin the three untested Download modes.
 
@@ -587,7 +601,7 @@ Every bug and latent defect the shards reported, with the skeptic's result. Doc 
 | D40 | latent | adjusted | `duct-model.js:2058` | **Generic unexported top-level names in duct-model.js live in the page's shared global lexical scope.** const plural (2058), const fmtInWg (2024) and function fmtIn (1742) are top-level in a classic script. Any other top-level pure module that later declares const plural throws 'Identifier has already been declared' at load and takes its dependent features with it. ESLint lints each browser module standalone and cannot see the collision. Prefix these names (duct*) or scope them. |
 | D41 | latent | adjusted | `duct-model.js:598` | **rollupRunsToSchedule applies one pressure class to every run.** This test-only convenience takes the class from opts for all runs, contradicting the per-class bucketing computeDuctSchedule implements (the module's own composition rule for mixed-class takeoffs). No browser caller uses it, and it is still listed in the ARCHITECTURE row, which makes it a trap for the next reader. Delete it along with ductDeviceSystemId and ductRunDepthIn (also test-only). |
 | D42 | latent | adjusted | `features/bid-check.js:106` | **Trade detection differs between electrical and water features.** bid-check.js (:106, :123, :137), conductors.js:47, circuits.js:40 and tag-reader.js:61 read the raw state.trade. water-fixtures.js:51-53 and water-runs.js:44-46 use App.getQuickTrade(), which falls back to the device default and then plumbing. AGENTS.md says a null trade (never chosen) means plumbing behavior. So a never-traded project shows the WSFU and water fields and the plumbing codes footer (bid-check.js:224), but no hanger or fitting auto rows and no plumbing manual rows. |
-| D43 | latent | adjusted | `features/chain.js:67` | **Palette drag never handles pointercancel.** wireDrag in chain.js, drop-mode.js:69 and highlight-labels.js:64 removes its move and up listeners only on pointerup. When a touch drag is cancelled, the old move handler, with its stale offset, stays bound to the head and fires on later drags, so the panel jumps. Fix it once, inside the helper from floating-palette-dedupe. |
+| D43 | latent | adjusted | `features/chain.js:67` | **Palette drag never handles pointercancel.** wireDrag in chain.js, drop-mode.js:69 and highlight-labels.js:64 removes its move and up listeners only on pointerup. When a touch drag is cancelled, the old move handler, with its stale offset, stays bound to the head and fires on later drags, so the panel jumps. Fix it once, inside the helper from floating-palette-dedupe. **Fixed 2026-09-26** (R20). |
 | D44 | latent | adjusted | `annotation-model.js:265` | **stripPins (and groupsEnabled on pdf-intake) skipped by four intakes.** applyTakeoffBackupToState, hydrateStateFromProjectData (:314), matchPendingCanvasLoad (pdf-intake.js:147) and applyAnnotationsFromCloudMatch (pdf-intake.js:208) never set stripPins. The session keeps readDeviceStripPins() (app.js:895), which is the device's last-toggled arrangement from any bid, and autosave writes that into this bid. AGENTS.md says stripPins rides all four intakes. Both pdf-intake paths also skip groupsEnabled. **Fixed 2026-09-26** (MAP-QUICKKEYS). |
 | D45 | latent | adjusted | `scripts/lib/site.js:1` | **site.js claims the site chrome cannot drift, but the landing copies it by hand and already has.** The header comment says 'One copy, so the nav and the meta can never drift between sections'. index.html:77-92 and :682-693 hand-copy the header and footer and already differ: trade nav links (Plumbing/Electrical/HVAC) and the phone/address line appear only on the landing. It needs a product call on whether /guides/ and /rules/ get the trade nav, then a splice or a check. |
 

@@ -76,6 +76,21 @@ const DUCT_AIRSIDES = ['supply', 'return', 'exhaust'];
 /** Valid fitting types (DUCT-PLAN: corner/step/tap inference + reclassify menu). */
 const DUCT_FITTING_TYPES = ['elbow90', 'elbow45', 'transition', 'tap', 'boot', 'offset'];
 
+// R19: a fitting type's name, once. The title (the schedule's Type column, its Copy
+// Schedule text, the printed report, the reclassify menu) and the words a count
+// takes in a sentence ("2 elbows + 1 VD": the sidebar's per-run line, the static
+// path). `vd` is the derived Volume damper row (D8), not a DUCT_FITTING_TYPES
+// member. A new fitting type is named here and nowhere else.
+const DUCT_FITTING_LABELS = { elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition', tap: 'Tap', boot: 'Boot', offset: 'Offset', vd: 'Volume damper' };
+const DUCT_FITTING_WORDS = { elbow90: ['elbow', 'elbows'], elbow45: ['45° elbow', '45° elbows'], transition: ['transition', 'transitions'], tap: ['tap', 'taps'], boot: ['boot', 'boots'], offset: ['offset', 'offsets'], vd: ['VD', 'VDs'] };
+/** Spiral/round duct lands in 10' sticks: a round schedule row counts one joint per stick. */
+const DUCT_ROUND_STICK_FT = 10;
+/** A round schedule row's joints, "6 joints @ 10'" ('' for a rect row, whose joints are null). */
+function ductJointsLabel(row) {
+  if (!row || row.joints == null) return '';
+  return row.joints + (row.joints === 1 ? ' joint' : ' joints') + ' @ ' + DUCT_ROUND_STICK_FT + "'";
+}
+
 /** Which inference rule anchored an auto fitting (D3). */
 const DUCT_FITTING_ORIGINS = ['bend', 'step', 'tap'];
 
@@ -2104,7 +2119,7 @@ function ductStaticPath(opts) {
 }
 
 // "2 elbows + 1 transition" — the fittings on the path, in table order.
-const DUCT_EQ_FT_LABELS = { elbow90: ['elbow', 'elbows'], elbow45: ['45° elbow', '45° elbows'], transition: ['transition', 'transitions'], tap: ['tap', 'taps'], boot: ['boot', 'boots'], offset: ['offset', 'offsets'], vd: ['VD', 'VDs'] };
+const DUCT_EQ_FT_LABELS = DUCT_FITTING_WORDS;   // R19: the one words table, beside DUCT_FITTING_TYPES
 function ductStaticPathFittingsLabel(counts) {
   return Object.keys(DUCT_EQ_FT_LABELS)
     .filter(t => counts && counts[t] > 0)
@@ -2382,6 +2397,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     // model
     DUCT_AIRSIDES, DUCT_FITTING_TYPES, DUCT_FITTING_ORIGINS,
+    DUCT_FITTING_LABELS, DUCT_FITTING_WORDS, DUCT_ROUND_STICK_FT, ductJointsLabel,
     makeRectSize, makeRoundSize, isDuctSize, cloneDuctSize, formatDuctSize,
     makeDuctRun, makeDuctFitting, validateDuctRun, validateDuctFitting,
     // the drawing draft (MAP-DUCT-STEP)
@@ -2435,7 +2451,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ductPlanWidthIn,
     DUCT_BID_CHECK_ROWS, ductBidCheckRows, ductBidCheckUnresolved,
     // static path (D11)
-    DUCT_FITTING_EQ_FT, ductFittingEqFt, ductStaticPath, ductStaticPathLine, ductStaticPathFittingsLabel,
+    DUCT_FITTING_EQ_FT, DUCT_EQ_FT_LABELS, ductFittingEqFt, ductStaticPath, ductStaticPathLine, ductStaticPathFittingsLabel,
     // plan-and-spec callouts (D10)
     DUCT_CALLOUT_RADIUS_PT, parseDuctCallout, ductDistToTextBox, nearestDuctCallout, soleDuctCallout,
   };

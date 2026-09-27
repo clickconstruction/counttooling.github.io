@@ -52,46 +52,7 @@
   // stored spot no longer fits the viewport.
   let panelCollapsed = false;
   const PANEL_POS_KEY = 'chainPanelPos';
-
-  function loadPanelPos() {
-    try { return JSON.parse(localStorage.getItem(PANEL_POS_KEY)) || null; } catch { return null; }
-  }
-
-  function applyPanelPos(panel) {
-    const pos = loadPanelPos();
-    if (!pos) return;
-    const w = panel.offsetWidth || 300;
-    if (pos.x < 0 || pos.y < 0 || pos.x + w > window.innerWidth || pos.y + 60 > window.innerHeight) return;
-    panel.style.left = pos.x + 'px';
-    panel.style.top = pos.y + 'px';
-  }
-
-  function wireDrag(panel) {
-    const head = document.getElementById('chainPanelHead');
-    if (!head) return;
-    head.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('#chainPanelClose')) return;
-      const rect = panel.getBoundingClientRect();
-      const offX = e.clientX - rect.left;
-      const offY = e.clientY - rect.top;
-      head.setPointerCapture(e.pointerId);
-      const move = (ev) => {
-        const x = Math.max(0, Math.min(ev.clientX - offX, window.innerWidth - rect.width));
-        const y = Math.max(0, Math.min(ev.clientY - offY, window.innerHeight - 60));
-        panel.style.left = x + 'px';
-        panel.style.top = y + 'px';
-      };
-      const up = () => {
-        head.removeEventListener('pointermove', move);
-        head.removeEventListener('pointerup', up);
-        const r = panel.getBoundingClientRect();
-        try { localStorage.setItem(PANEL_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch { /* storage full/blocked — position just won't persist */ }
-      };
-      head.addEventListener('pointermove', move);
-      head.addEventListener('pointerup', up);
-      e.preventDefault();
-    });
-  }
+  let floating = null;   // { applyPos, wireDrag } from App.makeFloatingPanel, made in wire()
 
   // --- placement core -------------------------------------------------------
 
@@ -276,7 +237,7 @@
     panel.style.display = active && !panelCollapsed ? '' : 'none';
     renderPairChip(active);
     if (!active || panelCollapsed) return;
-    applyPanelPos(panel);
+    floating.applyPos();
     renderCounterList();
     renderLineTypeList();
     renderFoot();
@@ -326,8 +287,9 @@
   function wire() {
     if (wired) return;
     wired = true;
-    const panel = document.getElementById('chainPanel');
-    if (panel) wireDrag(panel);
+    // The title-bar drag and the remembered spot: App.makeFloatingPanel (features/floating-panel.js).
+    floating = App.makeFloatingPanel({ panelId: 'chainPanel', headId: 'chainPanelHead', closeId: 'chainPanelClose', posKey: PANEL_POS_KEY, defaultWidth: 300 });
+    floating.wireDrag();
     document.getElementById('chainPanelClose').addEventListener('click', closeChainPanel);
     const chip = document.getElementById('headerChainPair');
     if (chip) chip.addEventListener('click', openChainPanel);

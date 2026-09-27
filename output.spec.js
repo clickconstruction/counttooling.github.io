@@ -14,6 +14,7 @@
  * App.onViewLinkRevoked callback used by the Share modal's revoke is
  * registered.
  */
+const fs = require('fs');
 const { test, expect } = require('@playwright/test');
 const { bootApp, collectConsoleErrors, uploadPdf } = require('./spec-helpers');
 
@@ -84,6 +85,109 @@ test.describe('Output cluster (features/output.js)', () => {
 
     // --- Share-revoke callback registered by the feature ---
     expect(await page.evaluate(() => typeof window.App.onViewLinkRevoked)).toBe('function');
+
+    errors.assertNoErrors();
+  });
+
+  // R25 (First): pin the three Download modes nothing covered (all-canvases,
+  // all-pages, all-pages-canvases) before the raster pipeline is shared with
+  // Export PDFs. Each download is captured and read back with the vendored
+  // pdf-lib: its filename, its page count, each page's size (a captioned layer
+  // page is the sheet + 28 mm wide, at least 210 mm, and + 48 mm tall; a plain
+  // page is the sheet itself), and the caption strings in the content streams
+  // (jsPDF writes them uncompressed).
+  test('Download modes: filename, page count, page size and layer captions per mode (R25)', async ({ page }) => {
+    test.setTimeout(180000);
+    const errors = collectConsoleErrors(page);
+
+    await bootApp(page);
+    await uploadPdf(page);
+
+    // Page 1 carries two layers (Main + Layer 2), page 2 one (Main).
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      s.counters = [{ id: 'c1', name: 'Floor Drain', icon: 'M0 0h24v24H0z', color: '#e8c547' }];
+      const main = App.ensureActiveCanvas(s.pages[0]);
+      main.annotations.counterMarkers = { c1: [{ x: 50, y: 50, id: 'm1', group: null }] };
+      const second = App.makeAnnotations();
+      second.counterMarkers = { c1: [{ x: 90, y: 90, id: 'm2', group: null }] };
+      s.pages[0].canvases.push({ id: 'c-extra', name: 'Layer 2', annotations: second });
+      App.ensureActiveCanvas(s.pages[1]);
+      App.updateUI();
+    });
+    const base = await page.evaluate(() => window.App.sanitizeForFilename(window.state.currentProjectName));
+    // Each sheet's size in pt at its rotation, and the two page shapes in pt.
+    const MM = 72 / 25.4;
+    const sheets = await page.evaluate(() => window.state.pages.map((p) => {
+      const v = p.pdfPage.getViewport({ scale: 1, rotation: p.rotation ?? 0 });
+      return { w: v.width, h: v.height };
+    }));
+    const plain = (i) => ({ w: sheets[i].w, h: sheets[i].h });
+    const captioned = (i) => ({ w: Math.max(210 * MM, sheets[i].w + 28 * MM), h: sheets[i].h + 48 * MM });
+
+    async function download(mode) {
+      const pending = page.waitForEvent('download', { timeout: 60000 });
+      await page.evaluate((m) => {
+        document.querySelector('.download-page-option[data-mode="' + m + '"]')
+          .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      }, mode);
+      const dl = await pending;
+      const b64 = fs.readFileSync(await dl.path()).toString('base64');
+      const read = await page.evaluate(async (data) => {
+        const bytes = Uint8Array.from(atob(data), (ch) => ch.charCodeAt(0));
+        const pdf = await window.PDFLib.PDFDocument.load(bytes);
+        const text = new TextDecoder('latin1').decode(bytes);
+        const captions = [...text.matchAll(/\(([^()]*)\) Tj/g)].map((m) => m[1]);
+        return { pageCount: pdf.getPageCount(), sizes: pdf.getPages().map((p) => p.getSize()), captions };
+      }, b64);
+      // The button comes back enabled, so the next download can start.
+      await page.waitForFunction(() => !document.getElementById('downloadCurrentPageBtn').disabled, null, { timeout: 10000 });
+      return { filename: dl.suggestedFilename(), ...read };
+    }
+    const expectSizes = (got, want) => {
+      expect(got.length).toBe(want.length);
+      got.forEach((s, i) => {
+        expect(Math.abs(s.width - want[i].w)).toBeLessThan(1);
+        expect(Math.abs(s.height - want[i].h)).toBeLessThan(1);
+      });
+    };
+
+    // this-canvas: one plain page, the active layer.
+    let r = await download('this-canvas');
+    expect(r.filename).toBe('takeoff-page1_' + base + '.pdf');
+    expect(r.pageCount).toBe(1);
+    expectSizes(r.sizes, [plain(0)]);
+    expect(r.captions).toEqual([]);
+
+    // all-canvases on the two-layer sheet: one captioned page per layer.
+    r = await download('all-canvases');
+    expect(r.filename).toBe('takeoff-page1_all-canvases_' + base + '.pdf');
+    expect(r.pageCount).toBe(2);
+    expectSizes(r.sizes, [captioned(0), captioned(0)]);
+    expect(r.captions).toEqual(['Main', 'Layer 2']);
+
+    // all-pages: every sheet, active layer, plain pages, no captions.
+    r = await download('all-pages');
+    expect(r.filename).toBe('takeoff-all-pages_' + base + '.pdf');
+    expect(r.pageCount).toBe(2);
+    expectSizes(r.sizes, [plain(0), plain(1)]);
+    expect(r.captions).toEqual([]);
+
+    // all-pages-canvases: every layer of every sheet; a multi-layer sheet's
+    // layers are captioned, a single-layer sheet is a plain page.
+    r = await download('all-pages-canvases');
+    expect(r.filename).toBe('takeoff-all-pages-canvases_' + base + '.pdf');
+    expect(r.pageCount).toBe(3);
+    expectSizes(r.sizes, [captioned(0), captioned(0), plain(1)]);
+    expect(r.captions).toEqual(['Main', 'Layer 2']);
+
+    // all-canvases on a single-layer sheet still captions its one layer.
+    await page.evaluate(() => { window.state.currentPage = 1; window.App.updateUI(); });
+    r = await download('all-canvases');
+    expect(r.filename).toBe('takeoff-page2_all-canvases_' + base + '.pdf');
+    expect(r.pageCount).toBe(1);
+    expectSizes(r.sizes, [captioned(1)]);
+    expect(r.captions).toEqual(['Main']);
 
     errors.assertNoErrors();
   });

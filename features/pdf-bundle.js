@@ -6,6 +6,19 @@
   // app.js's download/export flows via App.*. buildReportHtml/html2canvas are
   // runtime globals resolved at export time (after report.js loads). Shared
   // deps are read from App.* at call time (never captured at load).
+  //
+  // R25 (2026-09-26): the ONE page raster -> JPEG -> jsPDF pipeline lives here.
+  // rasterPageCanvas / rasterPageJpeg render a sheet (plan + marks) and
+  // addImagePage puts it on a jsPDF page, plain or captioned with its layer
+  // name. runSpecificPagesExport (moved from features/export-pdfs.js) builds a
+  // whole export on those two, and both the Export PDFs dialog and the header
+  // Download (features/output.js downloadCurrentPageAsPdf) call it through
+  // App.runSpecificPagesExport. Where the two callers always differed, the
+  // difference is an option, never unified: Download's ensureActiveCanvas per
+  // sheet, its caption on a single-layer sheet (all-canvases), its skip of a
+  // sheet with no layers (all-pages-canvases) and its "plan" progress word
+  // (all-pages). The notes and highlights bundles render each sheet once per
+  // export (a one-sheet memo) instead of once per note or highlight.
 
   // Pure page-slicer for the rendered report raster (B5, J10): cut the tall
   // html2canvas raster into page-height slices, but never through a row.
@@ -100,6 +113,141 @@
     return pageCount;
   }
 
+  const PT_TO_MM = 25.4 / 72;
+
+  // Render one sheet at `scale` into a fresh canvas: the plan, then its marks.
+  // `annotations`: omitted (undefined) = the sheet's active layer, a layer's
+  // annotations object = that layer, null = the plain sheet with no marks.
+  async function rasterPageCanvas(page, { scale, overrides, annotations } = {}) {
+    const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
+    if (annotations !== null) App.renderAnnotationsToContext(ctx, page, scale, overrides, annotations);
+    return { canvas, viewport };
+  }
+
+  // The notes and highlights bundles crop every item out of its sheet's full
+  // raster. Their items run sheet by sheet, so a one-sheet memo renders each
+  // sheet once per export; the previous sheet is dropped before the next one
+  // renders (holding every sheet's 4x canvas at once could run a big set out
+  // of memory). Returns sheetCanvas(pageIdx) -> the sheet's canvas, active layer.
+  function makeSheetRasterMemo(scale, overrides) {
+    let memo = { pageIdx: -1, canvas: null };
+    return async (pageIdx) => {
+      if (memo.pageIdx !== pageIdx) {
+        memo = { pageIdx: -1, canvas: null };
+        const { canvas } = await rasterPageCanvas(App.state.pages[pageIdx], { scale, overrides });
+        memo = { pageIdx, canvas };
+      }
+      return memo.canvas;
+    };
+  }
+
+  // The sheet as a JPEG plus its size in mm (the sheet's own size, whatever the scale).
+  async function rasterPageJpeg(page, { scale, overrides, annotations, quality } = {}) {
+    const { canvas, viewport } = await rasterPageCanvas(page, { scale, overrides, annotations });
+    return {
+      imgData: canvas.toDataURL('image/jpeg', quality),
+      wMm: (viewport.width / scale) * PT_TO_MM,
+      hMm: (viewport.height / scale) * PT_TO_MM,
+    };
+  }
+
+  // Put one sheet image on a new page of `doc`, creating the doc when it is
+  // null; returns the doc. No caption: the page IS the sheet, image edge to
+  // edge. A caption (a layer name): the image sits 14 mm in, the caption at
+  // 9 pt above it, and the page is at least 210 mm wide with room below.
+  function addImagePage(doc, img, { caption } = {}) {
+    const { imgData, wMm, hMm } = img;
+    if (caption == null) {
+      if (!doc) doc = new window.jspdf.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
+      else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
+      doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
+      return doc;
+    }
+    const captionTop = 10;
+    const imageTop = 14;
+    const pdfPageW = Math.max(210, wMm + 28);
+    const pdfPageH = imageTop + hMm + 14 + 20;
+    if (!doc) doc = new window.jspdf.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
+    else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
+    doc.setFontSize(9);
+    doc.text(caption, 14, captionTop);
+    doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
+    return doc;
+  }
+
+  /**
+   * Build an export from an options object. Returns { doc, included } with the
+   * jsPDF document unsaved (null doc when nothing was included), so a caller can
+   * save it under any name. `onProgress(text)` drives the button label.
+   *
+   * options: selections { <pageIdx>: 'marked' | 'unmarked' | 'exclude' } (absent =
+   * marked for the raster, included), canvasMode { <pageIdx>: 'current' | 'all' },
+   * exportScale (4), jpegQuality (0.95), markerScale, lineScale, includeReport,
+   * bundleHighlights, bundleNotes. The Download-only options (R25, features/output.js):
+   * ensureActiveCanvas (make sure each included sheet has a layer before it is
+   * read), captionSingleLayer (an 'all' sheet with ONE layer still gets the
+   * captioned layer page), skipSheetsWithoutLayers (a sheet with no layers adds
+   * nothing), progressNoun ('page' by default; 'plan').
+   */
+  async function runSpecificPagesExport(options, onProgress) {
+    const state = App.state;
+    const progress = typeof onProgress === 'function' ? onProgress : () => {};
+    const selections = options.selections || {};
+    const canvasModes = options.canvasMode || {};
+    const included = state.pages.map((_, i) => i).filter(i => selections[i] !== 'exclude');
+    if (!included.length) return { doc: null, included };
+    const jsPDFLib = window.jspdf;
+    const EXPORT_SCALE = options.exportScale || 4;
+    const JPEG_QUALITY = options.jpegQuality != null ? options.jpegQuality : 0.95;
+    const exportOverrides = { markerScale: options.markerScale, lineScale: options.lineScale };
+    const noun = options.progressNoun || 'page';
+    const raster = (page, annotations) => rasterPageJpeg(page, { scale: EXPORT_SCALE, overrides: exportOverrides, annotations, quality: JPEG_QUALITY });
+    let doc = null;
+    if (options.includeReport) {
+      doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+      progress('Exporting report…');
+      await addReportPagesToPdf(doc);
+    }
+    for (let idx = 0; idx < included.length; idx++) {
+      const i = included[idx];
+      const page = state.pages[i];
+      if (options.ensureActiveCanvas) App.ensureActiveCanvas(page);
+      const canvases = App.getPageCanvases(page);
+      if (options.skipSheetsWithoutLayers && canvases.length === 0) continue;
+      const canvasMode = canvasModes[i] || 'current';
+      const minLayers = options.captionSingleLayer ? 1 : 2;
+      const useAllCanvases = selections[i] === 'marked' && canvasMode === 'all' && canvases.length >= minLayers;
+      const progressText = 'Exporting ' + noun + ' ' + (idx + 1) + '/' + included.length + '…';
+      if (selections[i] === 'unmarked') {
+        progress(progressText);
+        doc = addImagePage(doc, await raster(page, null));
+      } else if (useAllCanvases) {
+        for (let ci = 0; ci < canvases.length; ci++) {
+          progress(progressText);
+          const c = canvases[ci];
+          doc = addImagePage(doc, await raster(page, c.annotations || App.makeAnnotations()), { caption: c.name || 'Main' });
+        }
+      } else {
+        progress(progressText);
+        doc = addImagePage(doc, await raster(page));
+      }
+    }
+    if (doc && options.bundleHighlights && hasAnyHighlights()) {
+      progress('Exporting highlights…');
+      await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
+    }
+    if (doc && options.bundleNotes && hasAnyNotes()) {
+      progress('Exporting notes…');
+      await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
+    }
+    return { doc, included };
+  }
+
   function hasAnyHighlights() {
     return App.state.pages.some(p => App.getPageCanvases(p).some(c => (c.annotations?.highlights?.length || 0) > 0));
   }
@@ -155,6 +303,7 @@
     y += 6;
     let pageCount = doc.getNumberOfPages();
     let firstNoteRendered = false;
+    const sheetCanvas = makeSheetRasterMemo(scale, exportOverrides);
     for (let idx = 0; idx < items.length; idx++) {
       const it = items[idx];
       const page = App.state.pages[it.pageIdx];
@@ -172,12 +321,7 @@
       const maxY = Math.min(pageH, n.y + noteH / scale + pad);
       let w = maxX - minX, hh = maxY - minY;
       if (w < 1 || hh < 1) continue;
-      const fullCanvas = document.createElement('canvas');
-      fullCanvas.width = viewport.width;
-      fullCanvas.height = viewport.height;
-      const ctx = fullCanvas.getContext('2d');
-      await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-      App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+      const fullCanvas = await sheetCanvas(it.pageIdx);
       const cropW = Math.max(1, Math.round(w * scale));
       const cropH = Math.max(1, Math.round(hh * scale));
       const cropCanvas = document.createElement('canvas');
@@ -257,6 +401,7 @@
       y += 7;
     });
     let pageCount = doc.getNumberOfPages();
+    const sheetCanvas = makeSheetRasterMemo(scale, exportOverrides);
     for (let idx = 0; idx < items.length; idx++) {
       const it = items[idx];
       const page = App.state.pages[it.pageIdx];
@@ -272,12 +417,7 @@
       w = clampMaxX - clampMinX;
       hh = clampMaxY - clampMinY;
       if (w < 1 || hh < 1) continue;
-      const fullCanvas = document.createElement('canvas');
-      fullCanvas.width = viewport.width;
-      fullCanvas.height = viewport.height;
-      const ctx = fullCanvas.getContext('2d');
-      await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-      App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+      const fullCanvas = await sheetCanvas(it.pageIdx);
       const cropW = Math.max(1, Math.round(w * scale));
       const cropH = Math.max(1, Math.round(hh * scale));
       const cropCanvas = document.createElement('canvas');
@@ -309,4 +449,7 @@
   App.hasAnyNotes = hasAnyNotes;
   App.addNotesToPdf = addNotesToPdf;
   App.addHighlightsToPdf = addHighlightsToPdf;
+  // R25: the shared export, read at call time by features/export-pdfs.js
+  // (the Export PDFs dialog) and features/output.js (the header Download).
+  App.runSpecificPagesExport = runSpecificPagesExport;
 })();

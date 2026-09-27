@@ -30,8 +30,12 @@
  * pattern). The shared view-link minting (getOrCreateViewLinkUrl /
  * buildViewLinkUrl) STAYS in app.js (the header Share button uses it too) and
  * is reached via App.getOrCreateViewLinkUrl; likewise the shared download
- * helpers (sanitizeForFilename / downloadPdfBuffer / downloadProjectPdf) and
- * the header export/report dropdowns stay in app.js.
+ * helpers (sanitizeForFilename / downloadPdfBuffer / downloadProjectPdf) moved
+ * here later and are registered at the foot of this file.
+ * R23 (2026-09-26): the header Export menu and the Show Report menu live here
+ * too: their openers are bound at load, and App.syncOutputMenus (every output
+ * row's visibility, from the bundle buttons to the copy menus' scope rows) is
+ * called by app.js's updateUIInner just before App.updateBurgerMenu.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -352,6 +356,206 @@
       closeScopeMenu(document.getElementById(menuId), document.getElementById(dropdownId));
     }
   });
+
+  // --- R23: the header output menus (moved from app.js) ---
+  // The Export and Show Report openers, bound at load like the Copy and Download
+  // menus above them. The mobile burger drawer dispatches clicks on the same
+  // .export-dropdown-option / .show-report-option elements, so it keeps working.
+  const exportDropdownBtn = document.getElementById('exportDropdownBtn');
+  const exportDropdownMenu = document.getElementById('exportDropdownMenu');
+  if (exportDropdownBtn && exportDropdownMenu) {
+    exportDropdownBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (exportDropdownMenu.classList.contains('visible')) {
+        exportDropdownMenu.classList.remove('visible');
+      } else {
+        exportDropdownMenu.style.left = '-9999px';
+        // right:auto, not '' — the class's `right: 0` would otherwise stay in
+        // force beside the fixed left, stretching the menu to the viewport's
+        // far edge (and its off-screen measure would clamp left to the margin,
+        // so the menu rendered full-width).
+        exportDropdownMenu.style.right = 'auto';
+        exportDropdownMenu.classList.add('visible');
+        const btnRect = exportDropdownBtn.getBoundingClientRect();
+        exportDropdownMenu.style.position = 'fixed';
+        App.placeFixedMenu(exportDropdownMenu, btnRect.right - 220, btnRect.bottom + 4);
+      }
+    };
+  }
+  document.querySelectorAll('.export-dropdown-option').forEach(opt => {
+    opt.onclick = async (e) => {
+      e.stopPropagation();
+      const action = opt.dataset.action;
+      if (exportDropdownMenu) exportDropdownMenu.classList.remove('visible');
+      if (action === 'canvas') document.getElementById('exportBtn').click();
+      else if (action === 'pdf') await App.downloadProjectPdf();
+      else if (action === 'both') {
+        document.getElementById('exportBtn').click();
+        await App.downloadProjectPdf();
+      } else if (action === 'import-canvas') {
+        document.getElementById('importInput').click();
+      } else if (action === 'close-project') {
+        await App.closeProject({ route: 'cloud_menu' });
+      }
+    };
+  });
+  const printReportBtn = document.getElementById('printReport');
+  const showReportMenu = document.getElementById('showReportMenu');
+  const showReportDropdown = document.getElementById('showReportDropdown');
+  if (printReportBtn && showReportMenu) {
+    printReportBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (showReportMenu.classList.contains('visible')) {
+        closeScopeMenu(showReportMenu, showReportDropdown);
+      } else {
+        showReportMenu.style.left = '-9999px';
+        showReportMenu.style.right = '';
+        showReportMenu.classList.add('visible');
+        const btnRect = printReportBtn.getBoundingClientRect();
+        showReportMenu.style.position = 'fixed';
+        showReportMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
+        App.placeFixedMenu(showReportMenu, btnRect.left, btnRect.bottom + 4);
+        const isMobile = window.matchMedia('(max-width: 768px)').matches;
+        if (isMobile && showReportMenu.parentElement !== document.body) document.body.appendChild(showReportMenu);
+      }
+    };
+  }
+  document.querySelectorAll('.show-report-option').forEach(opt => {
+    opt.onclick = (e) => {
+      e.stopPropagation();
+      const mode = opt.dataset.mode;
+      closeScopeMenu(showReportMenu, showReportDropdown);
+      if (mode && typeof window.printReport === 'function') window.printReport(mode);
+    };
+  });
+
+  // Which output rows show for this session: the sidebar bundle buttons, the
+  // report / copy / export / download menus and their scope rows. The row
+  // visibility block of app.js's updateUIInner (R23), which calls it guarded just
+  // before App.updateBurgerMenu: the drawer copies the visible .download-page-option
+  // and .export-dropdown-option rows, so they must be synced first. The copy menus'
+  // This sheet rows used to be synced after the drawer; they are synced here with
+  // their Everything siblings now (the drawer copies neither).
+  function syncOutputMenus() {
+    const state = App.state;
+    // App.hasAnyHighlights / hasAnyNotes are registered by features/pdf-bundle.js,
+    // which loads before this file, so both are present whenever this runs. The
+    // guards stay: a boot-time updateUI before any feature file loads skips this
+    // whole function, and the next updateUI reflects the real state.
+    const bundleBtn = document.getElementById('bundleHighlights');
+    if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
+    const bundleNotesBtn = document.getElementById('bundleNotes');
+    if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
+    // Cheap existence probes (report.js) — would the report/summary be
+    // non-empty? Short-circuit at the first count, line, or room box instead
+    // of building the whole summary (a real cost per updateUI on large
+    // projects). report.js loads after this file, so these can run before it
+    // registers.
+    const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
+    // Room Sizer boxes count as report data too: the report renders a "Room
+    // Volumes" table and the email summary a "--- Rooms ---" block, so a
+    // rooms-only takeoff still has something to show/export/copy. Only Copy
+    // to /Tooling stays counts/lines-only — getPipeToolingSummary never emits
+    // rooms, so on a rooms-only project it would copy an empty string.
+    const hasRooms = typeof window.getReportHasRooms === 'function' && window.getReportHasRooms();
+    const hasReportData = hasCountsOrLines || hasRooms;
+    const ptBtn = document.getElementById('forPipeToolingDropdown');
+    if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
+    const ttBtn = document.getElementById('forTakeoffToolingDropdown');
+    if (ttBtn) ttBtn.style.display = hasCountsOrLines ? '' : 'none';
+    const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
+    if (copySummaryBtn) copySummaryBtn.style.display = hasReportData ? '' : 'none';
+    const showReportDropdownEl = document.getElementById('showReportDropdown');
+    if (showReportDropdownEl) showReportDropdownEl.style.display = hasReportData ? '' : 'none';
+    const specificPagesBtn = document.getElementById('specificPages');
+    if (specificPagesBtn) specificPagesBtn.style.display = hasReportData ? '' : 'none';
+    const allCanvasesOnPageOpt = document.querySelector('.show-report-option[data-mode="all-canvases-on-page"]');
+    if (allCanvasesOnPageOpt) {
+      const page = state.pages[state.currentPage];
+      const canvases = page ? App.getPageCanvases(page) : [];
+      allCanvasesOnPageOpt.style.display = canvases.length > 1 ? '' : 'none';
+    }
+    const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
+    if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
+    const exportDropdown = document.getElementById('exportDropdown');
+    const showExportDropdownBase = !state.isViewer || state.pages.length > 0;
+    const exportContent = document.getElementById('exportDropdownExportContent');
+    const noProjectYet = !state.isViewer && state.pages.length === 0;
+    if (exportContent) exportContent.style.display = noProjectYet ? 'none' : '';
+    const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
+    const hasPdfExport = !!(state.pdfBuffer || state.pdfStoragePath);
+    if (exportPdfOpt) exportPdfOpt.style.display = hasPdfExport ? '' : 'none';
+    const exportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="canvas"]');
+    const exportBothOpt = document.querySelector('.export-dropdown-option[data-action="both"]');
+    const hasCanvasMarkupForExport = App.projectHasAnyCanvasMarkup();
+    if (!noProjectYet) {
+      // B6 (J13 J14): Export Canvas/Both are editor tools (canvas JSON hand-off),
+      // never a viewer surface. Hiding them here leaves a view session's menu
+      // with no rows (view links carry no pdfBuffer/pdfStoragePath), so the
+      // empty-dropdown check below removes the whole Export menu for free.
+      const showCanvasBoth = (hasCanvasMarkupForExport && !state.isViewer) ? '' : 'none';
+      if (exportCanvasOpt) exportCanvasOpt.style.display = showCanvasBoth;
+      if (exportBothOpt) exportBothOpt.style.display = showCanvasBoth;
+    }
+    const exportImportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="import-canvas"]');
+    if (exportImportCanvasOpt) {
+      // B12 (J12): with marks on the canvas this row used to vanish outright —
+      // mid-recovery that reads as the feature disappearing. Editors now always
+      // see the row; when marks exist it greys out (disabled, so the click
+      // never fires) with the unblock path spelled inline via the
+      // #importCanvasBlockedNote qualifier (textContent, not display:none —
+      // the burger drawer copies labels via textContent, which would leak
+      // hidden text). Viewers still never see it (B6); shield-import mode
+      // hides the whole menu content anyway.
+      exportImportCanvasOpt.style.display = (!noProjectYet && !state.isViewer) ? '' : 'none';
+      exportImportCanvasOpt.disabled = hasCanvasMarkupForExport;
+      const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
+      if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks: clear or undo first)' : '';
+    }
+    // Close project rides the same menu for every session that opened a
+    // project itself — a view-link recipient has no project of their own to
+    // close (B6 keeps that menu empty), and a shared-project reader who was
+    // just turned in still gets the door (state.isViewer, NOT a view link).
+    const exportCloseOpt = document.querySelector('.export-dropdown-option[data-action="close-project"]');
+    const showCloseRow = !noProjectYet && !state.loadedViaViewLink && state.pages.length > 0;
+    if (exportCloseOpt) exportCloseOpt.style.display = showCloseRow ? '' : 'none';
+    let showExportDropdown = showExportDropdownBase && !noProjectYet;
+    if (showExportDropdown && exportContent) {
+      const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer) || showCloseRow;
+      if (!anyExportRow) showExportDropdown = false;
+    }
+    if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
+    const allCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-canvases"]');
+    if (allCanvasesOpt) {
+      const page = state.pages[state.currentPage];
+      const canvases = page ? App.getPageCanvases(page) : [];
+      allCanvasesOpt.style.display = canvases.length > 1 ? '' : 'none';
+    }
+    const allPagesOpt = document.querySelector('.download-page-option[data-mode="all-pages"]');
+    const allPagesCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-pages-canvases"]');
+    if (allPagesOpt) allPagesOpt.style.display = state.pages.length > 1 ? '' : 'none';
+    // B4 (J10 J13 J18) — one trade dialect across the scope menus. When every
+    // page has one canvas: the "(… layer)" qualifiers say nothing, so they
+    // render empty (textContent, not display:none — the burger drawer copies
+    // labels via textContent, which would leak hidden text), and the
+    // "Everything" rows duplicate "Every sheet" scope-for-scope, so the
+    // duplicates hide.
+    const anyMultiCanvas = state.pages.some(p => App.getPageCanvases(p).length > 1);
+    document.querySelectorAll('.scope-qual').forEach(el => { el.textContent = anyMultiCanvas ? (el.dataset.qual || '') : ''; });
+    if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = (state.pages.length > 1 && anyMultiCanvas) ? '' : 'none';
+    const reportEverythingOpt = document.querySelector('.show-report-option[data-mode="all-pages-canvases"]');
+    if (reportEverythingOpt) reportEverythingOpt.style.display = anyMultiCanvas ? '' : 'none';
+    // D25 (X6 option D): the copy menus' "Everything" is no longer a duplicate
+    // of a middle scope — "Every sheet (visible layers)" is retired — so it
+    // stays on every project; its layer picker (above) is what appears only
+    // when a page has 2+ layers. This sheet hides at one page. Show Report /
+    // Download keep their three modes and the rule above.
+    document.querySelectorAll('.pipe-tooling-option[data-mode="all"], .copy-summary-option[data-mode="all"]').forEach(el => { el.style.display = ''; });
+    document.querySelectorAll('.pipe-tooling-option[data-mode="this-canvas"], .copy-summary-option[data-mode="this-canvas"]').forEach(el => {
+      el.style.display = state.pages.length <= 1 ? 'none' : '';
+    });
+  }
+  App.syncOutputMenus = syncOutputMenus;
   // B3 (J13): at 1 page / 1 canvas every scope option is the same set — skip
   // the chooser and copy directly, like the Download button already does.
   // D25 (X6 option D): "every sheet" used to copy the ACTIVE layer per page —
@@ -639,128 +843,59 @@
     };
   });
 
+  // R25: every Download mode is the shared export (features/pdf-bundle.js
+  // App.runSpecificPagesExport) with this mode's selections and layer mode, at
+  // the Export settings' marker/line sizes, scale 4, JPEG 0.95. The name, the
+  // progress text on the button's title and the export_pdf event stay here.
+  //   this-canvas         this sheet, active layer, a plain page
+  //   all-canvases        this sheet, one captioned page per layer (even ONE layer)
+  //   all-pages           every sheet, active layer, plain pages ("Exporting plan n/N")
+  //   all-pages-canvases  every sheet; a sheet with 2+ layers gets a captioned page per
+  //                       layer, a one-layer sheet a plain page ("Exporting page n/N")
   async function downloadCurrentPageAsPdf(mode) {
     const state = App.state;
     const page = state.pages[state.currentPage];
     const isAllPages = mode === 'all-pages' || mode === 'all-pages-canvases';
+    const everyLayer = mode === 'all-canvases' || mode === 'all-pages-canvases';
     if (!isAllPages && !page?.pdfPage) return;
     if (!isAllPages) App.ensureActiveCanvas(page);
     const jsPDFLib = window.jspdf;
     if (!jsPDFLib?.jsPDF) { App.showToast('Download requires jsPDF. Please refresh the page.', 4000); return; }
-    const EXPORT_SCALE = 4;
-    const PT_TO_MM = 25.4 / 72;
-    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
     const btn = document.getElementById('downloadCurrentPageBtn');
     const origText = btn?.title || '';
     if (btn) { btn.disabled = true; btn.title = 'Downloading…'; }
     const baseName = App.sanitizeForFilename(state.currentProjectName);
     const pageNum = state.currentPage + 1;
+    const filename = {
+      'all-canvases': 'takeoff-page' + pageNum + '_all-canvases_' + baseName + '.pdf',
+      'all-pages': 'takeoff-all-pages_' + baseName + '.pdf',
+      'all-pages-canvases': 'takeoff-all-pages-canvases_' + baseName + '.pdf',
+    }[mode] || ('takeoff-page' + pageNum + '_' + baseName + '.pdf');
+    const nothingToDo = mode === 'all-canvases' ? App.getPageCanvases(page).length === 0 : isAllPages && state.pages.length === 0;
+    if (nothingToDo) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
+    const selections = {};
+    const canvasMode = {};
+    state.pages.forEach((_, i) => {
+      selections[i] = isAllPages || i === state.currentPage ? 'marked' : 'exclude';
+      canvasMode[i] = everyLayer ? 'all' : 'current';
+    });
     try {
-      if (mode === 'all-canvases') {
-        const canvases = App.getPageCanvases(page);
-        if (canvases.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let i = 0; i < canvases.length; i++) {
-          const c = canvases[i];
-          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || App.makeAnnotations());
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          const caption = c.name || 'Main';
-          const captionTop = 10;
-          const imageTop = 14;
-          const pdfPageW = Math.max(210, wMm + 28);
-          const pdfPageH = imageTop + hMm + 14 + 20;
-          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-          else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-          doc.setFontSize(9);
-          doc.text(caption, 14, captionTop);
-          doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-        }
-        if (doc) doc.save('takeoff-page' + pageNum + '_all-canvases_' + baseName + '.pdf');
-      } else if (mode === 'all-pages') {
-        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let i = 0; i < state.pages.length; i++) {
-          if (btn) btn.title = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
-          const p = state.pages[i];
-          App.ensureActiveCanvas(p);
-          const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          App.renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides);
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        }
-        if (doc) doc.save('takeoff-all-pages_' + baseName + '.pdf');
-      } else if (mode === 'all-pages-canvases') {
-        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let pageIdx = 0; pageIdx < state.pages.length; pageIdx++) {
-          const p = state.pages[pageIdx];
-          App.ensureActiveCanvas(p);
-          const canvases = App.getPageCanvases(p);
-          if (canvases.length === 0) continue;
-          for (let ci = 0; ci < canvases.length; ci++) {
-            if (btn) btn.title = 'Exporting page ' + (pageIdx + 1) + '/' + state.pages.length + '…';
-            const c = canvases[ci];
-            const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-            App.renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides, c.annotations || App.makeAnnotations());
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-            const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-            if (canvases.length === 1) {
-              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-              else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-              doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-            } else {
-              const caption = c.name || 'Main';
-              const captionTop = 10;
-              const imageTop = 14;
-              const pdfPageW = Math.max(210, wMm + 28);
-              const pdfPageH = imageTop + hMm + 14 + 20;
-              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-              else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-              doc.setFontSize(9);
-              doc.text(caption, 14, captionTop);
-              doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-            }
-          }
-        }
-        if (doc) doc.save('takeoff-all-pages-canvases_' + baseName + '.pdf');
-      } else {
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
-      }
+      const { doc } = await App.runSpecificPagesExport({
+        selections,
+        canvasMode,
+        exportScale: 4,
+        jpegQuality: 0.95,
+        markerScale: state.exportSettings?.markerScale ?? 0.75,
+        lineScale: state.exportSettings?.lineScale ?? 0.75,
+        includeReport: false,
+        bundleHighlights: false,
+        bundleNotes: false,
+        ensureActiveCanvas: true,
+        captionSingleLayer: mode === 'all-canvases',
+        skipSheetsWithoutLayers: mode === 'all-pages-canvases',
+        progressNoun: mode === 'all-pages' ? 'plan' : 'page',
+      }, isAllPages && btn ? (text) => { btn.title = text; } : null);
+      if (doc) doc.save(filename);
       App.logUserEvent('export_pdf', state.currentProjectId, { source: 'download-current-page', mode: mode || 'this-canvas' });
     } catch (err) {
       console.error(err);

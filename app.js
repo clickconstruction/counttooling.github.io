@@ -489,12 +489,13 @@
   // The auto-recheckout rate-limit state (per-project count/cap Maps + min-gap
   // stamp) lives in save-engine.js (Stage 5); resetAutoRecheckoutCounter below.
   // Background-expiry entry point: implementation lives in save-engine.js
-  // (Stage 5), including the old supabase-disabled no-op fallback.
-  function handleBackgroundCheckoutExpired(trigger) { return saveEngine.handleBackgroundCheckoutExpired(trigger); }
+  // (Stage 5), including the old supabase-disabled no-op fallback. Its last
+  // app-side callers (the visibility probe and the autosave tick) moved into
+  // the engine in Stage 7; App.handleBackgroundCheckoutExpired delegates.
   function resetAutoRecheckoutCounter(projectId) { return saveEngine.resetAutoRecheckoutCounter(projectId); }
   let lastCheckoutRefreshAt = 0;
   let suspendAutoSaveUntilCheckout = false;
-  let lastHiddenAt = 0;
+  // lastHiddenAt lives in save-engine.js (Stage 7, the visibility handler).
   let serverClockOffsetMs = 0;
   function serverNowMs() { return Date.now() + serverClockOffsetMs; }
   function updateServerClockFromRpc(rpcData) {
@@ -529,8 +530,9 @@
   // SECTION: [sync] Sync recovery & client recycle
   // The recovery/recycle orchestrators, probes, client recycle, and raw-fetch
   // fallbacks live in save-engine.js (Stage 4); same-named wrappers below.
-  // runRecoveryProbeAndMaybeRecycle: engine-internal since Stage 6.
-  function recycleClientIfWedgedOnIdleReturn(trigger) { return saveEngine.recycleClientIfWedgedOnIdleReturn(trigger); }
+  // runRecoveryProbeAndMaybeRecycle: engine-internal since Stage 6;
+  // recycleClientIfWedgedOnIdleReturn since Stage 7 (its one caller, the
+  // long-idle return, moved in with the visibility handler).
 
   // updateSyncPausedBanner + retrySyncNow + captureNetworkInfoDetail/Obj live
   // in save-engine.js (Stage 6); the sync-paused banner Retry button below
@@ -598,8 +600,9 @@
   // moved there too. All three are referenced here by bare name (save-utils
   // globals).
 
-  function runRecoveryProbe(trigger) { return saveEngine.runRecoveryProbe(trigger); }
-  // runSupabaseClientProbe / recreateSupabaseClient have no app-side callers
+  // runRecoveryProbe (Stage 7: its callers, the long-idle return and the
+  // online event, moved into the engine), runSupabaseClientProbe and
+  // recreateSupabaseClient have no app-side callers
   // anymore (their orchestrators moved with them) — reach them via saveEngine.*.
 
   // rawProjectsUpdate / rawProjectsInsert: engine-internal since Stage 6
@@ -708,10 +711,10 @@
 
   // The [SaveDebug] helpers (isSaveDebugEnabled/setSaveDebugEnabled/
   // saveDebugRunId/saveDebugLog/saveDebugLogError) live in save-engine.js
-  // (Stage 2); same-named wrappers below.
+  // (Stage 2); same-named wrappers below (saveDebugRunId has none since its
+  // one app-side caller, the autosave tick, moved in with Stage 7).
   function isSaveDebugEnabled() { return saveEngine.isSaveDebugEnabled(); }
   function setSaveDebugEnabled(on) { return saveEngine.setSaveDebugEnabled(on); }
-  function saveDebugRunId() { return saveEngine.saveDebugRunId(); }
   function saveDebugLog(phase, payload) { return saveEngine.saveDebugLog(phase, payload); }
   function getSaveStatusLogWindowMs() { return saveEngine.getSaveStatusLogWindowMs(); }
   // The saveStatusLog array + prune/push live in save-engine.js (Stage 2);
@@ -995,9 +998,9 @@
   }
 
   // SECTION: [sync] Checkout probe, hashing & PDF cache
-  // probeCheckoutLock lives in save-engine.js (Stage 3); wrapper keeps the
-  // preflight/visibility callers frozen.
-  function probeCheckoutLock(runId) { return saveEngine.probeCheckoutLock(runId); }
+  // probeCheckoutLock lives in save-engine.js (Stage 3); App.probeCheckoutLock
+  // delegates for the save preflight, and the visibility caller moved into the
+  // engine (Stage 7).
 
   // sha256Hex: engine-internal + App.sha256Hex delegate (intake moved, split #38).
 
@@ -2708,16 +2711,7 @@
     // takeoffs keep their section with no migration). Runs after the
     // viewer loop above so viewer mode still wins.
     const groupsSectionEl = document.getElementById('groupsSection');
-    if (groupsSectionEl && !state.isViewer) groupsSectionEl.style.display = groupsUiVisible() ? '' : 'none';
-    const useGroupsBtn = document.getElementById('settingsUseGroupsBtn');
-    if (useGroupsBtn) {
-      const hasGroups = (state.groups || []).length > 0;
-      useGroupsBtn.setAttribute('aria-pressed', String(groupsUiVisible()));
-      useGroupsBtn.disabled = hasGroups;
-      useGroupsBtn.title = hasGroups
-        ? 'This project has groups, so the Groups section stays on'
-        : 'Show the Groups section and Assign-to-Group menus in this project';
-    }
+    if (groupsSectionEl && !state.isViewer) groupsSectionEl.style.display = (App.groupsUiVisible && App.groupsUiVisible()) ? '' : 'none';
     updateHideMarksButton();
     App.updateDropSizesButton && App.updateDropSizesButton();   // features/drop-peek.js
     const activeLineEl = document.getElementById('headerActiveLineType');
@@ -2779,8 +2773,9 @@
       document.querySelectorAll('.supabase-only').forEach(el => { el.style.display = 'none'; });
       document.querySelectorAll('#statusBarActions .supabase-only').forEach(el => { el.style.display = 'none'; });
     }
-    const settingsCloseProject = document.getElementById('settingsCloseProject');
-    if (settingsCloseProject) settingsCloseProject.style.display = (!state.pages.length && !state.currentProjectId) ? 'none' : '';
+    // R23: the settings-row slice (which Project Settings rows show) is features/project-settings.js's.
+    // Here, after the .supabase-only pass above, so that pass never resets a row it sets.
+    App.syncProjectSettingsChrome && App.syncProjectSettingsChrome();
     // R14: the header/sidebar edit-status banner (features/turn-in.js, beside its click handler).
     App.renderEditStatusBanner && App.renderEditStatusBanner();
     // The header [Close] (left of the banner): viewing a cloud project this
@@ -2800,18 +2795,6 @@
     const dividerEls = document.querySelectorAll('.header-primary-divider');
     const hidePrimary = !!(state.pages.length || state.isViewer);
     dividerEls.forEach(el => { el.style.display = hidePrimary ? 'none' : ''; });
-    const settingsAddAdditionalPages = document.getElementById('settingsAddAdditionalPages');
-    if (settingsAddAdditionalPages) settingsAddAdditionalPages.style.display = (state.pages.length && !state.isViewer) ? '' : 'none';
-    const settingsDownloadPdf = document.getElementById('settingsDownloadPdf');
-    if (settingsDownloadPdf) settingsDownloadPdf.style.display = (state.pages.length && !state.isViewer && (state.pdfBuffer || state.pdfStoragePath)) ? '' : 'none';
-    const settingsSheetsRow = document.getElementById('settingsSheetsRow');
-    if (settingsSheetsRow) settingsSheetsRow.style.display = (settingsAddAdditionalPages && settingsAddAdditionalPages.style.display !== 'none') || (settingsDownloadPdf && settingsDownloadPdf.style.display !== 'none') ? '' : 'none';
-    const advancedExportBtn = document.getElementById('advancedExport');
-    if (advancedExportBtn) advancedExportBtn.style.display = (state.pages.length && projectHasAnyCanvasMarkup() && !state.isViewer) ? '' : 'none';
-    const advancedLoadTestPdf = document.getElementById('advancedLoadTestPdf');
-    if (advancedLoadTestPdf) advancedLoadTestPdf.style.display = (IS_DEV_HOST && !state.isViewer) ? '' : 'none';
-    const settingsShareProject = document.getElementById('settingsShareProject');
-    if (settingsShareProject) settingsShareProject.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink) ? '' : 'none';
     const copyViewLinkBtn = document.getElementById('copyViewLinkBtn');
     if (copyViewLinkBtn) copyViewLinkBtn.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink) ? '' : 'none';
     const isMobile = window.matchMedia('(max-width: 768px)').matches;
@@ -2820,22 +2803,6 @@
     const sidebarLogoShare = document.getElementById('sidebarLogoShare');
     if (sidebarLogoShare) sidebarLogoShare.style.display = (SUPABASE_ENABLED && state.currentProjectId && state.supabaseSession?.user && !state.loadedViaViewLink && !(isMobile && state.isViewer)) ? '' : 'none';
     document.body.classList.toggle('mobile-view-mode', isMobile && !!state.isViewer);
-    const settingsSaveProject = document.getElementById('settingsSaveProject');
-    if (settingsSaveProject) {
-      // A cloud save: no row at all without Supabase (MAP-NOSUPA).
-      settingsSaveProject.style.display = (state.isViewer || !SUPABASE_ENABLED) ? 'none' : '';
-      settingsSaveProject.textContent = (state.currentProjectId && state.pdfStoragePath)
-        ? 'Save Changes'
-        : 'Save Project to Cloud';
-    }
-    const settingsAdvancedBtn = document.getElementById('settingsAdvancedBtn');
-    if (settingsAdvancedBtn) settingsAdvancedBtn.style.display = '';
-    const settingsClearPageBtn = document.getElementById('settingsClearPage');
-    if (settingsClearPageBtn) settingsClearPageBtn.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
-    const advancedCanvasRepair = document.getElementById('advancedCanvasRepair');
-    if (advancedCanvasRepair) advancedCanvasRepair.style.display = (state.pages.length > 0 && !state.isViewer) ? '' : 'none';
-    const advancedImport = document.getElementById('advancedImport');
-    if (advancedImport) advancedImport.style.display = state.isViewer ? 'none' : '';
     const rotatePageBtn = document.getElementById('rotatePage');
     if (rotatePageBtn) {
       rotatePageBtn.style.display = state.isViewer ? 'none' : '';
@@ -2858,128 +2825,12 @@
     App.renderGroupsList && App.renderGroupsList();
     App.renderLinesList && App.renderLinesList();   // features/lines-list.js; boot-time no-op is fine (no project yet)
     App.renderSummary && App.renderSummary();
-    // App.hasAnyHighlights / hasAnyNotes are registered by features/pdf-bundle.js,
-    // which loads AFTER app.js. updateUI is a hot path that can run during boot
-    // before that feature <script> executes: supabase-js emits INITIAL_SESSION to
-    // the onAuthStateChange callback (which calls updateUI) within the microtask
-    // checkpoint right after app.js's <script>, ahead of the parser reaching the
-    // feature scripts. Guard defensively per the registry idiom (App.fn && App.fn()).
-    // At that point no annotations exist yet, so a hidden default is correct; the
-    // next updateUI (post-load / on any state change) reflects the real state.
-    const bundleBtn = document.getElementById('bundleHighlights');
-    if (bundleBtn) bundleBtn.style.display = (App.hasAnyHighlights && App.hasAnyHighlights()) ? '' : 'none';
-    const bundleNotesBtn = document.getElementById('bundleNotes');
-    if (bundleNotesBtn) bundleNotesBtn.style.display = (App.hasAnyNotes && App.hasAnyNotes()) ? '' : 'none';
-    // Cheap existence probes (report.js) — would the report/summary be
-    // non-empty? Short-circuit at the first count, line, or room box instead
-    // of building the whole summary (a real cost per updateUI on large
-    // projects). Same load-order guard as the App.* checks above:
-    // report.js loads after app.js, so this can run before it registers.
-    const hasCountsOrLines = typeof window.getPipeToolingHasData === 'function' && window.getPipeToolingHasData();
-    // Room Sizer boxes count as report data too: the report renders a "Room
-    // Volumes" table and the email summary a "--- Rooms ---" block, so a
-    // rooms-only takeoff still has something to show/export/copy. Only Copy
-    // to /Tooling stays counts/lines-only — getPipeToolingSummary never emits
-    // rooms, so on a rooms-only project it would copy an empty string.
-    const hasRooms = typeof window.getReportHasRooms === 'function' && window.getReportHasRooms();
-    const hasReportData = hasCountsOrLines || hasRooms;
-    const ptBtn = document.getElementById('forPipeToolingDropdown');
-    if (ptBtn) ptBtn.style.display = hasCountsOrLines ? '' : 'none';
-    const ttBtn = document.getElementById('forTakeoffToolingDropdown');
-    if (ttBtn) ttBtn.style.display = hasCountsOrLines ? '' : 'none';
-    const copySummaryBtn = document.getElementById('copySummaryTextDropdown');
-    if (copySummaryBtn) copySummaryBtn.style.display = hasReportData ? '' : 'none';
-    const showReportDropdown = document.getElementById('showReportDropdown');
-    if (showReportDropdown) showReportDropdown.style.display = hasReportData ? '' : 'none';
-    const specificPagesBtn = document.getElementById('specificPages');
-    if (specificPagesBtn) specificPagesBtn.style.display = hasReportData ? '' : 'none';
-    const allCanvasesOnPageOpt = document.querySelector('.show-report-option[data-mode="all-canvases-on-page"]');
-    if (allCanvasesOnPageOpt) {
-      const page = state.pages[state.currentPage];
-      const canvases = page ? getPageCanvases(page) : [];
-      allCanvasesOnPageOpt.style.display = canvases.length > 1 ? '' : 'none';
-    }
-    const downloadCurrentPageDropdown = document.getElementById('downloadCurrentPageDropdown');
-    if (downloadCurrentPageDropdown) downloadCurrentPageDropdown.style.display = state.pages.length > 0 ? 'inline-flex' : 'none';
-    const exportDropdown = document.getElementById('exportDropdown');
-    const showExportDropdownBase = !state.isViewer || state.pages.length > 0;
-    const exportContent = document.getElementById('exportDropdownExportContent');
-    const noProjectYet = !state.isViewer && state.pages.length === 0;
-    if (exportContent) exportContent.style.display = noProjectYet ? 'none' : '';
-    const exportPdfOpt = document.querySelector('.export-dropdown-option[data-action="pdf"]');
-    const hasPdfExport = !!(state.pdfBuffer || state.pdfStoragePath);
-    if (exportPdfOpt) exportPdfOpt.style.display = hasPdfExport ? '' : 'none';
-    const exportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="canvas"]');
-    const exportBothOpt = document.querySelector('.export-dropdown-option[data-action="both"]');
-    const hasCanvasMarkupForExport = projectHasAnyCanvasMarkup();
-    if (!noProjectYet) {
-      // B6 (J13 J14): Export Canvas/Both are editor tools (canvas JSON hand-off),
-      // never a viewer surface. Hiding them here leaves a view session's menu
-      // with no rows (view links carry no pdfBuffer/pdfStoragePath), so the
-      // empty-dropdown check below removes the whole Export menu for free.
-      const showCanvasBoth = (hasCanvasMarkupForExport && !state.isViewer) ? '' : 'none';
-      if (exportCanvasOpt) exportCanvasOpt.style.display = showCanvasBoth;
-      if (exportBothOpt) exportBothOpt.style.display = showCanvasBoth;
-    }
-    const exportImportCanvasOpt = document.querySelector('.export-dropdown-option[data-action="import-canvas"]');
-    if (exportImportCanvasOpt) {
-      // B12 (J12): with marks on the canvas this row used to vanish outright —
-      // mid-recovery that reads as the feature disappearing. Editors now always
-      // see the row; when marks exist it greys out (disabled, so the click
-      // never fires) with the unblock path spelled inline via the
-      // #importCanvasBlockedNote qualifier (textContent, not display:none —
-      // the burger drawer copies labels via textContent, which would leak
-      // hidden text). Viewers still never see it (B6); shield-import mode
-      // hides the whole menu content anyway.
-      exportImportCanvasOpt.style.display = (!noProjectYet && !state.isViewer) ? '' : 'none';
-      exportImportCanvasOpt.disabled = hasCanvasMarkupForExport;
-      const importCanvasBlockedNote = document.getElementById('importCanvasBlockedNote');
-      if (importCanvasBlockedNote) importCanvasBlockedNote.textContent = hasCanvasMarkupForExport ? '(canvas has marks: clear or undo first)' : '';
-    }
-    // Close project rides the same menu for every session that opened a
-    // project itself — a view-link recipient has no project of their own to
-    // close (B6 keeps that menu empty), and a shared-project reader who was
-    // just turned in still gets the door (state.isViewer, NOT a view link).
-    const exportCloseOpt = document.querySelector('.export-dropdown-option[data-action="close-project"]');
-    const showCloseRow = !noProjectYet && !state.loadedViaViewLink && state.pages.length > 0;
-    if (exportCloseOpt) exportCloseOpt.style.display = showCloseRow ? '' : 'none';
-    let showExportDropdown = showExportDropdownBase && !noProjectYet;
-    if (showExportDropdown && exportContent) {
-      const anyExportRow = hasPdfExport || (hasCanvasMarkupForExport && !state.isViewer) || showCloseRow;
-      if (!anyExportRow) showExportDropdown = false;
-    }
-    if (exportDropdown) exportDropdown.style.display = showExportDropdown ? 'inline-flex' : 'none';
-    const allCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-canvases"]');
-    if (allCanvasesOpt) {
-      const page = state.pages[state.currentPage];
-      const canvases = page ? getPageCanvases(page) : [];
-      allCanvasesOpt.style.display = canvases.length > 1 ? '' : 'none';
-    }
-    const allPagesOpt = document.querySelector('.download-page-option[data-mode="all-pages"]');
-    const allPagesCanvasesOpt = document.querySelector('.download-page-option[data-mode="all-pages-canvases"]');
-    if (allPagesOpt) allPagesOpt.style.display = state.pages.length > 1 ? '' : 'none';
-    // B4 (J10 J13 J18) — one trade dialect across the scope menus. When every
-    // page has one canvas: the "(… layer)" qualifiers say nothing, so they
-    // render empty (textContent, not display:none — the burger drawer copies
-    // labels via textContent, which would leak hidden text), and the
-    // "Everything" rows duplicate "Every sheet" scope-for-scope, so the
-    // duplicates hide.
-    const anyMultiCanvas = state.pages.some(p => getPageCanvases(p).length > 1);
-    document.querySelectorAll('.scope-qual').forEach(el => { el.textContent = anyMultiCanvas ? (el.dataset.qual || '') : ''; });
-    if (allPagesCanvasesOpt) allPagesCanvasesOpt.style.display = (state.pages.length > 1 && anyMultiCanvas) ? '' : 'none';
-    const reportEverythingOpt = document.querySelector('.show-report-option[data-mode="all-pages-canvases"]');
-    if (reportEverythingOpt) reportEverythingOpt.style.display = anyMultiCanvas ? '' : 'none';
-    // D25 (X6 option D): the copy menus' "Everything" is no longer a duplicate
-    // of a middle scope — "Every sheet (visible layers)" is retired — so it
-    // stays on every project; its layer picker (features/output.js) is what
-    // appears only when a page has 2+ layers. Show Report / Download keep
-    // their three modes and the rule above.
-    document.querySelectorAll('.pipe-tooling-option[data-mode="all"], .copy-summary-option[data-mode="all"]').forEach(el => { el.style.display = ''; });
+    // R23: which output rows show (the bundle buttons, the report / copy / export / download
+    // menus and their scope rows) is features/output.js's. Before the burger drawer, which
+    // copies the visible download and export rows.
+    App.syncOutputMenus && App.syncOutputMenus();
     if (App.updateBurgerMenu) App.updateBurgerMenu();
     if (App.scheduleHeaderCollapseCheck) App.scheduleHeaderCollapseCheck();
-    document.querySelectorAll('.pipe-tooling-option[data-mode="this-canvas"], .copy-summary-option[data-mode="this-canvas"]').forEach(el => {
-      el.style.display = state.pages.length <= 1 ? 'none' : '';
-    });
     updateStatus();
     if (SUPABASE_ENABLED && state.currentProjectId) updateSaveStatusIndicator();
   }
@@ -4139,123 +3990,9 @@
   // The #addGroup opener + the #groupModalCancel/#groupModalDelete/#groupModalDone
   // handlers moved to features/groups.js (window.App registry). The #showGroupColors
   // sidebar toggle below stays here.
-  // Per-project Groups gate: the UI (sidebar section + Assign-to-Group
-  // menus) shows when the project opted in OR already contains groups.
-  // "No groups anywhere" is the default off state — nothing to migrate.
-  function groupsUiVisible() {
-    return !!state.groupsEnabled || (state.groups || []).length > 0;
-  }
-  // D17 (J19 #1): the duct surfaces that name Groups turn them on in place —
-  // flips the gate, expands the sidebar section, re-renders. Returns true when
-  // the gate was actually off (the callers' toast decision). No-op when on.
-  function turnOnGroups() {
-    if (groupsUiVisible()) return false;
-    state.groupsEnabled = true;
-    state.groupsListCollapsed = false;
-    const sec = document.getElementById('groupsSection');
-    if (sec) sec.classList.remove('collapsed');
-    const icon = document.getElementById('groupsCollapseIcon');
-    if (icon) icon.textContent = '▼';
-    markProjectDirty();
-    updateUI();
-    return true;
-  }
-  const settingsUseGroupsBtn = document.getElementById('settingsUseGroupsBtn');
-  if (settingsUseGroupsBtn) {
-    settingsUseGroupsBtn.onclick = () => {
-      if ((state.groups || []).length > 0) return; // locked on while groups exist
-      // On goes through turnOnGroups, which also opens the sidebar section: a GROUPS heading
-      // left collapsed at the foot of the sidebar hid the + Add the next move needs (by hand, 2026-09-25).
-      if (!state.groupsEnabled) { turnOnGroups(); return; }
-      state.groupsEnabled = false;
-      markProjectDirty();
-      updateUI();
-    };
-  }
-  // S1/S2 Project Settings rows: trade (explicit, per project) and the
-  // vertical-by-default figures. Synced on every open by syncProjectSettingsRows.
-  function syncProjectSettingsRows() {
-    syncTradeSegment('settingsTradeSegment', state.trade);
-    // Codes & jurisdiction (rulebook slice 4)
-    const codes = getProjectCodes();
-    TRADES.forEach((t) => {
-      const sel = document.getElementById('settingsCode' + t.charAt(0).toUpperCase() + t.slice(1));
-      if (!sel) return;
-      if (!sel.options.length) CODE_EDITIONS[t].forEach((e) => { const o = document.createElement('option'); o.value = e; o.textContent = e; sel.appendChild(o); });
-      if (codes[t] && ![...sel.options].some((o) => o.value === codes[t])) { const o = document.createElement('option'); o.value = codes[t]; o.textContent = codes[t]; sel.appendChild(o); }
-      sel.value = codes[t] || '';
-    });
-    const jEl = document.getElementById('settingsJurisdiction');
-    if (jEl) jEl.value = codes.jurisdiction || '';
-    syncOccupancySegment(codes.occupancy);
-    const ceilEl = document.getElementById('settingsCeilingHeight');
-    if (ceilEl) ceilEl.value = state.ceilingHeightFt != null ? formatFeetInchesFromVal(state.ceilingHeightFt, 'ft') : '';
-    const muEl = document.getElementById('settingsMakeUp');
-    if (muEl) muEl.value = state.makeUpFt != null ? formatFeetInchesFromVal(state.makeUpFt, 'ft') : '';
-    // Quick keys: the first three bindings as "1 WC · 2 Lav · 3 FD · +4"; empty when none.
-    const qkEl = document.getElementById('settingsQuickKeysSummary');
-    if (qkEl) {
-      const labels = App.getQuickKeyLabels ? App.getQuickKeyLabels() : {};
-      const slots = Object.keys(labels);
-      const shown = slots.slice(0, 3).map((k) => k + ' ' + labels[k]);
-      if (slots.length > 3) shown.push('+' + (slots.length - 3));
-      qkEl.textContent = shown.join(' · ');
-    }
-  }
-  function syncTradeSegment(segmentId, trade) {
-    const seg = document.getElementById(segmentId);
-    if (!seg) return;
-    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.trade === trade)));
-  }
-  // Occupancy (WATER-PLAN rung 1): the fixture-unit column the project reads,
-  // public by default on a commercial bid. Rides state.codes like the editions.
-  function syncOccupancySegment(occupancy) {
-    const btn = document.getElementById('settingsOccupancyFlip');
-    if (!btn) return;
-    btn.textContent = occupancy === 'private' ? 'private' : 'public';
-    btn.dataset.occupancy = occupancy === 'private' ? 'private' : 'public';
-  }
-  document.getElementById('settingsOccupancyFlip')?.addEventListener('click', () => {
-    const next = getProjectCodes().occupancy === 'private' ? 'public' : 'private';
-    setProjectCodes({ occupancy: next }, { route: 'settings' });
-    syncOccupancySegment(getProjectCodes().occupancy);
-  });
-  document.getElementById('settingsTradeSegment')?.addEventListener('click', (e) => {
-    const b = e.target.closest('button[data-trade]');
-    if (!b) return;
-    // Clicking the pressed trade clears it back to "not chosen" (plumbing behavior).
-    setProjectTrade(b.getAttribute('aria-pressed') === 'true' ? null : b.dataset.trade, { route: 'settings' });
-    syncTradeSegment('settingsTradeSegment', state.trade);
-  });
-  TRADES.forEach((t) => {
-    document.getElementById('settingsCode' + t.charAt(0).toUpperCase() + t.slice(1))?.addEventListener('change', (e) => setProjectCodes({ [t]: e.target.value }, { route: 'settings' }));
-  });
-  const jurisdictionEl = document.getElementById('settingsJurisdiction');
-  if (jurisdictionEl) {
-    jurisdictionEl.addEventListener('change', () => setProjectCodes({ jurisdiction: jurisdictionEl.value }, { route: 'settings' }));
-    jurisdictionEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); jurisdictionEl.blur(); } });
-  }
-  const commitCeilingFields = () => {
-    const ceilEl = document.getElementById('settingsCeilingHeight');
-    const muEl = document.getElementById('settingsMakeUp');
-    const ceil = ceilEl ? parseRealWorldLength(ceilEl.value, 'ft') : null;
-    const mu = muEl ? parseRealWorldLength(muEl.value, 'ft') : null;
-    const nextCeil = ceil != null && ceil > 0 ? Math.round(ceil * 100) / 100 : null;
-    const nextMu = mu != null && mu >= 0 ? Math.round(mu * 100) / 100 : null;
-    if (nextCeil !== state.ceilingHeightFt || nextMu !== state.makeUpFt) {
-      state.ceilingHeightFt = nextCeil;
-      state.makeUpFt = nextMu;
-      markProjectDirty();
-      logUserEvent('ceiling_set', state.currentProjectId || null, { ceilingFt: nextCeil, makeUpFt: nextMu });
-    }
-    syncProjectSettingsRows();
-  };
-  ['settingsCeilingHeight', 'settingsMakeUp'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.addEventListener('blur', commitCeilingFields);
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
-  });
+  // The per-project Groups gate (groupsUiVisible / turnOnGroups, the Use groups switch) and
+  // the Project Settings rows (trade, codes, occupancy, ceiling / make-up) with
+  // syncProjectSettingsRows moved to features/project-settings.js (R23).
   const showGroupColorsCheckbox = document.getElementById('showGroupColorsCheckbox');
   const showGroupColorsBtn = document.getElementById('showGroupColorsBtn');
   if (showGroupColorsCheckbox && showGroupColorsBtn) {
@@ -4563,90 +4300,18 @@
 
   // showClearPageModal + the #clearPage / #clearPageSidebar openers moved to
   // features/import-clear.js (registered as App.showClearPageModal).
-  // SECTION: Export & report dropdown menus
-  // downloadCurrentPageAsPdf + the #downloadCurrentPageBtn mode menu moved to
-  // features/output.js (the mobile burger menu keeps dispatching clicks on the
-  // same .download-page-option elements).
-  const exportDropdownBtn = document.getElementById('exportDropdownBtn');
-  const exportDropdownMenu = document.getElementById('exportDropdownMenu');
-  if (exportDropdownBtn && exportDropdownMenu) {
-    exportDropdownBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (exportDropdownMenu.classList.contains('visible')) {
-        exportDropdownMenu.classList.remove('visible');
-      } else {
-        exportDropdownMenu.style.left = '-9999px';
-        // right:auto, not '' — the class's `right: 0` would otherwise stay in
-        // force beside the fixed left, stretching the menu to the viewport's
-        // far edge (and its off-screen measure would clamp left to the margin,
-        // so the menu rendered full-width).
-        exportDropdownMenu.style.right = 'auto';
-        exportDropdownMenu.classList.add('visible');
-        const btnRect = exportDropdownBtn.getBoundingClientRect();
-        exportDropdownMenu.style.position = 'fixed';
-        placeFixedMenu(exportDropdownMenu, btnRect.right - 220, btnRect.bottom + 4);
-      }
-    };
-  }
-  document.querySelectorAll('.export-dropdown-option').forEach(opt => {
-    opt.onclick = async (e) => {
-      e.stopPropagation();
-      const action = opt.dataset.action;
-      if (exportDropdownMenu) exportDropdownMenu.classList.remove('visible');
-      if (action === 'canvas') document.getElementById('exportBtn').click();
-      else if (action === 'pdf') await App.downloadProjectPdf();
-      else if (action === 'both') {
-        document.getElementById('exportBtn').click();
-        await App.downloadProjectPdf();
-      } else if (action === 'import-canvas') {
-        document.getElementById('importInput').click();
-      } else if (action === 'close-project') {
-        await App.closeProject({ route: 'cloud_menu' });
-      }
-    };
-  });
-  const printReportBtn = document.getElementById('printReport');
-  const showReportMenu = document.getElementById('showReportMenu');
-  const showReportDropdown = document.getElementById('showReportDropdown');
-  if (printReportBtn && showReportMenu) {
-    printReportBtn.onclick = (e) => {
-      e.stopPropagation();
-      if (showReportMenu.classList.contains('visible')) {
-        showReportMenu.classList.remove('visible');
-        if (showReportDropdown && showReportMenu.parentElement !== showReportDropdown) showReportDropdown.appendChild(showReportMenu);
-      } else {
-        showReportMenu.style.left = '-9999px';
-        showReportMenu.style.right = '';
-        showReportMenu.classList.add('visible');
-        const btnRect = printReportBtn.getBoundingClientRect();
-        showReportMenu.style.position = 'fixed';
-        showReportMenu.style.minWidth = Math.max(btnRect.width, 280) + 'px';
-        placeFixedMenu(showReportMenu, btnRect.left, btnRect.bottom + 4);
-        const isMobile = window.matchMedia('(max-width: 768px)').matches;
-        if (isMobile && showReportMenu.parentElement !== document.body) document.body.appendChild(showReportMenu);
-      }
-    };
-  }
-  document.querySelectorAll('.show-report-option').forEach(opt => {
-    opt.onclick = (e) => {
-      e.stopPropagation();
-      const mode = opt.dataset.mode;
-      if (showReportMenu) {
-        showReportMenu.classList.remove('visible');
-        if (showReportDropdown && showReportMenu.parentElement !== showReportDropdown) showReportDropdown.appendChild(showReportMenu);
-      }
-      if (mode && typeof window.printReport === 'function') window.printReport(mode);
-    };
-  });
+  // SECTION: Macros & custom-icon tips openers
+  // The Export and Show Report openers (#exportDropdownBtn, .export-dropdown-option,
+  // #printReport, .show-report-option) and the menus' row visibility (App.syncOutputMenus)
+  // live in features/output.js beside the Copy and Download menus (R23). The mobile burger
+  // menu keeps dispatching clicks on the same option elements.
   // Null-guarded (2026-08-30): a stale service-worker shell paired with fresh JS
   // (or vice versa) can boot without a newer element — an unguarded `.onclick =`
   // here threw at line level and killed the whole boot IIFE (App.state never
   // registered, every feature file cascaded). Skew must degrade to one dead
   // button, never a bricked session.
   const wireClick = (id, fn) => { const el = document.getElementById(id); if (el) el.onclick = fn; };
-  wireClick('settingsMacros', () => { hideModal('settingsModal'); showModal('macrosModal'); });
   wireClick('statusBarMacros', () => showModal('macrosModal'));
-  wireClick('settingsClearPage', () => { hideModal('settingsModal'); App.showClearPageModal(); });
   document.getElementById('counterCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterLineTypeDetailsCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
   document.getElementById('counterQuickCountCustomIconsLabel')?.addEventListener('click', () => showModal('customIconTipsModal'));
@@ -4735,119 +4400,11 @@
   // getOrderedIcons/iconVbFor/getUserCustomIcons/saveUserCustomIcons/showToast
   // stay here and are published on App.
 
-  // SECTION: Project Settings doors & local rows
-  // Bound OUTSIDE the SUPABASE_ENABLED block below, so a deploy without cloud
-  // config keeps the Hide marks eye and Project Settings (MAP-NOSUPA). The cloud
-  // rows inside the modal (Save, Load, Manage, Share, checkout, review) stay in
-  // that block and are hidden by updateUI when Supabase is off.
-  //
-  // Project Settings has two doors -- the desktop header gear and the mobile
-  // sidebar-logo gear -- so they open through one function and can't drift
-  // apart on auth or title. No sign-in gate here:
-  // the modal is mostly local work (add PDF pages, Close Project, quick keys,
-  // Advanced -> Export / Import / Canvas Repair), and the
-  // cloud rows inside prompt for sign-in themselves.
-  function setSettingsHelpOpen(open) {
-    const toggle = document.getElementById('settingsHelpToggle');
-    const links = document.getElementById('settingsHelpLinks');
-    if (toggle) toggle.setAttribute('aria-expanded', String(open));
-    if (links) links.hidden = !open;
-  }
-  function openProjectSettings() {
-    setSettingsHelpOpen(false);
-    // The title stays "Project Settings"; the project name is the subtitle line under it
-    // (a long bid-set name used to wrap the title onto two lines).
-    const subEl = document.getElementById('settingsSubtitle');
-    if (subEl) {
-      const open = state.pages.length || state.currentProjectId;
-      subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
-      subEl.style.display = open ? '' : 'none';
-    }
-    document.body.classList.remove('sidebar-open');
-    // Declared inside the SUPABASE_ENABLED block (it hides the section itself when off).
-    if (SUPABASE_ENABLED) updateSettingsCheckoutSection();
-    syncProjectSettingsRows();
-    showModal('settingsModal');
-  }
-  document.getElementById('settingsGearBtn').onclick = openProjectSettings;
-  document.getElementById('sidebarLogoGear').onclick = openProjectSettings;
-  const hideMarksBtnEl = document.getElementById('hideMarksBtn');
-  if (hideMarksBtnEl) hideMarksBtnEl.onclick = () => toggleHideMarks();
-  document.getElementById('settingsAddAdditionalPages').onclick = async () => {
-    // #7b: Route through Prepare PDF in append mode. We need the current
-    // project's PDF buffer in memory so the commit step can merge the new
-    // pages onto it; recover from pdfCache when needed.
-    hideModal('settingsModal');
-    if (!state.pdfBuffer && state.currentProjectId && state.pdfHash) {
-      try {
-        const blob = await pdfCacheGet(state.currentProjectId, state.pdfHash);
-        if (blob && blob.size > 0) {
-          const ab = await blob.arrayBuffer();
-          state.pdfBuffer = ab;
-          state.pdfBufferSize = ab.byteLength;
-        }
-      } catch (_) {}
-    }
-    if (!state.pdfBuffer) {
-      showToast('Could not load the current PDF to merge new pages. Save the project, then try again.', 5000);
-      return;
-    }
-    App.setPendingAddAdditionalPages(true);
-    document.getElementById('pdfInput').click();
-  };
-  document.getElementById('settingsDownloadPdf').onclick = async () => { hideModal('settingsModal'); await App.downloadProjectPdf(); };
-  document.getElementById('settingsAdvancedBtn').onclick = () => { const d = document.getElementById('settingsAdvancedSection'); d.open = !d.open; if (d.open) d.scrollIntoView({ block: 'nearest' }); };
-  // Footer Help row: the shortcuts / tours / sample-plan links unfold under the footer;
-  // folded again every time the modal opens (openProjectSettings).
-  const settingsHelpToggle = document.getElementById('settingsHelpToggle');
-  if (settingsHelpToggle) settingsHelpToggle.onclick = () => setSettingsHelpOpen(settingsHelpToggle.getAttribute('aria-expanded') !== 'true');
-  document.getElementById('advancedLoadTestPdf').onclick = async () => { hideModal('settingsModal'); await App.loadTestPdf(); };
-  document.getElementById('advancedExport').onclick = () => { hideModal('settingsModal'); document.getElementById('exportBtn').click(); };
-  document.getElementById('advancedImport').onclick = () => { hideModal('settingsModal'); document.getElementById('importBtn').click(); };
-  document.getElementById('advancedCanvasRepair').onclick = () => { hideModal('settingsModal'); App.openCanvasRepairModal(); };
-  document.getElementById('advancedEmptyCacheReload').onclick = async () => {
-    if (!(await confirmDialog({ title: 'Clear cached data and reload?', body: 'Clears IndexedDB and localStorage on this device and reloads. Unsaved work will be lost.', confirmLabel: 'Clear and reload', danger: true }))) return;
-    hideModal('settingsModal');
-    try {
-      indexedDB.deleteDatabase('clickcount-pdf-cache');
-    } catch (_) {}
-    const keysToRemove = ['clickcount-last-project', 'recentBids', 'clickcount-save-error', 'takeoff-state', 'lineModifiers', 'plumbingModifiers', 'groupColorDisplay', 'pagesTitlesTruncated', 'hideUnmarkedPagesFromSidebar', 'counterSearch', 'lineTypeSearch', 'linesSearch', 'linesTypeExpanded', 'counterSidebarFilterScope', 'lineTypeSidebarFilterScope', 'counterSettings', 'lineTypeSettings', 'stripPins', 'zoomSettings', 'specificPagesIncludeReport', 'customIconPaths'];
-    for (const k of keysToRemove) { try { localStorage.removeItem(k); } catch (_) {} }
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const k = localStorage.key(i);
-      if (k && k.startsWith('view:allowed:')) { try { localStorage.removeItem(k); } catch (_) {} }
-    }
-    location.reload();
-  };
-  // Close project: ONE routine behind every door — Project Settings, the
-  // header cloud menu, the "Project turned in." toast and the admin
-  // force-turn-in notice (Wendi, 2026-09-10: "I just refresh after I turn
-  // things in"). Confirms only when there is something to lose: unsaved
-  // edits, or a takeoff that lives on this device alone — a turned-in
-  // project is already saved and closes on the click.
-  async function closeProject(opts) {
-    opts = opts || {};
-    const unsaved = App.getAutoSaveDirty ? !!App.getAutoSaveDirty() : true;
-    const localOnly = !state.currentProjectId;
-    if (state.pages.length > 0 && (unsaved || localOnly) && !(await confirmDialog({ title: 'Close project?', body: 'Any unsaved changes will be lost.', confirmLabel: 'Close project', danger: true }))) return false;
-    logUserEvent('project_close', state.currentProjectId || null, { route: opts.route || 'settings' });
-    // Block-scoped in the SUPABASE_ENABLED block, published there; absent with Supabase off.
-    if (App.checkInCurrentProjectIfHeld) await App.checkInCurrentProjectIfHeld();
-    resetGridOrigin();
-    resetLocalSessionState({ keepArtboard: true });
-    state.pagesListCollapsed = true;
-    state.sidebarReorderModeActive = false;
-    document.getElementById('pagesSection').classList.add('collapsed');
-    document.getElementById('pagesCollapseIcon').textContent = '▶';
-    updateUI();
-    renderPdf();
-    return true;
-  }
-  (window.App = window.App || {}).closeProject = closeProject;
-  document.getElementById('settingsCloseProject').onclick = async () => {
-    hideModal('settingsModal');
-    await closeProject({ route: 'settings' });
-  };
+  // SECTION: Project Settings pointer (features/project-settings.js)
+  // openProjectSettings with both gears, the Hide marks eye, the modal's local rows (Add
+  // pages, Download PDF, Help, Macros, Clear page, Advanced) and closeProject
+  // (App.closeProject) moved to features/project-settings.js (R23). They stay out of the
+  // SUPABASE_ENABLED block below (MAP-NOSUPA); the cloud rows stay inside it.
 
   // SECTION: Auth & settings entry buttons
   // The Manage Projects modal (openManageProjectsModal, forceCheckInProjectFromManage,
@@ -4885,7 +4442,7 @@
     };
     document.getElementById('authBtnSidebar').onclick = () => document.getElementById('authBtn').click();
     // openProjectSettings and the two gears, #hideMarksBtn, and the modal's local
-    // rows are bound above this block (SECTION: Project Settings doors & local rows).
+    // rows are features/project-settings.js's (R23), bound outside this block.
     document.getElementById('sidebarLogoUser').onclick = () => { document.body.classList.remove('sidebar-open'); App.openMySettings(); };
     document.getElementById('sidebarLogoShare').onclick = () => { document.body.classList.remove('sidebar-open'); hideModal('settingsModal'); App.openShareProjectModal(); };
     const headerShareBtnEl = document.getElementById('headerShareBtn');
@@ -5158,10 +4715,10 @@
       hideModal('settingsModal');
       App.openLoadProjectModalOrPromptSave();
     };
-    // closeProject and #settingsCloseProject live above this block (SECTION:
-    // Project Settings doors & local rows); the header [Close] is cloud-only.
+    // closeProject and #settingsCloseProject are features/project-settings.js's (R23);
+    // the header [Close] is cloud-only.
     const headerCloseProjectBtn = document.getElementById('headerCloseProjectBtn');
-    if (headerCloseProjectBtn) headerCloseProjectBtn.onclick = async () => { await closeProject({ route: 'header' }); };
+    if (headerCloseProjectBtn) headerCloseProjectBtn.onclick = async () => { await App.closeProject({ route: 'header' }); };
     document.getElementById('settingsManageProjects').onclick = () => { hideModal('settingsModal'); App.openManageProjectsModal(); };
     document.getElementById('settingsShareProject').onclick = () => { hideModal('settingsModal'); App.openShareProjectModal(); };
     // The #mySettings* handlers moved to features/my-settings.js.
@@ -5311,292 +4868,12 @@
     // #manageUsersBtnSidebar, #adminPanelClose, #manageUserModalClose,
     // manageUserModalAllActivityBtn, #allUsersModalClose, #adminCreateForm below)
     // moved to features/user-admin.js (window.App registry).
-    // SECTION: Canvas Repair modal wiring
-    // The #userActivity* close/select/filter/view-toggle bindings moved to
-    // features/user-activity.js.
-    // #manageProjectsModalClose moved to features/manage-projects.js.
-    // manageIconsCancel / manageIconsSave handlers live
-    // in features/manage-icons.js (window.App registry). The #canvasRepair*
-    // close/cancel/apply bindings live in features/canvas-repair.js (split #37).
-    // #adminCreateForm (create-user) moved to features/user-admin.js.
   }
 
-  document.getElementById('ctxEdit').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t || (t.type !== 'note' && t.type !== 'noteResize' && t.type !== 'noteFontSize')) return;
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    const note = ann?.notes?.[t.index];
-    if (note) {
-      document.getElementById('contextMenu').classList.remove('visible');
-      state.ctxTarget = null;
-      App.openNoteModal('edit', note.text, note);
-    }
-  };
-  document.getElementById('ctxLineProperties').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    if (!ann) return;
-    let it = null;
-    if (t.type === 'quickLine') it = { type: 'quick', q: ann.quickLines[t.index], pageIdx: state.currentPage };
-    else if (t.type === 'polyline') it = { type: 'poly', poly: ann.polylines[t.index], pageIdx: state.currentPage };
-    if (!it) return;
-    document.getElementById('contextMenu').classList.remove('visible');
-    App.openLinePropertiesModal(it);
-  };
-  // Repeat-drop: apply the last-used drop size to the clicked line's nearest
-  // end. Goes through the node model (collectDropNodes/applyDropToNode), so an
-  // end shared with another run — every joint in a chain — carries the drop
-  // ONCE instead of once per line. No-op (no undo, no dirty) when that end
-  // already has this exact drop.
-  const ctxRepeatDropEl = document.getElementById('ctxRepeatDrop');
-  if (ctxRepeatDropEl) ctxRepeatDropEl.onclick = () => {
-    const t = state.ctxTarget;
-    const lastDrop = (state.recentDrops || [])[0];
-    document.getElementById('contextMenu').classList.remove('visible');
-    state.ctxTarget = null;
-    if (!t || !lastDrop || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    const line = t.type === 'quickLine' ? ann?.quickLines?.[t.index] : ann?.polylines?.[t.index];
-    if (!line) return;
-    const isPoly = t.type === 'polyline';
-    const pts = isPoly ? (line.points || []) : null;
-    const start = isPoly ? pts[0] : { x: line.x1, y: line.y1 };
-    const end = isPoly ? pts[pts.length - 1] : { x: line.x2, y: line.y2 };
-    if (!start || !end) return;
-    const target = t.pdf && ptDist(t.pdf, start) <= ptDist(t.pdf, end) ? start : end;
-    const nodes = collectDropNodes(ann);
-    const node = nodes.find(n => ptDist(n, target) <= 1);
-    if (!node) return;
-    if (!applyDropToNode(ann, node, lastDrop.value, lastDrop.unit, true)) return;
-    pushUndoSnapshotCurrentPage();
-    applyDropToNode(ann, node, lastDrop.value, lastDrop.unit);
-    pushRecentDrop(lastDrop.value, lastDrop.unit);
-    logDropSetEvent(lastDrop.value, lastDrop.unit, 'context-repeat');
-    markProjectDirty();
-    renderAnnotations();
-    updateUI();
-  };
-  document.getElementById('ctxShowLength').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    if (!ann) return;
-    const line = t.type === 'quickLine' ? ann.quickLines[t.index] : ann.polylines[t.index];
-    if (!line) return;
-    pushUndoSnapshot();
-    line.showLength = !line.showLength;
-    markProjectDirty();
-    document.getElementById('contextMenu').classList.remove('visible');
-    state.ctxTarget = null;
-    renderAnnotations();
-    updateUI();
-  };
-  document.getElementById('ctxAssignGroup').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t || (t.type !== 'marker' && t.type !== 'quickLine' && t.type !== 'polyline')) return;
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    if (!ann) return;
-    let item = null;
-    if (t.type === 'marker') item = ann.counterMarkers?.[t.typeId]?.[t.index];
-    else if (t.type === 'quickLine') item = ann.quickLines?.[t.index];
-    else if (t.type === 'polyline') item = ann.polylines?.[t.index];
-    if (!item) return;
-    document.getElementById('contextMenu').classList.remove('visible');
-    App.openGroupAssignModal(item);
-  };
-  const ctxEditRoomBoxEl = document.getElementById('ctxEditRoomBox');
-  if (ctxEditRoomBoxEl) ctxEditRoomBoxEl.onclick = () => {
-    document.getElementById('contextMenu').classList.remove('visible');
-    const t = state.ctxTarget;
-    state.ctxTarget = null;
-    if (t?.type === 'roomBox') App.openRoomBoxModalForEdit(t.index);
-  };
-  document.getElementById('ctxEditMultiplyZone').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t || t.type !== 'multiplyZone') return;
-    document.getElementById('contextMenu').classList.remove('visible');
-    // R14: the dialog is features/zone-modals.js's; false when the zone is gone.
-    if (!(App.openMultiplyZoneModal && App.openMultiplyZoneModal({ editIndex: t.index }))) return;
-    state.ctxTarget = null;
-  };
-  document.getElementById('ctxEditScaleZone').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t || t.type !== 'scaleZone') return;
-    document.getElementById('contextMenu').classList.remove('visible');
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    if (!ann?.scaleZones?.[t.index]) return;
-    state.scaleModalApplyTarget = 'zone';
-    state.pendingScaleZone = null;
-    state.pendingScaleZoneEdit = { zoneIndex: t.index };
-    const h2 = document.querySelector('#scaleModal h2');
-    if (h2) h2.textContent = 'Edit zone scale';
-    App.openScaleModal();
-    state.ctxTarget = null;
-  };
-  document.getElementById('ctxDelete').onclick = () => {
-    const t = state.ctxTarget;
-    if (!t) return;
-    pushUndoSnapshotCurrentPage();   // every branch below mutates the current page's active canvas only
-    const page = state.pages[state.currentPage];
-    const canvas = page ? getActiveCanvas(page) : null;
-    const ann = canvas?.annotations;
-    if (!ann) return;
-    if (t.type === 'marker') {
-      const arr = ann.counterMarkers[t.typeId];
-      if (arr) arr.splice(t.index, 1);
-    } else if (t.type === 'quickLine') {
-      const deletedId = ann.quickLines[t.index]?.id;
-      ann.quickLines.splice(t.index, 1);
-      if (deletedId === state.selectedLineId && !state.selectedLineIsPoly) {
-        state.selectedLineId = null;
-        state.selectedLineIsPoly = false;
-        state.selectedLinePageIdx = null;
-      }
-    } else if (t.type === 'polyline') {
-      const deletedId = ann.polylines[t.index]?.id;
-      ann.polylines.splice(t.index, 1);
-      if (deletedId === state.selectedLineId && state.selectedLineIsPoly) {
-        state.selectedLineId = null;
-        state.selectedLineIsPoly = false;
-        state.selectedLinePageIdx = null;
-      }
-    } else if (t.type === 'highlight') {
-      ann.highlights.splice(t.index, 1);
-    } else if (t.type === 'multiplyZone') {
-      if (ann.multiplyZones) ann.multiplyZones.splice(t.index, 1);
-    } else if (t.type === 'scaleZone') {
-      if (ann.scaleZones) ann.scaleZones.splice(t.index, 1);
-    } else if (t.type === 'note' || t.type === 'noteResize' || t.type === 'noteFontSize') {
-      ann.notes.splice(t.index, 1);
-    } else if (t.type === 'roomBox') {
-      if (ann.roomBoxes) ann.roomBoxes.splice(t.index, 1);
-    }
-    markProjectDirty();
-    document.getElementById('contextMenu').classList.remove('visible');
-    state.ctxTarget = null;
-    renderAnnotations();
-    updateUI();
-  };
+  // The mark context menu's row handlers (#ctxEdit through #ctxDelete) live in
+  // features/mark-context-menu.js (R22) with showContextMenu, its Escape and click-away.
 
   // SECTION: Canvas Event Handlers
-  function showContextMenu(x, y) {
-    const menu = document.getElementById('contextMenu');
-    const editBtn = document.getElementById('ctxEdit');
-    const linePropsBtn = document.getElementById('ctxLineProperties');
-    const showLengthBtn = document.getElementById('ctxShowLength');
-    const assignGroupBtn = document.getElementById('ctxAssignGroup');
-    editBtn.style.display = (state.ctxTarget?.type === 'note' || state.ctxTarget?.type === 'noteResize' || state.ctxTarget?.type === 'noteFontSize') ? 'block' : 'none';
-    const canLineProps = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
-    linePropsBtn.style.display = canLineProps ? 'block' : 'none';
-    // Repeat-drop row: the last drop size this device used, applied to the
-    // clicked line's nearest end in one click — the menu is already open, so
-    // the whole modal round-trip disappears for every drop after the first.
-    const repeatDropBtn = document.getElementById('ctxRepeatDrop');
-    if (repeatDropBtn) {
-      const lastDrop = (state.recentDrops || [])[0];
-      const showRepeat = canLineProps && lastDrop;
-      repeatDropBtn.style.display = showRepeat ? 'block' : 'none';
-      if (showRepeat) repeatDropBtn.textContent = 'Drop ' + formatDropLabel(lastDrop.value, lastDrop.unit) + ' here';
-    }
-    const canShowLength = !state.isViewer && (state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
-    showLengthBtn.style.display = canShowLength ? 'block' : 'none';
-    if (canShowLength) {
-      const page = state.pages[state.currentPage];
-      const ann = page ? getActiveAnnotations(page) : null;
-      const line = state.ctxTarget?.type === 'quickLine' ? ann?.quickLines?.[state.ctxTarget.index] : ann?.polylines?.[state.ctxTarget.index];
-      showLengthBtn.textContent = line?.showLength ? 'Hide Length' : 'Show Length';
-    }
-    const canAssignGroup = !state.isViewer && groupsUiVisible() && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
-    assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
-    const ctxEditMzBtn = document.getElementById('ctxEditMultiplyZone');
-    ctxEditMzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'multiplyZone' ? 'block' : 'none';
-    const ctxEditSzBtn = document.getElementById('ctxEditScaleZone');
-    ctxEditSzBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'scaleZone' ? 'block' : 'none';
-    const ctxEditRoomBoxBtn = document.getElementById('ctxEditRoomBox');
-    if (ctxEditRoomBoxBtn) ctxEditRoomBoxBtn.style.display = !state.isViewer && state.ctxTarget?.type === 'roomBox' ? 'block' : 'none';
-    // D15: "CFM for this one…" — a placed marker of a CFM-carrying counter
-    // type gets the per-marker override row (features/duct-suggest.js binds
-    // the click and owns #markerCfmModal).
-    const ctxMarkerCfmBtn = document.getElementById('ctxMarkerCfm');
-    if (ctxMarkerCfmBtn) {
-      const mc = !state.isViewer && state.ctxTarget?.type === 'marker'
-        ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
-      ctxMarkerCfmBtn.style.display = mc && mc.cfm > 0 ? 'block' : 'none';
-    }
-    // WATER-PLAN rung 2: "WSFU for this one…" — a mark of a fixture-unit counter
-    // gets the per-mark override row (features/water-fixtures.js owns the click
-    // and #markerWsfuModal).
-    const ctxMarkerWsfuBtn = document.getElementById('ctxMarkerWsfu');
-    if (ctxMarkerWsfuBtn) {
-      const mw = !state.isViewer && state.ctxTarget?.type === 'marker'
-        ? (state.counters || []).find(c => c.id === state.ctxTarget.typeId) : null;
-      ctxMarkerWsfuBtn.style.display = mw && mw.wsfu > 0 ? 'block' : 'none';
-    }
-    // D19 (J19 Friction #3): "Attach to nearest run" — the rescue for a CFM
-    // device that finished a foot short of its branch. Offered ONLY when the
-    // device is genuinely unattached AND a run sits close enough to be the
-    // obvious intent, so the row never appears as a no-op.
-    const ctxAttachBtn = document.getElementById('ctxAttachToRun');
-    if (ctxAttachBtn) ctxAttachBtn.style.display = (App.strayDeviceAttachTarget && App.strayDeviceAttachTarget()) ? 'block' : 'none';   // R14: features/duct-suggest.js
-    const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
-    if (ctxNameHighlightBtn) {
-      const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';
-      ctxNameHighlightBtn.style.display = isHl ? 'block' : 'none';
-      if (isHl) {
-        const page = state.pages[state.currentPage];
-        const ann = page ? getActiveAnnotations(page) : null;
-        const h = ann?.highlights?.[state.ctxTarget.index];
-        ctxNameHighlightBtn.textContent = h?.label ? 'Rename highlight…' : 'Name highlight…';
-      }
-    }
-    const nameRow = document.getElementById('ctxTargetNameRow');
-    if (nameRow) {
-      const t = state.ctxTarget;
-      let targetLabel = null;
-      if (t && (t.type === 'marker' || t.type === 'quickLine' || t.type === 'polyline')) {
-        if (t.type === 'marker') {
-          const c = (state.counters || []).find(x => x.id === t.typeId);
-          targetLabel = c ? (c.name || 'Counter') : 'Unknown';
-        } else {
-          const page = state.pages[state.currentPage];
-          const ann = page ? getActiveAnnotations(page) : null;
-          const line = ann ? (t.type === 'quickLine' ? ann.quickLines?.[t.index] : ann.polylines?.[t.index]) : null;
-          if (line) {
-            const lt = (state.lineTypes || []).find(l => l.id === line.lineTypeId);
-            targetLabel = lt ? (lt.name || 'Line') : '\u2014';
-          }
-        }
-      } else if (t && t.type === 'highlight') {
-        const page = state.pages[state.currentPage];
-        const ann = page ? getActiveAnnotations(page) : null;
-        targetLabel = ann?.highlights?.[t.index]?.label || null;
-      }
-      if (targetLabel != null) {
-        nameRow.textContent = targetLabel;
-        nameRow.style.display = 'block';
-        nameRow.setAttribute('aria-hidden', 'false');
-      } else {
-        nameRow.textContent = '';
-        nameRow.style.display = 'none';
-        nameRow.setAttribute('aria-hidden', 'true');
-      }
-    }
-    // Show off-screen first, then clamp-place: a mark near the viewport's
-    // bottom/right edge must not push the menu off-screen (field report:
-    // Delete unreachable when right-clicking a line at the bottom of a count).
-    menu.style.left = '-9999px';
-    menu.style.top = '0px';
-    menu.classList.add('visible');
-    placeFixedMenu(menu, x, y);
-  }
-
   // Commit one Quick Line point (start, then end). Shared by the click path (a mouse
   // click, or a touch tap's synthetic click) and the loupe-release path, so both
   // apply identical snap (H/V) + bounds handling. Callers render + updateUI.
@@ -5975,7 +5252,7 @@
     // The right-click's PDF-space point rides along so point-aware rows (the
     // repeat-drop row picks the line end nearest the click) know where on the
     // mark the user aimed. Cleared with ctxTarget everywhere.
-    if (state.ctxTarget) { state.ctxTarget.pdf = pdf; showContextMenu(e.clientX, e.clientY); }
+    if (state.ctxTarget) { state.ctxTarget.pdf = pdf; App.showContextMenu(e.clientX, e.clientY); }   // features/mark-context-menu.js
   }
 
   // SECTION: Event Binding
@@ -6882,23 +6159,9 @@
 
   // SECTION: Global dropdown dismissal & keyboard hotkeys
 
-  // Escape dismisses the mark context menu ONLY — capture phase +
-  // stopImmediatePropagation mirrors features/tool-context-menu.js's
-  // onDocKeyDown, so the Escape ladder below never sees this press (no tool
-  // exit or modal close underneath the menu). Registered once and inert while
-  // the menu is hidden. (JOURNEY-MAP Tier-3 B1 / J9)
-  document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    const menu = document.getElementById('contextMenu');
-    if (!menu || !menu.classList.contains('visible')) return;
-    e.stopImmediatePropagation();
-    e.preventDefault();
-    menu.classList.remove('visible');
-    state.ctxTarget = null;
-  }, true);
-
+  // The mark context menu's capture-phase Escape and its click-away live in
+  // features/mark-context-menu.js (R22).
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.context-menu') && !e.target.closest('#contextMenu')) document.getElementById('contextMenu').classList.remove('visible');
     const cm = document.getElementById('canvasMenu');
     if (cm && !e.target.closest('#canvasMenu') && !e.target.closest('#canvasLayersBtn')) cm.classList.remove('visible');
     const dpm = document.getElementById('downloadCurrentPageMenu');
@@ -7076,150 +6339,43 @@
   // The PDF upload ladder (resumable/TUS + verify-after-timeout),
   // performSaveProjectToCloud, and the one-shot local-PDF uploader live in
   // save-engine.js (Stage 6) with the upload-progress sink and the one-shot
-  // in-flight/backoff state. Wrappers keep the App registry (Prepare PDF
-  // commit) and the interval/visibility callers below frozen.
+  // in-flight/backoff state. The wrapper keeps the App registry (Prepare PDF
+  // commit) frozen; the autosave tick calls the uploader inside the engine
+  // (Stage 7).
   function performSaveProjectToCloud(opts) { return saveEngine.performSaveProjectToCloud(opts); }
-  function uploadLocalPdfToCloudIfNeeded(reason, opts) { return saveEngine.uploadLocalPdfToCloudIfNeeded(reason, opts); }
 
   // SECTION: [sync] Auto-save
   // performAutoSave (the 5s dirty-loop worker: checkout preflight, update/
   // insert with raw-fetch fallback + retry, outcome bookkeeping) lives in
-  // save-engine.js (Stage 6); the interval + visibility callers use this
-  // wrapper.
+  // save-engine.js (Stage 6); the app-side callers use this wrapper (the
+  // interval and visibility callers moved into the engine, Stage 7).
   function performAutoSave(externalRunId) { return saveEngine.performAutoSave(externalRunId); }
 
   // SECTION: [sync] Local backup (IndexedDB takeoff state)
   // The three-layer backup writer (writeTakeoffStateBackup ->
   // writeTakeoffBackupToIndexedDB -> doWriteTakeoffBackupToIndexedDB, with the
   // in-flight promise + lastLocalBackup stamps) lives in save-engine.js
-  // (Stage 3); the 5s interval and the visibilitychange kick stay here.
+  // (Stage 3); the 5s interval stays here, and the visibilitychange kick is
+  // saveEngine.onVisibilityChange (Stage 7).
   function writeTakeoffStateBackup() { return saveEngine.writeTakeoffStateBackup(); }
   setInterval(() => { writeTakeoffStateBackup(); }, 5000);
 
+  // SECTION: [sync] Visibility & timers
+  // The listeners and the autosave interval stay here so they are greppable;
+  // their bodies live in save-engine.js (Stage 7): onVisibilityChange (hidden:
+  // back up and flush a dirty holder; visible after LONG_IDLE_PROBE_MS: probe,
+  // JWT refresh, wedged-client recycle, then the lock probe and permissions
+  // refresh), onOnline / onOffline, and autoSaveTick. lastHiddenAt is engine-owned.
   if (typeof document !== 'undefined' && document.addEventListener) {
-    document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'hidden') {
-        lastHiddenAt = Date.now();
-        saveDebugLog('visibility.hidden', { autoSaveDirty: saveEngine.getAutoSaveDirty(), hasProject: !!state.currentProjectId });
-        writeTakeoffStateBackup();
-        saveEngine.abortInFlightAutoSave('hidden');
-        const userId = state.supabaseSession?.user?.id;
-        if (SUPABASE_ENABLED && supabase && userId && state.currentProjectId &&
-            state.checkedOutBy === userId && saveEngine.getAutoSaveDirty() && !saveEngine.isSaveInProgress() && !suspendAutoSaveUntilCheckout) {
-          performAutoSave().catch(() => {});
-        }
-        return;
-      }
-      if (document.visibilityState !== 'visible') return;
-      const hiddenForMs = lastHiddenAt ? Date.now() - lastHiddenAt : 0;
-      if (hiddenForMs > LONG_IDLE_PROBE_MS && SUPABASE_ENABLED && supabase) {
-        await runRecoveryProbe('long_idle_return').catch(() => {});
-      }
-      if (!(SUPABASE_ENABLED && supabase && state.supabaseSession?.user)) {
-        saveDebugLog('visibility.visible', { hiddenForMs, signedIn: false });
-        return;
-      }
-      let sessionRefreshOk = false;
-      try {
-        let result;
-        if (hiddenForMs > LONG_IDLE_PROBE_MS) {
-          pushSaveEvent('session_refresh_attempt', 'Forcing JWT refresh after long idle', JSON.stringify({ hiddenForMs }));
-          result = await withTimeout(supabase.auth.refreshSession(), 5000, 'visibility refreshSession');
-        } else {
-          result = await withTimeout(supabase.auth.getSession(), 5000, 'visibility getSession');
-        }
-        if (result?.data?.session) {
-          state.supabaseSession = result.data.session;
-          sessionRefreshOk = true;
-        }
-      } catch (_) {}
-      // After a long idle, replace a wedged supabase-js client before the checkout
-      // and permissions refreshes below try to use it (each is a .rpc that would
-      // otherwise hang to its full timeout on a wedged client). Runs only on the
-      // long-idle path; the JWT was just refreshed above, so a probe failure here
-      // means a genuine wedge rather than an expired token.
-      let clientRecycled = false;
-      if (hiddenForMs > LONG_IDLE_PROBE_MS) {
-        clientRecycled = await recycleClientIfWedgedOnIdleReturn('long_idle_return').catch(() => false);
-      }
-      let probeResult = null;
-      const userId = state.supabaseSession?.user?.id;
-      if (state.currentProjectId && userId && state.checkedOutBy === userId && !state.isViewer && !suspendAutoSaveUntilCheckout) {
-        const probe = await probeCheckoutLock();
-        probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
-        if (probe.expired) {
-          try {
-            await handleBackgroundCheckoutExpired('visibility_probe');
-          } catch (e) {
-            try {
-              pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
-                JSON.stringify({ trigger: 'visibility_probe', message: (e && e.message) || String(e), name: e && e.name }));
-            } catch (_) {}
-          }
-        }
-      }
-      let permsRefreshed = false;
-      if (state.currentProjectId) {
-        try { await refreshProjectPermissions(); permsRefreshed = true; } catch (_) {}
-      }
-      saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, clientRecycled, probeResult, permsRefreshed });
-      updateUI();
-    });
+    document.addEventListener('visibilitychange', () => saveEngine.onVisibilityChange(document.visibilityState));
   }
 
   if (typeof window !== 'undefined') {
-    window.addEventListener('online', () => {
-      pushSaveEvent('online', 'Browser reports connection online');
-      updateSaveStatusIndicator();
-      if (saveEngine.getConsecutiveAutoSaveFailures() > 0) {
-        runRecoveryProbe('online_event').catch(() => {});
-      }
-    });
-    window.addEventListener('offline', () => {
-      pushSaveEvent('offline', 'Browser reports connection offline');
-      updateSaveStatusIndicator();
-    });
+    window.addEventListener('online', () => saveEngine.onOnline());
+    window.addEventListener('offline', () => saveEngine.onOffline());
   }
 
-  setInterval(async () => {
-    if (!SUPABASE_ENABLED || !state.supabaseSession?.user) return;
-    if (suspendAutoSaveUntilCheckout) {
-      if (saveEngine.getAutoSaveDirty() && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
-      return;
-    }
-    // Belt-and-suspenders: if this project has a local PDF that never reached
-    // cloud storage (e.g. created via Prepare PDF "Open"), upload it. Fire and
-    // forget; the helper self-gates (in-flight, backoff, !pdfStoragePath) and
-    // stops firing once the upload succeeds. Runs regardless of canvas-dirty
-    // state so a failed attempt retries on a later tick.
-    uploadLocalPdfToCloudIfNeeded('autosave_tick').catch(() => {});
-    if (!saveEngine.getAutoSaveDirty()) return;
-    saveEngine.maybeWriteDirtySnapshot();
-    if (Date.now() < saveEngine.getNextAutoSaveAttemptAt()) {
-      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: saveEngine.getNextAutoSaveAttemptAt() - Date.now() });
-      return;
-    }
-    const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
-    if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
-    const result = await performAutoSave(intervalRunId);
-    if (!result.ok) {
-      if (result.error?.code === 'CHECKOUT_EXPIRED') {
-        try {
-          await handleBackgroundCheckoutExpired('autosave');
-        } catch (e) {
-          try {
-            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
-              JSON.stringify({ trigger: 'autosave', message: (e && e.message) || String(e), name: e && e.name }));
-          } catch (_) {}
-        }
-      } else if (result.error) {
-        window.lastSaveError = result.error;
-        updateSaveStatusIndicator();
-      }
-    } else {
-      updateSaveStatusIndicator();
-    }
-  }, AUTO_SAVE_INTERVAL_MS);
+  setInterval(() => saveEngine.autoSaveTick(), AUTO_SAVE_INTERVAL_MS);
 
   // SECTION: [sync] Checkout keep-alive
   // Implementation in save-engine.js (Stage 1); the wrapper + interval stay so
@@ -7467,6 +6623,10 @@
   // Output cluster deps (features/output.js).
   App.SUPABASE_ENABLED = SUPABASE_ENABLED;
   App.getOrCreateViewLinkUrl = getOrCreateViewLinkUrl;
+  // Project Settings deps (features/project-settings.js, R23): the header eye and the
+  // Advanced > Load test PDF row's dev-host gate.
+  App.toggleHideMarks = toggleHideMarks;
+  App.IS_DEV_HOST = IS_DEV_HOST;
   // Prepare PDF modal deps (features/prepare-pdf.js).
   App.assertPdfWithinLimit = assertPdfWithinLimit;
   App.mergePdfBuffers = mergePdfBuffers;
@@ -7550,10 +6710,8 @@
   App.roomBoxDimsFeet = roomBoxDimsFeet;
   App.getEffectiveScaleForLine = getEffectiveScaleForLine;
   App.getMergedAnnotationsForPage = getMergedAnnotationsForPage;
-  // Per-project Groups gate (spec seam; updateUI + showContextMenu consume it
-  // internally).
-  App.groupsUiVisible = groupsUiVisible;
-  App.turnOnGroups = turnOnGroups;   // D17: the duct surfaces' "Turn on groups" link
+  // The per-project Groups gate (App.groupsUiVisible / App.turnOnGroups) is registered by
+  // features/project-settings.js (R23).
   App.legendRowsFor = (ann, pi) => canvasDraw.computeLegendRows(ann, pi);   // D17 spec seam: the legend's rows (multiply-zone duct arithmetic)
   App.settlePolylineDraft = settlePolylineDraft;   // D17 (J5-B): the Duct arm settles a live polyline draft
   App.nextPolylineName = nextPolylineName;         // WATER-PLAN rung 4: the run started from here after a size change
@@ -7576,10 +6734,8 @@
   App.commitMeasurePoint = commitMeasurePoint;     // features/tutorial.js ("Do it for me" on the Measure step)
   App.getProjectCodes = getProjectCodes;                // rulebook slice 4 (features/rules.js popover, bid-check.js footer, codes.spec.js)
   App.setProjectCodes = setProjectCodes;
-  App.syncProjectSettingsRows = syncProjectSettingsRows;
   App.logDropSetEvent = logDropSetEvent;
   App.toCanvas = toCanvas;
-  App.showContextMenu = showContextMenu;               // spec seam (drop-mode.spec.js)
   App.getUndoDepth = () => undoStackModel.undoDepth(); // spec seam (no-op close stays clean)
   // Sidebar usage-filter scope (features/sidebar-lists.js reads, the settings
   // modals in features/counter-settings.js + line-type-settings.js write).

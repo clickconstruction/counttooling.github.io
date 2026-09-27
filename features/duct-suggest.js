@@ -45,7 +45,7 @@
  *
  * D15 (the per-marker CFM override): a placed marker may carry its own
  * `cfmOverride` — "CFM for this one…" on the marker's context menu
- * (#ctxMarkerCfm, shown by app.js's showContextMenu for markers of a
+ * (#ctxMarkerCfm, shown by features/mark-context-menu.js's showContextMenu for markers of a
  * CFM-carrying type) opens the tiny #markerCfmModal (the highlight-name
  * modal pattern: one number input, Save / Cancel, Enter commits); Save writes
  * a positive value as marker.cfmOverride and DELETES the key when the field
@@ -334,9 +334,10 @@
     const counter = (state.counters || []).find((c) => c.id === t.typeId);
     if (marker && counter) openMarkerCfmModal(marker, counter);
   };
-  // D19 (J19 Friction #3), moved from app.js in R14 (its showContextMenu asks it whether
-  // to show the row this file binds): the context target, when it is a CFM device that no
-  // run currently taps and a run is within reach. Returns
+  // D19 (J19 Friction #3), moved from app.js in R14 (showContextMenu, in
+  // features/mark-context-menu.js since R22, asks it whether to show the row this
+  // file binds): the context target, when it is a CFM device that no run currently
+  // taps and a run is within reach. Returns
   // { marker, point, runId } or null. Attachment in this model is DERIVED from
   // proximity (duct-model attachDuctDevices), never stored, so the rescue moves
   // the device onto the run rather than minting a link the geometry would

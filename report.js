@@ -125,23 +125,38 @@
     return (feet > 0 ? feet.toFixed(2) + ' ft' : '0') + ' total length';
   }
 
-  // Room Sizer totals (features/room-sizer.js registers this on window.App
-  // after this file loads; resolved at call time, optional).
-  function getRoomTotals(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getRoomVolumeTotals === 'function')
-      ? window.App.getRoomVolumeTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : [];
+  // The trade rollups the feature files register on window.App after this file
+  // loads, resolved at call time and optional (R19: one adapter for all seven).
+  // appRollup(name, fallback) is (pageIndices, getAnn) => App[name]({ pageIndices,
+  // getAnnotations }), or the fallback when the feature is absent. Nothing
+  // mutates a fallback, so one value serves every call.
+  function appRollup(name, fallback) {
+    return (pageIndices, getAnn) => ((window.App && typeof window.App[name] === 'function')
+      ? window.App[name]({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
+      : fallback);
   }
-
-  // Duct Schedule (features/duct-schedule.js registers this on window.App
-  // after this file loads; resolved at call time, optional — the rooms
-  // precedent, DUCT unit D5). Returns null when the scope holds no duct runs,
-  // so duct-free reports are byte-identical to before.
-  function getDuctSchedule(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getDuctScheduleForReport === 'function')
-      ? window.App.getDuctScheduleForReport({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : null;
-  }
+  // Room Sizer totals (features/room-sizer.js).
+  const getRoomTotals = appRollup('getRoomVolumeTotals', []);
+  // Duct Schedule (features/duct-schedule.js, DUCT unit D5). null when the scope
+  // holds no duct runs, so duct-free reports are byte-identical to before.
+  const getDuctSchedule = appRollup('getDuctScheduleForReport', null);
+  // Water Sizing (features/water-schedule.js, WATER-PLAN rung 5). null without water runs.
+  const getWaterSchedule = appRollup('getWaterScheduleForReport', null);
+  // Child counts (features/child-counts.js). Shape: byGroup[gid][kind][parentId]
+  // -> [{ name, qty, per, ftInterval, total, excludedPxRuns }].
+  const getChildTotals = appRollup('getChildCountTotals', { byGroup: {} });
+  // Conductors (features/conductors.js, S3). Shape: byGroup[gid] -> { wire:
+  // [{ name, feet, excludedPxRuns }], cable: [{ name, feet, source, parentId,
+  // parentName, excludedPxRuns }] }. Wire rolls up ACROSS line types per group;
+  // both are derived rows in feet, never px.
+  const getConductorTotals = appRollup('getConductorTotals', { byGroup: {} });
+  // Circuits (features/circuits.js, S4). Shape: { panels: [{ panel, circuits:
+  // [...] }], crossCheck: [{ panel, onPlan, scheduled, verdict }] }.
+  const getCircuitSchedule = appRollup('getCircuitSchedule', { panels: [], crossCheck: [] });
+  // Bid Check (features/bid-check.js, S5). Shape: { auto: [{ id, label, verdict,
+  // detail }], manual: [{ id, label, done }], open: { auto, manual, total } }.
+  const getBidCheck = appRollup('getBidCheck', { auto: [], manual: [], open: { auto: 0, manual: 0, total: 0 } });
+  const fmtFt = (n) => (typeof n === 'number' ? n.toFixed(2) + ' ft' : 'none');
 
   // D17 (J19 #4): the duct rows Copy Summary / Copy to /Tooling append under
   // a "--- Duct ---" heading — features/duct-schedule.js builds them from the
@@ -151,58 +166,27 @@
   // WATER-PLAN rung 5: the Water Sizing rows (features/water-schedule.js) under
   // a "--- Water sizing ---" heading, the duct block's twin. [] without water runs.
   const WATER_COPY_HEADING = '--- Water sizing ---';
-  function getWaterSchedule(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getWaterScheduleForReport === 'function')
-      ? window.App.getWaterScheduleForReport({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : null;
+  // A schedule's rows or its report table, built by the feature that owns the
+  // schedule (App[name](schedule, …)); no schedule or no builder, nothing.
+  function appBuild(name, schedule, fallback, ...args) {
+    return (schedule && window.App && typeof window.App[name] === 'function') ? window.App[name](schedule, ...args) : fallback;
   }
-  function getWaterCopyRows(pageIndices, getAnn) {
-    const s = getWaterSchedule(pageIndices, getAnn);
-    return (s && window.App && typeof window.App.buildWaterCopyRows === 'function') ? window.App.buildWaterCopyRows(s) : [];
-  }
-  function getDuctCopyRows(pageIndices, getAnn) {
-    const s = getDuctSchedule(pageIndices, getAnn);
-    return (s && window.App && typeof window.App.buildDuctCopyRows === 'function') ? window.App.buildDuctCopyRows(s) : [];
-  }
+  const getWaterCopyRows = (pageIndices, getAnn) => appBuild('buildWaterCopyRows', getWaterSchedule(pageIndices, getAnn), []);
+  const getDuctCopyRows = (pageIndices, getAnn) => appBuild('buildDuctCopyRows', getDuctSchedule(pageIndices, getAnn), []);
 
-  // Child counts (features/child-counts.js registers this on window.App after
-  // this file loads; resolved at call time, optional). Shape:
-  // byGroup[gid][kind][parentId] -> [{ name, qty, per, ftInterval, total,
-  // excludedPxRuns }].
-  function getChildTotals(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getChildCountTotals === 'function')
-      ? window.App.getChildCountTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : { byGroup: {} };
-  }
-
-  // Conductors (features/conductors.js registers this on window.App after this
-  // file loads; resolved at call time, optional — S3). Shape:
-  // byGroup[gid] -> { wire: [{ name, feet, excludedPxRuns }], cable: [{ name,
-  // feet, source, parentId, parentName, excludedPxRuns }] }. Wire rolls up
-  // ACROSS line types per group; both are derived rows in feet, never px.
-  function getConductorTotals(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getConductorTotals === 'function')
-      ? window.App.getConductorTotals({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : { byGroup: {} };
-  }
-
-  // Circuits (features/circuits.js registers this on window.App after this
-  // file loads; resolved at call time, optional — S4). Shape: { panels: [{ panel,
-  // circuits: [...] }], crossCheck: [{ panel, onPlan, scheduled, verdict }] }.
-  function getCircuitSchedule(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getCircuitSchedule === 'function')
-      ? window.App.getCircuitSchedule({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : { panels: [], crossCheck: [] };
-  }
-  const fmtFt = (n) => (typeof n === 'number' ? n.toFixed(2) + ' ft' : 'none');
-  // Bid Check (features/bid-check.js registers this on window.App after this
-  // file loads; resolved at call time, optional — S5). Shape: { auto: [{ id,
-  // label, verdict, detail }], manual: [{ id, label, done }], open: { auto,
-  // manual, total } }.
-  function getBidCheck(pageIndices, getAnn) {
-    return (window.App && typeof window.App.getBidCheck === 'function')
-      ? window.App.getBidCheck({ pageIndices, getAnnotations: (pi) => getAnn(state.pages[pi], pi) })
-      : { auto: [], manual: [], open: { auto: 0, manual: 0, total: 0 } };
+  // The prologue every summary builder shares (R19): the scope and annotation
+  // source from the options, the group names, the aggregation walk, and the
+  // child and conductor rollups over the same scope. An untagged row's group is
+  // named `untaggedName`: 'Untagged' in the report and the email text, null in
+  // the /Tooling text and the TakeoffTooling payload (no [Group] prefix there).
+  function rollup(options, untaggedName) {
+    const opts = options || {};
+    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
+    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
+    const groups = state.groups || [];
+    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || untaggedName;
+    const summaries = collectSummaries(pageIndices, getAnn);
+    return { pageIndices, getAnn, getGroupName, summaries, childTotals: getChildTotals(pageIndices, getAnn), conductorTotals: getConductorTotals(pageIndices, getAnn) };
   }
 
   function childRuleLabel(r) {
@@ -213,8 +197,8 @@
   function buildReportHtml(options = {}) {
     if (!window.state || !state.pages || !state.pages.length) return '';
 
-    const pageIndices = options.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = options.getAnnotations ?? defaultGetAnnotations;
+    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, 'Untagged');
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
 
     const styles = `
       body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: #fff; color: #000; margin: 2em; }
@@ -241,13 +225,7 @@
     html += '<h1 class="report-title">' + title + '</h1>';
     html += '<p class="report-date">' + escapeHtml(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })) + '</p>';
 
-    const groups = state.groups || [];
-    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
-
-    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
     const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
-    const childTotals = getChildTotals(pageIndices, getAnn);
-    const conductorTotals = getConductorTotals(pageIndices, getAnn);
 
     let totalCounters = 0;
     let totalLineRuns = 0;
@@ -455,74 +433,12 @@
         html += '<p class="report-group-totals">* Some boxes are on pages without a scale and are excluded from the totals.</p>';
       }
     }
-    // Duct Schedule (DUCT unit D5): the bid-pounds rollup — straight duct by
-    // size, fittings (counted rows or the factor line, following the modal's
-    // per-project Counted|Factor pick), insulation sq ft, seam & waste, and
-    // the Bid weight line. Only rendered when the scope holds duct runs.
-    if (ductSchedule) {
-      const ds = ductSchedule;
-      const fmtLbR = (lb) => Math.round(lb).toLocaleString();
-      const fmtFtR = (ft) => Math.round(ft).toLocaleString() + "'";
-      const FIT_LABELS = { elbow90: '90° elbow', elbow45: '45° elbow', transition: 'Transition', tap: 'Tap', boot: 'Boot', offset: 'Offset', vd: 'Volume damper' };
-      html += '<h3 class="section-header">Duct Schedule</h3>';
-      html += '<table class="report-table"><tr><th>Size</th><th>Gauge</th><th>LF</th><th>lb/ft</th><th>lb</th></tr>';
-      ds.straightRows.forEach(r => {
-        const lf = r.joints == null ? fmtFtR(r.lengthFt) : fmtFtR(r.lengthFt) + ' · ' + r.joints + (r.joints === 1 ? ' joint' : ' joints') + " @ 10'";
-        html += '<tr><td>' + escapeHtml(typeof ductRowLabel === 'function' ? ductRowLabel(r) : r.sizeKey) + '</td><td>' + (r.gauge ? r.gauge + ' ga' : 'none') + '</td><td>' + escapeHtml(lf) + '</td><td>' + r.lbPerFt.toFixed(2) + '</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
-      });
-      html += '<tr><td><strong>Straight total</strong></td><td></td><td>' + fmtFtR(ds.straightTotalFt) + '</td><td></td><td><strong>' + fmtLbR(ds.straightTotalLb) + '</strong></td></tr>';
-      // D17: multiply-zone honesty (T2-11) — the placed figure beside the multiplied one.
-      if (ds.repeated) html += '<tr><td>Placed (before multiply zones)</td><td></td><td>' + fmtFtR(ds.straightPlacedFt) + '</td><td></td><td>' + fmtLbR(ds.straightPlacedLb) + '</td></tr>';
-      if (ds.fittingMode === 'counted') {
-        ds.fittingRows.forEach(r => {
-          html += '<tr><td>' + escapeHtml((FIT_LABELS[r.type] || r.type) + ' ' + (typeof ductRowLabel === 'function' ? ductRowLabel(r) : r.sizeKey)) + '</td><td></td><td>' + r.count + '</td><td>' + r.lbEach.toFixed(1) + ' ea</td><td>' + fmtLbR(r.pounds) + '</td></tr>';
-        });
-        html += '<tr><td><strong>Fittings total</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.fittingsCountedLb) + '</strong></td></tr>';
-      } else {
-        html += '<tr><td>Fittings, factor ' + ds.fittingFactorPct + '% of straight</td><td></td><td></td><td></td><td>' + fmtLbR(ds.fittingFactorLb) + '</td></tr>';
-      }
-      // D8: per-system flex-drop rows — LF only, priced by the drop, never in
-      // the bid-weight pounds.
-      (ds.flexRows || []).forEach(r => {
-        html += '<tr><td>Flex, ' + escapeHtml(r.systemName) + '</td><td></td><td>' + r.count + (r.count === 1 ? ' drop' : ' drops') + '</td><td></td><td>' + fmtFtR(r.totalFt) + '</td></tr>';
-      });
-      // D26: the grease-duct extras, by the piece and the square foot.
-      if (ds.grease) {
-        html += '<tr><td>Grease duct cleanouts</td><td></td><td>' + ds.grease.cleanouts.total + '</td><td></td><td></td></tr>';
-        html += '<tr><td>Grease duct listed wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.grease.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
-      }
-      if (ds.linerSqFt > 0) html += '<tr><td>Liner</td><td></td><td></td><td></td><td>' + Math.round(ds.linerSqFt).toLocaleString() + ' sq ft</td></tr>';
-      if (ds.wrapSqFt > 0) html += '<tr><td>Wrap</td><td></td><td></td><td></td><td>' + Math.round(ds.wrapSqFt).toLocaleString() + ' sq ft</td></tr>';
-      html += '<tr><td>Seam &amp; waste (+' + ds.seamWastePct + '%)</td><td></td><td></td><td></td><td>' + fmtLbR(ds.seamWasteLb) + '</td></tr>';
-      html += '<tr><td><strong>Bid weight</strong></td><td></td><td></td><td></td><td><strong>' + fmtLbR(ds.bidWeightLb) + ' lb</strong></td></tr>';
-      html += '</table>';
-    }
-    // WATER-PLAN rung 5: the Water Sizing table, one row per water run with the
-    // check, the side totals and the fixtures no run reaches. Only with water runs.
-    if (waterSchedule) {
-      const wsch = waterSchedule;
-      const f1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
-      const fx = (n) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100));
-      // The Check cell is water-model's one wording, the schedule modal's word for word
-      // (MAP-REPORT-WATER); a schedule exists only when the model loaded.
-      const verdict = (r) => window.WaterModel.waterRowVerdict(r).text;
-      html += '<h3 class="section-header">Water Sizing</h3>';
-      html += '<table class="report-table"><tr><th>Run</th><th>Size</th><th>Serves</th><th>gpm</th><th>fps</th><th>Check</th></tr>';
-      ['cold', 'hot'].forEach(side => {
-        const rows = wsch.rows.filter(r => r.side === side);
-        if (!rows.length) return;
-        rows.forEach(r => {
-          html += '<tr><td>' + escapeHtml((side === 'cold' ? 'Cold · ' : 'Hot · ') + r.name + ' (' + r.typeName + ')') + '</td><td>' + escapeHtml(r.sizeLabel) + '</td><td>' + escapeHtml(fx(r.wsfu) + ' WSFU' + (r.fixtures ? ' · ' + r.fixtures + (r.fixtures === 1 ? ' fixture' : ' fixtures') : '')) + '</td><td>' + (r.wsfu > 0 ? f1(r.gpm) : '') + '</td><td>' + (r.velocityFps != null && r.wsfu > 0 ? f1(r.velocityFps) : '') + '</td><td>' + escapeHtml(verdict(r)) + '</td></tr>';
-        });
-        const t = wsch.totals[side];
-        html += '<tr><td><strong>' + (side === 'cold' ? 'Cold' : 'Hot') + ' total</strong></td><td></td><td><strong>' + escapeHtml(fx(t.wsfu) + ' WSFU · ' + t.fixtures + (t.fixtures === 1 ? ' fixture' : ' fixtures')) + '</strong></td><td></td><td></td><td>' + (t.warn ? t.warn + ' ⚠' : '✓') + '</td></tr>';
-      });
-      wsch.unserved.forEach(u => {
-        html += '<tr><td>Not reached · ' + escapeHtml(u.counterName + ', ' + u.side + (u.count > 1 ? ' ×' + u.count : '')) + '</td><td></td><td>' + escapeHtml(fx(u.wsfu) + ' WSFU') + '</td><td></td><td></td><td>⚠ no ' + escapeHtml(u.side) + ' run within reach</td></tr>';
-      });
-      html += '<tr><td colspan="6">Sized at ' + fx(wsch.capFps.cold) + ' fps cold / ' + fx(wsch.capFps.hot) + ' fps hot, practice not code; the pressure check is Bid Check\u2019s. Fixture units read the ' + escapeHtml(wsch.occupancy) + ' column.</td></tr>';
-      html += '</table>';
-    }
+    // The trade schedules' tables (R19): the Duct Schedule (DUCT unit D5) and the
+    // Water Sizing table (WATER-PLAN rung 5), each built by the feature that owns
+    // its schedule and modal, in that modal's words, only when the scope holds its
+    // runs. No builder registered, no section.
+    html += appBuild('buildDuctReportHtml', ductSchedule, '', escapeHtml);
+    html += appBuild('buildWaterReportHtml', waterSchedule, '', escapeHtml);
     if (!hasSummary) {
       html += '<p class="section-header">No items to summarize.</p>';
     }
@@ -548,14 +464,8 @@
   function getPipeToolingSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
     const scopeLine = scopeHeaderText(options);
-    const opts = options || {};
-    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
-    const groups = state.groups || [];
-    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
-    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
-    const childTotals = getChildTotals(pageIndices, getAnn);
-    const conductorTotals = getConductorTotals(pageIndices, getAnn);
+    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, null);
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
     const lines = [];
     // Same Untagged-last, alphabetical order as the HTML report and the email
     // summary (previously unsorted object-key order — the one surface that
@@ -652,14 +562,8 @@
   // async and cloud-gated. Pure over state; no DOM.
   function getTakeoffToolingPayload(options) {
     if (!window.state || !state.pages || !state.pages.length) return null;
-    const opts = options || {};
-    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
-    const groups = state.groups || [];
-    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || null;
-    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
-    const childTotals = getChildTotals(pageIndices, getAnn);
-    const conductorTotals = getConductorTotals(pageIndices, getAnn);
+    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, null);
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
     const round2 = (n) => Math.round(n * 100) / 100;
     const items = [];
     orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName).forEach(gid => {
@@ -808,20 +712,17 @@
   function getEmailTextSummary(options) {
     const scopeLine = scopeHeaderText(options);
     if (!window.state || !state.pages || !state.pages.length) return '';
-    const opts = options || {};
-    const pageIndices = opts.pageIndices ?? state.pages.map((_, i) => i);
-    const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
-    const groups = state.groups || [];
-    const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
-    const { counterSummaryByGroup, lineTypeSummaryByGroup } = collectSummaries(pageIndices, getAnn);
-    const childTotals = getChildTotals(pageIndices, getAnn);
-    const conductorTotals = getConductorTotals(pageIndices, getAnn);
+    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, 'Untagged');
+    const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
     const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
     const lines = [];
+    // The text opens with the Takeoff Summary banner whichever block comes first (R19).
+    const banner = () => { if (!lines.length) lines.push('Takeoff Summary', '---------------', ''); };
+    // One block after the groups: the banner when it is the first, the heading,
+    // its rows, a blank line.
+    const pushSection = (heading, rows) => { banner(); lines.push(heading, ...rows, ''); };
     if (orderedGroupIds.length > 0) {
-      lines.push('Takeoff Summary');
-      lines.push('---------------');
-      lines.push('');
+      banner();
       orderedGroupIds.forEach(gid => {
         const groupName = getGroupName(gid);
         const counters = counterSummaryByGroup[gid] || {};
@@ -875,16 +776,15 @@
     }
     const circuitSchedule = getCircuitSchedule(pageIndices, getAnn);
     if (circuitSchedule.panels.length > 0) {
-      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
-      lines.push('--- Circuits ---');
+      const rows = [];
       circuitSchedule.panels.forEach(p => {
         const check = circuitSchedule.crossCheck.find(c => c.panel.toUpperCase() === p.panel.toUpperCase());
-        lines.push((p.panel === '—' ? 'No panel' : 'Panel ' + p.panel) + (check && check.scheduled != null ? ': ' + check.onPlan + ' circuits on plan, ' + check.scheduled + ' scheduled' + (check.verdict === 'match' ? ' ✓' : ' ⚠') : ''));
+        rows.push((p.panel === '—' ? 'No panel' : 'Panel ' + p.panel) + (check && check.scheduled != null ? ': ' + check.onPlan + ' circuits on plan, ' + check.scheduled + ' scheduled' + (check.verdict === 'match' ? ' ✓' : ' ⚠') : ''));
         p.circuits.forEach(c => {
-          lines.push('• ' + (c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group + ': ' + c.deviceCount + ' device' + (c.deviceCount === 1 ? '' : 's') + ', ' + fmtFt(c.conduitFt) + ' conduit' + (c.homerunFt ? ', ' + fmtFt(c.homerunFt) + ' homerun' : '') + (c.wireFt ? ', ' + fmtFt(c.wireFt) + ' wire' : '') + (c.farthestFt != null ? ', farthest device ' + c.farthestFt.toFixed(0) + ' ft' : ''));
+          rows.push('• ' + (c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group + ': ' + c.deviceCount + ' device' + (c.deviceCount === 1 ? '' : 's') + ', ' + fmtFt(c.conduitFt) + ' conduit' + (c.homerunFt ? ', ' + fmtFt(c.homerunFt) + ' homerun' : '') + (c.wireFt ? ', ' + fmtFt(c.wireFt) + ' wire' : '') + (c.farthestFt != null ? ', farthest device ' + c.farthestFt.toFixed(0) + ' ft' : ''));
         });
       });
-      lines.push('');
+      pushSection('--- Circuits ---', rows);
     }
     const bidCheck = getBidCheck(pageIndices, getAnn);
     // D19 (J11-I): the EMAIL block carries verdicts, not setup hints. An 'na'
@@ -898,42 +798,23 @@
     // are per-trade defaults and are almost never empty).
     const bidAuto = bidCheck.auto.filter(r => r.verdict !== 'na');
     if (bidCheck.auto.length) {
-      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
-      lines.push('--- Bid Check (' + bidCheck.open.total + ' open) ---');
-      bidAuto.forEach(r => lines.push((r.verdict === 'ok' ? '✓ ' : '⚠ ') + r.label + ': ' + r.detail));
-      bidCheck.manual.forEach(r => lines.push((r.done ? '☑ ' : '☐ ') + r.label));
-      lines.push('');
+      pushSection('--- Bid Check (' + bidCheck.open.total + ' open) ---',
+        bidAuto.map(r => (r.verdict === 'ok' ? '✓ ' : '⚠ ') + r.label + ': ' + r.detail)
+          .concat(bidCheck.manual.map(r => (r.done ? '☑ ' : '☐ ') + r.label)));
     }
     // D17: the duct block — the same rows the /Tooling text carries.
     const ductRows = getDuctCopyRows(pageIndices, getAnn);
-    if (ductRows.length) {
-      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
-      lines.push(DUCT_COPY_HEADING);
-      lines.push(...ductRows);
-      lines.push('');
-    }
+    if (ductRows.length) pushSection(DUCT_COPY_HEADING, ductRows);
     // WATER-PLAN rung 5: the water sizing block.
     const waterRowsE = getWaterCopyRows(pageIndices, getAnn);
-    if (waterRowsE.length) {
-      if (!lines.length) { lines.push('Takeoff Summary'); lines.push('---------------'); lines.push(''); }
-      lines.push(WATER_COPY_HEADING);
-      lines.push(...waterRowsE);
-      lines.push('');
-    }
+    if (waterRowsE.length) pushSection(WATER_COPY_HEADING, waterRowsE);
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     if (roomTotals.length > 0) {
-      if (!lines.length) {
-        lines.push('Takeoff Summary');
-        lines.push('---------------');
-        lines.push('');
-      }
-      lines.push('--- Rooms ---');
-      roomTotals.forEach(t => {
+      pushSection('--- Rooms ---', roomTotals.map(t => {
         const pages = [...new Set(t.boxes.map(b => b.pageIdx + 1))].sort((a, b) => a - b);
         const pagesStr = pages.length === 1 ? 'page ' + pages[0] : 'pages ' + pages.join(', ');
-        lines.push('• ' + (t.name || 'Room') + ': ' + t.volumeCuFt.toFixed(1) + ' ft³ (' + t.areaSqFt.toFixed(1) + ' ft², ' + pagesStr + ')' + (t.missingScale ? ', some boxes missing scale' : ''));
-      });
-      lines.push('');
+        return '• ' + (t.name || 'Room') + ': ' + t.volumeCuFt.toFixed(1) + ' ft³ (' + t.areaSqFt.toFixed(1) + ' ft², ' + pagesStr + ')' + (t.missingScale ? ', some boxes missing scale' : '');
+      }));
     }
     if (scopeLine && lines.length) { const at = lines[0] === 'Takeoff Summary' ? 2 : 0; lines.splice(at, 0, scopeLine); }   // D25
     return lines.join('\n');

@@ -13,6 +13,297 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
+
+The decomposition map's R20, both items, and its defect D43. The three floating palettes drag
+by their title bar and remember the spot per device, and each carried its own copy of the same
+forty lines to do it, the same down to the comments: only the ids, the storage key and the
+width fallback (300 for Chain, 200 for the other two) differed. That code is one helper now,
+`App.makeFloatingPanel({ panelId, headId, closeId, posKey, defaultWidth })` in the new
+features/floating-panel.js, returning `{ applyPos, wireDrag }`. Each tool makes its own inside
+its `wire()`, at call time, so the three keys (`chainPanelPos`, `dropPanelPos`,
+`highlightPanelPos`) and every id stay where they were. The rules they shared carry over as
+they were: a stored spot that no longer fits the viewport is ignored and the CSS dock wins, a
+drag stays inside the viewport with the head 60px clear of the bottom, and a press on the ×
+never drags. The open, close and collapse lifecycle stayed in each tool; it wraps the tool's
+own sync and tool enum, and little of it would share.
+
+**A cancelled touch drag lets go (D43).** A drag ended only on pointerup. When the browser
+cancels a touch instead (a system gesture, a palm, a call coming in), it sends pointercancel and
+never pointerup, so the drag's move handler, with its old offset, stayed on the title bar and
+dragged the panel on the next movement over it. The helper ends a drag on either, and a
+cancelled drag keeps and remembers the spot it reached, like a drop.
+
+A feature file rather than the app.js registry block: the helper is forty lines with no app.js
+dependency, and three other extractions are working in app.js today. It loads just before
+chain.js. Tests first: drop-mode.spec.js and highlight-labels.spec.js pin drag persistence the
+way chain.spec.js pins `chainPanelPos` (green before the change; the Drop case also pins the
+viewport-fit fallback), and mobile-touch.spec.js drives a real touch drag over CDP on each of the
+three palettes, cancels it, and reads the title bar's listeners (red before the change: the
+move handler was still bound).
+
+## refactor(draw): the sheet legend is its own file, and the duct pass is one function (R24, 2026-09-26)
+
+The decomposition map's R24, all three items. canvas-draw.js had grown from 766 lines in July to
+1,940, and two stretches of it were separate things sharing a file. Nothing drawn changes: a
+37-scenario call-log dump (every duct sub-pass, selection and export envs, all three legend styles
+on the plan and in ink, the grid) is byte-identical before and after, and render-pixels.spec.js
+passes against its committed baselines before and after. canvas-draw.js is 1,409 lines now.
+
+**The sheet legend and the grid are canvas-legend.js.** `createCanvasLegend(deps)` owns
+`computeLegendRows`, `legendHasRows`, `resolveLegendStyle`, `legendSheetFactor`,
+`drawSheetLegend`, `drawLegend` and `drawGrid`, moved verbatim. It reads nothing of
+`drawAnnotationsCore`'s, only deps and the geometry, icon and duct-model helpers by bare name.
+`hexToRgb`, `lineStyleToDash` and `DUCT_LEGEND_SWATCH` moved with it, since the legend and the
+grid were their only readers. It loads right before canvas-draw.js, and `createCanvasDraw` composes
+it over the same deps and returns the same keys in the same order, so app.js's `canvasDraw.*`
+reads did not change. Under node, canvas-draw.js reaches the file through a guarded
+`module.require`. The legend, grid and helper tests moved to canvas-legend.test.js and call
+`createCanvasLegend`; canvas-draw.test.js keeps one test that the composed keys paint exactly
+what the legend's own do. The new file has its tag, its precache entry (build:sw), an eslint group
+and a Files row.
+
+**The duct pass is `drawDuctOverlay`.** About 240 lines of duct painting inside
+`drawAnnotationsCore` (the true-width ghost, the flex leaders, the run strokes and size chips, the
+fitting markers, the rise and drop markers) are one closure-level function, called at the same
+point in the paint order, after the polylines and before the highlights. It takes
+`(ctx, ann, env, state, lo)`: the map's recipe also passed `lw`, which the pass never reads.
+
+**One end tick and one ghost band.** The quick-line and polyline passes each built an identical
+`drawPerpTick` closure; it is one top-level `drawPerpTick(ctx, tc, endPdf, tangentPdf, tickLen,
+color, lw)` now. `strokeDuctGhostSpans(ctx, verts, spans, orientation, eff, pxPerPt, tc, color)`
+is the ghost band's stroke, exported beside `ductGhostWidthPx` and called by both the committed
+painter and the live draft in features/duct-tool.js. The draft clears its dash and resolves its
+own scale (the page's when there are no annotations yet) before the call, so the committed path
+never touches the dash. canvas-draw.test.js pins both helpers.
+
+## refactor(export): Download, Export PDFs and the note and highlight pages render sheets through one pipeline (R25, 2026-09-26)
+
+The decomposition map's R25. The sheet raster (plan, marks, JPEG, a jsPDF page) was written out
+nine times: four in the header Download (features/output.js), three in Export PDFs
+(features/export-pdfs.js) and two in the note and highlight bundles (features/pdf-bundle.js).
+It is written once now, in features/pdf-bundle.js: `rasterPageCanvas` / `rasterPageJpeg(page,
+{ scale, overrides, annotations, quality })` render a sheet (annotations omitted = the active
+layer, a layer's annotations = that layer, null = the plain sheet) and `addImagePage(doc, img,
+{ caption })` puts it on a page, edge to edge or, with a layer name, captioned with a 14 mm margin.
+`runSpecificPagesExport` moved there from export-pdfs.js, built on those two, and is registered
+again as `App.runSpecificPagesExport` (R16 had removed the registration because nothing read it;
+both the Export PDFs dialog and the Download read it now).
+
+**Download is the shared export with its own selections.** `downloadCurrentPageAsPdf` builds a
+selection per mode (this sheet or every sheet, marked; active layer or every layer), calls the
+shared export at scale 4, JPEG 0.95 and the Export settings' marker and line sizes, and keeps its
+own file names, button-title progress and `export_pdf` event. Where the Download copies had
+drifted from Export PDFs, the difference is an option on the shared export, never unified:
+`ensureActiveCanvas` (Download makes sure each sheet has a layer before reading it),
+`captionSingleLayer` ("this sheet, every layer" captions a sheet even when it has one layer),
+`skipSheetsWithoutLayers` ("everything" adds nothing for a sheet with no layers; unreachable
+behind ensureActiveCanvas, kept for fidelity) and `progressNoun` ("Exporting plan n/N" on "every
+sheet"; the one-sheet modes still show only "Downloading…"). Every download keeps its name, page
+count, page size and captions:
+
+| Mode | File | Pages | Captions |
+|---|---|---|---|
+| this-canvas | `takeoff-page<N>_<project>.pdf` | 1 | none, the sheet edge to edge |
+| all-canvases | `takeoff-page<N>_all-canvases_<project>.pdf` | one per layer | every page, even a one-layer sheet |
+| all-pages | `takeoff-all-pages_<project>.pdf` | one per sheet | none |
+| all-pages-canvases | `takeoff-all-pages-canvases_<project>.pdf` | one per layer | sheets with 2+ layers; a one-layer sheet is plain |
+
+One small equivalence: "everything" on a one-layer sheet drew that layer's annotations by name and
+now draws the active layer's, which on a one-layer sheet is the same layer (getActiveCanvas falls
+back to the first canvas).
+
+**The note and highlight pages render each sheet once.** Both bundles cropped every item out of
+a fresh 4x raster of its sheet, so a sheet with twelve highlights was rendered twelve times. A
+one-sheet memo now renders each sheet once per export (the items run sheet by sheet; the last
+sheet is dropped before the next renders, so a big set never holds every sheet's raster at once).
+The pages they add are the same.
+
+Pinned first, green on the base before anything moved: output.spec.js "Download modes" captures
+each of the four downloads and reads it back with the vendored pdf-lib (file name, page count,
+each page's size against the sheet, the caption strings), including "this sheet, every layer" on
+a one-layer sheet. pdf-bundle.spec.js adds the render count (one print render per sheet for the
+highlights and the notes bundles; it fails on the base with two). output, export-pdfs, bid-basis,
+pdf-bundle and copy-layers specs green.
+
+## refactor(save): the engine folds its repeated blocks and takes the visibility, connectivity and autosave timers (R21, 2026-09-26)
+
+The decomposition map's R21, its first two items. The third, the lean permissions read (map
+D28), needs a Supabase RPC migration and waits on PUNCHLIST `MAP-PERMS`; nothing here touches
+it. save-engine.js stays one file, as the map's section 5 asks: the work is inside it.
+
+**Three folds inside `createSaveEngine`.** A save that has just created a project's cloud row
+adopts it in three places (the manual save's no-PDF insert, its pending-hydration catch-up and
+the autosave's first insert), and each copied the same ten lines: the id, the cleared expiry
+attention, the checkout subscription, the owner, and the viewer and lock fields. They are
+`adoptNewCloudProject(projectId, ownerId)` now. The autosave's graduation cleanup of the
+anonymous `'local'` backup stays at its call site, as the map said. doTurnIn shaped a failed
+pre-check-in save three times (the autosave twice, the PDF upload once); `turnInSaveBlocked(result,
+label, stage)`, nested beside `tTurnIn`, logs `turn_in_blocked_by_save_err` and returns the
+result. `rawCheckInProject` and `rawListAccessibleProjects` were the same POST-and-parse body with
+a different path and body; `rawRpc(name, body, signal)` holds it and both are one line.
+`rawProjectsUpdate` and `rawProjectsInsert` keep their own error contracts. One wording changed:
+the check-in's HTTP failure reads `Raw check_in_project failed: …` (it said `Raw check_in`), the
+RPC's own name like its twin's. No test or spec read the old text.
+
+**Stage 7, the timers.** The bodies of the visibilitychange, online and offline listeners and
+the autosave interval moved into the engine as `onVisibilityChange(visibilityState)`,
+`onOnline()`, `onOffline()` and `autoSaveTick()`, with `lastHiddenAt` (read only by the
+visibility handler). app.js keeps the three `addEventListener` lines and the `setInterval`, so
+the timers are still found where they were, now under `// SECTION: [sync] Visibility & timers`.
+The bodies went over as they were, reading the client and the suspend flag through the ctx the
+engine already had. Six app.js wrappers lost their last caller in the move (`runRecoveryProbe`,
+`recycleClientIfWedgedOnIdleReturn`, `probeCheckoutLock`, `handleBackgroundCheckoutExpired`,
+`saveDebugRunId`, `uploadLocalPdfToCloudIfNeeded`) and are gone, so app.js lints with no
+warnings as before; the App registry's delegates for the ones features use are unchanged.
+app.js went from 7,891 lines to 7,787.
+
+**Tests.** save-engine.test.js gains fifteen cases. Five pin the folded blocks (both adopt paths
+set the owner and lock fields and subscribe to the new row, the autosave one drops the local
+backup; a failed pre-check-in save logs its label and stage and returns the save's message or
+the refresh prompt; the check-in RPC's body and the missing-token throw). They pass on the old
+file and the new one. Ten drive Stage 7 with a fake clock: hide flushes a dirty lock holder and
+not a non-holder or a suspended session; a return past `LONG_IDLE_PROBE_MS` runs the connection
+probe, forces the JWT refresh and adopts the new session, replaces a wedged client with the
+fresh session, probes the lock on the new client and reads the permissions through the raw-fetch
+twin (the client probe's failure marks supabase-js as recently bad); a short return only reads
+the session; a healthy client is kept and an expired lock goes to the background recovery; a
+signed-out return stops after the probe; online and offline log and repaint the bell, and online
+probes only after failures; a tick saves a dirty takeoff, skips clean, signed-out and suspended
+sessions, records a failure and backs off, and routes an expired checkout. The map said nothing
+covered the long-idle return; these ten were red before the move. The self-release classification
+and its dormant `?ff=self-release` flag are untouched (their save-engine.test.js cases pass).
+
+## refactor(context-menu): the right-click menu on a mark is its own feature file (R22, 2026-09-26)
+
+The decomposition map's R22, both shard findings. The menu that opens when you right-click or
+long-press a mark was the largest cohesive block left in app.js, and nine of its row handlers sat
+under a SECTION marker named "Canvas Repair modal wiring" that held nothing but a pointer comment.
+It is features/mark-context-menu.js now: `showContextMenu` (which rows show and what they say),
+the nine handlers (Edit note, Line Properties, the repeat-drop row, Show/Hide Length, Assign to
+Group, Edit room box, Edit zone multiplier, Edit zone scale, Delete), the capture-phase Escape that
+closes only this menu, and its click-away. app.js went from 7,891 lines to 7,596.
+
+Nothing moved changes behavior. The code went over as it was apart from `App.*` reads at call
+time, one `activeAnnotations()` helper for the ten copies of "the current page's active
+annotations", and one `hideMenu()` for the ten copies of the class removal. Every dep was
+already on the registry, so nothing new is published; the map's second finding was right that
+`countItemsInRect` is not a dependency. `handleContextMenu` stays in app.js and its one dispatch is
+`App.showContextMenu(x, y)`, which is also the seam drop-mode, duct-b19b and tutorial drive.
+`strayDeviceAttachTarget` stays where R14 put it, in features/duct-suggest.js, and the menu still
+reads it guarded. The four rows another feature binds (CFM for this one, Attach to nearest run,
+WSFU for this one, Name highlight) are still shown from here and still clicked there.
+
+**Listener order.** The Escape listener used to register while app.js loaded. The new script tag
+sits right after tool-context-menu.js, ahead of drop-peek.js and rules.js, the two files that add
+capture-phase keydown listeners at load, so one Esc over an open menu still closes the menu and
+nothing else. The click-away is its own listener now instead of the first line of app.js's shared
+one; that one still closes the canvas, export and download menus, and each menu closes on its own
+test, so the order does not matter. The misnamed marker is gone and the section index regenerated.
+
+## refactor(settings): Project Settings has its own feature file, and the header output menus join the Copy and Download menus in output.js (R23, 2026-09-26)
+
+The decomposition map's R23, both items, the split half. MAP-NOSUPA had already moved the
+Project Settings doors out of app.js's `if (SUPABASE_ENABLED)` block (that was the bug half);
+this moves the modal and the header's Export and Show Report menus out of app.js. Nothing moved
+changes behavior: the functions went over as they were apart from `App.*` reads at call time,
+and app.js calls the two new sync functions, guarded, where their lines used to run. app.js
+went from 7,891 lines to 7,446.
+
+**features/project-settings.js** (new) owns `openProjectSettings` behind both gears, the Hide
+marks eye, the footer Help fold, `syncProjectSettingsRows` with the trade, code editions,
+jurisdiction, occupancy and ceiling / make-up handlers, the Groups gate (`groupsUiVisible`,
+`turnOnGroups`, the Use groups switch), the local rows (Add pages, Download PDF, Macros, Clear
+page and Advanced's Load test PDF, Export, Import, Canvas Repair and Empty cache) and
+`closeProject`. The names the other files and the specs read stay the same:
+`App.syncProjectSettingsRows`, `App.groupsUiVisible`, `App.turnOnGroups`, `App.closeProject`.
+`App.syncProjectSettingsChrome` is the settings-row slice of updateUIInner, the rows that show
+or hide for the session (Close project, Add pages, Download PDF, the Sheets row, Share, Save,
+Advanced and its rows, and the Use groups switch's pressed state). As the map's skeptic said,
+most of the stretch it pointed at was other chrome (the upload buttons, the header Share, the
+sidebar logo's share, the phone view-mode class, Rotate page); that stays in app.js, and about
+forty lines moved. app.js calls the slice right after its `.supabase-only` pass, where the
+first of those rows used to be set, so that pass still never resets a row the slice sets. The
+cloud rows stay in the SUPABASE_ENABLED block with their own gates: the checkout strip
+(`openProjectSettings` reaches it through `App.updateSettingsCheckoutSection` only when
+Supabase is on), Load, Manage, Share's click, and the Manage, Bid review and admin reload
+visibility rows that come after the `.supabase-only` reset. Two new publish-only deps:
+`App.toggleHideMarks` and `App.IS_DEV_HOST`. The emptied app.js marker is
+`// SECTION: Project Settings pointer`.
+
+**The header output menus** went into features/output.js, which already owned the Copy and
+Download menus beside them, not into a new file. The Export and Show Report openers
+(`#exportDropdownBtn`, `.export-dropdown-option`, `#printReport`, `.show-report-option`) are
+bound there at load, and the Show Report close goes through the file's `closeScopeMenu`, which
+did the same two steps. `App.syncOutputMenus` is updateUIInner's output-row block: the bundle
+buttons, the report-data probes, the copy, report and Export PDFs buttons, the Export menu and
+its rows, the Download mode rows and the scope qualifiers. updateUIInner calls it just before
+`App.updateBurgerMenu`, because the drawer copies the visible download and export rows. The
+copy menus' This sheet rows used to be set after the drawer and the header-collapse check;
+they are set in `App.syncOutputMenus` now, next to their Everything rows. The drawer copies
+neither, and they sit in closed menus that take no header width, so nothing on screen changes.
+The marker left in app.js is `// SECTION: Macros & custom-icon tips openers`.
+
+The context menu's Assign to Group check and the header [Close] now read
+`App.groupsUiVisible()` and `App.closeProject()`.
+
+Pinned before and after by settings-modal, supabase-disabled, codes, groups-per-project,
+trade-quick, close-project, add-pdf-pages-canvas-jump, header-overflow, mobile-burger-menu,
+import-clear, view-only, bid-switcher, room-sizer, esc-dialogs, output and course-hvac:
+129 passed before the move and 129 after. The readers of the moved names were run after it too
+(tutorial, lessons, esc-ladder, menu-clamp, b20-patrol, header-strip-trade, drop-mode,
+duct-deferred, bid-check): 94 of 95 passed, and the one miss, the scale lesson timing out on a
+shared machine, passed alone, as did lessons.spec.js whole (26 of 26).
+
+## refactor(report): the duct and water tables in the printed report are built by their schedules, and a fitting is named in one place (R19, 2026-09-26)
+
+The decomposition map's R19, both items, cut the way its skeptic asked: only the duct and water
+sections moved. The circuit schedule and Bid Check tables have no second copy anywhere, so moving
+them would only have split each one's HTML from its email text; they stay in report.js. Nothing an
+estimator sees changes.
+
+**The tables move to their schedules.** report.js built the Duct Schedule and Water Sizing tables
+itself, with its own fitting names, its own joint label and its own copies of the schedules'
+formatters, which is how its water verdicts drifted from the modal before MAP-REPORT-WATER. Now
+features/duct-schedule.js registers `App.buildDuctReportHtml(schedule, esc)` and
+features/water-schedule.js `App.buildWaterReportHtml(schedule, esc)`, built from the words the
+modal and Copy Schedule already use: the duct LF cell is the modal's `lfLabel`, and the water rows
+share new `runText`, `totalServesText`, `unservedText` and `footText` helpers with Copy Schedule and
+the modal's foot. `buildReportHtml` places them through one optional guard, `appBuild`: no schedule
+or no builder, no section. report.js passes its own `escapeHtml` as `esc`, so the markup and the
+escaping are what they were.
+
+**report.js's own repetition.** The seven registry adapters (rooms, duct, water, child counts,
+conductors, circuits, Bid Check) differed only in the App name and the fallback; they are one
+`appRollup(name, fallback)`. The prologue the builders shared (scope, annotation source, group
+names, the aggregation walk, the child and conductor rollups) is `rollup(options, untaggedName)`.
+The map counted three copies; getTakeoffToolingPayload carried a fourth. An untagged group is
+named 'Untagged' in the report and the email text and null in the /Tooling text and the payload,
+as before. The email text's five trailing blocks each re-opened the Takeoff Summary banner by
+hand; they go through `pushSection(heading, rows)`. report.js went from 991 lines to 872.
+
+**One fitting-label table.** A fitting type was named in five places: the schedule, the report,
+the reclassify menu (without the Volume damper row), the sidebar's per-run line, and the static
+path's words. duct-model.js now holds `DUCT_FITTING_LABELS` (the title, '90° elbow' to 'Volume
+damper') and `DUCT_FITTING_WORDS` (singular and plural) beside `DUCT_FITTING_TYPES`, exported, and
+`DUCT_EQ_FT_LABELS` is that words table rather than a copy of it. `DUCT_ROUND_STICK_FT` and
+`ductJointsLabel(row)` ("6 joints @ 10'") name the joint count once; the schedule's `lfLabel` reads
+them, and with the duct table gone from report.js that is every place the label prints. A new
+fitting type is now named in duct-model.js and nowhere else, and a duct-model.test.js case fails if
+the two tables and the type list fall out of step. report.js reads no duct-model.js name any more,
+so eslint's `projectGlobals` lost `ductRowLabel` rather than gaining the new names.
+
+**Proof.** A throwaway harness seeded twelve projects (empty; duct counted, factor, grease with flex
+and rooms, a multiply zone, an unscaled second sheet; water, public and private; electrical with
+circuits, child counts and a ticked Bid Check row; everything at once, as electrical and as HVAC)
+and wrote `buildReportHtml` (every sheet, each sheet, merged layers), `getEmailTextSummary`,
+`getPipeToolingSummary` (plain, scoped, one sheet), `getTakeoffToolingPayload`, the has-data probes
+and the paste summary: 180 outputs, identical byte for byte before and after, with the two new
+builders confirmed live in the after run. duct-schedule, water-schedule, circuits, bid-check,
+duct-sidebar, duct-fittings, takeoff-handoff and output pass unchanged, as do child-counts,
+bend-fittings, copy-tooling-feet, conductors, duct-b19b, copy-layers, duct-stumbles, room-sizer,
+water-bidcheck, duct-static, duct-bidcheck and export-pdfs.
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

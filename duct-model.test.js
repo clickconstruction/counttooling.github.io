@@ -29,6 +29,25 @@ test('cloneDuctSize is a fresh object', () => {
   assert.deepStrictEqual(dm.cloneDuctSize(dm.makeRoundSize(10)), { kind: 'round', d: 10 });
 });
 
+test('R19: one name per fitting type, the derived VD row included, and the joints label', () => {
+  // Every fitting type (and the derived vd row) has a title and a singular/plural pair,
+  // in the same order, so a new type named in one table and not the other fails here.
+  const keys = [...dm.DUCT_FITTING_TYPES, 'vd'];
+  assert.deepStrictEqual(Object.keys(dm.DUCT_FITTING_LABELS), keys);
+  assert.deepStrictEqual(Object.keys(dm.DUCT_FITTING_WORDS), keys);
+  assert.strictEqual(dm.DUCT_FITTING_LABELS.elbow90, '90° elbow');
+  assert.strictEqual(dm.DUCT_FITTING_LABELS.vd, 'Volume damper');
+  assert.deepStrictEqual(dm.DUCT_FITTING_WORDS.vd, ['VD', 'VDs']);
+  // the static path reads the same words table
+  assert.strictEqual(dm.DUCT_EQ_FT_LABELS, dm.DUCT_FITTING_WORDS);
+  // a round row's joints; a rect row (joints null) has none
+  assert.strictEqual(dm.DUCT_ROUND_STICK_FT, 10);
+  assert.strictEqual(dm.ductJointsLabel({ joints: 6 }), "6 joints @ 10'");
+  assert.strictEqual(dm.ductJointsLabel({ joints: 1 }), "1 joint @ 10'");
+  assert.strictEqual(dm.ductJointsLabel({ joints: null }), '');
+  assert.strictEqual(dm.ductJointsLabel(null), '');
+});
+
 test('formatDuctSize: display label doubles as tally key', () => {
   assert.strictEqual(dm.formatDuctSize(dm.makeRectSize(24, 12)), '24×12');
   assert.strictEqual(dm.formatDuctSize(dm.makeRoundSize(12)), '12"Ø');

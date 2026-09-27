@@ -674,13 +674,18 @@ function createSaveEngine(ctx) {
     return { data: row || null, error: null };
   }
 
-  async function rawCheckInProject(projectId, signal) {
+  // The shared POST-and-parse body behind the two raw RPC twins (R21). A
+  // missing config or token throws; an HTTP failure RETURNS { data, error }
+  // with error.status / code RAW_RPC_HTTP_<status> / diag, the supabase.rpc
+  // shape the callers already branch on. rawProjectsUpdate / rawProjectsInsert
+  // keep their own error contracts above.
+  async function rawRpc(name, body, signal) {
     if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) {
       throw new Error('Supabase not configured');
     }
     const accessToken = ctx.getState().supabaseSession?.access_token || '';
-    if (!accessToken) throw new Error('No access token for raw check_in_project');
-    const url = ctx.getSupabaseUrl() + '/rest/v1/rpc/check_in_project';
+    if (!accessToken) throw new Error('No access token for raw ' + name);
+    const url = ctx.getSupabaseUrl() + '/rest/v1/rpc/' + name;
     const res = await fetch(url, {
       method: 'POST',
       cache: 'no-store',
@@ -690,7 +695,7 @@ function createSaveEngine(ctx) {
         Authorization: 'Bearer ' + accessToken,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ p_project_id: projectId })
+      body: JSON.stringify(body || {})
     });
     let bodyJson = null;
     let bodyText = '';
@@ -699,7 +704,7 @@ function createSaveEngine(ctx) {
       if (bodyText) bodyJson = JSON.parse(bodyText);
     } catch (_) {}
     if (!res.ok) {
-      const e = new Error('Raw check_in failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
+      const e = new Error('Raw ' + name + ' failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
       e.status = res.status;
       e.code = 'RAW_RPC_HTTP_' + res.status;
       e.diag = extractResponseDiagnostics(res.headers);
@@ -708,41 +713,9 @@ function createSaveEngine(ctx) {
     return { data: bodyJson, error: null };
   }
 
-  // Raw-fetch twin of supabase.rpc('list_accessible_projects'); mirrors
-  // rawCheckInProject's return contract.
-  async function rawListAccessibleProjects(signal) {
-    if (!ctx.isSupabaseEnabled() || !ctx.getSupabaseUrl() || !ctx.getSupabaseAnonKey()) {
-      throw new Error('Supabase not configured');
-    }
-    const accessToken = ctx.getState().supabaseSession?.access_token || '';
-    if (!accessToken) throw new Error('No access token for raw list_accessible_projects');
-    const url = ctx.getSupabaseUrl() + '/rest/v1/rpc/list_accessible_projects';
-    const res = await fetch(url, {
-      method: 'POST',
-      cache: 'no-store',
-      signal,
-      headers: {
-        apikey: ctx.getSupabaseAnonKey(),
-        Authorization: 'Bearer ' + accessToken,
-        'Content-Type': 'application/json'
-      },
-      body: '{}'
-    });
-    let bodyJson = null;
-    let bodyText = '';
-    try {
-      bodyText = await res.text();
-      if (bodyText) bodyJson = JSON.parse(bodyText);
-    } catch (_) {}
-    if (!res.ok) {
-      const e = new Error('Raw list_accessible_projects failed: ' + res.status + (bodyText ? (' ' + bodyText.slice(0, 200)) : ''));
-      e.status = res.status;
-      e.code = 'RAW_RPC_HTTP_' + res.status;
-      e.diag = extractResponseDiagnostics(res.headers);
-      return { data: bodyJson, error: e };
-    }
-    return { data: bodyJson, error: null };
-  }
+  function rawCheckInProject(projectId, signal) { return rawRpc('check_in_project', { p_project_id: projectId }, signal); }
+  // Raw-fetch twin of supabase.rpc('list_accessible_projects').
+  function rawListAccessibleProjects(signal) { return rawRpc('list_accessible_projects', {}, signal); }
 
   function getLastSupabaseJsFailureAt() { return lastSupabaseJsFailureAt; }
   function isSbJsRecentlyBad() { return lastSupabaseJsFailureAt > 0 && Date.now() - lastSupabaseJsFailureAt < 5 * 60 * 1000; }
@@ -819,6 +792,25 @@ function createSaveEngine(ctx) {
           scheduleProjectsCheckoutReconnect(projectId);
         }
       });
+  }
+
+  // A save just created this project's cloud row (the manual save's no-PDF
+  // insert, its pending-hydration catch-up, the autosave's first insert): the
+  // session is now the owner holding the lock of that row. One writer for the
+  // three adopt blocks (R21); the autosave's graduation cleanup of the
+  // anonymous 'local' backup stays at its call site.
+  function adoptNewCloudProject(projectId, ownerId) {
+    const state = ctx.getState();
+    state.currentProjectId = projectId;
+    try { ctx.clearCheckoutExpiredAttention(); } catch (_) {}
+    subscribeToProjectCheckoutChanges(projectId);
+    state.projectOwnerId = ownerId;
+    state.loadedViaViewLink = false;
+    state.isViewer = false;
+    state.canCheckOut = true;
+    state.checkedOutBy = null;
+    state.checkedOutAt = null;
+    state.checkedOutEmail = null;
   }
 
   // --- [sync] Self-release stamp ------------------------------------------
@@ -1323,6 +1315,18 @@ function createSaveEngine(ctx) {
         }));
       } catch (_) { return formatSaveStatusErrDetail(e); }
     };
+    // A save that had to land before the check-in failed: log it and shape
+    // the result Turn In hands back (R21: one shaping for the three blocks).
+    const turnInSaveBlocked = (result, label, stage) => {
+      pushSaveEvent(
+        'turn_in_blocked_by_save_err',
+        'Turn In blocked: ' + label + ' failed before check-in',
+        JSON.stringify({ message: (result.error && result.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage })
+      );
+      if (ctx.isAuthError(result.error)) return { ok: false, error: 'Refresh the page to sync.' };
+      if (result.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
+      return { ok: false, error: (result.error && result.error.message) || 'Save failed' };
+    };
     try {
       if (!state.currentProjectId || !ctx.getSupabase()) return { ok: false, error: 'No project' };
       pushSaveEvent('turn_in_start', 'Turn In started', JSON.stringify({
@@ -1379,28 +1383,14 @@ function createSaveEngine(ctx) {
           if (autoSaveDirty) {
             const saveResult = await performAutoSave();
             if (!saveResult.ok) {
-              pushSaveEvent(
-                'turn_in_blocked_by_save_err',
-                'Turn In blocked: autosave failed before check-in',
-                JSON.stringify({ message: (saveResult.error && saveResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
-              );
-              if (ctx.isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-              if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-              return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
+              return turnInSaveBlocked(saveResult, 'autosave', currentStage);
             }
           }
           if (pdfResult.reason === 'no_usable_buffer') {
             ctx.showToast('PDF couldn’t be uploaded. Reopen the project to attach it.', 4000);
           }
         } else if (pdfResult && !pdfResult.ok) {
-          pushSaveEvent(
-            'turn_in_blocked_by_save_err',
-            'Turn In blocked: PDF upload failed before check-in',
-            JSON.stringify({ message: (pdfResult.error && pdfResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
-          );
-          if (ctx.isAuthError(pdfResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-          if (pdfResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-          return { ok: false, error: (pdfResult.error && pdfResult.error.message) || 'Save failed' };
+          return turnInSaveBlocked(pdfResult, 'PDF upload', currentStage);
         }
       } else if (autoSaveDirty) {
         if (saveInProgress) {
@@ -1411,14 +1401,7 @@ function createSaveEngine(ctx) {
         progress('sync_to_cloud', 'Syncing edits to cloud…');
         const saveResult = await performAutoSave();
         if (!saveResult.ok) {
-          pushSaveEvent(
-            'turn_in_blocked_by_save_err',
-            'Turn In blocked: autosave failed before check-in',
-            JSON.stringify({ message: (saveResult.error && saveResult.error.message) || '', elapsedMs: Date.now() - tTurnIn, stage: currentStage })
-          );
-          if (ctx.isAuthError(saveResult.error)) return { ok: false, error: 'Refresh the page to sync.' };
-          if (saveResult.error?.code === 'CHECKOUT_EXPIRED') return { ok: false, code: 'CHECKOUT_EXPIRED', error: CHECKOUT_EXPIRED_SAVE_STATUS_MSG };
-          return { ok: false, error: (saveResult.error && saveResult.error.message) || 'Save failed' };
+          return turnInSaveBlocked(saveResult, 'autosave', currentStage);
         }
       }
       if (inFlightAutoSavePromise && saveInProgress) {
@@ -2329,29 +2312,11 @@ function createSaveEngine(ctx) {
             saveDebugLog('manual.save.request.ok', { runId, op: 'projects.insert', phase: 'no_pdf', ms: Date.now() - t4, projectId: row?.id, raw: true });
             const projectId = row?.id;
             if (!projectId) throw new Error('Project was created but no ID was returned. Please try again.');
-            ctx.getState().currentProjectId = projectId;
-            try { ctx.clearCheckoutExpiredAttention(); } catch (_) {}
-            subscribeToProjectCheckoutChanges(projectId);
-            ctx.getState().projectOwnerId = user.id;
-            ctx.getState().loadedViaViewLink = false;
-            ctx.getState().isViewer = false;
-            ctx.getState().canCheckOut = true;
-            ctx.getState().checkedOutBy = null;
-            ctx.getState().checkedOutAt = null;
-            ctx.getState().checkedOutEmail = null;
+            adoptNewCloudProject(projectId, user.id);
           }
           if (pendingNewProjectHydration && !ctx.getState().currentProjectId) {
             const h = pendingNewProjectHydration;
-            ctx.getState().currentProjectId = h.projectId;
-            try { ctx.clearCheckoutExpiredAttention(); } catch (_) {}
-            subscribeToProjectCheckoutChanges(h.projectId);
-            ctx.getState().projectOwnerId = h.userId;
-            ctx.getState().loadedViaViewLink = false;
-            ctx.getState().isViewer = false;
-            ctx.getState().canCheckOut = true;
-            ctx.getState().checkedOutBy = null;
-            ctx.getState().checkedOutAt = null;
-            ctx.getState().checkedOutEmail = null;
+            adoptNewCloudProject(h.projectId, h.userId);
           }
           orphanProjectIdForCleanup = null;
           pendingNewProjectHydration = null;
@@ -2705,21 +2670,12 @@ function createSaveEngine(ctx) {
             }
             const projectId = row?.id;
             if (!projectId) throw new Error('Project created but no ID returned');
-            ctx.getState().currentProjectId = projectId;
+            adoptNewCloudProject(projectId, user.id);
             // Graduation cleanup: this branch only runs when there was no
             // currentProjectId, so the session just became a cloud project.
             // Drop the now-stale anonymous 'local' takeoff backup so it can't
             // shadow this project at next boot.
             takeoffBackupDelete('local').catch(() => {});
-            try { ctx.clearCheckoutExpiredAttention(); } catch (_) {}
-            subscribeToProjectCheckoutChanges(projectId);
-            ctx.getState().projectOwnerId = user.id;
-            ctx.getState().loadedViaViewLink = false;
-            ctx.getState().isViewer = false;
-            ctx.getState().canCheckOut = true;
-            ctx.getState().checkedOutBy = null;
-            ctx.getState().checkedOutAt = null;
-            ctx.getState().checkedOutEmail = null;
             ctx.getState().currentProjectName = name;
             pushSaveEvent('autosave_request_end', 'Create OK (raw fetch)', autosaveEventDetail({ runId, op: 'projects.insert', attempt, ms: insMs, ok: true, raw: true, projectId }));
             pushSaveEvent('autosave_via_raw_fetch_ok', 'Raw-fetch autosave insert succeeded', autosaveEventDetail({ runId, ms: insMs, projectId }));
@@ -2953,6 +2909,147 @@ function createSaveEngine(ctx) {
     }
   }
 
+  // --- [sync] Visibility & timers (Stage 7) ------------------------------
+  // The bodies behind app.js's visibilitychange, online and offline listeners
+  // and its autosave setInterval. app.js keeps the three addEventListener
+  // lines and the interval (so the timers stay greppable there, under
+  // `// SECTION: [sync] Visibility & timers`) and calls these. Engine-owned:
+  // lastHiddenAt, the stamp the long-idle return measures from.
+  let lastHiddenAt = 0;
+
+  // visibilityState is document.visibilityState, passed in so node tests can
+  // drive both edges. Hidden: stamp, back up, abort a hanging autosave and
+  // flush a dirty lock holder's edits. Visible after more than
+  // LONG_IDLE_PROBE_MS: probe the connection, force a JWT refresh, replace a
+  // wedged client, then (every return) probe our checkout lock and refresh
+  // the project's permissions.
+  async function onVisibilityChange(visibilityState) {
+    const state = ctx.getState();
+    if (visibilityState === 'hidden') {
+      lastHiddenAt = Date.now();
+      saveDebugLog('visibility.hidden', { autoSaveDirty, hasProject: !!state.currentProjectId });
+      writeTakeoffStateBackup();
+      abortInFlightAutoSave('hidden');
+      const userId = state.supabaseSession?.user?.id;
+      if (ctx.isSupabaseEnabled() && ctx.getSupabase() && userId && state.currentProjectId &&
+          state.checkedOutBy === userId && autoSaveDirty && !saveInProgress && !ctx.isAutoSaveSuspended()) {
+        performAutoSave().catch(() => {});
+      }
+      return;
+    }
+    if (visibilityState !== 'visible') return;
+    const hiddenForMs = lastHiddenAt ? Date.now() - lastHiddenAt : 0;
+    if (hiddenForMs > LONG_IDLE_PROBE_MS && ctx.isSupabaseEnabled() && ctx.getSupabase()) {
+      await runRecoveryProbe('long_idle_return').catch(() => {});
+    }
+    if (!(ctx.isSupabaseEnabled() && ctx.getSupabase() && state.supabaseSession?.user)) {
+      saveDebugLog('visibility.visible', { hiddenForMs, signedIn: false });
+      return;
+    }
+    let sessionRefreshOk = false;
+    try {
+      let result;
+      if (hiddenForMs > LONG_IDLE_PROBE_MS) {
+        pushSaveEvent('session_refresh_attempt', 'Forcing JWT refresh after long idle', JSON.stringify({ hiddenForMs }));
+        result = await ctx.withTimeout(ctx.getSupabase().auth.refreshSession(), 5000, 'visibility refreshSession');
+      } else {
+        result = await ctx.withTimeout(ctx.getSupabase().auth.getSession(), 5000, 'visibility getSession');
+      }
+      if (result?.data?.session) {
+        state.supabaseSession = result.data.session;
+        sessionRefreshOk = true;
+      }
+    } catch (_) {}
+    // After a long idle, replace a wedged supabase-js client before the checkout
+    // and permissions refreshes below try to use it (each is a .rpc that would
+    // otherwise hang to its full timeout on a wedged client). Runs only on the
+    // long-idle path; the JWT was just refreshed above, so a probe failure here
+    // means a genuine wedge rather than an expired token.
+    let clientRecycled = false;
+    if (hiddenForMs > LONG_IDLE_PROBE_MS) {
+      clientRecycled = await recycleClientIfWedgedOnIdleReturn('long_idle_return').catch(() => false);
+    }
+    let probeResult = null;
+    const userId = state.supabaseSession?.user?.id;
+    if (state.currentProjectId && userId && state.checkedOutBy === userId && !state.isViewer && !ctx.isAutoSaveSuspended()) {
+      const probe = await probeCheckoutLock();
+      probeResult = probe.ok ? 'ok' : (probe.expired ? 'expired' : 'error');
+      if (probe.expired) {
+        try {
+          await handleBackgroundCheckoutExpired('visibility_probe');
+        } catch (e) {
+          try {
+            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+              JSON.stringify({ trigger: 'visibility_probe', message: (e && e.message) || String(e), name: e && e.name }));
+          } catch (_) {}
+        }
+      }
+    }
+    let permsRefreshed = false;
+    if (state.currentProjectId) {
+      try { await refreshProjectPermissions(); permsRefreshed = true; } catch (_) {}
+    }
+    saveDebugLog('visibility.visible', { hiddenForMs, sessionRefreshOk, clientRecycled, probeResult, permsRefreshed });
+    ctx.updateUI();
+  }
+
+  function onOnline() {
+    pushSaveEvent('online', 'Browser reports connection online');
+    ctx.updateSaveStatusIndicator();
+    if (consecutiveAutoSaveFailures > 0) {
+      runRecoveryProbe('online_event').catch(() => {});
+    }
+  }
+
+  function onOffline() {
+    pushSaveEvent('offline', 'Browser reports connection offline');
+    ctx.updateSaveStatusIndicator();
+  }
+
+  // One AUTO_SAVE_INTERVAL_MS tick: upload a local PDF that never reached the
+  // cloud, then save the dirty takeoff unless suspended or backing off, and
+  // route a CHECKOUT_EXPIRED result into the background recovery.
+  async function autoSaveTick() {
+    const state = ctx.getState();
+    if (!ctx.isSupabaseEnabled() || !state.supabaseSession?.user) return;
+    if (ctx.isAutoSaveSuspended()) {
+      if (autoSaveDirty && isSaveDebugEnabled()) saveDebugLog('autosave.suspended', { reason: 'checkout_expired_pending_recheckout' });
+      return;
+    }
+    // Belt-and-suspenders: if this project has a local PDF that never reached
+    // cloud storage (e.g. created via Prepare PDF "Open"), upload it. Fire and
+    // forget; the helper self-gates (in-flight, backoff, !pdfStoragePath) and
+    // stops firing once the upload succeeds. Runs regardless of canvas-dirty
+    // state so a failed attempt retries on a later tick.
+    uploadLocalPdfToCloudIfNeeded('autosave_tick').catch(() => {});
+    if (!autoSaveDirty) return;
+    maybeWriteDirtySnapshot();
+    if (Date.now() < nextAutoSaveAttemptAt) {
+      if (isSaveDebugEnabled()) saveDebugLog('autosave.skip', { reason: 'backoff', untilInMs: nextAutoSaveAttemptAt - Date.now() });
+      return;
+    }
+    const intervalRunId = isSaveDebugEnabled() ? saveDebugRunId() : undefined;
+    if (intervalRunId) saveDebugLog('autosave.interval.tick', { runId: intervalRunId });
+    const result = await performAutoSave(intervalRunId);
+    if (!result.ok) {
+      if (result.error?.code === 'CHECKOUT_EXPIRED') {
+        try {
+          await handleBackgroundCheckoutExpired('autosave');
+        } catch (e) {
+          try {
+            pushSaveEvent('background_recovery_threw', 'Background recovery threw unexpectedly',
+              JSON.stringify({ trigger: 'autosave', message: (e && e.message) || String(e), name: e && e.name }));
+          } catch (_) {}
+        }
+      } else if (result.error) {
+        window.lastSaveError = result.error;
+        ctx.updateSaveStatusIndicator();
+      }
+    } else {
+      ctx.updateSaveStatusIndicator();
+    }
+  }
+
   return {
     // Stage 2: Save Status log core + dirty core
     pushSaveEvent,
@@ -3046,6 +3143,11 @@ function createSaveEngine(ctx) {
     installGlobalReloadStampCommit,
     showGlobalReloadBanner,
     checkoutKeepalive,
+    // Stage 7: visibility & timers (app.js keeps the listeners + interval)
+    onVisibilityChange,
+    onOnline,
+    onOffline,
+    autoSaveTick,
   };
 }
 

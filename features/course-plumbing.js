@@ -320,7 +320,7 @@
       seed() { /* nothing: this chapter only reads */ },
       steps: [
         { id: 'set', title: 'A set of drawings', kind: 'read', cardAt: 'tl',
-          body: 'A building is drawn before it is built. The drawings come as a set: one sheet per page, often dozens of them.\nEach trade gets its own sheets, and a letter in the sheet number says whose. P is plumbing: the P-sheets show the pipes, the fixtures and the drains.\nA fixture is anything that uses water: a sink, a toilet, a floor drain.\nThis course opened four P-sheets for a small restaurant. The one on screen, P-101, is the floor plan: the building seen from above, every pipe drawn on it.\nThe box at the bottom right is the title block. It holds the sheet\'s name, its number and its scale.',
+          body: 'A building is drawn before it is built. The drawings come as a set: one sheet per page, often dozens of them.\nEach trade gets its own sheets, and a letter in the sheet number says whose. P is plumbing: the P-sheets show the pipes, the fixtures and the drains. An engineer, the designer who drew the pipes and did their sums, drew them.\nA fixture is anything that uses water: a sink, a toilet, a floor drain.\nThis course opened four P-sheets for a small restaurant. The one on screen, P-101, is the floor plan: the building seen from above, every pipe drawn on it.\nThe box at the bottom right is the title block. It holds the sheet\'s name, its number and its scale.',
           target: [], check: () => true },
         { id: 'estimator', title: 'What an estimator does', kind: 'read',
           body: 'Before a building goes up, contractors bid for the work. Each one names a price, and one of them gets the job.\nThe estimator is the person who works out that price, the bid. It takes three moves.\nCount what is drawn: every toilet, sink and drain.\nMeasure what is run: the feet of each pipe, by size and material.\nPrice it: each count and each foot times its cost.\nThe count and the feet together are the takeoff. The price is built on it, so a miss in the takeoff is money lost.\nThis course teaches the takeoff.',
@@ -364,13 +364,13 @@
           hint: () => (marks(RE.hb) ? 'Not that one. The east wall, outside the kitchen exit door, off the 3/4" cold line' : (K().armedNamed(RE.hb) ? 'The counter is armed: click the hose bibb' : '')),
           action: { label: 'Find it and count it for me', run: () => { App.pushUndoSnapshotCurrentPage(); markMissing(pick('hb'), SPOTS().hb); K().dirty(); } } },
         { id: 'schedule', title: 'The schedule', kind: 'do',
-          body: 'Answer: HB, a freezeproof wall hydrant, an outdoor faucet that cannot freeze. It is one symbol on a busy sheet, the kind a takeoff misses while the eye is on the restrooms.\nPipe sizes come from the fixture schedule, a table on P-501. It was scanned on its side.\n1. In the left sidebar, under PAGES, click P-501.\n2. In the footer, click [[Rotate 90° right]] (or press R).\nThe crew washes the dumpster pad, the slab the dumpster stands on, with that hydrant. Read the keynote column once before you count.',
+          body: 'Answer: HB, a freezeproof wall hydrant, an outdoor faucet that cannot freeze. It is one symbol on a busy sheet, the kind a takeoff misses while the eye is on the restrooms.\nPipe sizes come from the fixture schedule, a table on P-501. It was scanned on its side.\n1. In the left sidebar, under PAGES, click P-501.\n2. In the footer, click [[Rotate 90° right]] (or press R).\nThe crew washes the dumpster pad, the concrete slab the dumpster stands on, with that hydrant. Read the keynote column once before you count.',
           target: ['#rotatePage', '#pagesList'], check: () => K().onPage(K().P501) && rotationOf(K().P501) === 90,
           hint: () => (K().onPage(K().P501) && rotationOf(K().P501) ? 'Keep turning until the title reads left to right' : ''),
           action: { label: 'Open P-501 and turn it', run: () => { K().goPage(K().P501); if (rotationOf(K().P501) !== 90) el('rotatePage').click(); } } },
         { id: 'row', title: 'Read a row', kind: 'do', cardAt: 'br',
           rules: ['plumb.wsfu.fixtures'],
-          body: 'Which row drains the most? And why is its waste 4" when a hand sink\'s is 1-1/2"?\n1. In the header, click [[⋯]], then [[Highlight]] (or press H).\n2. Drag a box over that row. A highlight is a see-through color box.\nEach row is one tag from the plan. Its columns give the cold and hot supply sizes, the water pipes in. W is the waste, the drain out. V is the vent, the pipe that lets air into the drain.\nThe last two numbers are what the engineer sized the pipe from. WSFU, water supply fixture units, is the code\'s number for how much water a fixture draws. DFU, drainage fixture units, is how much it drains.',
+          body: 'Which row drains the most? And why is its waste 4" when a hand sink\'s, a sink kept only for washing hands, is 1-1/2"?\n1. In the header, click [[⋯]], then [[Highlight]] (or press H).\n2. Drag a box over that row. A highlight is a see-through color box.\nEach row is one tag from the plan. Its columns give the cold and hot supply sizes, the water pipes in. W is the waste, the drain out. V is the vent, the pipe that lets air into the drain.\nThe last two numbers are what the engineer sized the pipe from. WSFU, water supply fixture units, is the code\'s number for how much water a fixture draws. DFU, drainage fixture units, is how much it drains.',
           target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'],
           check: () => { const a = pageAnn(K().P501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 400 && Math.max(h.x1, h.x2) >= 400 && Math.min(h.y1, h.y2) <= 169 && Math.max(h.y1, h.y2) >= 169); },
           hint: () => { const a = pageAnn(K().P501); return a && (a.highlights || []).length ? 'Not that row. Read down the DFU column for the biggest number' : ''; },
@@ -597,7 +597,7 @@
     // 6 -------------------------------------------------------------------------------------
     {
       id: 'gas', title: 'Chapter 6: Gas', short: 'the gas, traced', minutes: 8, page: 0, noun: 'chapter',
-      intro: 'From the gas meter to the cook line: sizes that shrink with the load, and a shutoff valve at every appliance. The valve the hood trips, and where it goes. And a hanger row the app\'s rulebook does not have yet.',
+      intro: 'From the gas meter to the cook line: sizes that shrink with the load, and a shutoff valve at every appliance. The valve the hood trips, and where it goes. And a hanger row the app\'s rulebook, its list of the trade rules it applies, does not have yet.',
       seed() { scaleP101(); },
       steps: [
         { id: 'meter', title: 'From the meter', kind: 'read', cardAt: 'tl',
@@ -639,7 +639,7 @@
           check: () => K().someLineType(RE.gas, (lt) => (lt.childCounts || []).some((ch) => ch.per === 'ft')),
           action: { label: 'Add Hanger · 1 per 12 ft', run: () => { const lt = lineType(RE.gas); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: 12 }]; K().dirty(); } } },
       ],
-      done: 'The gas from the meter to the range, with its elbows and drops. The valve nobody drew, flagged where it belongs, and hangers from a row you wrote.\nNext: [[Learn]] → Chapter 7, the enlarged plan and the typical.',
+      done: 'The gas from the meter to the range, with its elbows and drops. The valve nobody drew, flagged where it belongs, and hangers from a row you wrote.\nNext: [[Learn]] → Chapter 7, the enlarged plan (part of the plan drawn bigger) and the typical.',
     },
     // 7 -------------------------------------------------------------------------------------
     {
@@ -687,7 +687,7 @@
     // 8 -------------------------------------------------------------------------------------
     {
       id: 'whole', title: 'Chapter 8: The whole sheet', short: 'the sheet, finished', minutes: 10, page: 0, noun: 'chapter',
-      intro: 'Everything the course traced and counted, done in one pass. Then set beside the reference takeoff, the right answer, run by run. Then the marked-up sheet on paper.',
+      intro: 'Everything the course traced and counted, done in one pass. Then set beside the reference takeoff, the right answer from the sheet\'s own geometry, run by run. Then the marked-up sheet on paper.',
       seed() { scaleP101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',

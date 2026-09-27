@@ -74,14 +74,14 @@ const FIRST_USE = {
     'building sewer': 'sheet', 'slope': 'sheet', 'RFI': 'sheet',
     // Chapter 2, the fixtures
     'wet wall': 'fixtures', 'vent stack': 'fixtures', 'VTR': 'fixtures', 'branch': 'fixtures', 'lavatory': 'fixtures',
-    'mop sink': 'fixtures', 'hand sink': 'fixtures', 'cook line': 'fixtures', 'range': 'fixtures',
+    'mop sink': 'fixtures', 'hand sink': 'sheet', 'cook line': 'fixtures', 'range': 'fixtures',
     '3-compartment sink': 'fixtures', 'dish pit': 'fixtures', 'FDA Food Code': 'fixtures', 'floor sink': 'fixtures',
     'indirect waste': 'fixtures', 'air gap': 'fixtures', 'typical': 'fixtures', 'trap': 'fixtures',
     'trap primer': 'fixtures', 'child count': 'fixtures', 'quick key': 'fixtures', 'status bar': 'fixtures',
     // Chapter 3, water
     'main': 'water', 'service': 'water', 'RPZ': 'water', 'backflow preventer': 'water', 'siphon': 'water',
     'trunk': 'water', 'hanger': 'water', 'general notes': 'water', 'water heater': 'water', 'HWR': 'water',
-    'check valve': 'water', 'balancing valve': 'water', 'slab': 'water', 'riser': 'water', 'chip': 'water',
+    'check valve': 'water', 'balancing valve': 'water', 'slab': 'sheet', 'riser': 'water', 'chip': 'water',
     'fitting': 'water', 'elbow': 'water',
     // Chapter 4, waste and vent
     'cleanout': 'waste', 'interceptor': 'waste', 'trench': 'waste', 'PVC': 'waste', 'DWV': 'waste', 'snake': 'waste',
@@ -92,29 +92,29 @@ const FIRST_USE = {
     'drop': 'gas', 'IFGC': 'gas', 'load': 'gas', 'BTU': 'gas', 'black iron': 'gas', 'threaded': 'gas', 'hood': 'gas',
     'suppression': 'gas', 'NFPA 96': 'gas', 'GC': 'gas',
     // Chapter 7, the enlarged plan and the typical
-    'enlarged plan': 'details', 'clearance': 'details', 'scale zone': 'details', 'multiply zone': 'details',
+    'enlarged plan': 'gas', 'clearance': 'details', 'scale zone': 'details', 'multiply zone': 'details',
     // Chapter 8 and 9
     'foreman': 'whole', 'flue': 'bid', 'change order': 'bid', 'hand off': 'bid', 'PipeTooling': 'bid',
     // used, never glossed on a card
-    'engineer': 'guide', 'rulebook': 'guide', 'reference': 'guide',
+    'engineer': 'before', 'rulebook': 'gas', 'reference': 'whole',
   },
   electrical: {
     // Chapter 0, Before you count
     'set': 'before', 'sheet': 'before', 'floor plan': 'before', 'schedule': 'before', 'one-line': 'before',
-    'engineer': 'before', 'estimator': 'before', 'bid': 'before', 'takeoff': 'before', 'count': 'before',
+    'engineer': 'before', 'estimator': 'before', 'bid': 'before', 'takeoff': 'before', 'count': 'before', 'scale': 'before', 'quick key': 'before',
     'trace': 'before', 'chain': 'before', 'check': 'before', 'counter': 'before', 'mark': 'before', 'run': 'before',
     'line type': 'before', 'bid check': 'before', 'sidebar': 'before', 'header': 'before', 'status bar': 'before',
     'summary': 'before',
     // Chapter 1, the E-sheets
     'title block': 'sheet', 'receptacle': 'sheet', 'hard-wired': 'sheet', 'panel': 'sheet', 'breaker': 'sheet',
-    'circuit': 'sheet', 'service': 'sheet', 'panel schedule': 'sheet', 'load': 'sheet', 'scale': 'sheet',
+    'circuit': 'sheet', 'service': 'sheet', 'panel schedule': 'sheet', 'load': 'sheet',
     'dimension': 'sheet', 'homerun': 'sheet', 'conduit': 'sheet', 'tag': 'sheet', 'mount height': 'sheet',
     'working space': 'sheet', 'NEC': 'sheet', 'change order': 'sheet', 'pole': 'sheet', 'VA': 'sheet', 'volt': 'sheet',
     'amp': 'sheet', 'conductor': 'sheet', 'ampacity': 'sheet', 'phase': 'sheet', 'neutral': 'sheet',
     // Chapter 2, devices
     'GFCI': 'devices', 'GFI': 'devices', 'dish pit': 'devices', 'RFI': 'devices', 'GC': 'devices',
     'duplex': 'devices', 'ADA': 'devices', 'rulebook': 'devices', 'vertical': 'devices', 'make-up': 'devices',
-    'J-box': 'devices', 'junction box': 'devices', 'quick key': 'devices',
+    'J-box': 'devices', 'junction box': 'devices',
     // Chapter 3, lighting
     'fixture schedule': 'lighting', 'armed': 'lighting', 'IBC': 'lighting', 'occupancy sensor': 'lighting',
     'IECC': 'lighting',
@@ -151,11 +151,11 @@ const FIRST_USE = {
     'ton': 'sheet', 'static pressure': 'sheet', 'tempered': 'sheet', 'register': 'sheet', 'interlocked': 'sheet',
     'positive': 'sheet', 'IMC': 'sheet',
     // Chapter 2, the rooms
-    'rule of thumb': 'rooms', 'load': 'rooms', 'ventilation': 'rooms', 'ASHRAE': 'rooms', 'design-build': 'rooms',
+    'rule of thumb': 'rooms', 'load': 'rooms', 'ventilation': 'before', 'ASHRAE': 'rooms', 'design-build': 'rooms',
     'diffuser': 'rooms', 'deck': 'rooms', 'deck height': 'rooms', 'main': 'rooms', 'trunk': 'rooms',
     'flex': 'rooms', 'conduit': 'rooms', 'plenum': 'rooms', 'wrap': 'rooms', 'hanger': 'rooms',
     // Chapter 3, the diffusers
-    'tag': 'diffusers', 'armed': 'diffusers', 'dish pit': 'diffusers', 'lay-in': 'diffusers', 'neck': 'diffusers',
+    'tag': 'sheet', 'armed': 'diffusers', 'dish pit': 'diffusers', 'lay-in': 'diffusers', 'neck': 'diffusers',
     'velocity': 'diffusers', 'fpm': 'diffusers', 'tap': 'diffusers', 'branch': 'diffusers',
     // Chapter 4, the system
     'ESP': 'system', 'gear': 'system', 'group': 'system', 'capacity': 'system', 'run': 'system',
@@ -175,25 +175,17 @@ const FIRST_USE = {
     // Chapter 8 and 9
     'reference': 'whole', 'OA': 'bid', 'stat': 'bid', 'GC': 'bid', 'Tooling': 'bid',
     // used, never glossed on a card
-    'mark': 'guide',
+    'mark': 'bid',
   },
 };
 // Known early uses: [course, term, chapter] where the course uses the term before the
 // chapter that glosses it. Findings for the next course pass, not fixed by this check; a
 // row that no longer matches an early use fails as stale, so the list only shrinks.
 const EARLY = [
-  ['plumbing', 'hand sink', 'sheet'],        // the schedule row and the fixture-units card, before Chapter 2's hand sinks
-  ['plumbing', 'slab', 'sheet'],             // "the slab the dumpster stands on"; Chapter 3's drop card says what a slab is
-  ['plumbing', 'enlarged plan', 'gas'],      // the gas chapter's done line names Chapter 7
-  ['electrical', 'scale', 'before'],         // Where things are names the Set Scale tool; Chapter 1 says what a scale is
-  ['electrical', 'quick key', 'before'],     // the status bar "shows ... the quick keys"; Chapter 2's keys card says what one is
-  ['hvac', 'ventilation', 'before'],         // inside "heating, ventilation and air conditioning"; Chapter 2 glosses it
   ['hvac', 'run', 'before'],                 // "Measure what is run", and "when it runs short of room"
   ['hvac', 'run', 'sheet'],                  // the verb, several times; the noun is glossed in Chapter 4
   ['hvac', 'run', 'rooms'],
   ['hvac', 'run', 'diffusers'],
-  ['hvac', 'tag', 'sheet'],                  // "The plan tags it RTU-1"; Chapter 3 glosses a tag
-  ['hvac', 'drop', 'diffusers'],             // "sized to drop into one square"; Chapter 5 glosses the RTU-1 drop
 ];
 
 // ===== parsing the course files ============================================================

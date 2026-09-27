@@ -116,6 +116,9 @@
             if (inFlightRenderTask === renderTask) inFlightRenderTask = null;
           }
           if (gen !== detailRenderGen) return;   // cancelled while rastering
+          // LEGEND-FACE: the thumbnail draws the sheet legend too; wait for its face.
+          if (App.legendFaceReady) await App.legendFaceReady();
+          if (gen !== detailRenderGen) return;
           App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
           const previewWrap = document.createElement('div');
           previewWrap.className = 'summary-count-detail-preview';

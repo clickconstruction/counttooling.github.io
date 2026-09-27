@@ -13,6 +13,42 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(legend): the sheet legend is set in Barlow Condensed (LEGEND-FACE, 2026-09-27)
+
+The sheet legend an electrical or HVAC project draws on the plan (the compact and full block:
+title, symbol column, caps descriptions, the mount or neck · CFM column, the count) was set in
+DM Sans, a wide face in capitals, so the block came out wider than the mock it was built from
+and covered more of the drawing. The owner chose the recommended option: a condensed drafting
+face for the legend only. The block now reads like a printed E-sheet or M-sheet legend and is
+about a sixth narrower at the same text size (the spec's electrical block: 128 pt against 154
+in DM Sans, the same height). The plumbing tally and the rest of the app are unchanged.
+
+- **The face:** Barlow Condensed (SIL Open Font License 1.1), vendored as the four latin woff2
+  weights the block draws (400, 500, 600, 700; about 15 KB each, 59 KB in all) from the files
+  Google's css2 API names, `vendor/fonts/barlowcondensed-v13-<w>-normal-latin.woff2`, with its
+  licence `vendor/fonts/OFL-BarlowCondensed.txt` beside them and four `@font-face` rules in
+  `vendor/fonts/fonts.css`. build-sw derives the precache from fonts.css, so the list went from
+  174 to 178 files and the face works offline. build-sw.test.js's every-font-file check now reads
+  the font files and fonts.css in that folder, not the licence text.
+- **Loaded before it is drawn:** a canvas falls back silently until a web face has loaded, and
+  the block is sized from `measureText`, so a draw in the fallback would come out at the wrong
+  width and then change. canvas-legend.js `createLegendFaceLoader` asks `document.fonts` for the
+  four weights once; app.js starts it at boot. A block drawn before the face arrived is redrawn
+  once when it does (`deps.onLegendFaceLoaded`, `renderAnnotations`). Export PDFs and Download
+  (features/pdf-bundle.js `rasterPageCanvas`) and the Summary detail thumbnails
+  (features/summary-detail.js) await `App.legendFaceReady()` before they draw the marks. It
+  never rejects and gives up after 4 s, so an export cannot hang on a face that cannot arrive;
+  the block then draws in DM Sans.
+- **Pinned:** canvas-legend.test.js (every block font is the condensed face at a weight the
+  loader fetches; the tally asks for none; one load and one redraw; `ready()` resolves false on a
+  failed load, an empty match, no FontFaceSet and a timeout), legend-sheet.spec.js (the four
+  weights load at boot, the block is under nine tenths of its DM Sans width at the same height,
+  the export canvas draws the face, the plumbing tally never does) and pwa.spec.js (the face
+  loads offline from the precache).
+- **Unchanged:** the render-pixels baselines draw the tally legend, not the block, so none moved.
+  Guide screenshots and landing films that show an electrical or HVAC legend will look different
+  on their next re-render.
+
 ## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
 
 The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))

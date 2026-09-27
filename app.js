@@ -2006,7 +2006,13 @@
       if (lt.conductors && lt.conductors.length) return cm.formatConductorSpec(lt.conductors) || '';
       return lt.raceway && lt.raceway.kind ? cm.racewayLabel(lt.raceway) : '';
     },
+    // LEGEND-FACE: a sheet block painted before Barlow Condensed loaded is
+    // painted again once it has (the fallback measured a different width).
+    onLegendFaceLoaded: () => { if (state.pages && state.pages.length) renderAnnotations(); },
   });
+  // LEGEND-FACE: ask for the legend face at boot so it has loaded long before a
+  // sheet opens; the exports still await it (App.legendFaceReady) before drawing.
+  canvasDraw.legendFaceReady();
 
   function renderAnnotations() {
     const t0 = performance.now();
@@ -6476,6 +6482,9 @@
   App.formatBidAge = formatBidAge;
   App.getPageCanvases = getPageCanvases;
   App.renderAnnotationsToContext = renderAnnotationsToContext;
+  // LEGEND-FACE: resolves once Barlow Condensed has loaded (or false after a few
+  // seconds); every export that draws the sheet legend awaits it first.
+  App.legendFaceReady = () => canvasDraw.legendFaceReady();
   // addReportPagesToPdf / addHighlightsToPdf / addNotesToPdf / hasAnyHighlights /
   // hasAnyNotes are registered from features/pdf-bundle.js.
   App.wrapNoteText = wrapNoteText;

@@ -1399,6 +1399,7 @@ function createCanvasDraw(deps) {
     resolveLegendStyle: legend.resolveLegendStyle, legendSheetFactor: legend.legendSheetFactor,
     computeLegendRows: legend.computeLegendRows,   // D17 spec seam (App.legendRowsFor) — the rows the legend paints
     drawGrid: legend.drawGrid,
+    legendFaceReady: legend.legendFaceReady, legendFaceLoaded: legend.legendFaceLoaded,   // LEGEND-FACE: the exports await it
   };
 }
 

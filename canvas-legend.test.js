@@ -15,7 +15,7 @@ Object.assign(globalThis, require('./duct-model.js'));
 const { CIRCLE_PATH } = require('./icons.js');
 global.Path2D = class Path2D { constructor(d) { this.d = d; } };
 
-const { createCanvasLegend, hexToRgb, lineStyleToDash } = require('./canvas-legend.js');
+const { createCanvasLegend, createLegendFaceLoader, hexToRgb, lineStyleToDash, LEGEND_FACE, LEGEND_FACE_WEIGHTS } = require('./canvas-legend.js');
 
 // Records every method call as [name, ...args] and every property write as
 // ['set:<prop>', value]; measureText returns a deterministic width.
@@ -409,4 +409,76 @@ test('drawLegend: the box hugs its rows at legendScale; an oversized userResized
     createCanvasLegend(legendDeps(state)).drawLegend(makeCtx(), makePage(1224, 792), 0, ann, 1, tc1);
     assert.deepStrictEqual([ann.legend.w, ann.legend.h], [one.w, one.h], style + ': the oversized box snaps to its rows');
   }
+});
+
+// --- LEGEND-FACE: the sheet block in Barlow Condensed, loaded before it is drawn ---
+
+// A FontFaceSet stub: load() resolves (with one face) when release() is called.
+function makeFonts({ fail = false, empty = false } = {}) {
+  const asked = [];
+  let release;
+  const gate = new Promise(res => { release = res; });
+  return {
+    asked,
+    release: () => release(),
+    load(font) {
+      asked.push(font);
+      return gate.then(() => { if (fail) throw new Error('NetworkError'); return empty ? [] : [{ family: 'Barlow Condensed' }]; });
+    },
+  };
+}
+
+test('LEGEND-FACE: the compact and full blocks measure and draw in Barlow Condensed, at the four weights the loader asks for', () => {
+  for (const style of ['compact', 'full']) {
+    const state = legendState({ trade: 'electrical', legendSettings: { legendScale: 1, style } });
+    const ctx = makeCtx();
+    createCanvasLegend(Object.assign(legendDeps(state), { getTrade: () => 'electrical', getFonts: () => null })).drawLegend(ctx, makePage(1224, 792), 0, legendAnn(), 1, tc1);
+    const fonts = setsOf(ctx, 'font');
+    assert.ok(fonts.length > 0, style + ': fonts set');
+    assert.ok(fonts.every(f => f.endsWith('px ' + LEGEND_FACE)), style + ': every legend font is the condensed face; got ' + JSON.stringify(fonts));
+    const weights = new Set(fonts.map(f => Number(f.split(' ')[0])));
+    for (const w of weights) assert.ok(LEGEND_FACE_WEIGHTS.includes(w), style + ': weight ' + w + ' is one the loader fetches');
+  }
+  assert.ok(LEGEND_FACE.startsWith('"Barlow Condensed"') && /"DM Sans", sans-serif$/.test(LEGEND_FACE), 'DM Sans is the fallback');
+});
+
+test('LEGEND-FACE: the plumbing tally keeps its sans-serif (no condensed face, no load asked for)', () => {
+  const fontsSet = makeFonts();
+  const ctx = makeCtx();
+  createCanvasLegend(Object.assign(legendDeps(legendState()), { getFonts: () => fontsSet })).drawLegend(ctx, makePage(612, 792), 0, legendAnn(), 1, tc1);
+  assert.ok(setsOf(ctx, 'font').every(f => /px sans-serif$/.test(f)));
+  assert.strictEqual(fontsSet.asked.length, 0, 'the tally never asks for the legend face');
+});
+
+test('LEGEND-FACE: a block drawn before the face loaded asks for it once and is redrawn once it arrives', async () => {
+  const fontsSet = makeFonts();
+  let redraws = 0;
+  const state = legendState({ trade: 'hvac' });
+  const legend = createCanvasLegend(Object.assign(legendDeps(state), { getTrade: () => 'hvac', getFonts: () => fontsSet, onLegendFaceLoaded: () => { redraws++; } }));
+  legend.drawLegend(makeCtx(), makePage(1224, 792), 0, legendAnn(), 1, tc1);
+  legend.drawLegend(makeCtx(), makePage(1224, 792), 0, legendAnn(), 1, tc1);
+  assert.deepStrictEqual(fontsSet.asked, LEGEND_FACE_WEIGHTS.map(w => w + ' 10px "Barlow Condensed"'), 'each weight asked for once, however many draws');
+  assert.strictEqual(legend.legendFaceLoaded(), false);
+  fontsSet.release();
+  assert.strictEqual(await legend.legendFaceReady(), true);
+  assert.strictEqual(legend.legendFaceLoaded(), true);
+  assert.strictEqual(redraws, 1, 'one redraw when the face arrives');
+  legend.drawLegend(makeCtx(), makePage(1224, 792), 0, legendAnn(), 1, tc1);
+  assert.strictEqual(redraws, 1, 'no redraw once loaded');
+});
+
+test('LEGEND-FACE: ready() never rejects and never hangs: a failed load, an empty match, no FontFaceSet, a timeout all resolve false', async () => {
+  const failed = makeFonts({ fail: true });
+  const pFail = createLegendFaceLoader(() => failed, 1000).ready();
+  failed.release();
+  assert.strictEqual(await pFail, false);
+  const empty = makeFonts({ empty: true });
+  const pEmpty = createLegendFaceLoader(() => empty, 1000).ready();
+  empty.release();
+  assert.strictEqual(await pEmpty, false);
+  assert.strictEqual(await createLegendFaceLoader(() => null, 1000).ready(), false);
+  const never = makeFonts();   // never released
+  const t0 = Date.now();
+  assert.strictEqual(await createLegendFaceLoader(() => never, 30).ready(), false);
+  assert.ok(Date.now() - t0 < 1000, 'the timeout bounds the wait');
 });

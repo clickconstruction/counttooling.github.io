@@ -91,4 +91,59 @@ test.describe('Sheet legend', () => {
     expect(big.h).toBeGreaterThan(letter.h * 1.5);
     expect(errors).toEqual([]);
   });
+
+  // LEGEND-FACE (2026-09-27): the block is set in Barlow Condensed, loaded before it
+  // is measured, so it comes out narrower than the same block in DM Sans.
+  test('the block is set in Barlow Condensed, loaded at boot, and is narrower than in DM Sans', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors, 'electrical');
+    const face = await page.evaluate(async () => ({
+      ready: await window.App.legendFaceReady(),
+      checks: [400, 500, 600, 700].map((w) => document.fonts.check(w + ' 10px "Barlow Condensed"')),
+    }));
+    expect(face.ready).toBe(true);
+    expect(face.checks).toEqual([true, true, true, true]);
+    await page.evaluate(() => window.App.renderAnnotations());
+    const condensed = await legendBox(page);
+    // The same block measured and drawn with the face swapped for DM Sans (the
+    // font setter rewritten for one pass): the width the block had before.
+    const dmSans = await page.evaluate(() => {
+      const proto = CanvasRenderingContext2D.prototype;
+      const d = Object.getOwnPropertyDescriptor(proto, 'font');
+      Object.defineProperty(proto, 'font', { configurable: true, get: d.get, set(v) { d.set.call(this, String(v).replace('"Barlow Condensed", ', '')); } });
+      try { window.App.renderAnnotations(); } finally { Object.defineProperty(proto, 'font', d); }
+      const l = window.state.pages[0].canvases[0].annotations.legend;
+      return { w: Math.round(l.w), h: Math.round(l.h) };
+    });
+    expect(condensed.h).toBe(dmSans.h);
+    expect(condensed.w).toBeLessThan(dmSans.w * 0.9);
+    // The export path draws the same face (a font set on the export canvas).
+    const exportFonts = await page.evaluate(() => {
+      const c = document.createElement('canvas'); c.width = 1200; c.height = 1600;
+      const ctx = c.getContext('2d'); const seen = [];
+      const proto = CanvasRenderingContext2D.prototype;
+      const d = Object.getOwnPropertyDescriptor(proto, 'font');
+      Object.defineProperty(proto, 'font', { configurable: true, get: d.get, set(v) { seen.push(String(v)); d.set.call(this, v); } });
+      try { window.App.renderAnnotationsToContext(ctx, window.state.pages[0], 2, {}); } finally { Object.defineProperty(proto, 'font', d); }
+      return seen.filter((f) => /Barlow Condensed/.test(f)).length;
+    });
+    expect(exportFonts).toBeGreaterThan(3);
+    expect(errors).toEqual([]);
+  });
+
+  test('plumbing\'s tally never draws in the condensed face', async ({ page }) => {
+    const errors = [];
+    await boot(page, errors, 'plumbing');
+    const fonts = await page.evaluate(() => {
+      const seen = [];
+      const proto = CanvasRenderingContext2D.prototype;
+      const d = Object.getOwnPropertyDescriptor(proto, 'font');
+      Object.defineProperty(proto, 'font', { configurable: true, get: d.get, set(v) { seen.push(String(v)); d.set.call(this, v); } });
+      try { window.App.renderAnnotations(); } finally { Object.defineProperty(proto, 'font', d); }
+      return seen;
+    });
+    expect(fonts.length).toBeGreaterThan(0);
+    expect(fonts.filter((f) => /Barlow/.test(f))).toEqual([]);
+    expect(errors).toEqual([]);
+  });
 });

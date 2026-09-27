@@ -1059,7 +1059,7 @@
     },
     {
      "term": "Layer",
-     "text": "A clear sheet laid over the plan, with its own marks and its own totals."
+     "text": "A clear sheet laid over the plan, with its own marks. The sidebar totals count every layer; the Summary's by-page breakdown shows each layer's share."
     },
     {
      "term": "The line beside Show me where",

@@ -846,18 +846,39 @@ function createSaveEngine(ctx) {
       (Date.now() - lastSelfReleaseAt) < SELF_RELEASE_GRACE_MS &&
       !!projectId && lastSelfReleaseProjectId === projectId;
   }
+  // R1-WINDOW (2026-09-27, Will's call): the window stays 15 s but ENDS the
+  // moment we check a project out again. Inside the window a demotion can only
+  // reach us if we re-took the lock inside it, and once we have, a force by an
+  // admin (or by another session signed in as us) is real: it must reach the
+  // notice and the dirty flush (the yellow bell), not be swallowed as ours.
+  // Every successful check_out_project of ours calls this:
+  // reCheckOutAfterExpiry below, and features/turn-in.js
+  // doCheckoutCurrentProject (via App.clearSelfRelease). A permissions read
+  // already in flight at that moment started inside the window and cannot
+  // describe the lock we just took, so refreshProjectPermissions drops it
+  // (selfReleaseEpoch) rather than demote us or call it a force.
+  let selfReleaseEpoch = 0;
+  function clearSelfRelease() {
+    if (lastSelfReleaseAt > 0) {
+      try { saveDebugLog('selfRelease.cleared', { projectId: lastSelfReleaseProjectId, ageMs: Date.now() - lastSelfReleaseAt }); } catch (_) {}
+    }
+    lastSelfReleaseAt = 0;
+    lastSelfReleaseProjectId = null;
+    selfReleaseEpoch++;
+  }
 
   // --- [sync] The permissions read (MAP-PERMS) ----------------------------
   // get_project_permissions returns the one row refreshProjectPermissions
   // reads (can_edit, can_check_out, checked_out_*), where the list returned
-  // every visible project WITH its whole takeoff (`data`). Until its migration
+  // every visible project WITH its whole takeoff (`data`). Its migration
   // (supabase/migrations/20260927030000_get_project_permissions.sql) is on
-  // prod, PostgREST answers PGRST202 (function not in the schema cache): the
-  // read falls back to list_accessible_projects in the same refresh and
-  // latches, so the missing RPC is not asked again every refresh. A client
-  // recycle clears the latch (recreateSupabaseClient) so a long-open tab meets
-  // a freshly applied migration. Follow-up once prod has the function: delete
-  // the latch and the list fallback here.
+  // prod since 2026-09-27. Where the function is missing, PostgREST answers
+  // PGRST202 (function not in the schema cache): the read falls back to
+  // list_accessible_projects in the same refresh and latches, so the missing
+  // RPC is not asked again every refresh. A client recycle clears the latch
+  // (recreateSupabaseClient). The fallback stays as a safety net for a week of
+  // normal use; delete the latch and the list fallback here on or after
+  // 2026-10-04 (PUNCHLIST MAP-PERMS).
   let permissionsRpcMissing = false;
   // Both answer shapes of a missing RPC: supabase-js's PostgrestError carries
   // the code; rawRpc keeps RAW_RPC_HTTP_404 as the error code and hands the
@@ -903,6 +924,13 @@ function createSaveEngine(ctx) {
     const prevCheckedOutEmail = state.checkedOutEmail;
     const prevCheckedOutAt = state.checkedOutAt;
     const prevWasCheckedOut = state.checkedOutBy === state.supabaseSession?.user?.id;
+    // Dormant until the flag flips (app.js feature flags; _TODO.md R1-FLIP):
+    // with it off this refresh classifies exactly as before 2026-09-15.
+    const selfReleaseStampOn = !!(ctx.isSelfReleaseStampEnabled && ctx.isSelfReleaseStampEnabled());
+    // R1-WINDOW: was this read started inside our own release window, and
+    // does a re-checkout of ours land while it is in flight?
+    const selfReleaseAtStart = turnInInProgress || isSelfReleaseRecent(projectId);
+    const selfReleaseEpochAtStart = selfReleaseEpoch;
     let projects = null;
     let error = null;
     // When the supabase-js client has wedged recently (a frequent post-sleep /
@@ -939,6 +967,16 @@ function createSaveEngine(ctx) {
       saveDebugLog('permissions.refresh.stale_project', { asked: projectId, now: state.currentProjectId });
       return;
     }
+    // R1-WINDOW: a read started inside our own release window, overtaken by
+    // our re-checkout (clearSelfRelease), describes the lock we gave up, not
+    // the one we hold now. Applying it would demote us; classifying it with
+    // the window closed would call our own release a force. Drop it: the
+    // re-checkout's own refresh (its realtime UPDATE, or reCheckOutAfterExpiry)
+    // reads the row as it is now.
+    if (selfReleaseStampOn && selfReleaseAtStart && selfReleaseEpoch !== selfReleaseEpochAtStart) {
+      try { pushSaveEvent('self_release_refresh_superseded', 'Permissions read from before our own re-checkout ignored (the checkout is newer)'); } catch (_) {}
+      return;
+    }
     const proj = projects.find(function(p) { return p.id === state.currentProjectId; });
     if (!proj) {
       try { pushSaveEvent('permissions_project_missing', 'You no longer have access to this project', JSON.stringify({ projectId: state.currentProjectId })); } catch (_) {}
@@ -958,9 +996,9 @@ function createSaveEngine(ctx) {
     // Our own release in flight or just done (see the self-release stamp):
     // doTurnIn already flushed before releasing, and a flush now would fail
     // CHECKOUT_NOT_OWNED and paint the bell yellow for a lock we gave up.
-    // Dormant until the flag flips (app.js feature flags; _TODO.md R1-FLIP):
-    // with it off this refresh classifies exactly as before 2026-09-15.
-    const selfRelease = !!(ctx.isSelfReleaseStampEnabled && ctx.isSelfReleaseStampEnabled()) &&
+    // Gated by selfReleaseStampOn (above); clearSelfRelease ends the window
+    // early when we check the project out again (R1-WINDOW).
+    const selfRelease = selfReleaseStampOn &&
       (turnInInProgress || isSelfReleaseRecent(state.currentProjectId));
     if (willBecomeViewer && hadDirty && !hadInflight && selfRelease) {
       try { pushSaveEvent('self_release_flush_skipped', 'Permissions refresh after our own turn-in: dirty flag left for the caller, no flush over a released lock'); } catch (_) {}
@@ -1139,6 +1177,8 @@ function createSaveEngine(ctx) {
       const result = data || (error ? { ok: false, error: error.message } : { ok: false });
       if (result.ok) {
         const wasDirty = autoSaveDirty;
+        // R1-WINDOW: we hold the lock again, so the self-release window ends.
+        clearSelfRelease();
         ctx.clearCheckoutExpiredAttention();
         state.checkedOutBy = state.supabaseSession?.user?.id;
         state.checkedOutAt = result.checked_out_at || new Date().toISOString();
@@ -3127,7 +3167,11 @@ function createSaveEngine(ctx) {
     resetDirtyTracking,
     // Self-release stamp (2026-09-15): app.js's checkInCurrentProjectIfHeld
     // stamps its own successful check-ins; doTurnIn stamps internally.
+    // clearSelfRelease (R1-WINDOW) ends the window on our own re-checkout:
+    // features/turn-in.js calls it via App.clearSelfRelease;
+    // reCheckOutAfterExpiry calls it internally.
     noteSelfRelease,
+    clearSelfRelease,
     // Stage 3: storage ring
     probeCheckoutLock,
     sha256Hex,

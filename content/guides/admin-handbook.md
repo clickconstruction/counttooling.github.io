@@ -1,7 +1,7 @@
 ---
 title: Admin handbook
 description: Creating users, resetting passwords, transferring projects, forcing turn-in, reading activity, and pushing updates: the admin surfaces inside the app.
-updated: 2026-08-31
+updated: 2026-09-27
 order: 11
 icon: share
 category: For admins
@@ -23,7 +23,7 @@ CountTooling accounts are admin-provisioned (there's no self-signup), so admins 
 
 ## Projects
 
-- **Manage Projects** (Project Settings) lists every project across all users with owner, size, and counts. From here you can **delete** any project (including its stored PDF) or **Force turn-in** one that's checked out: the escape hatch when someone left for the day holding the lock. (Checkout also expires on its own after ~30 minutes of inactivity; see [Sharing](/guides/sharing-and-view-links/).)
+- **Manage Projects** (Project Settings) lists every project across all users with owner, size, and counts. From here you can **delete** any project (including its stored PDF) or **Force turn-in** one that's checked out: the escape hatch when someone left for the day holding the lock. On the project you have open and checked out yourself, that row offers **Turn in** instead: the same as the Turn In button at the top of the screen, so your edits save first. (Checkout also expires on its own after ~30 minutes of inactivity; see [Sharing](/guides/sharing-and-view-links/).)
 - Admins see **all projects** in Load Project, can check any of them out, and the Load Project list has an admin-only **Advanced** toggle showing who has access to each row.
 
 ## Activity

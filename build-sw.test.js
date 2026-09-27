@@ -65,7 +65,8 @@ test('the derived list holds every shell tag, every font file, every manifest ic
   assert.strictEqual(new Set(urls).size, urls.length, 'no duplicates');
   const html = fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8');
   for (const u of shellTagUrls(html)) assert.ok(urls.includes(u), `shell tag ${u}`);
-  for (const f of fs.readdirSync(path.join(ROOT, 'vendor', 'fonts'))) assert.ok(urls.includes(`/vendor/fonts/${f}`), `font ${f}`);
+  // Every font file and fonts.css itself (a licence text beside them, OFL-*.txt, is not a shell asset).
+  for (const f of fs.readdirSync(path.join(ROOT, 'vendor', 'fonts')).filter((n) => /\.(woff2?|css)$/.test(n))) assert.ok(urls.includes(`/vendor/fonts/${f}`), `font ${f}`);
   for (const u of manifestIconUrls(fs.readFileSync(path.join(ROOT, 'manifest.webmanifest'), 'utf8'))) assert.ok(urls.includes(u), `icon ${u}`);
   for (const u of PRECACHE_EXTRA) assert.ok(urls.includes(u), `extra ${u}`);
   // The worker the render service builds and the offline shell itself are the reasons

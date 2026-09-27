@@ -528,9 +528,10 @@ test('force reload: stale server stamp records state but does not reload', async
 const PGRST202 = { code: 'PGRST202', message: 'Could not find the function public.get_project_permissions(p_project_id) in the schema cache', details: null, hint: null };
 
 // list_accessible_projects responder for the permission-refresh tests.
-// get_project_permissions answers the way prod does until MAP-PERMS's
-// migration is applied (missing, PGRST202), unless outcomes.lean opts in to
-// the lean read, which filters the same rows to the asked project.
+// get_project_permissions answers missing (PGRST202, the way prod did before
+// MAP-PERMS's migration was applied on 2026-09-27) so these tests keep walking
+// the list fallback while it stays, unless outcomes.lean opts in to the lean
+// read, which filters the same rows to the asked project.
 function rpcWithProjects(rows, outcomes) {
   return async (name, args) => {
     if (name === 'get_project_permissions') {
@@ -798,6 +799,114 @@ test('refreshProjectPermissions: with the self-release flag OFF, our own turn-in
   assert.deepStrictEqual(notices, [{ hadDirty: false }], 'flag off: unchanged (misclassified) behavior');
   assert.ok(logKinds(engine).includes('force_turn_in'));
   assert.ok(!logKinds(engine).includes('self_release_refresh'));
+});
+
+// --- R1-WINDOW: the self-release window ends when we check out again -----
+// Will's call (2026-09-27): keep 15 s, but a re-checkout of ours ends it, so a
+// genuine force after we took the lock back is never swallowed as our release.
+
+test('R1-WINDOW: checking the project out again ends the window — a force after it IS a force, and the dirty flush runs', async () => {
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  const { supabase, sub } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, checkedOutAt: null, canCheckOut: true, isViewer: true, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();            // Turn In, moments ago
+  // ...then [Check out to Edit] (features/turn-in.js doCheckoutCurrentProject
+  // calls App.clearSelfRelease on success) and a mark or two.
+  engine.clearSelfRelease();
+  state.checkedOutBy = 'u1';
+  state.checkedOutAt = new Date().toISOString();
+  state.isViewer = false;
+  state.canCheckOut = false;
+  engine.setAutoSaveDirty(true);
+  // An admin (or another session as us) clears the live lock, still well
+  // inside 15 s of the turn-in.
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [{ hadDirty: true }], 'the real force reaches the notice');
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.ok(!logKinds(engine).includes('self_release_refresh'), 'not swallowed as our own release');
+  assert.ok(!logKinds(engine).includes('self_release_flush_skipped'));
+  assert.ok(logKinds(engine).includes('autosave_start'), 'the flush over the lost lock runs (the yellow-bell path)');
+  assert.strictEqual(sub.updates.length, 1);
+});
+
+test('R1-WINDOW: the automatic re-checkout (reCheckOutAfterExpiry) ends the window too', async () => {
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: new Date().toISOString(), checked_out_email: null };
+  const { supabase } = makeChannelSupabase(rpcWithProjects([row]));
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: null, checkedOutAt: null, canCheckOut: true, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();
+  const res = await engine.reCheckOutAfterExpiry('test_trigger', { silent: true });
+  assert.strictEqual(res.ok, true);
+  await new Promise((r) => setTimeout(r, 20));   // its own fire-and-forget refresh
+  assert.strictEqual(state.checkedOutBy, 'u1');
+  // Now the live lock is cleared by someone else.
+  Object.assign(row, { can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null });
+  await engine.refreshProjectPermissions();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [{ hadDirty: false }]);
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.ok(!logKinds(engine).includes('self_release_refresh'));
+});
+
+test('R1-WINDOW: a read already in flight when we re-check out is dropped — no false notice, no demotion', async () => {
+  // The read started inside the window (our turn-in) and answers after our
+  // re-checkout: it describes the lock we gave up, not the one we hold.
+  const released = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  let answer;
+  const gate = new Promise((r) => { answer = r; });
+  const { supabase } = makeChannelSupabase(async (name) => {
+    if (name === 'get_project_permissions') { await gate; return { data: [released], error: null }; }
+    return { data: {} };
+  });
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, isSelfReleaseStampEnabled: () => true, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();
+  const inFlight = engine.refreshProjectPermissions();
+  // Our re-checkout lands while that read is out.
+  engine.clearSelfRelease();
+  const checkedOutAt = new Date().toISOString();
+  state.checkedOutAt = checkedOutAt;
+  answer();
+  await inFlight;
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [], 'our own release is never reported as a force');
+  assert.ok(logKinds(engine).includes('self_release_refresh_superseded'));
+  assert.ok(!logKinds(engine).includes('force_turn_in'));
+  assert.strictEqual(state.isViewer, false, 'the stale read does not demote the fresh checkout');
+  assert.strictEqual(state.checkedOutBy, 'u1');
+  assert.strictEqual(state.checkedOutAt, checkedOutAt);
+});
+
+test('R1-WINDOW: with the self-release flag OFF, a re-checkout changes nothing (the dormant ship)', async () => {
+  const released = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  let answer;
+  const gate = new Promise((r) => { answer = r; });
+  const { supabase } = makeChannelSupabase(async (name) => {
+    if (name === 'get_project_permissions') { await gate; return { data: [released], error: null }; }
+    return { data: {} };
+  });
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', checkedOutAt: new Date().toISOString(), canCheckOut: false, isViewer: false, pages: [] };
+  const notices = [];
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => supabase, notifyForceTurnedIn: (info) => { notices.push(info); return true; } });
+  const engine = createSaveEngine(ctx);
+  engine.noteSelfRelease();
+  const inFlight = engine.refreshProjectPermissions();
+  engine.clearSelfRelease();
+  answer();
+  await inFlight;
+  await new Promise((r) => setTimeout(r, 20));
+  assert.deepStrictEqual(notices, [{ hadDirty: false }], 'flag off: classified exactly as before');
+  assert.ok(logKinds(engine).includes('force_turn_in'));
+  assert.ok(!logKinds(engine).includes('self_release_refresh_superseded'));
+  assert.strictEqual(state.isViewer, true);
 });
 
 

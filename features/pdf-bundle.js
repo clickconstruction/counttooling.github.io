@@ -125,7 +125,12 @@
     canvas.height = viewport.height;
     const ctx = canvas.getContext('2d');
     await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-    if (annotations !== null) App.renderAnnotationsToContext(ctx, page, scale, overrides, annotations);
+    if (annotations !== null) {
+      // LEGEND-FACE: the sheet legend is measured in Barlow Condensed, so the face
+      // must have loaded before the marks are drawn (never hangs: it times out).
+      if (App.legendFaceReady) await App.legendFaceReady();
+      App.renderAnnotationsToContext(ctx, page, scale, overrides, annotations);
+    }
     return { canvas, viewport };
   }
 

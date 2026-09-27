@@ -207,6 +207,40 @@
       "updated": "2026-09-09"
     },
     {
+      "id": "hvac.diffuser.neck-velocity",
+      "trade": "hvac",
+      "kind": "convention",
+      "status": "draft",
+      "title": "Diffuser neck velocity",
+      "summary": "The trade's rule of thumb keeps air through a supply diffuser's neck between about 400 and 600 feet a minute, so a diffuser carrying more air gets a bigger neck, and the neck size is the flex and tap size on the bid.",
+      "values": [
+        {
+          "when": "neck velocity, the low end of the band",
+          "value": 400,
+          "unit": "fpm"
+        },
+        {
+          "when": "neck velocity, the high end of the band",
+          "value": 600,
+          "unit": "fpm"
+        },
+        {
+          "when": "150 CFM through an 8 in neck (the neck-size suggestion's first row)",
+          "value": 430,
+          "unit": "fpm"
+        }
+      ],
+      "source": {
+        "code": "trade practice",
+        "section": "diffuser selection rule of thumb (noise), not a code figure",
+        "editions": []
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/hvac/diffuser-neck-velocity/",
+      "updated": "2026-09-26"
+    },
+    {
       "id": "hvac.duct.gauge-schedule",
       "trade": "hvac",
       "kind": "standard",
@@ -312,6 +346,38 @@
       "updated": "2026-09-12"
     },
     {
+      "id": "hvac.damper.fire-damper",
+      "trade": "hvac",
+      "kind": "code",
+      "status": "draft",
+      "title": "Fire dampers at rated walls",
+      "summary": "Where a duct passes through a fire-resistance-rated wall, the code wants a listed fire damper at the penetration, so each crossing of a rated wall is a damper, an access door and a sleeve on the bid.",
+      "values": [
+        {
+          "when": "a duct through a fire-resistance-rated wall, a listed fire damper at the penetration",
+          "value": "required",
+          "unit": ""
+        },
+        {
+          "when": "a grease duct through the same wall (it takes a listed enclosure or wrap instead)",
+          "value": "none",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IMC",
+        "section": "607.5.1 Fire dampers where required",
+        "editions": [
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-6-duct-systems"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/hvac/fire-damper/",
+      "updated": "2026-09-26"
+    },
+    {
       "id": "hvac.duct.grease-duct",
       "trade": "hvac",
       "kind": "code",
@@ -359,6 +425,70 @@
       ],
       "url": "/rules/hvac/grease-duct/",
       "updated": "2026-09-21"
+    },
+    {
+      "id": "hvac.exhaust.hood-makeup-air",
+      "trade": "hvac",
+      "kind": "code",
+      "status": "draft",
+      "title": "Make-up air for a kitchen hood",
+      "summary": "A commercial kitchen hood that exhausts air needs make-up air brought in to replace it, delivered while the hood runs and interlocked with its exhaust fan, so a hood on a plan means a second unit, its duct and its controls on the bid.",
+      "values": [
+        {
+          "when": "a commercial kitchen hood exhausting air, make-up air to replace it",
+          "value": "required",
+          "unit": ""
+        },
+        {
+          "when": "the make-up air unit against the hood's exhaust fan",
+          "value": "interlocked",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IMC",
+        "section": "508.1 Makeup air (commercial kitchen exhaust)",
+        "editions": [
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-5-exhaust-systems"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/hvac/hood-makeup-air/",
+      "updated": "2026-09-26"
+    },
+    {
+      "id": "hvac.ventilation.outdoor-air",
+      "trade": "hvac",
+      "kind": "code",
+      "status": "draft",
+      "title": "Outdoor air for ventilation",
+      "summary": "Occupied spaces get a code minimum of outdoor air, set by the kind of room, the people in it and its floor area; on a bid the question is whether the plan's supply already carries it or a separate unit does.",
+      "values": [
+        {
+          "when": "outdoor air to an occupied space, by mechanical or natural ventilation",
+          "value": "required",
+          "unit": ""
+        },
+        {
+          "when": "the minimum, by occupancy",
+          "value": "per person plus per floor area",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IMC",
+        "section": "403 Mechanical ventilation (rates in Table 403.3.1.1)",
+        "editions": [
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-4-ventilation"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/hvac/outdoor-air/",
+      "updated": "2026-09-26"
     },
     {
       "id": "hvac.room.airflow-defaults",

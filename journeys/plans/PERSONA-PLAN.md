@@ -243,6 +243,11 @@ the learning base's backlog. Each becomes a rule file with `status: draft` in th
 cited by section, never the code text reprinted (content/rules/README.md). A person with the
 trade signs it before it is `applied`, and the step then names it in `rules:`.
 
+- **The HVAC six are done (2026-09-26):** four draft rules (`hvac.exhaust.hood-makeup-air`,
+  `hvac.diffuser.neck-velocity`, `hvac.damper.fire-damper`, `hvac.ventilation.outdoor-air`), and
+  the grease-duct step names the applied `hvac.duct.grease-duct`, which already held it; every
+  HVAC step names its rules and none is exempt. They wait on the tester's signature (CHANGELOG).
+
 ## Harness
 
 Built 2026-09-25 (build items 2, 5 and 6). Four scripts, all Node tooling, none in the shell:

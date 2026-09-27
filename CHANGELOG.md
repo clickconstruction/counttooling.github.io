@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): the HVAC rules the course teaches enter the rulebook (RULEBOOK-GAPS, 2026-09-26)
+
+The HVAC third of RULEBOOK-GAPS. The HVAC course's six `rulesExempt` steps, the ones the lesson
+rules check listed as teaching code the rulebook did not hold, now name rules, and
+`node scripts/check-lesson-rules.js --gaps` lists only the plumbing and electrical gaps. Four new
+rule files, all `status: draft` with an empty `used_by` until a person with the trade signs them:
+
+- `hvac.exhaust.hood-makeup-air` (IMC 508.1): a hood's exhaust is replaced by make-up air that
+  runs with it, interlocked with its fan. Both make-up steps name it (chapter 3's `balance`,
+  chapter 7's `interlock`).
+- `hvac.diffuser.neck-velocity` (convention): the 400 to 600 fpm band at a diffuser neck, and
+  the card's worked example, 150 CFM through an 8 in neck at 430 fpm. Draft with no code pointer,
+  on purpose: the app's neck suggestion reads a CFM-to-neck table (`NECK_SIZE_TABLE` in
+  duct-model.js), not the band, and that table's 14 in row runs near 655 fpm, above it, so there
+  is no number in code a pointer could pin. The body's Verify line names HC-TRADE, which questions
+  the band itself.
+- `hvac.damper.fire-damper` (IMC 607.5.1): a listed fire damper where a duct passes a rated wall,
+  none in a grease duct. Named by `dampers`, `nodamper` and chapter 9's `rows`. Its Verify line
+  asks which subsection the kitchen wall falls under (fire wall, barrier or partition carry
+  different exceptions).
+- `hvac.ventilation.outdoor-air` (IMC 403): the outdoor-air minimum, per person plus per floor
+  area, that chapter 9's OA row asks the estimator to find on the schedule. The card teaches no
+  rate and the rule states none.
+
+The NFPA 96 step (`nodamper`, no damper inside a grease duct) needed no new file: the applied
+`hvac.duct.grease-duct` already says a grease duct takes no damper of any kind, so the step names
+it. The values that are not numbers ("required", "interlocked") render as they are on the rule
+pages and in the § popover. One side effect worth knowing: fpm now belongs to two rules, so an
+fpm figure on an unannotated step is flagged only beside the subject of one of them, where
+before `hvac.duct.schedule-factors` owned the unit alone; no step's fpm was judged by it before
+(`--trace`).
+
 ## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
 
 The decomposition map's R20, both items, and its defect D43. The three floating palettes drag

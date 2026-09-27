@@ -216,6 +216,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/hvac/diffuser-neck-velocity/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/hvac/duct-gauge/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
@@ -226,7 +231,22 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/hvac/fire-damper/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/hvac/grease-duct/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/hvac/hood-makeup-air/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://counttooling.com/rules/hvac/outdoor-air/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

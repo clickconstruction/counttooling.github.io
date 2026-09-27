@@ -13,6 +13,16 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): Start here's open card says one thing: this is a sample, and nothing here touches your work (2026-09-27)
+
+Will, 2026-09-27: the card repeated the line the reader had just read on the Learn row, and the rest
+of it taught nothing about where things are. What the card is for is the promise that the lesson
+runs on a sample plan and cannot affect anything else. So Start here's open card now reads: the
+lesson runs on sample sheets, a small restaurant's plumbing plan, opened for you; nothing you do on
+them touches your own projects; if a plan of yours is open, the app asks before it closes it; then
+the one action. A lesson that gives an `opener` gets that card, with the generic closing paragraph
+left out. The other lessons and the course chapters still open on their intro. sw.js restamped.
+
 ## docs(rules): one status for every settled rule, and the Measuring lesson's gas main (2026-09-27)
 
 The three trades' dossiers were settled the same day by three hands, and they disagreed on what a

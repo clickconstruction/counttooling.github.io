@@ -178,6 +178,12 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the card starts lesson 0
     await page.click('#canvasEmptyHintStart');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['lesson:start', 'sheets']);
+    // the open card says one thing, that this is a sample and nothing here touches the reader's work;
+    // it repeats neither the Learn row's line nor itself
+    await expect(page.locator('#tourBody')).toContainText('Nothing you do on them touches your own projects');
+    await expect(page.locator('#tourBody')).not.toContainText('Four minutes for anyone new');
+    await expect(page.locator('#tourBody')).not.toContainText('whatever it takes for granted');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 9');
     await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'what', null, { timeout: 30000 });
     // where things are: Next moves the light, one part of the screen per card

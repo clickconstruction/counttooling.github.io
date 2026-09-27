@@ -35,7 +35,7 @@ When an addendum or revised sheet arrives mid-bid, **drag the new PDF onto the a
 
 - **Pages sidebar**: every sheet is listed with badges: a yellow page number means the scale is set, and a yellow outline means the sheet has marks on it. You can see at a glance which sheets are calibrated and which are done.
 - **Marked-page navigation**: the `‹‹` `››` buttons either side of the page arrows in the bottom bar (or `Shift`+`←`/`→`) jump straight between sheets that have marks, skipping the empty ones.
-- **Long titles**: click the **Pages** heading in the sidebar to open page settings, where you can toggle title truncation and hide unmarked pages from the sidebar.
+- **Long titles**: click the gear beside the **Pages** heading in the sidebar to open page settings, where you can toggle title truncation and hide unmarked pages from the sidebar.
 
 ## Next steps
 

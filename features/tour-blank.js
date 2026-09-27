@@ -488,9 +488,9 @@
     {
       id: 'snap', title: 'Header: Snap to 45°', kind: 'do',
       body: () => 'Runs on a plan are square. With snap on, a line you draw holds level, upright or at 45°, however your hand wobbles.\n' + (narrow()
-        ? '1. Tap ☰ at the top left, then the LINE TYPES heading in the sidebar: Line Type Settings opens.\n2. Turn on [[Snap to 45° angles]] and close the dialog.\n'
+        ? '1. Tap ☰ at the top left, then the gear beside LINE TYPES in the sidebar: Line Type Settings opens.\n2. Turn on [[Snap to 45° angles]] and close the dialog.\n'
         : '1. In the header, click [[Snap to 45° angles]] (or press J) so it lights.\n') + 'It is a setting for this device, not this project. The tour puts it back the way it was when you leave.',
-      target: ['#lineTypeSnapToHVBtn', '#lineTypeSnapToHVHeaderBtn', '#lineTypesSectionTitle'],
+      target: ['#lineTypeSnapToHVBtn', '#lineTypeSnapToHVHeaderBtn', '#lineTypesSettingsBtn'],
       check: () => !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical),
       action: { label: 'Turn snap on', run: ACT.snap },
     },
@@ -661,7 +661,7 @@
     },
     {
       id: 'summary', title: 'Sidebar: Summary', kind: 'do', hold: true,
-      body: 'The Summary is the takeoff so far, the counts and feet a price is built on: counts, feet by line type, rooms, duct.\n1. In the left sidebar, under SUMMARY, click your counter\'s total.\nThe breakdown says where every mark sits, sheet by sheet, with the multiply zone already applied. The SUMMARY heading itself opens the legend\'s settings.',
+      body: 'The Summary is the takeoff so far, the counts and feet a price is built on: counts, feet by line type, rooms, duct.\n1. In the left sidebar, under SUMMARY, click your counter\'s total.\nThe breakdown says where every mark sits, sheet by sheet, with the multiply zone already applied. The gear beside the SUMMARY heading opens the legend\'s settings.',
       target: ['#summaryList .summary-item-clickable', '#summarySectionTitle'],
       check: () => modalUp('summaryCountDetailModal'),
       action: { label: 'Open the breakdown', run: ACT.summary },

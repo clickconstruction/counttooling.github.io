@@ -14,8 +14,8 @@
    * App.getQuickKeySlotFor deferred. Row activation stays on the ONE selection
    * path: rows call App.setActiveCounterType / App.setActiveLineType, the same
    * functions the Quick Keys number row calls.
-   * R14: the sections' controls live here too (the collapse chevrons through
-   * bindCollapse, the search inputs, the inline filter buttons and their toast,
+   * R14: the sections' controls live here too (the folds through bindCollapse,
+   * where every title folds its list (HEADING-CLICK), the search inputs, the inline filter buttons and their toast,
    * Done reordering), bound at load; App.syncSidebarFilterButtons draws the filter
    * buttons from updateUI. The filter-scope getters/setters stay in app.js.
    * Boundary rule: read shared deps from App.* at call time, never captured at
@@ -300,28 +300,27 @@
   // syncFilterScopeSegment stay in app.js, because boot calls the setters before any
   // feature file loads; everything here reads them through App.* at click time.
 
-  // A section's collapse chevron. The trigger is the chevron itself (which stops the click
-  // so the section title's settings opener does not fire too), or, for Lines and Groups,
-  // the section title.
-  function bindCollapse(stateKey, sectionId, iconId, triggerId) {
-    const onTitle = !!triggerId && triggerId !== iconId;
-    document.getElementById(triggerId || iconId).onclick = (e) => {
-      if (!onTitle) e.stopPropagation();
+  // A section's fold. HEADING-CLICK (2026-09-27): one rule for every title, a click on
+  // it folds or opens its list. Settings sit behind the gear beside the title (the
+  // settings feature files bind it). A chevron inside its title rides the title's click;
+  // one outside it (after "+ Add", flush right) forwards to the title.
+  function bindCollapse(stateKey, sectionId, iconId, titleId) {
+    const title = document.getElementById(titleId);
+    const icon = document.getElementById(iconId);
+    title.onclick = () => {
       const state = App.state;
       state[stateKey] = !state[stateKey];
       document.getElementById(sectionId).classList.toggle('collapsed', state[stateKey]);
-      document.getElementById(iconId).textContent = state[stateKey] ? '▶' : '▼';
+      icon.textContent = state[stateKey] ? '▶' : '▼';
     };
+    if (!title.contains(icon)) icon.onclick = () => title.click();
   }
-  bindCollapse('pagesListCollapsed', 'pagesSection', 'pagesCollapseIcon');
-  bindCollapse('countersListCollapsed', 'countersSection', 'countersCollapseIcon');
-  bindCollapse('lineTypesListCollapsed', 'lineTypesSection', 'lineTypesCollapseIcon');
-  bindCollapse('summaryListCollapsed', 'summarySection', 'summaryCollapseIcon');
+  bindCollapse('pagesListCollapsed', 'pagesSection', 'pagesCollapseIcon', 'pagesSectionTitle');
+  bindCollapse('countersListCollapsed', 'countersSection', 'countersCollapseIcon', 'countersSectionTitle');
+  bindCollapse('lineTypesListCollapsed', 'lineTypesSection', 'lineTypesCollapseIcon', 'lineTypesSectionTitle');
+  bindCollapse('summaryListCollapsed', 'summarySection', 'summaryCollapseIcon', 'summarySectionTitle');
   bindCollapse('linesListCollapsed', 'linesSection', 'linesCollapseIcon', 'linesSectionTitle');
   bindCollapse('groupsListCollapsed', 'groupsSection', 'groupsCollapseIcon', 'groupsSectionTitle');
-  // The Groups chevron moved out of the h3 (flush right, after "+ Add"), so it
-  // forwards to the title toggle it used to ride along with.
-  document.getElementById('groupsCollapseIcon').onclick = () => document.getElementById('groupsSectionTitle').click();
 
   const counterSearchInput = document.getElementById('counterSearchInput');
   if (counterSearchInput) {

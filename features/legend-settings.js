@@ -9,11 +9,13 @@
  * Its own IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
  * openLegendSettingsModal back onto App, and binds the modal's close / live
- * appearance handlers + the Summary section-title opener at this file's load.
+ * appearance handlers + the Summary gear opener (#summarySettingsBtn) at this
+ * file's load. HEADING-CLICK (2026-09-27): the SUMMARY title folds the list;
+ * the gear and the legend buttons' right-click menu open this modal.
  *
  * Scope is the Summary Legend *settings* modal only. The on-canvas legend
  * overlay (drawLegend, the legendBtn/legendBtnSidebar toggles), the Summary
- * section *collapse* icon (#summaryCollapseIcon), and every state.legendSettings
+ * section fold (features/sidebar-lists.js), and every state.legendSettings
  * save/load/import site stay in app.js. Boundary rule: read shared deps from
  * App.* at call time, never captured at load. See ARCHITECTURE.md "Feature
  * files / window.App registry". No build step.
@@ -84,10 +86,9 @@
     };
   });
 
-  document.getElementById('summarySectionTitle').onclick = (e) => {
-    if (e.target.closest('#summaryCollapseIcon')) return;
-    openLegendSettingsModal();
-  };
+  // HEADING-CLICK (2026-09-27): the gear beside the title opens the settings; the title
+  // itself folds the list (features/sidebar-lists.js bindCollapse).
+  document.getElementById('summarySettingsBtn').onclick = () => openLegendSettingsModal();
 
   document.getElementById('legendSettingsClose').onclick = () => App.hideModal('legendSettingsModal');
 

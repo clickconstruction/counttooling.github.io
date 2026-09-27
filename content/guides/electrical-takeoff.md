@@ -50,7 +50,7 @@ That warning is the point of the section. The tour counts three receptacles and 
 
 ## Deliver the numbers
 
-- The **legend** [[legend]] on an electrical project draws as a compact ruled block, the way an E-sheet's own legend does, with a mount-height column and the panel in its footer (click the **Summary** heading to open **Summary Legend** and switch it to the tally or the full style); [Show Report](/guides/reports-and-exports/) gives the full breakdown by type and page.
+- The **legend** [[legend]] on an electrical project draws as a compact ruled block, the way an E-sheet's own legend does, with a mount-height column and the panel in its footer (click the gear beside the **Summary** heading to open **Summary Legend** and switch it to the tally or the full style); [Show Report](/guides/reports-and-exports/) gives the full breakdown by type and page.
 - **Export PDFs** produces the marked-up deliverable with the report attached.
 - **Copy Summary (Email/Text)** puts a clean text tally in an email; totals are always decimal feet regardless of each sheet's scale unit.
 - **Open in TakeoffTooling** hands the devices, runs, drops, wire and cable to the electrical pricing app, where each device explodes into its box, ring, plate and connectors and every row picks up labor and price from your book, waste included. CountTooling stops at what the drawing knows.

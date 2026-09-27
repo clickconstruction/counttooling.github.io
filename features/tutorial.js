@@ -386,7 +386,7 @@
     },
     {
       id: 'summary', title: 'Read what the drawing knows', kind: 'read',
-      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS, where the files you send out are made, with its list already open. Its heading opens the settings for the legend, the key drawn on the sheet, not the list.\nIt lists the receptacles and the 3/4" EMT feet, the verticals inside them.\nBelow come the derived rows, worked out from the runs: #12 THHN by the foot. The green, the ground wire, has its own row.\nWire is never a mark, so it can never drift from the runs.',
+      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS, where the files you send out are made, with its list already open. A click on its heading folds the list. The gear beside it opens the settings for the legend, the key drawn on the sheet.\nIt lists the receptacles and the 3/4" EMT feet, the verticals inside them.\nBelow come the derived rows, worked out from the runs: #12 THHN by the foot. The green, the ground wire, has its own row.\nWire is never a mark, so it can never drift from the runs.',
       target: ['#summaryList', '#summaryCollapseIcon'],
       check: () => true,
     },
@@ -635,10 +635,11 @@
     },
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
-      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS with its list already open; its heading opens the settings for the legend, the key drawn on the sheet.\n1. In the SUMMARY list, click the Water Closet row.\nThe breakdown shows the count per sheet, with a small picture of where every mark sits. The zone\'s ×3 is already applied.\nOpen this page when someone asks where the number came from.',
-      // a folded list lights its ▶, never the heading, which opens the Summary Legend settings (C23)
-      target: () => ladder('#legendSettingsModal.visible [data-modal-close]', summaryRowOf('counter', pCounter()), state().summaryListCollapsed ? '#summaryCollapseIcon' : null, '#summaryList'),
-      hint: () => { const lg = el('legendSettingsModal'); if (lg && lg.classList.contains('visible')) return { code: 'wrong-item', text: 'That is the Summary Legend, which the SUMMARY heading opens. Close it with ×, then click the Water Closet row in the list' }; return state().summaryListCollapsed ? { code: 'not-yet', text: 'SUMMARY is folded: click the ▶ beside it (not the heading), then the Water Closet row' } : ''; },
+      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS with its list already open. The gear beside its heading opens the settings for the legend, the key drawn on the sheet.\n1. In the SUMMARY list, click the Water Closet row.\nThe breakdown shows the count per sheet, with a small picture of where every mark sits. The zone\'s ×3 is already applied.\nOpen this page when someone asks where the number came from.',
+      // a folded list lights its heading, which folds and opens it like every sidebar title (HEADING-CLICK);
+      // the gear beside it opens the Summary Legend (C23)
+      target: () => ladder('#legendSettingsModal.visible [data-modal-close]', summaryRowOf('counter', pCounter()), state().summaryListCollapsed ? '#summarySectionTitle' : null, '#summaryList'),
+      hint: () => { const lg = el('legendSettingsModal'); if (lg && lg.classList.contains('visible')) return { code: 'wrong-item', text: 'That is the Summary Legend, which the gear beside SUMMARY opens. Close it with ×, then click the Water Closet row in the list' }; return state().summaryListCollapsed ? { code: 'not-yet', text: 'SUMMARY is folded: click it to open the list, then the Water Closet row' } : ''; },
       check: () => { const m = document.getElementById('summaryCountDetailModal'); return !!m && m.classList.contains('visible'); },
       hold: true,   // the step IS the dialog: the reader leaves it with Next, which closes it
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
@@ -781,8 +782,8 @@
     },
     {
       id: 'legend', title: 'What the sheet says now', kind: 'read',
-      body: 'Look at the sheet. The main is painted at its real width under the line, and a size chip rides each piece. The room wears its totals tag.\nThe legend, the key drawn on the sheet, lists duct by size and the room\'s air.\n1. Click the SUMMARY heading, over the running totals, to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed. Show duct true width turns the wide band off when you want bare lines.',
-      target: ['#legendSettingsBtn', '#legendBtn', '#summarySectionTitle'],
+      body: 'Look at the sheet. The main is painted at its real width under the line, and a size chip rides each piece. The room wears its totals tag.\nThe legend, the key drawn on the sheet, lists duct by size and the room\'s air.\n1. Click the gear beside the SUMMARY heading, over the running totals, to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed. Show duct true width turns the wide band off when you want bare lines.',
+      target: ['#summarySettingsBtn', '#legendBtn'],
       check: () => true,
     },
     {
@@ -1494,8 +1495,8 @@
   // Create Counter: a 900-px-tall window scrolled the dialog down to the button the moment it
   // opened, and the Name field the card asks for first sat out of sight (by hand, 2026-09-25).
   // Wherever a step lights the pages list, the PAGES ▶ follows it: arming a counter folds PAGES,
-  // its heading opens Page Settings rather than the list, and "Under PAGES, click M-501" had
-  // nothing to click (by hand, 2026-09-25).
+  // and "Under PAGES, click M-501" had nothing to click (by hand, 2026-09-25). The title folds
+  // and opens the list too since HEADING-CLICK; the ▶ is the lit mark of the fold.
   function targetsOf(step) {
     let list;
     if (typeof step.target !== 'function') list = step.target || [];
@@ -1504,7 +1505,7 @@
     return i < 0 ? list : list.slice(0, i + 1).concat(['#pagesCollapseIcon'], list.slice(i + 1));
   }
   // The status line for a step that sends the reader to another sheet while PAGES is folded.
-  const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? { code: 'wrong-page', text: 'PAGES is folded: click the ▶ beside it, then ' + label } : ''; };
+  const pagesFoldedHint = (label) => { const sec = document.getElementById('pagesSection'); return sec && sec.classList.contains('collapsed') ? { code: 'wrong-page', text: 'PAGES is folded: click it to open the list, then ' + label } : ''; };
   // The app's floating tool surfaces: the Chain and Drop palettes, the water size popover and the
   // water card at the foot of the sheet. Whatever a step names, the card keeps off one that shows:
   // the reader works in it (found in the persona calibration, 2026-09-25: the card sat on the Chain

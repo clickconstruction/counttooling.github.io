@@ -15,10 +15,12 @@
  * Its own IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
  * openCounterSettingsModal back onto App, and binds the modal's value handlers
- * + close + reorder + the Counters section-title opener at this file's load.
+ * + close + reorder + the Counters gear opener (#countersSettingsBtn) at this
+ * file's load. HEADING-CLICK (2026-09-27): the COUNTERS title folds the list;
+ * the gear and the Counter buttons' right-click menu open this modal.
  *
- * Scope is the Counter *settings* modal only. The Counters section *collapse*
- * icon (#countersCollapseIcon), the sidebar inline show-only button
+ * Scope is the Counter *settings* modal only. The Counters section fold (the
+ * title and #countersCollapseIcon, features/sidebar-lists.js), the sidebar inline show-only button
  * (#counterShowOnlyOnPageInlineBtn), the shared #sidebarReorderFinish, and the
  * Escape-key close branch stay in app.js; they sync the static modal DOM by id
  * / set state directly, so they are independent of the moved JS. Boundary rule:
@@ -65,10 +67,9 @@
     App.showModal('counterSettingsModal');
   }
 
-  document.getElementById('countersSectionTitle').onclick = (e) => {
-    if (e.target.closest('#countersCollapseIcon')) return;
-    openCounterSettingsModal();
-  };
+  // HEADING-CLICK (2026-09-27): the gear beside the title opens the settings; the title
+  // itself folds the list (features/sidebar-lists.js bindCollapse).
+  document.getElementById('countersSettingsBtn').onclick = () => openCounterSettingsModal();
 
   document.getElementById('counterSettingsClose').onclick = () => App.hideModal('counterSettingsModal');
   // Backdrop click closes like the Close button (Tier-3 B1 / J4; same

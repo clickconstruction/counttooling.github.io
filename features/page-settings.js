@@ -7,12 +7,14 @@
  * Its own IIFE: it reaches the cross-cutting state + helpers through the shared
  * window.App registry that app.js populates during its own load, registers
  * openPageSettingsModal back onto App, and binds the modal's truncate /
- * hide-unmarked toggles + close + the Pages section-title opener at this file's
- * load.
+ * hide-unmarked toggles + close + the Pages gear opener (#pagesSettingsBtn) at
+ * this file's load. HEADING-CLICK (2026-09-27): the PAGES title folds the list
+ * like every other sidebar title; the gear beside it is this modal's one
+ * entrance on every device.
  *
- * Scope is the Page *settings* modal only. The Pages section *collapse* icon
- * (#pagesCollapseIcon) is a different element and its toggle stays in app.js,
- * as do the scattered collapse-icon writes and the Escape-key close branch.
+ * Scope is the Page *settings* modal only. The Pages section fold (the title and
+ * its #pagesCollapseIcon, features/sidebar-lists.js bindCollapse), the scattered
+ * collapse-icon writes and the Escape-key close branch live elsewhere.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build
  * step.
@@ -37,10 +39,9 @@
     App.showModal('pageSettingsModal');
   }
 
-  document.getElementById('pagesSectionTitle').onclick = (e) => {
-    if (e.target.closest('#pagesCollapseIcon')) return;
-    openPageSettingsModal();
-  };
+  // HEADING-CLICK (2026-09-27): the gear beside the title opens the settings; the title
+  // itself folds the list (features/sidebar-lists.js bindCollapse).
+  document.getElementById('pagesSettingsBtn').onclick = () => openPageSettingsModal();
 
   const pageSettingsTruncateCb = document.getElementById('pageSettingsTruncate');
   const pageSettingsTruncateBtn = document.getElementById('pageSettingsTruncateBtn');

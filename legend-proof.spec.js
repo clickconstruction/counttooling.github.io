@@ -11,8 +11,9 @@
  * - Rotation anchor (J18): after R the legend (anchored in page coords) is
  *   walked back fully onto the rotated sheet instead of hanging half off it,
  *   and a right-edge anchor keeps the box's ideal width (no row clipping).
- * - Summary heading tooltip (J8): says what a click does ("Legend settings —
- *   ▼ collapses"), not the lie "Click to collapse".
+ * - Summary heading tooltip (J8): says what a click does. Since HEADING-CLICK
+ *   (2026-09-27) a click folds the list, like every sidebar title, and the
+ *   gear beside it opens Summary Legend.
  * - Footer totals (J18): inline words ("counts" / "of lines"), and clicking
  *   the pair scrolls to + flashes the sidebar Summary (was 2 dead clicks).
  * - R gate (J18): R is ignored while the Count-by-Page modal is open (its
@@ -227,11 +228,17 @@ test.describe('Tier-3 B10 — legend & proof surface', () => {
     expect(errors).toEqual([]);
   });
 
-  test('Summary heading tooltip says what a click does (J8)', async ({ page }) => {
+  test('Summary heading tooltip says what a click does (J8, HEADING-CLICK)', async ({ page }) => {
     await boot(page);
-    await expect(page.locator('#summarySectionTitle')).toHaveAttribute('title', 'Legend settings, ▼ collapses');
-    // The heading still opens Legend Settings (the tooltip now tells the truth).
+    await expect(page.locator('#summarySectionTitle')).toHaveAttribute('title', 'Click to fold or open the list');
+    // The heading folds the list like every sidebar title; the gear beside it opens Summary Legend.
     await page.locator('#summarySectionTitle').click();
+    await expect(page.locator('#summarySection')).toHaveClass(/collapsed/);
+    await expect(page.locator('#legendSettingsModal')).not.toHaveClass(/visible/);
+    await page.locator('#summarySectionTitle').click();
+    await expect(page.locator('#summarySection')).not.toHaveClass(/collapsed/);
+    await expect(page.locator('#summarySettingsBtn')).toHaveAttribute('title', 'Summary Legend settings');
+    await page.locator('#summarySettingsBtn').click();
     await expect(page.locator('#legendSettingsModal')).toHaveClass(/visible/);
     expect(errors).toEqual([]);
   });

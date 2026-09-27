@@ -46,50 +46,11 @@
   let panelCollapsed = false;
   let wired = false;
   const PANEL_POS_KEY = 'dropPanelPos';
+  let floating = null;   // { applyPos, wireDrag } from App.makeFloatingPanel, made in wire()
 
   // PDF-space hit radius for node clicks — the context-menu hitTest's 12px
   // feel, slightly widened because rapid clicking is the whole point here.
   const NODE_HIT_PX = 14;
-
-  function loadPanelPos() {
-    try { return JSON.parse(localStorage.getItem(PANEL_POS_KEY)) || null; } catch { return null; }
-  }
-
-  function applyPanelPos(panel) {
-    const pos = loadPanelPos();
-    if (!pos) return;
-    const w = panel.offsetWidth || 200;
-    if (pos.x < 0 || pos.y < 0 || pos.x + w > window.innerWidth || pos.y + 60 > window.innerHeight) return;
-    panel.style.left = pos.x + 'px';
-    panel.style.top = pos.y + 'px';
-  }
-
-  function wireDrag(panel) {
-    const head = document.getElementById('dropPanelHead');
-    if (!head) return;
-    head.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('#dropPanelClose')) return;
-      const rect = panel.getBoundingClientRect();
-      const offX = e.clientX - rect.left;
-      const offY = e.clientY - rect.top;
-      head.setPointerCapture(e.pointerId);
-      const move = (ev) => {
-        const x = Math.max(0, Math.min(ev.clientX - offX, window.innerWidth - rect.width));
-        const y = Math.max(0, Math.min(ev.clientY - offY, window.innerHeight - 60));
-        panel.style.left = x + 'px';
-        panel.style.top = y + 'px';
-      };
-      const up = () => {
-        head.removeEventListener('pointermove', move);
-        head.removeEventListener('pointerup', up);
-        const r = panel.getBoundingClientRect();
-        try { localStorage.setItem(PANEL_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); } catch { /* storage full/blocked — position just won't persist */ }
-      };
-      head.addEventListener('pointermove', move);
-      head.addEventListener('pointerup', up);
-      e.preventDefault();
-    });
-  }
 
   function sameSize(a, b) { return !!a && !!b && a.value === b.value && a.unit === b.unit; }
 
@@ -215,7 +176,7 @@
     if (!active) { panelCollapsed = false; selected = null; }
     panel.style.display = active && !panelCollapsed ? '' : 'none';
     if (!active || panelCollapsed) return;
-    applyPanelPos(panel);
+    floating.applyPos();
     renderSizes();
     renderFoot();
   }
@@ -238,8 +199,9 @@
   function wire() {
     if (wired) return;
     wired = true;
-    const panel = document.getElementById('dropPanel');
-    if (panel) wireDrag(panel);
+    // The title-bar drag and the remembered spot: App.makeFloatingPanel (features/floating-panel.js).
+    floating = App.makeFloatingPanel({ panelId: 'dropPanel', headId: 'dropPanelHead', closeId: 'dropPanelClose', posKey: PANEL_POS_KEY, defaultWidth: 200 });
+    floating.wireDrag();
     document.getElementById('dropPanelClose').addEventListener('click', closeDropPanel);
     // Size rows (delegated — rows re-render on every sync).
     document.getElementById('dropSizeList').addEventListener('click', (e) => {

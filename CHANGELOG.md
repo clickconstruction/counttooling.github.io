@@ -13,6 +13,35 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
+
+The decomposition map's R20, both items, and its defect D43. The three floating palettes drag
+by their title bar and remember the spot per device, and each carried its own copy of the same
+forty lines to do it, the same down to the comments: only the ids, the storage key and the
+width fallback (300 for Chain, 200 for the other two) differed. That code is one helper now,
+`App.makeFloatingPanel({ panelId, headId, closeId, posKey, defaultWidth })` in the new
+features/floating-panel.js, returning `{ applyPos, wireDrag }`. Each tool makes its own inside
+its `wire()`, at call time, so the three keys (`chainPanelPos`, `dropPanelPos`,
+`highlightPanelPos`) and every id stay where they were. The rules they shared carry over as
+they were: a stored spot that no longer fits the viewport is ignored and the CSS dock wins, a
+drag stays inside the viewport with the head 60px clear of the bottom, and a press on the ×
+never drags. The open, close and collapse lifecycle stayed in each tool; it wraps the tool's
+own sync and tool enum, and little of it would share.
+
+**A cancelled touch drag lets go (D43).** A drag ended only on pointerup. When the browser
+cancels a touch instead (a system gesture, a palm, a call coming in), it sends pointercancel and
+never pointerup, so the drag's move handler, with its old offset, stayed on the title bar and
+dragged the panel on the next movement over it. The helper ends a drag on either, and a
+cancelled drag keeps and remembers the spot it reached, like a drop.
+
+A feature file rather than the app.js registry block: the helper is forty lines with no app.js
+dependency, and three other extractions are working in app.js today. It loads just before
+chain.js. Tests first: drop-mode.spec.js and highlight-labels.spec.js pin drag persistence the
+way chain.spec.js pins `chainPanelPos` (green before the change; the Drop case also pins the
+viewport-fit fallback), and mobile-touch.spec.js drives a real touch drag over CDP on each of the
+three palettes, cancels it, and reads the title bar's listeners (red before the change: the
+move handler was still bound).
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

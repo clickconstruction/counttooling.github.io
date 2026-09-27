@@ -21,12 +21,16 @@
  *    vertices, a Highlight, a Multiply Zone (whose multiplier stays unfocused on
  *    touch, D22; the mouse focus is pinned by lessons.spec.js and tutorial.spec.js),
  *    and a Note, added and then reopened by a tap on it.
+ * 5. R20: a touch drag on a floating palette's title bar (Chain, Drop, Highlights) that the
+ *    browser cancels mid-way (pointercancel) unbinds its move handler, so the panel stays
+ *    put and a later touch cannot drag it by a stale offset.
  *
  * (The zoom-rail half of B9 — stays until dismissed, no ~5s idle auto-fade —
  * lives in zoom-rail.spec.js.)
  */
 const { test, expect } = require('@playwright/test');
 const path = require('path');
+const { bootApp, uploadPdf, collectConsoleErrors } = require('./spec-helpers');
 
 const MOBILE = { width: 390, height: 844 };
 
@@ -337,5 +341,72 @@ test.describe('R08: a quick touch tap places through the live path', () => {
     expect((await ann(page)).notes).toBe(1);
 
     expect(errors).toEqual([]);
+  });
+});
+
+// R20 (2026-09-26, D43): the three floating palettes (Chain, Drop, Highlights) share one drag
+// helper, App.makeFloatingPanel. A touch drag the browser cancels (a system gesture, a palm, an
+// incoming call) ends in pointercancel, never pointerup; the helper used to unbind its move
+// handler only on pointerup, so the cancelled drag's handler, with its stale offset, stayed on
+// the title bar and dragged the panel on any later pointer movement over it. Real touches over
+// CDP (touchCancel is what Chromium turns into pointercancel); the head's listeners are read
+// with DOMDebugger.getEventListeners, so "no move handler left" is checked, not inferred.
+test.describe('R20: a cancelled touch drag on a palette leaves nothing bound', () => {
+  test.use({ hasTouch: true, viewport: { width: 1024, height: 768 } });
+
+  const PALETTES = [
+    { tool: 'CHAIN', panel: 'chainPanel', head: 'chainPanelHead', posKey: 'chainPanelPos' },
+    { tool: 'DROP', panel: 'dropPanel', head: 'dropPanelHead', posKey: 'dropPanelPos' },
+    { tool: 'HIGHLIGHT', panel: 'highlightPanel', head: 'highlightPanelHead', posKey: 'highlightPanelPos' },
+  ];
+
+  test('Chain, Drop and Highlights: pointercancel unbinds the move handler and the panel stays put', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
+    await uploadPdf(page);
+    const cdp = await page.context().newCDPSession(page);
+    const moveListeners = async (id) => {
+      const { result } = await cdp.send('Runtime.evaluate', { expression: `document.getElementById(${JSON.stringify(id)})` });
+      const { listeners } = await cdp.send('DOMDebugger.getEventListeners', { objectId: result.objectId });
+      await cdp.send('Runtime.releaseObject', { objectId: result.objectId });
+      return listeners.filter((l) => l.type === 'pointermove').length;
+    };
+    const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchCancel' || type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+    const panelAt = (id) => page.evaluate((pid) => {
+      const r = document.getElementById(pid).getBoundingClientRect();
+      return { left: Math.round(r.left), top: Math.round(r.top) };
+    }, id);
+
+    for (const pal of PALETTES) {
+      await page.evaluate((t) => { window.state.tool = window.App.TOOL[t]; window.App.updateUI(); }, pal.tool);
+      await expect(page.locator('#' + pal.panel)).toBeVisible();
+      const start = await panelAt(pal.panel);
+      const box = await page.locator('#' + pal.head).boundingBox();
+      const x0 = Math.round(box.x + 60), y0 = Math.round(box.y + 10);
+
+      // A finger lands on the title bar and drags; the move handler is bound and the panel
+      // follows the finger (touch moves land a frame later, so poll for the last one).
+      await touch('touchStart', x0, y0);
+      for (let i = 1; i <= 4; i++) await touch('touchMove', x0 + 40 * i, y0 + 30 * i);
+      expect(await moveListeners(pal.head)).toBe(1);
+      const moved = { left: start.left + 160, top: start.top + 120 };
+      await expect.poll(() => panelAt(pal.panel)).toEqual(moved);
+
+      // The browser cancels the touch: nothing stays bound, and the panel keeps the spot the drag
+      // reached, remembered like a drop.
+      await touch('touchCancel');
+      await expect.poll(() => moveListeners(pal.head)).toBe(0);
+      expect(await panelAt(pal.panel)).toEqual(moved);
+      expect(await page.evaluate((k) => JSON.parse(localStorage.getItem(k)), pal.posKey)).toEqual({ x: moved.left, y: moved.top });
+
+      // A later pointer movement over the head (no drag started) moves nothing.
+      const hb = await page.locator('#' + pal.head).boundingBox();
+      await page.evaluate(({ id, x, y }) => {
+        document.getElementById(id).dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 9, pointerType: 'touch', clientX: x, clientY: y }));
+      }, { id: pal.head, x: Math.round(hb.x + 5), y: Math.round(hb.y + 300) });
+      expect(await panelAt(pal.panel)).toEqual(moved);
+    }
+
+    errors.assertNoErrors();
   });
 });

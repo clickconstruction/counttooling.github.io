@@ -14,6 +14,7 @@
  * ticks and hands back to the menu at the course; the doors.
  */
 const { test, expect } = require('@playwright/test');
+const { pastStartHere } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 async function boot(page, url, errors) {
@@ -320,6 +321,7 @@ test.describe('The electrical course: a question is answered with a click', () =
 
   test('the doors: the empty-canvas link, Project Settings, ?course=electrical; the section, its progress, and both courses in one menu', async ({ page }) => {
     const errors = [];
+    await pastStartHere(page);   // a returning device: the empty canvas shows the course links
     await boot(page, '/app/?course=electrical', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
     // the opener and the nine chapters; the plumbing section holds whatever its course registers

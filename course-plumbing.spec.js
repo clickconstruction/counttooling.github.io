@@ -14,6 +14,7 @@
  * to the Learn menu at the course with the next chapter lit; the doors; the reveal itself.
  */
 const { test, expect } = require('@playwright/test');
+const { pastStartHere } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 async function boot(page, url, errors) {
@@ -388,6 +389,7 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
 test.describe('The plumbing course: the doors and the reveal', () => {
   test('the doors: the empty-canvas link, Project Settings, ?course=plumbing; the list and its progress', async ({ page }) => {
     const errors = [];
+    await pastStartHere(page);   // a returning device: the empty canvas shows the course links
     await boot(page, '/app/?course=plumbing', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
     // nine chapters and the uncounted opener ahead of them, lit first for a new reader

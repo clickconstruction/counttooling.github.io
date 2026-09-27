@@ -1767,7 +1767,12 @@
     // The advanced-plan offer stays; only its leading separator follows the tours.
     const advSep = el('canvasEmptyHintAdvancedSep');
     if (advSep) advSep.style.display = allDone ? 'none' : '';
+    // LEARN-START: a device that has finished nothing sees one Start here card instead (features/lessons.js)
+    if (App.syncStartHere) App.syncStartHere();
   }
+  // Any tour with a done key (the three trade tours, and the blank tour through registerTour)
+  // finished on this device: the Start here card is for a device that has finished nothing.
+  App.anyTourDone = () => Object.keys(TOURS).some((id) => { try { return !!(TOURS[id].doneKey && localStorage.getItem(TOURS[id].doneKey)); } catch (_) { return false; } });
 
   // The card drags by its head (mouse, pen or finger), so it never has to sit on the
   // part of the sheet the reader is working on.
@@ -1835,7 +1840,8 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint };
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
+    lastSheetClick: () => lastSheetClick };   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

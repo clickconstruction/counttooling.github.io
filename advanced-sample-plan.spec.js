@@ -9,6 +9,7 @@
  * done (only its leading separator follows the tours).
  */
 const { test, expect } = require('@playwright/test');
+const { pastStartHere } = require('./spec-helpers');
 
 async function boot(page, errors) {
   page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
@@ -20,6 +21,7 @@ async function boot(page, errors) {
 test.describe('Engineered (advanced) sample plan', () => {
   test('the empty canvas offers it beside the tours and opens it through the intake', async ({ page }) => {
     const errors = [];
+    await pastStartHere(page);   // a returning device: the line of links, not the fresh device's Start here card
     await boot(page, errors);
     const link = page.locator('#canvasEmptyHintAdvancedPlan');
     await expect(link).toBeVisible();

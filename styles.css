@@ -1727,6 +1727,19 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .canvas-empty-hint-tour a { color: var(--accent); pointer-events: auto; position: relative; z-index: 6; }
 .canvas-empty-hint-advanced a { color: var(--accent); pointer-events: auto; position: relative; z-index: 6; }
 .canvas-empty-hint-learn a { color: var(--accent); pointer-events: auto; position: relative; z-index: 6; }
+/* LEARN-START: a device that has finished nothing sees one Start here card under "Drop a plan
+   here" instead of the line of tour, lesson and course links (features/lessons.js syncStartHere). */
+.canvas-empty-hint.is-fresh .canvas-empty-hint-tour,
+.canvas-empty-hint.is-fresh .canvas-empty-hint-learn,
+.canvas-empty-hint.is-fresh .canvas-empty-hint-advanced { display: none !important; }
+.canvas-empty-hint-start:not([hidden]) { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 18px; }
+.canvas-empty-start-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: min(20rem, 100%); max-width: 24rem; padding: 14px 18px; text-align: left; text-decoration: none; color: var(--text); background: var(--surface2); border: 1px solid var(--border2); border-left: 3px solid var(--accent); border-radius: 10px; pointer-events: auto; position: relative; z-index: 6; }
+.canvas-empty-start-card:hover, .canvas-empty-start-card:focus-visible { border-color: var(--accent); background: var(--surface3); outline: none; }
+.canvas-empty-start-kicker { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
+.canvas-empty-start-title { font-size: 1.15rem; font-weight: 600; color: var(--text); }
+.canvas-empty-start-min { font-size: 0.8rem; font-weight: 500; color: var(--accent); margin-left: 6px; }
+.canvas-empty-start-sub { font-size: 0.85rem; line-height: 1.4; color: var(--text2); }
+.canvas-empty-start-all { font-size: 0.85rem; color: var(--accent); pointer-events: auto; position: relative; z-index: 6; }
 .tour-link { color: var(--accent); }
 /* On-sheet targets (features/tutorial.js): circles and boundaries drawn over the plan. */
 .tour-zones { position: fixed; left: 0; top: 0; width: 100vw; height: 100vh; pointer-events: none; overflow: visible; }

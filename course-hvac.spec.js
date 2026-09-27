@@ -13,6 +13,7 @@
  * and the compare card with the bid weight; a finished chapter ticks and hands back; the doors.
  */
 const { test, expect } = require('@playwright/test');
+const { pastStartHere } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 async function boot(page, url, errors) {
@@ -237,6 +238,7 @@ test.describe('The HVAC course: a question is answered with a click', () => {
 
   test('the doors: the empty-canvas link, Project Settings, ?course=hvac; three courses in one menu', async ({ page }) => {
     const errors = [];
+    await pastStartHere(page);   // a returning device: the empty canvas shows the course links
     await boot(page, '/app/?course=hvac', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
     await expect(page.locator('#learnCourseList-hvac .learn-row')).toHaveCount(10);   // chapter 0, Before you count, then the nine

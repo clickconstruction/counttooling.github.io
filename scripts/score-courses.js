@@ -33,7 +33,7 @@
  * a button, not the trade word) and a Markdown link read as its words.
  *
  * Adding a file is one line in COURSES and its FIRST_USE block. Today: the three courses,
- * the plumbing, electrical and HVAC tours, the blank-sheet tour and the thirteen lessons.
+ * the plumbing, electrical and HVAC tours, the blank-sheet tour, and Start here with the thirteen lessons.
  *
  *   node scripts/score-courses.js            # the per-chapter score
  *   node scripts/score-courses.js --check    # the check (npm run check, npm run check:courses)
@@ -264,22 +264,26 @@ const FIRST_USE = {
   // step every lesson opens with (lessons.js sheetsStep).
   lessons: {
     'PDF': '(file)', 'set': '(file)',
-    'sidebar': 'plans', 'scale': 'plans', 'mark': 'plans', 'title block': 'plans', 'fixture schedule': 'plans',
-    'schedule': 'plans', 'fixture': 'plans', 'footer': 'plans', 'export': 'plans',
-    'header': 'scale', 'dimension': 'scale', 'detail': 'scale', 'scale zone': 'scale', 'zone': 'scale',
-    'counter': 'counting', 'armed': 'counting', 'bid': 'counting', 'quick key': 'counting', 'number row': 'counting',
-    'status bar': 'counting', 'Artboard': 'counting', 'line type': 'counting',
+    // Start here, the uncounted opener (LEARN-START): the screen's parts and the words its one click needs
+    'takeoff': 'start', 'header': 'start', 'sidebar': 'start', 'counter': 'start', 'line type': 'start',
+    'summary': 'start', 'bid': 'start', 'bid check': 'start', 'export': 'start', 'footer': 'start',
+    'status bar': 'start', 'armed': 'start', 'mark': 'start', 'title block': 'start',
+    'scale': 'plans', 'fixture schedule': 'plans',
+    'schedule': 'plans', 'fixture': 'plans',
+    'dimension': 'scale', 'detail': 'scale', 'scale zone': 'scale', 'zone': 'scale',
+    'quick key': 'counting', 'number row': 'counting',
+    'Artboard': 'counting',
     'snap': 'measuring', 'run': 'measuring', 'trace': 'measuring', 'main': 'measuring',
     'meter': 'measuring', 'range': 'measuring', 'cook line': 'measuring', 'polyline': 'measuring', 'fitting': 'measuring',
     'elbow': 'measuring', 'chip': 'measuring', 'drop': 'measuring', 'palette': 'measuring', 'riser': 'measuring',
-    'summary': 'measuring', 'chain': 'measuring', 'child count': 'measuring',
+    'chain': 'measuring', 'child count': 'measuring',
     'lavatory': 'chain', 'PEX': 'chain', 'mop sink': 'chain', 'hanger': 'chain', 'rulebook': 'chain',
     'jurisdiction': 'chain', 'water closet': 'chain', 'carrier': 'chain',
     'hand sink': 'repeats', 'multiply zone': 'repeats',
     'group': 'organize', 'layer': 'organize', 'alternate': 'organize', 'addendum': 'organize',
     'scope': 'fixing', 'legend': 'fixing',
     'interceptor': 'notes', 'RFI': 'notes', 'GC': 'notes', 'highlight': 'notes',
-    'takeoff': 'organize', 'bid check': 'check', 'hand off': 'check', 'thumbnail': 'check',
+    'hand off': 'check', 'thumbnail': 'check',
     'PipeTooling': 'deliver', 'TakeoffTooling': 'deliver', 'decimal feet': 'deliver',
     'estimator': 'cloud', 'view link': 'cloud', 'cloud': 'cloud',
   },

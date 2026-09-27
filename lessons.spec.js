@@ -1,7 +1,7 @@
 // @ts-check
 /**
- * Learn (features/lessons.js): thirteen short lessons on the tour engine, on the
- * three-sheet lesson set (samples/sample-lessons.pdf).
+ * Learn (features/lessons.js): Start here, the uncounted opener, and thirteen short lessons
+ * on the tour engine, on the four-sheet lesson set (samples/sample-lessons.pdf).
  *
  * Guards: every lesson's do-it-for-me path runs end to end on REAL state (each step's
  * check() passes because the thing was done, never because it was skipped) and leaves
@@ -9,7 +9,7 @@
  * the Learn menu with the next one lit; a lesson stands alone (each opens the sheets
  * fresh and sweeps the last lesson's palette); it never replaces a reader's own plan
  * without the app's Close project question; the doors (the empty-canvas link, Project
- * Settings, ?learn=1, ?lesson=<id>).
+ * Settings, ?learn=1, ?lesson=<id>), and the Start here card a fresh device's empty canvas shows.
  */
 const { test, expect } = require('@playwright/test');
 
@@ -43,6 +43,10 @@ async function walk(page) {
 const ann = (page, i) => page.evaluate((idx) => { const a = window.App.getActiveAnnotations(window.state.pages[idx]); return JSON.parse(JSON.stringify(a)); }, i);
 
 const EXPECT = {
+  start: async (page) => {   // the one click: a Title block mark, inside the circle on P-101's title block
+    const r = await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Title block'); const ms = window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers[c.id]; return ms.map((m) => Math.hypot(m.x - 1140, m.y - 748) < 26); });
+    expect(r).toEqual([true]);
+  },
   plans: async (page) => { expect(await page.evaluate(() => [window.state.pages[2].rotation, window.state.pages[2].label, window.state.currentPage])).toEqual([90, 'P-501 Fixture Schedule', 0]); },
   scale: async (page) => {
     // the sheet the lesson landed on is actually drawn (a double raster once left P-401 blank)
@@ -122,8 +126,12 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.addInitScript(() => { try { localStorage.setItem('clickcount-lessons-done', JSON.stringify({ plans: '2026-09-21T00:00:00Z' })); } catch (_) { /* noop */ } });
     await boot(page, '/app/?learn=1', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#learnList .learn-row')).toHaveCount(13);
-    await expect(page.locator('#learnProgress')).toHaveText('1 of 13 done');
+    await expect(page.locator('#learnList .learn-row')).toHaveCount(14);   // Start here, row 0, then the thirteen
+    await expect(page.locator('#learnProgress')).toHaveText('1 of 13 done');   // row 0 is the uncounted opener
+    await expect(page.locator('#learnList .learn-row[data-lesson="start"] .learn-row-no')).toHaveText('0');
+    await expect(page.locator('#learnList .learn-row[data-lesson="plans"] .learn-row-no')).toHaveText('✓');
+    await expect(page.locator('#learnList .learn-row[data-lesson="scale"] .learn-row-no')).toHaveText('2');
+    await expect(page.locator('#learnList .learn-row[data-lesson="start"]')).not.toHaveClass(/learn-row-next/);   // a reader with a lesson done is past the opener
     await expect(page.locator('#learnList .learn-row[data-lesson="plans"]')).toHaveClass(/learn-row-done/);
     await expect(page.locator('#learnList .learn-row[data-lesson="scale"]')).toHaveClass(/learn-row-next/);   // the first one not done
     await page.click('#learnModal [data-modal-close]');
@@ -146,6 +154,102 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // a row starts its lesson
     await page.click('#learnList .learn-row[data-lesson="counting"]');
     expect(await page.evaluate(() => window.App.tutorialId())).toBe('lesson:counting');
+    expect(errors).toEqual([]);
+  });
+
+  // LEARN-START (2026-09-27): lesson 0, and the one card a device that has finished nothing sees.
+  test('Start here: a fresh device\'s empty canvas offers only it; its one click reads red outside, names a click with nothing armed, ticks inside; finishing brings the links back', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/', errors);
+    // the fresh device: one card under Drop a plan here, the line of links gone
+    await expect(page.locator('#canvasEmptyHint')).toHaveClass(/is-fresh/);
+    await expect(page.locator('#canvasEmptyHintStart')).toBeVisible();
+    await expect(page.locator('#canvasEmptyHintStart')).toContainText('Start here');
+    await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
+    for (const id of ['canvasEmptyHintTour', 'canvasEmptyHintTourPlumbing', 'canvasEmptyHintLearn', 'canvasEmptyHintCourse', 'canvasEmptyHintAdvancedPlan', 'canvasEmptyHintTourBlank']) await expect(page.locator('#' + id)).toBeHidden();
+    // "or see every tour, lesson and course": Learn, the opener lit at row 0 and out of the count
+    await page.click('#canvasEmptyHintStartAll');
+    await expect(page.locator('#learnModal')).toHaveClass(/visible/);
+    await expect(page.locator('#learnList .learn-row[data-lesson="start"]')).toHaveClass(/learn-row-next/);
+    await expect(page.locator('#learnList .learn-row[data-lesson="start"] .learn-row-min')).toHaveText('4 min');
+    await expect(page.locator('#learnProgress')).toHaveText('0 of 13 done');
+    await page.click('#learnModal [data-modal-close]');
+    // the card starts lesson 0
+    await page.click('#canvasEmptyHintStart');
+    expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['lesson:start', 'sheets']);
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'what', null, { timeout: 30000 });
+    // where things are: Next moves the light, one part of the screen per card
+    const lit = () => page.evaluate(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(); return { l: Math.round(s.left), t: Math.round(s.top), w: Math.round(s.width), h: Math.round(s.height) }; });
+    const spots = {};
+    for (const id of ['what', 'header', 'sidebar', 'bottom']) {
+      await page.waitForFunction((want) => window.App.tutorialStepId() === want, id);
+      await page.waitForTimeout(250);
+      spots[id] = await lit();
+      await page.click('#tourNext');
+    }
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'try');
+    expect(spots.header.t).toBeLessThan(20);                                   // the header, across the top
+    expect(spots.sidebar.h).toBeGreaterThan(spots.sidebar.w);                  // the sidebar, down the left
+    expect(spots.bottom.t).toBeGreaterThan(spots.sidebar.t + spots.sidebar.h / 2);   // the footer, under the sheet
+    // the lesson armed Title block for its one click
+    expect(await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Title block'); return !!c && window.state.activeCounterType === c.id && window.state.tool === window.App.TOOL.COUNTER; })).toBe(true);
+    await expect(page.locator('#tourStatus')).toHaveText('Waiting for you…');
+    const circle = async () => { await page.waitForFunction(() => window.App.tutorialZoneScreen().length === 1); return (await page.evaluate(() => window.App.tutorialZoneScreen()))[0]; };
+    let z = await circle();
+    // 1. outside the circle: a mark lands, the line turns red and says why
+    await page.mouse.click(z.cx, z.cy - z.r - 60);
+    await expect(page.locator('#tourStatus')).toHaveClass(/tour-status-miss/);
+    await expect(page.locator('#tourStatus')).toContainText('outside the circle');
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect(page.locator('#tourStatus')).toHaveText('Waiting for you…');
+    // 2. inside it with the counter put down (M): nothing placed, and the line names it
+    await page.keyboard.press('m');
+    z = await circle();
+    await page.mouse.click(z.cx, z.cy);
+    await expect(page.locator('#tourStatus')).toContainText('not armed');
+    // 3. armed again from COUNTERS, inside the circle: ✓ Done, held for Next
+    await page.click('#countersList .sidebar-item:has-text("Title block")');
+    z = await circle();
+    await page.mouse.click(z.cx, z.cy);
+    await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+    await page.waitForTimeout(600);
+    expect(await stepId(page)).toBe('try');
+    for (const id of ['try', 'paths', 'words', 'done']) { await page.waitForFunction((want) => window.App.tutorialStepId() === want, id); await page.click('#tourNext'); }
+    // finished: Learn with the first lesson lit, and the device is no longer fresh
+    await expect(page.locator('#learnModal')).toHaveClass(/visible/);
+    await expect(page.locator('#learnList .learn-row[data-lesson="start"]')).toHaveClass(/learn-row-done/);
+    await expect(page.locator('#learnList .learn-row[data-lesson="plans"]')).toHaveClass(/learn-row-next/);
+    await expect(page.locator('#learnProgress')).toHaveText('0 of 13 done');
+    await expect(page.locator('#canvasEmptyHint')).not.toHaveClass(/is-fresh/);
+    expect(await page.evaluate(() => document.getElementById('canvasEmptyHintStartWrap').hidden)).toBe(true);
+    await page.click('#learnModal [data-modal-close]');
+    const closing = page.evaluate(() => window.App.closeProject({ route: 'spec' }));
+    await page.click('#confirmOk');
+    await closing;
+    await expect(page.locator('#canvasEmptyHintLearn')).toBeVisible();
+    await expect(page.locator('#canvasEmptyHintTourPlumbing')).toBeVisible();
+    await expect(page.locator('#canvasEmptyHintStart')).toBeHidden();
+    expect(errors).toEqual([]);
+  });
+
+  test('Start here: a finished tour or course chapter also ends the fresh card; a tour left part way does not', async ({ page }) => {
+    const errors = [];
+    await boot(page, '/app/', errors);
+    await expect(page.locator('#canvasEmptyHintStart')).toBeVisible();
+    await page.evaluate(() => { window.App.startTutorial('hvac'); window.App.stopTutorial(false); });
+    await expect(page.locator('#canvasEmptyHintStart')).toBeVisible();   // left, not finished
+    await page.evaluate(() => { window.App.startTutorial('hvac'); window.App.stopTutorial(true); });
+    await expect(page.locator('#canvasEmptyHintStart')).toBeHidden();
+    await expect(page.locator('#canvasEmptyHintTour')).toBeVisible();
+    // a device whose only finish is a course chapter is not fresh either
+    await page.evaluate(() => { localStorage.clear(); localStorage.setItem('clickcount-course-done', JSON.stringify({ 'plumbing:before': '2026-09-27T00:00:00Z' })); });
+    await page.reload();
+    await page.waitForFunction(() => window.App && window.App.startLesson);
+    await expect(page.locator('#canvasEmptyHintStart')).toBeHidden();
+    await expect(page.locator('#canvasEmptyHintLearn')).toBeVisible();
     expect(errors).toEqual([]);
   });
 

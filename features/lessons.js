@@ -413,7 +413,7 @@
   }
   const openStep = (lesson) => ({
     id: 'sheets', title: lesson.title, kind: 'do',
-    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF, a drawing file, with more than one sheet. It is where a 120-sheet set, the whole stack of drawings, becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
+    body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF, a drawing file, with three sheets or more. It is where a 120-sheet set, the whole stack of drawings, becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].\nSigned in, click Open, not Save & open, so the sample stays out of your saved projects.' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
     // Trim your set's Open when it is up, else nothing: lighting the header's Upload PDF sent a reader to
     // a file picker with no lesson PDF in it, the card's own button being the door (PERSONA-PASS)
     target: ['#preparePdfDone'],
@@ -492,7 +492,7 @@
           target: ['#prevMarkedPage'], check: () => onPage(P101),
           action: { label: 'Jump for me', run: () => el('prevMarkedPage').click() } },
         { id: 'prepare', title: 'Before a real set opens', kind: 'read',
-          body: '[[Upload PDF]] brings in a set, and takes several files at once. A PDF with more than one sheet opens in Trim your set, the dialog you saw at the start.\nThere, tap the sheets you do not need. Or click [[Keep none]] and tap the ones you do.\nOpen a sheet there to turn it, then click [[Open]].\nUpload again later and the new sheets join the end of the set.\nThe whole walk: [Preparing a plan set](/guides/preparing-a-plan-set/).',
+          body: '[[Upload PDF]] brings in a set, and takes several files at once. A PDF with three sheets or more opens in Trim your set, the dialog you saw at the start. Signed in, every new set opens there.\nThere, tap the sheets you do not need. Or click [[Keep none]] and tap the ones you do.\nOpen a sheet there to turn it, then click [[Open]].\nUpload again later and the new sheets join the end of the set.\nThe whole walk: [Preparing a plan set](/guides/preparing-a-plan-set/).',
           target: ['#uploadPdf', '#uploadPdfSidebar'], check: () => true },
       ],
       done: 'Find a sheet, turn it, name it, jump between the ones with marks.\nNext: [[Learn]] → Scale, because nothing measured is right until the scale is.',

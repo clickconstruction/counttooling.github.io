@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(prepare): one name for the upload dialog, "Trim your set" (PP-TRIM-TITLE, 2026-09-27)
+
+A proposal for punch row PP-TRIM-TITLE ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md)
+"Calls"); the row stays open until Will accepts. The dialog that trims and turns an uploaded set
+had three names: "Trim your set" signed out and in the lessons, "Prepare PDF for Cloud" signed in,
+and "Prepare PDF" in Help. A signed-in learner in the Sheets lesson read one name and saw another,
+with a brighter Save & open beside the Open the card lit, which saves the sample as a real project.
+
+- **The title** is "Trim your set" signed in and signed out (features/prepare-pdf.js; the static
+  `#preparePdfTitle` in app/index.html matches). Append mode keeps "Add pages to ...". Save &
+  open still shows only signed in; its own label carries the cloud step.
+- **The Sheets lesson** (features/lessons.js): the opening card says the dialog opens for three
+  sheets or more (it said "more than one", true for neither case) and adds one line: signed in,
+  click Open, not Save & open, so the sample stays out of your saved projects. The closing
+  "prepare" card gets the same count fix plus "Signed in, every new set opens there."
+- **Help**: preparing-a-plan-set and how-to-do-a-pdf-takeoff call it "Trim your set", say when it
+  opens signed in vs out, and describe Open with Save & open as the signed-in extra.
+- **Specs**: prepare-pdf.spec.js now pins "Trim your set" with a session too (Save & open still
+  visible there, hidden signed out).
+
+Not built (the brief's other options): leave the three names; also hide Save & open while a
+lesson or tour opens its own sample sheets; or a new neutral name such as "Prepare your set".
+
 ## feat(learn): the glossed words are tap targets on the cards (LEARN-TAPS, 2026-09-27)
 
 The last step of [LEARN-START-HERE.md](journeys/plans/LEARN-START-HERE.md). A card says what a word

@@ -309,15 +309,17 @@
     const descEl = document.getElementById('preparePdfDescription');
     const nameRowEl = document.getElementById('preparePdfNameRow');
     // B15: trimming is purely local — signed-out sessions get the modal too
-    // (pdf-intake routes them here now), retitled so it never implies a cloud
-    // step, and without the Save & Open cloud action.
+    // (pdf-intake routes them here now), without the Save & Open cloud action.
+    // PP-TRIM-TITLE: one title for everyone, "Trim your set" (it was "Prepare
+    // PDF for Cloud" signed in): the lessons and Help use the same name, and
+    // signed in the Save & open button's own label carries the cloud step.
     const cloudSession = App.SUPABASE_ENABLED && !!App.state.supabaseSession?.user;
     if (preparePdfMode === 'append') {
       if (titleEl) titleEl.textContent = 'Add pages to ' + (App.state.currentProjectName || 'Untitled');
       if (descEl) descEl.textContent = 'Tap the sheets you don’t need, then add the rest to the project.';
       if (nameRowEl) nameRowEl.style.display = 'none';
     } else {
-      if (titleEl) titleEl.textContent = cloudSession ? 'Prepare PDF for Cloud' : 'Trim your set';
+      if (titleEl) titleEl.textContent = 'Trim your set';
       if (descEl) descEl.textContent = 'Name your project, then tap the sheets you don’t need, or Keep none and tap the ones you do.';
       if (nameRowEl) nameRowEl.style.display = '';
     }

@@ -351,7 +351,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     expect(errors).toEqual([]);
   });
 
-  test('B15: signed-out title reads Trim your set and Save & Open is hidden; a session restores the cloud title', async ({ page }) => {
+  test('B15/PP-TRIM-TITLE: the title reads Trim your set signed out and signed in; only Save & Open follows the session', async ({ page }) => {
     await openThreePageGrid(page, 'TrimTitle');
     // Specs run signed-out: trimming is purely local, the title says so and
     // the cloud save action is gone.
@@ -359,7 +359,9 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
     await expect(page.locator('#preparePdfSaveAndOpen')).toBeHidden();
     await page.locator('#preparePdfCancel').click();   // untouched → closes instantly
     await expect(page.locator('#preparePdfModal')).not.toHaveClass(/visible/);
-    // With a session the fresh-upload title keeps its cloud wording.
+    // PP-TRIM-TITLE: with a session the title stays Trim your set (one name
+    // for the app, the lessons and Help); the Save & open button carries the
+    // cloud step.
     await page.evaluate(async () => {
       window.App.state.supabaseSession = { user: { id: 'u1' } };
       const a = await (await fetch('/test-page.pdf')).arrayBuffer();
@@ -367,7 +369,7 @@ test.describe('window.App registry pilot - Prepare PDF modal', () => {
       window.App.openPreparePdfModal([{ pdfPage: await pdf.getPage(1), label: 'Sheet 1', rotation: 0 }], a, 'CloudTitle');
     });
     await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/);
-    await expect(page.locator('#preparePdfTitle')).toHaveText('Prepare PDF for Cloud');
+    await expect(page.locator('#preparePdfTitle')).toHaveText('Trim your set');
     await expect(page.locator('#preparePdfSaveAndOpen')).toBeVisible();
   });
 

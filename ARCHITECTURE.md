@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,047 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,068 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,217 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,409 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 3,783 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,716 | All CSS, token-organized. Leave. |
+| [styles.css](styles.css) | 2,728 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 742 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 1,159 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 872 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (103 files) | 34,187 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (103 files) | 34,189 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -224,7 +224,7 @@ modules. Candidates in priority order:
 | [lines-list.spec.js](lines-list.spec.js) | Playwright regression for the Lines-list split — registry contract (entry point + the five publish-only deps), then the moved behavior end-to-end on a seeded 2-page takeoff (two named quick lines + a polyline, one type): per-type grouping with `3 lines · 25.00 ft` totals, expand/collapse persisting to `linesTypeExpanded` localStorage, the search input filtering by line name through the real handler, row click selecting + jumping to the line's page, and a second click deselecting. Renders through the real `updateUI()` path, so the defensive hot-path seam is exercised, not just the direct call. Note: the Lines *section* starts minimized (`state.linesListCollapsed`), so the spec expands it before clicking rows. `npx playwright test lines-list.spec.js` |
 | [features/pages-list.js](features/pages-list.js) | The **sidebar Pages section renderer** (`renderPagesList` + the private `formatPageTitleStartEnd` start/end truncation) — extracted per the lines-list recipe (defensive updateUI seam, publish-only deps, zero moved state). Rows carry the scale/annotation page-number badge, the canvas-count badge, click-to-navigate, and (editors) the rename/delete affordances via `App.startRename`. Double-click/double-tap rename detection is **delegated to the static `#pagesList` container** (one click listener, module-scope 400ms timer + per-render `renameByPage` closures keyed by `dataset.pageIdx`) so the gesture survives the click-1 `fitZoom`→`updateUI`→`innerHTML=''` rebuild that destroyed the old per-row binding (T2 #27); the badge's single-click rename `stopPropagation`s past it, and viewers get navigation only. New publish-only deps: `App.pageHasAnyAnnotations`, `App.startRename`, `App.exitEditMode`. The trash button's delete keeps only the choreography here (the undo step, ending an edit on that page, the redraw); the splice and the page-index reindex are the model's `App.deletePageAt` (annotation-model.js, MAP-PAGE-DELETE; pinned by [delete-page.spec.js](delete-page.spec.js)). Registers `App.renderPagesList` (consumed by app.js's `updateUI` defensively and by features/page-settings.js). Regression: [pages-list.spec.js](pages-list.spec.js) |
 | [features/sidebar-lists.js](features/sidebar-lists.js) | The **sidebar Counters / Line Types / Groups renderers** (`renderCountersList`, `renderLineTypesList`, `renderGroupsList`, `countItemsInGroup`, private `quickKeyBadgeHtml`) — extracted per the lines-list recipe. Counter/line-type rows keep drag-to-reorder, search filtering, show-only-on-page filtering, cross-page badge totals (counter badges show the multiply-adjusted **with-repeats** total via `App.counterTally` — T2-11, matching Summary/footer/report — with the placed count in the badge's hover `title` when a zone makes them differ; always-feet for line types), swatch/edit openers, and the Quick Key keycap badges; activation still funnels through `App.setActiveCounterType` / `App.setActiveLineType` (the ONE selection path shared with Quick Keys). Group rows with an `equipmentTag` (DUCT unit D4 system groups) add the "RTU-1 · 600 CFM" system line + a "plenum return" note under the name. D15: a counter row's name `title` joins the D8 neck prefill with `App.getCounterCfmOverrideText` ("(override 250)") when any placed marker of the type carries its own CFM. Registrations re-homed from app.js's registry tail; consumed by quick-keys.js, counter-settings.js, line-type-settings.js, item-details.js and `updateUI` (defensive). Regression: [sidebar-lists.spec.js](sidebar-lists.spec.js) R14 (2026-09-26): the sidebar section controls moved in from app.js and bind at load: `bindCollapse(stateKey, sectionId, iconId, triggerId)` for the six collapse toggles (Pages, Counters, Line Types and Summary on the chevron, which stops the click so the title's settings opener stays shut; Lines and Groups on the title, the Groups chevron forwarding to it), the three search inputs (`#counterSearchInput`, `#lineTypeSearchInput`, `#linesSearchInput`), the inline filter buttons with their two-line filter toast, and `#sidebarReorderFinish`. `App.syncSidebarFilterButtons()` draws the three filter buttons (updateUIInner, guarded). The filter-scope getters and setters and `syncFilterScopeSegment` stay in app.js: boot calls the setters before any feature file loads. |
-| [features/status-bar.js](features/status-bar.js) | The **status-bar / footer-totals cluster**, extracted 2026-07-30 from app.js's Math & Format Helpers region (where it was always misfiled — it is DOM chrome over state + save-engine getters): the footer totals cache (`computeFooterTotals`/`getFooterTotalsCached`/`invalidateFooterTotals`), the status-bar renderer (`updateStatus` — sync dot/square, mode line, tool hints, count/length totals, and the `#statusMeasure` Distance chip: renders in-memory `state.lastMeasure` while it belongs to the current page — the Measure result lives here now, not in a toast; Tier-2 #15; the LINE/POLYLINE hints append a **live feet-inches readout** while a draw is in progress (`liveDrawReadout` — preview-identical 45° snap, arc-aware `App.getLineLengthPdfPts`, scale-zone-honoring `App.getEffectiveScaleForLine`, Measure's `App.formatDistFeetInches` with its `px` fallback; the one-line wrap cache keys/measures on a fixed worst-case placeholder so the growing number never re-runs the layout read or wraps the bar; Tier-2 #21)) — the click-verb hints choose their word live per device (Tier-3 B9 / J15): `App.isCoarsePointer()` picks "Tap …" on touch, "Click …" with a mouse, the Save Status summary-block data (`getCloudSaveSummary`, consumed by [features/save-status.js](features/save-status.js)), and the hot-path save-status bell (`updateSaveStatusIndicator`; the on-demand modal stays in save-status.js). **Signed-out save signal (Tier-3 B11 / J12 J15)**: the signed-out mode line shows the local-save stamp the engine already tracks — "Saved on this device · 4:42 PM" from `getLastLocalBackupAt` — instead of the permanent dash (the IDB backup lands ~1s after every change, so the dash was a false "never saved" signal); bars narrower than 1280px (B10's footer-words threshold) compact the words to "Saved · 4:42 PM" — picked in JS via `window.innerWidth` (the mode is one text node, and a clientWidth read would force layout on this per-mousemove path). `getCloudSaveSummary` signed-out is truthful too: with a local backup it returns green "Saved on this device" Canvas/PDF rows carrying the stamp's clock/ago (the pre-B11 grey "Not signed in to cloud" only remains before any backup exists). app.js keeps same-named thin wrappers for its ~30 call sites and the save-engine ctx entries. New publish-only deps: `formatSaveTime`/`formatSaveTimeParts`/`formatAgo`/`getLastSaveIncludedPdf` plus the engine getter passthroughs (`isSaveInProgress`, `isSavePdfInProgress`, `getSaveProgressMessage`, `wasLastCloudSaveAttemptFailed`, `getLastLocalBackupAt`) S2: the `TOOL.CHAIN` hint ("Click next device — +9.5 ft drop at Duplex Receptacle") reads `App.chainDropHint`; its number rides `CHAIN_READOUT_PLACEHOLDER` for the one-line verdict. D19 (J19 Friction #5): the footer negotiates THREE candidates in the order it should spend width — full stamp + hint, compact stamp ("Saved · 9:46 PM") + hint, then full stamp alone. B11's fixed 1280 px threshold could not see that the hint no longer fit at ~1380, so a saved project lost "S = size" and the live duct readout for the session. The fit cache additionally records which stamp variant the verdict used, so the extra measurement still runs only on a key change. **MAP-HINTS (2026-09-26):** the hint showed only signed out; `updateStatus` is now four passes, `renderSyncIndicators` (dot, square, labels and the mode text the sync state owns: signed in '' or the viewer line, signed out the project and stamp with its compact twin), `composeMode` (the hint from [status-hint-model.js](status-hint-model.js) `toolHintFor`, negotiated onto the bar), `renderTotals` and `renderMeasureChip`, and the signed-in bar composes the hint too. A signed-in viewer's line takes no hint and is unchanged. The fit key carries the signed-in labels ("Canvas Uploading..." is wider than "Canvas"), and "fits" now means the candidate costs the bar no row (bar height against the narrowest bare text) rather than the actions sharing the mode's row, because a signed-in bar at 769 to 900 px and on a phone is two rows from its labels alone; on a one-line bar the verdict is the same as before. |
+| [features/status-bar.js](features/status-bar.js) | The **status-bar / footer-totals cluster**, extracted 2026-07-30 from app.js's Math & Format Helpers region (where it was always misfiled — it is DOM chrome over state + save-engine getters): the footer totals cache (`computeFooterTotals`/`getFooterTotalsCached`/`invalidateFooterTotals`), the status-bar renderer (`updateStatus` — sync dot/square, mode line, tool hints, count/length totals, and the `#statusMeasure` Distance chip: renders in-memory `state.lastMeasure` while it belongs to the current page — the Measure result lives here now, not in a toast; Tier-2 #15; the LINE/POLYLINE hints append a **live feet-inches readout** while a draw is in progress (`liveDrawReadout` — preview-identical 45° snap, arc-aware `App.getLineLengthPdfPts`, scale-zone-honoring `App.getEffectiveScaleForLine`, Measure's `App.formatDistFeetInches` with its `px` fallback; the one-line wrap cache keys/measures on a fixed worst-case placeholder so the growing number never re-runs the layout read or wraps the bar; Tier-2 #21)) — the click-verb hints choose their word live per device (Tier-3 B9 / J15): `App.isCoarsePointer()` picks "Tap …" on touch, "Click …" with a mouse, the Save Status summary-block data (`getCloudSaveSummary`, consumed by [features/save-status.js](features/save-status.js)), and the hot-path save-status bell (`updateSaveStatusIndicator`; the on-demand modal stays in save-status.js). **Signed-out save signal (Tier-3 B11 / J12 J15)**: the signed-out mode line shows the local-save stamp the engine already tracks — "Saved on this device · 4:42 PM" from `getLastLocalBackupAt` — instead of the permanent dash (the IDB backup lands ~1s after every change, so the dash was a false "never saved" signal); bars narrower than 1280px (B10's footer-words threshold) compact the words to "Saved · 4:42 PM" — picked in JS via `window.innerWidth` (the mode is one text node, and a clientWidth read would force layout on this per-mousemove path). `getCloudSaveSummary` signed-out is truthful too: with a local backup it returns green "Saved on this device" Canvas/PDF rows carrying the stamp's clock/ago (the pre-B11 grey "Not signed in to cloud" only remains before any backup exists). app.js keeps same-named thin wrappers for its ~30 call sites and the save-engine ctx entries. New publish-only deps: `formatSaveTime`/`formatSaveTimeParts`/`formatAgo`/`getLastSaveIncludedPdf` plus the engine getter passthroughs (`isSaveInProgress`, `isSavePdfInProgress`, `getSaveProgressMessage`, `wasLastCloudSaveAttemptFailed`, `getLastLocalBackupAt`) S2: the `TOOL.CHAIN` hint ("Click next device — +9.5 ft drop at Duplex Receptacle") reads `App.chainDropHint`; its number rides `CHAIN_READOUT_PLACEHOLDER` for the one-line verdict. D19 (J19 Friction #5): the footer negotiates THREE candidates in the order it should spend width — full stamp + hint, compact stamp ("Saved · 9:46 PM") + hint, then full stamp alone. B11's fixed 1280 px threshold could not see that the hint no longer fit at ~1380, so a saved project lost "S = size" and the live duct readout for the session. The fit cache additionally records which stamp variant the verdict used, so the extra measurement still runs only on a key change. **MAP-HINTS (2026-09-26):** the hint showed only signed out; `updateStatus` is now four passes, `renderSyncIndicators` (dot, square, labels and the mode text the sync state owns: signed in '' or the viewer line, signed out the project and stamp with its compact twin), `composeMode` (the hint from [status-hint-model.js](status-hint-model.js) `toolHintFor`, negotiated onto the bar), `renderTotals` and `renderMeasureChip`, and the signed-in bar composes the hint too. A signed-in viewer's line takes no hint and is unchanged. The fit key carries the signed-in labels ("Canvas Uploading..." is wider than "Canvas"), and "fits" now means the candidate costs the bar no row (bar height against the narrowest bare text) rather than the actions sharing the mode's row, because a signed-in bar at 769 to 900 px is two rows from its labels alone; on a one-line bar the verdict is the same as before. **MAP-PHONE-BAR (2026-09-27):** on a phone (768px and under) the signed-in bar is one line and "Tap start point" reads in full: a phone-only styles.css block hides the save words (`.status-indicator-label`; the dot and square keep the colour, the burger menu's Save Status keeps the detail) and `#statusCoords`, and the auth link (`#statusBarAuth`, filled by app.js `updateUI`) carries two spans, `.status-auth-full` (the email, laptops) and `.status-auth-short` ("Account", phones), with the email in its `title` and `aria-label`. The old dead phone `flex-wrap: nowrap` rule is gone; the bar keeps `wrap` as the fallback so a bar that still can't fit takes a row rather than running off the screen. |
 | [footer-hint.spec.js](footer-hint.spec.js) | Playwright regression for the status-bar tool hint — the one-line-only wrap contract (wide bar shows the hint, borderline width drops it instead of wrapping the actions onto a second row, and the (text @ width) cache key survives resizes), the `#statusMeasure` Distance chip lifecycle (Tier-2 #15: footer chip not a toast, outlives the old 5s timer, follows its sheet across page flips, replaced by a new measure), and the live draw readout (Tier-2 #21: quick-line hint grows a live feet-inches number that tracks the cursor, polyline readout is cumulative, unscaled pages read `px` never feet, and a hint+readout too long for the bar drops as one — the worst-case placeholder key keeps the verdict stable while the cursor moves). MAP-HINTS: the signed-in bar (the session-object seam, so CI covers it without secrets) shows the Line, Duct and Measure hints with their live readouts and no leading bar, keeps them while an autosave is in flight, leaves a signed-in viewer's line exact, and never gains a row or overflows from 1500 px down to 375 px; one real dev-auth sign-in case self-skips without DEV_AUTH_*. `npx playwright test footer-hint.spec.js` |
 | [local-save-signal.spec.js](local-save-signal.spec.js) | Playwright regression for the **signed-out save signal** (Tier-3 B11 / J12 J15) — the status-bar mode line shows "Saved on this device · <time>" after the real dirty → 1s-debounce → IDB backup path lands and tracks later backups; narrow desktop bars (<1280px) compact the words to "Saved · <time>" and widening swaps the full words back; signed-in the mode line never shows the stamp (cloudMode branch unchanged — Canvas label + dot titles as before); the Save Status panel signed-out shows green "Saved on this device" Canvas/PDF rows with the `#saveStatusSignedOutHint` "Sign in to sync across devices." line (hidden signed-in), and keeps the grey "Not signed in to cloud" row before any backup exists. `npx playwright test local-save-signal.spec.js` |
 | [features/canvas-switcher.js](features/canvas-switcher.js) | The **footer canvas switcher renderer** (`renderCanvasSwitcher`: current-name label, `(n/N)` index, the pills, the layers-dropdown rows, show-all peek-button visibility), extracted 2026-07-30 from app.js's UI Render Functions region per the lines-list recipe — defensive updateUI seam, zero moved state, zero new publish-only deps (everything it reads was already on the registry). Registers `App.renderCanvasSwitcher`; the edit pen keeps opening [features/canvas-layers.js](features/canvas-layers.js)'s details modal via `App.openCanvasDetailsModal`. The peek-button visibility path it renders is exercised by [show-all-canvases.spec.js](show-all-canvases.spec.js) D22 (X2): the phone layers menu gains the **Show all layers** row (`#canvasMenuShowAll`) — the desktop `#showAllCanvasesBtn` peek has existed since the peek shipped, mobile simply lacked the row, so a phone had no live way to see two layers together. Same `state.showAllCanvases`, no new mode; shown only on a page with 2+ layers, because the flag auto-clears below that and an always-present row would silently do nothing. The row says what it will do ("Show all layers" / "Show the active layer only"). The right-click layer SUBSET stays desktop-only — there is no right-click on a phone, and the row means all. |
@@ -655,57 +655,57 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L1653 - PDF Rendering
 - L2492 - Recent bids
 - L2519 - UI Render Functions
-- L2851 - Placing selection (setActiveCounterType / setActiveLineType)
-- L2961 - Inline rename & polyline edit mode
-- L3077 - Modal primitives (showModal / hideModal)
-- L3220 - Toasts & line color picker
-- L3288 - Airboard cloud sync
-- L3333 - Supabase RPC & presence heartbeat
-- L3373 - User activity / event telemetry
-- L3432 - Supabase auth & dev auth
-- L3618 - [sync] Checkout subscription & permission refresh
-- L3628 - Modals & Handlers
-- L3696 - PDF intake (upload, test PDF, hashing)
-- L3704 - Toolbar tool buttons
-- L3865 - Tool sidebar buttons & legend overlay
-- L3951 - Add Line Type modal
-- L4033 - Line color & sidebar handlers
-- L4104 - Polyline modal & drawing
-- L4161 - Zoom bar & page navigation
-- L4187 - Export canvas JSON
-- L4212 - PDF download helpers
-- L4221 - View-link URL helpers & show-highlights/notes
-- L4293 - Custom icon upload handler
-- L4303 - Macros & custom-icon tips openers
-- L4323 - Sidebar drawer toggles
-- L4354 - Mobile actions burger menu pointer & header logo
-- L4366 - User Activity pointer (format.js + features/user-activity.js)
-- L4378 - My Settings pointer (features/my-settings.js)
-- L4403 - Project Settings pointer (features/project-settings.js)
-- L4409 - Auth & settings entry buttons
-  - L4454 - Project Settings checkout & Save Status bell
-  - L4561 - [sync] Checkout expired recovery
-  - L4617 - [sync] Turn In
-  - L4682 - Share modal pointer & copy-project openers
-  - L4713 - Settings menu actions
-  - L4725 - Auth sign-in form
-  - L4750 - Save Project modal
-  - L4761 - Checkout expired recovery modal wiring
-  - L4864 - Last-session restore prompt
-- L4876 - Canvas Event Handlers
-- L5258 - Event Binding
-- L5268 - Aim loupe (mobile press-hold precise placement)
-- L5421 - Zoom transform preview & commit
-- L5500 - Canvas mouse, wheel & touch handlers
-- L6160 - Global dropdown dismissal & keyboard hotkeys
-- L6337 - [sync] Manual save to cloud
-- L6347 - [sync] Auto-save
-- L6354 - [sync] Local backup (IndexedDB takeoff state)
-- L6363 - [sync] Visibility & timers
-- L6380 - [sync] Checkout keep-alive
-- L6394 - App feature registry
-- L6767 - View-only mode
-- L6773 - Init / boot
+- L2872 - Placing selection (setActiveCounterType / setActiveLineType)
+- L2982 - Inline rename & polyline edit mode
+- L3098 - Modal primitives (showModal / hideModal)
+- L3241 - Toasts & line color picker
+- L3309 - Airboard cloud sync
+- L3354 - Supabase RPC & presence heartbeat
+- L3394 - User activity / event telemetry
+- L3453 - Supabase auth & dev auth
+- L3639 - [sync] Checkout subscription & permission refresh
+- L3649 - Modals & Handlers
+- L3717 - PDF intake (upload, test PDF, hashing)
+- L3725 - Toolbar tool buttons
+- L3886 - Tool sidebar buttons & legend overlay
+- L3972 - Add Line Type modal
+- L4054 - Line color & sidebar handlers
+- L4125 - Polyline modal & drawing
+- L4182 - Zoom bar & page navigation
+- L4208 - Export canvas JSON
+- L4233 - PDF download helpers
+- L4242 - View-link URL helpers & show-highlights/notes
+- L4314 - Custom icon upload handler
+- L4324 - Macros & custom-icon tips openers
+- L4344 - Sidebar drawer toggles
+- L4375 - Mobile actions burger menu pointer & header logo
+- L4387 - User Activity pointer (format.js + features/user-activity.js)
+- L4399 - My Settings pointer (features/my-settings.js)
+- L4424 - Project Settings pointer (features/project-settings.js)
+- L4430 - Auth & settings entry buttons
+  - L4475 - Project Settings checkout & Save Status bell
+  - L4582 - [sync] Checkout expired recovery
+  - L4638 - [sync] Turn In
+  - L4703 - Share modal pointer & copy-project openers
+  - L4734 - Settings menu actions
+  - L4746 - Auth sign-in form
+  - L4771 - Save Project modal
+  - L4782 - Checkout expired recovery modal wiring
+  - L4885 - Last-session restore prompt
+- L4897 - Canvas Event Handlers
+- L5279 - Event Binding
+- L5289 - Aim loupe (mobile press-hold precise placement)
+- L5442 - Zoom transform preview & commit
+- L5521 - Canvas mouse, wheel & touch handlers
+- L6181 - Global dropdown dismissal & keyboard hotkeys
+- L6358 - [sync] Manual save to cloud
+- L6368 - [sync] Auto-save
+- L6375 - [sync] Local backup (IndexedDB takeoff state)
+- L6384 - [sync] Visibility & timers
+- L6401 - [sync] Checkout keep-alive
+- L6415 - App feature registry
+- L6788 - View-only mode
+- L6794 - Init / boot
 
 <!-- END SECTION TOC -->
 

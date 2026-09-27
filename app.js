@@ -620,8 +620,6 @@
   // the tester signs off, the follow-up PR flips the default and deletes the
   // reads — the flag is a staging area, not a settings surface. Live flags:
   //   self-release   the save-engine self-release stamp (2026-09-15, _TODO R1)
-  //   water-telemetry  the water_run / wsfu_prefill events (2026-09-23, WATER-PLAN §8) until
-  //                    the allowlist migration 20260923190000 is on prod (punch row WATER-TELEM)
   const FEATURE_FLAG_KEY_PREFIX = 'clickcount-ff-';
   function featureFlagEnabled(name) {
     try { return localStorage.getItem(FEATURE_FLAG_KEY_PREFIX + name) === '1'; } catch (_) { return false; }

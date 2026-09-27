@@ -13,6 +13,35 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(water, save): the water events on for everyone, the lean permissions read live (WATER-TELEM, MAP-PERMS, 2026-09-27)
+
+On 2026-09-27 the owner had two migrations applied to the production database, and both were
+verified there: `supabase/migrations/20260923190000_log_user_event_water.sql` (`log_user_event`
+accepts `water_run` and `wsfu_prefill`) and `supabase/migrations/20260927030000_get_project_permissions.sql`
+(`public.get_project_permissions(uuid)` exists). This change is code and docs only; it touches no
+database. Nothing on screen changes.
+
+- **WATER-TELEM, closed.** The `water-telemetry` feature flag is gone: its line in the app.js
+  Feature flags list, and its reads in features/water-size.js `onPolylineCommitted` (the
+  `water_run` event: side, size, material, segments, fixture units and gpm at the head,
+  `suggestionTaken`) and features/water-fixtures.js `applyFieldToCounter` (the `wsfu_prefill`
+  event: the table's reading, the value kept, `accepted`). Both events now fire for every
+  signed-in session; as with every `logUserEvent`, a signed-out or Supabase-disabled session logs
+  nothing. [WATER-PLAN.md](journeys/plans/WATER-PLAN.md#8-telemetry-the-day-7-line-again) §8 and
+  its rung 6 status say so, and the ARCHITECTURE.md rows of both files name the events.
+- **Pinned** by water-size.spec.js (with no flag set, Enter on a cold 3/4 in PEX draft logs one
+  `water_run` with its side, size, material and one segment; a plain polyline logs none) and
+  water-fixtures.spec.js (with no flag set, a counter created at its prefill logs `wsfu_prefill`
+  accepted, one typed over logs it not accepted). Both new tests fail against the flag-gated code.
+- **MAP-PERMS, updated, not closed.** The permissions refresh now meets the one-project RPC on
+  prod, so it stops downloading every visible project's takeoff. The list fallback in
+  save-engine.js `refreshProjectPermissions` (the `permissionsRpcMissing` latch, the PGRST202
+  check, the client-recycle reset) **stays** as a safety net: the owner took "turn it on now,
+  clean up later". The PUNCHLIST row now says the migration is applied and that what is left is
+  deleting the fallback on or after 2026-10-04, after a week of normal use; its Who is now
+  `agent`. The save-engine.js comment, the save-engine.test.js stub comment, AGENTS.md and
+  SUPABASE_SETUP.md no longer call the function unapplied.
+
 ## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
 
 The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))

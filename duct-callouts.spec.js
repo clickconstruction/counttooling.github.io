@@ -19,7 +19,7 @@
  *   layer lands is never overwritten (the fetch is held behind a gate); the
  *   two-size sheet leaves the fields alone at arm time;
  * - hovering a callout of a different size while tracing yields the offer
- *   ("Plan says 20×12 here — S accepts"), the same size yields nothing, a
+ *   ("Plan says 20×12 here. S to pick it"), the same size yields nothing, a
  *   decoy yields nothing; the S popover shows the callout FIRST and accepting
  *   it records a sizeStep (→ a transition fitting at commit);
  * - precedence: with CFM devices present the plan callout outranks the
@@ -161,7 +161,7 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     await clickPdf(page, NEAR_24);
     await hoverPdf(page, NEAR_24);
     let o = await offer(page);
-    expect(o.chipText).toBe('Plan says 24×12 here. S accepts');
+    expect(o.chipText).toBe('Plan says 24×12 here. S to pick it');
     await page.evaluate(() => window.App.applyDuctSizeStep({ kind: 'rect', w: 24, h: 12 }));
     // Same size as the current segment → nothing to step to.
     expect(await offer(page)).toBeNull();
@@ -174,10 +174,10 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     expect(o).not.toBeNull();
     expect(o.size).toEqual({ kind: 'rect', w: 20, h: 12 });
     expect(o.str).toBe('20x12');
-    expect(o.chipText).toBe('Plan says 20×12 here. S accepts');
+    expect(o.chipText).toBe('Plan says 20×12 here. S to pick it');
     const line = await cursorLine(page);
     expect(line.kind).toBe('callout');
-    expect(line.text).toBe('Plan says 20×12 here. S accepts');
+    expect(line.text).toBe('Plan says 20×12 here. S to pick it');
 
     // Under the date: the decoy never reads, the real callouts are out of reach.
     await hoverPdf(page, NEAR_DATE);
@@ -323,7 +323,10 @@ test.describe('Duct plan-and-spec callouts (D10)', () => {
     await hoverPdf(page, NEAR_20);
     line = await cursorLine(page);
     expect(line.kind).toBe('callout');
-    expect(line.text).toBe('Plan says 20×12 here. S accepts');
+    expect(line.text).toBe('Plan says 20×12 here. S to pick it');
+    // PP-DUCT-CHIP: the card says what S does (opens the box; a click there takes it).
+    await expect(page.locator('#ductHintCard')).toHaveText('Plan says 20×12 here · S to pick it');
+    await expect(page.locator('#ductHintCard kbd')).toHaveText('S');
     expect(await page.evaluate(() => !!window.App.getDuctDraftSuggestion())).toBe(true);
     await page.keyboard.press('s');
     await expect(page.locator('#ductSizePopover')).toBeVisible();

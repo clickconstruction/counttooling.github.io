@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(rules): twelve electrical rules the course teaches enter the rulebook as drafts (RULEBOOK-GAPS, 2026-09-26)
+
+The electrical third of the punch row RULEBOOK-GAPS. The electrical course had twelve steps
+that cite a code section the rulebook did not hold, each carrying a `rulesExempt:` that said so.
+Each section is now a rule file in content/rules/electrical/ with `status: draft`, written in
+the course's words and cited by section, and the twelve steps in features/course-electrical.js
+name them in `rules:` instead. Fifteen rules, because three steps cite more than one section
+and two sections are cited twice (240.4(D) by Read a row and Why #12, 310.16 by Read a row and
+Read the one-line), which is one rule each:
+
+- `elec.panel.working-space`: NEC 110.26(A), 36 in deep, 30 in wide, 6.5 ft high
+- `elec.conductor.small-protection`: NEC 240.4(D), 15 A on #14, 20 A on #12, 30 A on #10 copper
+- `elec.conductor.ampacity`: NEC 310.16, 200 A for #3/0 copper in the 75 °C column
+- `elec.gfci.non-dwelling`: NEC 210.8(B), restrooms, kitchens, 6 ft from a sink
+- `elec.emergency.battery-duration`: NEC 700.12, 90 min
+- `elec.egress.illumination`: IBC 1008.3, 90 min
+- `elec.lighting.occupancy-sensors`: IECC C405.2.1, the rooms on sensors (words, no number)
+- `elec.emt.support`: NEC 358.30(A), 3 ft from a box, 10 ft along the run
+- `elec.disconnect.within-sight`: NEC 440.14 (words)
+- `elec.hood.shunt-trip`: NFPA 96 10.4.1, a standard (words)
+- `elec.circuit.fixed-equipment`: NEC 210.23 (words)
+- `elec.ground.equipment-conductor`: NEC 250.122, #6 copper for a 200 A breaker
+- `elec.ground.electrode-conductor`: NEC 250.66, #4 copper for #3/0 service conductors
+- `elec.service.load-calculation`: NEC Article 220 (words)
+- `elec.emt.bends`: NEC 358.26, 360° of bends between pull points
+
+Every value row holds the number its card teaches, and the lesson rules check now reads the
+cards against them: `--trace` shows the working space's 36 in, the 20 A and 15 A, the 6 ft, the
+90 min, the strap's 3 ft and 10 ft, the feeder's 200 A and the 360° agreeing. None has a `code:`
+pointer and `used_by` is empty: the app applies none of them yet, and each page says so. Each
+body ends with a "Verify against your edition" paragraph naming what a tester should check
+(renumbered sections between editions, exceptions the card leaves out) before it is `applied`.
+
+Two units were picked so the check reads only what it should: the ampere is `A`, which only
+these rules carry, and the bends are `° of bends`, not `°`, so a "45°" snap or a "Rotate 90°"
+button elsewhere is not read as a bend. `rules/`, `sitemap.xml` and the `sw.js` stamps are
+regenerated. `node scripts/check-lesson-rules.js --gaps` now lists seventeen gaps, the plumbing
+and HVAC ones; the RULEBOOK-GAPS row stays open for them and for the tester's signature.
+
 ## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
 
 The decomposition map's R20, both items, and its defect D43. The three floating palettes drag

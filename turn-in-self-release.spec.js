@@ -47,7 +47,7 @@ test.describe('Turn In is not a force turn-in', () => {
     }
 
     // The signed-in sample-plan intake. Two doors, depending on what the test
-    // account already holds: no same-hash project → Prepare PDF for Cloud,
+    // account already holds: no same-hash project → Trim your set (Prepare PDF),
     // whose Save & Open creates the project and checks it out to us; a
     // same-hash project (debris from another run) → the Load Annotations
     // prompt, Skip, then Save Project from the header banner.

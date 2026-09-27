@@ -1,7 +1,7 @@
 ---
 title: How to do a takeoff from a PDF
 description: Step-by-step: upload a plan PDF, set the scale, count fixtures, measure runs, and export a report, all in your browser with CountTooling.
-updated: 2026-09-21
+updated: 2026-09-27
 order: 1
 icon: measure
 category: Getting started
@@ -17,9 +17,9 @@ A takeoff is just a structured count and measurement of what's on a drawing. Wit
 
 ## 1. Upload your plan PDF
 
-Open the app and drop in your plan set. The **Prepare PDF** dialog lets you shape the set before you start: ① rotate a sideways sheet, ② delete the pages you don't need, then ③ save and open. Each remaining page becomes a sheet you can mark up.
+Open the app and drop in your plan set. The **Trim your set** dialog lets you shape the set before you start: ① rotate a sideways sheet, ② delete the pages you don't need, then ③ save and open. Each remaining page becomes a sheet you can mark up.
 
-![The Prepare PDF dialog: ① rotate a sideways page, ② delete the pages you don't need, then ③ Save & Open.](/guides/img/prepare-pdf.png)
+![The Trim your set dialog: ① rotate a sideways page, ② delete the pages you don't need, then ③ Save & Open.](/guides/img/prepare-pdf.png)
 
 More on trimming, renaming, and adding addendum pages later: [Preparing a plan set](/guides/preparing-a-plan-set/).
 

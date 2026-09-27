@@ -1,5 +1,6 @@
 /*
- * features/lessons.js - Learn: thirteen short lessons, one per part of the app, on the
+ * features/lessons.js - Learn: Start here, a four-minute uncounted opener (LEARN-START), and
+ * thirteen short lessons, one per part of the app, on the
  * engine the five-minute tours use (features/tutorial.js). A tour is the front door, one
  * trade's whole loop in fourteen steps; a lesson is two or three minutes on ONE family of
  * tools, and together they cover every tool in the shell. Plan of record:
@@ -36,7 +37,8 @@
  * Settings → Help → "lessons", /app/?learn=1) and /app/?lesson=<id>, which the guides'
  * "Try it" links use.
  *
- * Registrations: openLearnMenu(), startLesson(id), lessonIds(), lessonsDone(), courseDone()
+ * Registrations: openLearnMenu(), startLesson(id), lessonIds(), lessonsDone(), courseDone(), syncStartHere()
+ * (the empty canvas's Start here card, for a device that has finished nothing)
  * (every course's progress, one map; R16), and lessonKit (what a course runs on: its runner,
  * registerCourse, and the helpers the three courses used to copy; R15).
  * Boundary rule: read shared deps from App.* at call time, never captured at load.
@@ -139,6 +141,25 @@
   const rectsOf = (pageIdx, key, test) => { const a = pageAnn(pageIdx); return ((a && a[key]) || []).filter((z) => !test || test(z)); };
   const DETAIL_INNER = { x1: 640, y1: 130, x2: 1040, y2: 330 };      // detail 2's dashed frame
   const DETAIL_OUTER = { x1: 604, y1: 96, x2: 1080, y2: 392 };       // generous, and clear of plan 1
+  // Lesson 0's one click: P-101's title block, in sheet points (scripts/sample-plan-candidates.js
+  // titleBlock: the 812-1204 x 640-772 box), the circle on its SHEET cell, where P-101 is printed.
+  const TB = { x: 1140, y: 748 };
+  const TB_NAME = 'Title block';
+  const tbCounter = () => (S().counters || []).find((c) => c.lesson && c.name === TB_NAME);
+  // a plain dot, not the palette's default water closet: the title block is no fixture
+  const tbIcon = () => { const i = (App.getOrderedIcons() || []).find((x) => x.name === 'Circle'); return i ? { icon: i.value } : {}; };
+  const makeTbCounter = () => makeCounter(TB_NAME, null, '#f97316', tbIcon());
+  // The line beside Show me where, red for the two misses a first click makes: a mark outside the
+  // circle, or a click inside it with the counter put down (M, or another tool), which places nothing.
+  function tbHint() {
+    const c = tbCounter();
+    if (!c) return '';
+    if (K().strayMarks(P101, c.id, circlesFor(P101, c, [TB], 26))) return { code: 'outside-zone', text: 'That mark is outside the circle, so it does not count. Press Ctrl+Z to undo it, then click inside the circle' };
+    const k = K().lastSheetClick && K().lastSheetClick();
+    const armed = S().tool === App.TOOL.COUNTER && S().activeCounterType === c.id;
+    if (k && k.page === P101 && !armed && K().inCircle(k, { x: TB.x, y: TB.y, r: 26 })) return { code: 'not-armed', text: 'Title block is not armed, so that click placed nothing. Under COUNTERS, click Title block, then click inside the circle' };
+    return '';
+  }
   const BAR_FIXTURES = { x1: 60 + 0.75 * 160, y1: 70 + 0.75 * 530, x2: 60 + 0.75 * 360, y2: 70 + 0.75 * 592 };
   const GI_TANK = { x1: 60 + 0.75 * 965, y1: 70 + 0.75 * 520, x2: 60 + 0.75 * 1021, y2: 70 + 0.75 * 554 };   // the interceptor's own rectangle
   const GI_OUTER = { x1: GI.x1 - 40, y1: GI.y1 - 40, x2: GI.x2 + 60, y2: GI.y2 + 40 };
@@ -408,6 +429,45 @@
   let sawMarksHidden = false, extraSeen = false, p501Label = null;
 
   const LESSONS = [
+    // 0 ---------------------------------------------------------------------------------
+    // Start here (LEARN-START, 2026-09-27): the Learn guide as a four-minute opener, for a reader
+    // who has never opened the app. Uncounted like a course's Chapter 0 (row 0, out of "N of 13
+    // done"); the empty canvas of a device that has finished nothing offers only this.
+    // Where things are is one card per part of the screen, so Next moves the light.
+    {
+      id: 'start', title: 'Start here', short: 'the lay of the land', minutes: 4, page: P101,
+      intro: 'Four minutes for anyone new. What this app is, where things sit on the screen, and one real click on a sample sheet. Then pick your path.',
+      seed() { makeTbCounter(); },
+      steps: [
+        { id: 'what', title: 'What this is', kind: 'read',
+          body: 'CountTooling is a takeoff tool. A takeoff is the count and the feet a price is built on: every sink and drain counted, every pipe measured.\nYou make it by clicking on the drawings, the PDF sheets a job comes as. The one on screen is P-101, the plumbing plan of a small restaurant.\nThe app teaches itself the same way, on sample sheets it opens for you. Nothing you try here touches a real project.',
+          target: [], check: () => true },
+        { id: 'header', title: 'The header, across the top', kind: 'read',
+          body: 'The header is the bar across the top of the screen. It holds the tools, such as [[Set Scale]], [[Counter]] and [[Measure]].\nThe tools that do not fit sit behind [[⋯]], the More button.\nMost tools have a one-key shortcut. The cards give it in brackets, such as (or press D) for Measure.',
+          target: ['.header'], check: () => true },
+        { id: 'sidebar', title: 'The sidebar, down the left', kind: 'read',
+          body: 'The sidebar is the column of lists down the left side.\nPAGES lists the sheets. COUNTERS are the things you count, one named tally each. LINE TYPES are the kinds of pipe you measure, by size and material.\nSUMMARY keeps the running totals. A bid is your price for a job, and BID CHECK lists what a bid must answer before it goes out.\nEXPORT OPTIONS makes the files you send out.',
+          target: ['.sidebar'], check: () => true },
+        { id: 'bottom', title: 'The footer and the status bar', kind: 'read',
+          body: 'The footer is the bar under the sheet. It turns the pages and zooms in and out.\nThe status bar is the strip along the very bottom. It says where your work is saved, and when.\nAt its right, [[shortcuts]] shows every key the app knows.',
+          target: ['.page-zoom-row', '.status-bar'], check: () => true },
+        { id: 'try', title: 'How a card teaches: try one', kind: 'do', hold: true,   // the ✓ is the lesson: it waits for Next
+          body: 'A doing card lists its steps, one action per numbered line. The lesson has armed a counter named Title block.\nArmed means the next click on the sheet places a mark, one dot in its count.\n1. Click inside the orange circle, on the title block: the box at the bottom right with the sheet\'s name and number.\nWatch the line beside [[Show me where]]. A click outside the circle turns it red and says why. A click inside turns it to ✓ Done, and [[Next]] lights up.',
+          // the Title block row is named too, so the card keeps off it: the not-armed line sends the reader there
+          target: () => ['#annCanvas', '#countersList [data-counter-id="' + idOf(tbCounter()) + '"]'], page: P101, onEnter: () => { const c = tbCounter(); if (c) arm(c); },
+          zones: () => circlesFor(P101, tbCounter(), [TB], 26),
+          check: () => K().allDone(circlesFor(P101, tbCounter(), [TB], 26)),
+          hint: () => tbHint(),
+          action: { label: 'Click it for me', run: () => { const c = tbCounter() || makeTbCounter(); App.pushUndoSnapshotCurrentPage(); mark(P101, c, [TB]); arm(c); dirty(); } } },
+        { id: 'paths', title: 'Pick your path', kind: 'read',
+          body: 'Three ways on from here, all under [[Learn]].\nA tour: five minutes, one small takeoff in your trade, start to finish.\nThe thirteen lessons: two or three minutes each, one part of the app at a time.\nA course: about ninety minutes that teach the trade itself, off an engineer\'s drawings.\nLearn is on the empty screen, and under Project Settings, the gear in the header: open Help, then lessons.\nWhen this lesson ends, Learn opens with the tours at the top.',
+          target: ['#settingsGearBtn', '#sidebarLogoGear'], check: () => true },
+        { id: 'words', title: 'The words', kind: 'read',
+          body: 'A card says what a word means the first time it uses it.\nForgot one? Every word the cards explain is in one list, Words the cards use, in the guide [Learn CountTooling by doing](/guides/learning-the-app/).\nThe guides are always under Project Settings, then Help.',
+          target: [], check: () => true },
+      ],
+      done: 'What this is, where things are, and how a card teaches.\nNext: [[Learn]] → a tour, a lesson or a course.',
+    },
     // 1 ---------------------------------------------------------------------------------
     {
       id: 'plans', title: 'Sheets: find, turn and name them', short: 'a plan set under control', minutes: 2, page: P101, trimByHand: true,
@@ -813,13 +873,27 @@
   // ----- progress, the menu, the doors ----------------------------------------------------------
   const tourId = (id) => 'lesson:' + id;
   function lessonsDone() { try { return JSON.parse(localStorage.getItem(DONE_KEY) || '{}') || {}; } catch (_) { return {}; } }
-  function markDone(id) { try { const d = lessonsDone(); d[id] = new Date().toISOString(); localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } }
+  function markDone(id) { try { const d = lessonsDone(); d[id] = new Date().toISOString(); localStorage.setItem(DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } syncStartHere(); }
   // Every course's progress (features/course-*.js) is ONE map, { '<course>:<chapter>': ISO }: it
   // lives here, beside the lessons', so App.courseDone answers for all three courses whichever
   // of them loaded (R16, D23: it used to be registered by the plumbing course alone).
   const COURSE_DONE_KEY = 'clickcount-course-done';
   function courseDone() { try { return JSON.parse(localStorage.getItem(COURSE_DONE_KEY) || '{}') || {}; } catch (_) { return {}; } }
-  function markCourseDone(key) { try { const d = courseDone(); d[key] = new Date().toISOString(); localStorage.setItem(COURSE_DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } }
+  function markCourseDone(key) { try { const d = courseDone(); d[key] = new Date().toISOString(); localStorage.setItem(COURSE_DONE_KEY, JSON.stringify(d)); } catch (_) { /* private mode: the tick is a convenience */ } syncStartHere(); }
+
+  // LEARN-START: the empty canvas of a device that has finished nothing (no lesson, no chapter, no
+  // tour) shows one card, Start here, in place of the line of tour, lesson and course links; the
+  // first thing finished brings the line back. The class hides the line (styles.css), and the card
+  // is `hidden` until a device is fresh, so a stylesheet a deploy behind still shows the links.
+  // Also run by the tour engine's syncEntryPoints, the moment a tour is finished.
+  const isFreshDevice = () => !Object.keys(lessonsDone()).length && !Object.keys(courseDone()).length && !(App.anyTourDone && App.anyTourDone());
+  function syncStartHere() {
+    const fresh = isFreshDevice();
+    const hint = el('canvasEmptyHint');
+    if (hint) hint.classList.toggle('is-fresh', fresh);
+    const card = el('canvasEmptyHintStartWrap');
+    if (card) card.hidden = !fresh;
+  }
 
   LESSONS.forEach((lesson, idx) => {
     const next = LESSONS[idx + 1];
@@ -911,7 +985,8 @@
   }
   function renderLearnList(nextId) {
     const done = lessonsDone();
-    renderRows({ list: el('learnList'), prog: el('learnProgress'), items: LESSONS, isDone: (l) => !!done[l.id], lit: nextId, title: (l) => l.title, attr: 'lesson', noun: 'lessons', start: startLesson, scroll: true });
+    // row 0 is Start here, the uncounted opener: numbered by position, so the thirteen read 1 to 13
+    renderRows({ list: el('learnList'), prog: el('learnProgress'), items: LESSONS, isDone: (l) => !!done[l.id], lit: nextId, title: (l) => l.title, number: (l) => LESSONS.indexOf(l), attr: 'lesson', noun: 'lessons', start: startLesson, scroll: true });
   }
   // courseNext: a course handing back to the menu names itself and the chapter to light,
   // { course, chapter }; the menu renders every registered course section
@@ -919,7 +994,9 @@
   // leaves each course's own suggestion (its first unfinished chapter).
   function openLearnMenu(nextId, courseNext) {
     const done = lessonsDone();
-    const suggested = nextId === undefined ? ((LESSONS.find((l) => !done[l.id]) || {}).id || null) : nextId;
+    // the first lesson not done; Start here only for a reader who has done none of the thirteen
+    const counted = LESSONS.slice(1);
+    const suggested = nextId === undefined ? (((counted.some((l) => done[l.id]) ? counted : LESSONS).find((l) => !done[l.id]) || {}).id || null) : nextId;
     renderLearnList(suggested);
     (App.courseSections || []).forEach((sec) => sec.render(courseNext && courseNext.course === sec.id ? courseNext.chapter : undefined));
     App.showModal('learnModal');
@@ -986,6 +1063,10 @@
 
   // wiring (static DOM)
   el('canvasEmptyHintLearn') && (el('canvasEmptyHintLearn').onclick = (e) => { e.preventDefault(); openLearnMenu(); });
+  el('canvasEmptyHintStart') && (el('canvasEmptyHintStart').onclick = (e) => { e.preventDefault(); startLesson('start'); });
+  el('canvasEmptyHintStartAll') && (el('canvasEmptyHintStartAll').onclick = (e) => { e.preventDefault(); openLearnMenu(); });
+  // after every feature script has run, so the blank tour's done key (it registers after this file) counts
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', syncStartHere); else syncStartHere();
   el('settingsLearn') && (el('settingsLearn').onclick = () => { App.hideModal('settingsModal'); openLearnMenu(); });
   ['plumbing', 'electrical', 'hvac'].forEach((t) => { const b = el('learnTour-' + t); if (b) b.onclick = () => { App.hideModal('learnModal'); App.startTutorial(t); }; });
   // /app/?learn=1 opens the menu; /app/?lesson=<id> starts that lesson (the guides' "Try it").
@@ -1027,6 +1108,7 @@
   App.beginTeachingPalette = beginTeachingPalette;   // a tour opening its sheet (features/tutorial.js, tour-blank.js)
   App.openLearnMenu = openLearnMenu;
   App.startLesson = startLesson;
+  App.syncStartHere = syncStartHere;   // the tour engine's syncEntryPoints, once a tour is finished
   // A lesson left by a reload or a closed tab: once the app has booted, put the reader's device
   // back (a ?lesson= link that starts a lesson on this load keeps the snapshot for its own stop).
   if (deviceBefore) {

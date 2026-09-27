@@ -7,6 +7,22 @@ first, the Words search as a second PR. Deferred ("let's actually build it later
 
 ## LEARN-START · lesson 0, "Start here"
 
+**BUILT 2026-09-27** (CHANGELOG "feat(learn): lesson 0, Start here, and the one card a new device
+sees"). As planned, with four differences found building it:
+
+- Where things are is three cards, not one (the header; the sidebar; the footer and the status
+  bar): a card lights one control, so one card could not light each "in turn". Seven cards in
+  all after the open step, still about four minutes.
+- The circle sits on the title block's SHEET cell, (1140, 748), not the block's centre, and the
+  card holds for Next once it ticks, so the ✓ is seen. The step names the Title block row in
+  COUNTERS as a second target, which keeps the card off it.
+- The card gets a second, quieter link, "or see every tour, lesson and course" (Learn), so a
+  reader who wants the whole list is not held to the one card on a new device.
+- "Finished nothing" also counts a course chapter and the blank tour, not only lessons and the
+  three trade tours. Learn's suggested row skips Start here once any of the thirteen is done.
+
+The plan as written:
+
 A real lesson on the tour engine, about four minutes, on the lesson set like the other
 thirteen (features/lessons.js `LESSONS`, first row, an uncounted opener the way each course's
 Chapter 0 is: shown as row 0, left out of "N of M done" through `renderRows`' `number`

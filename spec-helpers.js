@@ -107,4 +107,19 @@ async function uploadPdf(page, file = PDFS.twoPages, opts = {}) {
   if (opts.waitForPages !== false) await page.waitForSelector('#pagesList .sidebar-item', { timeout: opts.timeout || 15000 });
 }
 
-module.exports = { PDFS, BENIGN_ERRORS, collectConsoleErrors, waitForBoot, bootApp, reloadApp, uploadPdf };
+/**
+ * LEARN-START: a device that has finished nothing sees one Start here card on the empty
+ * canvas, and the line of tour, lesson and course links only once something is finished.
+ * A spec that clicks one of those links marks Start here as done first, like a returning
+ * device (an init script, so it holds across reloads). Call it before the goto.
+ */
+async function pastStartHere(page) {
+  await page.addInitScript(() => {
+    try {
+      const d = JSON.parse(localStorage.getItem('clickcount-lessons-done') || '{}') || {};
+      if (!d.start) { d.start = '2026-09-27T00:00:00.000Z'; localStorage.setItem('clickcount-lessons-done', JSON.stringify(d)); }
+    } catch (_) { /* storage unavailable: the spec sees the fresh card */ }
+  });
+}
+
+module.exports = { PDFS, BENIGN_ERRORS, collectConsoleErrors, waitForBoot, bootApp, reloadApp, uploadPdf, pastStartHere };

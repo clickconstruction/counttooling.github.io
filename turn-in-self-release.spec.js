@@ -23,6 +23,7 @@
  * backstop).
  */
 const { test, expect } = require('@playwright/test');
+const { pastStartHere } = require('./spec-helpers');
 
 const PROJECT_NAME = 'spec-turn-in-self-release';
 
@@ -35,6 +36,7 @@ test.describe('Turn In is not a force turn-in', () => {
     const failedRequests = [];
     page.on('response', (r) => { if (r.status() >= 400) failedRequests.push(r.status() + ' ' + r.url().replace(/^https?:\/\/[^/]+/, '')); });
     await page.setViewportSize({ width: 1280, height: 800 });
+    await pastStartHere(page);   // a returning device: the empty canvas shows the engineered sample plan link
     await page.goto('/app/?devAuth=1');
     await page.waitForFunction(() => !window.App || window.App.bootSettled === true, null, { timeout: 30000 });
 

@@ -26,6 +26,7 @@
  */
 const { test, expect } = require('@playwright/test');
 const { DEVICES } = require('./scripts/persona-devices.js');
+const { pastStartHere } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 // "The app is ready" is the app's own signal, not a quiet network: every fresh context
@@ -171,6 +172,7 @@ test.describe('Interactive walkthrough', () => {
   });
 
   test('the do-it-for-me path builds a real takeoff and the tour advances on real state', async ({ page }) => {
+    await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
@@ -298,6 +300,7 @@ test.describe('Interactive walkthrough', () => {
   });
 
   test('the empty-canvas link works even when the stylesheet is a deploy behind (mixed shell)', async ({ page }) => {
+    await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     // After a deploy a returning tab renders network-first HTML against the previous
     // version's cache-first CSS until the new service worker takes over. The link must
     // not depend on its stylesheet rule to receive the click: serve the current CSS with
@@ -315,6 +318,7 @@ test.describe('Interactive walkthrough', () => {
   });
 
   test('the plumbing tour: its own link and ?tour=plumbing start it, do-it-for-me builds a plumbing takeoff, its own done key hides only its link', async ({ page }) => {
+    await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
@@ -476,6 +480,7 @@ test.describe('Interactive walkthrough', () => {
   });
 
   test('the HVAC tour: its own link and ?tour=hvac start it, do-it-for-me builds a real design-build duct takeoff, its own done key hides only its link', async ({ page }) => {
+    await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     test.setTimeout(90000);   // a whole tour plus a reload: the 30 s default does not survive a slow CI runner's page loads
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
@@ -699,6 +704,7 @@ test.describe('Every button, on a blank sheet', () => {
   };
 
   test('the do-it-for-me path presses every button on a sheet the tour made, and finishing hides only its own link', async ({ page }) => {
+    await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     test.setTimeout(150000);
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
@@ -1050,7 +1056,8 @@ test.describe('The persona seams', () => {
     await ready(page);
     const ids = await page.evaluate(() => window.App.tutorialIds());
     for (const id of ['electrical', 'plumbing', 'hvac', 'blank']) expect(ids).toContain(id);
-    expect(ids.filter((id) => id.startsWith('lesson:')).length).toBe(13);
+    expect(ids.filter((id) => id.startsWith('lesson:')).length).toBe(14);   // Start here, the uncounted opener (LEARN-START), and the thirteen
+    expect(ids).toContain('lesson:start');
     // nine chapters each, and a course that has its uncounted opener (chapter 0, COURSE-LANGUAGE) one more
     const chapters = await page.evaluate(() => ({ plumbing: window.App.courseChapterIds(), electrical: window.App.courseElectricalIds(), hvac: window.App.courseHvacIds() }));
     for (const c of ['plumbing', 'electrical', 'hvac']) {

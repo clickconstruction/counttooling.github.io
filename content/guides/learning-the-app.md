@@ -15,6 +15,8 @@ The fastest way to learn a takeoff tool is to do a takeoff. CountTooling teaches
 
 ## How a lesson works
 
+New to the app? **Start here** is a four-minute lesson on what this page says: what the app is, where things are on the screen, and one real click on a sample sheet, then the three paths. On a device that has not finished anything yet, the empty canvas offers only that card. [Do this in the app](/app/?lesson=start).
+
 Open the app with nothing loaded and click **lesson** on the empty canvas, or open [Learn](/app/?learn=1) directly. It is also under **Project Settings** → **Help** → **lessons**.
 
 - A card beside the screen says what to do, one action per line, naming each control the way it looks on screen, and lights the control it means.
@@ -345,7 +347,7 @@ No plan, no trade, no numbers to get right. The [blank-sheet tour](/app/?tour=bl
 
 ## Then every part of the app: the lessons
 
-Two or three minutes each, in any order. They run on four sample sheets: a restaurant plumbing plan, an enlarged restroom plan with a detail at another scale that is typical of four, a fixture schedule that was scanned sideways, and the restrooms' waste and vent riser.
+Two or three minutes each, in any order, after the four-minute [Start here](/app/?lesson=start) at the top of the list. They run on four sample sheets: a restaurant plumbing plan, an enlarged restroom plan with a detail at another scale that is typical of four, a fixture schedule that was scanned sideways, and the restrooms' waste and vent riser.
 
 1. [Sheets](/app/?lesson=plans): trim a set, find a sheet, turn it, name it, jump between the sheets with marks.
 2. [Scale](/app/?lesson=scale): a scale per sheet, prove it, and a scale zone over a detail drawn at another scale.

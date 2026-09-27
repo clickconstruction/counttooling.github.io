@@ -13,6 +13,50 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): lesson 0, Start here, and the one card a new device sees (LEARN-START, 2026-09-27)
+
+Todd's ask, planned in [LEARN-START-HERE.md](journeys/plans/LEARN-START-HERE.md): the Learn guide
+as a lesson of its own, with a door of its own, and one real click in it.
+
+- **The lesson** (features/lessons.js, `start`, row 0 of `LESSONS`): four minutes on the lesson
+  set. After the usual open step: What this is (a takeoff, and sample sheets that touch nothing
+  real); three Where things are cards, one per part of the screen, so Next moves the light (the
+  header, the sidebar, then the footer and the status bar; the plan's single card would have lit
+  one of them); How a card teaches, the one doing card; Pick your path (the tours, the thirteen
+  lessons, a course, and where Learn lives); and The words (the guide's list). It glosses the
+  fourteen words the screen cards need first, so scripts/score-courses.js's `lessons` table moves
+  them to `start` (takeoff, header, sidebar, counter, line type, summary, bid, Bid Check, export,
+  footer, status bar, armed, mark, title block). Lesson 0 reads at grade 3.3.
+- **The one click.** The lesson seeds a `Title block` counter and arms it as the card opens; one
+  orange circle sits on P-101's title block, on its sheet cell (1140, 748 in sheet points). A mark
+  outside turns the line beside Show me where red (outside-zone), a click inside the circle with
+  the counter put down names that (not-armed, read off the engine's last sheet click, now
+  `tourKit.lastSheetClick()`), and a click inside ticks ✓ Done and holds for Next. The step names
+  the Title block row in COUNTERS as a second target, so the card keeps off the row its not-armed
+  line sends the reader to (found by the new spec: the corner the engine picked sat on it).
+- **Row 0 in Learn.** `renderRows` gets the lessons' `number` accessor (position), so Start here
+  shows 0 and the thirteen keep 1 to 13 and "N of 13 done". The suggested row is the first not
+  done, and Start here only for a reader who has done none of the thirteen. Finishing it hands
+  back to Learn with Sheets lit.
+- **The empty canvas.** A device that has finished nothing (no lesson, no course chapter, no tour
+  with a done key: `App.anyTourDone`, features/tutorial.js) shows one card under Drop a plan here,
+  "New here? Start here, 4 min", and a quiet "or see every tour, lesson and course" that opens
+  Learn, in place of the line of tour, lesson and course links (`#canvasEmptyHint.is-fresh`,
+  styles.css). The first thing finished brings the line back: `syncStartHere` runs after a lesson
+  or chapter is ticked and from the tour engine's `syncEntryPoints`. The card is `hidden` until a
+  device is fresh, so a stylesheet a deploy behind still shows the links.
+- **The guide.** "How a lesson works" opens with Start here and a Do this in the app link
+  (`/app/?lesson=start`); the lessons section names it at the top of the list. The existing
+  `?lesson=<id>` route needed nothing new.
+- **Specs.** lessons.spec.js walks `start` like every lesson, pins row 0 in the doors test (14
+  rows, "1 of 13 done"), and adds two: the fresh card, the three lines of the one click by hand,
+  and the links back once it is done; and a finished tour or course chapter ending the fresh card
+  where a tour left part way does not. The specs that click a link on the empty canvas
+  (tutorial, advanced-sample-plan, the three course door tests, turn-in-self-release) now start as
+  a returning device through spec-helpers.js `pastStartHere(page)`. The guide's Learn menu
+  screenshot (guides/img/learn-menu.png) predates row 0; it is regenerated with
+  `npm run build:screenshots`, which stays manual. sw.js restamped.
+
 ## feat(learn): one glossary, and a check that holds the courses, tours and lessons to it (2026-09-27)
 
 Wave 2 of COURSE-LANGUAGE option C (journeys/plans/COURSE-LANGUAGE-2026-09-27.md, "What to hold

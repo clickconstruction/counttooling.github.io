@@ -69,6 +69,54 @@ click Done"). Scored with the memo's method on intro, bodies and done lines: 3,3
 3.1 to 6.4 before, 4,255 words at 2.8 to 5.2 after. Every card, measured open at 1280 × 720, keeps
 Next on screen (the tallest, Chain the top wall, is 563 px).
 
+## feat(learn): the four tours, written for anyone at all (2026-09-27)
+
+Wave 2 of the COURSE-LANGUAGE-2026-09-27 memo's option C: the reader is anyone at all, someone who
+has never read a construction drawing and has never estimated. The three five-minute tours
+(features/tutorial.js) and the blank-sheet tour (features/tour-blank.js) are rewritten card by card
+for that reader, the way wave 1 rewrote the three courses.
+
+- **Every trade and app word glossed at its first use in each tour**, in the same sentence or the
+  next: a takeoff, the count and the feet a price is built on; the bid, the price you send; the
+  scale, the header, the left sidebar, the footer, the title block, a dimension, a counter, armed,
+  a tally, a line type, a run, the set. The electrical tour adds a receptacle and a duplex, a
+  device, a mount height, conduit, EMT, a raceway, conductors, a ground, gauge, THHN, the box,
+  make-up, a circuit, a breaker, the panel, fill, voltage drop, the homerun and TakeoffTooling's
+  labor. The plumbing tour adds a water closet, a lavatory, a lav battery, a fixture, a branch, the
+  main, PEX, the slab, the riser, plan view, footage, a hanger, a child count, the IPC, a fixture
+  unit and WSFU, fps, a leader, a typical floor, a multiply zone, the ADA, an RFI and the GC. The
+  HVAC tour adds HVAC, design-build, a diffuser, CFM, the main, fittings, the deck, an RTU, a
+  system, the friction rate, elbows and a transition, gauge, lb/ft, SMACNA, seam & waste, the curb,
+  flex and an M-sheet. The blank tour glosses each tool as it presses it (Move, a polyline, a
+  fitting, Chain, the vertical, a duct, a typical, a detail, a ghost, a note, a layer, an alternate,
+  an addendum, the base bid, the cloud, read-only) beside the trade words it meets.
+- **A doing step leads with its steps.** At most two sentences of orientation come before step 1;
+  the teaching follows. The HVAC sign-off card, which opened with three sentences of verdicts, now
+  opens with Bid Check and its two steps.
+- **No sentence over 25 words**, and the grade stays under 6. The HVAC welcome's 44-word sentence
+  is four; the duct schedule's 39-word list is three lines.
+
+What did not change: every step's id, kind, targets, zones, check, hint, action and `rules:`;
+every number, code section and rule citation (check-lesson-rules agrees on all of them); every
+`[[Control]]` chip; every title. No step gained a button. The plumbing size card was already past a
+720 px window (726 px) and is now 665 px; every card of the four tours was measured at 1280 × 720
+with Next on screen; the next tallest is the HVAC duct card at 622 px.
+
+Scored with the memo's method (the scratchpad `score.js`, pointed at the tours' step arrays; a
+tablet/desktop branch scores both texts):
+
+| Tour | Cards | Words | Grade | Over 25 words |
+|---|---:|---:|---:|---:|
+| Electrical | 14 | 732 → 1,213 | 4.1 → 3.4 | 3 → 0 |
+| Plumbing | 17 | 1,293 → 1,632 | 4.3 → 3.8 | 9 → 0 |
+| HVAC | 14 | 848 → 1,300 | 3.7 → 3.3 | 4 → 0 |
+| Blank sheet | 37 | 2,529 → 2,986 | 3.8 → 3.5 | 7 → 0 |
+
+tutorial.spec.js's `CARD_BEFORE` (the six plumbing cards the persona seams pin, to prove the hint
+codes change no character) is re-taken from the new text; every other pin (the IPC spelled out on the
+hangers card, the Chain panel and Drop palette "that opens at the top left", the counter card's
+numbered lists, the size card's 1, 3, 5, the tablet doors) holds as it was.
+
 ## feat(learn): the HVAC course, written for anyone at all (2026-09-27)
 
 Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the

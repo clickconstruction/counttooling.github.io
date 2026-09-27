@@ -23,7 +23,7 @@ used_by: []
 updated: 2026-09-27
 ---
 
-A drain stops sooner or later, and a cleanout is where the snake goes in. The code puts one where a stoppage has to be reached from: along a long horizontal run, at a sharp turn the snake cannot take from upstream, and where the building drain leaves the building. The course's restaurant has four: at the upstream end of each drain line and at the turn outside.
+A drain stops sooner or later, and a cleanout is where the snake goes in. The code puts one where a stoppage has to be reached from: along a long horizontal run, at a sharp turn the snake cannot take from upstream, and where the building drain leaves the building. The course's restaurant has six: at the upstream end of each drain line, at the first turn of each grease line, and at the turn outside.
 
 On a bid a cleanout is a fitting, a plug and an access cover, and a floor or wall cleanout in a finished room is a finished cover, not a plain plug. The plan shows them as small circles marked CO; count them like any fixture.
 

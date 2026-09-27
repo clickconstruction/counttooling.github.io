@@ -34,7 +34,7 @@ used_by: []
 updated: 2026-09-27
 ---
 
-The code rates every fixture in drainage fixture units, a measure of how hard it loads the drain (a flush valve water closet dumps a tank in seconds, a lavatory drains a trickle), and sizes the pipe under it from the total. The building drain and the sewer carry everything, so their size is read from the building's whole load at the slope they are laid to. The course's set adds the load to 47 on P-501, well inside the 180 its 4 inch sewer carries at 1/8 inch per foot.
+The code rates every fixture in drainage fixture units, a measure of how hard it loads the drain (a flush valve water closet sends its whole flush in seconds, a lavatory drains a trickle), and sizes the pipe under it from the total. The building drain and the sewer carry everything, so their size is read from the building's whole load at the slope they are laid to. The course's set adds the load to 47 on P-501, well inside the 180 its 4 inch sewer carries at 1/8 inch per foot.
 
 On a bid the check is quick and worth doing: a sewer too small for the load is a bigger pipe and often a deeper trench.
 

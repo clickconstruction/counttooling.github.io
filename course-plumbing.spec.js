@@ -101,7 +101,7 @@ const EXPECT = {
     const ss = lts.find((l) => l.name === '4in PVC'), gw = lts.find((l) => l.name === '3in PVC');
     expect(a.polylines.filter((pl) => pl.lineTypeId === ss.id).map((pl) => pl.points.length)).toEqual([4]);
     expect(a.polylines.filter((pl) => pl.lineTypeId === gw.id).length).toBe(2);
-    expect([await countOf(page, '^CO '), await countOf(page, '^VTR')]).toEqual([4, 2]);
+    expect([await countOf(page, '^CO '), await countOf(page, '^VTR')]).toEqual([6, 2]);   // the upstream ends and each line's first turn (PC-TRADE-6)
     expect(await summary(page)).toMatch(/ft of 4in PVC\t66\.25/);     // 29 + 10 + 27.25 plan feet, no riser: it is under the slab
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 29\'-0"');   // the cleanout under MEN to the east wall
     const base = await page.evaluate(() => JSON.parse(JSON.stringify(window.state.pages[0].canvases[0].annotations)));
@@ -118,14 +118,18 @@ const EXPECT = {
   },
   gas: async (page) => {
     const a = await ann(page, 0);
-    expect(a.polylines.length).toBe(1);
-    expect(a.polylines[0].points.length).toBe(3);
+    // the main in its two sizes (PC-TRADE-4): 1-1/2" from the meter to the kitchen wall, 1-1/4" on to the range
+    const gasLts = await page.evaluate(() => window.state.lineTypes.filter((l) => /BI/.test(l.name)).map((l) => ({ id: l.id, name: l.name })));
+    const big = gasLts.find((l) => l.name === '1.5in BI'), small = gasLts.find((l) => l.name === '1.25in BI');
+    expect(a.polylines.filter((pl) => pl.lineTypeId === big.id).map((pl) => pl.points.length)).toEqual([2]);
+    expect(a.polylines.filter((pl) => pl.lineTypeId === small.id).map((pl) => pl.points.length)).toEqual([3]);
     expect(await countOf(page, 'Gas Drop')).toBe(4);
     expect(a.notes.some((n) => /^RFI: Who furnishes/.test(n.text))).toBe(true);
     const s = await summary(page);
-    expect(s).toMatch(/ft of 1\.25in BI\t35\.5/);                     // 23.83 + 11.67 plan feet
+    expect(s).toMatch(/ft of 1\.5in BI\t13\.5/);                      // the meter to the kitchen wall
+    expect(s).toMatch(/ft of 1\.25in BI\t22(\.0+)?\t/);               // 10.33 + 11.67 plan feet
     expect(s).toMatch(/90° elbow\t1/);
-    expect(await page.evaluate(() => { const l = window.state.lineTypes.find((x) => /BI/.test(x.name)); return [l.bendFittings.enabled, l.childCounts[0].ftInterval]; })).toEqual([true, 10]);                  // IFGC Table 415.1: 1-1/4" steel gas pipe
+    expect(await page.evaluate(() => { const l = window.state.lineTypes.find((x) => /1\.25in BI/.test(x.name)); return [l.bendFittings.enabled, l.childCounts[0].ftInterval]; })).toEqual([true, 10]);                  // IFGC Table 415.1: 1-1/4" steel gas pipe
   },
   details: async (page) => {
     expect(await page.evaluate(() => window.App.getPageScale(1).pixelsPerUnit)).toBe(18);
@@ -138,7 +142,7 @@ const EXPECT = {
   whole: async (page) => {
     // the reference is the sheet's geometry, and the laid takeoff meets it run for run
     const ref = await page.evaluate(() => window.App.courseReference());
-    expect(Object.keys(ref.feet).sort()).toEqual(['0.75in Copper HWR', '1.25in BI', '1.25in Copper HW', '1.5in Copper CW', '2in Copper CW', '3in PVC', '4in PVC']);
+    expect(Object.keys(ref.feet).sort()).toEqual(['0.75in Copper HWR', '1.25in BI', '1.25in Copper HW', '1.5in BI', '1.5in Copper CW', '2in Copper CW', '3in PVC', '4in PVC']);
     expect(ref.feet['4in PVC']).toBeCloseTo(66.25, 2);
     expect(ref.feet['3in PVC']).toBeCloseTo(96.25, 2);
     expect(ref.feet['1.5in Copper CW']).toBeCloseTo(99.17, 1);
@@ -149,7 +153,7 @@ const EXPECT = {
       expect(Math.abs(Number(m[1]) - ref.feet[name])).toBeLessThan(0.1);
     }
     for (const [label, n] of ref.counts) expect([label, await countOf(page, '^' + label.replace(/ /g, '.'))]).toEqual([label, n === 0 ? -1 : n]);
-    expect(ref.counts.reduce((t, c) => t + c[1], 0)).toBe(34);
+    expect(ref.counts.reduce((t, c) => t + c[1], 0)).toBe(36);
   },
   bid: async (page) => {
     expect(await page.evaluate(() => [window.state.bidCheck.manual['scale-verified'], window.state.bidCheck.manual['fixture-units'], window.state.bidCheck.manual['trap-arms']])).toEqual([true, true, true]);
@@ -208,7 +212,7 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     expect(errors).toEqual([]);
   });
 
-  test('the note on the wrong fixture: a hand sink carries grease, and the card says so', async ({ page }) => {
+  test('the note on the wrong fixture: a hand sink goes through the interceptor by the red note, and the card says so', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
     await boot(page, '/app/?chapter=plumbing:waste', errors);
@@ -216,13 +220,13 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     await gotoStep(page, 'two');
     await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.HAND_SINKS[1], 'this one?', '#e8c547'); });
     await page.waitForTimeout(500);
-    await expect(page.locator('#tourStatus')).toHaveText(/That fixture carries grease/);
+    await expect(page.locator('#tourStatus')).toHaveText(/Not that one: the red note sends ALL KITCHEN WASTE through the interceptor/);
     await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.MOP, 'the mop sink: sewage, not grease', '#e8c547'); });
     await page.waitForFunction(() => window.App.tutorialStepId() === 'layer', null, { timeout: 5000 });
     await gotoStep(page, 'cleanouts');
     await page.evaluate(() => { const k = window.App.lessonKit; const c = k.makeCounter('CO Cleanout', 'Floor Drain', '#2e86de'); k.mark(k.P101, c, [k.P(592, 210), k.P(596, 436)]); k.dirty(); });
     await page.waitForTimeout(500);
-    await expect(page.locator('#tourStatus')).toHaveText(/2 more: the bar's start, the turn outside the east wall/);
+    await expect(page.locator('#tourStatus')).toHaveText(/4 more: the bar's start, the turn outside the east wall, the kitchen aisle's first turn, by the exit, the bar line's first turn/);
     expect(errors).toEqual([]);
   });
 
@@ -257,7 +261,7 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     const text = await page.locator('#tourBody').innerText();
     expect(text).toContain('1.5in Copper CW: 99.2 ft, yours 99.2 ft ✓');
     expect(text).toContain('4in PVC: 66.3 ft, yours 66.3 ft ✓');
-    expect(text).toContain('Every count matches: twelve fixture types, thirty-four marks.');
+    expect(text).toContain('Every count matches: twelve fixture types, thirty-six marks.');
     // take one run away and the card says which
     await page.evaluate(() => { const a = window.App.getActiveAnnotations(window.state.pages[0]); const lt = window.state.lineTypes.find((l) => /HWR/.test(l.name)); a.polylines = a.polylines.filter((pl) => pl.lineTypeId !== lt.id); window.App.markProjectDirty(); window.App.updateUI(); });
     await page.waitForTimeout(600);

@@ -588,7 +588,9 @@ function candidateBPlan() {
        the east wall and drops the outside to the city main DOWNSTREAM of the interceptor,
        so sewage never enters it; every kitchen, dish and bar fixture drains to a 3" grease
        line along the work aisle and the back rooms to the interceptor's inlet, the red
-       note made real. A cleanout at each upstream end and at the outside turn, a vent
+       note made real. A cleanout at each upstream end and at each line's first turn (the
+       outside turn, and the two grease lines' first corners, added 2026-09-27 for IPC
+       708.1.4: PC-TRADE-6 in the plumbing course dossier), a vent
        stack through the roof in the restroom wall and in the dish/storage wall, a
        backflow preventer where the service enters, a hose bibb by the kitchen exit.
        Everything here is ADDED: nothing that was on the sheet moved, so the tours' and
@@ -602,6 +604,8 @@ function candidateBPlan() {
   ${cleanout(596, 436)}${keyTag(596, 452, 'CO')}
   ${cleanout(222, 544)}${keyTag(206, 544, 'CO')}
   ${cleanout(1060, 210)}${keyTag(1076, 210, 'CO')}
+  ${cleanout(900, 436)}${keyTag(884, 452, 'CO')}
+  ${cleanout(440, 544)}${keyTag(449, 562, 'CO')}
   ${vtr(700, 232)}${keyTag(718, 234, 'VTR')}
   ${vtr(700, 500)}${keyTag(718, 500, 'VTR')}
   <!-- backflow preventer on the 2" service, just inside the wall -->
@@ -663,8 +667,8 @@ function candidateB() {
   ${notesColumn(60, 648, 'GENERAL NOTES', [
     'WATER: TYPE L COPPER. GAS: SCH 40 BLACK STEEL, THREADED.',
     'WASTE AND VENT: PVC DWV SCH 40, BELOW SLAB AND IN WALLS.',
-    'SLOPE WASTE 1/4" PER FT TO 2-1/2", 1/8" PER FT AT 3" AND UP.',
-    'CLEANOUTS AT EACH UPSTREAM END, EACH TURN, 100 FT MAX APART.',
+    'SLOPE 1/4" PER FT TO 2-1/2" AND ALL GW, 1/8" PER FT AT 3" AND UP.',
+    'CLEANOUTS AT EACH UPSTREAM END AND FIRST TURN, 100 FT MAX APART.',
     'EVERY FIXTURE TRAPPED AND VENTED. VENTS THROUGH ROOF AT VTR.',
     'RESTROOM WASTE DIRECT TO SEWER. KITCHEN AND BAR WASTE VIA GI.',
   ])}
@@ -729,13 +733,13 @@ function lessonDetailSheet() {
 // Table 709.1), so the plumbing course can show where the pipe sizes came from.
 const LESSON_SCHEDULE = [
   ['WC-1', 'WATER CLOSET, FLOOR MTD, FLUSH VALVE', '1"', '-', '4"', '2"', '10', '4'],
-  ['U-1', 'URINAL, WALL HUNG, FLUSH VALVE', '3/4"', '-', '2"', '1-1/2"', '5', '4'],
+  ['U-1', 'URINAL, WALL HUNG, FLUSH VALVE', '3/4"', '-', '2"', '1-1/2"', '5', '2'],   // 2 DFU: a urinal of 1 gpf or less (IPC Table 709.1), PC-TRADE-5
   ['L-1', 'LAVATORY, COUNTER MTD', '1/2"', '1/2"', '1-1/2"', '1-1/4"', '2', '1'],
   ['HS-1', 'HAND SINK, WALL HUNG', '1/2"', '1/2"', '1-1/2"', '1-1/4"', '2', '1'],
   ['3CS-1', '3-COMPARTMENT SINK', '3/4"', '3/4"', '2"', '1-1/2"', '4', '3'],
   ['MS-1', 'MOP SINK, FLOOR MTD', '3/4"', '3/4"', '3"', '2"', '3', '2'],
   ['FD-1', 'FLOOR DRAIN W/ TRAP PRIMER', '1/2"', '-', '3"', '2"', '-', '2'],
-  ['FS-1', 'FLOOR SINK, 1/2 GRATE', '-', '-', '3"', '2"', '-', '3'],
+  ['FS-1', 'FLOOR SINK, 1/2 GRATE', '-', '-', '3"', '2"', '-', '5'],   // 5 DFU: a 3" trap (IPC Table 709.2 via 709.4), PC-REVIEW-3
 ];
 // P-601: the restrooms' waste and vent riser, an elevation drawn to scale (1/4" = 1'-0",
 // 18 pt/ft) so the course can set a scale on it, prove it on the 14'-0" floor-to-roof
@@ -817,7 +821,7 @@ function lessonScheduleSheet() {
     '1. ROUGH-IN SIZES ARE MINIMUMS; SEE PLANS FOR RUN SIZES.',
     '2. ALL FIXTURES ADA WHERE SHOWN ON THE ARCHITECTURAL PLANS.',
     '3. WSFU AND DFU PER IPC APPENDIX E AND TABLE 709.1, PUBLIC OCCUPANCY.',
-    '4. DRAINAGE LOAD ON P-101: 47 DFU. BUILDING SEWER 4" AT 1/8" PER FT (180 DFU MAX);',
+    '4. DRAINAGE LOAD ON P-101: 51 DFU. BUILDING SEWER 4" AT 1/8" PER FT (180 DFU MAX);',
     '   A 3" SEWER AT 1/8" PER FT WOULD CARRY 36 (TABLE 710.1(1)).',
   ])}
   ${titleBlock({ sheet: 'P-501', sheetName: 'SCHEDULES', project: 'MAIN ST RESTAURANT', scale: 'NONE', date: '07/31/26' })}`;

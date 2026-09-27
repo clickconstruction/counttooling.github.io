@@ -133,6 +133,49 @@ line per entry, is the dossier's new "Settled 2026-09-27" section: 25 applied, 7
   back-rooms run); course-hvac.spec.js pins the seven counters, EG-2, RTU-1 at 2,350 with nothing of
   chapter 7 on it, and the callout read at each change vertex.
 
+## fix(learn): the plumbing course dossier settled: the gas main in two sizes, six cleanouts, the fixture units and the reasons on the cards (PC-REVIEW, PC-TRADE, PT-TRADE, 2026-09-27)
+
+Will delegated the plumbing course dossier's questions ("a lot of these you can just decide").
+Claude settled them from the dossier's research and the model code text it quotes; nobody opened a
+printed code book, so every settled line says so in the dossier's new
+[Settled 2026-09-27](journeys/plans/TESTER-DOSSIER-PLUMBING-COURSE-2026-09-27.md#settled-2026-09-27)
+log, one line per entry. PC-TRADE-2 (the trap-arm table) and PC-TRADE-3 (gas hanger spacing) are
+the plumbing rules PR's and were not touched.
+
+- **The sheets** (scripts/sample-plan-candidates.js; both PDFs regenerated, nothing moved). P-101's
+  slope note gives 1/4" per foot to all grease waste (IPC 704.1, upstream of an interceptor); its
+  cleanout note reads "each upstream end and first turn", and two cleanouts are drawn at the grease
+  lines' first corners (IPC 708.1.4), six in all. P-501: U-1 is 2 DFU (a urinal of 1 gpf or less,
+  Table 709.1), so WC-1 is the only 4; FS-1 is 5 (a 3" trap, Table 709.2 through 709.4), so note 4
+  reads 51 DFU.
+- **Chapter 6, the gas main in two sizes.** The course makes 1.5in BI and 1.25in BI and traces the
+  1-1/2" from the meter to the storage/kitchen wall (13.5 ft) and the 1-1/4" on to the range
+  (22.0 ft); the card says no reducer is drawn, so the change is read at the wall. `RUNS`, the
+  reference takeoff, splits the same way; `RE.gas` now names the 1-1/4" type (the corner, the drops
+  and the hanger row sit on it) and `RE.gas15` the 1-1/2".
+- **Chapter 4.** The cleanout question wants six (the upstream ends the engineer's, the first turns
+  the code's); the grease line's card teaches 1/4" per foot ahead of the interceptor; the layer card
+  cites IPC 1003.2 and says a hand sink goes to the GI because the red note says ALL KITCHEN WASTE,
+  and the wrong-note hint says the same instead of "that fixture carries grease".
+- **Chapters 1, 2, 3, 7 and 9, words.** The WC's 4" waste is the engineer's choice over the code's
+  3" floor; the wet wall is read water closet to water closet, the rooms repeating; the cook line's
+  hand sink is the one on its own wall; the Food Code sentence lists the hand sinks P-101 draws; the
+  dishwasher may drain through an air break; one primer valve can feed several drains; the RPZ card
+  names the water utility, the relief drain and the yearly test; the loop is there because the mop
+  sink is about 80 ft of pipe from the heater (IPC 607.2's 50 ft) and the 2022 Food Code's hand sink
+  is 85°F; the trunk's riser is said to be practice and an RFI; P-401's mismatch with P-101 is taught
+  as an RFI and four stations are bid; the gas is "in front of the cook line"; 47 DFU is 51.
+- **The plumbing tour's `size` card**: 8 fps is design practice under the IPC and code under the
+  UPC for copper; 3/4in holds just under the limit, a careful bid stays at 1in, and the reader takes
+  3/4in only to see S work.
+- **Left open** (PUNCHLIST PC-REVIEW, PC-TRADE, PT-TRADE rewritten to name them): where the water
+  rises and how far; P-601's venting; the sources nobody opened (IFGC 409.5, NFPA 96 10.4, Food Code
+  5-204.11, IPC 608); the rulebook sentences that follow these rulings (content/rules/ is outside
+  this change: plumb.drain.slope, plumb.drain.cleanouts, plumb.waste.grease-interceptor,
+  plumb.waste.indirect, plumb.drain.dfu-capacity, plumb.water.velocity).
+- **Specs**: course-plumbing.spec.js pins six cleanouts, the two gas runs (13.5 and 22.0 ft), the
+  reference's 1.5in BI and 36 marks, and the new hints; tutorial.spec.js re-takes the `size` card.
+
 ## fix(status-bar): one line on a phone, and the tool hint reads in full (MAP-PHONE-BAR, 2026-09-27)
 
 Signed in on a phone, the bottom bar was two rows: the save words ("Canvas", "PDF Synced with

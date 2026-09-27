@@ -466,3 +466,115 @@ Wording and app issues found on the way. None needs the trade.
   fuel gas rule), plumb.drain.slope (the interceptor exception), plumb.drain.cleanouts (708.1.4's
   first change), plumb.waste.grease-interceptor (1003.2) and plumb.water.velocity (the UPC and the
   NSPC); plumb.trap.arm-length already says 909.1. And RUNS in the course if the gas main splits.
+
+## Settled 2026-09-27
+
+Settled by Claude on the owner's delegation ("go through and answer all these questions"), from
+this dossier's research and the model code text as quoted here; nobody opened a printed code book
+or a local amendment, and the cards still say "read the edition your jurisdiction adopts" where
+they did. PC-TRADE-2 and PC-TRADE-3 belong to the plumbing rules dossier's PR (the rulebook and
+the cards that cite it) and were not touched here. Branch `claude/dossier-plumbing-course`.
+
+**Confirm entries**
+
+- PC-TRADE-2 (trap arm table, 909.1 for 1002.2): OWNED BY THE RULES PR. Not touched here: the
+  `riser:stack` card, P-601's riser note 2 and chapter 9's `rows` reveal still say Table 1002.2.
+- PC-TRADE-3 (gas hangers at 10 ft, IFGC 415.1): OWNED BY THE RULES PR. Not touched here. Note for
+  that PR: the gas main is now two types (PC-TRADE-4); the `gas:hangers` step still reads `RE.gas`,
+  which now names the 1.25in BI type only, so its row lands on the 1-1/4" run and the 1.5in BI
+  run counts no hangers unless that PR adds the row to both.
+- PC-TRADE-5 (U-1 at 2 DFU): APPLIED. P-501's U-1 row reads 2 (IPC Table 709.1, a urinal of 1 gpf
+  or less), so WC-1 is the only 4 and `sheet:row`'s "the biggest number" has one answer. U-1 stays
+  on the schedule (P-401 draws the urinal); `fixtures:restrooms` now says U-1 has a row and no
+  symbol on P-101, and that a row with nothing drawn is a question for an RFI.
+- PC-REVIEW-1 (1/4" per foot upstream of the GI): APPLIED. P-101's slope note reads `SLOPE 1/4"
+  PER FT TO 2-1/2" AND ALL GW, 1/8" PER FT AT 3" AND UP.`; `waste:gw` teaches it (IPC 704.1, 59 ft
+  of the back-room run is about 15" of fall) and names plumb.drain.slope. The SS line stays at 1/8";
+  `waste:two` is unchanged.
+- PC-REVIEW-2 (the loop, 607.2; 85°F; about 80 ft): APPLIED on `water:chain`: the mop sink is about
+  eighty feet of pipe from the heater, the plumbing code wants a loop past fifty feet (IPC 607.2,
+  `rulesExempt`: no rule holds 607.2 yet), and the Food Code's hand sink is at least 85°F in 2022,
+  100°F before (5-202.12). The return stays "forty feet" (its own length, 40.4 ft). IECC C404.6 not
+  named (the dossier had it from memory).
+- PC-REVIEW-11 (the dishwasher's air break): APPLIED on `fixtures:primers`: the prep sink by an air
+  gap, the dishwasher by an air gap or an air break (IPC 802).
+- PC-REVIEW-12 (the list that checked out): APPLIED (kept, no edit) for every item read from an
+  opened source. LEFT OPEN: the two items the dossier had *from memory*, IFGC 409.5 (`gas:drops`)
+  and NFPA 96 10.4 (`gas:hood`); the cards are unchanged, and the sources were not opened.
+- PT-TRADE-1 first half (8 and 5 fps): APPLIED on the tour's `size` card: under the IPC the limit
+  is design practice, the UPC makes it code for copper. The rule's sentence ("No model code prints
+  a velocity limit") is the rulebook's to correct (plumb.water.velocity: practice under the IPC,
+  code under UPC 610.12 and NSPC 10.14.1); LEFT OPEN here because content/rules/ is outside this PR.
+- PT-TRADE-2 (the cold side of 2 WSFU): ALREADY DONE (the tour's `wsfu` and `size` cards say the
+  cold side carries 1.5 of the 2, DS-AGENT-NITS); the app already sizes on it. Nothing to change.
+- PT-TRADE-3 (PEX at 32 in): APPLIED (kept, no edit).
+
+**Decide entries**
+
+- PC-TRADE-1 (P-401 against P-101): APPLIED as words, not a redraw: `details:why` now says this
+  P-401 does not match P-101 (rooms swapped, five WCs and a urinal against one WC a room) and that
+  two sheets that disagree are counted on neither until an RFI says which governs; `details:read`
+  says note 2 asks for four stations where P-101 draws three hand sinks, so bid the four and ask
+  where the fourth goes. Four stations, not three (the count that does not under-count).
+- PC-TRADE-6 (four cleanouts or six): APPLIED, six. P-101 gains a cleanout at the grease lines'
+  first turns (plan 900,436 and 440,544; nothing moved), its note reads `CLEANOUTS AT EACH UPSTREAM
+  END AND FIRST TURN, 100 FT MAX APART.`, the `waste:cleanouts` check wants six, `waste:vents`
+  answers six (the upstream ends the engineer's choice, the first turns IPC 708.1.4), and the
+  reference counts 36 marks. P-601's base-of-stack cleanout stays as the engineer's riser note 4.
+- PC-TRADE-4 (the gas main's sizes): APPLIED. Chapter 6 makes 1.5in BI and 1.25in BI, traces the
+  1-1/2" from the meter to the storage/kitchen wall (13.5 ft) and the 1-1/4" from there to the
+  range (22.0 ft), and says no reducer is drawn, so the change is read at the wall between the two
+  labels and the reducer is a fitting on the bid. `RUNS` (the reference) splits the same way.
+- PC-REVIEW-3 (FS-1 at 3 or 5): APPLIED, 5 (a 3" trap, Table 709.2 through 709.4), so note 4 and
+  the `sheet:units` and `bid:rows` cards read 51 DFU; the 4" sewer still stands (a 3" carries 36).
+- PC-REVIEW-5 (why a hand sink goes through the GI): APPLIED. `waste:layer` cites IPC 1003.2 for
+  keeping waste that needs no interceptor out, and says a hand sink goes to the GI here because the
+  red note sends ALL KITCHEN WASTE, as many sewer offices want; `waste:two`'s hint says the same
+  instead of "that fixture carries grease".
+- PC-TRADE-7 (the wet wall): APPLIED as words. The WCs sit on the top wall and the stack in the
+  wall between the rooms; the reading is water closet to water closet; the rooms repeat, not
+  mirror; a wet wall (fixtures back to back) is described, not claimed.
+- PC-TRADE-9 (gas behind or in front): APPLIED as words. `gas:trace` and `gas:drops` say "in front
+  of the cook line", and `gas:drops` notes most sheets run it behind at the wall.
+- PC-TRADE-8 (which hand sink): APPLIED. `fixtures:handsinks` asks for the hand sink on the cook
+  line's own wall (the hall wall the equipment stands against); the answer is the one past the prep
+  sink, `HAND_SINKS[1]`, as before.
+- PC-REVIEW-4 (the WC's 4" waste): wording ALREADY DONE (the card already said "dumps its water in
+  seconds", not "a tank"); framing APPLIED on `sheet:units`: the 4" is the engineer's choice, the
+  code's least for a building drain a water closet empties into is 3" (IPC Table 710.1(1)), and
+  solids, not the 4 DFU, set it. The question stays "why 4"".
+- PC-REVIEW-6 (a hand sink for the dish pit): APPLIED as the reword: "the cook line and prep side,
+  the kitchen exit and the bar". The Food Code 5-204.11 text itself was not opened (LEFT OPEN as a
+  source to read; the card's citation is unchanged).
+- PC-REVIEW-9 (where and how far the water rises): LEFT OPEN. Nothing on the sheet or in the
+  sources says which runs are overhead, so any location or length would be invented. The `water:drop`
+  card no longer claims the trunk rises 4 ft at the south wall: it says the sheet does not say
+  where the water rises or how far, that the 4 ft is practice, and that on a real bid it is an RFI.
+  The reference still carries 4 ft on the trunk.
+- PC-REVIEW-10 (P-601's venting): LEFT OPEN. The dossier's reading (the WC and FD wet vented
+  through the lavatory's drain, which IPC 912 allows only within bathroom groups) rests on a
+  section it opened, but it did not open the stack-venting section that could cover this riser;
+  no sheet or card changed.
+- PC-REVIEW-7 (primers per drain): APPLIED. The row stays 1 per count; `fixtures:primers` adds that
+  one primer valve with a small manifold can serve several drains, so a bid may carry fewer valves
+  and more small tubing.
+- PC-REVIEW-8 (the RPZ card): APPLIED as trade practice: the water utility usually asks for the
+  service RPZ; the bid is the assembly (its two shutoffs and test ports come with it), a relief
+  drain (an air gap fitting over a drain big enough for a full dump) and a yearly test. The IPC 608
+  citation is unchanged and was not opened.
+- PT-TRADE-1 second half (3/4" PEX at 7.9 fps): APPLIED, step up. The tour's `size` card says 3/4in
+  holds just under the limit, that a fitting is narrower inside than the pipe so a careful bid
+  stays at 1in, and to take 3/4in there only to see how S works. The app's sizing is unchanged.
+
+**Not trade: for an agent**
+
+- `riser:traparm`'s loose check; `fixtures:keys`' ten 1/2" lines and `waste:layer`'s nine words;
+  chapter 2's `done` tag count; WATER-PLAN §7's worked example; the tour's `wsfu` / `size` cold-side
+  line: ALREADY DONE (DS-AGENT-NITS, PR #231; verified on main).
+- The rulebook drafts that follow the rulings: named for the rulebook's owner, not edited here
+  (content/rules/ is outside this PR): plumb.drain.slope (the 704.1 row upstream of an
+  interceptor), plumb.drain.cleanouts (708.1.4's first change; its body says "four"),
+  plumb.waste.grease-interceptor (cite 1003.2 for "kept out"), plumb.waste.indirect (its Verify
+  paragraph says the card gives an air gap for both), plumb.drain.dfu-capacity (its body says 47
+  and "dumps a tank"), plumb.water.velocity (the UPC and NSPC sentence). LEFT OPEN.
+- RUNS in the course if the gas main splits: APPLIED (PC-TRADE-4).

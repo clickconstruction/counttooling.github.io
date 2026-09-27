@@ -47,13 +47,13 @@ coordinate in features/lessons.js and the tours stays true. Plan-space px, 12 px
 |---|---|---|
 | **Sanitary waste** (the legend's SS line, heavy dashed) from the restrooms and the mop room: a 4" building drain under the hall, east out of the wall, down the outside to the sewer | y = 206 from the men's FD to x = 940, then (1060, 206) to (1060, 537) joining the sewer downstream of the interceptor | gravity drainage, slope, the low corner, why restroom waste never enters the interceptor |
 | **Grease waste** (a 3" GW line, the same dash, labelled) from every kitchen, dish and bar fixture to the interceptor's inlet | the kitchen work aisle at y = 436, the back rooms and the bar at y = 540, joined at x = 900 and out at (940, 537) | the interceptor, what goes through it and why, the red note made real |
-| **Cleanouts** (CO), four | the upstream end of each drain line and the outside turn | IPC 708: at the upstream end, at every change of direction, within reach |
+| **Cleanouts** (CO), six (four until 2026-09-27, PC-TRADE-6) | the upstream end of each drain line, and each line's first turn: the outside turn and the two grease lines' first corners | the upstream ends are the engineer's; the first turns are IPC 708.1.4 |
 | **Vents through roof** (VTR), two | the wall between the restrooms and the dish/storage wall | every trap has a vent; the roof flashing the bid counts |
 | **Backflow preventer** (RPZ) on the water service | just inside the wall on the 2" CW | IPC 608: the city main is protected from the building |
 | **Hose bibb** (HB) on the east wall | outside the kitchen exit door, off the 3/4" CW | a fixture the plan shows once and the bid must not miss |
 | **General notes** naming the materials and the slope | a notes block under the keynotes | the line type's name carries the material, and the hanger rule reads it |
 | **The hot water return** with its own line style (dotted, HWR in the legend) | down the east wall through the pump | the line most bids miss, traceable as its own type |
-| **Fixture units on P-501**: WSFU and DFU columns, and a note adding the drainage load to 47 DFU against the 4" sewer's 180 and a 3" sewer's 36 | the schedule sheet | where the sizes came from, visible |
+| **Fixture units on P-501**: WSFU and DFU columns, and a note adding the drainage load to 51 DFU (47 until FS-1 went from 3 to 5, PC-REVIEW-3, 2026-09-27) against the 4" sewer's 180 and a 3" sewer's 36 | the schedule sheet | where the sizes came from, visible |
 | **P-601, a waste and vent riser** at 1/4", drawn to scale: the stack from the drain to a foot above the roof, a WC, a lavatory and a floor drain with their trap arms dimensioned, the cleanout at the base, riser notes | a fourth sheet in the lesson set | the vertical the plan cannot show, a trap arm against the table, why a stack goes through the roof |
 
 The one dimension string that lied (36'-0" over a 35'-10" wall) now says what the wall measures.
@@ -152,6 +152,12 @@ edits. The app-side stalls from the same read (dead-end steps, hints, steps that
 are being fixed separately. Each item names the step and where it lives; nothing here was walked
 live, and a code citation marked *from memory* came from the reviewer's recollection, not the
 printed code.
+
+**Settled 2026-09-27** on the owner's delegation, every item below but the trap-arm citation and
+the gas hanger spacing (the plumbing rules PR's): the decisions and what each changed are in the
+dossier's [Settled 2026-09-27](TESTER-DOSSIER-PLUMBING-COURSE-2026-09-27.md#settled-2026-09-27) log.
+In short: P-401's mismatch is taught as an RFI and four stations are bid; the gas main is two types;
+U-1 reads 2 DFU; P-101 carries six cleanouts; the wet wall, the hand sink and the gas are reworded.
 
 - **P-401 contradicts P-101** (chapter 7, `details`, course-plumbing.js ~616-642; the sheet in
   scripts/sample-plan-candidates.js ~686-726): five WCs and a urinal on P-401 against two WCs on

@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the HVAC course, written for anyone at all (2026-09-27)
+
+Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the
+reader is anyone at all, a salesperson, a student, a spouse, someone who has never seen a
+construction drawing. This is the HVAC course's half; the plumbing and electrical courses get the
+same pass on their own branches.
+
+- **Chapter 0, Before you count** (`before`), five read cards ahead of the nine chapters and not
+  counted among them: what a set of drawings is and what an M-sheet carries (the plan, the
+  schedules, the section, the title block, the legend, the keynotes); what an estimator does with
+  it (count what is drawn, measure what is run, weigh the duct, price it: the takeoff); the app's
+  four verbs, count, trace, box a room, check; the header, the sidebar and the footer; and how a
+  card works, down to the line beside Show me where. It registers through `registerCourse` like
+  the others, so `?chapter=hvac:before` and the Learn menu's row come for free; `readOnly` marks
+  the row "· read".
+- **Every trade and app word glossed where it first appears**, two to six words in the same
+  sentence or the next: CFM, cubic feet per minute, how much air moves; ESP, external static
+  pressure, the push the unit has to spare for the duct; a plenum, the space above the ceiling the
+  air comes back through; make-up air, outside air brought in to replace what the hood throws out;
+  the RFI, the GC, UL, OA and the tags (SD, RG, EG, MA, VD, EF, RTU, MAU); and the parts
+  themselves, a diffuser, a grille, a register, the hood, a curb, a neck, flex, wrap and liner, a
+  tap, a branch, a transition, an elbow, a volume damper, a fire damper and its fusible link, a
+  duct's gauge. The HVAC words stay; each is explained, never replaced.
+- **A doing card leads with its numbered steps.** The previous question's answer sits above them
+  as "Answer:" (the unit, the depth), and the reasoning that used to come first follows the steps;
+  a line that asked for three actions is three lines.
+- **No card sentence over 25 words.** The static-path card's 62-word sentence is four; the grease
+  duct's reveal is paragraphs of short sentences.
+- **The estimator idioms stay, each with its plain twin once**: a callback, a trip back to fix it,
+  unpaid; the third addendum, the third round of changes before the bid is due; the most expensive
+  discovery on a job, found on site and fixed at the contractor's cost; a count you can defend, one
+  you can show your work for.
+
+What did not change: every card's id, kind, targets, zones, check, hint, action, onEnter and
+`rules:`; every number, code section and rule citation; and the trade claims the tester dossier
+holds open (the neck-velocity band, the make-up air keynote, "the corner" on the main). The
+course spec walks chapter 0 in its chapter loop (read cards only, nothing made) and counts ten
+rows in the Learn menu. Re-scored with the memo's method: 35 sentences over 25 words to 0.
+
 ## fix(learn): the HVAC course's trace hint no longer deletes the reader's committed main (2026-09-27)
 
 Found by the DS-DUCT-DOWNSTREAM agent while proving the Duct tool never drops a run: chapter 5's

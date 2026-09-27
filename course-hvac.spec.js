@@ -1,6 +1,7 @@
 // @ts-check
 /**
- * The HVAC course (features/course-hvac.js): nine chapters on the tour engine, on the
+ * The HVAC course (features/course-hvac.js): nine chapters, after an uncounted chapter 0
+ * (id before, five read cards for a reader who has never seen a drawing), on the tour engine, on the
  * mechanical set (samples/sample-hvac.pdf), the third trade course. Plan:
  * journeys/plans/HVAC-COURSE.md.
  *
@@ -48,6 +49,12 @@ const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), 
 const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
 const EXPECT = {
+  // chapter 0 reads and makes nothing: five read cards, no zones, the sheets open
+  before: async (page) => {
+    expect(await page.evaluate(() => [window.state.trade, window.state.currentPage])).toEqual(['hvac', 0]);
+    expect(await page.evaluate(() => (window.state.counters || []).filter((c) => c.lesson).length)).toBe(0);
+    expect(await page.evaluate(() => window.App.courseHvacIds()[0])).toBe('before');
+  },
   sheet: async (page) => {
     expect(await page.evaluate(() => [window.App.getPageScale(0).pixelsPerUnit, window.state.trade, window.state.currentPage])).toEqual([9, 'hvac', 1]);
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 31\'-8"');
@@ -133,7 +140,7 @@ const EXPECT = {
     expect(await page.evaluate(() => ['scale-verified', 'duct-oa-code', 'duct-fire-dampers'].map((k) => window.state.bidCheck.manual[k]))).toEqual([true, true, true]);
   },
 };
-const REVEALS = { sheet: ['what', 'balance'], rooms: ['why', 'deck'], diffusers: ['neck'], system: ['designed'], main: ['why'], plenum: ['static'], exhaust: ['why', 'nodamper', 'interlock'], whole: [], bid: ['rows'] };
+const REVEALS = { before: [], sheet: ['what', 'balance'], rooms: ['why', 'deck'], diffusers: ['neck'], system: ['designed'], main: ['why'], plenum: ['static'], exhaust: ['why', 'nodamper', 'interlock'], whole: [], bid: ['rows'] };
 
 test.describe('The HVAC course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
@@ -148,6 +155,7 @@ test.describe('The HVAC course: the chapters', () => {
       expect(walked[0]).toBe('sheets');
       expect(walked[walked.length - 1]).toBe('done');
       expect(revealed).toEqual(REVEALS[id]);
+      if (id === 'before') expect(walked).toEqual(['sheets', 'set', 'estimator', 'verbs', 'screen', 'cards', 'done']);   // read cards only, each passed with Next
       expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.state.trade])).toEqual([3, 'sample-hvac', 'hvac']);
       await EXPECT[id](page);
       expect(await page.evaluate((k) => !!window.App.courseDone()['hvac:' + k], id)).toBe(true);
@@ -231,10 +239,10 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     const errors = [];
     await boot(page, '/app/?course=hvac', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#learnCourseList-hvac .learn-row')).toHaveCount(9);
+    await expect(page.locator('#learnCourseList-hvac .learn-row')).toHaveCount(10);   // chapter 0, Before you count, then the nine
     await expect(page.locator('#learnCourseList-electrical .learn-row')).toHaveCount(9);
     await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(9);
-    await expect(page.locator('#learnCourseProgress-hvac')).toHaveText('0 of 9 done');
+    await expect(page.locator('#learnCourseProgress-hvac')).toHaveText('0 of 10 done');
     await page.click('#learnModal [data-modal-close]');
     await page.click('#canvasEmptyHintCourseHvac');
     await expect(page.locator('#learnModal')).toHaveClass(/visible/);

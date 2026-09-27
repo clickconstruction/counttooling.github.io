@@ -35,7 +35,7 @@ A raceway is only allowed so full. The limit is a share of the conduit's inside 
 
 ## What the app does with it
 
-The **Conduit fill within the table limit** row in Bid Check adds up the conductors on every run of a line type — the ones you wrote on the type (`3 #12 THHN + 1 #12 G`) or on the run — takes their areas from the insulation family and gauge, divides by the raceway's inside area, and compares with this limit. When a run fails, the row names the smallest trade size of the same raceway that passes.
+The **Conduit fill within the table limit** row in Bid Check adds up the conductors on every run of a line type — the ones you wrote on the type (`2 #12 THHN + 1 #12 G`) or on the run — takes their areas from the insulation family and gauge, divides by the raceway's inside area, and compares with this limit. When a run fails, the row names the smallest trade size of the same raceway that passes.
 
 The conductor and raceway areas come from Chapter 9 Tables 4 and 5 and stay in code, cited there; they are not reprinted on this site.
 

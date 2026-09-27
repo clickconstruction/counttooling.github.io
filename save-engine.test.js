@@ -523,9 +523,20 @@ test('force reload: stale server stamp records state but does not reload', async
 
 // --- Stage 5: checkout subscription & permission refresh --------------------
 
+// PostgREST's answer for an RPC the schema cache does not hold (supabase-js
+// surfaces it as a PostgrestError; the raw fetch sees a 404 with this body).
+const PGRST202 = { code: 'PGRST202', message: 'Could not find the function public.get_project_permissions(p_project_id) in the schema cache', details: null, hint: null };
+
 // list_accessible_projects responder for the permission-refresh tests.
+// get_project_permissions answers the way prod does until MAP-PERMS's
+// migration is applied (missing, PGRST202), unless outcomes.lean opts in to
+// the lean read, which filters the same rows to the asked project.
 function rpcWithProjects(rows, outcomes) {
-  return async (name) => {
+  return async (name, args) => {
+    if (name === 'get_project_permissions') {
+      if (!outcomes?.lean) return { data: null, error: PGRST202, status: 404 };
+      return { data: rows.filter((r) => r.id === args?.p_project_id), error: null };
+    }
     if (name === 'list_accessible_projects') return { data: rows };
     if (name === 'check_out_project') return outcomes?.checkOut || { data: { ok: true, checked_out_at: 'TS' } };
     if (name === 'check_in_project') return outcomes?.checkIn || { data: { ok: true } };
@@ -809,6 +820,118 @@ test('refreshProjectPermissions: a live lock externally cleared IS a force — n
   assert.ok(!logKinds(engine).includes('checkout_expired_on_refresh'));
 });
 
+// --- MAP-PERMS: the lean permissions read, behind a list fallback ------------
+
+test('refreshProjectPermissions: the lean RPC answers, its row is applied, the list is never read', async () => {
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' };
+  const names = [];
+  const lean = rpcWithProjects([row, { id: 'p2', can_edit: false }], { lean: true });
+  const { supabase } = makeChannelSupabase(async (name, args) => { names.push([name, args]); return lean(name, args); });
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false };
+  const { ctx, calls } = makeCtx({ getState: () => state, getSupabase: () => supabase });
+  const engine = createSaveEngine(ctx);
+  await engine.refreshProjectPermissions();
+  assert.deepStrictEqual(names, [['get_project_permissions', { p_project_id: 'p1' }]]);
+  assert.strictEqual(state.checkedOutBy, 'u1');
+  assert.strictEqual(state.checkedOutAt, 'TS');
+  assert.strictEqual(state.checkedOutEmail, 'me@x.com');
+  assert.strictEqual(state.isViewer, false);
+  assert.strictEqual(state.canCheckOut, false);
+  assert.ok(calls.uiUpdates >= 1);
+  assert.ok(!logKinds(engine).includes('permissions_rpc_missing'));
+  assert.ok(!logKinds(engine).includes('sbjs_failure_recorded'));
+  // No row = no access, the same verdict the list's missing row gave.
+  state.currentProjectId = 'p9';
+  await engine.refreshProjectPermissions();
+  assert.ok(logKinds(engine).includes('permissions_project_missing'));
+  assert.strictEqual(state.isViewer, true);
+  assert.ok(!names.some(([n]) => n === 'list_accessible_projects'));
+});
+
+test('refreshProjectPermissions: a missing lean RPC (PGRST202) falls back to the list once, latches, and a client recycle clears the latch', async () => {
+  const row = { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' };
+  const names = [];
+  const missing = rpcWithProjects([row]);
+  const { supabase } = makeChannelSupabase(async (name, args) => { names.push(name); return missing(name, args); });
+  const state = { supabaseSession: { user: { id: 'u1' } }, currentProjectId: 'p1', checkedOutBy: 'u1', canCheckOut: false };
+  let current = supabase;
+  const { ctx } = makeCtx({ getState: () => state, getSupabase: () => current, setSupabase: (c) => { current = c; } });
+  const engine = createSaveEngine(ctx);
+  await engine.refreshProjectPermissions();
+  assert.deepStrictEqual(names, ['get_project_permissions', 'list_accessible_projects']);
+  assert.strictEqual(state.checkedOutEmail, 'me@x.com');
+  assert.strictEqual(state.isViewer, false);
+  // A clean server answer, not a wedged client: raw fetch is not preferred.
+  assert.ok(!logKinds(engine).includes('sbjs_failure_recorded'));
+  assert.strictEqual(logKinds(engine).filter((k) => k === 'permissions_rpc_missing').length, 1);
+  // Latched: the next refreshes go straight to the list.
+  await engine.refreshProjectPermissions();
+  await engine.refreshProjectPermissions();
+  assert.deepStrictEqual(names, ['get_project_permissions', 'list_accessible_projects', 'list_accessible_projects', 'list_accessible_projects']);
+  // A recycle (the new client may meet a freshly migrated schema) retries it once.
+  const nextNames = [];
+  const next = makeChannelSupabase(async (name, args) => { nextNames.push(name); return rpcWithProjects([row], { lean: true })(name, args); }).supabase;
+  globalThis.window.supabase = { createClient: () => next };
+  try {
+    assert.strictEqual(await engine.recreateSupabaseClient('test'), true);
+    await engine.refreshProjectPermissions();
+    assert.deepStrictEqual(nextNames.filter((n) => n !== 'list_accessible_projects').slice(-1), ['get_project_permissions']);
+    assert.ok(!nextNames.includes('list_accessible_projects'), 'the applied RPC answered on the new client');
+  } finally {
+    delete globalThis.window.supabase;
+  }
+});
+
+test('refreshProjectPermissions: the raw-fetch path reads the lean RPC, and on a 404 PGRST202 falls back to the raw list and latches', async () => {
+  const row = { id: 'p1', can_edit: false, can_check_out: true, checked_out_by: null, checked_out_at: null, checked_out_email: null };
+  // Wedged supabase-js: the first attempt times out, the retry goes raw.
+  const sbNames = [];
+  const wedged = { rpc: async (name) => { sbNames.push(name); throw Object.assign(new Error('timeout'), { name: 'TimeoutError' }); } };
+
+  // (1) The function is applied: one raw POST with the project id, no list.
+  let fetches = routeFetch([
+    { match: '/rest/v1/rpc/get_project_permissions', body: [row] },
+    { match: '/rest/v1/rpc/list_accessible_projects', body: [row] },
+  ]);
+  const a = rawCtx({ getSupabase: () => wedged });
+  a.ctx.getState().canCheckOut = false;
+  const ea = createSaveEngine(a.ctx);
+  await ea.refreshProjectPermissions();
+  const rawA = fetches.filter((c) => c.url.includes('/rest/v1/rpc/'));
+  assert.deepStrictEqual(rawA.map((c) => c.url.split('/rpc/')[1]), ['get_project_permissions']);
+  assert.strictEqual(rawA[0].init.body, JSON.stringify({ p_project_id: 'p1' }));
+  assert.strictEqual(a.ctx.getState().canCheckOut, true);
+  assert.strictEqual(a.ctx.getState().isViewer, true);
+
+  // (2) The function is missing: PostgREST's 404 body, the raw list, the latch.
+  fetches = routeFetch([
+    { match: '/rest/v1/rpc/get_project_permissions', status: 404, body: PGRST202 },
+    { match: '/rest/v1/rpc/list_accessible_projects', body: [row] },
+  ]);
+  const b = rawCtx({ getSupabase: () => wedged });
+  b.ctx.getState().canCheckOut = false;
+  const eb = createSaveEngine(b.ctx);
+  await eb.refreshProjectPermissions();
+  const rawB = () => fetches.filter((c) => c.url.includes('/rest/v1/rpc/')).map((c) => c.url.split('/rpc/')[1]);
+  assert.deepStrictEqual(rawB(), ['get_project_permissions', 'list_accessible_projects']);
+  assert.strictEqual(b.ctx.getState().canCheckOut, true);
+  assert.strictEqual(logKinds(eb).filter((k) => k === 'permissions_rpc_missing').length, 1);
+  // Supabase-js is now marked bad, so the next refresh goes raw at once, list only.
+  await eb.refreshProjectPermissions();
+  assert.deepStrictEqual(rawB(), ['get_project_permissions', 'list_accessible_projects', 'list_accessible_projects']);
+
+  // (3) A 404 that is NOT PostgREST's missing-function answer does not latch.
+  fetches = routeFetch([
+    { match: '/rest/v1/rpc/get_project_permissions', status: 404, body: '<html>not found</html>' },
+    { match: '/rest/v1/rpc/list_accessible_projects', body: [row] },
+  ]);
+  const c = rawCtx({ getSupabase: () => wedged });
+  const ec = createSaveEngine(c.ctx);
+  await ec.refreshProjectPermissions();
+  assert.ok(!logKinds(ec).includes('permissions_rpc_missing'));
+  assert.ok(logKinds(ec).includes('refresh_permissions_err'));
+});
+
 // --- Stage 5: checkout expired recovery -------------------------------------
 
 test('computeCheckoutExpiryAgeMs: no candidates -> 0; stale checkout dates the expiry', () => {
@@ -900,6 +1023,7 @@ test('handleBackgroundCheckoutExpired: disabled no-op; silent recovery; one-shot
     let held = false;
     const supabase = makeChannelSupabase(async (name) => {
       if (name === 'check_out_project') { held = true; return { data: { ok: true, checked_out_at: 'TS' } }; }
+      if (name === 'get_project_permissions') return { data: null, error: PGRST202, status: 404 };
       if (name === 'list_accessible_projects') {
         return { data: [held
           ? { id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1' }
@@ -1647,6 +1771,7 @@ function idleReturnClients(opts) {
   const rpcFor = (bucket) => async (name) => {
     rpcCalls[bucket].push(name);
     if (name === 'refresh_checkout_activity') return opts.checkoutProbe || { data: { ok: true, checked_out_at: '2026-09-26T12:00:00Z' } };
+    if (name === 'get_project_permissions') return { data: null, error: PGRST202, status: 404 };
     if (name === 'list_accessible_projects') return { data: [row] };
     return { data: {} };
   };
@@ -1704,7 +1829,10 @@ test('Stage 7: a return past LONG_IDLE_PROBE_MS probes the connection, forces a 
       supabaseSession: { user: { id: 'u1' }, access_token: 'tok-1', refresh_token: 'r-1' },
       checkedOutAt: '2026-09-26T11:59:00Z',
     });
-    const fetches = routeFetch([{ match: '/rest/v1/rpc/list_accessible_projects', body: [{ id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' }] }]);
+    const fetches = routeFetch([
+      { match: '/rest/v1/rpc/get_project_permissions', status: 404, body: PGRST202 },
+      { match: '/rest/v1/rpc/list_accessible_projects', body: [{ id: 'p1', can_edit: true, can_check_out: false, checked_out_by: 'u1', checked_out_at: 'TS', checked_out_email: 'me@x.com' }] },
+    ]);
     const set = [];
     const { ctx, calls } = makeCtx({
       getState: () => state,

@@ -93,6 +93,8 @@
     const clear = el('learnWordsClear');
     if (clear) clear.onclick = () => { if (input) { input.value = ''; render(); input.focus(); } };
 
+    App.learnWordsReady = wordsReady;          // features/learn-taps.js: the same list, loaded once
+    App.learnWordGroups = () => groups;
     App.onLearnMenuOpened = () => { if (input) input.value = ''; render(); };
     App.learnWordsSearch = (query) => { if (input) input.value = String(query == null ? '' : query); onInput(); return wordsReady().then(() => { render(); return searchWords(groups, query); }); };
   }

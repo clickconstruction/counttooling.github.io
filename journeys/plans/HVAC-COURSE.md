@@ -78,10 +78,11 @@ printed code.
   (scripts/sample-hvac.js ~99), so a reader clicks at the label and chapter 8's feet by size drift.
 - **Counts in the words**: `sheet:what` (~295) says three kinds of duct and four of grille (the
   legend has four and three); `diffusers:rest` (~376) and the chapter's done text say the row reads
-  ✓ (the row never draws one; the ⚠ just goes).
+  ✓ (the row never draws one; the ⚠ just goes). Fixed 2026-09-27 (DS-AGENT-NITS).
 - **`exhaust:makeup` opens with "Spiral round in ten-foot sticks…"**, left over from the restroom
   step, on a card about a 20x16 rectangular duct; "the MAU-1 drop" sits on the drawn back-run band
-  with no drop symbol.
+  with no drop symbol. (The opening line fixed 2026-09-27, DS-AGENT-NITS; the drop symbol is the
+  tester's call, T4/T5.)
 
 ## Open, and not blocking
 

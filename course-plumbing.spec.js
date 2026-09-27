@@ -215,6 +215,26 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     expect(errors).toEqual([]);
   });
 
+  test('the trap arm is the lavatory\'s: the floor drain\'s 4\'-0" arm is refused, the lavatory\'s passes on the pipe or its dimension (DS-AGENT-NITS)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=plumbing:riser', errors);
+    await openSheets(page);
+    await seam(page, 'traparm');
+    expect(await stepId(page)).toBe('traparm');
+    // the floor drain's 2" arm reads 4'-0" too, from its dimension under the slab: not the lavatory's
+    await page.evaluate(() => { const k = window.App.lessonKit; k.goPage(k.P601); k.measure({ x: 448, y: 580 }, { x: 520, y: 580 }); });
+    await page.waitForTimeout(600);
+    expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 4\'-0"');
+    expect(await stepId(page)).toBe('traparm');
+    expect(await page.evaluate(() => window.App.tutorialStepInfo().done)).toBe(false);
+    await expect(page.locator('#tourStatus')).toHaveText(/at the lavatory/);
+    // the lavatory's, clicked on its dimension a little under the pipe: passes
+    await page.evaluate(() => { const k = window.App.lessonKit; k.measure({ x: 520, y: 508 }, { x: 592, y: 508 }); });
+    await page.waitForFunction(() => window.App.tutorialStepId() !== 'traparm' || (window.App.tutorialStepInfo() || {}).done, null, { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
   test('the finish chapter: the status line names the first run not yet traced, and the compare card reads the takeoff live', async ({ page }) => {
     test.setTimeout(150000);
     const errors = [];

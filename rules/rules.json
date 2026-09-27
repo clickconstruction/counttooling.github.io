@@ -2122,37 +2122,37 @@
         },
         {
           "when": "CPVC 1 in nominal",
-          "value": 0.921,
+          "value": 0.901,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 2 in nominal",
-          "value": 1.739,
+          "value": 1.716,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 1/2 in nominal",
-          "value": 0.489,
+          "value": 0.469,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 3/4 in nominal",
-          "value": 0.715,
+          "value": 0.695,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 1-1/4 in nominal",
-          "value": 1.125,
+          "value": 1.105,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 1-1/2 in nominal",
-          "value": 1.329,
+          "value": 1.309,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },

@@ -6,7 +6,7 @@
  * still to serve beyond the tip and the smallest size of the type's material
  * that keeps the velocity under the side's cap:
  *
- *   "3/4″ suggested · 6 WSFU downstream · 5.1 fps · S accepts"   (a size that passes)
+ *   "3/4″ suggested · 6 WSFU downstream · 5.1 fps · S to choose" (a size that passes)
  *   "1/2″ holds · 6 WSFU downstream · 6.8 fps ✓"                (the run's own size passes)
  *   "6 WSFU downstream · 8.7 gpm"                               (no material in the name)
  *
@@ -96,7 +96,7 @@
       chipText = inch(s.currentSizeIn) + ' holds · ' + load + ' · ' + fmt1(s.currentVelocityFps) + ' fps ✓ · ' + inch(s.sizeIn) + ' would do';
     } else if (s.sizeIn != null) {
       kind = 'suggests';
-      chipText = inch(s.sizeIn) + ' suggested · ' + load + ' · ' + fmt1(s.velocityFps) + ' fps' + (s.over ? ' · ' + inch(s.currentSizeIn) + ' runs ' + fmt1(s.currentVelocityFps) + ' ⚠' : '') + '. S accepts';
+      chipText = inch(s.sizeIn) + ' suggested · ' + load + ' · ' + fmt1(s.velocityFps) + ' fps' + (s.over ? ' · ' + inch(s.currentSizeIn) + ' runs ' + fmt1(s.currentVelocityFps) + ' ⚠' : '') + '. S to choose';
     } else if (material) {
       kind = 'none';
       chipText = load + ' · ' + fmt1(s.gpm) + ' gpm · no size of ' + material + ' passes under ' + fmt(s.capFps) + ' fps';
@@ -116,8 +116,9 @@
     const out = document.getElementById('waterHintText') || el;
     if (!sug) { if (!el.hidden) { el.hidden = true; out.innerHTML = ''; } return; }
     let text = sug.chipText, tail = '';
-    const m = text.match(/\s*[.—-]\s*S accepts\.?\s*$/);
-    if (m) { text = text.slice(0, m.index); tail = '<span class="water-hint-key"> · <kbd>S</kbd> accepts</span>'; }
+    // PP-DUCT-CHIP: S opens the popover, where a click takes the size; the tail says so
+    const m = text.match(/\s*[.—-]\s*S (to choose|to pick it)\.?\s*$/);
+    if (m) { text = text.slice(0, m.index); tail = '<span class="water-hint-key"> · <kbd>S</kbd> ' + m[1] + '</span>'; }
     const parts = text.split(' · ');
     const html = (parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> · ' + esc(parts.slice(1).join(' · ')) : esc(text)) + tail;
     if (out.innerHTML !== html) out.innerHTML = html;

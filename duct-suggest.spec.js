@@ -91,6 +91,10 @@ test.describe('Duct design-build suggestions (D6)', () => {
     await expect(card).toContainText('150 CFM downstream');
     await expect(card.locator('b')).toHaveText('150 CFM downstream');
     await expect(card.locator('kbd')).toHaveText('S');
+    // PP-DUCT-CHIP: S opens the size box, it does not take the size, so the card
+    // says "S to choose" (it used to promise "S accepts").
+    await expect(card).toContainText('· S to choose');
+    await expect(card).not.toContainText('accepts');
     // Fixed inside the canvas above its bottom edge, well below the row being traced,
     // and never a click target.
     const [cb, wb] = await Promise.all([card.boundingBox(), wrapper.boundingBox()]);
@@ -128,7 +132,7 @@ test.describe('Duct design-build suggestions (D6)', () => {
     expect(sug).not.toBeNull();
     expect(Math.round(sug.cfm)).toBe(350);
     expect(sug.chipText).toContain('350 CFM downstream');
-    expect(sug.chipText).toContain('. S accepts');
+    expect(sug.chipText).toContain('. S to choose');
     expect(sug.chipText).toContain('@ 0.08″/100′');
 
     // The trace passes the 150-CFM device (it sits on the drawn polyline

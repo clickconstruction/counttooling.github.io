@@ -33,7 +33,8 @@
  *   2. Step-down offers while tracing. As the cursor moves along a trace,
  *      a callout within the radius whose size DIFFERS from the current
  *      segment's yields a quiet chip line under the cursor size chip —
- *      "Plan says 20×12 here — S accepts" (the D6 chip vocabulary) — plus
+ *      "Plan says 20×12 here. S to pick it" (PP-DUCT-CHIP: S opens the
+ *      popover, it does not apply the size, so the words say so) — plus
  *      the S popover's FIRST section ('plan-callout', order 3, before D6's
  *      suggestion at 5): the pre-highlighted size, one tap applies it
  *      through the normal applyDuctSizeStep path (the step is recorded; D3
@@ -103,7 +104,7 @@
     const label = formatDuctSize(hit.size);
     return {
       size: hit.size, str: hit.str, x: hit.x, y: hit.y, w: hit.w, h: hit.h, dist: hit.dist,
-      chipText: 'Plan says ' + label + ' here. S accepts',
+      chipText: 'Plan says ' + label + ' here. S to pick it',
       popoverLabel: 'Plan says ' + label + ' here',
     };
   }

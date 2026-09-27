@@ -510,7 +510,9 @@
   // popover). env = { fontScale, lineOpacity } from the live overlay.
   // DUCT-HINT: the suggestion / callout sentence as a card fixed above the
   // footer (#ductHintCard, inside .canvas-wrapper). The leading "N CFM
-  // downstream" reads bold, the trailing "S accepts" wears a keycap; hidden
+  // downstream" reads bold, the trailing "S to pick it" / "S to choose" wears a
+  // keycap (PP-DUCT-CHIP, 2026-09-27: it read "S accepts", but S opens the size
+  // popover and the size is a click there, so the words now say that); hidden
   // whenever there is no draft or no line. aria-hidden: the S popover carries
   // the same numbers for assistive tech, and this text changes with the cursor.
   function syncDuctHintCard(line) {
@@ -520,8 +522,8 @@
     const esc = App.escapeHtml || ((t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
     let text = String(line.text);
     let tail = '';
-    const m = text.match(/\s*[.\u2014-]\s*S accepts\.?\s*$/);
-    if (m) { text = text.slice(0, m.index); tail = ' · <kbd>S</kbd> accepts'; }
+    const m = text.match(/\s*[.\u2014-]\s*S (to pick it|to choose)\.?\s*$/);
+    if (m) { text = text.slice(0, m.index); tail = ' · <kbd>S</kbd> ' + m[1]; }
     const parts = text.split(' · ');
     const html = (parts.length > 1 ? '<b>' + esc(parts[0]) + '</b> · ' + esc(parts.slice(1).join(' · ')) : esc(text)) + tail;
     if (el.innerHTML !== html) el.innerHTML = html;
@@ -606,12 +608,12 @@
       const chipY = pc.y - 10 - 8 * fontScale;
       chip(formatDuctSize(cur) + ' ▾', chipX, chipY, true);
       // ONE quiet line goes with the chip — never two: D10's plan callout
-      // ("Plan says 20×12 here — S accepts") when the sheet's text layer prints
+      // ("Plan says 20×12 here. S to pick it") when the sheet's text layer prints
       // a different size within reach of the cursor, else D6's design-build
-      // suggestion ("450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S
-      // accepts"). Precedence + both sources resolved by
+      // suggestion ("450 CFM downstream · suggests 12×10 @ 0.08″/100′. S to
+      // choose"). Precedence + both sources resolved by
       // features/duct-callouts.js getDuctCursorLine (falls back to the D6 read
-      // alone if that file is absent). Informs only — S / the popover accepts.
+      // alone if that file is absent). Informs only: S opens the popover, a click there takes it.
       // DUCT-HINT (2026-09-18): it used to be painted under the chip, centred,
       // which put it on the cursor's own row and across the trace, over the
       // next click; it now rides #ductHintCard, fixed above the footer, in

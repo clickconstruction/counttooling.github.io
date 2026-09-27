@@ -228,7 +228,7 @@ counted or as a Factor %, liner/wrap sq ft, seam & waste — into one Bid weight
 pastes the table into pricing; the report, Export PDFs, and the legend carry the same numbers. On an
 engineered plan-and-spec sheet the trace also reads the printed callouts out of the PDF's text layer —
 the starting size pre-fills from the nearest one, and each step-down the cursor passes is offered
-("Plan says 20×12 here — S accepts"), never applied on its own; a scanned sheet behaves as before.
+("Plan says 20×12 here · S to pick it": S opens the size box, one click there takes it), never applied on its own; a scanned sheet behaves as before.
 The pounds ride the handoff copies too — Copy Summary and Copy to /Tooling end with a `--- Duct ---`
 block (per-size LF · lb, totals, Bid weight) — multiply zones multiply duct like everything else
 (with the placed / with-repeats honesty), deck height is settable before the first run (create

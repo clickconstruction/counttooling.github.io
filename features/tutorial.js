@@ -170,7 +170,7 @@
   function boxMiss(rects, inner, outer) {
     const last = (rects || [])[(rects || []).length - 1];
     if (!last || (holds(last, inner) && holds(outer, last))) return '';
-    return { code: 'outside-zone', text: !holds(outer, last) ? 'Part of that box is outside the boundary. Undo it and drag inside the shaded area' : 'That box misses part of what it should wrap. Undo it and drag around all of it' };
+    return { code: 'outside-zone', text: !holds(outer, last) ? 'Part of that box is outside the boundary. Undo it and drag inside the shaded area' : 'That box misses part of what it should wrap. Undo it and drag again, starting and ending outside the dashed line' };
   }
   // A traced run: a corner inside each circle, in order (extra corners between are fine).
   function pathZones(spots, r, runs) {
@@ -285,6 +285,15 @@
   const eCounter = () => findCounter(tourCounterId, /receptacle/i);
   const receptacleIds = () => { const ids = (state().counters || []).filter((c) => /receptacle/i.test(c.name || '')).map((c) => c.id); return ids.length ? ids : ['-']; };
   const eLineType = () => findLineType(tourLineTypeId, (lt) => lt.raceway && lt.conductors && lt.conductors.length);
+  // The card's line type, all three parts: a 1/2" or RMC raceway, or two hots, passed and the Summary,
+  // fill and Bid Check cards after it read another takeoff than the reader's (PERSONA-PASS prober).
+  const emtParts = (lt) => {
+    const r = (lt && lt.raceway) || {}, cs = (lt && lt.conductors) || [];
+    const n = (role) => cs.filter((c) => c.role === role && c.gauge === '#12').reduce((t, c) => t + (c.n || 0), 0);
+    return { emt: r.kind === 'EMT', size: /3\/4/.test(String(r.size || '')), wire: n('hot') === 3 && n('ground') === 1 && cs.every((c) => c.gauge === '#12') };
+  };
+  const isCardEmt = (lt) => { const p = emtParts(lt); return p.emt && p.size && p.wire; };
+  const isDuplex = (c) => /receptacle/i.test(c.name || '') && /duplex/i.test(c.name || '');
 
   const ELECTRICAL_STEPS = [
     {
@@ -309,7 +318,9 @@
       rules: ['elec.mount-height.defaults'],
       body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", the number the Chain tool turns into vertical conduit in a moment.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
-      check: () => { const c = (state().counters || []).find((x) => /receptacle/i.test(x.name || '') && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
+      // a duplex, the one the card names: a Single Pole variant mounts at 48" and the next cards' 9.5 ft read 7 (PERSONA-PASS prober)
+      check: () => { const c = (state().counters || []).find((x) => isDuplex(x) && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
+      hint: () => { const other = (state().counters || []).filter((x) => /receptacle/i.test(x.name || '') && isFresh(x) && !isDuplex(x)).pop(); return other ? { code: 'wrong-value', text: 'That made ' + other.name + '. Set Variant to Duplex and click Add Counter again' } : ''; },
       action: { label: 'Add it for me', run: addReceptacle },
     },
     {
@@ -317,8 +328,8 @@
       body: 'The counter tool is armed. Three circles sit on the north wall of Open Office 105.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts. Each click is one tally; the sidebar count moves as you go.',
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = eCounter(); return markZones(0, c ? c.id : '-', RECEPTACLE_SPOTS, 15); },
-      check: () => allDone(markZones(0, (eCounter() || {}).id || '-', RECEPTACLE_SPOTS, 15)),
-      hint: () => { const c = eCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15)) : 0; return n ? 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' : ''; },
+      check: () => { const c = eCounter(); return allDone(markZones(0, (c || {}).id || '-', RECEPTACLE_SPOTS, 15)) && !(c && strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15))); },
+      hint: () => { const c = eCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15)) : 0; return n ? { code: 'outside-zone', text: 'A mark outside the circles still counts in the tally. Press Ctrl+Z to undo it, then click inside a circle' } : ''; },
       action: { label: 'Place three for me', run: placeThreeReceptacles },
     },
     {
@@ -335,15 +346,23 @@
           !/emt/i.test(val('lineTypeName')) ? '#lineTypeName' : '#lineTypeCreate',
           emt ? pencilOf('lineType', emt) : null, '#addLineType');
       },
-      check: () => { const lt = eLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
+      check: () => { const lt = findLineType(tourLineTypeId, isCardEmt); if (lt && isCardEmt(lt)) { tourLineTypeId = lt.id; return true; } return false; },
+      hint: () => {
+        const lt = (state().lineTypes || []).filter((l) => isFresh(l) && l.raceway && (l.conductors || []).length && !isCardEmt(l)).pop();
+        if (!lt) return '';
+        const p = emtParts(lt);
+        return { code: 'wrong-value', text: !p.emt ? 'The raceway reads ' + (lt.raceway.kind || 'none') + ': set it to EMT' : !p.size ? 'The raceway size reads ' + (lt.raceway.size || 'none') + ': set it to 3/4"' : 'The conductors read otherwise: type 3 #12 THHN + 1 #12 G' };
+      },
       action: { label: 'Create 3/4" EMT · 3 #12 + G', run: addEmtLineType },
     },
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
       rules: ['elec.vertical.make-up', 'elec.mount-height.defaults'],
-      body: '1. In the header, click the gear ([[Project Settings]]).\n2. In Ceiling height, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws: 9.5 ft per receptacle nobody has to type.',
+      body: '1. In the header, click the gear ([[Project Settings]]).\n2. In Ceiling height, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws. Make-up is the app\'s 1 ft allowance for the bend and the box entry, set beside Ceiling height: 10 − 1.5 + 1 = 9.5 ft per receptacle nobody has to type.',
       target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
-      check: () => state().ceilingHeightFt > 0,
+      // the sample plan's 10'-0": any ceiling passed and carried wrong drops through the chain (PERSONA-PASS prober)
+      check: () => Math.abs((state().ceilingHeightFt || 0) - 10) < 0.05,
+      hint: () => { const h = state().ceilingHeightFt; return h > 0 && Math.abs(h - 10) >= 0.05 ? { code: 'wrong-value', text: 'Ceiling height reads ' + (Math.round(h * 100) / 100) + ' ft. The sample plan is 10\'-0"' } : ''; },
       action: { label: 'Set 10\'-0"', run: () => { state().ceilingHeightFt = 10; state().makeUpFt = 1; App.markProjectDirty(); App.updateUI(); } },
     },
     {
@@ -410,6 +429,7 @@
   const pCounter = () => findCounter(tourCounterId, /water closet|toilet|\bwc\b/i);
   const pLav = () => findCounter(tourSecondCounterId, /lav|sink/i);
   const pLineType = () => findLineType(tourLineTypeId, () => true);
+  const isPexInch = (lt) => /^\s*1\s*(in|")\s*PEX\b/i.test(String((lt && lt.name) || ''));
   // A second line type with the branch's name (the reader's own, left by an earlier tour) took the
   // setting instead of the branch's: say which one the ring is on. Only a change made in this tour: a
   // twin an earlier tour left set that way is not the reader's slip now.
@@ -509,8 +529,8 @@
       body: 'The counter tool is armed, and the three water closets in the stalls of Women 108 are circled.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts. One click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = pCounter(); return markZones(0, c ? c.id : '-', WC_SPOTS, 13); },
-      check: () => allDone(markZones(0, (pCounter() || {}).id || '-', WC_SPOTS, 13)),
-      hint: () => { const c = pCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13)) : 0; return n ? { code: 'outside-zone', text: 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' } : ''; },
+      check: () => { const c = pCounter(); return allDone(markZones(0, (c || {}).id || '-', WC_SPOTS, 13)) && !(c && strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13))); },
+      hint: () => { const c = pCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13)) : 0; return n ? { code: 'outside-zone', text: 'A mark outside the circles still counts in the tally. Press Ctrl+Z to undo it, then click inside a circle' } : ''; },
       action: { label: 'Count three for me', run: placeThreeWcs },
     },
     {
@@ -518,7 +538,10 @@
       body: 'The cold-water branch that feeds the lav battery needs a line type.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. At the top of the dialog, click [[Quick]] (Size, material and colour in one row).\n3. Pick 1in, then PEX.\n4. Click [[Add Line Type]].\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
       // the pickers the card names, in its order, then Add (the ring sat on Add over a 0.5in Size; by hand, 2026-09-25)
       target: () => { const sz = el('quickLineSize'), mat = el('quickLineMaterial'); const pickNext = sz && sz.value !== '1in' ? '#quickLineSize' : (mat && mat.value !== 'PEX' ? '#quickLineMaterial' : null); return ladder(pickNext, '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', '#addLineType'); },
-      check: () => { const lt = pLineType(); if (lt) tourLineTypeId = lt.id; return !!lt; },
+      // 1in PEX, the branch every later card names: a 2in or a Copper type passed and the hanger and
+      // size cards stopped matching (PERSONA-PASS prober)
+      check: () => { const lt = findLineType(tourLineTypeId, isPexInch); if (lt && isPexInch(lt)) { tourLineTypeId = lt.id; return true; } return false; },
+      hint: () => { const lt = (state().lineTypes || []).filter((l) => isFresh(l) && !isPexInch(l)).pop(); return lt ? { code: 'wrong-value', text: 'That made ' + (lt.name || 'another type') + '. Pick 1in, then PEX, and click Add Line Type' } : ''; },
       action: { label: 'Create 1in PEX', run: addPexLineType },
     },
     {
@@ -593,7 +616,7 @@
     },
     {
       id: 'zone', title: 'A typical floor', kind: 'do',
-      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Women 108: start and end anywhere inside the shaded boundary.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
+      body: 'This restroom core repeats on three floors.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around Women 108: start and end in the shaded band, outside the dashed line.\n3. Type 3.\n4. Click [[Apply]].\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
       target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26), 'Drag your box around Women 108, anywhere in here')],
       check: () => boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)).done,
@@ -644,6 +667,7 @@
   const OFFICE_INNER = { x1: 176, y1: 376, x2: 394, y2: 502 };   // a room box must reach at least this far toward every wall
   const officeBoxes = () => { const a = ann(); return (a && a.roomBoxes) || []; };
   const hCounter = () => findCounter(tourCounterId, /diffuser/i);
+  const officeHeights = () => { const r = hRoom(); const b = r && officeBoxes().filter((x) => x.roomId === r.id).pop(); const h = b ? b.heightFt : null; return { ceiling: h != null && Math.abs(h - 9) < 0.05, read: h == null ? 'nothing' : Math.round(h * 100) / 100 }; };
   const hRoom = () => (state().rooms || []).find((r) => /open office/i.test(r.name || ''));
   const ductRuns = () => { const a = ann(); return (a && a.ductRuns) || []; };
   // committed runs, plus the corners of the trace in progress, so the circles tick as the reader goes
@@ -668,20 +692,32 @@
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end inside the shaded boundary.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
+      body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9. In Deck height, type 12.\n5. Click [[Apply]].\nThe sheet gets one small totals tag placed off the printed name.',
       // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
       target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'); },
       page: 0,
       zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
-      hint: () => boxMiss(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)),
-      check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType && a && boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)).done && ds && ds.deckHeightFt > 0); },
+      hint: () => {
+        const miss = boxMiss(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)); if (miss) return miss;
+        const r = hRoom(); if (!r || !officeBoxes().length) return '';
+        const ds = App.getDuctSettings ? App.getDuctSettings() : null;
+        if (r.roomType !== 'office') return { code: 'wrong-value', text: 'Room type reads ' + (r.roomType || 'none') + '. Click the room\'s tag and set Room type to Office' };
+        if (!officeHeights().ceiling) return { code: 'wrong-value', text: 'The ceiling reads ' + officeHeights().read + ' ft. Click the room\'s tag and type 9 in Ceiling' };
+        if (ds && ds.deckHeightFt > 0 && Math.abs(ds.deckHeightFt - 12) >= 0.05) return { code: 'wrong-value', text: 'Deck height reads ' + ds.deckHeightFt + ' ft. The plan\'s deck is 12' };
+        return '';
+      },
+      // the card's Office, 9 and 12: any type and any heights passed, and the room tag's volume and
+      // Fits the roof read another room (PERSONA-PASS prober)
+      check: () => { const r = hRoom(); const a = ann(); const ds = App.getDuctSettings ? App.getDuctSettings() : null; return !!(r && r.roomType === 'office' && a && boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20)).done && officeHeights().ceiling && ds && Math.abs((ds.deckHeightFt || 0) - 12) < 0.05); },
       action: { label: 'Box the open office for me', run: boxOpenOffice },
     },
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
       body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip beside the field shows the symbol it will take.\n5. Click [[Create Counter]].\nThe counter tool arms itself.',
       target: () => counterFormTargets(/diffuser/i, ['#counterCfm']),
-      check: () => { const c = hCounter(); if (c) tourCounterId = c.id; return !!(c && c.cfm > 0); },
+      // 150, the number the place, duct and Bid Check cards all do their arithmetic with (PERSONA-PASS prober)
+      check: () => { const c = (state().counters || []).find((x) => x.id === tourCounterId && x.cfm === 150) || (state().counters || []).filter((x) => /diffuser/i.test(x.name || '') && x.cfm === 150 && (isFresh(x) || markCount(x.id) > 0)).pop(); if (c) tourCounterId = c.id; return !!c; },
+      hint: () => { const c = (state().counters || []).filter((x) => /diffuser/i.test(x.name || '') && isFresh(x) && x.cfm !== 150).pop(); return c ? { code: 'wrong-value', text: c.name + ' reads ' + (c.cfm || 0) + ' CFM. Click its pencil in the sidebar and type 150 in CFM' } : ''; },
       action: { label: 'Create it for me', run: addDiffuser },
     },
     {
@@ -703,7 +739,7 @@
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
       rules: ['hvac.duct.schedule-factors'],
-      body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click inside the first circle, then the second, working across the office. The chip under the cursor reads the air still to serve (600 CFM downstream) and suggests a size for it at 0.08″ per 100′.\n4. Press S and tap the suggestion (spiral first, then the rectangular twin).\n5. Click inside the third circle.\n6. Press Enter.\nThe elbows and the transition count themselves.',
+      body: '1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click inside the first circle, then the second, working across the office. The chip under the cursor reads the air still to serve downstream and suggests a size for it at 0.08″ per 100′.\n4. Press S: the Duct size box opens. Under SUGGESTED, click the rectangular size (the round size beside it is the same air in spiral).\n5. Click inside the third circle.\n6. Press Enter.\nThe elbows and the transition count themselves.',
       target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
       zones: () => pathZones(MAIN_VERTICES, 16, mainPaths()),
       check: () => ductRuns().some((r) => (r.segments || []).length >= 2) && allDone(pathZones(MAIN_VERTICES, 16, ductRuns().map((r) => r.vertices || []))),
@@ -729,7 +765,8 @@
       id: 'bidcheck', title: 'Sign off', kind: 'do',
       rules: ['hvac.room.airflow-defaults'],
       onEnter: foldBidCheck, hold: true, body: 'Bid Check judged the rooms, the flex and the scale for you: four 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room. The manual rows are yours.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Curb & power coordinated to tick it: who sets the RTU\'s curb and runs its power is yours to settle with the GC and the electrician.',
-      target: ['#bidCheckSection label', '#bidCheckSectionTitle'],
+      // the row the card names, not the first manual row (Fire dampers): at 1280 x 720 Curb & power sat below the fold (PERSONA-PASS)
+      target: ['#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"] label', '#bidCheckSection label', '#bidCheckSectionTitle'],
       // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,
       // and the step waited for a tick nobody could give it (by hand, 2026-09-25)
       check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-curb-power']),
@@ -889,7 +926,7 @@
 
   // electrical
   function addReceptacle() {
-    if (eCounter()) return;
+    if ((state().counters || []).some((x) => isDuplex(x) && (x.id === tourCounterId || isFresh(x)))) return;
     const icon = (App.tradeIconForType && App.tradeIconForType('electrical', 'Duplex')) || customIcon('Duplex Receptacle') || App.getOrderedIcons()[0].value;
     const c = { id: App.uid(), name: 'Duplex Receptacle', icon, color: '#e85447', mountHeightIn: 18 };
     tourCounterId = c.id;
@@ -904,7 +941,8 @@
     placeMarkers(eCounter().id, RECEPTACLE_SPOTS);
   }
   function addEmtLineType() {
-    if (eLineType()) return;
+    const have = findLineType(tourLineTypeId, isCardEmt);
+    if (have && isCardEmt(have)) return;
     const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [];
     pushLineType({ id: App.uid(), name: '3/4" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors });
   }
@@ -954,7 +992,8 @@
     placeMarkers(pCounter().id, WC_SPOTS);
   }
   function addPexLineType() {
-    if (pLineType()) { tourLineTypeId = pLineType().id; return; }
+    const have = findLineType(tourLineTypeId, isPexInch);
+    if (have && isPexInch(have)) { tourLineTypeId = have.id; return; }
     pushLineType({ id: App.uid(), name: '1in PEX', color: '#47c88e', curveStyle: 'straight' });
   }
   function addLavatory() {
@@ -1036,7 +1075,7 @@
     state().tool = App.TOOL.NONE; App.updateUI(); App.renderAnnotations();
   }
   function addDiffuser() {
-    if (hCounter()) return;
+    if ((state().counters || []).some((x) => /diffuser/i.test(x.name || '') && x.cfm === 150 && (x.id === tourCounterId || isFresh(x)))) return;
     const c = { id: App.uid(), name: 'Supply Diffuser', icon: cfmIcon(), color: '#e8c547', cfm: 150 };
     tourCounterId = c.id;
     pushCounter(c);

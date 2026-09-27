@@ -1035,7 +1035,7 @@ test.describe('The persona seams', () => {
     place: 'The counter tool is armed, and the three water closets in the stalls of Women 108 are circled.\n\nClick inside the first circle.\nClick inside the second.\nClick inside the third.\n\nAnywhere in a circle counts. One click is one tally; the sidebar count moves as you go, rolled up across every sheet in the set.',
     hangers: 'Every foot of that branch hangs from a support, and the bid has to count the hangers. The app can do it from the pipe.\n\nIn the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\nUnder Child counts, find Hanger · 1 per 32 in (the International Plumbing Code (IPC) spacing for PEX at 1 in, read off the type\'s name).\nClick Add.\n\nFrom now on every run of this type counts its own hangers into the Summary and every export, with the rule it came from. Delete a run and its hangers go with it.',
     size: 'The battery comes off a cold main. Trace it and let the fixture units size it.\n\nIn the header, click \u22ef, then Polyline (or press P). It draws in the active line type, 1in PEX; if another is lit under LINE TYPES, click 1in PEX.\nClick the riser at the first lavatory, then inside the circle below it.\n\nThe card at the bottom of the sheet reads the fixture units still to serve and the sizes that keep the water under 8 fps: 1in holds, and 3/4in would do too. The smaller pipe that still holds is the one to bid: it costs less.\n\nOn that card, click Pipe size (or press S: while you trace a water pipe, S opens its sizes instead of Set Scale).\nIn the list of sizes, click 3/4\u2033.\n\nThe run so far is kept, a 3/4in PEX cold type is made, and the next run starts from your last click. The list of sizes closes.\n\nClick inside the second circle.\nClick Finish under the sheet (or press Enter).',   // as #201 (COURSE-WORDING) reworded it, and the persona calibration's C4
-    zone: 'This restroom core repeats on three floors.\n\nIn the header, click ⋯, then Multiply Zone (or press X).\nDrag a box around Women 108: start and end anywhere inside the shaded boundary.\nType 3.\nClick Apply.\n\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
+    zone: 'This restroom core repeats on three floors.\n\nIn the header, click ⋯, then Multiply Zone (or press X).\nDrag a box around Women 108: start and end in the shaded band, outside the dashed line.\nType 3.\nClick Apply.\n\nEvery count and every foot inside triples in the totals while the marks stay clean: count one floor, bid three.',
     rfi: 'Something the drawing does not say: does the end stall in Women 108 clear ADA?\n\nIn the header, click ⋯, then Note (or press N).\nClick inside the circle in Women 108.\nType RFI: and then the question, and click Done.\n\nUnder EXPORT OPTIONS, Copy RFI Flags collects every such note across the set for the GC, and PipeTooling picks them up as questions on the bid.',
   };
   // The tour_step events the engine sends, recorded in the page (there is no cloud session here).
@@ -1356,5 +1356,53 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
     await expect(page.locator('#summaryCountDetailModal')).toHaveClass(/visible/);
     await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
     expect(errors).toEqual([]);
+  });
+});
+
+// PERSONA-PASS (2026-09-26): the prober's false passes. Each step took a wrong value and moved on,
+// and the cards after it read another takeoff than the reader's. A wrong value now holds the step
+// with a wrong-value hint; the card's own value still passes.
+test.describe('The tours hold a wrong value (PERSONA-PASS prober)', () => {
+  async function walkTo(page, tour, id) {
+    await page.goto('/app/?tour=' + tour);
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    while (await stepId(page) !== id) await doAndGo(page);
+  }
+  const heldOn = async (page, id) => { await page.waitForTimeout(1600); expect(await stepId(page)).toBe(id); expect(await page.evaluate(() => window.App.tutorialObserve().code)).toBe('wrong-value'); };
+
+  test('plumbing line type: a 2in PEX holds it, 1in PEX passes', async ({ page }) => {
+    test.setTimeout(90000);
+    await walkTo(page, 'plumbing', 'linetype');
+    await page.evaluate(() => { window.App.tourKit.pushLineType({ id: window.App.uid(), name: '2in PEX', color: '#47c88e', curveStyle: 'straight' }); });
+    await heldOn(page, 'linetype');
+    await expect(page.locator('#tourStatus')).toContainText('That made 2in PEX');
+    await page.evaluate(() => { window.App.tourKit.pushLineType({ id: window.App.uid(), name: '1in PEX', color: '#47c88e', curveStyle: 'straight' }); });
+    await waitForStep(page, 'chain');
+  });
+
+  test('electrical: a 1/2" raceway holds the line type, and an 11 ft ceiling holds the ceiling', async ({ page }) => {
+    test.setTimeout(120000);
+    await walkTo(page, 'electrical', 'linetype');
+    await page.evaluate(() => { const c = window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors; window.App.tourKit.pushLineType({ id: window.App.uid(), name: '1/2" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '1/2"' }, conductors: c }); });
+    await heldOn(page, 'linetype');
+    await expect(page.locator('#tourStatus')).toContainText('3/4"');
+    await doAndGo(page);
+    expect(await stepId(page)).toBe('ceiling');
+    await page.evaluate(() => { window.state.ceilingHeightFt = 11; window.App.updateUI(); });
+    await heldOn(page, 'ceiling');
+    await page.evaluate(() => { window.state.ceilingHeightFt = 10; window.App.updateUI(); });
+    await waitForStep(page, 'chain');
+  });
+
+  test('HVAC diffuser: 149 CFM holds it, 150 passes', async ({ page }) => {
+    test.setTimeout(90000);
+    await walkTo(page, 'hvac', 'counter');
+    await page.evaluate(() => { window.App.tourKit.pushCounter({ id: window.App.uid(), name: 'Supply Diffuser', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547', cfm: 149 }); });
+    await heldOn(page, 'counter');
+    await page.evaluate(() => { const c = window.state.counters.find((x) => x.cfm === 149); c.cfm = 150; window.App.updateUI(); });
+    await waitForStep(page, 'place');
   });
 });

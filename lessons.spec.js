@@ -626,3 +626,28 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
     expect(await page.evaluate(() => [document.getElementById('counterSearchInput').value, localStorage.getItem('clickcount-lesson-device-before')])).toEqual(['FD', null]);
   });
 });
+
+// PERSONA-PASS (2026-09-26): the proof step passed on ANY SUMMARY row's breakdown, the first
+// (Lavatory) included, though the card names the Floor Drain total. The prober opened the wrong
+// one and the step said Done; now it waits with a wrong-item hint.
+test('Check: the proof step wants the breakdown the card names', async ({ page }) => {
+  test.setTimeout(120000);
+  const errors = [];
+  await boot(page, '/app/?lesson=check', errors);
+  await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+  for (let i = 0; i < 12 && await stepId(page) !== 'proof'; i++) {
+    const id = await stepId(page);
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction((was) => window.App.tutorialStepId() !== was || document.getElementById('tourNext').classList.contains('tour-next-ready'), id, { timeout: 20000 });
+    if (await stepId(page) === id) await page.click('#tourNext');
+    await page.waitForTimeout(150);
+  }
+  expect(await stepId(page)).toBe('proof');
+  await page.evaluate(() => { const other = window.state.counters.find((c) => !/floor\s*drain/i.test(c.name || '')); window.App.openSummaryCountDetailModal('counter', other.id); });
+  await page.waitForTimeout(800);
+  expect(await page.evaluate(() => window.App.tutorialObserve().code)).toBe('wrong-item');
+  expect(await page.evaluate(() => window.App.tutorialStepInfo().done)).toBe(false);
+  await page.evaluate(() => { const fd = window.state.counters.find((c) => /floor\s*drain/i.test(c.name || '')); window.App.openSummaryCountDetailModal('counter', fd.id); });
+  await page.waitForFunction(() => window.App.tutorialStepInfo().done === true, null, { timeout: 5000 });
+  expect(errors).toEqual([]);
+});

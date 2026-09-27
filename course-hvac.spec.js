@@ -242,7 +242,7 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     await expect(page.locator('#learnCourseList-hvac .learn-row')).toHaveCount(10);   // chapter 0, Before you count, then the nine
     await expect(page.locator('#learnCourseList-electrical .learn-row')).toHaveCount(9);
     await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(9);
-    await expect(page.locator('#learnCourseProgress-hvac')).toHaveText('0 of 10 done');
+    await expect(page.locator('#learnCourseProgress-hvac')).toHaveText('0 of 9 done');   // the opener, row 0, is read, not counted
     await page.click('#learnModal [data-modal-close]');
     await page.click('#canvasEmptyHintCourseHvac');
     await expect(page.locator('#learnModal')).toHaveClass(/visible/);

@@ -35,7 +35,8 @@
  * "24×12 · 38'-6" · 267 lb · run 1,196 lb" footer readout (T2-09 seam).
  *
  * Pure duct math (sizes, gauges, pounds, ductStrokePx stroke bands) comes
- * from duct-model.js globals; DUCT_AIRSIDE_COLORS from canvas-draw.js.
+ * from duct-model.js globals; DUCT_AIRSIDE_COLORS and the ghost band
+ * (ductPxPerPdfPt, strokeDuctGhostSpans) from canvas-draw.js.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry".
  */
@@ -539,8 +540,8 @@
     const lo = env?.lineOpacity != null ? env.lineOpacity : 1;
     ctx.save();
     // D13 true-width ghost under the live trace (rubber band included): the
-    // committed painter's recipe (canvas-draw.js — same helper, same alpha,
-    // same effective-scale read as the tallies), so a run's footprint is
+    // committed painter's stroke (canvas-draw.js strokeDuctGhostSpans, the
+    // same alpha, the same effective-scale read as the tallies), so a run's footprint is
     // visible WHILE it is being laid, not only after Enter. The draft's
     // orientation (D12) picks the plan-view side. Off with the legend toggle.
     if (state.legendSettings?.showDuctGhost !== false && typeof ductGhostWidthPx === 'function' && verts.length >= 2) {
@@ -548,22 +549,9 @@
       const ann = page && App.getActiveAnnotations ? App.getActiveAnnotations(page) : null;
       const eff = ann ? App.getEffectiveScaleForLine(ann, { points: verts }, true, state.currentPage) : App.getPageScale(state.currentPage);
       const pxPerPt = ductPxPerPdfPt(App.toCanvas);
-      spans.forEach((span) => {
-        const widthPx = ductGhostWidthPx(span.size, draft.orientation, eff, pxPerPt);
-        if (widthPx == null) return;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = widthPx;
-        ctx.lineJoin = 'round';
-        ctx.lineCap = 'round';
-        ctx.globalAlpha = DUCT_GHOST_ALPHA;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        const g0 = App.toCanvas(verts[span.fromIdx]);
-        ctx.moveTo(g0.x, g0.y);
-        for (let i = span.fromIdx + 1; i <= span.toIdx; i++) { const p = App.toCanvas(verts[i]); ctx.lineTo(p.x, p.y); }
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      });
+      // The draft's own ctx may carry a dash; the committed painter's never does.
+      ctx.setLineDash([]);
+      strokeDuctGhostSpans(ctx, verts, spans, draft.orientation, eff, pxPerPt, App.toCanvas, color);
     }
     spans.forEach((span) => {
       ctx.strokeStyle = color;

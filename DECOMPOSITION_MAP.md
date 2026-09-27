@@ -511,6 +511,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R24. Split the sheet legend out of canvas-draw.js; lift the duct pass and ghost band
 
+**Landed 2026-09-26** (R24, all three items): canvas-legend.js holds `createCanvasLegend(deps)` (the legend, the sheet block and the grid, 605 lines), loaded before canvas-draw.js, whose factory composes it and re-exports the same keys, so app.js did not change; canvas-draw.js went from 1,940 lines to 1,409. The duct pass is the closure `drawDuctOverlay(ctx, ann, env, state, lo)`, called where it ran; the two tick closures are one top-level `drawPerpTick`; `strokeDuctGhostSpans` is the band's stroke for the committed painter and the draft. Where the map was off: the legend also needed `lineStyleToDash` (the grid) and the top-level `DUCT_LEGEND_SWATCH`, which moved with `hexToRgb` because nothing else reads them; the duct pass reads no `lw` (the fitting markers declare their own), so it takes five arguments, not six; the legend tests were thirteen, plus two grid and two helper tests, all now in canvas-legend.test.js. A 37-scenario call-log dump (every duct sub-pass, all three legend styles in both inks, the grid) was byte-identical before and after, and render-pixels passed before and after. CHANGELOG "refactor(draw): the sheet legend is its own file, and the duct pass is one function".
+
 *Risk medium, yield ~525.* A clean 500-line seam, and render-pixels runs in CI.
 
 - **`draw-output-edit:canvas-legend-split`** (split, high confidence; check: confirmed) Split the sheet legend out of canvas-draw.js into canvas-legend.js

@@ -41,6 +41,34 @@ keeps them that way.
   fails as stale, so the list only shrinks. The tours and the lessons join with one `COURSES` line
   each. Pinned by score-courses.test.js.
 
+## feat(learn): the thirteen lessons, written for anyone at all (2026-09-27)
+
+Wave 2 of option C in the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md): the reader is
+anyone at all, and the three courses were rewritten for that reader first. This is the same pass on
+the thirteen lessons in features/lessons.js, their intros, step bodies and done lines.
+
+- **Every trade and app word glossed at its first use in each lesson**, since a lesson stands alone:
+  a bid set, the drawings a job is priced from; a takeoff, the count and the feet a price is built
+  on; the scale, how many feet of building one inch of paper stands for; the title block, the
+  fixture schedule, a dimension, a detail and TYP. OF 4; a counter, armed, the number row, the
+  Artboard; a line type, a run, a fitting, an elbow, a riser, a drop; a branch, a hanger, a child
+  count, the rulebook and the jurisdiction; a scale zone and a multiply zone; a group, a layer, an
+  alternate, an addendum, scope; an RFI and the GC; the legend, a thumbnail, decimal feet; and the
+  fixtures themselves, a floor drain, a lavatory, a hand sink, a mop sink, a water closet, a carrier,
+  a grease interceptor, PEX. Where the screen is (the header, the footer, the status bar, the More
+  button) is said once per lesson.
+- **A doing step leads with its numbered steps**, at most two sentences of orientation before step 1
+  and the why after; a line that asked for two or three actions is two or three lines (the chain,
+  the group assign, the layer, the undo).
+- **No sentence over 25 words**: 13 before, 0 after (the Trim your set line in the Sheets lesson's
+  opening step, a runner string only that lesson uses, is two sentences now too).
+
+What did not change: every step's id, kind, targets, zones, check, hint, action and `rules:`; every
+number; every `[[Control]]` label; the two lines lessons.spec.js pins ("choose Floor Drain 2", "and
+click Done"). Scored with the memo's method on intro, bodies and done lines: 3,325 words at grades
+3.1 to 6.4 before, 4,255 words at 2.8 to 5.2 after. Every card, measured open at 1280 × 720, keeps
+Next on screen (the tallest, Chain the top wall, is 563 px).
+
 ## feat(learn): the HVAC course, written for anyone at all (2026-09-27)
 
 Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the

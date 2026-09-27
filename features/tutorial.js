@@ -597,7 +597,7 @@
       // as Enter: a tablet has neither key, and the touch card lost its only instruction, "Press S and
       // click 3/4″" (persona calibration C4, 2026-09-25). Below 769 px Polyline sits in the sidebar drawer.
       body: () => 'The battery comes off a cold main, the bigger pipe it branches from. Trace the main, clicking along it, and let the fixture units size it.\n'
-        + (isNarrow() ? '1. Tap ☰ at the top left, then [[Polyline]] among the sidebar\'s tools.' : '1. In the header, click [[⋯]], the More button, then [[Polyline]] (or press P).')
+        + (isNarrow() ? '1. Tap ☰ at the top left, then [[Polyline]] among the sidebar\'s tools.' : '1. In the header, click [[⋯]], then [[Polyline]] (or press P).')
         + ' If 1in PEX is not lit under LINE TYPES, click it.\n2. Click the riser at the first lavatory, then inside the circle below it.\nA card at the bottom of the sheet names the sizes that keep the water under 8 fps, feet per second. Under the IPC that limit is design practice; the Uniform Plumbing Code (UPC) makes it code for copper. It reads 4.5 WSFU, not 6: the cold side of three lavatories, 1.5 each.\n3. On that card, click [[Pipe size]] (or press S: while you trace a water pipe, S opens its sizes).\n4. In the list of sizes, click 3/4″.\n3/4in holds too, just under the limit. A fitting is narrower inside than the pipe, so at a margin this thin a careful bid stays at 1in. Take 3/4in here to see how S works. The run so far is kept; the next starts in 3/4in PEX.\n5. Click inside the second circle.\n6. Click [[Finish]] under the sheet (or press Enter).',
       // the card's order: the size list while it is open, Pipe size on the water card; once the main is two
       // sizes, no control until the second circle is in (the circle is the target), then Finish. The step
@@ -1170,11 +1170,95 @@
   // button-shaped chip (.tour-ui). Everything else is escaped text.
   const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   // [Guide name](/guides/slug/) is a link that opens beside the app (site paths only).
-  const chipsOf = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>').replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
+  // A chip knows its control (Will, 2026-09-27): where [[Set Scale]] names a control on screen, the chip
+  // wears that control's own icon beside the name, and a click on the chip lights the control the way
+  // the light lands on a step's area. A label with no control on screen stays a plain chip.
+  // The More button is a glyph: prose writes it [[⋯]], and the chip shows its dots and its name, More.
+  const CHIP_SELECTOR = { '\u22ef': '#headerMoreBtn' };
+  const CHIP_NAME = { '\u22ef': 'More' };
+  const chipControls = new Map();
+  function controlFor(label) {
+    const want = String(label || '').trim();
+    if (!want) return null;
+    const had = chipControls.get(want);
+    if (had && had.isConnected) return had;
+    const named = (n) => [n.getAttribute('aria-label'), n.getAttribute('title')].filter(Boolean).map((x) => x.trim());
+    const fits = (n) => named(n).some((x) => x === want || x.startsWith(want + ' (') || x.startsWith(want + ':')) || (n.textContent || '').trim() === want;
+    let hits = [];
+    if (CHIP_SELECTOR[want]) { const n = document.querySelector(CHIP_SELECTOR[want]); if (n) hits = [n]; }
+    if (!hits.length) {
+      try { hits = Array.from(document.querySelectorAll('button, [role="button"], .settings-menu-link, .status-bar span[id], .status-bar a')).filter((n) => !n.closest('.tour-ui') && fits(n)); } catch (_) { hits = []; }
+    }
+    // the one on screen first, and among those the one the step itself lights
+    const best = hits.find((n) => n === litEl) || hits.find((n) => shown(n)) || hits[0] || null;
+    if (best) chipControls.set(want, best);
+    return best;
+  }
+  function chipIcon(node) {
+    const svg = node && node.querySelector && node.querySelector('svg');
+    if (!svg) return '';
+    const c = svg.cloneNode(true);
+    ['width', 'height', 'id', 'class', 'style'].forEach((a) => c.removeAttribute(a));
+    c.setAttribute('aria-hidden', 'true');
+    return c.outerHTML;
+  }
+  const unescapeText = (s) => String(s).replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const chipHtml = (label) => {
+    let node = null;
+    try { node = controlFor(unescapeText(label)); } catch (_) { node = null; }
+    if (!node) return '<span class="tour-ui">' + (CHIP_NAME[unescapeText(label).trim()] || label) + '</span>';
+    const shownAs = CHIP_NAME[unescapeText(label).trim()] || label;
+    return '<span class="tour-ui tour-ui-live" role="button" tabindex="0" data-ui="' + label.replace(/"/g, '&quot;') + '">' + chipIcon(node) + shownAs + '</span>';
+  };
+  // The glow a chip's click gives its control: the arrival glow, on a layer of its own.
+  function flashControl(node) {
+    const overlay = el('tourOverlay');
+    if (!overlay || !node) return;
+    // a control folded away is reached through the button that opens it
+    let at = node;
+    if (!shown(at)) at = [el('headerMoreBtn'), el('hamburger')].find((n) => n && shown(n)) || null;
+    if (!at) return;
+    try { at.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) { /* older engines */ }
+    const r = at.getBoundingClientRect();
+    let f = el('tourFlash');
+    if (!f) { f = document.createElement('div'); f.id = 'tourFlash'; f.className = 'tour-flash'; overlay.appendChild(f); }
+    const pad = 5;
+    f.style.left = (r.left - pad) + 'px'; f.style.top = (r.top - pad) + 'px';
+    f.style.width = (r.width + pad * 2) + 'px'; f.style.height = (r.height + pad * 2) + 'px';
+    f.classList.remove('is-arriving');
+    void f.offsetWidth;
+    f.classList.add('is-arriving');
+  }
+  (function wireChips() {
+    const body = el('tourBody');
+    if (!body) return;
+    const chipOf = (e) => (e.target && e.target.closest ? e.target.closest('.tour-ui-live, .tour-section') : null);
+    const go = (chip) => { let node = null; try { node = chip.classList.contains('tour-section') ? el(chip.getAttribute('data-section')) : chip.hasAttribute('data-sel') ? document.querySelector(unescapeText(chip.getAttribute('data-sel'))) : controlFor(chip.getAttribute('data-ui')); } catch (_) { node = null; } flashControl(node); };
+    body.addEventListener('click', (e) => { const c = chipOf(e); if (c) go(c); });
+    body.addEventListener('keydown', (e) => { const c = chipOf(e); if (!c || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); e.stopPropagation(); go(c); });
+  })();
+  // A sidebar section named in a card (PAGES, COUNTERS, BID CHECK…) is set the way the sidebar sets
+  // its headings, the accent in bold capitals, and a click lights the heading like a chip lights its
+  // control (Will, 2026-09-27). Only the name in capitals, standing alone: capitals beside other
+  // capitals are a keynote quoted off the sheet ("DUCT INSULATION"), never a heading.
+  const SECTIONS = { 'PAGES': 'pagesSectionTitle', 'COUNTERS': 'countersSectionTitle', 'LINE TYPES': 'lineTypesSectionTitle', 'LINES': 'linesSectionTitle', 'GROUPS': 'groupsSectionTitle', 'DUCT': 'ductSectionTitle', 'BID CHECK': 'bidCheckSectionTitle', 'ROOMS': 'roomsSectionTitle', 'SUMMARY': 'summarySectionTitle', 'EXPORT OPTIONS': 'exportOptionsSectionTitle' };
+  const SECTION_RE = /(^|[^A-Za-z0-9"\u201c])(EXPORT OPTIONS|LINE TYPES|BID CHECK|COUNTERS|SUMMARY|GROUPS|PAGES|LINES|ROOMS|DUCT)(?![A-Za-z0-9"\u201d])/g;
+  // `text` is already escaped; section names hold nothing to escape
+  const sectionsOf = (text) => String(text).replace(SECTION_RE, (m, before, name, at, whole) => {
+    const prev = whole.slice(0, at + before.length), next = whole.slice(at + m.length);
+    if (/[A-Z]{2,}[\s,]*$/.test(prev) || /^[\s,]*[A-Z]{2,}/.test(next)) return m;
+    return before + '<span class="tour-section" role="button" tabindex="0" data-section="' + SECTIONS[name] + '">' + name + '</span>';
+  });
+  // A pointer: {{turns the pages|.page-nav}} is a chip whose words are the card's own and whose click
+  // lights the part of the screen the selector names. For a group of controls with no one name (the
+  // page arrows, the zoom buttons); a control with a name is written [[Name]].
+  const pointersOf = (text) => String(text).replace(/\{\{([^|{}]+)\|([^{}]+)\}\}/g, (m, words, sel) =>
+    '<span class="tour-ui tour-ui-live" role="button" tabindex="0" data-sel="' + sel.trim().replace(/"/g, '&quot;') + '">' + words.trim() + '</span>');
+  const chipsOf = (t) => pointersOf(sectionsOf(escapeText(t))).replace(/\[\[(.+?)\]\]/g, (m, label) => chipHtml(label)).replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
   // LEARN-TAPS: the plain text between the chips and the links goes through the card's word
   // decorator (features/learn-taps.js), which underlines a word an earlier card glossed.
   const chips = (t, words) => (words
-    ? String(t).split(/(\[\[.+?\]\]|\[(?:[^[\]]+)\]\(\/[^)\s]*\))/).map((part, i) => (i % 2 ? chipsOf(part) : words(part))).join('')
+    ? String(t).split(/(\[\[.+?\]\]|\{\{[^{}]+\}\}|\[(?:[^[\]]+)\]\(\/[^)\s]*\))/).map((part, i) => (i % 2 ? chipsOf(part) : sectionsOf(words(part)))).join('')
     : chipsOf(t));
   // A body is lines: "1. …" lines are one action each and render as a numbered list;
   // any other line is a short paragraph around them.
@@ -1212,6 +1296,9 @@
     const done = safeCheck(step);
     el('tourStepNo').textContent = (stepIdx + 1) + ' / ' + STEPS.length;
     el('tourTitle').textContent = step.title;
+    // a card that opens a lesson (Start here): its title and its one button sit in the middle
+    el('tourTitle').classList.toggle('tour-title-center', step.titleAlign === 'center');
+    el('tourCard').classList.toggle('tour-card-centered', step.titleAlign === 'center');
     const text = (b) => (typeof b === 'function' ? b() : b);
     let words = null;
     try { words = App.cardWordTaps ? App.cardWordTaps(tourId, stepIdx) : null; } catch (_) { words = null; }
@@ -1251,6 +1338,17 @@
     const pageLine = wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '';
     el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
     el('tourStatus').classList.toggle('tour-status-miss', !!miss.text);
+    // A finished step has no Show me where, so its ✓ Done would sit on a row of its own above Back and
+    // Next: it joins their row instead, at the left, and the emptied row goes (Will, 2026-09-27).
+    (function placeStatus() {
+      const status = el('tourStatus'), actions = status && el('tourCard').querySelector('.tour-card-actions'), nav = el('tourCard').querySelector('.tour-card-nav');
+      if (!status || !actions || !nav) return;
+      const buttons = Array.from(actions.querySelectorAll('button')).some((b) => b.style.display !== 'none');
+      const lone = !buttons;
+      if (lone && status.parentNode !== nav) nav.insertBefore(status, nav.firstChild);
+      if (!lone && status.parentNode !== actions) actions.appendChild(status);
+      actions.style.display = lone ? 'none' : '';
+    })();
     // The reason code of the line on show (the engine's own sheet line is wrong-page), logged on the
     // tour_step event the first time it shows on this step, so real readers' stalls are counted on
     // the same yardstick the persona runs use (PERSONA-PLAN item 3, 2026-09-25). A plain-string hint
@@ -1276,15 +1374,35 @@
     if (target) {
       if (target !== lastTarget) scrollSettled = false;
       let r = target.getBoundingClientRect();
+      // A card about several parts of the screen at once lights them all: `lightAll` makes the lit
+      // area the box around every target on screen, not the first one alone (the footer AND the status
+      // bar; Will, 2026-09-27: the card named the status bar and lit only the footer).
+      if (step.lightAll) {
+        const all = ladder.map((sel) => { try { return document.querySelector(sel); } catch (_) { return null; } }).filter((n) => n && shown(n)).map((n) => n.getBoundingClientRect());
+        if (all.length > 1) {
+          const x1 = Math.min(...all.map((b) => b.left)), y1 = Math.min(...all.map((b) => b.top)), x2 = Math.max(...all.map((b) => b.right)), y2 = Math.max(...all.map((b) => b.bottom));
+          r = { left: x1, top: y1, right: x2, bottom: y2, width: x2 - x1, height: y2 - y1 };
+        }
+      }
       const inView = seen(target, r);
       if (!inView && (!scrollSettled || inStrip(target))) { try { target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
       else if (inView) scrollSettled = true;
+      const arrived = target !== lastTarget;   // the light has moved to a new control
       lastTarget = target;
       const pad = 6;
       spot.style.display = '';
       spot.classList.toggle('has-zones', !modalOpen && stepZones(step).length > 0 && (step.page == null || state().currentPage === step.page));
       spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
       spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
+      // The lit area glows as the light lands on it, then fades to the resting ring: a highlighter's
+      // stroke, so the eye finds the area before it reads the card (Will, 2026-09-27). A large area
+      // (the sheet itself) takes the halo without the wash. styles.css: .tour-spot.is-arriving.
+      if (arrived) {
+        spot.classList.toggle('is-large', r.width * r.height > window.innerWidth * window.innerHeight * 0.25);
+        spot.classList.remove('is-arriving');
+        void spot.offsetWidth;   // restart the animation when the light moves again before it has faded
+        spot.classList.add('is-arriving');
+      }
       // card: beside the target, never ON it. Right, below, left, above, in that order;
       // the first place that fits the viewport wins. When none does (a control in the
       // corner of a big dialog), the viewport corner farthest from the control, which
@@ -1608,12 +1726,58 @@
     const need = minR === Infinity ? 0 : (TARGET_MIN_PX + 6) / minR;
     const max = Math.min(App.getMaxZoom ? App.getMaxZoom() : 3, 3);
     const z = Math.max(fit, Math.min(max, Math.max(Math.min(want, max), Math.min(need, want))));
-    state().zoom = z;
-    state().pan = { x: W / 2 - ((x1 + x2) / 2) * z, y: H / 2 - ((y1 + y2) / 2) * z };
-    nudgedFor = -1; panelNudged = new Set();   // the zoom moved the circles: the card and the palettes get one more look
     zoomedForZones = true;
-    App.renderPdf(); App.updateUI();
+    glideView(z, { x: W / 2 - ((x1 + x2) / 2) * z, y: H / 2 - ((y1 + y2) / 2) * z }, W, H);
   }
+  // The sheet GLIDES to its targets, slowly, so the reader sees where on the sheet they are being
+  // taken (Will, 2026-09-27: the jump from the whole sheet to one corner of it was disorienting). The
+  // frames move the drawn sheet by its transform, the way a wheel zoom does, and the sheet is drawn
+  // sharp once it arrives. The reader's own wheel, pinch or click on the sheet ends the glide where
+  // it is. A spec (navigator.webdriver) and a device set to reduce motion get the jump.
+  const GLIDE_MS = 2600;
+  let gliding = null;
+  function endGlide(settle) {
+    if (!gliding) return;
+    cancelAnimationFrame(gliding.frame);
+    gliding = null;
+    nudgedFor = -1; panelNudged = new Set();   // the view moved the circles: the card and the palettes get one more look
+    if (settle !== false) { App.renderPdf(); App.updateUI(); }
+  }
+  function glideView(z, pan, W, H) {
+    const s = state();
+    endGlide(false);
+    let still = false;
+    try { still = !!navigator.webdriver || window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { still = false; }
+    if (still || !App.updateContainerTransform || !s.pan || !s.zoom) {
+      s.zoom = z; s.pan = pan;
+      nudgedFor = -1; panelNudged = new Set();
+      App.renderPdf(); App.updateUI();
+      return;
+    }
+    const z0 = s.zoom;
+    // the sheet point under the middle of the view, now and on arrival: the glide carries one to the other
+    const c0 = { x: (W / 2 - s.pan.x) / z0, y: (H / 2 - s.pan.y) / z0 };
+    const c1 = { x: (W / 2 - pan.x) / z, y: (H / 2 - pan.y) / z };
+    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+    const t0 = performance.now();
+    nudgedFor = stepIdx;   // the card does not chase circles that are still moving
+    const frame = (now) => {
+      if (!gliding) return;
+      const t = Math.min(1, (now - t0) / GLIDE_MS), k = ease(t);
+      const zk = z0 * Math.pow(z / z0, k);
+      s.zoom = zk;
+      s.pan = { x: W / 2 - (c0.x + (c1.x - c0.x) * k) * zk, y: H / 2 - (c0.y + (c1.y - c0.y) * k) * zk };
+      App.updateContainerTransform();
+      if (App.syncZoomIndicators) App.syncZoomIndicators();
+      if (t < 1) { gliding.frame = requestAnimationFrame(frame); return; }
+      s.zoom = z; s.pan = pan;
+      endGlide();
+    };
+    gliding = { frame: requestAnimationFrame(frame) };
+  }
+  ['wheel', 'pointerdown', 'touchstart'].forEach((type) => document.addEventListener(type, (e) => {
+    if (gliding && e.target && e.target.closest && e.target.closest('.canvas-wrapper')) endGlide();
+  }, { capture: true, passive: true }));
   function showMeWhere() {
     const step = STEPS[stepIdx];
     if (step.handsOff && step.action) { Promise.resolve(step.action.run()).then(render); return; }
@@ -1669,6 +1833,7 @@
     });
   }
   function goTo(i) {
+    endGlide();
     dragPos = null; nudgedFor = -1; panelNudged = new Set();
     const cardEl = el('tourCard'); if (cardEl) cardEl.scrollTop = 0;   // a long card scrolled to its foot opens the next one at its title
     const next = Math.max(0, Math.min(STEPS.length - 1, i));
@@ -1687,7 +1852,16 @@
     // The last step's circles zoomed the sheet onto their corner; a step with none of its own
     // (a question about the sheet) gets the whole sheet back, or its answer can sit off screen
     // (the interceptor question opened on the east wall, the restrooms out of view, 2026-09-25).
-    if (!heldByBack && zoomedForZones && !stepZones(STEPS[stepIdx]).length && App.fitZoom) { zoomedForZones = false; App.fitZoom(); App.updateUI(); }
+    if (!heldByBack && zoomedForZones && !stepZones(STEPS[stepIdx]).length && App.fitZoom) {
+      zoomedForZones = false;
+      // back out to the whole sheet the way it came in: the same glide, to fitZoom's own view
+      const pg = state().pages[state().currentPage], wrapEl = document.querySelector('.canvas-wrapper');
+      if (pg && pg.pdfPage && wrapEl && state().pan && state().zoom) {
+        const vp = pg.pdfPage.getViewport({ scale: 1, rotation: pg.rotation ?? 0 });
+        const fit = Math.max(0.2, Math.min(App.getMaxZoom ? App.getMaxZoom() : 3, Math.min(wrapEl.clientWidth / vp.width, wrapEl.clientHeight / vp.height)));
+        glideView(fit, { x: 0, y: 0 }, wrapEl.clientWidth, wrapEl.clientHeight);
+      } else { App.fitZoom(); App.updateUI(); }
+    }
     setTimeout(() => { if (active) focusOnZones(STEPS[stepIdx]); }, 60);
     App.logUserEvent && App.logUserEvent('tour_step', state().currentProjectId || null, { tour: tourId, step: STEPS[stepIdx].id, index: stepIdx });
     const def = TOURS[tourId];
@@ -1751,6 +1925,7 @@
     return true;
   }
   function stopTutorial(finished) {
+    endGlide();
     active = false;
     App.onTourStepChanged && App.onTourStepChanged();
     if (timer) { clearInterval(timer); timer = null; }
@@ -1802,18 +1977,26 @@
   (function wireCardDrag() {
     const card = el('tourCard'), head = card && card.querySelector('.tour-card-head');
     if (!head) return;
+    // The grab area is the whole top of the card: its top edge, the step row and the title,
+    // everything above the text, except the × (Will, 2026-09-27: the step row alone was a thin
+    // strip to hit). styles.css gives that area the grab cursor.
+    const inGrabArea = (e) => {
+      if (!e.target || !e.target.closest || e.target.closest('button, a, input, .tour-word')) return false;
+      const body = el('tourBody');
+      return !body || e.clientY < body.getBoundingClientRect().top;
+    };
     let start = null;
-    head.style.cursor = 'grab';
-    head.style.touchAction = 'none';
-    head.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('button')) return;
+    card.addEventListener('pointerdown', (e) => {
+      if (!inGrabArea(e)) return;
       const r = card.getBoundingClientRect();
       start = { x: e.clientX, y: e.clientY, left: r.left, top: r.top };
-      try { head.setPointerCapture(e.pointerId); } catch (_) { /* older engines */ }
+      card.classList.add('tour-card-dragging');
+      try { card.setPointerCapture(e.pointerId); } catch (_) { /* older engines */ }
+      e.preventDefault();   // a drag that starts on the title selects no text
     });
-    head.addEventListener('pointermove', (e) => { if (!start) return; dragPos = { left: start.left + e.clientX - start.x, top: start.top + e.clientY - start.y }; render(); });
-    const end = () => { start = null; };
-    head.addEventListener('pointerup', end); head.addEventListener('pointercancel', end);
+    card.addEventListener('pointermove', (e) => { if (!start) return; dragPos = { left: start.left + e.clientX - start.x, top: start.top + e.clientY - start.y }; render(); });
+    const end = () => { start = null; card.classList.remove('tour-card-dragging'); };
+    card.addEventListener('pointerup', end); card.addEventListener('pointercancel', end);
   })();
 
   // wiring (static DOM)

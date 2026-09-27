@@ -1740,8 +1740,34 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-word-term { color: var(--text); font-weight: 600; }
 .tour-word-close { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; color: var(--text2); font-size: 1rem; line-height: 1; cursor: pointer; }
 .tour-word-close:hover { color: var(--text); background: var(--surface3); }
+/* A chip that knows its control (features/tutorial.js controlFor): the control's own icon beside
+   its name, and a click lights the control (.tour-flash, the arrival glow on a layer of its own). */
+/* a sidebar section named in a card wears the sidebar heading's own style */
+.tour-section { color: var(--accent); font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: normal; cursor: pointer; border-radius: 3px; }
+.tour-section:hover, .tour-section:focus-visible { text-decoration: underline; outline: none; }
+.tour-ui svg { width: 1.05em; height: 1.05em; vertical-align: -0.16em; margin-right: 5px; }
+.tour-ui-live { cursor: pointer; }
+.tour-ui-live:hover, .tour-ui-live:focus-visible { border-color: var(--accent); outline: none; }
+.tour-flash { position: fixed; border-radius: 8px; pointer-events: none; }
+.tour-flash::after { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; background: rgba(232, 197, 71, 0.34); box-shadow: 0 0 0 3px rgba(232, 197, 71, 1), 0 0 22px 6px rgba(232, 197, 71, 0.75), 0 0 64px 18px rgba(232, 197, 71, 0.45); }
+.tour-flash::before { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; border: 3px solid rgba(232, 197, 71, 0.9); }
+.tour-flash.is-arriving::after { animation: tourSpotArrive 2.3s ease-out 1 both; }
+.tour-flash.is-arriving::before { animation: tourSpotRipple 1.1s ease-out 1 both; }
+@media (prefers-reduced-motion: reduce) { .tour-flash.is-arriving::after { animation: tourSpotArrive 1.2s steps(1, end) 1 both; } .tour-flash.is-arriving::before { animation: none; } }
 .tour-ui { display: inline-block; padding: 0 8px; margin: 0 1px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.86em; font-weight: 500; line-height: 1.55; white-space: nowrap; vertical-align: baseline; }
-.tour-card-head { display: flex; align-items: center; gap: 10px; }
+/* The grab area: the card's top edge, the step row and the title (features/tutorial.js wireCardDrag).
+   The step row reaches out over the card's own padding so the cursor says so right to the edge. */
+.tour-card-head { display: flex; align-items: center; gap: 10px; margin: -14px -16px 0; padding: 14px 16px 0; cursor: grab; touch-action: none; }
+.tour-card > h3 { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+.tour-card-head .tour-leave { cursor: pointer; }
+.tour-card > h3.tour-title-center { text-align: center; }
+.tour-card-centered .tour-card-actions { justify-content: center; }
+/* one button and nothing to get wrong: no "Waiting for you…" beside it (Will, 2026-09-27) */
+.tour-card-centered .tour-status { display: none; }
+/* the opening card's one button: the accent's outline, filled on hover and keyboard focus */
+.tour-card-centered #tourShow { border-color: var(--accent); color: var(--text); padding: 7px 16px; font-weight: 600; transition: background 0.12s, color 0.12s; }
+.tour-card-centered #tourShow:hover, .tour-card-centered #tourShow:focus-visible { background: var(--accent); border-color: var(--accent); color: #111; outline: none; }
+.tour-card.tour-card-dragging, .tour-card.tour-card-dragging .tour-card-head, .tour-card.tour-card-dragging > h3 { cursor: grabbing; }
 .tour-step-no { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text3); white-space: nowrap; flex: 0 0 auto; }
 /* A long tour (the blank-sheet tour is 36 steps) squeezes its dots rather than wrapping the step number. */
 .tour-dots { display: flex; gap: 3px; flex: 1 1 auto; min-width: 0; overflow: hidden; }
@@ -1753,6 +1779,9 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-action { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 5px 10px; font: inherit; font-size: 0.82rem; cursor: pointer; }
 .tour-action:hover { border-color: var(--accent); }
 .tour-status { font-size: 0.75rem; color: var(--text3); flex: 1 1 140px; line-height: 1.35; }
+/* in the Back / Next row (a finished step, or a reading card): it takes the left, as Skip does */
+.tour-card-nav .tour-status { flex: 0 1 auto; }
+.tour-card-nav .tour-status:empty { display: none; }
 .tour-spacer { flex: 1; }
 .tour-nav { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 6px; padding: 5px 10px; font: inherit; font-size: 0.82rem; cursor: pointer; }
 .tour-next.tour-next-ready { background: var(--accent); color: #111; border-color: var(--accent); font-weight: 600; }
@@ -1790,6 +1819,18 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 /* a step with targets on the sheet keeps the sheet readable: the dim drops to a veil */
 .tour-spot.has-zones { box-shadow: 0 0 0 9999px rgba(0,0,0,0.2), 0 0 0 2px var(--accent); }
 .tour-spot.is-pulsing { animation: tourSpotPulse 0.7s ease-in-out 3; }
+/* The arrival glow: as the light lands on a new area, the area is washed in the accent and wears a
+   soft halo, then both fade to the resting ring. On a layer of its own (::after), so it never
+   fights the dim or the Show me where pulse. It waits for the light's 160 ms move to finish. */
+.tour-spot::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; background: rgba(232, 197, 71, 0.3); box-shadow: 0 0 0 3px rgba(232, 197, 71, 1), 0 0 22px 6px rgba(232, 197, 71, 0.75), 0 0 64px 18px rgba(232, 197, 71, 0.45); }
+.tour-spot.is-large::after { background: rgba(232, 197, 71, 0.1); }
+.tour-spot.is-arriving::after { animation: tourSpotArrive 2.3s ease-out 0.14s 1 both; }
+@keyframes tourSpotArrive { 0% { opacity: 0; } 8% { opacity: 1; } 50% { opacity: 1; } 100% { opacity: 0; } }
+/* and a ring that leaves the area outward as the glow lands, like a drop in water */
+.tour-spot::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; border: 3px solid rgba(232, 197, 71, 0.9); }
+.tour-spot.is-arriving::before { animation: tourSpotRipple 1.1s ease-out 0.14s 1 both; }
+@keyframes tourSpotRipple { 0% { opacity: 0.95; inset: 0; } 100% { opacity: 0; inset: -34px; } }
+@media (prefers-reduced-motion: reduce) { .tour-spot.is-arriving::after, .tour-spot.is-arriving::before { animation: none; } }
 .tour-next:disabled { opacity: 0.4; cursor: default; }
 .tour-status.tour-status-miss { color: #e8795f; }
 .tour-card-nav { display: flex; align-items: center; gap: 8px; margin-top: 10px; position: sticky; bottom: -12px; background: var(--surface); padding-bottom: 12px; margin-bottom: -12px; }
@@ -1833,6 +1874,8 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 body.tour-active .canvas-empty-hint { display: none; }
 /* A phone docks the tour card to the bottom edge (the top when its control sits low), full width and capped, so it never covers the control or more than ~40% of the sheet. */
 @media (max-width: 768px) {
+  .tour-card-head { margin: -10px -12px 0; padding: 10px 12px 0; }
+  .tour-card > h3 { margin-left: -12px; margin-right: -12px; padding-left: 12px; padding-right: 12px; }
   .tour-card { left: 8px !important; right: 8px !important; top: auto !important; bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important; transform: none !important; width: auto; max-height: 40vh; overflow-y: auto; padding: 10px 12px; font-size: 0.85rem; }
   .tour-card.tour-card-top { top: calc(8px + env(safe-area-inset-top, 0px)) !important; bottom: auto !important; }
   .tour-card h3 { margin: 4px 0; font-size: 1rem; }

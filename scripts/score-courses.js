@@ -267,11 +267,11 @@ const FIRST_USE = {
     // Start here, the uncounted opener (LEARN-START): the screen's parts and the words its one click needs
     'takeoff': 'start', 'header': 'start', 'sidebar': 'start', 'counter': 'start', 'line type': 'start',
     'summary': 'start', 'bid': 'start', 'bid check': 'start', 'export': 'start', 'footer': 'start',
-    'status bar': 'start', 'armed': 'start', 'mark': 'start', 'title block': 'start',
-    'scale': 'plans', 'fixture schedule': 'plans',
+    'status bar': 'start', 'mark': 'start',
+    'scale': 'plans', 'fixture schedule': 'plans', 'title block': 'plans',
     'schedule': 'plans', 'fixture': 'plans',
     'dimension': 'scale', 'detail': 'scale', 'scale zone': 'scale', 'zone': 'scale',
-    'quick key': 'counting', 'number row': 'counting',
+    'armed': 'counting', 'quick key': 'counting', 'number row': 'counting',
     'Artboard': 'counting',
     'snap': 'measuring', 'run': 'measuring', 'trace': 'measuring', 'main': 'measuring',
     'meter': 'measuring', 'range': 'measuring', 'cook line': 'measuring', 'polyline': 'measuring', 'fitting': 'measuring',
@@ -299,6 +299,8 @@ const EARLY = [
   ['hvac', 'run', 'diffusers'],
   ['tour-plumbing', 'set', 'welcome'],       // "You will set the scale": the verb; the place card glosses a set
   ['tour-plumbing', 'set', 'measure'],       // "every time you set a scale"
+  ['tour-plumbing', 'set', 'scale'],         // the card's title, "Set the scale": the verb (titles are read since 2026-09-27)
+  ['tour-blank', 'set', 'scale'],            // the same title on the blank-sheet tour
   ['tour-electrical', 'run', 'welcome'],     // "the pipe the wires run in": the verb; the linetype card glosses a run
   ['tour-electrical', 'panel', 'chain'],     // "the Chain panel", the tool's box; the circuit card glosses a power panel
 ];
@@ -357,7 +359,7 @@ function propsOf(n) {
   return m;
 }
 const strOf = (n) => (isStr(n) ? n.value : flat(n).trim());
-const CARD_KEYS = ['body', 'reveal'];
+const CARD_KEYS = ['title', 'body', 'reveal'];   // the title is card text too: it can carry the gloss, so the body need not repeat it (2026-09-27)
 
 // The chapters of one file, in order: { id, title, line, cards: [{ id, line, pieces }] }.
 // A piece is { key, text, line }. A step array's element that names a constant object
@@ -442,9 +444,9 @@ function chaptersFor(entry, src) {
 
 // ===== reading the text ====================================================================
 // For the score a chip reads as its label and a link as its words.
-const scoreText = (t) => t.replace(/\[\[([^\]]+)\]\]/g, '$1').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+const scoreText = (t) => t.replace(/\{\{([^|{}]+)\|[^{}]+\}\}/g, '$1').replace(/\[\[([^\]]+)\]\]/g, '$1').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
 // For the terms a chip is taken out: it names a button, not the trade word.
-const termText = (t) => t.replace(/\[\[[^\]]+\]\]/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+const termText = (t) => t.replace(/\{\{([^|{}]+)\|[^{}]+\}\}/g, '$1').replace(/\[\[[^\]]+\]\]/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
 
 // A sentence ends at . ! or ? before a capital, a digit, a quote or a bracket, and at every
 // line break. "TYP. is" does not end one; an abbreviation before a capital does not either.

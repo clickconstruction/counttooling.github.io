@@ -165,7 +165,8 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the fresh device: one card under Drop a plan here, the line of links gone
     await expect(page.locator('#canvasEmptyHint')).toHaveClass(/is-fresh/);
     await expect(page.locator('#canvasEmptyHintStart')).toBeVisible();
-    await expect(page.locator('#canvasEmptyHintStart')).toContainText('Start here');
+    await expect(page.locator('#canvasEmptyHintStart')).toContainText('What is CountTooling?');
+    await expect(page.locator('#canvasEmptyHintStart')).toContainText('8 step walk through');   // the lesson is eight cards: '1 / 8' below
     await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
     for (const id of ['canvasEmptyHintTour', 'canvasEmptyHintTourPlumbing', 'canvasEmptyHintLearn', 'canvasEmptyHintCourse', 'canvasEmptyHintAdvancedPlan', 'canvasEmptyHintTourBlank']) await expect(page.locator('#' + id)).toBeHidden();
     // "or see every tour, lesson and course": Learn, the opener lit at row 0 and out of the count
@@ -178,18 +179,19 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the card starts lesson 0
     await page.click('#canvasEmptyHintStart');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['lesson:start', 'sheets']);
-    // the open card says one thing, that this is a sample and nothing here touches the reader's work;
-    // it repeats neither the Learn row's line nor itself
-    await expect(page.locator('#tourBody')).toContainText('Nothing you do on them touches your own projects');
+    // the open card says what the app is: its text, then the one button, nothing repeated from the Learn row
+    await expect(page.locator('#tourTitle')).toHaveText('CountTooling is a takeoff tool.');
+    await expect(page.locator('#tourBody')).toContainText('list every material and quantity');
     await expect(page.locator('#tourBody')).not.toContainText('Four minutes for anyone new');
-    await expect(page.locator('#tourBody')).not.toContainText('whatever it takes for granted');
-    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 9');
+    await expect(page.locator('#tourBody')).not.toContainText('Open the lesson sheets');
+    await expect(page.locator('#tourShow')).toHaveText('Open the lesson sheets');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 8');
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'what', null, { timeout: 30000 });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'header', null, { timeout: 30000 });
     // where things are: Next moves the light, one part of the screen per card
     const lit = () => page.evaluate(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(); return { l: Math.round(s.left), t: Math.round(s.top), w: Math.round(s.width), h: Math.round(s.height) }; });
     const spots = {};
-    for (const id of ['what', 'header', 'sidebar', 'bottom']) {
+    for (const id of ['header', 'sidebar', 'bottom']) {
       await page.waitForFunction((want) => window.App.tutorialStepId() === want, id);
       await page.waitForTimeout(250);
       spots[id] = await lit();

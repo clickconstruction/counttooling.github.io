@@ -1,7 +1,7 @@
 ---
 title: Learn CountTooling by doing
 description: Five-minute tours for plumbing, electrical and HVAC, a tour that presses every button once on a blank sheet, thirteen short hands-on lessons that cover every tool in CountTooling, and three courses that teach the trade off an engineer's set, all on sample sheets the app opens for you.
-updated: 2026-09-21
+updated: 2026-09-26
 order: 1.2
 icon: keys
 category: Getting started
@@ -18,12 +18,19 @@ The fastest way to learn a takeoff tool is to do a takeoff. CountTooling teaches
 Open the app with nothing loaded and click **lesson** on the empty canvas, or open [Learn](/app/?learn=1) directly. It is also under **Project Settings** → **Help** → **lessons**.
 
 - A card beside the screen says what to do, one action per line, naming each control the way it looks on screen, and lights the control it means.
-- When the work is on the sheet, the lesson **draws where**: a circle on each thing to click, a shaded boundary around anything to drag a box over. The targets are generous, and anywhere inside one counts. A click outside them does not count, and the card says so.
+- When the work is on the sheet, the lesson **draws where**: a circle on each thing to click, and for a box to drag, a shaded band with a dashed line inside it. Anywhere in a circle counts; a box counts when it starts and ends in the band, outside the dashed line, so it wraps everything the line holds. A click outside a circle ticks nothing but still lands a mark on the sheet, so the card tells you to undo it.
 - Every step **checks what you actually did**. The Scale lesson does not move on until the 12'-0" dimension really measures 12'-0".
 - Nothing does a step for you: **Next** lights only once you have really done it. **Show me where** pulses the circle, the boundary or the button you are looking for, and a quiet **Skip this step** is there if a step is not for you.
 - **Back** goes back, the card drags out of the way by its top edge, and the × leaves whenever you like. A finished lesson is ticked on your device, and the menu lights the next one.
 
 If your own plan is open, a lesson asks before it closes it. Lessons never run on a project saved to the cloud.
+
+### Words the cards use
+
+- **Armed.** A tool or a counter is armed when the next click on the sheet uses it: an armed counter places one mark per click. Pressing **M** (Move) puts it down, and a number key or a click on the counter in the sidebar arms it again.
+- **The line beside Show me where.** Every card ends with one line that says what the step is still waiting for, one thing at a time. It turns red when your last try missed and says why, and reads **✓ Done** when the step is done. It is not the status bar at the bottom of the window, which shows the file, the save and the quick keys.
+- **The palette.** Your counters and line types, the lists under **COUNTERS** and **LINE TYPES** in the left sidebar. A returning device keeps its palette from bid to bid.
+- **A chip.** A small label beside a field or under the cursor, like the size the Duct tool reads off the plan. A chip tells you something; the control it describes is named on the card.
 
 ## Start with your trade: the five-minute tours
 

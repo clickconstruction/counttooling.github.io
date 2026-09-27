@@ -123,6 +123,11 @@
   const inRect = (pt, r) => pt.x >= r.x1 && pt.x <= r.x2 && pt.y >= r.y1 && pt.y <= r.y2;
   const near = (a, b, d) => Math.hypot(a.x - b.x, a.y - b.y) <= d;
   const modalUp = (id) => { const m = el(id); return !!m && m.classList.contains('visible'); };
+  // The SUMMARY breakdown open on THIS counter: the proof steps passed on any row's, the first
+  // (Lavatory) included, though every card names one total (PERSONA-PASS prober).
+  const detailTitle = () => String((el('summaryCountDetailTitle') || {}).textContent || '').trim();
+  const detailOpenFor = (c) => modalUp('summaryCountDetailModal') && !!c && detailTitle() === (c.name || 'Counter') + ' by page';
+  const detailMiss = (c) => (modalUp('summaryCountDetailModal') && c && !detailOpenFor(c) ? { code: 'wrong-item', text: 'That is ' + detailTitle() + '. Close it and click the ' + c.name + ' total' } : '');
   const measured = (i, ft, tol) => { const lm = S().lastMeasure; const v = K().measuredFeet(); return !!lm && lm.pageIdx === i && v != null && Math.abs(v - ft) <= tol; };
 
   // ----- on-sheet targets (the engine's kit: circles for clicks, a boundary for a drag) -----------
@@ -141,6 +146,7 @@
   const gasPaths = (live) => { const a = pageAnn(P101); const d = S().drawingPolyline; return ((a && a.polylines) || []).map((pl) => pl.points || []).concat(live && d && d.points ? [d.points] : []); };
   const meterDrop = () => { const a = pageAnn(P101); const z = { x: GAS_MAIN[0].x, y: GAS_MAIN[0].y, r: 15 }; return !!a && (a.polylines || []).some((l) => { const p = l.points || []; if (!p.length) return false; return ((l.startDrop || 0) > 0 && K().inCircle(p[0], z)) || ((l.endDrop || 0) > 0 && K().inCircle(p[p.length - 1], z)); }); };
   const kitchenGroup = () => (S().groups || []).find((x) => /kitchen/i.test(x.name || ''));
+  const kitchenKept = () => { const a = pageAnn(P101); const all = a ? Object.values(a.counterMarkers || {}).reduce((l, ms) => l.concat(ms || []), []) : []; return KITCHEN_FDS.every((k) => all.some((m) => near(m, k, 6))); };
   const barCleared = () => { const a = pageAnn(P101); return !!a && !Object.keys(a.counterMarkers || {}).some((cid) => (a.counterMarkers[cid] || []).some((m) => inRect(m, BAR))); };
   const noteAt = (spot, r, re) => { const a = pageAnn(P101); return !!a && (a.notes || []).some((n) => (!re || re.test(String(n.text || ''))) && K().inCircle({ x: n.x, y: n.y }, { x: spot.x, y: spot.y, r })); };
 
@@ -387,7 +393,9 @@
   const openStep = (lesson) => ({
     id: 'sheets', title: lesson.title, kind: 'do',
     body: lesson.intro + '\n1. Click [[Open the lesson sheets]] below.' + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF with more than one sheet: this is where a 120-sheet set becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].' : '') + '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.',
-    target: ['#preparePdfDone', '#uploadPdf', '#uploadPdfSidebar'],
+    // Trim your set's Open when it is up, else nothing: lighting the header's Upload PDF sent a reader to
+    // a file picker with no lesson PDF in it, the card's own button being the door (PERSONA-PASS)
+    target: ['#preparePdfDone'],
     check: () => { seedIfReady(lesson); return isSetOpen(lesson) && seededFor === lesson.id; },
     handsOff: true,   // fetching the sample sheets is the app's job: this step's button does it
     action: { label: 'Open the lesson sheets', run: () => openSheetsFor(lesson) },
@@ -445,7 +453,7 @@
           target: ['#measureBtn', '#measureBtnSidebar'], page: P401, zones: () => proveP401().zones(), check: () => proveP401().check(), hint: () => proveP401().hint(),
           action: { label: 'Measure the 12\'-0" string', run: async () => { goPage(P401); if (!scaleIs(P401, 18)) await K().applyScalePreset('1/4" = 1\'', 18); measure(DETAIL.prove[0], DETAIL.prove[1]); } } },
         { id: 'zone', cardAt: 'bl', title: 'A detail at another scale', kind: 'do',
-          body: 'Detail 2 is drawn at 1/2". Measured at the sheet\'s 1/4" it would read double.\n1. In the header, click [[⋯]], then [[Scale Zone]].\n2. Drag a box around detail 2: start and end anywhere inside the shaded boundary.\n3. In the dialog, choose [[1/2" = 1\']].\nEverything inside the box now measures at its own scale, beside the rest of the sheet.',
+          body: 'Detail 2 is drawn at 1/2". Measured at the sheet\'s 1/4" it would read double.\n1. In the header, click [[⋯]], then [[Scale Zone]].\n2. Drag a box around detail 2: start and end in the shaded band, outside the dashed line.\n3. In the dialog, choose [[1/2" = 1\']].\nEverything inside the box now measures at its own scale, beside the rest of the sheet.',
           target: ['#scaleZoneBtn', '#scaleZoneBtnSidebar', '#headerMoreBtn'],
           page: P401,
           zones: () => [K().boxZone(rectsOf(P401, 'scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 36) < 0.1), DETAIL_INNER, DETAIL_OUTER, 'Drag your box around detail 2, anywhere in here')],
@@ -473,7 +481,7 @@
       seed() { setScale(P101, 9, '1/8" = 1\''); },
       steps: [
         { id: 'counter', title: 'Make a Floor Drain counter', kind: 'do',
-          body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Floor Drain.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe counter tool arms itself. The [[Quick]] tab builds a name from Size, Type and Material when you want every bid to spell it the same way.',
+          body: '1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Floor Drain.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe counter tool arms itself: every click on the sheet now places a Floor Drain. The [[Quick]] tab builds a name from Size, Type and Material when you want every bid to spell it the same way.',
           target: () => K().counterFormTargets(FD_RE), check: () => !!madeCounterNamed(/floor\s*drain|^fd\b/i),
           action: { label: 'Create it for me', run: () => { const c = makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'); App.pushUndoSnapshot(); arm(c); dirty(); } } },
         { id: 'place', title: 'Count the kitchen', kind: 'do',
@@ -490,12 +498,12 @@
           hint: () => { const c = counterNamed(FD_RE); if (!c) return ''; const other = Object.values(S().numberKeyBindings || {}).map((b) => b && b.kind === 'counter' && b.id !== c.id && (S().counters || []).find((x) => x.id === b.id)).find((x) => x && FD_RE.test(x.name || '')); return other ? 'That key holds ' + other.name + '. Choose ' + c.name + ', the counter you just made' : ''; },
           action: { label: 'Bind 1 to Floor Drain', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); if (!c) return; if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: c.id }; dirty(); } } },
         { id: 'usekey', title: 'Count from the keyboard', kind: 'do',
-          body: '1. Press M to put the counter down (Move).\n2. Press 1. The Floor Drain counter arms again.\n3. Click inside the circle on the floor drain in the dish room, below the kitchen.\nOn a real sheet that is the whole rhythm: 1, click, click, 2, click, click.',
+          body: '1. Press M (Move): clicks stop placing floor drains.\n2. Press 1: Floor Drain is armed again, ready to count.\n3. Click inside the circle on the floor drain in the dish room, below the kitchen.\nOn a real sheet that is the whole rhythm: 1, click, click, 2, click, click.',
           target: ['#annCanvas'], page: P101, zones: () => circlesFor(P101, counterNamed(FD_RE), [FD.dish], 16),
           check: () => K().allDone(circlesFor(P101, counterNamed(FD_RE), [FD.dish], 16)),
           action: { label: 'Press 1 and count it', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); if (!c) return; if (App.triggerQuickKey) App.triggerQuickKey(1); App.pushUndoSnapshotCurrentPage(); mark(P101, c, [FD.dish]); dirty(); } } },
         { id: 'settings', title: 'How the marks look', kind: 'read',
-          body: 'Right-click the [[Counter]] button in the header for Counter Settings: marker size, the ring, the running number beside each mark. Make them small on a dense sheet and large on a tablet.\nMore: [Counting with counters](/guides/counting-with-counters/), [Custom icons](/guides/custom-icons/) and [Quick creators](/guides/quick-creators/).',
+          body: 'Right-click the [[Counter]] button in the header (on a tablet, tap COUNTERS in the sidebar) for Counter Settings: marker size, the ring, the running number beside each mark. Make them small on a dense sheet and large on a tablet.\nMore: [Counting with counters](/guides/counting-with-counters/), [Custom icons](/guides/custom-icons/) and [Quick creators](/guides/quick-creators/).',
           target: ['#counterBtn', '#counterBtnSidebar'], check: () => true },
       ],
       done: 'A counter, a count, and a number key.\nNext: [[Learn]] → Measuring.',
@@ -573,7 +581,7 @@
       },
       steps: [
         { id: 'zone', cardAt: 'bl', title: 'Wrap the typical', kind: 'do',
-          body: 'The lesson counted detail 2 once: one hand sink, one floor drain. The sheet says it is built four times.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around detail 2: start and end anywhere inside the shaded boundary.\n3. Type 4.\n4. Click [[Apply]].',
+          body: 'The lesson counted detail 2 once: one hand sink, one floor drain. The sheet says it is built four times.\n1. In the header, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around detail 2: start and end in the shaded band, outside the dashed line.\n3. In Enter multiplier, type 4.\n4. Click [[Apply]].',
           target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
           page: P401,
           // TYP. OF 4 is four: a zone left at the dialog's default 2 passed, and the next card's "reads 4" read 2 (by hand, 2026-09-25)
@@ -614,11 +622,11 @@
           check: () => { const g = kitchenGroup(); return !!g && K().allDone(K().markZones(P101, null, KITCHEN_FDS, 16, (m) => m.group === g.id)); },
           action: { label: 'Assign the three for me', run: () => { const g = (S().groups || []).find((x) => /kitchen/i.test(x.name || '')); const c = counterNamed(/floor\s*drain/i); const a = pageAnn(P101); if (!g || !c || !a) return; App.pushUndoSnapshotCurrentPage(); (a.counterMarkers[c.id] || []).forEach((m) => { if (KITCHEN_FDS.some((k) => near(m, k, 4))) m.group = g.id; }); dirty(); } } },
         { id: 'filter', title: 'Show only what this sheet uses', kind: 'do',
-          body: 'The lesson added a Urinal counter that nothing on this sheet uses. On a real bid the palette has sixty.\n1. In the left sidebar, beside the COUNTERS search box, click the funnel once.\nThe list drops to the counters with marks on this sheet. Click it again for the ones used anywhere in the project, and again for the whole palette. The lesson puts it back the way you had it when you leave.',
+          body: 'The lesson added a Urinal counter that nothing on this sheet uses. On a real bid the COUNTERS list holds sixty.\n1. In the left sidebar, beside the COUNTERS search box, click the funnel once.\nThe list drops to the counters with marks on this sheet. Click it again for the ones used anywhere in the project, and again for every counter in the project. The lesson puts it back the way you had it when you leave.',
           target: ['#counterShowOnlyOnPageInlineBtn', '#countersSection'], check: () => (App.getCounterListFilterScope ? App.getCounterListFilterScope() === 'page' : false),
           action: { label: 'Filter to this page', run: () => { App.setCounterListFilterScope('page'); App.updateUI(); } } },
         { id: 'layer', title: 'An alternate on its own layer', kind: 'do',
-          body: 'An alternate, an addendum, or waste kept apart from water: same sheet, its own layer, its own totals.\n1. In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].\n2. Click [[New empty layer]].\n3. In Name, type Alternate 1.\n4. Click [[Create]].\nThe up and down arrow keys switch layers. The button beside Layers shows every layer at once.',
+          body: 'An alternate, an addendum, or waste kept apart from water: same sheet, its own layer, its own totals.\n1. In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].\n2. Click [[New empty layer]].\n3. In Name, type a name for it, Alternate 1 say.\n4. Click [[Create]].\nThe up and down arrow keys switch layers. The button beside Layers shows every layer at once.',
           target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#canvasLayersBtn'], check: () => ((S().pages[P101] || {}).canvases || []).length >= 2,
           action: { label: 'Add the layer for me', run: async () => { if (((S().pages[P101] || {}).canvases || []).length >= 2) return; goPage(P101); el('addCanvasBtn').click(); await wait(80); if (el('addCanvasModalNew')) el('addCanvasModalNew').click(); if (el('addCanvasModalName')) el('addCanvasModalName').value = 'Alternate 1'; if (el('addCanvasModalCreate')) el('addCanvasModalCreate').click(); await wait(80); } } },
         { id: 'hide', title: 'Read the bare drawing', kind: 'do',
@@ -650,11 +658,13 @@
           target: () => K().ladder('#counterLineTypeDetailsModal .modal-card', K().pencilOf('counter', counterNamed(FD_RE)), '#countersSection'), check: () => !!madeCounterNamed(/fd-?1/i),
           action: { label: 'Rename it for me', run: () => { const c = counterNamed(/floor\s*drain/i); if (!c) return; App.pushUndoSnapshot(); c.name = 'FD-1 Floor Drain'; dirty(); } } },
         { id: 'area', cardAt: 'tr', title: 'Clear an area', kind: 'do',
-          body: 'The bar is out of your scope.\n1. In the header, click [[⋯]], then [[Delete area]].\n2. Drag a box around the two drains in the BAR: start and end inside the shaded boundary.\n3. The dialog says exactly what is inside. Confirm it.\nOne undo brings it all back.',
+          body: 'The bar is out of your scope.\n1. In the header, click [[⋯]], then [[Delete area]].\n2. Drag a box around the two drains in the BAR: start and end inside the shaded boundary, clear of the kitchen.\n3. The dialog says exactly what is inside. Confirm it.\nOne undo brings it all back.',
           target: ['#deleteZoneBtn', '#deleteZoneBtnSidebar', '#headerMoreBtn'],
           page: P101,
           zones: () => (barCleared() ? [] : [{ kind: 'box', inner: K().norm(BAR_FIXTURES), outer: K().grow(BAR, 14), done: false, label: 'Drag your box around the bar\'s two drains, inside here' }]),
-          check: () => barCleared(),
+          // the bar gone AND the kitchen kept: a Delete area box over the whole plan passed (PERSONA-PASS prober)
+          check: () => barCleared() && kitchenKept(),
+          hint: () => (barCleared() && !kitchenKept() ? { code: 'wrong-value', text: 'That took the kitchen drains too. Press Ctrl+Z and box only the bar' } : ''),
           action: { label: 'Clear the bar for me', run: async () => { goPage(P101); const a = pageAnn(P101); if (!a) return; App.openDeleteZoneForRect(a, P101, BAR.x1, BAR.y1, BAR.x2, BAR.y2); await wait(250); if (modalUp('confirmModal') && el('confirmOk')) el('confirmOk').click(); await wait(150); } } },
       ],
       done: 'Undo, delete one, change a type, clear an area.\nMore: [Fixing mistakes](/guides/fixing-mistakes/).\nNext: [[Learn]] → Notes and questions.',
@@ -672,21 +682,21 @@
           hint: () => { const a = pageAnn(P101); return a && (a.notes || []).length && !noteAt(NOTE_SPOT, 40) ? 'That note is outside the circle. Drag it into the circle' : ''; },
           action: { label: 'Leave one for me', run: () => addNote(NOTE_SPOT, 'Verify hood gas connection size', '#e8c547') } },
         { id: 'rfi', title: 'Flag a question for the GC', kind: 'do',
-          body: 'The grease interceptor is drawn outside the building and nothing says who excavates.\n1. Press N again.\n2. Click inside the circle beside the GI.\n3. Type RFI: and then the question, and click [[Done]].\nA note that starts with RFI: is a flag. Under EXPORT OPTIONS, [[Copy RFI Flags]] collects every flag across the set as one list.',
+          body: 'The grease interceptor is drawn outside the building and nothing says who excavates.\n1. Click [[⋯]], then [[Note]] again (or press N).\n2. Click inside the circle beside the GI.\n3. Type RFI: and then the question, and click [[Done]].\nA note that starts with RFI: is a flag. Under EXPORT OPTIONS, [[Copy RFI Flags]] collects every flag across the set as one list.',
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           page: P101, zones: () => guide([RFI_SPOT], 40, noteAt(RFI_SPOT, 40, /^\s*RFI\s*:/i)),
           check: () => noteAt(RFI_SPOT, 40, /^\s*RFI\s*:/i),
           hint: () => { const a = pageAnn(P101); return a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))) && !noteAt(RFI_SPOT, 40, /^\s*RFI\s*:/i) ? 'That flag is outside the circle. Drag it into the circle' : ''; },
           action: { label: 'Flag it for me', run: () => addNote(RFI_SPOT, 'RFI: Who excavates and sets the grease interceptor?', '#e85447') } },
         { id: 'highlight', title: 'Highlight an area', kind: 'do',
-          body: '1. In the header, click [[⋯]], then [[Highlight]] (or press H).\n2. Drag a box over the grease interceptor (GI): start and end inside the shaded boundary.\nHighlights get names and a bookmark list, and Export PDFs can bundle just the highlighted sheets for whoever needs to look.',
+          body: '1. In the header, click [[⋯]], then [[Highlight]] (or press H).\n2. Drag a box over the grease interceptor (GI): start and end in the shaded band, outside the dashed line.\nHighlights get names and a bookmark list, and Export PDFs can bundle just the highlighted sheets for whoever needs to look.',
           target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'], page: P101,
           zones: () => [K().boxZone(rectsOf(P101, 'highlights'), GI_TANK, GI_OUTER, 'Drag your highlight over the GI, inside here')],
           hint: () => K().boxMiss(rectsOf(P101, 'highlights'), GI_TANK, GI_OUTER),
           check: () => K().boxZone(rectsOf(P101, 'highlights'), GI_TANK, GI_OUTER).done,
           action: { label: 'Highlight it for me', run: () => { goPage(P101); const a = App.ensureActiveCanvas(S().pages[P101]).annotations; if (!a.highlights) a.highlights = []; if (a.highlights.length) return; App.pushUndoSnapshotCurrentPage(); a.highlights.push(Object.assign({ color: '#e8c547', opacity: 0.25, id: App.uid() }, GI)); S().tool = App.TOOL.NONE; dirty(); } } },
         { id: 'ledger', title: 'Every note in one list', kind: 'read',
-          body: '1. In the header, click [[Notes ledger]], the page icon; its badge counts the open RFI flags.\nIt lists every note sheet by sheet, the RFI chip at its top narrows it to the flags, and a click on a row takes you to the spot.\nMore: [Highlights, notes, and reading the bare drawing](/guides/annotating-and-reviewing/).',
+          body: '1. In the header, click [[Notes ledger]], the page icon; its badge counts the open RFI flags.\nIt lists every note sheet by sheet, [[RFI]] at its top narrows it to the flags, and a click on a row takes you to the spot.\nMore: [Highlights, notes, and reading the bare drawing](/guides/annotating-and-reviewing/).',
           target: ['#notesLedgerDrawer', '#notesLedgerBtn'], check: () => true },
       ],
       done: 'A note, a question for the GC, a highlight.\nNext: [[Learn]] → Check and prove.',
@@ -708,12 +718,12 @@
           check: () => ((usedLineType(/pex/i) || {}).childCounts || []).length > 0,
           action: { label: 'Add the hanger rule', run: () => { const lt = usedLineType(/pex/i); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [hangerRuleFor(lt)]; dirty(); } } },
         { id: 'tick', title: 'Sign what only you can', kind: 'do',
-          body: '1. In BID CHECK, click the words Scale verified on every counted sheet.\nYour ticks are saved with the bid. Hand off with a row still open and the app asks once, then remembers your answer until something changes. It never blocks you.',
+          body: '1. In the left sidebar, under BID CHECK, click the row that reads Scale verified on every counted sheet. One click signs it for the whole bid.\nYour ticks are saved with the bid. Hand off with a row still open and the app asks once, then remembers your answer until something changes. It never blocks you.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => !!(S().bidCheck && S().bidCheck.manual && S().bidCheck.manual['scale-verified']),
           action: { label: 'Tick it for me', run: () => tickManual('scale-verified') } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
           body: '1. In the left sidebar, under SUMMARY, click the Floor Drain total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits, zones already applied. This is what you open when the number is questioned.',
-          target: () => K().ladder('#summaryCountDetailModal .modal-card', K().summaryRowOf('counter', counterNamed(FD_RE)), '#summarySectionTitle'), check: () => modalUp('summaryCountDetailModal'),
+          target: () => K().ladder('#summaryCountDetailModal .modal-card', K().summaryRowOf('counter', counterNamed(FD_RE)), '#summarySectionTitle'), check: () => detailOpenFor(counterNamed(FD_RE)), hint: () => detailMiss(counterNamed(FD_RE)),
           action: { label: 'Open the breakdown', run: () => { const c = counterNamed(/floor\s*drain/i); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'legend', title: 'The legend on the sheet', kind: 'do', hold: true,
           body: '1. In the left sidebar, click the SUMMARY heading.\nSummary Legend sets how the on-sheet legend draws: a tally for plumbing, a compact ruled block (the way an E or M sheet draws its own) or the full block with every column. It follows the trade until you choose.',
@@ -736,7 +746,7 @@
           target: ['#specificPagesModal .modal-card', '#specificPages', '#exportOptionsSectionTitle'], check: () => modalUp('specificPagesModal'),
           action: { label: 'Open Export PDFs', run: () => { if (App.openSpecificPagesModal) App.openSpecificPagesModal(); else el('specificPages').click(); } } },
         { id: 'tooling', title: 'Hand it to the bid', kind: 'read',
-          body: '1. [[Copy to /Tooling]] puts the takeoff on the clipboard, ready to paste into a bid in PipeTooling: fixtures, feet with the risers inside, hangers and fittings under their pipe. Its first line names exactly what was copied.\n2. [[Open in TakeoffTooling]] does the same for an electrical bid.\n3. [[Copy RFI Flags]] puts your questions beside it.',
+          body: '1. [[Copy to /Tooling]] puts the takeoff on the clipboard, ready to paste into a bid in PipeTooling, the plumbing pricing app: fixtures, feet with the risers inside, hangers and fittings under their pipe. Its first line names exactly what was copied.\n2. [[Open in TakeoffTooling]] opens it in TakeoffTooling, the electrical pricing app, for an electrical bid.\n3. [[Copy RFI Flags]] puts your questions beside it.',
           target: ['#forPipeTooling', '#exportOptionsSectionTitle'], check: () => true },
         { id: 'email', title: 'Or just the numbers', kind: 'read',
           body: '1. [[Copy Summary (Email/Text)]] is the same takeoff as plain text for an email. Totals are always decimal feet, whatever unit each sheet was scaled in.\nMore: [Reports and exports](/guides/reports-and-exports/).',
@@ -1033,7 +1043,7 @@
     registerCourse,
     P101, P401, P501, P601, P, FD, LAVS, MOP, WCS, HAND_SINKS, GAS_MAIN, DETAIL,
     pts, raw, planFeet,   // flat point lists on the P-101 shell
-    pageAnn, onPage, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, near, modalUp, measured, readerFeet, feetFor, rectsOf,
+    pageAnn, onPage, detailOpenFor, detailMiss, counterNamed, lineTypeNamed, lineTypesMatching, someLineType, isStanding: (id) => standing.has(id), armedNamed: (re) => { const st = S(); const c = (st.counters || []).find((x) => x.id === st.activeCounterType); return c && st.tool === App.TOOL.COUNTER && re.test(c.name || '') ? c : null; }, marksOf, scaleIs, near, modalUp, measured, readerFeet, feetFor, rectsOf,
     dirty, goPage, setScale, makeCounter, makeLineType, mark, markMissing, dropAt, measure, hangerRuleFor, addNote, openStep, doneStep, guide, memoProof,
     openBidCheck, tickManual,
     courseDone, markCourseDone,   // a course's progress, read and ticked through here

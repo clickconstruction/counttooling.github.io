@@ -160,10 +160,11 @@ test('the persona prompts render from one source, with no hole left', () => {
   assert.strictEqual(R.personas['estimator.returning.laptop.careful.check'].device, 'laptop');
   assert.deepStrictEqual(Object.keys(R.seeds), ['1', '2', '3']);
   assert.match(R.findingFormat, /false-pass/);
-  const vars = { HARNESS: 'http://127.0.0.1:3490', SET: 'plumbing', STEP: 'zone', OUT: '/x/f.jsonl', MANIFEST: '/x/m.jsonl', LABELS: '/x/labels.json' };
+  const vars = { HARNESS: 'http://127.0.0.1:3490', SET: 'plumbing', STEP: 'zone', OUT: '/x/f.jsonl', MANIFEST: '/x/m.jsonl', LABELS: '/x/labels.json', RULES: '/x/rules.json' };
   const text = P.render('text', { persona: 'none.first-time.desktop.skims.learn', seed: 2, vars });
   assert.match(text, /"persona":"none\.first-time\.desktop\.skims\.learn#2"/);
   assert.match(text, /make the choice a newcomer most plausibly would/);
+  assert.match(text, /\/x\/rules\.json: the rulebook/);
   const live = P.render('live', { persona: 'journeyman.returning.desktop.impatient.bid-fast', seed: 3, vars });
   assert.match(live, /"device":"returning","obsMode":"diff"/);
   assert.match(live, /"actions":\[/);

@@ -289,6 +289,9 @@
     const c = COUNTS().find(([tag, spots]) => markCountNear(TAGS[tag][0], spots, 8) < spots.length);
     return c ? 'Not all counted: ' + c[2] : '';
   }
+  // The lay step skipped with nothing done: the sheet carries no mark (PP-WHOLE-SKIP). The same
+  // test the pdfs step passes on, since Export PDFs hides on it too.
+  const takeoffSkipped = () => !App.projectHasAnyCanvasMarkup();
   // The compare card, rendered live: run by run, the reference's feet beside the reader's.
   function compareBody() {
     const ref = referenceFeet();
@@ -691,11 +694,17 @@
       seed() { scaleP101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Chapters 2 to 7 taught each piece. This is all of them on one sheet, by hand.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing.\nIt names one thing at a time, and reads ✓ Done when nothing is.\nThe whole list: every fixture under its tag, and every run by size and material. The service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas.\n[[Skip this step]] moves on with the sheet as it is. The next card compares it against the reference.',
+          body: 'Chapters 2 to 7 taught each piece. This is all of them on one sheet, by hand.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing.\nIt names one thing at a time, and reads ✓ Done when nothing is.\nThe whole list: every fixture under its tag, and every run by size and material. The service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas.\n[[Skip this step]] moves on with the sheet as it is. The next card compares it against the reference.\n[[Finish the takeoff for me]] lays the reference takeoff on the sheet instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
-          action: { label: 'Finish the takeoff for me', run: layEverything } },
+          action: { label: 'Finish the takeoff for me', run: layEverything },
+          // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
+          // step that is not handsOff, so the card the reader is sent Back to shows it as its alt.
+          alt: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
-          body: compareBody,
+          // PP-WHOLE-SKIP (2026-09-27): Skip on the lay step leaves the sheet as it is, and nothing
+          // fills it in. With no mark on it there is nothing to compare, so the card says so and
+          // points back at the button beside Skip, instead of listing every run as short.
+          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheet has no marks, and there is nothing to compare yet.\nTo see the answer, click [[Back]] and press [[Finish the takeoff for me]]. It lays the reference takeoff on the sheet, and this card then checks it run by run.\nOr read on: [[Next]] moves on with the sheet as it is.' : compareBody()),
           target: [], check: () => true },
         { id: 'legend', title: 'The legend on the sheet', kind: 'do', hold: true,
           body: '1. In the left sidebar, click the gear beside the SUMMARY heading.\nSummary Legend sets how the legend on the sheet draws. A tally for plumbing, or a compact ruled block, the way an engineer draws one.\nIt lists every counter and every line type with its feet, so the marked-up sheet reads without the app.',
@@ -706,7 +715,7 @@
           // Export PDFs shows only once the sheet carries a mark; after the takeoff step's Skip there is
           // nothing to export, the button is hidden, and the step would hold a reader for good (by
           // hand, 2026-09-25). Then it passes and says why.
-          target: ['#specificPagesModal .modal-card', '#specificPages', '#exportOptionsSectionTitle'], check: () => K().modalUp('specificPagesModal') || !App.projectHasAnyCanvasMarkup(),
+          target: ['#specificPagesModal .modal-card', '#specificPages', '#exportOptionsSectionTitle'], check: () => K().modalUp('specificPagesModal') || takeoffSkipped(),
           action: { label: 'Open Export PDFs', run: () => { if (App.openSpecificPagesModal) App.openSpecificPagesModal(); else el('specificPages').click(); } } },
       ],
       done: 'The whole sheet, counted and traced, checked against the reference, and on paper.\nNext: [[Learn]] → Chapter 9, the bid.',

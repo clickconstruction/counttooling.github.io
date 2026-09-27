@@ -432,3 +432,25 @@ test.describe('The HVAC course: the air lands where the plan hangs it', () => {
     expect(errors).toEqual([]);
   });
 });
+
+// PP-WHOLE-SKIP (2026-09-27): Skip on chapter 8's lay step leaves the sheets as they are and nothing
+// fills them in. The compare card says the takeoff was skipped, in place of a list of 0.0 ft and a
+// 0 lb bid weight, and sends the reader Back to Finish the takeoff for me, a button the lay card draws.
+test.describe('The HVAC course: the whole set, skipped', () => {
+  test('the compare card says the takeoff was skipped and Back finds Finish the takeoff for me', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:whole', errors);
+    await openSheets(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await expect(page.locator('#tourAlt')).toHaveText('Finish the takeoff for me');
+    await page.click('#tourSkip');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await expect(page.locator('#tourBody')).toContainText('You skipped the takeoff');
+    await expect(page.locator('#tourBody')).not.toContainText('Bid weight');
+    await page.click('#tourBack');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await expect(page.locator('#tourAlt')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});

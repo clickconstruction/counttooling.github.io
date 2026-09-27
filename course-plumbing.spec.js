@@ -370,6 +370,58 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     expect(errors).toEqual([]);
   });
 
+  // PP-WHOLE-SKIP (2026-09-27): Skip leaves the sheet as it is and nothing fills it in. The compare
+  // card says the takeoff was skipped, in place of a list of every run short, and sends the reader
+  // Back to the lay card's Finish the takeoff for me, a button that card now draws.
+  test('after the whole-sheet takeoff is skipped, the compare card says so and Back finds Finish the takeoff for me', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'whole', errors);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await expect(page.locator('#tourAlt')).toBeVisible();
+    await expect(page.locator('#tourAlt')).toHaveText('Finish the takeoff for me');
+    await page.click('#tourSkip');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await expect(page.locator('#tourBody')).toContainText('You skipped the takeoff');
+    await expect(page.locator('#tourBody')).toContainText('Finish the takeoff for me');
+    await expect(page.locator('#tourBody')).not.toContainText('short:');
+    await page.click('#tourBack');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await page.click('#tourAlt');
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true || window.App.tutorialStepId() === 'compare', null, { timeout: 15000 });
+    await expect(page.locator('#tourAlt')).toBeHidden();
+    if (await stepId(page) === 'lay') await page.click('#tourNext');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await expect(page.locator('#tourBody')).toContainText('Every count matches');
+    await expect(page.locator('#tourBody')).not.toContainText('You skipped');
+    expect(errors).toEqual([]);
+  });
+
+  // The row's other half, built in #244 (the tour card is clamped to the window and scrolls with
+  // Back / Next pinned): a takeoff begun and then skipped still lists every run short, and that
+  // card stood 799 px in a 720 px window with Next below the edge. At 1280 x 720 Next is on screen.
+  test('a takeoff begun and then skipped: the long compare card keeps Next in a 1280 x 720 window', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await startOnDevice(page, 'whole', errors);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'My mark', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(300, 300)]); k.dirty(); });
+    await page.click('#tourSkip');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await page.waitForTimeout(500);
+    await expect(page.locator('#tourBody')).toContainText('short:');
+    const box = await page.evaluate(() => { const card = document.getElementById('tourCard'); const c = card.getBoundingClientRect(); const n = document.getElementById('tourNext').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, nextTop: n.top, nextBottom: n.bottom, vh: window.innerHeight, tall: card.scrollHeight }; });
+    expect(box.tall).toBeGreaterThan(box.vh - 24);   // the long list: taller than the window allows, so it scrolls
+    expect(box.top).toBeGreaterThanOrEqual(0);
+    expect(box.bottom).toBeLessThanOrEqual(box.vh);
+    expect(box.nextTop).toBeGreaterThanOrEqual(box.top);
+    expect(box.nextBottom).toBeLessThanOrEqual(box.bottom);
+    await page.click('#tourNext');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'legend', null, { timeout: 5000 });
+    expect(errors).toEqual([]);
+  });
+
   test('a question after a zoomed step gets the whole sheet back, and the cleanout question does not name its answers before the first mark', async ({ page }) => {
     test.setTimeout(150000);
     const errors = [];

@@ -9,7 +9,8 @@
  *
  * A step is { id, title, body, kind, target (selector list), check(), action?, alt?, hint?, progress?, hold?, cardAt?, reveal? }
  * (alt: a second button beside a hands-off step's own, { label, run }: the blank-sheet tour's
- * welcome offers "Pick up at step 20" and "Start over" when the reader left mid-way)
+ * welcome offers "Pick up at step 20" and "Start over" when the reader left mid-way; each
+ * course's chapter 8 takeoff card offers "Finish the takeoff for me", PP-WHOLE-SKIP)
  * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
  * whole point is a dialog the reader should get to read)
  * (body may be a FUNCTION: called at every render, for a step whose text reads the takeoff
@@ -1224,6 +1225,8 @@
     // (a reading step is done by reading); a quiet Skip keeps anyone from being stuck.
     // The one exception is a step nobody CAN do by hand, which says so with `handsOff`:
     // fetching the sample sheets is the app's job, so that step's button does it.
+    // A step's `alt` is a button the reader chooses, never the default: the courses'
+    // whole-takeoff card offers "Finish the takeoff for me" beside Skip (PP-WHOLE-SKIP).
     const ready = step.kind === 'read' || done;
     const zones = stepZones(step);
     const show = el('tourShow');

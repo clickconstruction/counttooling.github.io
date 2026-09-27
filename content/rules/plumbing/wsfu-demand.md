@@ -413,10 +413,10 @@ source:
   url: https://codes.iccsafe.org/
 amendments: []
 used_by: [waterSchedule]
-updated: 2026-09-23
+updated: 2026-09-27
 ---
 
-Fixture units are not a flow. The code converts a load to a design flow with a demand table (the Hunter curve): the more fixtures on a pipe, the smaller the share that runs at once, so the flow climbs more slowly than the load. It prints two columns: systems predominantly for **flush tanks** and systems predominantly for **flush valves**, whose short heavy draws need more water at the same load. Between the printed points the code has you interpolate on a straight line.
+Fixture units are not a flow. The code converts a load to a design flow with a demand table (the Hunter curve): the more fixtures on a pipe, the smaller the share that runs at once, so the flow climbs more slowly than the load. It prints two columns: systems predominantly for **flush tanks** and systems predominantly for **flush valves**, whose short heavy draws need more water at the same load. The table prints points; between them the app interpolates on a straight line, which is how the table is ordinarily read (the code text itself gives no interpolation instruction that the sign-off could find).
 
 ## What the app does with it
 
@@ -425,3 +425,7 @@ Every size suggestion in the water-sizing ladder starts here: the fixture units 
 ## What it does not do
 
 It does not size by pressure and developed length (Appendix E's full method, Tables E103.3(4) to E103.3(7)). That is the master's calculation, and the app leaves it to Bid Check as a manual row until the critical-path math exists.
+
+## Verify against your edition
+
+All 100 points, both columns, matched the 2021 text of Table E103.3(3) as a state adoption prints it; the 2018 table was not opened. The three readings under *What the app does with it* (the flush-tank column under 5 WSFU for flush valves, down to zero under 1 WSFU, the last value held past 5,000) are the app's, not the code's: sensible for a walk-through size, and replaced by the engineer's calculation on a real design. Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

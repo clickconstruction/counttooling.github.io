@@ -28,7 +28,7 @@ is unchanged (proved element for element before the refactor was kept).
 
 | Sheet | Carries | Teaches |
 |---|---|---|
-| **E-101 Power plan** | 11 duplex at 18" (one of them the engineer's miss, in the kitchen), 10 GFCI at 44" (the bar, the kitchen, the restrooms, within 6 ft of any sink), a J-box at each of six pieces of equipment with its circuit, panel LP-1 on the storage wall with a dashed 36" × 30" working clearance, the meter and 200 A main outside the south wall, the feeder, homerun arrows with circuit tags | 210.8(B), 110.26, mount heights, the homerun |
+| **E-101 Power plan** | 11 duplex drawn at 18" (one of them the engineer's miss, in the kitchen, counted as a GFCI since 2026-09-27: 10 duplex and 11 GFCI in the takeoff), 10 GFCI drawn at 44" (the bar, the kitchen, the restrooms, within 6 ft of any sink), a J-box at each of six pieces of equipment with its circuit, panel LP-1 on the storage wall with a dashed 36" × 30" working clearance, the meter and 200 A main outside the south wall, the feeder, homerun arrows with circuit tags | 210.8(B), 110.26, mount heights, the homerun |
 | **E-201 Lighting plan** | 36 fixtures each with its TYPE letter beside it (A pendant ×13, B troffer ×10, C downlight ×8, X exit ×2, EM ×3), switches and three occupancy sensors, homeruns | the tag reader ("Plan says B"), 700.12 / IBC 1008, IECC C405.2.1 |
 | **E-501 Schedules** | the lighting fixture schedule (tag + description rows) and LP-1's panel schedule: 19 circuits with VA, poles, breaker, wire, conduit; the connected load | the schedule reader, 240.4(D) and 310.16, why #10 for the dishwasher |
 | **E-601 One-line** | utility, meter, main, feeder (4 #3/0 + #6 G in 2"), LP-1, the grounding electrode | 310.16, 250.122, 250.66, Article 220, three phase |
@@ -50,7 +50,7 @@ is unchanged (proved element for element before the refactor was kept).
 
 **The reference** (chapter 8): 69 marks in twelve device types across the two plans; the west-wall
 chain 60.5 ft (22.5 on the plan and four 9.5 ft verticals the chain wrote), the homerun 84.17 ft,
-the feeder 12.33 ft with its rise. Computed from the same flat geometry the button lays.
+the feeder 15.83 ft with its 8.5 ft of vertical (12.33 with a 5 ft rise until 2026-09-27). Computed from the same flat geometry the button lays.
 
 **The language (2026-09-27).** Todd read the language memo (`journeys/plans/COURSE-LANGUAGE-2026-09-27.md`)
 and chose option C: the reader is anyone at all. So the course opens with `before`, every trade and
@@ -90,6 +90,12 @@ printed code.
   receptacle (it is between the 2nd and 3rd); `sheet:panel` (~295) has every homerun arrow point
   at the panel (they are sideways stubs, LP-1-9 points away). Reworded 2026-09-27 (DS-AGENT-NITS):
   the arrows are named by their tags, not their aim.
+
+**Settled 2026-09-27** on the owner's delegation, from the tester dossier's research: every item
+above is decided and applied (the dishwasher's row is the one asked for, the missed receptacle is
+counted once as a GFCI, E-601 names RTU-1 alone, the feeder rises 8.5 ft into the ceiling and down
+into LP-1's top, the clearance is measured from the panel's face), and the course speaks NEC 2023.
+The decision log is the dossier's [Settled 2026-09-27](TESTER-DOSSIER-ELECTRICAL-2026-09-27.md#settled-2026-09-27).
 
 ## Open, and not blocking
 

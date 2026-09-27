@@ -376,6 +376,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://counttooling.com/rules/plumbing/hanger-spacing-gas-steel/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://counttooling.com/rules/plumbing/hanger-spacing-pex/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>

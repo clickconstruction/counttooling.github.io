@@ -15,6 +15,12 @@
  *                        reader turns into counters) and panel LP-1's schedule.
  *   E-601 ONE-LINE       the service: utility, meter, main, feeder, LP-1, grounding. NTS.
  *
+ * Settled 2026-09-27 from the tester dossier (journeys/plans/TESTER-DOSSIER-ELECTRICAL-2026-09-27.md):
+ * branch circuits 2 #12 + G (R1), the feeder up into the ceiling and down into LP-1's top, 16 ft (T4),
+ * the dishwasher's GFCI breaker (R2), circuit 21's lock-on (R3), the dining time switch (R4), E-501
+ * note 6 (R10), E-601 note 2 names RTU-1 only (T3) and the lateral carries no ground (R9). Words only:
+ * no device moved, so the course's coordinates stand.
+ *
  * POWER / LIGHTING below are the device lists the course mirrors as flat point lists
  * (the labels test reads every double bracket in a teaching file as a control name).
  */
@@ -35,7 +41,7 @@ const POWER = {
   hoodRecep: [[720, 358], [800, 358]],                                      // LP-1-12 under the hood, GFCI (a kitchen), on the shunt trip
   gfciDish: [[660, 476]],                                                   // LP-1-14 beside the dish 3-comp
   duplexStorage: [[760, 476], [930, 590]],                                  // LP-1-16
-  missed: [[600, 460]],                                                     // the engineer's miss: a plain duplex on the kitchen's south wall, in a kitchen (210.8(B)(2)); the course has the reader find it
+  missed: [[600, 460]],                                                     // the engineer's miss: a plain duplex on the kitchen's south wall, in a kitchen (210.8(B)(2)), on no row of E-501; the course has the reader find it, RFI it and count it as a GFCI
   rtu: [[730, 590]],                                                        // LP-1-18,20,22 RTU-1 on the roof, 3 phase
   wh: [[812, 548]],                                                         // LP-1-19 the water heater's controls
   panel: [704, 506], meter: [690, 612], mdp: [713, 611],
@@ -111,7 +117,7 @@ function sheetE101() {
     ['<rect x="-8" y="-5" width="16" height="10" fill="none" stroke="' + INK + '" stroke-width="0.8" stroke-dasharray="3 2"/>', 'WORKING CLEARANCE, 36" DEEP × 30" WIDE'],
   ])}
   ${notesColumn(996, 200, 'POWER KEYNOTES', [
-    'ALL BRANCH CIRCUITS 3 #12 CU THHN',
+    'ALL BRANCH CIRCUITS 2 #12 CU THHN',
     '  + 1 #12 G IN 3/4" EMT, UNLESS NOTED.',
     'RECEPTACLES IN THE KITCHEN, THE BAR,',
     '  THE RESTROOMS AND WITHIN 6 FT OF ANY',
@@ -125,6 +131,8 @@ function sheetE101() {
     '  42 POLES, SURFACE, TOP AT 78" AFF.',
     'KEEP 36" CLEAR IN FRONT OF LP-1',
     '  (NEC 110.26).',
+    'FEEDER: UP FROM THE MDP INTO THE',
+    '  CEILING, DOWN INTO THE TOP OF LP-1.',
     'SEE E-501 FOR THE PANEL SCHEDULE,',
     '  E-601 FOR THE ONE-LINE.',
   ])}
@@ -157,13 +165,13 @@ function sheetE201() {
     'LIGHTING CIRCUITS 2 #12 + 1 #12 G',
     '  IN 3/4" EMT, 120V.',
     'EXIT SIGNS AND EMERGENCY LIGHTS ON',
-    '  CIRCUIT 21, BATTERY BACKED, 90 MIN',
-    '  (IBC 1008, NEC 700.12).',
+    '  CIRCUIT 21 WITH A LOCK-ON, BATTERY',
+    '  BACKED, 90 MIN (IBC 1008.3, NEC 700.12).',
     'OCCUPANCY SENSORS SWITCH THE',
     '  RESTROOMS AND STORAGE',
     '  (IECC C405.2.1).',
-    'DINING PENDANTS ON A DIMMER AT',
-    '  THE ENTRY SWITCH.',
+    'DINING PENDANTS ON A TIME SWITCH',
+    '  (IECC C405.2.2), DIMMED AT THE ENTRY.',
     'MOUNTING: SWITCHES 48" AFF, EXIT',
     '  SIGNS 90" AFF, EM LIGHTS 90" AFF.',
   ])}
@@ -189,8 +197,8 @@ const PANEL_SCHEDULE = [
   ['15', 'LTG, KITCHEN, DISH, STORAGE (10 × B)', '400', '1', '20', '#12', '3/4"'],
   ['17', 'LTG, HALL, RESTROOMS, MOP (8 × C)', '96', '1', '20', '#12', '3/4"'],
   ['19', 'WATER HEATER CONTROLS', '200', '1', '20', '#12', '3/4"'],
-  ['21', 'EXIT + EMERGENCY LIGHTS', '21', '1', '20', '#12', '3/4"'],
-  ['2,4', 'DISHWASHER, 208V 1Φ', '4800', '2', '30', '#10', '3/4"'],
+  ['21', 'EXIT + EMERGENCY LIGHTS, LOCK-ON', '21', '1', '20', '#12', '3/4"'],
+  ['2,4', 'DISHWASHER, 208V 1Φ, GFCI BKR', '4800', '2', '30', '#10', '3/4"'],
   ['6', 'HW RECIRC PUMP', '400', '1', '20', '#12', '3/4"'],
   ['8,10', 'EF-1 HOOD EXHAUST FAN, 208V 1Φ', '2400', '2', '20', '#12', '3/4"'],
   ['12', 'COOK LINE GFCI RECEPTACLES (SHUNT TRIP)', '360', '1', '20', '#12', '3/4"'],
@@ -234,8 +242,10 @@ function sheetE501() {
     '5. OCCUPANCY SENSORS IN THE',
     '   RESTROOMS AND STORAGE',
     '   (IECC C405.2.1).',
-    '6. #12 CU THHN IS RATED 20 A',
-    '   (NEC 240.4(D), 310.16).',
+    '6. #12 CU IS PROTECTED AT 20 A',
+    '   MAX (NEC 240.4(D)).',
+    '7. DISHWASHER BREAKER GFCI',
+    '   (NEC 422.5(A)(7)).',
   ])}
   ${titleBlock({ sheet: 'E-501', sheetName: 'SCHEDULES', project: 'MAIN ST RESTAURANT', scale: 'NONE', date: '07/31/26' })}`;
 }
@@ -248,17 +258,17 @@ function sheetE601() {
   return `${sheetFrame()}
   <g font-family="${F}"><text x="120" y="112" font-size="15" font-weight="bold" fill="${INK}">ONE-LINE DIAGRAM · SERVICE AND PANEL LP-1</text><text x="120" y="128" font-size="9.5" fill="#444">NOT TO SCALE</text></g>
   ${box(X - 80, 150, 160, 40, ['UTILITY TRANSFORMER', '208Y/120V, 3Φ, 4W'])}
-  ${wire(X, 190, 250, 'SERVICE LATERAL: 2" C, 4 #3/0 CU THHN + 1 #6 CU G, 60 FT (UTILITY)')}
+  ${wire(X, 190, 250, 'SERVICE LATERAL: 2" C, 4 #3/0 CU THHN/THWN-2, 60 FT (UTILITY)')}
   <circle cx="${X}" cy="270" r="20" fill="#fff" stroke="${INK}" stroke-width="1.4"/><text x="${X}" y="274" font-family="${F}" font-size="12" font-weight="bold" fill="${INK}" text-anchor="middle">M</text>
   <text x="${X + 30}" y="274" font-family="${F}" font-size="9" fill="${INK}">METER, UTILITY, ON THE SOUTH WALL</text>
   ${wire(X, 290, 330, '')}
   ${box(X - 80, 330, 160, 44, ['MDP · MAIN DISCONNECT', '200A / 3P, FUSED, NEMA 3R', 'SERVICE ENTRANCE, SOUTH WALL'])}
-  ${wire(X, 374, 450, 'FEEDER: 2" C, 4 #3/0 CU THHN + 1 #6 CU G, 12 FT (NEC 310.16: 3/0 CU 75°C = 200 A; 250.122: #6 G AT 200 A)')}
+  ${wire(X, 374, 450, 'FEEDER: 2" C, 4 #3/0 CU THHN + 1 #6 CU G, 16 FT (NEC 310.16, 250.122)')}
   ${box(X - 80, 450, 160, 44, ['PANEL LP-1', '200A MCB, 42 POLES', '208Y/120V, 3Φ, 4W, STORAGE 108'])}
   ${wire(X, 494, 540, '')}
   <g font-family="${F}" font-size="9" fill="${INK}">
     <line x1="${X - 200}" y1="540" x2="${X + 200}" y2="540" stroke="${INK}" stroke-width="1.8"/>
-    ${[['1-11', 'RECEPTACLE CIRCUITS'], ['13-17', 'LIGHTING'], ['21', 'EXIT / EM'], ['2,4 · 6 · 8,10 · 19', 'DW · RP · EF-1 · WH'], ['12', 'HOOD RECEPTS, SHUNT TRIP'], ['18,20,22', 'RTU-1, 3Φ, 40A']].map(([ckt, what], i) => { const x = X - 200 + i * 80; return `<line x1="${x}" y1="540" x2="${x}" y2="566" stroke="${INK}" stroke-width="1.2"/><text x="${x}" y="580" text-anchor="middle" font-size="8">${ckt}</text><text x="${x}" y="592" text-anchor="middle" font-size="7.5" fill="#444">${what}</text>`; }).join('')}
+    ${[['1-11', 'RECEPTACLE CIRCUITS'], ['13-17', 'LIGHTING'], ['21', 'EXIT / EM'], ['2,4 · 6 · 8,10 · 19', 'DW · RP · EF-1 · WH'], ['12', 'HOOD RECEPTS, SHUNT TRIP'], ['18,20,22', 'RTU-1, 3Φ, 40A']].map(([ckt, what], i) => { const x = X - 200 + i * 80; return `<line x1="${x}" y1="540" x2="${x}" y2="566" stroke="${INK}" stroke-width="1.2"/><text x="${x}" y="580" text-anchor="middle" font-size="8">${ckt}</text><text x="${x}" y="${592 + (i % 2) * 11}" text-anchor="middle" font-size="7.5" fill="#444">${what}</text>`; }).join('')}
   </g>
   <line x1="${X - 80}" y1="352" x2="${X - 140}" y2="352" stroke="${INK}" stroke-width="1.4"/><line x1="${X - 140}" y1="352" x2="${X - 140}" y2="420" stroke="${INK}" stroke-width="1.4"/>
   <g font-family="${F}" font-size="8.5" fill="${INK}"><path d="M${X - 152} 420 h24 M${X - 148} 426 h16 M${X - 144} 432 h8" stroke="${INK}" stroke-width="1.4" fill="none"/><text x="${X - 140}" y="448" text-anchor="middle">GEC #4 CU TO WATER SERVICE + (2) RODS</text><text x="${X - 140}" y="460" text-anchor="middle" fill="#444">NEC 250.50, 250.66</text></g>
@@ -267,12 +277,12 @@ function sheetE601() {
     '   CONNECTED LOAD 22.3 kVA (62 A);',
     '   200A CARRIES THE KITCHEN\'S FUTURE',
     '   LOAD (NEC 220).',
-    '2. THREE PHASE FOR RTU-1 AND THE',
-    '   DISHWASHER; 120V FROM ANY PHASE',
-    '   TO NEUTRAL.',
+    '2. THREE PHASE FOR RTU-1; 120V',
+    '   FROM ANY PHASE TO NEUTRAL.',
     '3. FEEDER AND SERVICE CONDUCTORS',
-    '   3/0 CU THHN, 200 A AT 75°C',
-    '   (NEC 310.16); #6 CU EGC (250.122).',
+    '   3/0 CU THHN/THWN-2, 200 A AT 75°C',
+    '   (NEC 310.16); #6 CU EGC WITH THE',
+    '   FEEDER ONLY (250.122).',
     '4. CONDUIT FILL: 4 #3/0 + 1 #6 IN',
     '   2" EMT = 33% (NEC CH. 9 TABLE 1,',
     '   40% MAX).',

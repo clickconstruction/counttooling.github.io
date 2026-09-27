@@ -8,14 +8,15 @@
     "ductSchedule": "Duct Schedule",
     "roomSizer": "Room Sizer",
     "quickCreate": "Quick creator",
-    "waterSchedule": "Water Sizing"
+    "waterSchedule": "Water Sizing",
+    "course": "Courses"
   },
   "rules": [
     {
       "id": "elec.conductor.ampacity",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Conductor ampacity",
       "summary": "The current a conductor may carry, read from the ampacity table in the column its terminals allow: #3/0 copper carries 200 A at 75 °C, which is why a 200 A feeder is #3/0.",
       "values": [
@@ -27,17 +28,20 @@
       ],
       "source": {
         "code": "NEC",
-        "section": "310.16",
+        "section": "310.16 (Table 310.15(B)(16) in 2017)",
         "editions": [
+          2017,
           2020,
           2023
         ],
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/conductor-ampacity/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.conduit.fill-limit",
@@ -84,7 +88,7 @@
       "id": "elec.disconnect.within-sight",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Disconnect within sight of the unit",
       "summary": "Air-conditioning and refrigeration equipment gets a disconnect within sight of it and readily reached, so the rooftop unit's circuit ends in a disconnect on the roof.",
       "values": [
@@ -105,15 +109,17 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/disconnect-within-sight/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.egress.illumination",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Means of egress illumination on emergency power",
       "summary": "The building code's side of the exit lights: the path out stays lit on emergency power for 90 minutes when the normal power fails.",
       "values": [
@@ -125,7 +131,7 @@
       ],
       "source": {
         "code": "IBC",
-        "section": "1008.3",
+        "section": "1008.3.4",
         "editions": [
           2018,
           2021
@@ -133,15 +139,17 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/egress-illumination/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.ground.electrode-conductor",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Grounding electrode conductor size",
       "summary": "The conductor from the service to the water pipe and the ground rods is sized from the service conductors, and #3/0 copper service conductors want a #4 copper grounding electrode conductor.",
       "values": [
@@ -162,15 +170,17 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/electrode-conductor-size/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.emergency.battery-duration",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Emergency lighting battery duration",
       "summary": "How long an emergency lighting source must carry its load with the normal power out, 90 minutes, which is why every exit sign and emergency light on a small job carries a battery.",
       "values": [
@@ -182,7 +192,7 @@
       ],
       "source": {
         "code": "NEC",
-        "section": "700.12",
+        "section": "700.12 (unit equipment: 700.12(F) in 2017, (I) in 2020, (H) in 2023)",
         "editions": [
           2017,
           2020,
@@ -191,15 +201,17 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/emergency-battery-duration/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.emt.bends",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "EMT bends between pull points",
       "summary": "A run of EMT may turn no more than 360° in total between pull points, the equal of four quarter bends, so a run with more needs a box or conduit body in it.",
       "values": [
@@ -220,15 +232,17 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/emt-bends/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.emt.support",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "EMT support spacing",
       "summary": "Where EMT is strapped, within 3 ft of every box or termination and at least every 10 ft along the run, which is the strap count on a takeoff.",
       "values": [
@@ -254,15 +268,17 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/emt-support/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.ground.equipment-conductor",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Equipment grounding conductor size",
       "summary": "The ground that rides with a feeder is sized from the breaker ahead of it, not from the phase wires, and a 200 A breaker wants a #6 copper ground.",
       "values": [
@@ -283,17 +299,19 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/equipment-ground-size/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.circuit.fixed-equipment",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Circuits for fixed equipment",
-      "summary": "The code limits what may share a branch circuit with equipment fastened in place, which is why the dishwasher, the pump and the rooftop unit each get a circuit of their own.",
+      "summary": "The code limits what may share a branch circuit with equipment fastened in place, and the simple way to live within it is a circuit each, as the restaurant gives its dishwasher, pump and rooftop unit.",
       "values": [
         {
           "when": "equipment fastened in place, on a 15 or 20 A circuit that also feeds lights or plug-in loads",
@@ -303,7 +321,7 @@
       ],
       "source": {
         "code": "NEC",
-        "section": "210.23",
+        "section": "210.23(B)(2) (210.23(A)(2) in 2017 and 2020)",
         "editions": [
           2017,
           2020,
@@ -312,17 +330,19 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/fixed-equipment-circuits/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.gfci.non-dwelling",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
-      "title": "GFCI receptacle locations, non-dwelling",
-      "summary": "The rooms of a commercial building where the code wants every receptacle ground-fault protected, as the course counts them in a restaurant: restrooms, kitchens, and any receptacle within 6 ft of a sink.",
+      "status": "applied",
+      "title": "GFCI protection, non-dwelling",
+      "summary": "Where a commercial building's receptacles must be ground-fault protected, as the course counts them in a restaurant (restrooms, kitchens, food and beverage areas with a sink, within 6 ft of a sink), and the dishwasher's own GFCI.",
       "values": [
         {
           "when": "bathrooms and restrooms, 210.8(B)(1)",
@@ -330,19 +350,29 @@
           "unit": ""
         },
         {
-          "when": "kitchens, or any area with a sink and food preparation or cooking, 210.8(B)(2)",
+          "when": "kitchens, 210.8(B)(2)",
           "value": "every receptacle",
           "unit": ""
         },
         {
-          "when": "near a sink, measured from the top inside edge of the bowl, 210.8(B)(5)",
+          "when": "areas with a sink and food or beverage preparation or cooking, 210.8(B)(3) in 2023 (part of (B)(2) in 2020)",
+          "value": "every receptacle",
+          "unit": ""
+        },
+        {
+          "when": "near a sink, from the top inside edge of the bowl, 210.8(B)(7) in 2023 ((B)(5) in 2017 and 2020)",
           "value": 6,
           "unit": "ft"
+        },
+        {
+          "when": "a dishwasher, 150 V or less to ground and 60 A or less, 422.5(A)(7), 2020 on",
+          "value": "GFCI protection for the appliance",
+          "unit": ""
         }
       ],
       "source": {
         "code": "NEC",
-        "section": "210.8(B)",
+        "section": "210.8(B); 422.5(A)(7) for the dishwasher",
         "editions": [
           2017,
           2020,
@@ -351,9 +381,11 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/gfci-locations/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.hood.shunt-trip",
@@ -475,19 +507,24 @@
       "id": "elec.lighting.occupancy-sensors",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Occupant sensor lighting controls",
-      "summary": "The energy code wants the lights in rooms people leave, restrooms, storage and break rooms among them, on sensors that turn them off by themselves.",
+      "summary": "The energy code wants the lights in rooms people leave, restrooms, storage and break rooms among them, on sensors that turn them off by themselves, and every other area on a time switch.",
       "values": [
         {
-          "when": "restrooms, storage rooms, break rooms and the other spaces the section lists",
+          "when": "restrooms, storage rooms, break rooms and the other spaces the section lists (2021 adds corridors; enclosed spaces of 300 sq ft or less are listed)",
           "value": "an occupant sensor that turns the lights off",
+          "unit": ""
+        },
+        {
+          "when": "every other area, not on occupant sensors (C405.2.2)",
+          "value": "time-switch control that turns the lights off on a schedule",
           "unit": ""
         }
       ],
       "source": {
         "code": "IECC",
-        "section": "C405.2.1",
+        "section": "C405.2.1, C405.2.2",
         "editions": [
           2018,
           2021
@@ -495,27 +532,34 @@
         "url": "https://codes.iccsafe.org/"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/occupancy-sensors/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.service.load-calculation",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Service and feeder load calculation",
-      "summary": "A service or feeder is sized by the engineer's load calculation under Article 220, never less than the calculated load, and in practice with room for what the owner adds later.",
+      "summary": "A service or feeder is sized by the engineer's load calculation under Article 220 (for a new restaurant, the optional method of 220.88), never less than the calculated load, and in practice with room for what the owner adds later.",
       "values": [
         {
           "when": "a service or feeder",
           "value": "rated for at least the load Article 220 calculates",
           "unit": ""
+        },
+        {
+          "when": "a new restaurant, not all electric, 200 kVA or less connected, by the optional method (220.88)",
+          "value": 100,
+          "unit": "% of the connected load"
         }
       ],
       "source": {
         "code": "NEC",
-        "section": "Article 220",
+        "section": "Article 220 (220.88 for a new restaurant)",
         "editions": [
           2017,
           2020,
@@ -524,15 +568,17 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/service-load-calculation/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.conductor.small-protection",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Small conductor protection",
       "summary": "The largest breaker the code lets protect the small copper sizes, 15 A on #14, 20 A on #12 and 30 A on #10, which is why a 20 A circuit is #12.",
       "values": [
@@ -563,9 +609,11 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/small-conductor-protection/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "elec.voltage-drop.k-constant",
@@ -638,12 +686,12 @@
       "id": "elec.panel.working-space",
       "trade": "electrical",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Working space clearance",
-      "summary": "The clear space the code keeps in front of a panel someone may work on live, as the course teaches it at 120/208 V: 36 in deep, 30 in wide, 6 ft 6 in high.",
+      "summary": "The clear space the code keeps in front of a panel someone may work on live, as the course teaches it at 120/208 V: 36 in deep from the panel's face, 30 in wide, 6 ft 6 in high.",
       "values": [
         {
-          "when": "depth, clear in front (0 to 150 V to ground, Condition 1)",
+          "when": "depth, clear in front of the enclosure (0 to 150 V to ground, any condition)",
           "value": 36,
           "unit": "in"
         },
@@ -669,9 +717,11 @@
         "url": "https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/electrical/working-space/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "hvac.diffuser.neck-velocity",
@@ -1078,7 +1128,7 @@
       "kind": "code",
       "status": "draft",
       "title": "Cleanouts on drainage piping",
-      "summary": "A drain gets a cleanout wherever a snake has to go in, at the turns of more than 45 degrees, where the building drain meets the sewer, and at least every 100 feet along a horizontal run.",
+      "summary": "A drain gets a cleanout wherever a snake has to go in, at the turns of more than 45 degrees, at or just upstream of where the building drain meets the sewer, and at least every 100 feet along a horizontal run.",
       "values": [
         {
           "when": "horizontal drain, building drain or building sewer, between cleanouts, at most",
@@ -1092,13 +1142,13 @@
         },
         {
           "when": "the junction of the building drain and the building sewer",
-          "value": "a cleanout near it, inside or outside the wall",
+          "value": "a cleanout at the junction, or within 10 ft of developed length upstream of it",
           "unit": ""
         }
       ],
       "source": {
         "code": "IPC",
-        "section": "708.1 Cleanouts required",
+        "section": "708.1 Cleanouts required (708.1.1 horizontal drains, 708.1.3 building drain and sewer junction, 708.1.4 changes of direction)",
         "editions": [
           2018,
           2021
@@ -1108,7 +1158,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/cleanouts/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.drain.dfu-capacity",
@@ -1161,7 +1211,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/drainage-fixture-units/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.drain.slope",
@@ -1169,7 +1219,7 @@
       "kind": "code",
       "status": "draft",
       "title": "Slope of horizontal drainage pipe",
-      "summary": "Horizontal waste pipe falls at least 1/4 inch per foot at 2-1/2 inch and smaller, 1/8 inch per foot at 3 to 6 inch, and 1/16 inch per foot at 8 inch and larger.",
+      "summary": "Horizontal waste pipe falls at least 1/4 inch per foot at 2-1/2 inch and smaller, 1/8 inch per foot at 3 to 6 inch, and 1/16 inch per foot at 8 inch and larger, except that pipe upstream of a grease interceptor falls at least 1/4 inch per foot at any size.",
       "values": [
         {
           "when": "2-1/2 in and smaller",
@@ -1185,6 +1235,11 @@
           "when": "8 in and larger",
           "value": "1/16",
           "unit": "in/ft"
+        },
+        {
+          "when": "upstream of a grease interceptor, any size",
+          "value": "1/4",
+          "unit": "in/ft"
         }
       ],
       "source": {
@@ -1199,7 +1254,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/drainage-slope/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.gas.appliance-shutoff",
@@ -1232,7 +1287,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/gas-appliance-shutoff/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.gas.pipe-sizing",
@@ -1249,7 +1304,7 @@
         },
         {
           "when": "the length it is sized over (the longest length method)",
-          "value": "the meter to the most remote outlet",
+          "value": "the point of delivery (the meter, on the course's job) to the most remote outlet",
           "unit": ""
         }
       ],
@@ -1265,7 +1320,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/gas-pipe-sizing/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.waste.grease-interceptor",
@@ -1288,7 +1343,7 @@
       ],
       "source": {
         "code": "IPC",
-        "section": "1003.3 Grease interceptors",
+        "section": "1003.3.1 Grease interceptors and automatic grease removal devices required",
         "editions": [
           2018,
           2021
@@ -1298,7 +1353,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/grease-interceptor/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.hanger.cast-iron",
@@ -1377,6 +1432,54 @@
       ],
       "url": "/rules/plumbing/hanger-spacing-copper/",
       "updated": "2026-09-09"
+    },
+    {
+      "id": "plumb.hanger.gas-steel",
+      "trade": "plumbing",
+      "kind": "code",
+      "status": "draft",
+      "title": "Hanger spacing for steel gas pipe",
+      "summary": "How far apart steel gas pipe may be supported under the fuel gas code, by size, 6 feet at 1/2 inch, 8 feet at 3/4 and 1 inch, 10 feet horizontal at 1-1/4 inch and larger, and vertical pipe at every floor.",
+      "values": [
+        {
+          "when": "1/2 in steel pipe",
+          "value": 6,
+          "unit": "ft"
+        },
+        {
+          "when": "3/4 in or 1 in steel pipe",
+          "value": 8,
+          "unit": "ft"
+        },
+        {
+          "when": "1-1/4 in and larger steel pipe, horizontal",
+          "value": 10,
+          "unit": "ft"
+        },
+        {
+          "when": "1-1/4 in and larger steel pipe, vertical",
+          "value": "at every floor level",
+          "unit": ""
+        },
+        {
+          "when": "corrugated stainless steel tubing (CSST)",
+          "value": "per the tubing maker's instructions",
+          "unit": ""
+        }
+      ],
+      "source": {
+        "code": "IFGC",
+        "section": "415.1, Table 415.1",
+        "editions": [
+          2018,
+          2021
+        ],
+        "url": "https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations"
+      },
+      "amendments": [],
+      "used_by": [],
+      "url": "/rules/plumbing/hanger-spacing-gas-steel/",
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.hanger.pex",
@@ -1460,8 +1563,8 @@
       "trade": "plumbing",
       "kind": "code",
       "status": "draft",
-      "title": "Hanger spacing for steel pipe",
-      "summary": "How far apart steel pipe may be supported under the plumbing code: 12 feet horizontal, 15 feet vertical.",
+      "title": "Hanger spacing for steel water and drainage pipe",
+      "summary": "How far apart steel water and drainage pipe may be supported under the plumbing code, 12 feet horizontal and 15 feet vertical; steel gas pipe hangs closer, under the fuel gas code (plumb.hanger.gas-steel).",
       "values": [
         {
           "when": "horizontal",
@@ -1486,7 +1589,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/hanger-spacing-steel/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.gas.hood-shutoff",
@@ -1498,7 +1601,7 @@
       "values": [
         {
           "when": "the hood suppression system discharges",
-          "value": "gas to the appliances under the hood shuts off automatically",
+          "value": "gas to the appliances under the hood shuts off automatically, including an appliance under the hood that needs no protection of its own",
           "unit": ""
         },
         {
@@ -1519,7 +1622,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/hood-gas-shutoff/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.waste.indirect",
@@ -1527,7 +1630,7 @@
       "kind": "code",
       "status": "draft",
       "title": "Indirect waste for food equipment",
-      "summary": "A sink or machine that handles food drains through an air gap to a floor sink or other receptor, never straight into the waste pipe, so a sewer backup rises onto the floor and not into the food side.",
+      "summary": "A sink or machine that handles food drains through an air gap (an air break is allowed for a commercial dishwasher and a pot or dish sink) to a floor sink or other receptor, never straight into the waste pipe, so a sewer backup rises onto the floor and not into the food side.",
       "values": [
         {
           "when": "food storage, preparation and handling equipment (a prep sink)",
@@ -1540,6 +1643,11 @@
           "unit": ""
         },
         {
+          "when": "a sink that washes, rinses or sanitizes utensils, dishes, pots and pans (a three-compartment pot sink), other than in a dwelling unit",
+          "value": "air gap or air break",
+          "unit": ""
+        },
+        {
           "when": "an air gap, above the receptor flood rim, at least",
           "value": "twice the pipe opening",
           "unit": ""
@@ -1547,7 +1655,7 @@
       ],
       "source": {
         "code": "IPC",
-        "section": "802 Indirect wastes",
+        "section": "802.1.1, 802.1.6, 802.1.7 and 802.3.1 (2021 numbering)",
         "editions": [
           2018,
           2021
@@ -1557,7 +1665,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/indirect-waste/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.trap.arm-length",
@@ -1595,7 +1703,7 @@
       ],
       "source": {
         "code": "IPC",
-        "section": "909.1, Table 909.1 (the course and its riser note cite it as Table 1002.2)",
+        "section": "909.1, Table 909.1",
         "editions": [
           2018,
           2021
@@ -1605,7 +1713,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/trap-arm-length/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.trap.seal",
@@ -1643,7 +1751,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/trap-seal/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.vent.terminal",
@@ -1651,12 +1759,12 @@
       "kind": "code",
       "status": "draft",
       "title": "Vent terminals",
-      "summary": "A vent stack ends open above the roof, a foot up as the course teaches it, and clear of air intakes, at least 10 feet away from a door, window or intake unless it rises 3 feet above the top of it.",
+      "summary": "A vent stack ends open above the roof, at a height the adopting jurisdiction sets (the model code leaves it blank), 7 feet up on a roof people use, and clear of air intakes, at least 10 feet away from a door, window or intake unless it rises 3 feet above the top of it.",
       "values": [
         {
-          "when": "above the roof, as the course teaches it (the IPC leaves the height to the adopting jurisdiction)",
-          "value": 1,
-          "unit": "ft"
+          "when": "above the roof, an unprotected roof extension",
+          "value": "the adopting jurisdiction's figure (the IPC prints a blank for it)",
+          "unit": ""
         },
         {
           "when": "above a roof used for assembly, a promenade or a deck",
@@ -1676,17 +1784,22 @@
       ],
       "source": {
         "code": "IPC",
-        "section": "903 Vent terminals (903.1 roof extension, 903.5 location)",
+        "section": "903.1.1 roof extension and 903.1.2 roofs used for recreation or assembly (903.1 in 2018), 903.5 location",
         "editions": [
           2018,
           2021
         ],
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents"
       },
-      "amendments": [],
+      "amendments": [
+        {
+          "jurisdiction": "Colorado (IPC 2021 adoption)",
+          "note": "6 inches above the roof"
+        }
+      ],
       "used_by": [],
       "url": "/rules/plumbing/vent-terminal/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.vent.trap-protection",
@@ -1719,7 +1832,7 @@
       "amendments": [],
       "used_by": [],
       "url": "/rules/plumbing/vents/",
-      "updated": "2026-09-26"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.water.distribution-min",
@@ -1749,7 +1862,7 @@
         "bidCheck"
       ],
       "url": "/rules/plumbing/water-distribution-min/",
-      "updated": "2026-09-23"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.water.fixture-supply-min",
@@ -1857,7 +1970,7 @@
       ],
       "source": {
         "code": "IPC",
-        "section": "604.4, Table 604.4",
+        "section": "604.5, Table 604.5",
         "editions": [
           2018,
           2021
@@ -1869,7 +1982,7 @@
         "waterSchedule"
       ],
       "url": "/rules/plumbing/water-fixture-supply-min/",
-      "updated": "2026-09-23"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.water.pipe-id",
@@ -2071,7 +2184,7 @@
         "waterSchedule"
       ],
       "url": "/rules/plumbing/water-pipe-id/",
-      "updated": "2026-09-23"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.water.velocity",
@@ -2079,7 +2192,7 @@
       "kind": "convention",
       "status": "applied",
       "title": "Design velocity for water pipe",
-      "summary": "The velocity the app sizes a water run to, 8 feet per second cold and 5 feet per second hot. Design practice, not a code table; the code's own method sizes by pressure and length.",
+      "summary": "The velocity the app sizes a water run to, 8 feet per second cold and 5 feet per second hot. Design practice under the IPC, which prints no velocity limit; the UPC caps copper tube at the same figures.",
       "values": [
         {
           "when": "Cold water",
@@ -2103,7 +2216,7 @@
         "waterSchedule"
       ],
       "url": "/rules/plumbing/water-velocity/",
-      "updated": "2026-09-23"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.wsfu.demand",
@@ -2628,7 +2741,7 @@
         "waterSchedule"
       ],
       "url": "/rules/plumbing/wsfu-demand/",
-      "updated": "2026-09-23"
+      "updated": "2026-09-27"
     },
     {
       "id": "plumb.wsfu.fixtures",
@@ -3018,7 +3131,7 @@
         "quickCreate"
       ],
       "url": "/rules/plumbing/wsfu-fixtures/",
-      "updated": "2026-09-23"
+      "updated": "2026-09-27"
     }
   ]
 }

@@ -1,10 +1,10 @@
 ---
 id: plumb.hanger.steel
-title: Hanger spacing for steel pipe
+title: Hanger spacing for steel water and drainage pipe
 trade: plumbing
 kind: code
 status: draft
-summary: How far apart steel pipe may be supported under the plumbing code: 12 feet horizontal, 15 feet vertical.
+summary: How far apart steel water and drainage pipe may be supported under the plumbing code, 12 feet horizontal and 15 feet vertical; steel gas pipe hangs closer, under the fuel gas code (plumb.hanger.gas-steel).
 values:
   - when: horizontal
     value: 12
@@ -19,15 +19,17 @@ source:
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-3-general-regulations
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
-Steel pipe is stiff, so it spans farther between hangers than copper or plastic. On a takeoff that is one hanger per 12 feet of horizontal run, rounded up per run. The course teaches it on the restaurant's black steel gas line, where you add the hanger row to the gas line type yourself.
+Steel pipe is stiff, so it spans farther between hangers than copper or plastic. On a takeoff of steel water or drainage pipe that is one hanger per 12 feet of horizontal run, rounded up per run.
+
+This is the plumbing code's table, and it covers the pipe the plumbing code governs: water supply and drainage. A steel gas line is not under it. The plumbing code hands fuel gas piping to the fuel gas code, which supports steel gas pipe closer, every 10 feet at 1-1/4 inch and larger and closer still below that (plumb.hanger.gas-steel).
 
 ## What the app does with it
 
-Nothing yet: the app does not apply this rule. It is on a course card (the plumbing course, Chapter 6, "A hanger row of your own"), which has you add **Hanger · 1 per 12 ft** under the gas line type's Child counts. Unlike PEX, copper, PVC and cast iron, a steel line type is not offered a hanger row, and Bid Check's hanger row stays quiet about it.
+Nothing yet: the app does not apply this rule, and no course card teaches it since the gas card moved to the fuel gas rule. Unlike PEX, copper, PVC and cast iron, a steel line type is not offered a hanger row, and Bid Check's hanger row stays quiet about it.
 
 ## Verify against your edition
 
-Gas piping is under the fuel gas code, not the plumbing code, and the IFGC supports steel gas pipe closer than this table: 6 feet at 1/2 inch, 8 feet at 3/4 and 1 inch, and 10 feet at 1-1/4 inch and larger horizontal, with vertical pipe supported at every floor (IFGC Table 415.1 in recent editions). The course's 1-1/4 inch black steel gas line at 12 feet is looser than that. A tester should decide whether the card teaches the fuel gas figure before this rule is applied to a gas line.
+Table 308.5 in the 2021 text gives steel pipe 12 feet horizontal and 15 feet vertical. Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment. Until that date this rule was taught on the course's black steel gas line at 12 feet; the fuel gas code governs that line, at 10 feet.

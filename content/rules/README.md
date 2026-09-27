@@ -30,12 +30,15 @@ source:
   editions: [2017, 2020, 2023]       # editions the value was checked against
   url: https://…                     # where the public text can be read
 amendments: []                       # [{ jurisdiction: Texas, note: … }] when one changes the value
-used_by: [bidCheck]                  # bidCheck | childCount | chain | ductSchedule | roomSizer | quickCreate | waterSchedule
+used_by: [bidCheck]                  # bidCheck | childCount | chain | ductSchedule | roomSizer | quickCreate | waterSchedule | course
 updated: 2026-09-09
 ---
 ```
 
-`used_by` names the app surfaces that apply the rule, by id. The ids and the labels the rule
+`used_by` names the app surfaces that apply the rule, by id. `course` is the courses' cards: a rule
+only a course teaches, whose card numbers `check-lesson-rules` holds to it, turns `applied` with
+`used_by: [course]` once it is signed (and says who signed it, and against what, in its Verify
+against your edition paragraph). The ids and the labels the rule
 page and the app's § popover print for them are one list, `USED_BY_LABEL` in
 `scripts/lib/rules.js` (it rides `rules.json` as `usedByLabels`). An id not on it fails the
 build, so a rule for a new surface first adds that surface's id and label there.
@@ -57,7 +60,9 @@ A `code:` pointer is `<file>.js#<expr>` — a module with a CommonJS footer and 
 expression over its exports: `fillLimitFor(3)`, `VD_K.copper`,
 `DUCT_GAUGE_TABLE["1"][0].gauge`. The check walks the exports (no eval). When the
 app changes a number, change the rule in the same commit, or `npm run check` says which
-one drifted. A rule with no pointer is prose-only — fine for a draft, not for `applied`.
+one drifted. A rule with no pointer is prose-only — fine for a draft, not for `applied`, unless
+the courses' cards are its only surface (`used_by: [course]`): then `check-lesson-rules` is its
+drift check, holding every card's number to the rule.
 
 ## What not to write
 

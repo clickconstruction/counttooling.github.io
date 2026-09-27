@@ -163,15 +163,21 @@ source:
   url: https://www.astm.org/
 amendments: []
 used_by: [waterSchedule]
-updated: 2026-09-23
+updated: 2026-09-27
 ---
 
 A nominal pipe size is a name, not a bore. Half-inch PEX carries water through a hole about 0.48 inches across; half-inch Type L copper through 0.545; half-inch Schedule 40 steel through 0.622. Velocity is flow divided by area, so the size suggestion has to know the bore of the material the line type is made of, and the standard each material is made to sets it.
 
 ## What the app does with it
 
-The material is read off the line type's name the way the hanger rule reads it (*3/4in PEX hot*, *1in Cu*, *3/4in CPVC*, *2in galv*), the nominal size the same way, and the inside diameter comes from this table. Velocity at a candidate size is 0.4085 × gpm ÷ (inside diameter in inches)². PEX bores are the manufacturers' published averages for SDR 9 tube; CPVC is CTS tube to D2846 (SDR 11 with the standard's minimum wall at 1/2 in); copper is Type L; steel is Schedule 40.
+The material is read off the line type's name the way the hanger rule reads it (*3/4in PEX hot*, *1in Cu*, *3/4in CPVC*, *2in galv*), the nominal size the same way, and the inside diameter comes from this table. Velocity at a candidate size is 0.4085 × gpm ÷ (inside diameter in inches)². PEX bores are Uponor's published figures for its SDR 9 AquaPEX tube (other makers print bores a few thousandths apart); they allow for the wall's plus tolerance, so they sit a little under the outside diameter less two minimum walls, which reads a slightly higher velocity, the safe side. CPVC is CTS tube to D2846, taken as the outside diameter less two minimum walls (SDR 11, with the standard's 0.068 in minimum wall at 1/2 in): the largest bore the tube can have. Copper is Type L to B88; steel is Schedule 40.
 
 ## What it does not do
 
 It does not know Type K or Type M copper, PEX-AL-PEX, or stainless: a line type in one of those gets no velocity and no suggestion until the table grows a row.
+
+## Verify against your edition
+
+Copper Type L matched the B88 dimension table at every size, Schedule 40 steel is the standard pipe schedule, and the PEX bores are Uponor's published AquaPEX figures. For those three materials: Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.
+
+The CPVC rows are not settled. They use the largest possible bore while PEX allows for wall tolerance, so the two materials are read on different bases: a maker's published 1/2 in bore of about 0.469 in, against this table's 0.489, reads about 9 percent faster, and a CPVC branch near the cap could be suggested one size smaller than it should be. The basis to move to is the tolerance-allowing bore, the one that never suggests too small a pipe, but a maker's bores for every size from 1/2 to 2 in were not in the sources read, so the rows stay as they are until that table is read.

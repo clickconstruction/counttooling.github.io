@@ -17,7 +17,7 @@ source:
   url: https://codes.iccsafe.org/
 amendments: []
 used_by: [bidCheck]
-updated: 2026-09-23
+updated: 2026-09-27
 ---
 
 The service from the utility main to the building is sized for the whole load by the Appendix E method, but whatever that gives, it is never smaller than 3/4 inch. Inside the building the distribution piping has no single floor of its own: each fixture supply has its minimum (the fixture supply rule), and the branches and mains between are sized to the fixture units they carry.
@@ -29,3 +29,7 @@ Bid Check's water rows (rung 6 of the water-sizing ladder) warn when a run that 
 ## What it does not do
 
 It does not find the meter or the point of entry on the drawing; the estimator's line type names say which run is the service.
+
+## Verify against your edition
+
+603.1 in the 2021 text, as a state adoption prints it, sets the water service at not less than 3/4 inch. A water purveyor or a jurisdiction may require more. Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

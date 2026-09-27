@@ -55,7 +55,7 @@
   "@type": "TechArticle",
   "headline": "Equipment grounding conductor size",
   "description": "The ground that rides with a feeder is sized from the breaker ahead of it, not from the phase wires, and a 200 A breaker wants a #6 copper ground.",
-  "dateModified": "2026-09-26",
+  "dateModified": "2026-09-27",
   "url": "https://counttooling.com/rules/electrical/equipment-ground-size/",
   "publisher": {
     "@type": "Organization",
@@ -78,7 +78,7 @@
   <main class="wrap">
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/rules/">Rules</a> <span class="sep">›</span> <a href="/rules/#electrical">Electrical</a> <span class="sep">›</span> <span>Equipment grounding conductor size</span></nav>
     <article class="article rule-article">
-      <p class="rule-kicker"><span class="rule-kind rule-kind-code">Code</span> <span class="rule-status rule-status-draft">Draft — written, not yet applied</span> <code class="rule-id">elec.ground.equipment-conductor</code></p>
+      <p class="rule-kicker"><span class="rule-kind rule-kind-code">Code</span> <span class="rule-status rule-status-applied">Applied by the app</span> <code class="rule-id">elec.ground.equipment-conductor</code></p>
       <h1>Equipment grounding conductor size</h1>
       <p class="rule-summary">The ground that rides with a feeder is sized from the breaker ahead of it, not from the phase wires, and a 200 A breaker wants a #6 copper ground.</p>
       <section class="rule-card" aria-label="The rule as the app applies it">
@@ -92,7 +92,7 @@
         <dl class="rule-facts">
           <div><dt>Source</dt><dd>NEC · 250.122, Table 250.122 · <a href="https://www.nfpa.org/codes-and-standards/nfpa-70-standard-development/70" rel="noopener">read the public text</a></dd></div>
           <div><dt>Editions checked</dt><dd>2017 · 2020 · 2023</dd></div>
-          <div><dt>Used by</dt><dd><span class="rule-unused">not applied by the app yet</span></dd></div>
+          <div><dt>Used by</dt><dd><span class="rule-chip">Courses</span></dd></div>
           <div><dt>Amendments</dt><dd><p class="rule-amend">No state or local amendment to this rule is on file. Not on file means the model code as written — check your jurisdiction.</p></dd></div>
         </dl>
         <p class="rule-kind-blurb">A model code the authority having jurisdiction adopts.</p>
@@ -100,10 +100,11 @@
 <p>The green wire in a feeder does not carry current until something faults, and then it has to carry enough to trip the breaker ahead of it. So its size comes from that breaker&#39;s rating, not from the phase conductors: the course&#39;s 200 A feeder, four #3/0, carries a #6 copper ground.</p>
 <p>On a bid it is its own wire row, a smaller gauge by the same footage, and a takeoff that prices the ground at the phase size overbids the feeder.</p>
 <h2>What the app does with it</h2>
-<p>Nothing yet. The electrical course teaches it on a card (Chapter 7, Read the one-line). The app counts the ground you write in a line type&#39;s conductors (<code>4 #3/0 THHN + 1 #6 G</code>) as its own row; it does not check the size against the breaker.</p>
+<p>The electrical course teaches it on a card (Chapter 7, Read the one-line), and <code>check-lesson-rules</code> holds the card&#39;s numbers to this rule. The app counts the ground you write in a line type&#39;s conductors (<code>4 #3/0 THHN + 1 #6 G</code>) as its own row; it does not check the size against the breaker.</p>
 <h2>Verify against your edition</h2>
-<p>When the phase conductors are upsized for voltage drop, the ground goes up in proportion, and aluminum has its own column. A tester signs the #6 against the adopted edition before this rule is applied.</p>
-      <p class="rule-foot">Cited by section, not reprinted: the code text belongs to its publisher. Company practice is not a rule here — it lives with your pricing. <span class="meta">Updated Sep 26, 2026.</span></p>
+<p>Table 250.122 gives #6 copper at 200 A. When the phase conductors are upsized (for voltage drop, say), the ground goes up in proportion (250.122(B)), and aluminum has its own column. Local amendments still govern.</p>
+<p>Settled 2026-09-27 by Claude on the owner&#39;s delegation, from the dossier&#39;s research and the model code text; not checked against a printed book or a local amendment.</p>
+      <p class="rule-foot">Cited by section, not reprinted: the code text belongs to its publisher. Company practice is not a rule here — it lives with your pricing. <span class="meta">Updated Sep 27, 2026.</span></p>
     </article>
   </main>
   <footer class="site-footer">

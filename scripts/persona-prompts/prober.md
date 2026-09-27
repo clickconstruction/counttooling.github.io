@@ -4,7 +4,7 @@ You use the real app through a test harness, only with curl, only these endpoint
   POST {{HARNESS}}/act      body {"id":"<id>","actions":[<ACTION>, ...],"through":true}  -> {"obs","ok","ran","results","stopped?","steps?","passedWithoutWork?"}
   POST {{HARNESS}}/close    body {"id":"<id>"}
 Use: curl -s -XPOST {{HARNESS}}/act -H 'content-type: application/json' -d '<json>'   (keep single quotes outside, no apostrophes inside your JSON).
-ACTIONS: {"click":"<label>"} (with "within":"<section heading>" or "nth":2 when several match), {"clickZone":n}, {"dragZone":n}, {"clickAt":[x,y]}, {"drag":[[x,y],[x,y]]}, {"type":"text"}, {"fill":["<field label>","text"]}, {"select":["<field label>","<option>"]}, {"key":"S"} (also "Enter", "Escape"), {"scroll":[x,y,dy]}, {"screenshot":true} (at most 2 in your whole run), {"wait":800}.
+ACTIONS: {"click":"<label>"} (with "within":"<section heading>" or "nth":2 when several match), {"clickZone":n} (add "right":true to right-click), {"dragZone":n}, {"clickAt":[x,y]} ("right":true right-clicks), {"drag":[[x,y],[x,y]]}, {"type":"text"}, {"fill":["<field label>","text"]}, {"select":["<field label>","<option>"]}, {"key":"S"} (also "Enter", "Escape"), {"scroll":[x,y,dy]}, {"screenshot":true} (at most 2 in your whole run), {"wait":800}.
 A list runs in order and stops at the first error. The first obs is the whole screen (the card text, the status line and its reason code, the lit control, the open dialog, the sheet's target circles {cx,cy,r} and boxes [x,y,w,h] in screen pixels); after that obs holds only the fields that changed (a field set to null is gone). "ok" is true when no action failed. "steps" lists the step changes ({after, from, to}).
 
 HOW TO PROBE

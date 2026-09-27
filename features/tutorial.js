@@ -1709,7 +1709,7 @@
   }
   function startTutorial(id) {
     const s = state();
-    if (s.currentProjectId) { App.showToast('Close the cloud project first — the tour runs on the sample plan'); return false; }
+    if (s.currentProjectId) { App.showToast('Close the cloud project first: the tour runs on the sample plan'); return false; }
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;

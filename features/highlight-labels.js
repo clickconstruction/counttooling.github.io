@@ -9,7 +9,7 @@
  *
  * Two surfaces:
  *  - Naming: right-click a highlight on the plan -> "Name highlight…"
- *    (#ctxNameHighlight, shown by app.js's showContextMenu) opens
+ *    (#ctxNameHighlight, shown by features/mark-context-menu.js's showContextMenu) opens
  *    #highlightNameModal; Save writes h.label onto the highlight annotation.
  *    The label is drawn on the plan by drawAnnotationsCore (canvas-draw.js) in
  *    BOTH the live overlay and every export path, and rides the annotation

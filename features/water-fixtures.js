@@ -21,7 +21,7 @@
  *   counter already carries a number, and always opens empty on Create / Quick
  *   Count (the CFM field's stale-value rule).
  * - The per-mark override: "WSFU for this one…" on a placed marker's context
- *   menu (#ctxMarkerWsfu, shown by app.js's showContextMenu for markers of a
+ *   menu (#ctxMarkerWsfu, shown by features/mark-context-menu.js's showContextMenu for markers of a
  *   WSFU-carrying type) opens #markerWsfuModal — one number, Save / Cancel,
  *   Enter commits; Save writes a positive value as marker.wsfuOverride and
  *   DELETES the key when cleared, so an un-overridden marker stays byte-identical

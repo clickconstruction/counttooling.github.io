@@ -174,6 +174,33 @@ sessions, records a failure and backs off, and routes an expired checkout. The m
 covered the long-idle return; these ten were red before the move. The self-release classification
 and its dormant `?ff=self-release` flag are untouched (their save-engine.test.js cases pass).
 
+## refactor(context-menu): the right-click menu on a mark is its own feature file (R22, 2026-09-26)
+
+The decomposition map's R22, both shard findings. The menu that opens when you right-click or
+long-press a mark was the largest cohesive block left in app.js, and nine of its row handlers sat
+under a SECTION marker named "Canvas Repair modal wiring" that held nothing but a pointer comment.
+It is features/mark-context-menu.js now: `showContextMenu` (which rows show and what they say),
+the nine handlers (Edit note, Line Properties, the repeat-drop row, Show/Hide Length, Assign to
+Group, Edit room box, Edit zone multiplier, Edit zone scale, Delete), the capture-phase Escape that
+closes only this menu, and its click-away. app.js went from 7,891 lines to 7,596.
+
+Nothing moved changes behavior. The code went over as it was apart from `App.*` reads at call
+time, one `activeAnnotations()` helper for the ten copies of "the current page's active
+annotations", and one `hideMenu()` for the ten copies of the class removal. Every dep was
+already on the registry, so nothing new is published; the map's second finding was right that
+`countItemsInRect` is not a dependency. `handleContextMenu` stays in app.js and its one dispatch is
+`App.showContextMenu(x, y)`, which is also the seam drop-mode, duct-b19b and tutorial drive.
+`strayDeviceAttachTarget` stays where R14 put it, in features/duct-suggest.js, and the menu still
+reads it guarded. The four rows another feature binds (CFM for this one, Attach to nearest run,
+WSFU for this one, Name highlight) are still shown from here and still clicked there.
+
+**Listener order.** The Escape listener used to register while app.js loaded. The new script tag
+sits right after tool-context-menu.js, ahead of drop-peek.js and rules.js, the two files that add
+capture-phase keydown listeners at load, so one Esc over an open menu still closes the menu and
+nothing else. The click-away is its own listener now instead of the first line of app.js's shared
+one; that one still closes the canvas, export and download menus, and each menu closes on its own
+test, so the order does not matter. The misnamed marker is gone and the section index regenerated.
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

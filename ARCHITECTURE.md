@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,787 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,492 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,159 | Done — the extracted save/sync seam module (Stages 1–7), 88 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,409 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,770 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [app/index.html](app/index.html) | 3,771 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
 | [styles.css](styles.css) | 2,674 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 742 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 1,159 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 991 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (99 files) | 32,602 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (100 files) | 32,935 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -56,7 +56,7 @@ modules. Candidates in priority order:
 | PDF render bitmap cache | ~35 | **DONE (2026-07-30)** — was ~478. The whole substrate (page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up walk) moved to [pdf-tile-cache.js](pdf-tile-cache.js) (`createPdfTileCache(ctx)`, stage 1). What remains under the marker is the instantiation, the ctx (13 live-value accessors), and same-named thin wrappers. The Sharp crop tile / tile grid section is the pre-identified stage 2. |
 | PDF Rendering | ~589 | **DONE (2026-07-20)** — was ~1,576. The duplicated draw logic (`renderAnnotations` live / `renderAnnotationsToContext` export) was unified into [canvas-draw.js](canvas-draw.js)'s `drawAnnotationsCore(ctx, ann, env)`; both callers are now thin env-builders, and `drawDropMarker`/`drawRoomBoxesToContext`/`drawLegend`/`drawGrid`/`hexToRgb`/`lineStyleToDash` moved with it. What remains here is `renderPdf` (the pdf.js raster + bitmap-cache blit), the live-only scale-reference UI, and the in-progress rubber-band previews — all genuinely live-path code. Guarded by [render-pixels.spec.js](render-pixels.spec.js) (pixel baselines) + [canvas-draw.test.js](canvas-draw.test.js). |
 | UI Render Functions | ~545 | Second candidate — **decomposition started 2026-07-24**: `renderLinesList` (123 lines) moved to [features/lines-list.js](features/lines-list.js), proving the per-list recipe (defensive updateUI seam, five publish-only deps, zero moved state). Continued 2026-07-30: `renderPagesList` (+`formatPageTitleStartEnd`) → [features/pages-list.js](features/pages-list.js); `renderCountersList`/`renderLineTypesList`/`renderGroupsList`/`countItemsInGroup` (+`quickKeyBadgeHtml`) → [features/sidebar-lists.js](features/sidebar-lists.js); `renderCanvasSwitcher` → [features/canvas-switcher.js](features/canvas-switcher.js) and `renderSummary` → [features/summary-list.js](features/summary-list.js) (same recipe, zero new deps). Remaining: `updateUI` (~470 lines, stays core). |
-| Canvas mouse, wheel & touch handlers + Canvas Event Handlers + Aim loupe | ~1,160 combined | The input layer — the most state-entangled code in the file (drag state, tool modes, gesture arbitration) with the lowest unit-test leverage. Extract **last**, if ever, as an input-controller seam module. |
+| Canvas mouse, wheel & touch handlers + Canvas Event Handlers + Aim loupe | ~1,160 combined | The input layer — the most state-entangled code in the file (drag state, tool modes, gesture arbitration) with the lowest unit-test leverage. Extract **last**, if ever, as an input-controller seam module. The mark context menu that sat among them (`showContextMenu`, the nine `#ctx*` row handlers under a misnamed "Canvas Repair modal wiring" marker, its Escape and click-away, ~250 lines) moved to [features/mark-context-menu.js](features/mark-context-menu.js) in R22 (2026-09-26); `handleContextMenu` stays as the dispatch. |
 | Math & Format Helpers | ~405 | Mostly *already* thin wrappers over geometry/line-metrics/annotation-model — the status/footer-totals cluster that was misfiled here moved to [features/status-bar.js](features/status-bar.js) 2026-07-30. Low yield — mine stray pure helpers (`getNoteRotationRad`, `formatSaveTime*`) into format.js/geometry.js opportunistically; don't force it. |
 | The `[sync]` sections (Turn In, recovery wiring, local backup, …) | ~750 combined | Modal/UX wiring over the save-engine seam — the engine owns the logic. The checkout-lifecycle UX (the one stretch that was real code) moved to [features/turn-in.js](features/turn-in.js) 2026-07-30; what remains is wiring. Leave. |
 
@@ -212,6 +212,7 @@ modules. Candidates in priority order:
 | [user-activity-overview.spec.js](user-activity-overview.spec.js) | Always-run Playwright regression for the overview split — registry contract, the self-or-admin no-op gate, a full stubbed render (the detail RPC routed: header/tiles/windows/breakdown/empty-timeline placeholder + the close binding), and the My Settings → My Activity route. `npx playwright test user-activity-overview.spec.js` |
 | [features/tool-context-menu.js](features/tool-context-menu.js) | **Tool right-click context menus**: right-click on a tool button (or active-item chip) opens the `#toolContextMenu` mini menu with that tool's actions; tools with no settings answer with a toast so the gesture always responds. Centralized from the nine one-off handlers that had accumulated in app.js + features/counter.js. One declarative map (`TOOL_CONTEXT`: buttonId → `[{label, run}]`; header/sidebar twins + chips alias shared lists) is the single source — Move + Measure → "Set / edit scale…" (the shared `SCALE_EDIT_ACTIONS` → `App.openScaleModal` — the resting tool's direct path to review/edit the page scale once it's set, otherwise buried behind the S tool, and the natural fix-it entry for the tool whose readout is wrong when the scale is; the no-plan "Open a plan first." gate lives inside `openScaleModal` itself — Tier-3 B8), Counter → Settings + Add counter, Quick Line/Polyline/chip → Line Type Settings + Add line type, Multiply Zone / Legend / Grid → their Settings modals (Grid via the new `App.openGridSettingsModal`, which opens settings **without** toggling the overlay); `NO_SETTINGS_TOOLS` (Set Scale, Highlight, Scale Zone, Delete Area, Note, Room Sizer, Hide Marks) toast. Dismissal listeners (outside pointerdown / Escape / resize / scroll) attach only while open; **Escape is capture-phase + `stopImmediatePropagation`** so one press closes only the menu, never the modal underneath. ArrowUp/Down cycle the items; the anchor regains focus on Escape. Viewer-gated. Registers only the `App.__toolContextMap` test seam. Desktop + tablet (native contextmenu); phone long-press + burger-drawer wiring is a planned follow-up. Regression: [tool-context-menu.spec.js](tool-context-menu.spec.js) |
 | [tool-context-menu.spec.js](tool-context-menu.spec.js) | Always-run Playwright regression — map coverage via the `App.__toolContextMap` seam (wired ids + labels + the toast list), the popover flow (items render, click routes to the target modal and closes the menu, the two-item Counter menu's Add path), Move's and Measure's shared "Set / edit scale…" opening the Set Scale modal without switching the active tool, Grid Settings opening without toggling the overlay, Escape closing only the menu while a modal stays up, outside-click dismissal, the toast fallback, the viewer no-op gate, and default-context-menu suppression. `npx playwright test tool-context-menu.spec.js` |
+| [features/mark-context-menu.js](features/mark-context-menu.js) | **The mark context menu** (R22, 2026-09-26, moved from app.js). Right-click or long-press a mark and `#contextMenu` opens with the rows that fit it: app.js's `handleContextMenu` hit-tests, stores `state.ctxTarget` (with the click's PDF point in `.pdf`) and calls `() => App.showContextMenu(x, y)`, its only dispatch. This file owns `showContextMenu` (row visibility and labels: Edit note, Line Properties, the repeat-drop row "Drop … here", Show/Hide Length, Assign to Group behind `App.groupsUiVisible`, the zone and room-box edits, the `#ctxTargetNameRow` name line, then `App.placeFixedMenu`), the nine row handlers (`#ctxEdit`, `#ctxLineProperties`, `#ctxRepeatDrop` through `App.collectDropNodes` / `App.applyDropToNode`, `#ctxShowLength`, `#ctxAssignGroup`, `#ctxEditRoomBox`, `#ctxEditMultiplyZone` through features/zone-modals.js's `App.openMultiplyZoneModal`, `#ctxEditScaleZone`, `#ctxDelete`), the capture-phase Escape that closes only this menu (`stopImmediatePropagation`, so the Esc ladder never sees the press) and its click-away. Four rows are shown here and bound by their owners: `#ctxMarkerCfm` and `#ctxAttachToRun` (features/duct-suggest.js, `App.strayDeviceAttachTarget`), `#ctxMarkerWsfu` (features/water-fixtures.js), `#ctxNameHighlight` (features/highlight-labels.js). Loads after tool-context-menu.js, ahead of drop-peek.js and rules.js, so its Escape listener still registers before theirs. Every dep is read from `App.*` at call time; nothing new was published. Registers `App.showContextMenu` (also the spec seam: drop-mode, duct-b19b, tutorial). Specs: [esc-ladder.spec.js](esc-ladder.spec.js), [menu-clamp.spec.js](menu-clamp.spec.js), [drop-mode.spec.js](drop-mode.spec.js), [groups-per-project.spec.js](groups-per-project.spec.js), [room-sizer.spec.js](room-sizer.spec.js), [highlight-labels.spec.js](highlight-labels.spec.js) |
 | [snap-angles.spec.js](snap-angles.spec.js) | Playwright regression for the **`J` 45° snap** — the behavioral counterpart to geometry.test.js's pure-math coverage of `snapLineToAngle`: it drives real mouse clicks through the actual draw path and asserts the **committed** annotation (not just the rubber-band preview) lands on a ray. A ~27° drag commits to exactly 45° (`|dx − dy| < 1e-9`), a ~14° drag stays horizontal with `y2 === y1` **bit-exact** (the guard against a unit-vector implementation reintroducing 6e-17 drift), all four diagonals are reachable from a center anchor, polyline legs snap against the previous vertex (armed dialog-free off the seeded active line type — T2-12), and turning the toggle off restores freehand angles. Angles are read in PDF space off the stored annotation — the canvas transform is uniform scale + translate with no rotation, so a 27° screen drag is a 27° PDF delta and the test never needs the zoom/pan. `npx playwright test snap-angles.spec.js` |
 | [polyline-esc.spec.js](polyline-esc.spec.js) | Playwright regression for the **staged polyline Escape** (JOURNEY-MAP Tier-2 #22) — mid-draw, each Escape unwinds ONE clicked vertex (tool stays `TOOL.POLYLINE`, `#polylineFinishBar` stays up, Enter commits exactly the remaining vertices as one polyline); with zero vertices left, Escape exits to Move (draft null, nothing committed, a further Escape is a no-op); and the ladder ordering holds — a visible modal (`chooseLineTypeModal`) eats the Escape and pops no vertex. Console/page-error capture in every test. `npx playwright test polyline-esc.spec.js` |
 | [features/esc-ladder.js](features/esc-ladder.js) | **The Escape ladder, as tables** (MAP-ESC, DECOMPOSITION_MAP R10, 2026-09-26). Registers `App.handleEscape(e)`, which app.js's keydown calls synchronously (so the capture-phase menus that stop Esc still win, and listener order is unchanged), and `App.dismissOverlay(el)`, which the shared `[data-modal-close]` click handler in app.js calls for the × of that overlay. One press closes one thing: the confirm dialog, then the grid origin pick (`App.cancelGridOriginPick`, features/grid.js); then the TOPMOST visible `.modal-overlay` (highest z-index, later in the document on a tie). When that overlay has a row in `MODAL_RUNGS` (the old if/else, in its order, which encodes the stacking) the rows are walked and the first visible one closes; when it has none it is dismissed alone, through a `CLOSERS` entry (its Cancel: `App.cancelMarkerWsfu`, `App.cancelSchedulePalette`, the save-before-load Cancel...) or a plain `hideModal`; `data-esc="none"` (the blocking Turn In overlay) swallows the key. Then the header popovers (`App.isBidMenuOpen`/`closeBidMenu`, `App.isHeaderMoreOpen`/`closeHeaderMoreMenu`, the zoom rail), then `TOOL_RUNGS`: a pending start, a palette, then Move, through the MAP-RESETS helpers `App.clearToolStarts` / `App.resetToMove({ keepCounter: true })`; the halo, then the last rung. Before it, about twenty dialogs had no rung, so Esc (and their ×, which re-dispatched a synthetic Escape) unwound the tool underneath, e.g. a polyline vertex (D04, D12). Reads at call time only; publishes nothing app.js needs at load. Specs: [esc-ladder.spec.js](esc-ladder.spec.js), [esc-dialogs.spec.js](esc-dialogs.spec.js) |
@@ -687,21 +688,20 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
   - L5196 - Save Project modal
   - L5207 - Checkout expired recovery modal wiring
   - L5310 - Last-session restore prompt
-  - L5317 - Canvas Repair modal wiring
-- L5491 - Canvas Event Handlers
-- L5984 - Event Binding
-- L5994 - Aim loupe (mobile press-hold precise placement)
-- L6147 - Zoom transform preview & commit
-- L6226 - Canvas mouse, wheel & touch handlers
-- L6886 - Global dropdown dismissal & keyboard hotkeys
-- L7077 - [sync] Manual save to cloud
-- L7087 - [sync] Auto-save
-- L7094 - [sync] Local backup (IndexedDB takeoff state)
-- L7103 - [sync] Visibility & timers
-- L7120 - [sync] Checkout keep-alive
-- L7134 - App feature registry
-- L7507 - View-only mode
-- L7513 - Init / boot
+- L5322 - Canvas Event Handlers
+- L5704 - Event Binding
+- L5714 - Aim loupe (mobile press-hold precise placement)
+- L5867 - Zoom transform preview & commit
+- L5946 - Canvas mouse, wheel & touch handlers
+- L6606 - Global dropdown dismissal & keyboard hotkeys
+- L6783 - [sync] Manual save to cloud
+- L6793 - [sync] Auto-save
+- L6800 - [sync] Local backup (IndexedDB takeoff state)
+- L6809 - [sync] Visibility & timers
+- L6826 - [sync] Checkout keep-alive
+- L6840 - App feature registry
+- L7212 - View-only mode
+- L7218 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -827,13 +827,12 @@ Annotated, in rough order:
   - Checkout expired recovery modal wiring — `wireCheckoutExpiredRecoveryModal`, `#saveStatusExpired*`
   - Save-before-load modal — `#saveBeforeLoad*`
   - Last-session restore prompt — `#lastSessionRestoreKeep`/`Discard`
-  - Canvas Repair modal wiring — the `#canvasRepair*` close/apply bindings (the `#userActivity*` filter/view handlers moved to [features/user-activity.js](features/user-activity.js))
-- Canvas Event Handlers — `showContextMenu`, `handleCanvasClick`, `handleCanvasDblClick`, `handleContextMenu`
+- Canvas Event Handlers — `handleCanvasClick`, `handleCanvasDblClick`, `handleContextMenu` (which calls `App.showContextMenu`; the mark menu's rows, handlers, Escape and click-away are [features/mark-context-menu.js](features/mark-context-menu.js) since R22)
 - Event Binding — the canvas-wrapper handle + the bitmap-prefetch cancellation guards
 - Aim loupe (mobile press-hold precise placement) — the loupe core only: `isAimingTool`, `enterAiming`/`cancelAiming`, `drawAimLoupe`, `commitAimPoint`, `abortVertexDrag` (its call sites live in the mouse/touch handlers below)
 - Zoom transform preview & commit — `lastRenderedZoom`, `updateContainerTransform`, `syncZoomIndicators`, `commitWheelZoom`/`commitPinchZoom`
 - Canvas mouse, wheel & touch handlers — the mousedown/mousemove/mouseup stack (pan, legend drag/resize, note drag/resize, vertex drag, aim-loupe entry; every mark drag ends in `endPointerDrag`, from the canvas mouseup or, for a release off the canvas, the window mouseup, MAP-RESETS), the wheel-zoom rAF, the touch pinch/pan/tap/long-press stack (a quick tap is always a synthetic click into `handleCanvasClick`: the aim timer's on an aim tool, the long-press timer's on any other; R08 deleted the unreachable touch copy `handleTouchAsCanvasTap`)
-- Global dropdown dismissal & keyboard hotkeys — the document-level click-outside closer for the context, canvas, export and download menus (the four report menus close in features/output.js since R14) + the hotkey/Escape/arrow-key handler
+- Global dropdown dismissal & keyboard hotkeys — the document-level click-outside closer for the canvas, export and download menus (the mark context menu closes in features/mark-context-menu.js's own listener since R22, with its capture-phase Escape) (the four report menus close in features/output.js since R14) + the hotkey/Escape/arrow-key handler
 - [sync] Manual save to cloud — `performSaveProjectToCloud`
 - [sync] Auto-save — `performAutoSave`, `noteAutoSaveOutcome`, `recordAutosaveLatency`
 - [sync] Local backup (IndexedDB takeoff state) — `writeTakeoffStateBackup`, `writeTakeoffBackupToIndexedDB`
@@ -871,7 +870,7 @@ Annotated, in rough order:
 | Zoom gesture perf (no per-frame updateUI) | `syncZoomIndicators` or `commitWheelZoom` |
 | Page-switch bitmap cache | `pdfBitmapCache` or `clearPdfBitmapCache` or `SECTION: PDF render bitmap cache` |
 | hitTest | `function hitTest` |
-| Context menu | `handleContextMenu` or `showContextMenu` or `ctxTargetNameRow` |
+| Context menu | `handleContextMenu` (app.js) or `showContextMenu` / `ctxTargetNameRow` (features/mark-context-menu.js) |
 | Coordinate conversion | `canvasToPdf` or `toCanvas` |
 | Rename | `startRename` |
 | Pages list / collapse / badges | `renderPagesList` or `pagesListCollapsed` or `badge-scale-set` / `badge-has-ann`; every section chevron: `bindCollapse` (features/sidebar-lists.js) |
@@ -1384,7 +1383,8 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   re-click the zoom %, outside click, or Escape — the rail stays until
   dismissed (B9/J15 removed the old ~5s idle auto-fade).
 - **Canvas context menu** — `#contextMenu` on right-click / long-press;
-  `handleContextMenu` -> `hitTest` -> `state.ctxTarget`; `#ctxTargetNameRow` shows
+  `handleContextMenu` -> `hitTest` -> `state.ctxTarget` -> `App.showContextMenu`
+  ([features/mark-context-menu.js](features/mark-context-menu.js), R22); `#ctxTargetNameRow` shows
   the counter/line-type name below Delete; not available in view mode.
   **Viewport-clamped** via `placeFixedMenu(el, left, top)` (app.js, published as
   `App.placeFixedMenu`; pure core `clampMenuPosition` in geometry.js) — a mark

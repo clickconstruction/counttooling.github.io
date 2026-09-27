@@ -112,6 +112,13 @@ test.describe('Electrical, First-Class S4 — circuits', () => {
     expect([g.name, g.panel, g.circuit, g.loadAmps]).toEqual(['Kitchen recept', 'LP-2', '3', 16]);
     // clearing the tag deletes the fields
     await page.evaluate(() => window.App.openGroupModal(window.state.groups[window.state.groups.length - 1]));
+    // openGroupModal focuses Name one frame after it opens (requestAnimationFrame). A fill that
+    // starts before that frame has its focus stolen mid-way and the clear lands in Name, so the
+    // panel keeps LP-2 and Done writes it back: one run in five failed here (2026-09-26). Wait
+    // for that focus, the way the first open waited on its own reads, before touching a field.
+    await page.waitForSelector('#groupModal.visible');
+    await expect(page.locator('#groupModalName')).toBeFocused();
+    await expect(page.locator('#groupModalPanel')).toHaveValue('LP-2');
     await page.fill('#groupModalPanel', '');
     await page.fill('#groupModalCircuit', '');
     await page.click('#groupModalDone');

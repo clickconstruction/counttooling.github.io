@@ -1343,7 +1343,11 @@
       // circles out from under the card, sideways first, then up or down. Found by hand
       // 2026-09-25: the kitchen step's card kept off FD-1 in the sidebar and sat on the
       // kitchen-exit hand sink and the east floor drain, so both clicks landed on the card.
-      const left = place.left, top = place.top;
+      // Whatever corner won, the whole card stays in the window: a corner pins the card's top at 56
+      // and never asked how tall it was. A revealed answer made the heights card 692 px on a 720 px
+      // window, its Next button below the bottom edge (CI, 2026-09-27: Linux wraps a line or two more
+      // than a Mac, and there the button was wholly off screen). Taller than the window, it scrolls.
+      const left = place.left, top = Math.max(edge, Math.min(place.top, vh - ch - edge));
       card.style.left = left + 'px'; card.style.top = top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = '';
       // A phone docks the card to an edge (styles.css, max-width 767px): the far
       // one from the control, so the card never covers what it is pointing at.
@@ -1351,7 +1355,7 @@
       // Docked, the card is where the stylesheet put it, not at `place`: the sheet moves out from under
       // THAT box. On a tablet the size step lights the water card at the foot of the sheet, the tour
       // card docks at the top, and it sat on the main's second circle (persona calibration C4, 2026-09-25).
-      const cb = isNarrow() ? card.getBoundingClientRect() : { left: place.left, top: place.top, right: place.left + cw, bottom: place.top + ch };
+      const cb = isNarrow() ? card.getBoundingClientRect() : { left, top, right: left + cw, bottom: top + ch };
       if (!dragPos && zs.length && nudgedFor !== stepIdx) nudgeSheetFromCard(zs, { x1: cb.left - 12, y1: cb.top - 12, x2: cb.right + 12, y2: cb.bottom + 12 }, cb.left > vw / 2, (cb.top + cb.bottom) / 2 > vh / 2);
       if (zs.length) nudgeSheetFromPanels(zs);
     } else {
@@ -1371,7 +1375,8 @@
         corner = corners.find(clear) || corners[0];
       }
       const at = dragPos || corner;
-      if (at) { card.style.left = at.left + 'px'; card.style.top = at.top + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = ''; }
+      // in the window, as above: the heights card's corner put its Next below the bottom edge
+      if (at) { card.style.left = at.left + 'px'; card.style.top = Math.max(edge, Math.min(at.top, window.innerHeight - ch - edge)) + 'px'; card.style.right = ''; card.style.bottom = ''; card.style.transform = ''; }
       else if (modalOpen) { card.style.left = ''; card.style.top = ''; card.style.right = '16px'; card.style.bottom = '16px'; card.style.transform = ''; }
       else { card.style.left = '50%'; card.style.top = '50%'; card.style.right = ''; card.style.bottom = ''; card.style.transform = 'translate(-50%, -50%)'; }
     }

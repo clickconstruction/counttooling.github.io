@@ -290,7 +290,12 @@
   resolves) + `check-lesson-rules` (a tour, lesson or course step that states a
   rulebook number or cites a code section names the rule, `rules: ['<id>']`, or says
   why not, `rulesExempt: '<why>'`, and its number is the rule's; see the rulebook
-  bullet) — thirteen steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
+  bullet) + `check-courses` (a course card's sentence runs to 25 words, a course reads at
+  Flesch-Kincaid grade 6 or under, a trade or app word in the script's `FIRST_USE` table is
+  not used before the chapter that glosses it, `EARLY` naming the known exceptions, and every
+  such word has a bold entry in the Learn guide's "Words the cards use"; `--gaps` lists the
+  exceptions, `npm run check:courses` runs it alone; see
+  [scripts/score-courses.js](scripts/score-courses.js)) — fourteen steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
   suite (chromium, own `npx serve` via the config's webServer; render-pixels is

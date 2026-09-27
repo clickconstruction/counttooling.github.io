@@ -7,8 +7,10 @@
  * Steps mirror the old chain exactly: lint, unit tests, the generator
  * `--check`s (toc, filemap, projectmap's structural invariants, macros, guides, rules, icons — D18 added
  * `build:icons --check`), the service-worker stamp check, the brand-token
- * verifier, the punch-list link check, and the lesson rules check (a tour, lesson or
- * course step that teaches a rulebook number names the rule and says its number).
+ * verifier, the punch-list link check, the lesson rules check (a tour, lesson or
+ * course step that teaches a rulebook number names the rule and says its number), and the
+ * course language check (scripts/score-courses.js: the sentence cap, the grade ceiling, a
+ * trade word glossed before it is used, and the Learn guide's glossary as the one list).
  * Output for passing steps is suppressed to a status line; failing steps
  * replay their full output at the end. Exit code 1 when anything failed.
  */
@@ -31,6 +33,7 @@ const STEPS = [
   { name: 'brand tokens', cmd: 'node', args: ['scripts/check-brand-tokens.js'] },
   { name: 'punch list', cmd: 'node', args: ['scripts/check-punchlist.js'] },
   { name: 'lesson rules', cmd: 'node', args: ['scripts/check-lesson-rules.js'] },
+  { name: 'check-courses', cmd: 'node', args: ['scripts/score-courses.js', '--check'] },
 ];
 
 const failures = [];

@@ -13,6 +13,34 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): one glossary, and a check that holds the courses to it (2026-09-27)
+
+Wave 2 of COURSE-LANGUAGE option C (journeys/plans/COURSE-LANGUAGE-2026-09-27.md, "What to hold
+once it lands"). Wave 1 rewrote the three courses for a reader who has never seen a drawing; this
+keeps them that way.
+
+- **The one glossary.** The Learn guide's "Words the cards use" (content/guides/learning-the-app.md)
+  now holds every word a course card stops to explain, 240 entries in eight groups (the set and the
+  sheet, the estimator's words, codes and standards, the building, plumbing, electrical, HVAC, the
+  app), alphabetical in each, one line per word. Where two courses glossed a word differently, one
+  gloss fits both: a takeoff, a change order, a keynote (a tag, or a numbered note), gauge (wire and
+  sheet metal), a drop, a branch, the main, a terminal, the header (the app's tools, and the beam
+  over a door), the gear (the settings icon, and a service's heavy equipment), and others. The groups are
+  `####` headings inside the one section; marketing.css gains a `.prose h4` rule for them.
+- **`scripts/score-courses.js`**, step fourteen of `npm run check` (`check-courses`; alone,
+  `npm run check:courses`). espree reads each course's cards (body, reveal, and each chapter's done
+  text) the way check-lesson-rules reads its steps. A plain run prints per course and chapter the
+  cards, words, Flesch-Kincaid grade, average sentence, sentences over 25 words, and the terms first
+  used there. `--check` fails a sentence over 25 words, a course above grade 6, a trade or app word
+  used before the chapter that glosses it (the `FIRST_USE` table, 347 rows over the three courses),
+  and a `FIRST_USE` word with no bold entry in the guide's list. The uses the courses make today
+  before their gloss are the `EARLY` rows (sixteen cards: plumbing's hand sink and slab in Chapter 1,
+  the enlarged plan in the gas chapter's done line; electrical's scale and quick keys in Chapter 0;
+  HVAC's run, tag, drop and ventilation), and plumbing leaves the engineer, the rulebook and the
+  reference to the guide, as HVAC does a mark: `--gaps` lists them all, and a row that stops matching
+  fails as stale, so the list only shrinks. The tours and the lessons join with one `COURSES` line
+  each. Pinned by score-courses.test.js.
+
 ## feat(learn): the HVAC course, written for anyone at all (2026-09-27)
 
 Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the

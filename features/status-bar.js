@@ -274,8 +274,10 @@
     // and measures via its worst-case placeholder (hint.keyed), never
     // the growing number — the verdict stays stable per (static text,
     // width) and the live string is swapped in after the cached verdict.
-    // Phone widths (768px and under) never wrap: the bar is nowrap there and
-    // the mode ellipsizes on a zero flex basis, so a hint can only truncate.
+    // Phone widths (768px and under): the mode ellipsizes on a zero flex basis, so
+    // a hint takes no room and can only truncate. The bar still flex-wraps there;
+    // it stays one line because MAP-PHONE-BAR's phone CSS hides the save words
+    // and the pointer numbers and shortens the email link to "Account".
     const barEl = modeEl.parentElement;
     const actionsEl = document.getElementById('statusBarActions');
     if (!barEl || !actionsEl) return join(mode, toolHint);

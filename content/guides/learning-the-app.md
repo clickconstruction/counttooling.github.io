@@ -308,7 +308,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Group.** Marks and runs the app totals together: a circuit on its panel, or a system on its unit.
 - **Header.** The row of tools across the top of the app. On a drawing, a header is the beam over a door.
 - **Highlight.** A see-through colour box dragged over part of a sheet, like a marker pen. It never counts.
-- **Layer.** A clear sheet laid over the plan, with its own marks and its own totals.
+- **Layer.** A clear sheet laid over the plan, with its own marks. The sidebar totals count every layer; the Summary's by-page breakdown shows each layer's share.
 - **The line beside Show me where.** Every card ends with one line that says what the step is still waiting for, one thing at a time. It turns red when your last try missed and says why, and reads **✓ Done** when the step is done. It is not the status bar at the bottom of the window, which shows the file, the save and the quick keys.
 - **Line type.** A named kind of run, by size and material, such as 1.5in Copper or 0.75in EMT. The app measures its feet.
 - **Mark.** One thing you placed on the sheet: a count, a run, a note.

@@ -348,19 +348,41 @@ was very likely the same estimator hitting the same button.
       `refreshProjectPermissions: the stamp does not leak across projects` in
       save-engine.test.js, verified RED against the unscoped engine (0 notices, expected 1)
       and green after. 68 node tests.
-- [ ] The window: 15 s is generous on purpose (a wedged supabase-js can delay the
+- [x] The window: 15 s is generous on purpose (a wedged supabase-js can delay the
       handler's own refresh by the 8 s `REFRESH_PERMISSIONS_TIMEOUT_MS` + retry). Cost of
-      too long: an admin force within 15 s of our own turn-in is absorbed silently — we
-      are already a viewer, nothing is lost. Cost of too short: the bug comes back.
+      too short: the bug comes back. Cost of too long, CORRECTED 2026-09-27: the note here
+      said "we are already a viewer, nothing is lost", which was wrong. A demotion can only
+      reach us inside the window if we checked the project out again inside it, and then a
+      real force by an admin (or by another session signed in as us) was absorbed with no
+      notice and no dirty flush (no yellow bell). **DECIDED and built 2026-09-27 (punch row
+      R1-WINDOW, closed, Will's call): keep 15 s, but end it the moment we check the project
+      out again.** save-engine.js `clearSelfRelease()` runs on every successful checkout of
+      ours: features/turn-in.js `doCheckoutCurrentProject` (via `App.clearSelfRelease`) and
+      the engine's `reCheckOutAfterExpiry` (the automatic re-checkout). A permissions read
+      already in flight across that re-checkout started inside the window and describes the
+      lock we gave up, so `refreshProjectPermissions` drops it
+      (`self_release_refresh_superseded`) instead of demoting the fresh checkout or calling
+      our own release a force. All of it rides the `?ff=self-release` flag: flag off, both
+      calls change nothing. Four save-engine.test.js cases (three RED on the old engine,
+      the fourth pins flag off). Walk B2 below tests it on the site.
 - [ ] The flush skip: `willBecomeViewer && hadDirty && !hadInflight && selfRelease` now
       logs and leaves `autoSaveDirty` as is. Before, the flush would have hit
       `CHECKOUT_NOT_OWNED` and set `lastCloudSaveAttemptFailed` (yellow bell) for a lock
       we gave up. Confirm no caller relied on that flush after a self turn-in (doTurnIn
       flushes BEFORE releasing; `checkInCurrentProjectIfHeld` callers reset state).
-- [ ] The admin's own Force turn-in on a project they hold (features/turn-in.js
-      `settingsForceCheckIn`) sets `checkedOutBy = null` synchronously after the RPC; it
-      does NOT stamp. Pre-existing tiny race with the realtime refresh; left alone. Decide
-      whether to stamp there too (one line) or leave.
+- [x] The admin's own Force turn-in on a project they hold. **DECIDED and built
+      2026-09-27 (punch row R1-ADMIN, closed, Will's call).** The Project Settings
+      `#settingsForceCheckIn` only shows when someone ELSE holds the lock, so it never meets
+      this case and is unchanged. The reachable case was Manage Projects: its "Force turn-in
+      (admin)" showed on every checked-out row, the admin's own open project included, and
+      forcing it released without saving and brought up the "turned in while you had it
+      checked out" notice every time. Now that row (the project open here, held by this tab,
+      checked out to this user on the server) reads "Turn in" and runs the header's Turn In
+      (`App.tryTurnIn`, features/turn-in.js): save first, release, "Project turned in.".
+      Other people's rows, and your own rows that are not the project open and held here,
+      keep the force. With the flag off, that Turn In behaves like the header's today
+      (edits saved, then the known false notice); with it on, quiet. Pinned by
+      manage-projects.spec.js (always-run, routed list, stubbed RPCs). Walk D below.
 - [ ] Copy has no em dashes (house rule) and the sentence reads right to an estimator.
 - [ ] Run: `npm run check` (10/10 green at hand-off), `node --test save-engine.test.js`,
       the targeted set (`close-project save-project save-status restore-last-session
@@ -430,8 +452,22 @@ your phone, signed in as YOU):**
    out, by an admin or by another tab or device signed in as you." — not "An admin".
    Close it with Keep viewing.
 
+**Walk B2 — checking out again ends the quiet period (R1-WINDOW; same two browsers):**
+9b. In browser 1 (the switched one), `[Check out to Edit]`, then `[Turn In]`, then as
+   soon as the button offers it (about three seconds), `[Check out to Edit]` again.
+   Straight away, in browser 2, `[Turn In]`. All of this inside about fifteen seconds.
+9c. **Expected in browser 1:** the dark "Project turned in" dialog DOES appear, with the
+   "by an admin or by another tab or device signed in as you" wording. Before this change
+   it stayed silent here and just flipped back to `[Check out to Edit]`.
+
 **Walk C — nothing else moved:** open Project Settings, Save Status (the bell), Load
 Project, Close project; open a view link if you have one. Everything as before.
+
+**Walk D — admins only (R1-ADMIN), browser 1:** check a project out, open Project
+Settings → Manage Projects. That project's row says **Turn in**, not "Force turn-in
+(admin)"; every other checked-out row still says Force. Place a mark, click the row's
+Turn in straight away. **Expected:** "Project turned in.", the header reads
+`[Check out to Edit]`, no dark dialog; reload and the mark is there.
 
 **Report** (a line each is enough): which walks passed; the exact text of anything
 unexpected; and, for anything odd, the bell → Export logs file. If the dark dialog
@@ -497,10 +533,12 @@ the flag, leaving the code as if the fix had shipped plainly.
 3. app.js `// SECTION: Feature flags`: remove `self-release` from the "Live flags" list.
    Keep the mechanism (it is the house pattern now — AGENTS.md Conventions); if no flag
    is live, say so in the comment.
-4. save-engine.test.js: delete the "flag OFF" pin and the four `isSelfReleaseStampEnabled:
-   () => true` overrides; remove the default from `makeCtx`. turn-in-self-release.spec.js:
+4. save-engine.test.js: delete the "flag OFF" pin, the R1-WINDOW "flag OFF" pin, and the
+   `isSelfReleaseStampEnabled: () => true` overrides; remove the default from `makeCtx`.
+   In save-engine.js, `selfReleaseStampOn` goes with the ctx entry: the
+   `self_release_refresh_superseded` drop (R1-WINDOW) stays, ungated. turn-in-self-release.spec.js:
    drop the flag-off half and the localStorage set (keep flag-on assertions as the plain
-   path). Expect 66 node tests.
+   path). Expect two fewer save-engine node tests than before the flip.
 5. Docs: CHANGELOG entry ("R1-FLIP: live for everyone, <date>, tested by <name>"), the
    AGENTS.md save/sync bullet and the ARCHITECTURE turn-in.js row lose their DORMANT
    clauses; flip this unit and R1-TEST to ☑ here.

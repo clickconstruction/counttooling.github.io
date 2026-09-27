@@ -234,7 +234,6 @@
       .sidebar-header-buttons { display: flex; }
       .sidebar-header-buttons #setScaleSidebar { display: flex; justify-content: center; align-items: center; }
       .sidebar-tool-buttons { display: flex; }
-      .status-bar { flex-wrap: nowrap; }
       .status-bar #statusMode { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 0; }
       .page-info-label { display: none; }
     }
@@ -608,6 +607,19 @@
     .status-bar .status-bar-desktop-only { display: none; }
     .status-bar .status-indicator-group { display: inline-flex; align-items: center; gap: 4px; }
     .status-bar .status-indicator-label { white-space: nowrap; }
+    .status-bar .status-auth-short { display: none; }
+    /* MAP-PHONE-BAR: on a phone the signed-in bar is one line and the tool hint reads in
+       full. The save words go (the dot and square keep the colour; Save Status in the
+       phone menu keeps the detail), the pointer numbers go (they mean nothing to a
+       finger), and the email link reads "Account" (email in its title / aria-label).
+       The bar keeps flex-wrap: wrap as the fallback, so a bar that still can't fit
+       (a long Measure chip) takes a second row instead of running off the screen. */
+    @media (max-width: 768px) {
+      .status-bar .status-indicator-label,
+      .status-bar #statusCoords,
+      .status-bar .status-auth-full { display: none; }
+      .status-bar .status-auth-short { display: inline; }
+    }
     .header .replaced-by-status-bar { display: none !important; }
     /* Safe centring: the card carries margin:auto and the overlay scrolls, so a card taller
        than the viewport (a phone, browser zoom, a tall settings sheet) keeps its top reachable
@@ -1115,6 +1127,7 @@
     .summary-count-detail-count { font-weight: 700; font-size: 1.1rem; }
     .summary-count-detail-length { font-size: 0.9rem; color: var(--text2); }
     .summary-count-detail-page { font-size: 0.85rem; color: var(--text3); }
+    .summary-count-detail-layers { font-size: 0.8rem; color: var(--text2); max-width: 16em; }   /* MAP-SUMMARY-LAYERS: the per-layer split on a multi-layer sheet */
     .summary-count-detail-doc { color: var(--text2); font-size: 0.9rem; }
     .summary-count-detail-preview { display: flex; flex-direction: column; gap: 4px; }
     .summary-count-detail-row img { max-width: 200px; border-radius: 6px; border: 1px solid var(--border); display: block; }

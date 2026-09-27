@@ -13,6 +13,13 @@
  * features group). Boundary rule: read shared deps from App.* at call time,
  * never captured at load. See ARCHITECTURE.md "Feature files / window.App
  * registry". No build step.
+ *
+ * MAP-SUMMARY-LAYERS (2026-09-27): each sheet's number counts EVERY layer
+ * (App.getMergedAnnotationsForPage, the Summary's, badges' and footer's rule),
+ * and a sheet with two or more layers adds the split under it ("Main 9 ·
+ * Alternate 3"; runs and feet for a line type). Each layer's share is tallied
+ * against the merged sheet (the same multiply / scale zones as the total), so
+ * the split always sums to the sheet's number. The thumbnail draws every layer.
  */
 (function() {
   const App = (window.App = window.App || {});
@@ -32,6 +39,31 @@
     if (inFlightRenderTask) { try { inFlightRenderTask.cancel(); } catch (_) {} inFlightRenderTask = null; }
   };
 
+  // The per-layer split for one sheet: [{ name, count }] for a counter, or
+  // [{ name, runs, length }] for a line type, one entry per layer that holds
+  // the item (layers without it are left out). Empty for a one-layer sheet.
+  // Zones read the merged sheet so the shares sum to the sheet's total.
+  function layerSplit(page, pageIdx, merged, type, id) {
+    const canvases = App.getPageCanvases ? App.getPageCanvases(page) : (page?.canvases || []);
+    if (canvases.length < 2) return [];
+    const out = [];
+    canvases.forEach((cv, ci) => {
+      const ann = cv.annotations || {};
+      const name = cv.name || 'Canvas ' + (ci + 1);
+      if (type === 'counter') {
+        const markers = ann.counterMarkers?.[id] || [];
+        if (!markers.length) return;
+        out.push({ name, count: markers.reduce((s, m) => s + App.getMultiplyZoneForPoint(merged, m), 0) });
+      } else {
+        let runs = 0, length = 0;
+        (ann.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; length += App.getLineLengthFeetForTotals(q, pageIdx, false, merged); });
+        (ann.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; length += App.getLineLengthFeetForTotals(poly, pageIdx, true, merged); });
+        if (runs > 0) out.push({ name, runs, length });
+      }
+    });
+    return out;
+  }
+
   async function openSummaryCountDetailModal(type, id) {
     const gen = ++detailRenderGen;
     const titleEl = document.getElementById('summaryCountDetailTitle');
@@ -44,11 +76,11 @@
       if (!c) return;
       titleEl.textContent = (c.name || 'Counter') + ' by page';
       App.state.pages.forEach((p, pageIdx) => {
-        const ann = App.getActiveAnnotations(p);
+        const ann = App.getMergedAnnotationsForPage(p);
         const markers = ann?.counterMarkers?.[id] || [];
         if (markers.length > 0) {
           const count = markers.reduce((s, m) => s + App.getMultiplyZoneForPoint(ann, m), 0);
-          items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), count, isCounter: true });
+          items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), count, isCounter: true, ann, layers: layerSplit(p, pageIdx, ann, 'counter', id) });
         }
       });
     } else {
@@ -56,11 +88,11 @@
       if (!lt) return;
       titleEl.textContent = (lt.name || 'Line type') + ' by page';
       App.state.pages.forEach((p, pageIdx) => {
-        const ann = App.getActiveAnnotations(p);
+        const ann = App.getMergedAnnotationsForPage(p);
         let runs = 0, len = 0;
         (ann?.quickLines || []).filter(q => q.lineTypeId === id).forEach(q => { runs++; len += App.getLineLengthFeetForTotals(q, pageIdx, false, ann); });
         (ann?.polylines || []).filter(poly => poly.lineTypeId === id).forEach(poly => { runs++; len += App.getLineLengthFeetForTotals(poly, pageIdx, true, ann); });
-        if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false });
+        if (runs > 0) items.push({ pageIdx, pageLabel: p.label || 'Page ' + (pageIdx + 1), runs, length: len, isCounter: false, ann, layers: layerSplit(p, pageIdx, ann, 'lineType', id) });
       });
     }
     if (!items.length) return;
@@ -96,7 +128,13 @@
         const ps = App.getPageScale(it.pageIdx);
         metaHtml += '<span class="summary-count-detail-length">' + esc(App.formatFeet(it.length, ps)) + '</span>';
       }
-      metaHtml += '<span class="summary-count-detail-page">on ' + esc(pagePart) + '</span></div>';
+      metaHtml += '<span class="summary-count-detail-page">on ' + esc(pagePart) + '</span>';
+      if (it.layers && it.layers.length) {
+        const ps = App.getPageScale(it.pageIdx);
+        const parts = it.layers.map(l => it.isCounter ? l.name + ' ' + l.count : l.name + ' ' + l.runs + ' (' + App.formatFeet(l.length, ps) + ')');
+        metaHtml += '<span class="summary-count-detail-layers">' + esc(parts.join(' · ')) + '</span>';
+      }
+      metaHtml += '</div>';
       row.innerHTML = metaHtml;
       if (page.pdfPage) {
         try {
@@ -119,7 +157,10 @@
           // LEGEND-FACE: the thumbnail draws the sheet legend too; wait for its face.
           if (App.legendFaceReady) await App.legendFaceReady();
           if (gen !== detailRenderGen) return;
-          App.renderAnnotationsToContext(ctx, page, scale, exportOverrides);
+          // Every layer (the number above counts them all); the sheet legend
+          // keeps the active layer's placement.
+          const drawAnn = Object.assign({}, it.ann, { legend: App.getActiveAnnotations(page, it.pageIdx)?.legend || null });
+          App.renderAnnotationsToContext(ctx, page, scale, exportOverrides, drawAnn);
           const previewWrap = document.createElement('div');
           previewWrap.className = 'summary-count-detail-preview';
           const img = document.createElement('img');

@@ -11,14 +11,14 @@
  *
  * Loaded as a classic <script src="/features/zone-modals.js"> AFTER app.js.
  * Its own IIFE: it reaches the cross-cutting state + helpers through the
- * shared window.App registry and binds everything at load — like
- * features/output.js it registers NO entry points, because every handler
- * moves with its DOM element and all the pending state
+ * shared window.App registry and binds everything at load. It registers
+ * App.focusMultiplyZoneInput and (R14) App.openMultiplyZoneModal, the one opener
+ * for both of the Multiply Zone dialog's jobs: app.js's X-tool canvas click
+ * (a new zone, with the area's counts) and its context-menu Edit zone
+ * multiplier (an edit) call it at call time. The pending state
  * (state.pendingMultiplyZone / pendingMultiplyZoneEdit /
- * pendingMultiplyZoneValue / pendingDeletePage) lives on
- * the shared `state` object, written by the canvas click handlers and page
- * rows that stay in app.js (the Grid-split pattern: state flags need no
- * callbacks).
+ * pendingMultiplyZoneValue / pendingDeletePage) lives on the shared `state`
+ * object; the Delete Page confirm's pending is written by page rows in app.js.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -52,6 +52,50 @@
       requestAnimationFrame(() => { if (!inputEl || !inputEl.offsetParent) return; inputEl.focus(); inputEl.select(); });
     };
   })();
+  // The Multiply Zone dialog's preview line. Duct runs (D17, J6-G) are named
+  // only when the area holds one, so duct-free previews read as before.
+  function multiplyZonePreviewText(counts, lenStr) {
+    let txt = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
+    if (counts.ductRunCount > 0) txt += ', ' + counts.ductRunCount + (counts.ductRunCount === 1 ? ' duct run' : ' duct runs');
+    return txt;
+  }
+  // R14 (moved from app.js): the one opener for both of the dialog's jobs. A new zone,
+  // { rect, counts, lenStr }, from the X tool's second corner in app.js's canvas click;
+  // or an edit, { editIndex }, from the context menu's Edit zone multiplier. Returns
+  // false (and opens nothing) when the edited zone is gone.
+  function openMultiplyZoneModal(opts) {
+    const state = App.state;
+    if (opts && opts.editIndex != null) {
+      const page = state.pages[state.currentPage];
+      const ann = page ? App.getActiveAnnotations(page) : null;
+      const zone = ann?.multiplyZones?.[opts.editIndex];
+      if (!zone) return false;
+      state.pendingMultiplyZoneEdit = { zoneIndex: opts.editIndex };
+      state.pendingMultiplyZone = null;
+      const mult = zone.multiplier ?? 1;
+      state.pendingMultiplyZoneValue = mult;
+      const inputEl = document.getElementById('multiplyZoneMultiplier');
+      const previewEl = document.getElementById('multiplyZonePreview');
+      const titleEl = document.querySelector('#multiplyZoneModal h2');
+      if (inputEl) inputEl.value = String(mult);
+      if (previewEl) previewEl.textContent = 'Change the multiplier for this zone.';
+      if (titleEl) titleEl.textContent = 'Edit zone multiplier';
+      App.showModal('multiplyZoneModal');
+      if (App.focusMultiplyZoneInput) App.focusMultiplyZoneInput();
+      return true;
+    }
+    const { x1, y1, x2, y2 } = opts.rect;
+    state.pendingMultiplyZone = { x1, y1, x2, y2 };
+    state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
+    const mzTitleEl = document.querySelector('#multiplyZoneModal h2');
+    if (mzTitleEl) mzTitleEl.textContent = 'Multiply Zone';
+    document.getElementById('multiplyZonePreview').textContent = multiplyZonePreviewText(opts.counts, opts.lenStr);
+    document.getElementById('multiplyZoneMultiplier').value = String(state.pendingMultiplyZoneValue);
+    App.showModal('multiplyZoneModal');
+    if (App.focusMultiplyZoneInput) App.focusMultiplyZoneInput();
+    return true;
+  }
+  App.openMultiplyZoneModal = openMultiplyZoneModal;
   document.getElementById('multiplyZoneApply').onclick = (e) => {
     const state = App.state;
     const pending = state.pendingMultiplyZone;

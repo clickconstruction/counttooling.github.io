@@ -23,7 +23,7 @@
  *   sidebar rows read one run's through the local getWaterServedForLine.
  * - The stray rescue: App.waterStrayTarget(marker, counter, ann) — a fixture
  *   with a side no run within snap serves, and a run of that side within reach:
- *   app.js's strayDeviceAttachTarget asks it after the CFM rule, so the same
+ *   duct-suggest.js's strayDeviceAttachTarget asks it after the CFM rule, so the same
  *   "Attach to nearest run" context row moves the fixture onto the run.
  * - The read-back on the sidebar: the line type row's "cold · 12 WSFU served"
  *   meta and the Lines list's per-run "6 WSFU" (App.waterLineMetaHtml).

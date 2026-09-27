@@ -662,6 +662,79 @@
     App.renderAnnotations();
   };
 
+  // R14 (moved from app.js's updateUIInner, which calls it at the same point of every
+  // render): the Set Scale chrome. The header #setScale reads the value in one compact line,
+  // the sidebar #setScaleSidebar and the #sidebarScaleDisplay readout draw the icon over the
+  // label and px lines. The icon is built once here, not on every render.
+  const SCALE_ICON_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>';
+  const SCALE_ICON_SVG_HEADER = SCALE_ICON_SVG.replace('width="18" height="18"', 'width="28" height="28"');
+  const scalePxLine = (scale) => '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
+  // The one display both sidebar surfaces draw. An unlabelled scale's value line differs by
+  // class only: the #setScaleSidebar button styles .scale-value, the readout card .scale-px.
+  function scaleDisplayHtml(scale, pxLine, valueClass) {
+    const esc = App.escapeHtml;
+    const lines = scale.label
+      ? '<span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span>'
+      : '<span class="' + valueClass + '">' + esc(pxLine) + '</span>';
+    return '<span class="set-scale-icon">' + SCALE_ICON_SVG + '</span><div class="set-scale-display">' + lines + '</div>';
+  }
+  function syncScaleChrome() {
+    const state = App.state;
+    const setScaleBtn = document.getElementById('setScale');
+    const setScaleSidebarBtn = document.getElementById('setScaleSidebar');
+    const scale = App.getPageScale(state.currentPage);
+    const setScaleContent = (btn) => {
+      const isHeader = btn.id === 'setScale';
+      const esc = App.escapeHtml;
+      if (scale) {
+        btn.classList.add('scale-set');
+        if (isHeader) btn.classList.remove('scale-unset');
+        const pxLine = scalePxLine(scale);
+        btn.title = scale.temp ? 'Temporary scale, only on this device' : '';
+        if (isHeader) {
+          // D20 (X3): the header twin reads the value too, so the set scale is
+          // legible without opening anything and the button stays a target.
+          // One compact line — the label when there is one ('1/4" = 1 ft'),
+          // else the px readout, which is all an unlabelled scale has.
+          btn.innerHTML = SCALE_ICON_SVG
+            + '<span class="set-scale-header-value">' + esc(scale.label || pxLine) + '</span>';
+          btn.title = (scale.temp ? 'Temporary scale, only on this device. ' : '')
+            + 'Scale: ' + (scale.label ? scale.label + ' · ' + pxLine : pxLine) + '. Click to edit';
+        } else {
+          btn.innerHTML = scaleDisplayHtml(scale, pxLine, 'scale-value');
+        }
+      } else {
+        btn.classList.remove('scale-set');
+        if (isHeader) btn.classList.add('scale-unset');
+        btn.title = '';
+        btn.innerHTML = isHeader ? SCALE_ICON_SVG_HEADER : SCALE_ICON_SVG + ' Set Scale';
+      }
+    };
+    setScaleContent(setScaleBtn);
+    if (setScaleSidebarBtn) setScaleContent(setScaleSidebarBtn);
+    const scaleDisplay = document.getElementById('sidebarScaleDisplay');
+    if (scaleDisplay) {
+      if (scale) {
+        scaleDisplay.innerHTML = scaleDisplayHtml(scale, scalePxLine(scale), 'scale-px');
+        scaleDisplay.style.display = 'flex';
+        scaleDisplay.style.flexDirection = 'row';
+        scaleDisplay.style.gap = '8px';
+        scaleDisplay.classList.add('has-scale');
+        scaleDisplay.title = scale.temp ? 'Temporary scale, only on this device' : 'Click to set scale';
+        scaleDisplay.onclick = () => document.getElementById('setScale').click();
+      } else {
+        scaleDisplay.textContent = 'none';
+        scaleDisplay.style.display = '';
+        scaleDisplay.style.flexDirection = '';
+        scaleDisplay.style.gap = '';
+        scaleDisplay.classList.remove('has-scale');
+        scaleDisplay.title = '';
+        scaleDisplay.onclick = null;
+      }
+    }
+  }
+  App.syncScaleChrome = syncScaleChrome;
+
   App.openScaleModal = openScaleModal;
   App.resetScaleModalZoneMode = resetScaleModalZoneMode;
   App.resetScaleCheckMode = resetScaleCheckMode;

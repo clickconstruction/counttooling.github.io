@@ -14,6 +14,10 @@
    * App.getQuickKeySlotFor deferred. Row activation stays on the ONE selection
    * path: rows call App.setActiveCounterType / App.setActiveLineType, the same
    * functions the Quick Keys number row calls.
+   * R14: the sections' controls live here too (the collapse chevrons through
+   * bindCollapse, the search inputs, the inline filter buttons and their toast,
+   * Done reordering), bound at load; App.syncSidebarFilterButtons draws the filter
+   * buttons from updateUI. The filter-scope getters/setters stay in app.js.
    * Boundary rule: read shared deps from App.* at call time, never captured at
    * load. See ARCHITECTURE.md "Feature files / window.App registry".
    */
@@ -290,6 +294,149 @@
     });
     return n;
   }
+
+  // R14 (moved from app.js's "Line color & sidebar handlers", bound at this file's load):
+  // the sidebar section controls. The filter-scope getters and setters and
+  // syncFilterScopeSegment stay in app.js, because boot calls the setters before any
+  // feature file loads; everything here reads them through App.* at click time.
+
+  // A section's collapse chevron. The trigger is the chevron itself (which stops the click
+  // so the section title's settings opener does not fire too), or, for Lines and Groups,
+  // the section title.
+  function bindCollapse(stateKey, sectionId, iconId, triggerId) {
+    const onTitle = !!triggerId && triggerId !== iconId;
+    document.getElementById(triggerId || iconId).onclick = (e) => {
+      if (!onTitle) e.stopPropagation();
+      const state = App.state;
+      state[stateKey] = !state[stateKey];
+      document.getElementById(sectionId).classList.toggle('collapsed', state[stateKey]);
+      document.getElementById(iconId).textContent = state[stateKey] ? '▶' : '▼';
+    };
+  }
+  bindCollapse('pagesListCollapsed', 'pagesSection', 'pagesCollapseIcon');
+  bindCollapse('countersListCollapsed', 'countersSection', 'countersCollapseIcon');
+  bindCollapse('lineTypesListCollapsed', 'lineTypesSection', 'lineTypesCollapseIcon');
+  bindCollapse('summaryListCollapsed', 'summarySection', 'summaryCollapseIcon');
+  bindCollapse('linesListCollapsed', 'linesSection', 'linesCollapseIcon', 'linesSectionTitle');
+  bindCollapse('groupsListCollapsed', 'groupsSection', 'groupsCollapseIcon', 'groupsSectionTitle');
+  // The Groups chevron moved out of the h3 (flush right, after "+ Add"), so it
+  // forwards to the title toggle it used to ride along with.
+  document.getElementById('groupsCollapseIcon').onclick = () => document.getElementById('groupsSectionTitle').click();
+
+  const counterSearchInput = document.getElementById('counterSearchInput');
+  if (counterSearchInput) {
+    counterSearchInput.value = App.state.counterSearch || '';
+    counterSearchInput.oninput = () => {
+      App.state.counterSearch = counterSearchInput.value;
+      localStorage.setItem('counterSearch', App.state.counterSearch);
+      App.renderCountersList();
+    };
+  }
+  const lineTypeSearchInput = document.getElementById('lineTypeSearchInput');
+  if (lineTypeSearchInput) {
+    lineTypeSearchInput.value = App.state.lineTypeSearch || '';
+    lineTypeSearchInput.oninput = () => {
+      App.state.lineTypeSearch = lineTypeSearchInput.value;
+      localStorage.setItem('lineTypeSearch', App.state.lineTypeSearch);
+      App.renderLineTypesList();
+      App.renderLinesList();
+    };
+  }
+  const linesSearchInput = document.getElementById('linesSearchInput');
+  if (linesSearchInput) {
+    linesSearchInput.value = App.state.linesSearch || '';
+    linesSearchInput.oninput = () => {
+      App.state.linesSearch = linesSearchInput.value;
+      localStorage.setItem('linesSearch', App.state.linesSearch);
+      App.renderLinesList();
+    };
+  }
+  const FILTER_SCOPE_CYCLE = { off: 'page', page: 'project', project: 'off' };
+  // The project-scope glyph (stacked sheets) swapped into the inline filter
+  // buttons; 'off'/'page' restore the arrows-inward glyph the markup ships.
+  const FILTER_GLYPH_PROJECT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M3 1.5h8a1 1 0 0 1 1 1V4h-1V2.5H3v9H2v-9a1 1 0 0 1 1-1zm2 3h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zm0 1v8h8v-8H5z"/></svg>';
+  let filterGlyphPageSvg = null; // captured from the markup on first swap
+  function syncSidebarFilterButton(btn, scope, kind) {
+    if (!btn) return;
+    btn.setAttribute('aria-pressed', String(scope !== 'off'));
+    btn.title = scope === 'project' ? ('Showing only ' + kind + ' used in this project (click to show all)')
+      : scope === 'page' ? ('Showing only ' + kind + ' used on this sheet (click for this project)')
+      : ('Show only ' + kind + ' used on this sheet (click again for this project)');
+    if ((btn.dataset.scope || 'off') === scope) return;
+    if (filterGlyphPageSvg === null) filterGlyphPageSvg = btn.innerHTML;
+    btn.innerHTML = scope === 'project' ? FILTER_GLYPH_PROJECT_SVG : filterGlyphPageSvg;
+    btn.dataset.scope = scope;
+  }
+  // Narrate each cycle click of the inline filter buttons with a two-line
+  // toast: "Filter:" / the state just landed on.
+  // The button's meaning is otherwise only discoverable via its title attr
+  // (field feedback 2026-08-13). #airboardToastText is pre-line, so the \n
+  // layout needs no markup; only the hint line is a styled span.
+  const FILTER_TOAST_LINES = {
+    page: 'used on this sheet',
+    project: 'used anywhere in this project',
+    off: 'off, showing all',
+  };
+  // The shared two-line filter toast core: "Filter: <kind>" / the landed state.
+  function showFilterToast(kind, stateLine) {
+    App.showToast('', 3200);
+    const el = document.getElementById('airboardToastText');
+    if (el) el.textContent = 'Filter: ' + kind + '\n' + stateLine;
+  }
+  function showFilterScopeToast(kind, scope) {
+    const t = FILTER_TOAST_LINES[scope];
+    if (t) showFilterToast(kind, t);
+  }
+  const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
+  if (counterShowOnlyOnPageInlineBtn) {
+    counterShowOnlyOnPageInlineBtn.onclick = () => {
+      App.setCounterListFilterScope(FILTER_SCOPE_CYCLE[App.getCounterListFilterScope()]);
+      App.syncFilterScopeSegment('counterShowOnlySegment', App.getCounterListFilterScope());
+      showFilterScopeToast('counters', App.getCounterListFilterScope());
+      App.renderCountersList();
+      App.updateUI();
+    };
+  }
+  const lineTypeShowOnlyOnPageInlineBtn = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
+  if (lineTypeShowOnlyOnPageInlineBtn) {
+    lineTypeShowOnlyOnPageInlineBtn.onclick = () => {
+      App.setLineTypeListFilterScope(FILTER_SCOPE_CYCLE[App.getLineTypeListFilterScope()]);
+      App.syncFilterScopeSegment('lineTypeShowOnlySegment', App.getLineTypeListFilterScope());
+      showFilterScopeToast('line types', App.getLineTypeListFilterScope());
+      App.renderLineTypesList();
+      App.renderLinesList();
+      App.updateUI();
+    };
+  }
+  const linesShowOnlyOnPageBtn = document.getElementById('linesShowOnlyOnPageBtn');
+  if (linesShowOnlyOnPageBtn) {
+    linesShowOnlyOnPageBtn.onclick = () => {
+      App.state.lineTypeSettings.showOnlyLinesOnCurrentPage = !App.state.lineTypeSettings.showOnlyLinesOnCurrentPage;
+      App.saveDisplaySettings();
+      linesShowOnlyOnPageBtn.setAttribute('aria-pressed', App.state.lineTypeSettings.showOnlyLinesOnCurrentPage);
+      // Narrate the two-state Lines toggle like the scope cycles do — this
+      // button's meaning was otherwise only in its title attr.
+      if (App.state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines', 'on this sheet only');
+      else showFilterToast('lines', 'off, showing every sheet');
+      App.renderLinesList();
+      App.updateUI();
+    };
+  }
+  // updateUIInner calls this at the point it used to draw the three buttons itself.
+  function syncSidebarFilterButtons() {
+    const counterShowOnlyInline = document.getElementById('counterShowOnlyOnPageInlineBtn');
+    const lineTypeShowOnlyInline = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
+    const linesShowOnlyBtn = document.getElementById('linesShowOnlyOnPageBtn');
+    syncSidebarFilterButton(counterShowOnlyInline, App.getCounterListFilterScope(), 'counters');
+    syncSidebarFilterButton(lineTypeShowOnlyInline, App.getLineTypeListFilterScope(), 'line types');
+    if (linesShowOnlyBtn) linesShowOnlyBtn.setAttribute('aria-pressed', !!App.state.lineTypeSettings?.showOnlyLinesOnCurrentPage);
+  }
+  document.getElementById('sidebarReorderFinish').onclick = () => {
+    App.state.sidebarReorderModeActive = false;
+    App.updateUI();
+  };
+
+  App.syncSidebarFilterButtons = syncSidebarFilterButtons;
 
   App.renderCountersList = renderCountersList;
   App.renderLineTypesList = renderLineTypesList;

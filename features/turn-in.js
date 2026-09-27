@@ -7,7 +7,8 @@
    * engine wrappers): doTurnInAndHandleResult (result-handling over the
    * engine's staged doTurnIn - expired short-circuit, already-released
    * refresh, recovery-modal routing), the shared doCheckoutCurrentProject
-   * action, the header/sidebar edit-status banner click handler, and the
+   * action, the header/sidebar edit-status banner (its click handler, and
+   * since R14 its render, renderEditStatusBanner, which updateUI calls), and the
    * Project Settings Check Out / Turn In / Force turn-in buttons. All four
    * functions and every call site were internal to this cluster, so nothing
    * in app.js needed a wrapper. The engine still owns the staged release
@@ -132,6 +133,94 @@
     btn.classList.add('header-edit-status-btn-hold');
   }
   App.applyEditBannerHold = applyEditBannerHold;
+
+  // R14 (moved from app.js's updateUIInner, which calls it at the same point of every
+  // render): the header edit-status banner and its sidebar copy. The buttons it draws carry
+  // the data-action values handleEditStatusBannerClick below answers.
+  function renderEditStatusBanner() {
+    const state = App.state;
+    const editBanner = document.getElementById('headerEditStatusBanner');
+    if (editBanner) {
+      // B6 (J13): anonymous view-link sessions get the same "Viewing only"
+      // banner signed-in viewers see — without it, the recipient has no cue
+      // that this is a window, not a workbench. All the branches above the
+      // final "Viewing only" fallback are session-gated (checkout/save need
+      // a user), so an anonymous viewer always lands on the fallback.
+      const show = App.SUPABASE_ENABLED
+        && (state.supabaseSession?.user || (state.isViewer && state.loadedViaViewLink))
+        && (state.pages.length > 0 || state.currentProjectId);
+      if (!show) {
+        editBanner.style.display = 'none';
+        editBanner.innerHTML = '';
+        const sb = document.getElementById('sidebarCheckoutBanner');
+        if (sb) { sb.innerHTML = ''; sb.className = 'sidebar-checkout-banner supabase-only'; }
+      } else {
+        editBanner.style.display = '';
+        editBanner.className = 'header-edit-status supabase-only';
+        editBanner.innerHTML = '';
+        if (App.isCheckoutExpiredAttention() && !state.isViewer && state.currentProjectId) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'header-edit-status-btn header-edit-status-btn-expired';
+          btn.dataset.action = 'checkout_expired_recover';
+          btn.textContent = '[Edit session expired. Re-check out]';
+          editBanner.appendChild(btn);
+          editBanner.classList.add('edit-status-expired');
+        } else if (!state.isViewer && state.currentProjectId) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'header-edit-status-btn';
+          btn.dataset.action = 'checkin';
+          btn.textContent = '[Turn In]';
+          editBanner.appendChild(btn);
+          editBanner.classList.add('edit-status-editing');
+        } else if (state.pages.length > 0 && !state.currentProjectId && !state.isViewer) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'header-edit-status-btn header-edit-status-btn-save';
+          btn.dataset.action = 'save';
+          const spanDefault = document.createElement('span');
+          spanDefault.className = 'save-btn-label-default';
+          spanDefault.textContent = 'Unsaved';
+          const spanHover = document.createElement('span');
+          spanHover.className = 'save-btn-label-hover';
+          spanHover.textContent = 'Save';
+          btn.appendChild(spanDefault);
+          btn.appendChild(spanHover);
+          editBanner.appendChild(btn);
+          editBanner.classList.add('edit-status-editing');
+        } else if (state.canCheckOut) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'header-edit-status-btn';
+          btn.dataset.action = 'checkout';
+          btn.textContent = '[Check out to Edit]';
+          editBanner.appendChild(btn);
+          editBanner.classList.add('edit-status-available');
+        } else if (state.checkedOutEmail) {
+          const span = document.createElement('span');
+          span.textContent = (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
+          editBanner.appendChild(span);
+          editBanner.classList.add('edit-status-viewing');
+        } else {
+          const span = document.createElement('span');
+          span.textContent = 'Viewing only';
+          editBanner.appendChild(span);
+          editBanner.classList.add('edit-status-viewing');
+        }
+        // R1-RECLICK: right after a checkout or a turn-in made from this button, it holds a
+        // "done" label for a beat instead of offering the opposite action in the same pixels
+        // (above). Before the sidebar copy below, so both banners hold alike.
+        applyEditBannerHold(editBanner);
+        const sidebarBanner = document.getElementById('sidebarCheckoutBanner');
+        if (sidebarBanner) {
+          sidebarBanner.className = 'sidebar-checkout-banner ' + editBanner.className.replace('header-edit-status', '').trim();
+          sidebarBanner.innerHTML = editBanner.innerHTML;
+        }
+      }
+    }
+  }
+  App.renderEditStatusBanner = renderEditStatusBanner;
 
   async function handleEditStatusBannerClick(e) {
     const btn = e.target.closest('.header-edit-status-btn');

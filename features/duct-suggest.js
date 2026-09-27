@@ -334,6 +334,36 @@
     const counter = (state.counters || []).find((c) => c.id === t.typeId);
     if (marker && counter) openMarkerCfmModal(marker, counter);
   };
+  // D19 (J19 Friction #3), moved from app.js in R14 (its showContextMenu asks it whether
+  // to show the row this file binds): the context target, when it is a CFM device that no
+  // run currently taps and a run is within reach. Returns
+  // { marker, point, runId } or null. Attachment in this model is DERIVED from
+  // proximity (duct-model attachDuctDevices), never stored, so the rescue moves
+  // the device onto the run rather than minting a link the geometry would
+  // contradict.
+  function strayDeviceAttachTarget() {
+    const t = App.state.ctxTarget;
+    if (App.state.isViewer || !t || t.type !== 'marker') return null;
+    if (typeof ductMarkerCfm !== 'function' || typeof ductNearestRunPoint !== 'function' || typeof attachDuctDevices !== 'function') return null;
+    const counter = (App.state.counters || []).find(c => c.id === t.typeId);
+    if (!counter) return null;
+    const page = App.state.pages[App.state.currentPage];
+    const ann = page ? App.getActiveAnnotations(page) : null;
+    const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
+    if (!marker) return null;
+    // WATER-PLAN rung 3: a fixture-unit counter is rescued onto the nearest
+    // water run of a side no run yet serves (features/water-runs.js).
+    if (!(ductMarkerCfm(marker, counter) > 0)) {
+      const w = App.waterStrayTarget ? App.waterStrayTarget(marker, counter, ann) : null;
+      return w ? { marker, point: w.point, runId: w.runId, side: w.side } : null;
+    }
+    const runs = ann?.ductRuns || [];
+    if (!runs.length) return null;
+    // Already attached? Then there is nothing to rescue.
+    if (attachDuctDevices([{ x: marker.x, y: marker.y }], runs).attached.length) return null;
+    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs);
+    return near ? { marker, point: near.point, runId: near.runId } : null;
+  }
   // D19 (J19 Friction #3): the stray-device rescue. Attachment is derived from
   // proximity, so "attach" MOVES the device onto the nearest run — the same
   // thing the estimator would do by hand, in one click and one undo step. The
@@ -363,6 +393,8 @@
   });
 
   App.getDuctDraftSuggestion = getDuctDraftSuggestion;
+  // D19: the stray-device rescue's target (app.js's context menu, the tour and the HVAC course).
+  App.strayDeviceAttachTarget = strayDeviceAttachTarget;
   // D15: the per-marker override entry (spec seam + the context-menu row) and
   // the "(override 250)" note (sidebar row title + details modal).
   App.openMarkerCfmModal = openMarkerCfmModal;

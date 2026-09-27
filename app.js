@@ -1120,35 +1120,7 @@
   // core moved to annotation-model.js (node-tested there); performDeleteZone
   // keeps the UI choreography around the model's deleteCollectedItems.
   function countItemsInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.countItemsInRect(ann, pageIdx, x1, y1, x2, y2); }
-  // The Multiply Zone dialog's preview line. Duct runs (D17, J6-G) are named
-  // only when the area holds one, so duct-free previews read as before.
-  function multiplyZonePreviewText(counts, lenStr) {
-    let txt = 'In this area: ' + counts.counterCount + ' counter(s), ' + counts.lineRunCount + ' line run(s) (' + lenStr + ')';
-    if (counts.ductRunCount > 0) txt += ', ' + counts.ductRunCount + (counts.ductRunCount === 1 ? ' duct run' : ' duct runs');
-    return txt;
-  }
   function collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2) { return annotationModel.collectItemsToDeleteInRect(ann, pageIdx, x1, y1, x2, y2); }
-  // D19 (J6-H): the duct fragment of the Delete Area preview —
-  // "61' · 438 lb, 2 fittings". The ft/lb come from the SAME per-run tally the
-  // Duct sidebar badge shows (App.ductRunTally), so the number in the confirm
-  // matches the row the estimator is about to lose. Returns '' when the duct
-  // feature file is not loaded, so the preview degrades to a plain count.
-  function ductDeleteSummary(collected, ann, pageIdx) {
-    if (!App.ductRunTally) return '';
-    let ft = 0, lb = 0;
-    for (const { run } of collected.ductRuns || []) {
-      try {
-        const tally = App.ductRunTally({ run, ann, pageIdx });
-        ft += tally?.totalLengthFt || 0;
-        lb += tally?.totalPounds || 0;
-      } catch (_) { /* a malformed run must not block the delete confirm */ }
-    }
-    const bits = [];
-    if (ft > 0 || lb > 0) bits.push(Math.round(ft).toLocaleString() + "' · " + Math.round(lb).toLocaleString() + ' lb');
-    const nf = collected.ductFittingCount || 0;
-    if (nf) bits.push(nf + (nf === 1 ? ' fitting' : ' fittings'));
-    return bits.join(', ');
-  }
   // Delete Area: collect what the rectangle covers, then either report the area
   // empty or open the confirm with its preview line. ONE builder for both call
   // sites (mouse click and touch tap), which were an exact copy of each other —
@@ -1165,7 +1137,7 @@
     if (collected.counterCount) parts.push(collected.counterCount + ' counter(s)');
     if (collected.lineRunCount) parts.push(collected.lineRunCount + ' line run(s) (' + lenStr + ')');
     if (collected.ductRunCount) {
-      const summary = ductDeleteSummary(collected, ann, pageIdx);
+      const summary = App.ductDeleteSummary ? App.ductDeleteSummary(collected, ann, pageIdx) : '';   // R14: features/duct-sidebar.js
       parts.push(collected.ductRunCount + (collected.ductRunCount === 1 ? ' duct run' : ' duct runs')
         + (summary ? ' (' + summary + ')' : ''));
     }
@@ -2582,68 +2554,8 @@
     const nextMarkedBtn = document.getElementById('nextMarkedPage');
     if (prevMarkedBtn) prevMarkedBtn.disabled = !marked.length || marked.filter(i => i < state.currentPage).length === 0;
     if (nextMarkedBtn) nextMarkedBtn.disabled = !marked.length || marked.filter(i => i > state.currentPage).length === 0;
-    const setScaleBtn = document.getElementById('setScale');
-    const setScaleSidebarBtn = document.getElementById('setScaleSidebar');
-    const scale = getPageScale(state.currentPage);
-    const scaleIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M163.3 320.1L232.7 200.2C227.1 188 223.9 174.4 223.9 160C223.9 107 266.9 64 319.9 64C372.9 64 415.9 107 415.9 160C415.9 174.3 412.8 187.9 407.1 200.2L451.5 276.9C428.4 302.9 397.8 322 363.1 330.7L320 255.9L251.9 373.5C273.4 380.3 296.2 384 320 384C390.7 384 453.8 351.3 494.9 300C506 286.2 526.1 284 539.9 295C553.7 306 555.9 326.2 544.9 340C492.2 405.8 411 448 320.1 448C284.7 448 250.7 441.6 219.4 429.9L162.7 527.7C158 535.8 151 542.4 142.6 546.6L87.2 574.3C82.2 576.8 76.3 576.5 71.6 573.6C66.9 570.7 64 565.5 64 560L64 504.6C64 496.2 66.2 487.9 70.5 480.5L130.5 376.8C117.7 365.6 105.9 353.3 95.2 340C84.1 326.2 86.4 306.1 100.2 295C114 283.9 134.1 286.2 145.2 300C150.9 307.1 157 313.8 163.4 320.1zM445.1 471.9C477.6 458.9 507.5 440.9 534 419L569.6 480.5C573.8 487.8 576.1 496.1 576.1 504.6L576.1 560C576.1 565.5 573.2 570.7 568.5 573.6C563.8 576.5 557.9 576.8 552.9 574.3L497.5 546.6C489.1 542.4 482.1 535.8 477.4 527.7L445.1 471.9zM320 192C337.7 192 352 177.7 352 160C352 142.3 337.7 128 320 128C302.3 128 288 142.3 288 160C288 177.7 302.3 192 320 192z"/></svg>';
-    const scaleIconSvgHeader = scaleIconSvg.replace('width="18" height="18"', 'width="28" height="28"');
-    const setScaleContent = (btn) => {
-      const isHeader = btn.id === 'setScale';
-      const esc = escapeHtml;
-      if (scale) {
-        btn.classList.add('scale-set');
-        if (isHeader) btn.classList.remove('scale-unset');
-        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
-        btn.title = scale.temp ? 'Temporary scale, only on this device' : '';
-        if (isHeader) {
-          // D20 (X3): the header twin reads the value too, so the set scale is
-          // legible without opening anything and the button stays a target.
-          // One compact line — the label when there is one ('1/4" = 1 ft'),
-          // else the px readout, which is all an unlabelled scale has.
-          btn.innerHTML = scaleIconSvgHeader.replace('width="28" height="28"', 'width="18" height="18"')
-            + '<span class="set-scale-header-value">' + esc(scale.label || pxLine) + '</span>';
-          btn.title = (scale.temp ? 'Temporary scale, only on this device. ' : '')
-            + 'Scale: ' + (scale.label ? scale.label + ' · ' + pxLine : pxLine) + '. Click to edit';
-        } else if (scale.label) {
-          btn.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
-        } else {
-          btn.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-value">' + esc(pxLine) + '</span></div>';
-        }
-      } else {
-        btn.classList.remove('scale-set');
-        if (isHeader) btn.classList.add('scale-unset');
-        btn.title = '';
-        btn.innerHTML = isHeader ? scaleIconSvgHeader : scaleIconSvg + ' Set Scale';
-      }
-    };
-    setScaleContent(setScaleBtn);
-    if (setScaleSidebarBtn) setScaleContent(setScaleSidebarBtn);
-    const scaleDisplay = document.getElementById('sidebarScaleDisplay');
-    if (scaleDisplay) {
-      if (scale) {
-        const pxLine = '1 ' + scale.unit + ' = ' + scale.pixelsPerUnit.toFixed(1) + ' px' + (scale.temp ? ' · temp' : '');
-        const esc = escapeHtml;
-        if (scale.label) {
-          scaleDisplay.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-label">' + esc(scale.label) + '</span><span class="scale-px">' + esc(pxLine) + '</span></div>';
-        } else {
-          scaleDisplay.innerHTML = '<span class="set-scale-icon">' + scaleIconSvg + '</span><div class="set-scale-display"><span class="scale-px">' + esc(pxLine) + '</span></div>';
-        }
-        scaleDisplay.style.display = 'flex';
-        scaleDisplay.style.flexDirection = 'row';
-        scaleDisplay.style.gap = '8px';
-        scaleDisplay.classList.add('has-scale');
-        scaleDisplay.title = scale.temp ? 'Temporary scale, only on this device' : 'Click to set scale';
-        scaleDisplay.onclick = () => document.getElementById('setScale').click();
-      } else {
-        scaleDisplay.textContent = 'none';
-        scaleDisplay.style.display = '';
-        scaleDisplay.style.flexDirection = '';
-        scaleDisplay.style.gap = '';
-        scaleDisplay.classList.remove('has-scale');
-        scaleDisplay.title = '';
-        scaleDisplay.onclick = null;
-      }
-    }
+    // R14: the Set Scale chrome (header + sidebar buttons, the sidebar readout) is features/scale.js's.
+    App.syncScaleChrome && App.syncScaleChrome();
     const scaleDisplaySection = document.getElementById('sidebarScaleDisplaySection');
     if (scaleDisplaySection) scaleDisplaySection.style.display = state.pages.length ? '' : 'none';
     // B16 / J1: the quiet cold-start hint in the empty black canvas. Hidden
@@ -2720,12 +2632,7 @@
       snapHvHeaderBtn.setAttribute('aria-pressed', !!state.lineTypeSettings.snapToHorizontalVertical);
       snapHvHeaderBtn.style.display = (!state.isViewer && (state.tool === TOOL.LINE || state.tool === TOOL.POLYLINE)) ? '' : 'none';
     }
-    const counterShowOnlyInline = document.getElementById('counterShowOnlyOnPageInlineBtn');
-    const lineTypeShowOnlyInline = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
-    const linesShowOnlyBtn = document.getElementById('linesShowOnlyOnPageBtn');
-    syncSidebarFilterButton(counterShowOnlyInline, getCounterListFilterScope(), 'counters');
-    syncSidebarFilterButton(lineTypeShowOnlyInline, getLineTypeListFilterScope(), 'line types');
-    if (linesShowOnlyBtn) linesShowOnlyBtn.setAttribute('aria-pressed', !!state.lineTypeSettings?.showOnlyLinesOnCurrentPage);
+    App.syncSidebarFilterButtons && App.syncSidebarFilterButtons();   // R14: features/sidebar-lists.js
     const highlightBtnSidebar = document.getElementById('highlightBtnSidebar');
     if (highlightBtnSidebar) highlightBtnSidebar.classList.toggle('active', state.tool === TOOL.HIGHLIGHT);
     const multiplyZoneBtnSidebar = document.getElementById('multiplyZoneBtnSidebar');
@@ -2760,6 +2667,7 @@
     if (gridBtnEl) gridBtnEl.disabled = !state.pages.length;
     if (gridBtnSidebarEl) gridBtnSidebarEl.disabled = !state.pages.length;
     document.getElementById('setScale').classList.toggle('active', state.tool === TOOL.SCALE);
+    const setScaleSidebarBtn = document.getElementById('setScaleSidebar');
     if (setScaleSidebarBtn) setScaleSidebarBtn.classList.toggle('active', state.tool === TOOL.SCALE);
     const measureBtn = document.getElementById('measureBtn');
     const measureBtnSidebar = document.getElementById('measureBtnSidebar');
@@ -2873,86 +2781,8 @@
     }
     const settingsCloseProject = document.getElementById('settingsCloseProject');
     if (settingsCloseProject) settingsCloseProject.style.display = (!state.pages.length && !state.currentProjectId) ? 'none' : '';
-    const editBanner = document.getElementById('headerEditStatusBanner');
-    if (editBanner) {
-      // B6 (J13): anonymous view-link sessions get the same "Viewing only"
-      // banner signed-in viewers see — without it, the recipient has no cue
-      // that this is a window, not a workbench. All the branches above the
-      // final "Viewing only" fallback are session-gated (checkout/save need
-      // a user), so an anonymous viewer always lands on the fallback.
-      const show = SUPABASE_ENABLED
-        && (state.supabaseSession?.user || (state.isViewer && state.loadedViaViewLink))
-        && (state.pages.length > 0 || state.currentProjectId);
-      if (!show) {
-        editBanner.style.display = 'none';
-        editBanner.innerHTML = '';
-        const sb = document.getElementById('sidebarCheckoutBanner');
-        if (sb) { sb.innerHTML = ''; sb.className = 'sidebar-checkout-banner supabase-only'; }
-      } else {
-        editBanner.style.display = '';
-        editBanner.className = 'header-edit-status supabase-only';
-        editBanner.innerHTML = '';
-        if (checkoutExpiredNeedsAttention && !state.isViewer && state.currentProjectId) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'header-edit-status-btn header-edit-status-btn-expired';
-          btn.dataset.action = 'checkout_expired_recover';
-          btn.textContent = '[Edit session expired. Re-check out]';
-          editBanner.appendChild(btn);
-          editBanner.classList.add('edit-status-expired');
-        } else if (!state.isViewer && state.currentProjectId) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'header-edit-status-btn';
-          btn.dataset.action = 'checkin';
-          btn.textContent = '[Turn In]';
-          editBanner.appendChild(btn);
-          editBanner.classList.add('edit-status-editing');
-        } else if (state.pages.length > 0 && !state.currentProjectId && !state.isViewer) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'header-edit-status-btn header-edit-status-btn-save';
-          btn.dataset.action = 'save';
-          const spanDefault = document.createElement('span');
-          spanDefault.className = 'save-btn-label-default';
-          spanDefault.textContent = 'Unsaved';
-          const spanHover = document.createElement('span');
-          spanHover.className = 'save-btn-label-hover';
-          spanHover.textContent = 'Save';
-          btn.appendChild(spanDefault);
-          btn.appendChild(spanHover);
-          editBanner.appendChild(btn);
-          editBanner.classList.add('edit-status-editing');
-        } else if (state.canCheckOut) {
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'header-edit-status-btn';
-          btn.dataset.action = 'checkout';
-          btn.textContent = '[Check out to Edit]';
-          editBanner.appendChild(btn);
-          editBanner.classList.add('edit-status-available');
-        } else if (state.checkedOutEmail) {
-          const span = document.createElement('span');
-          span.textContent = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
-          editBanner.appendChild(span);
-          editBanner.classList.add('edit-status-viewing');
-        } else {
-          const span = document.createElement('span');
-          span.textContent = 'Viewing only';
-          editBanner.appendChild(span);
-          editBanner.classList.add('edit-status-viewing');
-        }
-        // R1-RECLICK: right after a checkout or a turn-in made from this button, it holds a
-        // "done" label for a beat instead of offering the opposite action in the same pixels
-        // (features/turn-in.js). Before the sidebar copy below, so both banners hold alike.
-        if (App.applyEditBannerHold) App.applyEditBannerHold(editBanner);
-        const sidebarBanner = document.getElementById('sidebarCheckoutBanner');
-        if (sidebarBanner) {
-          sidebarBanner.className = 'sidebar-checkout-banner ' + editBanner.className.replace('header-edit-status', '').trim();
-          sidebarBanner.innerHTML = editBanner.innerHTML;
-        }
-      }
-    }
+    // R14: the header/sidebar edit-status banner (features/turn-in.js, beside its click handler).
+    App.renderEditStatusBanner && App.renderEditStatusBanner();
     // The header [Close] (left of the banner): viewing a cloud project this
     // session edited earlier — after a turn-in, typically. Never for a
     // view-link session, never while editing (Turn In is the way out there).
@@ -4236,9 +4066,10 @@
   // bindings + the #gridSettings* / #gridSetOriginOnPage / #gridClearOrigin /
   // spacing-preset / line-style handlers) moved to features/grid.js (window.App
   // registry); reached via App.toggleGridOverlay / the Grid buttons. The
-  // "set origin on page" handoff goes through state.gridOriginPickMode (handled by
-  // the canvas event handler). resetGridOrigin stays here (used by the prepare-PDF
-  // / page-setup flows, not the modal).
+  // "set origin on page" pick is grid.js's too: the canvas click hands the point to
+  // App.commitGridOriginPick while state.gridOriginPickMode is up, and Esc drops it
+  // through App.cancelGridOriginPick. resetGridOrigin stays here (used by the
+  // prepare-PDF / page-setup flows, not the modal).
   function resetGridOrigin() {
     if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
     state.gridSettings.offsetX = 0;
@@ -4460,8 +4291,8 @@
   // + close + reorder + the #lineTypesSectionTitle opener) lives in
   // features/line-type-settings.js (window.App registry); reached via
   // App.openLineTypeSettingsModal at call time. The #lineTypeSnapToHVHeaderBtn,
-  // the sidebar inline show-only buttons, #sidebarReorderFinish, the J-hotkey,
-  // and the Escape-key close branch stay here.
+  // the J-hotkey and the Escape-key close branch stay here; the sidebar inline
+  // show-only buttons and #sidebarReorderFinish are features/sidebar-lists.js's.
   // SECTION: Line color & sidebar handlers
   // The Choose/Create Line Type modal handlers (.line-type-tab clicks,
   // #lineTypeModalSearchInput, #chooseLineTypeCancel, #createLineTypeCancel,
@@ -4483,50 +4314,12 @@
     updateUI();
   };
 
-  document.getElementById('pagesCollapseIcon').onclick = (e) => {
-    e.stopPropagation();
-    state.pagesListCollapsed = !state.pagesListCollapsed;
-    document.getElementById('pagesSection').classList.toggle('collapsed', state.pagesListCollapsed);
-    document.getElementById('pagesCollapseIcon').textContent = state.pagesListCollapsed ? '▶' : '▼';
-  };
-  // The #pagesSectionTitle opener + the pageSettingsTruncate/HideUnmarked toggles
-  // + pageSettingsClose (Page settings modal) moved to features/page-settings.js
-  // (window.App registry); reached via App.openPageSettingsModal at call time.
-  // The #pagesCollapseIcon toggle above and the Escape-key close branch stay here.
-  document.getElementById('countersCollapseIcon').onclick = (e) => {
-    e.stopPropagation();
-    state.countersListCollapsed = !state.countersListCollapsed;
-    document.getElementById('countersSection').classList.toggle('collapsed', state.countersListCollapsed);
-    document.getElementById('countersCollapseIcon').textContent = state.countersListCollapsed ? '▶' : '▼';
-  };
-  const counterSearchInput = document.getElementById('counterSearchInput');
-  if (counterSearchInput) {
-    counterSearchInput.value = state.counterSearch || '';
-    counterSearchInput.oninput = () => {
-      state.counterSearch = counterSearchInput.value;
-      localStorage.setItem('counterSearch', state.counterSearch);
-      App.renderCountersList();
-    };
-  }
-  const lineTypeSearchInput = document.getElementById('lineTypeSearchInput');
-  if (lineTypeSearchInput) {
-    lineTypeSearchInput.value = state.lineTypeSearch || '';
-    lineTypeSearchInput.oninput = () => {
-      state.lineTypeSearch = lineTypeSearchInput.value;
-      localStorage.setItem('lineTypeSearch', state.lineTypeSearch);
-      App.renderLineTypesList();
-      App.renderLinesList();
-    };
-  }
-  const linesSearchInput = document.getElementById('linesSearchInput');
-  if (linesSearchInput) {
-    linesSearchInput.value = state.linesSearch || '';
-    linesSearchInput.oninput = () => {
-      state.linesSearch = linesSearchInput.value;
-      localStorage.setItem('linesSearch', state.linesSearch);
-      App.renderLinesList();
-    };
-  }
+  // R14: the six section collapse toggles (Pages, Counters, Line Types, Summary, Lines,
+  // Groups), the three sidebar search inputs, the inline filter buttons (+ their toast)
+  // and #sidebarReorderFinish live in features/sidebar-lists.js. The #pagesSectionTitle
+  // opener + the Page settings toggles are features/page-settings.js's. The filter-scope
+  // getters/setters and syncFilterScopeSegment below stay here: boot calls the setters
+  // before any feature file loads.
   // Sidebar usage-filter scope ('off' | 'page' | 'project'). The scope field
   // supersedes the legacy page-only booleans; the booleans are kept in sync
   // (true only for 'page') so the settings objects keep their historical shape.
@@ -4548,7 +4341,6 @@
     state.lineTypeSettings.showOnlyLineTypesOnCurrentPage = scope === 'page';
     try { localStorage.setItem('lineTypeSidebarFilterScope', scope); } catch (_) {}
   }
-  const FILTER_SCOPE_CYCLE = { off: 'page', page: 'project', project: 'off' };
   // Reflect a scope onto a settings-modal segmented control (aria-pressed per
   // data-scope button). Shared with the settings feature files via App.*.
   function syncFilterScopeSegment(segmentId, scope) {
@@ -4556,117 +4348,16 @@
     if (!seg) return;
     seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scope === scope)));
   }
-  // The project-scope glyph (stacked sheets) swapped into the inline filter
-  // buttons; 'off'/'page' restore the arrows-inward glyph the markup ships.
-  const FILTER_GLYPH_PROJECT_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="currentColor" d="M3 1.5h8a1 1 0 0 1 1 1V4h-1V2.5H3v9H2v-9a1 1 0 0 1 1-1zm2 3h8a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1zm0 1v8h8v-8H5z"/></svg>';
-  let filterGlyphPageSvg = null; // captured from the markup on first swap
-  function syncSidebarFilterButton(btn, scope, kind) {
-    if (!btn) return;
-    btn.setAttribute('aria-pressed', String(scope !== 'off'));
-    btn.title = scope === 'project' ? ('Showing only ' + kind + ' used in this project (click to show all)')
-      : scope === 'page' ? ('Showing only ' + kind + ' used on this sheet (click for this project)')
-      : ('Show only ' + kind + ' used on this sheet (click again for this project)');
-    if ((btn.dataset.scope || 'off') === scope) return;
-    if (filterGlyphPageSvg === null) filterGlyphPageSvg = btn.innerHTML;
-    btn.innerHTML = scope === 'project' ? FILTER_GLYPH_PROJECT_SVG : filterGlyphPageSvg;
-    btn.dataset.scope = scope;
-  }
-  // Narrate each cycle click of the inline filter buttons with a two-line
-  // toast: "Filter:" / the state just landed on.
-  // The button's meaning is otherwise only discoverable via its title attr
-  // (field feedback 2026-08-13). #airboardToastText is pre-line, so the \n
-  // layout needs no markup; only the hint line is a styled span.
-  const FILTER_TOAST_LINES = {
-    page: 'used on this sheet',
-    project: 'used anywhere in this project',
-    off: 'off, showing all',
-  };
-  // The shared two-line filter toast core: "Filter: <kind>" / the landed state.
-  function showFilterToast(kind, stateLine) {
-    showToast('', 3200);
-    const el = document.getElementById('airboardToastText');
-    if (el) el.textContent = 'Filter: ' + kind + '\n' + stateLine;
-  }
-  function showFilterScopeToast(kind, scope) {
-    const t = FILTER_TOAST_LINES[scope];
-    if (t) showFilterToast(kind, t);
-  }
-  const counterShowOnlyOnPageInlineBtn = document.getElementById('counterShowOnlyOnPageInlineBtn');
-  if (counterShowOnlyOnPageInlineBtn) {
-    counterShowOnlyOnPageInlineBtn.onclick = () => {
-      setCounterListFilterScope(FILTER_SCOPE_CYCLE[getCounterListFilterScope()]);
-      syncFilterScopeSegment('counterShowOnlySegment', getCounterListFilterScope());
-      showFilterScopeToast('counters', getCounterListFilterScope());
-      App.renderCountersList();
-      updateUI();
-    };
-  }
-  const lineTypeShowOnlyOnPageInlineBtn = document.getElementById('lineTypeShowOnlyOnPageInlineBtn');
-  if (lineTypeShowOnlyOnPageInlineBtn) {
-    lineTypeShowOnlyOnPageInlineBtn.onclick = () => {
-      setLineTypeListFilterScope(FILTER_SCOPE_CYCLE[getLineTypeListFilterScope()]);
-      syncFilterScopeSegment('lineTypeShowOnlySegment', getLineTypeListFilterScope());
-      showFilterScopeToast('line types', getLineTypeListFilterScope());
-      App.renderLineTypesList();
-      App.renderLinesList();
-      updateUI();
-    };
-  }
-  const linesShowOnlyOnPageBtn = document.getElementById('linesShowOnlyOnPageBtn');
-  if (linesShowOnlyOnPageBtn) {
-    linesShowOnlyOnPageBtn.onclick = () => {
-      state.lineTypeSettings.showOnlyLinesOnCurrentPage = !state.lineTypeSettings.showOnlyLinesOnCurrentPage;
-      saveDisplaySettings();
-      linesShowOnlyOnPageBtn.setAttribute('aria-pressed', state.lineTypeSettings.showOnlyLinesOnCurrentPage);
-      // Narrate the two-state Lines toggle like the scope cycles do — this
-      // button's meaning was otherwise only in its title attr.
-      if (state.lineTypeSettings.showOnlyLinesOnCurrentPage) showFilterToast('lines', 'on this sheet only');
-      else showFilterToast('lines', 'off, showing every sheet');
-      App.renderLinesList();
-      updateUI();
-    };
-  }
-  document.getElementById('lineTypesCollapseIcon').onclick = (e) => {
-    e.stopPropagation();
-    state.lineTypesListCollapsed = !state.lineTypesListCollapsed;
-    document.getElementById('lineTypesSection').classList.toggle('collapsed', state.lineTypesListCollapsed);
-    document.getElementById('lineTypesCollapseIcon').textContent = state.lineTypesListCollapsed ? '▶' : '▼';
-  };
-  document.getElementById('summaryCollapseIcon').onclick = (e) => {
-    e.stopPropagation();
-    state.summaryListCollapsed = !state.summaryListCollapsed;
-    document.getElementById('summarySection').classList.toggle('collapsed', state.summaryListCollapsed);
-    document.getElementById('summaryCollapseIcon').textContent = state.summaryListCollapsed ? '▶' : '▼';
-  };
-  document.getElementById('linesSectionTitle').onclick = () => {
-    state.linesListCollapsed = !state.linesListCollapsed;
-    document.getElementById('linesSection').classList.toggle('collapsed', state.linesListCollapsed);
-    document.getElementById('linesCollapseIcon').textContent = state.linesListCollapsed ? '▶' : '▼';
-  };
-  document.getElementById('groupsSectionTitle').onclick = () => {
-    state.groupsListCollapsed = !state.groupsListCollapsed;
-    document.getElementById('groupsSection').classList.toggle('collapsed', state.groupsListCollapsed);
-    document.getElementById('groupsCollapseIcon').textContent = state.groupsListCollapsed ? '▶' : '▼';
-  };
-  // The Groups chevron moved out of the h3 (flush right, after "+ Add"), so it
-  // forwards to the title toggle it used to ride along with.
-  document.getElementById('groupsCollapseIcon').onclick = () => document.getElementById('groupsSectionTitle').click();
   // The #summarySectionTitle opener (Summary Legend settings) moved to
-  // features/legend-settings.js; the #summaryCollapseIcon toggle above stays.
+  // features/legend-settings.js.
   // The #countersSectionTitle opener + the counterSettings* value handlers +
   // counterSettingsClose + counterSettingsReorder (Counter settings modal) moved
   // to features/counter-settings.js (window.App registry); reached via
-  // App.openCounterSettingsModal at call time. The #countersCollapseIcon toggle,
-  // the #counterShowOnlyOnPageInlineBtn sidebar button, #sidebarReorderFinish,
-  // and the Escape-key close branch stay here.
+  // App.openCounterSettingsModal at call time.
   // The #lineTypesSectionTitle opener + the lineTypeSettingsReorder handler moved
   // to features/line-type-settings.js (window.App registry).
   // The Page settings toggles (pageSettingsTruncate/HideUnmarked) + pageSettingsClose
   // moved to features/page-settings.js (window.App registry).
-  document.getElementById('sidebarReorderFinish').onclick = () => {
-    state.sidebarReorderModeActive = false;
-    updateUI();
-  };
   // The Counter settings modal (opener + value handlers + close + reorder) moved
   // to features/counter-settings.js (window.App registry).
   // The Zoom Settings modal (showZoomModal + its Close/max/speed handlers) lives
@@ -5730,22 +5421,8 @@
     const t = state.ctxTarget;
     if (!t || t.type !== 'multiplyZone') return;
     document.getElementById('contextMenu').classList.remove('visible');
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    const zone = ann?.multiplyZones?.[t.index];
-    if (!zone) return;
-    state.pendingMultiplyZoneEdit = { zoneIndex: t.index };
-    state.pendingMultiplyZone = null;
-    const mult = zone.multiplier ?? 1;
-    state.pendingMultiplyZoneValue = mult;
-    const inputEl = document.getElementById('multiplyZoneMultiplier');
-    const previewEl = document.getElementById('multiplyZonePreview');
-    const titleEl = document.querySelector('#multiplyZoneModal h2');
-    if (inputEl) inputEl.value = String(mult);
-    if (previewEl) previewEl.textContent = 'Change the multiplier for this zone.';
-    if (titleEl) titleEl.textContent = 'Edit zone multiplier';
-    showModal('multiplyZoneModal');
-    if (App.focusMultiplyZoneInput) App.focusMultiplyZoneInput();
+    // R14: the dialog is features/zone-modals.js's; false when the zone is gone.
+    if (!(App.openMultiplyZoneModal && App.openMultiplyZoneModal({ editIndex: t.index }))) return;
     state.ctxTarget = null;
   };
   document.getElementById('ctxEditScaleZone').onclick = () => {
@@ -5809,35 +5486,6 @@
   };
 
   // SECTION: Canvas Event Handlers
-  // D19 (J19 Friction #3): the context target, when it is a CFM device that no
-  // run currently taps and a run is within reach. Returns
-  // { marker, point, runId } or null. Attachment in this model is DERIVED from
-  // proximity (duct-model attachDuctDevices), never stored, so the rescue moves
-  // the device onto the run rather than minting a link the geometry would
-  // contradict.
-  function strayDeviceAttachTarget() {
-    const t = state.ctxTarget;
-    if (state.isViewer || !t || t.type !== 'marker') return null;
-    if (typeof ductMarkerCfm !== 'function' || typeof ductNearestRunPoint !== 'function' || typeof attachDuctDevices !== 'function') return null;
-    const counter = (state.counters || []).find(c => c.id === t.typeId);
-    if (!counter) return null;
-    const page = state.pages[state.currentPage];
-    const ann = page ? getActiveAnnotations(page) : null;
-    const marker = ann?.counterMarkers?.[t.typeId]?.[t.index];
-    if (!marker) return null;
-    // WATER-PLAN rung 3: a fixture-unit counter is rescued onto the nearest
-    // water run of a side no run yet serves (features/water-runs.js).
-    if (!(ductMarkerCfm(marker, counter) > 0)) {
-      const w = App.waterStrayTarget ? App.waterStrayTarget(marker, counter, ann) : null;
-      return w ? { marker, point: w.point, runId: w.runId, side: w.side } : null;
-    }
-    const runs = ann?.ductRuns || [];
-    if (!runs.length) return null;
-    // Already attached? Then there is nothing to rescue.
-    if (attachDuctDevices([{ x: marker.x, y: marker.y }], runs).attached.length) return null;
-    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs);
-    return near ? { marker, point: near.point, runId: near.runId } : null;
-  }
   function showContextMenu(x, y) {
     const menu = document.getElementById('contextMenu');
     const editBtn = document.getElementById('ctxEdit');
@@ -5896,7 +5544,7 @@
     // device is genuinely unattached AND a run sits close enough to be the
     // obvious intent, so the row never appears as a no-op.
     const ctxAttachBtn = document.getElementById('ctxAttachToRun');
-    if (ctxAttachBtn) ctxAttachBtn.style.display = strayDeviceAttachTarget() ? 'block' : 'none';
+    if (ctxAttachBtn) ctxAttachBtn.style.display = (App.strayDeviceAttachTarget && App.strayDeviceAttachTarget()) ? 'block' : 'none';   // R14: features/duct-suggest.js
     const ctxNameHighlightBtn = document.getElementById('ctxNameHighlight');
     if (ctxNameHighlightBtn) {
       const isHl = !state.isViewer && state.ctxTarget?.type === 'highlight';
@@ -6058,25 +5706,8 @@
     if (pdfOverride) { pdf = pdfOverride; }
     else { const pt = canvasPointFromEvent(e); pdf = canvasToPdf(pt.x, pt.y); }
     state.mousePos = pdf;
-    if (state.gridOriginPickMode) {
-      if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
-      const pageScale = getPageScale(state.currentPage);
-      if (!pageScale) { showToast('Set Scale first'); state.gridOriginPickMode = false; return; }
-      const offsetX = pdf.x / pageScale.pixelsPerUnit;
-      const offsetY = pdf.y / pageScale.pixelsPerUnit;
-      if (!state.gridSettings) state.gridSettings = { spacing: 3, unit: 'ft' };
-      state.gridSettings.offsetX = offsetX;
-      state.gridSettings.offsetY = offsetY;
-      document.getElementById('gridOriginDisplay').style.display = '';
-      document.getElementById('gridSetOriginFormGroup').style.display = 'none';
-      document.getElementById('gridOriginText').textContent = offsetX.toFixed(2) + ', ' + offsetY.toFixed(2) + ' ' + (document.getElementById('gridSpacingUnit')?.value || 'ft');
-      state.gridOriginPickMode = false;
-      showModal('gridSettingsModal');
-      showToast('Origin set. Click Apply to confirm.');
-      renderAnnotations();
-      updateUI();
-      return;
-    }
+    // R14: the grid's "Set origin on page" pick is features/grid.js's (armed there too).
+    if (state.gridOriginPickMode) { App.commitGridOriginPick && App.commitGridOriginPick(pdf); return; }
     if (state.tool === TOOL.SCALE) {
       if (!isPointInPageBounds(pdf)) { showOutOfBoundsToast(); return; }
       const now = Date.now();
@@ -6169,14 +5800,7 @@
           } else {
             const counts = countItemsInRect(canvas.annotations, state.currentPage, x1, y1, x2, y2);
             const lenStr = formatFeet(counts.lengthRealSum, page?.scale);
-            state.pendingMultiplyZone = { x1, y1, x2, y2 };
-            state.pendingMultiplyZoneValue = state.multiplyZoneSettings?.defaultMultiplier ?? 2;
-            const mzTitleEl = document.querySelector('#multiplyZoneModal h2');
-            if (mzTitleEl) mzTitleEl.textContent = 'Multiply Zone';
-            document.getElementById('multiplyZonePreview').textContent = multiplyZonePreviewText(counts, lenStr);
-            document.getElementById('multiplyZoneMultiplier').value = String(state.pendingMultiplyZoneValue);
-            showModal('multiplyZoneModal');
-            if (App.focusMultiplyZoneInput) App.focusMultiplyZoneInput();
+            App.openMultiplyZoneModal && App.openMultiplyZoneModal({ rect: { x1, y1, x2, y2 }, counts, lenStr });   // R14: features/zone-modals.js
           }
         }
         state.multiplyZoneStart = null;
@@ -7281,30 +6905,8 @@
     if (dpm && !e.target.closest('#downloadCurrentPageDropdown')) dpm.classList.remove('visible');
     const edm = document.getElementById('exportDropdownMenu');
     if (edm && !e.target.closest('#exportDropdown')) edm.classList.remove('visible');
-    const srm = document.getElementById('showReportMenu');
-    const srd = document.getElementById('showReportDropdown');
-    if (srm && !e.target.closest('#showReportDropdown') && !e.target.closest('.show-report-menu')) {
-      srm.classList.remove('visible');
-      if (srd && srm.parentElement !== srd) srd.appendChild(srm);
-    }
-    const ptm = document.getElementById('forPipeToolingMenu');
-    const ptd = document.getElementById('forPipeToolingDropdown');
-    if (ptm && !e.target.closest('#forPipeToolingDropdown') && !e.target.closest('.show-report-menu')) {
-      ptm.classList.remove('visible');
-      if (ptd && ptm.parentElement !== ptd) ptd.appendChild(ptm);
-    }
-    const ttm = document.getElementById('forTakeoffToolingMenu');
-    const ttd = document.getElementById('forTakeoffToolingDropdown');
-    if (ttm && !e.target.closest('#forTakeoffToolingDropdown') && !e.target.closest('.show-report-menu')) {
-      ttm.classList.remove('visible');
-      if (ttd && ttm.parentElement !== ttd) ttd.appendChild(ttm);
-    }
-    const csm = document.getElementById('copySummaryTextMenu');
-    const csd = document.getElementById('copySummaryTextDropdown');
-    if (csm && !e.target.closest('#copySummaryTextDropdown') && !e.target.closest('.show-report-menu')) {
-      csm.classList.remove('visible');
-      if (csd && csm.parentElement !== csd) csd.appendChild(csm);
-    }
+    // The four report menus (Show Report, the two tooling copies, Copy Summary) close on a
+    // click away in features/output.js's own listener (R14).
   });
 
   // The closure actions the HOTKEYS table (constants.js) names via `runner` —
@@ -7754,7 +7356,6 @@
   App.getTradeModifiers = getTradeModifiers;
   App.saveTradeModifiers = saveTradeModifiers;
   App.getQuickTrade = getQuickTrade;
-  App.strayDeviceAttachTarget = strayDeviceAttachTarget;   // D19: features/duct-suggest.js binds the context row
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.confirmDialog = confirmDialog;   // B20 (X8): the one confirm — features await it instead of confirm()
   App.resolveConfirm = resolveConfirm; // the confirm's Esc rung (features/esc-ladder.js)

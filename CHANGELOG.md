@@ -13,6 +13,65 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
+
+The decomposition map's R14, all five items. Each was code that lived in app.js while the file
+that owned its data or its dialog sat beside it. Nothing moved changes behavior: every function
+went over verbatim apart from `App.*` reads at call time, and app.js calls it, guarded, at the
+point its block used to run, so updateUIInner does what it did in the same order. No new shell
+file. app.js went from 8,290 lines to 7,891.
+
+**The edit-status banner and the Set Scale chrome.** updateUIInner built the header banner
+(`[Turn In]`, `[Check out to Edit]`, Unsaved / Save, "… is editing", Viewing only, the expired
+re-check-out) inline, eighty lines from the click handler in features/turn-in.js that answers
+those buttons. It is `renderEditStatusBanner()` there now, reading `App.isCheckoutExpiredAttention()`
+for the expired branch and applying the R1-RECLICK hold in the same file. The Set Scale header
+button, the sidebar button and the sidebar readout are features/scale.js's `syncScaleChrome()`.
+The map's skeptic was right that the two sidebar surfaces were not one copy: the button styles an
+unlabelled value `.scale-value` and the readout card `.scale-px`. They draw through one
+`scaleDisplayHtml(scale, pxLine, valueClass)` with that class as its parameter, and the 1.5 KB icon
+is a module-level const instead of a string rebuilt on every render. The old and new functions
+were run side by side over five scales (none, unlabelled, labelled, temporary, labelled and
+temporary) and wrote the same markup, titles, classes and styles.
+
+**The sidebar section controls.** The six collapse toggles were one copy each; they are one
+`bindCollapse(stateKey, sectionId, iconId, triggerId)` in features/sidebar-lists.js, where the
+trigger is the chevron (which stops the click, so the section title's settings dialog stays shut)
+or, for Lines and Groups, the title. The three search inputs, the inline filter buttons with their
+two-line toast, and Done reordering moved with them, and `App.syncSidebarFilterButtons()` draws
+the filter buttons from updateUIInner. The filter-scope getters and setters and
+`syncFilterScopeSegment` stay in app.js, as the skeptic said they must: boot calls the setters
+before any feature file loads.
+
+**The Multiply Zone and grid origin openers.** The X tool's second corner and the context menu's
+Edit zone multiplier set up one dialog in two ways; both call features/zone-modals.js's
+`App.openMultiplyZoneModal`, `{ rect, counts, lenStr }` or `{ editIndex }`, which returns false
+when the edited zone is gone so the menu keeps its target as before. `multiplyZonePreviewText`
+had no other caller and moved with it. The grid's Set origin on page pick is features/grid.js's
+from arming to Apply: the canvas click hands its point to `App.commitGridOriginPick(pdf)` and the
+Esc ladder's rung (features/esc-ladder.js since MAP-ESC) calls `App.cancelGridOriginPick()`.
+grid.spec.js gains the case the map asked for first, green on main before the move: Set origin
+on page, a real click on the plan, Apply, then Esc during a second pick.
+
+**The report menus' click-away.** app.js's document click listener closed and re-parented the
+Show Report, Copy to /Tooling, TakeoffTooling and Copy Summary menus in four near-identical
+blocks. features/output.js has one listener over a four-row table and its own `closeScopeMenu`.
+app.js keeps the context, canvas, export and download menus. The listener now runs after
+app.js's instead of inside it; each menu closes on its own test, so the order does not matter.
+
+**Two duct helpers.** `strayDeviceAttachTarget` (the Attach to nearest run rescue) is
+features/duct-suggest.js's, beside the row it binds, and `ductDeleteSummary` (the Delete Area
+preview's "61' · 438 lb, 2 fittings") is features/duct-sidebar.js's, beside the tally it quotes.
+app.js's context menu and `openDeleteZoneForRect` call them guarded; the tour and the HVAC course
+already read the first through `App.*`.
+
+Pinned before and after by reclick-hold, close-project, view-only, scale-reedit,
+scale-modal-clamp, sidebar-lists, sidebar-usage-filter, lessons, tutorial, zone-modals, grid,
+output, copy-layers, menu-clamp, bid-switcher, duct-b19b, duct-stumbles, esc-ladder, esc-dialogs
+and tool-resets: 210 tests, 208 passed and 2 skipped after the move (turn-in-self-release is
+cloud-gated and skips without dev-auth secrets). On main the same run had 207 passed and one
+tool-resets pixel count off by one under load, which passed alone.
+
 ## refactor(learn): the three courses run on one runner in the lesson kit, and share its helpers (R15, 2026-09-26)
 
 The decomposition map's R15, both items. The plumbing, electrical and HVAC courses each ended in

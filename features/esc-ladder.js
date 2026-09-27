@@ -218,12 +218,7 @@
     const s = App.state;
     // B20: the confirm dialog sits above everything; Esc is its Cancel.
     if (isVisible('confirmModal')) { App.resolveConfirm(false); return; }
-    if (s.gridOriginPickMode) {
-      s.gridOriginPickMode = false;
-      App.showModal('gridSettingsModal');
-      App.updateUI();
-      return;
-    }
+    if (s.gridOriginPickMode) { App.cancelGridOriginPick && App.cancelGridOriginPick(); return; }   // features/grid.js
     const top = topmostOverlay();
     if (top) {
       if (!RUNG_BY_ID.has(top.id)) { dismissOverlay(top); return; }

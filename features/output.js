@@ -329,13 +329,29 @@
 
   // Shared close for the two copy scope menus: hide + re-parent back into the
   // dropdown (mobile body-appends them). Both buttons stopPropagation, so the
-  // app.js document click-away never sees the OTHER menu open — the menus
+  // document click-away below never sees the OTHER menu open — the menus
   // close each other here instead (B3/J11).
   function closeScopeMenu(menu, dropdown) {
     if (!menu) return;
     menu.classList.remove('visible');
     if (dropdown && menu.parentElement !== dropdown) dropdown.appendChild(menu);
   }
+  // R14 (moved from app.js's document click-away, which keeps the context, canvas, export
+  // and download menus): a click outside a report menu's dropdown closes that menu and
+  // re-parents it. A click inside any open .show-report-menu closes none of them.
+  const REPORT_MENUS = [
+    ['showReportMenu', 'showReportDropdown'],
+    ['forPipeToolingMenu', 'forPipeToolingDropdown'],
+    ['forTakeoffToolingMenu', 'forTakeoffToolingDropdown'],
+    ['copySummaryTextMenu', 'copySummaryTextDropdown'],
+  ];
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.show-report-menu')) return;
+    for (const [menuId, dropdownId] of REPORT_MENUS) {
+      if (e.target.closest('#' + dropdownId)) continue;
+      closeScopeMenu(document.getElementById(menuId), document.getElementById(dropdownId));
+    }
+  });
   // B3 (J13): at 1 page / 1 canvas every scope option is the same set — skip
   // the chooser and copy directly, like the Download button already does.
   // D25 (X6 option D): "every sheet" used to copy the ACTIVE layer per page —

@@ -146,6 +146,11 @@
   const proveP101 = () => K().memoProof('plumbing:P101', () => ({ page: K().P101, ends: pts(G.dim318), r: 13, ft: 31.67, tol: 0.4, stated: '31\'-8"' }));
   const proveP601 = () => K().memoProof('plumbing:P601', () => ({ page: K().P601, ends: raw(R.prove), r: 13, ft: 14, tol: 0.4, stated: '14\'-0"' }));
   const proveP401 = () => K().memoProof('plumbing:P401', () => ({ page: K().P401, ends: K().DETAIL.prove, r: 16, ft: 12, tol: 0.4, stated: '12\'-0"' }));
+  // The lavatory's trap arm takes the same proof, so a 4'-0" read off another arm (the floor drain's,
+  // dimensioned 4'-0" under the slab) does not pass. The circles reach the dimension 15 pt under
+  // the pipe; the floor drain's nearest end is 43 pt away (DS-AGENT-NITS, 2026-09-27).
+  const lavArmP601 = () => K().memoProof('plumbing:P601arm', () => ({ page: K().P601, ends: raw(R.lavArm), r: 18, ft: 4, tol: 0.3, stated: '4\'-0"' }));
+  let armEntryMeasure = null;   // the 14'-0" read on Prove it is still the sheet's last measure
   const pick = (tag) => { const t = TAGS[tag]; const have = counter(t[0]); return have && !K().isStanding(have.id) ? have : K().makeCounter(t[1], t[2], t[3]); };   // never adopts the reader's standing counter
   const markMissing = (c, spots, pageIdx) => K().markMissing(c, spots, pageIdx);   // P-101 unless a page is named
   const SPOTS = () => { const k = K(); return {
@@ -387,7 +392,7 @@
           check: () => { const c = counter(RE.fd); return !!(c && (c.childCounts || []).some((ch) => /primer/i.test(ch.name || ''))); },
           action: { label: 'Add Trap primer · 1 per count', run: () => { const c = pick('fd'); if ((c.childCounts || []).some((ch) => /primer/i.test(ch.name || ''))) return; App.pushUndoSnapshot(); c.childCounts = (c.childCounts || []).concat([{ name: 'Trap primer', qty: 1, per: 'count' }]); K().dirty(); } } },
         { id: 'keys', title: 'Put the counters on the number row', kind: 'do',
-          body: 'Ten primers and ten little 1/2" lines now ride the ten marks, and go if a mark goes.\n1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose FD-1. Beside key 2, HS-1.\n3. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
+          body: 'Ten primers now ride the ten marks, and go if a mark goes.\n1. In the status bar at the bottom right, click [[quick keys]].\n2. Beside key 1, choose FD-1. Beside key 2, HS-1.\n3. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
           // engine closed the dialog under a reader who had not reached key 2 (by hand, 2026-09-25)
@@ -395,7 +400,7 @@
           hint: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((x) => x && x.id === c.id); }; if (!bound(RE.fd)) return ''; if (!bound(RE.hs)) return 'Key 1 is FD-1. Now key 2: HS-1'; return K().modalUp('quickKeysModal') ? 'Both keys are set. Close the dialog' : ''; },
           action: { label: 'Bind 1 and 2 for me', run: () => { if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: pick('fd').id }; S().numberKeyBindings[2] = { kind: 'counter', id: pick('hs').id }; K().dirty(); } } },
       ],
-      done: 'Twenty-two fixtures under eight schedule tags, a hydrant the eye skips, and the reasons behind where they sit.\nNext: [[Learn]] → Chapter 3, the water.',
+      done: 'Twenty-two fixtures under seven schedule tags, a hydrant the eye skips, and the reasons behind where they sit.\nNext: [[Learn]] → Chapter 3, the water.',
     },
     // 3 -------------------------------------------------------------------------------------
     {
@@ -475,7 +480,7 @@
           action: { label: 'Note the water closet for me', run: () => K().addNote(K().WCS[0], 'Sewage never enters the interceptor: the restrooms go straight to the sewer', '#e85447') } },
         { id: 'layer', title: 'Waste on its own layer', kind: 'do',
           rules: ['plumb.waste.grease-interceptor'],
-          body: 'A water closet, a lavatory or the mop sink. Every kitchen, dish and bar fixture drains through the 3" grease line to the GI outside, where grease floats, cools and is pumped out; the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste and the code keeps everything else out (IPC 1003.3). The red note says it in nine words.\nA plumber reads water and waste as two drawings. Keep them apart.\n1. In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].\n2. Click [[New empty layer]], name it Waste, and click [[Create]].\nThe up and down arrow keys switch layers; each layer has its own totals.',
+          body: 'A water closet, a lavatory or the mop sink. Every kitchen, dish and bar fixture drains through the 3" grease line to the GI outside, where grease floats, cools and is pumped out; the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste and the code keeps everything else out (IPC 1003.3). The red note says it in seven words.\nA plumber reads water and waste as two drawings. Keep them apart.\n1. In the footer, beside the layer name, click [[Layers]], then [[+ Add layer]].\n2. Click [[New empty layer]], name it Waste, and click [[Create]].\nThe up and down arrow keys switch layers; each layer has its own totals.',
           target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#canvasLayersBtn'], check: onWasteLayer,
           action: { label: 'Add the Waste layer for me', run: addWasteLayer } },
         { id: 'linetypes', title: 'Line types for the waste', kind: 'do',
@@ -532,10 +537,11 @@
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 14\'-0" string at the left, floor to roof.\n3. Click inside circle 2, at the other end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP601().check(), hint: () => proveP601().hint(), zones: () => proveP601().zones(),
           action: { label: 'Measure the 14\'-0" string', run: async () => { const k = K(); k.goPage(k.P601); if (!k.scaleIs(k.P601, 18)) await T().applyScalePreset('1/4" = 1\'', 18); const d = raw(R.prove); k.measure(d[0], d[1]); } } },
-        { id: 'traparm', title: 'How long is the lavatory\'s trap arm?', kind: 'do', cardAt: 'br', page: 3, zones: () => K().guide(raw(R.lavArm), 12, K().measured(K().P601, 4, 0.3)),
+        { id: 'traparm', title: 'How long is the lavatory\'s trap arm?', kind: 'do', cardAt: 'br', page: 3, zones: () => lavArmP601().zones(),
           body: 'The trap arm is the run from a fixture\'s trap to its vent. The lavatory\'s is dimensioned, in the wall at 18" above the floor.\n1. Click [[Measure]] again.\n2. Click both ends of the lavatory\'s trap arm, from the stack to the trap.',
-          target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(K().P601, 4, 0.3),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === K().P601 && T().measuredFeet() != null && Math.abs(T().measuredFeet() - 14) > 0.4 ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Stack to trap, at the lavatory' : ''; },
+          target: ['#measureBtn', '#measureBtnSidebar'], check: () => lavArmP601().check(),
+          onEnter: () => { armEntryMeasure = S().lastMeasure; },
+          hint: () => { const lm = S().lastMeasure; if (!lm || lm === armEntryMeasure || lm.pageIdx !== K().P601) return ''; const h = lavArmP601().hint(); return h && h.code === 'outside-zone' ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + ', but not at the lavatory. Stack to trap, inside circle 1, then inside circle 2' : h; },
           action: { label: 'Measure it for me', run: () => { const k = K(); k.goPage(k.P601); const d = raw(R.lavArm); k.measure(d[0], d[1]); } } },
         { id: 'stack', title: 'Trace the stack', kind: 'do', cardAt: 'br', page: 3, zones: () => traceZones(RE.pvc4, raw(R.stack), K().P601),
           rules: ['plumb.trap.arm-length'],

@@ -208,6 +208,25 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     expect(errors).toEqual([]);
   });
 
+  test('a committed main survives the trace step\'s hint being read (the hint used to pop it)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:main', errors);
+    await openSheets(page);
+    await gotoStep(page, 'trace');
+    // three committed runs at the wrong size, pushed straight in the way a reader's own traces land
+    await page.evaluate(() => {
+      const a = window.App.getActiveAnnotations(window.state.pages[0]);
+      for (let i = 0; i < 3; i++) a.ductRuns.push(window.makeDuctRun({ vertices: [{ x: 900 - i * 10, y: 330 }, { x: 900 - i * 10, y: 280 }], startSize: { kind: 'rect', w: 24, h: 12 }, airside: 'supply' }));
+      window.App.updateUI();
+    });
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).ductRuns.length)).toBe(3);
+    await expect(page.locator('#tourStatus')).toHaveText(/That run went in as/);
+    await page.waitForTimeout(3000);   // the hint is re-read many times in three seconds
+    expect(await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).ductRuns.length)).toBe(3);
+    expect(errors).toEqual([]);
+  });
+
   test('the doors: the empty-canvas link, Project Settings, ?course=hvac; three courses in one menu', async ({ page }) => {
     const errors = [];
     await boot(page, '/app/?course=hvac', errors);
@@ -328,6 +347,54 @@ test.describe('The HVAC course, by hand', () => {
     await page.evaluate(() => { window.state.currentPage = 0; window.App.updateUI(); });   // a sheet change before Next
     await page.waitForTimeout(600);
     expect(await page.evaluate(() => window.App.tutorialStepInfo().done || window.App.tutorialStepId() !== 'depth')).toBe(true);
+    expect(errors).toEqual([]);
+  });
+});
+
+// DS-DINING-ATTACH (journeys/plans/TESTER-DOSSIER-HVAC-2026-09-27.md, A1 and A2).
+test.describe('The HVAC course: the air lands where the plan hangs it', () => {
+  // M-101 plan px → sheet points (the course's K().P): 60 + 0.75·x, 70 + 0.75·y
+  const P = (x, y) => ({ x: 60 + 0.75 * x, y: 70 + 0.75 * y });
+  const hungOn = (page, spot) => page.evaluate((sp) => {
+    const a = window.App.getActiveAnnotations(window.state.pages[0]);
+    const devs = [];
+    window.state.counters.filter((c) => c.cfm > 0).forEach((c) => (a.counterMarkers[c.id] || []).forEach((m) => devs.push({ x: m.x, y: m.y, tag: c.tag, cfm: c.cfm })));
+    const here = devs.filter((d) => Math.hypot(d.x - sp.x, d.y - sp.y) < 1);
+    return window.attachDuctDevices(here, a.ductRuns).attached.map((x) => [x.device.tag, (a.ductRuns.find((r) => r.id === x.runId) || {}).name]);
+  }, spot);
+  const balance = (page, name) => page.evaluate((n) => { const r = window.App.getRoomAirBalance().find((x) => x.name === n); return r ? [Math.round(r.targetCfm), Math.round(r.servedCfm), !!r.under] : null; }, name);
+
+  test('chapter 5: Hang them for me hangs the south-east dining diffuser on the main its flex leaves from, and DINING stays served', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:main', errors);
+    await openSheets(page);
+    for (const s of ['trace', 'kitchen', 'attach']) { await gotoStep(page, s); await page.waitForTimeout(300); await page.evaluate(() => window.App.tutorialDoStep()); await page.waitForTimeout(500); }
+    expect(await hungOn(page, P(520, 282))).toEqual([['SD-1', 'Supply main'], ['SD-1', 'Supply main']]);   // the north-east and the south-east, each up its flex to the main (68 px)
+    expect(await hungOn(page, P(572, 350))).toEqual([]);                                // not across the dining wall onto the kitchen branch, 52 px
+    expect(await balance(page, 'DINING')).toEqual([1200, 1200, false]);                 // the row chapter 3 ticked still reads ✓
+    expect((await ductRow(page, 'duct-rooms-served')).verdict).toBe('ok');
+    expect(await page.evaluate(() => Math.round(window.App.getDuctSystemDesignedCfm(window.state.groups[0].id)))).toBe(2350);   // the fittings card's number
+    expect(errors).toEqual([]);
+  });
+
+  test('chapter 8: Finish the takeoff for me reads RTU-1 at the schedule\'s 2,650 and walks the supply for its Static path', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=hvac:whole', errors);
+    await openSheets(page);
+    expect(await stepId(page)).toBe('lay');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done, null, { timeout: 20000 });
+    const g = await page.evaluate(() => window.state.groups.find((x) => x.equipmentTag === 'RTU-1').id);
+    expect(await page.evaluate((id) => Math.round(window.App.getDuctSystemDesignedCfm(id)), g)).toBe(2650);   // chapter 4: "the schedule already says where it ends: 2,650"
+    const cap = await ductRow(page, 'duct-systems-capacity');
+    expect([cap.verdict, cap.detail]).toEqual(['ok', 'RTU-1 · 2,650 designed / 3,000 capacity ✓']);
+    const path = await page.evaluate((id) => { const p = window.App.getDuctSystemStaticPath(id); const rs = window.App.getActiveAnnotations(window.state.pages[0]).ductRuns; return p && p.path.map((rid) => { const r = rs.find((x) => x.id === rid); return [r.name, r.airside]; }); }, g);
+    expect(path[0]).toEqual(['Supply main', 'supply']);                                 // from RTU-1 down its supply, not the restroom exhaust
+    expect(path.every(([, air]) => air === 'supply')).toBe(true);
+    expect(await hungOn(page, P(596, 506))).toEqual([['SD-1', 'Back rooms']]);         // the dish diffuser on the run the plan draws to it
+    expect(await balance(page, 'DINING')).toEqual([1200, 1200, false]);
     expect(errors).toEqual([]);
   });
 });

@@ -29,6 +29,8 @@
 
 ### P1. The number is the downstream air, not the friction rate and not the sheet
 
+> **Fixed 2026-09-27 (DS-DUCT-DOWNSTREAM):** the suggestion follows the taps; chapter 5's corners now read 1,500 (18"Ø / 20×14), 1,200 and 750 CFM (CHANGELOG.md).
+
 **The claim.** PERSONA-PASS-2026-09-26.md "Tester questions": at the HVAC course main's 20x12 and
 16x10 corners (features/course-hvac.js, `main:trace`), the Duct size box's SUGGESTED row read
 22"Ø / 26×16 from 2,550 CFM, not the printed sizes. Is the sample's sizing, the ductulator's
@@ -569,8 +571,10 @@ equipment schedule prints no OA CFM (R1). Confidence: **medium**.
   away against 68 to the main it hangs from on the plan) and the dish SD-1 onto the kitchen branch
   too. DINING reads "needs 1,200 · served 1,050 ⚠" from chapter 5 through 9, against chapter 3's
   "rows that read ✓".
+  **Fixed (DS-DINING-ATTACH, 2026-09-27):** the run over the diffuser's own room wins; DINING reads ✓.
 - **A2.** Chapter 8 `lay` ("Finish the takeoff for me"): RTU-1 reads 0 designed / 3,000 ✓ and Static
   path walks the restroom exhaust (38 eq ft), with all seven runs on RTU-1.
+  **Fixed (DS-DINING-ATTACH, 2026-09-27):** two runs off one drop are roots; RTU-1 reads 2,650 ✓.
 - **A3.** A new run takes the active group whatever its airside, so exhaust and make-up runs land on
   RTU-1 (4,575 / 3,000 ⚠ after chapter 7). A product call on how a system is assigned (T2 settles the
   trade side).
@@ -582,7 +586,8 @@ equipment schedule prints no OA CFM (R1). Confidence: **medium**.
 - **A5.** Wording from HC-TRADE: `sheet:what` swaps the counts (the legend has four kinds of duct,
   three of grille); `diffusers:rest` and chapter 3's done text promise a ✓ the row never draws;
   `exhaust:makeup` opens with "Spiral round in ten-foot sticks…"; `main:trace` says "the corner" at a
-  straight point (after T3 is settled).
+  straight point (after T3 is settled). **Fixed 2026-09-27 (DS-AGENT-NITS): all but `main:trace`,
+  which still waits on T3.**
 - **A6.** While probing I pushed three branch runs straight into the annotations and clicking Duct
   left one of them; that was a non-standard path (no undo snapshot, no dirty), so it may be nothing,
   but whoever touches A4 should check that arming the tool never drops a committed run.

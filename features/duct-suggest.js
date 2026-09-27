@@ -7,12 +7,12 @@
  * size — one tap applies it through the normal applyDuctSizeStep path.
  * Suggestions NEVER auto-apply (DUCT-PLAN philosophy: inference with override).
  *
- * The number: duct-model's ductDraftRemainingCfm — the system's total device
- * CFM minus what is already served (devices attached to a committed run of the
- * same system, or passed by the trace: attached to the draft polyline strictly
- * behind its tip). Devices are placed counter markers whose counter type
- * carries a `cfm` (unit D6's counter field); attachment/system inheritance is
- * the documented pure rule in duct-model.js (nearest-run-within-DUCT_TAP_SNAP_PDF,
+ * The number: duct-model's ductDraftRemainingCfm — the system's device CFM
+ * still ahead of the tip, by the tap each device's air leaves the draft at
+ * (DS-DUCT-DOWNSTREAM: its point on the draft, its branch's tap, or its foot on
+ * the draft for a stray; the full rule is that function's comment). Devices
+ * are placed counter markers whose counter type carries a `cfm` (unit D6's
+ * counter field); attachment/system inheritance is the documented pure rule in duct-model.js (nearest-run-within-DUCT_TAP_SNAP_PDF,
  * marker-group fallback). Devices are read from the page's MERGED annotations
  * (diffusers often live on their own layer); runs from the ACTIVE canvas (the
  * duct-sidebar/schedule convention). The draft's placed vertices only — the
@@ -362,7 +362,11 @@
     if (!runs.length) return null;
     // Already attached? Then there is nothing to rescue.
     if (attachDuctDevices([{ x: marker.x, y: marker.y }], runs).attached.length) return null;
-    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs);
+    // DS-DINING-ATTACH: the page's room boxes (every layer, as the Rooms totals read
+    // them) are the walls: a diffuser hangs from the run over its own room before a
+    // nearer one behind a wall (the room rule in duct-model ductNearestRunPoint).
+    const rooms = (App.getPageCanvases ? App.getPageCanvases(page) : []).flatMap((c) => c?.annotations?.roomBoxes || []);
+    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs, { rooms });
     return near ? { marker, point: near.point, runId: near.runId } : null;
   }
   // D19 (J19 Friction #3): the stray-device rescue. Attachment is derived from

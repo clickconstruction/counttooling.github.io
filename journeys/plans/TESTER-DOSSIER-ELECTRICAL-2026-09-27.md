@@ -640,12 +640,14 @@ signing one is a judgment on its words.
 ## Not trade: for an agent
 
 - T6: `sheet:panel` and `circuits:homerun` describe the arrows wrongly; reword (the arrows are
-  drafting, not trade).
+  drafting, not trade). **Fixed 2026-09-27 (DS-AGENT-NITS): the cards read the arrows by their tags.**
 - T7: `sheet:prove` no longer says "the same string"; strike the line from ELECTRICAL-COURSE.md.
-- `devices:gfci` says "twenty receptacles"; it is 21 either way T2 is decided.
+  **Fixed 2026-09-27 (DS-AGENT-NITS): struck.**
+- `devices:gfci` says "twenty receptacles"; it is 21 either way T2 is decided. **Fixed 2026-09-27
+  (DS-AGENT-NITS): twenty-one.**
 - Whatever T2 and T4 decide, the reference moves with them: `COUNTS` and `RUNS` in
   features/course-electrical.js, the compare card's "sixty-nine marks", the spec's pinned counts
   (course-electrical.spec.js), and a sheet change means `npm run build:sample-electrical` with the
   lesson coordinates checked in the same commit.
 - The Bid Check fill row prints the feeder as "4 3/0 THHN" beside "1 #6"; cosmetic, the "#" is
-  missing on 3/0 only.
+  missing on 3/0 only. **Fixed 2026-09-27 (DS-AGENT-NITS): `formatConductorSpec` writes "#3/0".**

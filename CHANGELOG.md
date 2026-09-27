@@ -13,6 +13,143 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): the HVAC course's trace hint no longer deletes the reader's committed main (2026-09-27)
+
+Found by the DS-DUCT-DOWNSTREAM agent while proving the Duct tool never drops a run: chapter 5's
+`trace` step read the last committed run to name its sizes with `ductRuns(M101).pop()`, and
+`ductRuns` returns the live annotations array, so every read of the hint deleted the reader's last
+run. A main committed at the wrong sizes vanished as soon as the hint that describes it showed;
+three pushed runs were gone within three seconds. The hint reads the last entry now and touches
+nothing. Pinned by course-hvac.spec.js: three committed runs at the trace step survive the hint
+being read for three seconds; red on the old line (two of three left).
+
+## fix(duct): the size suggestion reads the air that really passes a vertex (DS-DUCT-DOWNSTREAM, 2026-09-27)
+
+The Duct size box's SUGGESTED row sizes the air still downstream of the trace's tip
+(duct-model.js `ductDraftRemainingCfm`, read by features/duct-suggest.js
+`getDuctDraftSuggestion`). It counted every device on no run as downstream, wherever it sat, and
+every device on a committed run of the system as served, wherever that run tapped. The HVAC
+course traces its main in chapter 5 before it hangs the diffusers, so every corner of the main
+read the whole building less the one diffuser on the line: 22"Ø or 26×16 from 2,550 CFM, where
+the sheet prints 20x12 (TESTER-DOSSIER-HVAC-2026-09-27.md P1 and A4). Traced the other way, the
+branches first, the 20x12 change read 1,200 where 1,500 flows, because the bar branch that taps
+the main further on counted as served.
+
+The rule now follows the taps. Each device's air leaves the draft at one point, and it is still
+to come when that point is at or past the tip:
+
+- a device on the draft: its own point (one at the tip is still ahead, as before);
+- a device on a branch that taps the draft, or on anything tapped off that branch: the branch's
+  tap, so a branch traced before its main counts until the main passes it;
+- a device on the network the draft taps off: served another way, as before;
+- a stray, or a branch not connected to anything yet: its foot on the draft, the nearest point
+  that is not behind the draft's first vertex (the new `ductDraftFoot`). A stray nearer a
+  committed run than the draft belongs to that run. One behind the start stays ahead.
+
+A draft of one vertex has no direction yet, so everything unplaced is ahead of it, and the
+friction rate and velocity cap (0.08" per 100 ft, 1,200 fpm) are unchanged.
+
+Chapter 5's main, before and after: the RTU drop and the hall corner 2,650 both times; the 20x12
+change 2,550 then 1,500 (18"Ø or 20×14, the dossier's true air); the 16x10 2,550 then 1,200
+(16"Ø or 16×14); the 12x10 2,550 then 750 (14"Ø or 14×12, the same size as the plan's 900: the
+bar diffuser at x=330 hangs from its perpendicular until the bar branch at 260 is traced); the
+far end, no suggestion. With the branches traced first and the diffusers hung, the 20x12 reads
+1,500 and the 16x10 1,200, and `ductDownstreamCfm` agrees on the committed main.
+
+A6, arming Duct never drops a committed run: pinned by a new duct-suggest.spec.js case (three
+runs pushed in with no undo snapshot survive the dialog and a re-press). The run the dossier saw
+vanish was not the tool: chapter 5's `trace` step hint in features/course-hvac.js reads
+`ductRuns(M101).pop()`, which removes the last run from the live annotations each time the hint
+is read with no draft and no finished main. Left for the course's owner, outside this change.
+
+Tests: duct-model.test.js pins the M-101 numbers in both orders and a branch drafted off the
+committed main; duct-suggest.spec.js traces chapter 5's main on the real sheet and reads the
+SUGGESTED row (red before: 22"Ø or 26×16 from 2,550).
+
+## fix(duct): a diffuser attaches to the run its flex leaves from, and the HVAC course's finished takeoff reads finished (DS-DINING-ATTACH, 2026-09-27)
+
+The HVAC dossier's A1 and A2 (journeys/plans/TESTER-DOSSIER-HVAC-2026-09-27.md, "Not trade: for
+an agent"). From chapter 5 on, DINING read "needs 1,200 · served 1,050 ⚠" against chapter 3's
+promised ✓, and after chapter 8's Finish the takeoff for me RTU-1 read 0 designed of 3,000 with
+its Static path on the restroom exhaust.
+
+- **The attach, the room rule** (duct-model.js `ductNearestRunPoint`, fed by features/duct-suggest.js
+  `strayDeviceAttachTarget`, which the right-click Attach to nearest run, the tour and the course's
+  attach seam all read). Distance alone moved the south-east dining SD-1 at plan (520,350) onto
+  the kitchen branch 52 px away, across the dining room's east wall and out of its box, where the
+  flex on the plan runs 68 px straight to the main. A flex drop goes up to the duct over the room
+  the diffuser sits in, never through a wall, and the Room Sizer's boxes are the walls the app
+  knows. So a point on a run that keeps the device in its own room (a box of the same room; for a
+  device in no room, no box) now wins over a nearer one that does not, including the part of a run
+  that crosses the room when its nearest point lies past the wall. With no such run in reach the
+  nearest point overall still wins, so the rescue never goes quiet; with no rooms drawn nothing
+  changes. Airside and system could not decide it (both runs are RTU-1 supply), and a tighter
+  search could not either (both are inside the 6'-0" flex). DINING now reads 1,200 ✓ from chapter
+  5 through 9; RTU-1 still reads 2,350 in chapter 5.
+- **Two runs leaving one point are both roots** (duct-model.js `ductTapParentOf`, the one tap rule
+  `ductChildLinks` and `inferAutoDuctFittings` now share). On M-101 the main goes north from the
+  RTU-1 drop and the back-rooms run south from it; each first vertex lies on the other run, so
+  each was the other's child, RTU-1 had no root run, its designed air read 0 and its Static path
+  fell to the only roots on it, the exhaust runs. A candidate parent whose own first vertex sits
+  within the tap snap of the child's is now a sibling, and neither gets a tap fitting there. A
+  hand-traced chapter 8 hit the same.
+- **Finish the takeoff for me** (features/course-hvac.js `layEverything`): lays every run but the
+  bar, attaches, then the bar and attaches again, so each device sits on the run the plan draws to
+  it (the dish and storage diffusers on the back rooms, MA-1 on the make-up run, the EG-1 grilles
+  on the restroom exhaust; before, an attach ran after the main and kitchen branch and pulled them
+  all onto those). The make-up air and both exhausts go on no system, and the make-up run is laid
+  from its register to MAU-1 (the back-rooms run passes over MAU-1's drop on the sheet, so traced
+  from the drop it tapped RTU-1's back rooms). The finished takeoff reads RTU-1 · 2,650 designed /
+  3,000 capacity ✓, three rooms served, and a Static path from RTU-1 down the supply main.
+- **Left alone**: how the app gives a NEW run its system (A3): a hand-traced exhaust or make-up run
+  still takes the active group, so chapter 7 still reads 4,575 on RTU-1 (the dossier's T2, a
+  product call for the tester).
+- **Tests**: duct-model.test.js (the room rule, the in-room part of a run, the no-room case, the
+  fallback; two runs off one point as roots with no tap, the designed air and a static path);
+  course-hvac.spec.js (chapter 5's attach hangs both east dining diffusers on the main and DINING
+  reads ✓; chapter 8's Finish reads 2,650 and walks the supply main, the dish diffuser on the back
+  rooms).
+
+## fix(learn): the wording, counts and one loose check the tester dossiers found beside the trade questions (DS-AGENT-NITS, 2026-09-27)
+
+The four tester dossiers (journeys/plans/TESTER-DOSSIER-*-2026-09-27.md) each ended with a "Not
+trade: for an agent" list: things wrong on a card or in a plan that need no one with the trade to
+say which side is right. This does those, one entry per dossier; the items that follow a tester's
+ruling stay in the lists with that note.
+
+- **Plumbing course.** `riser:traparm` passed on ANY 4 ft reading on P-601, so the floor drain's
+  2" arm, dimensioned 4'-0" under the slab, passed too. The step now takes the kit's measure proof
+  (the same one the Prove it steps use): a circle at each end of the lavatory's arm, r 18 so the
+  dimension 15 pt under the pipe counts, and the reading only counts with a click in each; a
+  4'-0" read anywhere else says "but not at the lavatory". The 14'-0" left standing from Prove it
+  draws no hint on entry (the HVAC `depth` step's pattern). New spec case in
+  course-plumbing.spec.js, red on the old check. Words: `fixtures:keys` no longer promises "ten
+  little 1/2" lines" (only the primer row is added), `waste:layer` counts the red note's words as
+  seven, and chapter 2's done text has the 22 fixtures under seven schedule tags (U-1 is not on
+  P-101).
+- **The plumbing tour.** The `wsfu` card says the 2 typed is hot and cold together and the cold
+  pipe carries 1.5 of it per lavatory; the `size` card says the water card reads 4.5 WSFU, not 6,
+  for the three lavatories. Checked against the live card ("1″ holds · 4.5 WSFU downstream ·
+  4.8 fps ✓ · 3/4″ would do"). It answers PT-TRADE's question before it is asked.
+- **WATER-PLAN.md §7.** The worked example read 4.5 WSFU as about 4 gpm and a public flush-tank
+  water closet as 2.5 WSFU; the tables (water-model.js, water-model.test.js) say 8.7 gpm and 5.
+  Every number after them is recomputed from the model: 3/4″ cold at 7.9 fps, 1″ hot at 4.8,
+  19.5 WSFU and 1-1/4″ once the closets join. Documentation only.
+- **Electrical course.** `sheet:panel` and `circuits:homerun` described the homerun arrows by
+  their aim, which is drafting: the arrows are sideways stubs, and LP-1-9's points away from the
+  panel. The cards now read them by their tags (every tag names LP-1; the LP-1-1 arrow sits beside
+  the west wall's receptacles and does not show the path). `devices:gfci` counts twenty-one
+  receptacles. ELECTRICAL-COURSE.md drops the "same string" finding (T7: the card no longer says
+  it). **The Bid Check fill row** printed the feeder "4 3/0 THHN + 1 #6 THHN G":
+  `formatConductorSpec` (conductor-model.js) now writes an aught size with its #, "4 #3/0 THHN",
+  while the stored gauge stays bare ('3/0', the key the fill and voltage-drop tables read); the
+  spec still round-trips through the parser. Pinned in conductor-model.test.js.
+- **HVAC course.** `sheet:what` has the legend's counts the right way round (four kinds of duct,
+  three of grille); `diffusers:rest` and chapter 3's done text no longer promise a ✓ the Rooms row
+  never draws (it reads "needs 1,200 · served 1,200" and the ⚠ goes); `exhaust:makeup` opens with
+  what the sheet shows, MAU-1 dropping in at the east wall and a 20x16 duct to MA-1, not the
+  restroom step's leftover spiral line. `main:trace`'s "the corner" waits on T3.
+
 ## feat(save): a lean permissions read, behind a fallback until its RPC is applied (MAP-PERMS, 2026-09-27)
 
 `refreshProjectPermissions` (save-engine.js) runs on every checkout-channel UPDATE, subscribe,

@@ -448,16 +448,20 @@ jurisdiction amends one.
 Wording and app issues found on the way. None needs the trade.
 
 - `riser:traparm`'s check (`K().measured(K().P601, 4, 0.3)`) passes on any 4 ft reading on P-601,
-  so the FD's 4'-0" arm passes too (already in PLUMBING-COURSE.md's list).
+  so the FD's 4'-0" arm passes too (already in PLUMBING-COURSE.md's list). **Fixed 2026-09-27
+  (DS-AGENT-NITS): the reading counts only with a click at each end of the lavatory's arm.**
 - `fixtures:keys` says ten primers "and ten little 1/2" lines" ride the marks; only the primer row
   was added. `waste:layer` says the red note is nine words; it is seven (both already listed).
+  **Fixed 2026-09-27 (DS-AGENT-NITS).**
 - Chapter 2's `done`: "Twenty-two fixtures under eight schedule tags". The 22 are under seven tags;
-  U-1 has none on P-101.
+  U-1 has none on P-101. **Fixed 2026-09-27 (DS-AGENT-NITS).**
 - WATER-PLAN.md §7's worked example reads 4.5 WSFU as about 4 gpm; the table and the app
   (water-model.test.js) say 8.7, so the example's velocities are off. Documentation only.
+  **Fixed 2026-09-27 (DS-AGENT-NITS): recomputed from the model.**
 - The tour's `wsfu` and `size` cards: the reader types 2 per lavatory and the sizing reads 1.5 cold
   each. One line saying so would pre-empt PT-TRADE-2's question. (What the water card displays as
-  the fixture units still to serve was not checked live.)
+  the fixture units still to serve was not checked live.) **Fixed 2026-09-27 (DS-AGENT-NITS):
+  checked live, the card reads 4.5 WSFU downstream for the three lavatories; both cards say why.**
 - After the tester rules, these follow the ruling: the rulebook drafts plumb.hanger.steel (becomes a
   fuel gas rule), plumb.drain.slope (the interceptor exception), plumb.drain.cleanouts (708.1.4's
   first change), plumb.waste.grease-interceptor (1003.2) and plumb.water.velocity (the UPC and the

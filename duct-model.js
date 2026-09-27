@@ -820,15 +820,11 @@ function inferAutoDuctFittings(runs, opts) {
       out.push({ runId: run.id, vertexIdx: run.segments[i].startVertexIdx, origin: 'step', type: 'transition', size: size, auto: true });
     }
   });
-  // taps: child's first vertex on a parent's polyline → tap ON THE PARENT.
+  // taps: child's first vertex on a parent's polyline → tap ON THE PARENT
+  // (ductTapParentOf: the one rule, shared with ductChildLinks' network).
   list.forEach(child => {
     const start = child.vertices[0];
-    let parent = null, best = Infinity;
-    list.forEach(other => {
-      if (other === child || other.id === child.id) return;
-      const d = ductDistToPolyline(start, other.vertices);
-      if (d <= tapSnap && d < best) { best = d; parent = other; }
-    });
+    const parent = ductTapParentOf(child, list, tapSnap)?.parent;
     if (!parent) return;
     out.push({
       runId: parent.id, position: { x: start.x, y: start.y }, origin: 'tap',
@@ -1154,20 +1150,68 @@ function ductDeviceLeaders(devices, runs, opts) {
  * is close enough to be the obvious intent. searchDist is deliberately wider
  * than the tap snap (the device is by definition outside that) but bounded, so
  * a click never teleports a diffuser across the sheet.
+ *
+ * DS-DINING-ATTACH, THE ROOM RULE: a diffuser hangs from the duct over its own
+ * room. A flex drop runs from the diffuser up to the duct above the ceiling it
+ * sits in, never through a wall to the duct over the next room (M-101 draws
+ * every dining flex straight to the main, 68 off; the kitchen branch 52 off is
+ * behind the dining room's east wall). Distance alone moved that diffuser onto
+ * the kitchen branch, out of the dining room's box, and DINING lost its 150.
+ * So with opts.rooms (the page's room boxes, [{ x1, y1, x2, y2, roomId? }],
+ * the Room Sizer's walls) a point on a run that keeps the device in its room
+ * (inside a box of the same room; for a device in no room, inside no box) wins
+ * over a nearer one that does not, and the nearest point overall is the
+ * fallback only when no run within reach keeps it there (the rescue never goes
+ * quiet because of a wall). Airside and system do not decide it: both runs
+ * are the same supply on the same unit. Without rooms: distance alone.
  */
 const DUCT_ATTACH_SEARCH_PDF = 96;
 function ductNearestRunPoint(device, runs, opts) {
   const search = opts?.searchDist > 0 ? opts.searchDist : DUCT_ATTACH_SEARCH_PDF;
   const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
   if (!device || !Number.isFinite(device.x) || !Number.isFinite(device.y)) return null;
-  let best = null;
+  const boxes = (opts?.rooms || []).filter(b => b && [b.x1, b.y1, b.x2, b.y2].every(Number.isFinite));
+  const roomKey = (b) => (b.roomId != null ? 'r:' + b.roomId : b);
+  const roomsAt = (p) => boxes.filter(b => pointInRoomBox(p, b)).map(roomKey);
+  const home = roomsAt(device);
+  const keepsRoom = (p) => { const at = roomsAt(p); return home.length ? at.some(k => home.includes(k)) : !at.length; };
+  const deviceBoxes = boxes.filter(b => pointInRoomBox(device, b));
+  let best = null, bestHome = null;
+  const consider = (run, hit) => {
+    if (!hit || !hit.point || !(hit.dist <= search)) return;
+    const cand = { runId: run.id, point: hit.point, dist: hit.dist };
+    if (!best || cand.dist < best.dist) best = cand;
+    if (boxes.length && keepsRoom(cand.point) && (!bestHome || cand.dist < bestHome.dist)) bestHome = cand;
+  };
   list.forEach(run => {
-    const hit = ductNearestOnPolyline(device, run.vertices);
-    if (hit.point && hit.dist <= search && (!best || hit.dist < best.dist)) {
-      best = { runId: run.id, point: hit.point, dist: hit.dist };
-    }
+    consider(run, ductNearestOnPolyline(device, run.vertices));
+    // the run's nearest point can sit past the wall while the run also crosses
+    // the device's room: its nearest point inside that room is a candidate too
+    deviceBoxes.forEach(b => {
+      for (let i = 0; i < run.vertices.length - 1; i++) {
+        const seg = ductClipSegmentToBox(run.vertices[i], run.vertices[i + 1], b);
+        if (seg) consider(run, ductNearestOnPolyline(device, seg));
+      }
+    });
   });
-  return best;
+  return bestHome || best;
+}
+
+// The part of segment a→b inside an axis-aligned box (Liang-Barsky), as a
+// two-vertex list, or null when the segment misses the box.
+function ductClipSegmentToBox(a, b, box) {
+  const xMin = Math.min(box.x1, box.x2), xMax = Math.max(box.x1, box.x2);
+  const yMin = Math.min(box.y1, box.y2), yMax = Math.max(box.y1, box.y2);
+  const dx = b.x - a.x, dy = b.y - a.y;
+  let t0 = 0, t1 = 1;
+  const edges = [[-dx, a.x - xMin], [dx, xMax - a.x], [-dy, a.y - yMin], [dy, yMax - a.y]];
+  for (const [p, q] of edges) {
+    if (p === 0) { if (q < 0) return null; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  const at = (t) => ({ x: Math.min(xMax, Math.max(xMin, a.x + t * dx)), y: Math.min(yMax, Math.max(yMin, a.y + t * dy)) });   // clamped: an edge point stays in the box
+  return [at(t0), at(t1)];
 }
 
 /**
@@ -1181,16 +1225,37 @@ function ductChildLinks(runs, opts) {
   const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
   const out = [];
   list.forEach(child => {
-    const start = child.vertices[0];
-    let best = null;
-    list.forEach(parent => {
-      if (parent === child || parent.id === child.id) return;
-      const hit = ductNearestOnPolyline(start, parent.vertices);
-      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { childId: child.id, parentId: parent.id, s: hit.s, dist: hit.dist };
-    });
-    if (best) out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
+    const best = ductTapParentOf(child, list, snap);
+    if (best) out.push({ childId: child.id, parentId: best.parent.id, s: best.s });
   });
   return out;
+}
+
+/**
+ * The tap rule for one run (D3), shared by the fittings walk and the network:
+ * the nearest run within snap of `child`'s FIRST vertex is its parent —
+ * { parent, s, dist } (s = arclength along the parent), or null for a root.
+ *
+ * DS-DINING-ATTACH: two runs that LEAVE ONE POINT are both roots. On M-101 the
+ * main goes north from the RTU-1 drop and the back-rooms run goes south from
+ * the same drop; each first vertex lies on the other run, so the bare rule made
+ * each the other's child, the system had no root, and RTU-1 read 0 designed
+ * with its Static path on an exhaust run. Two trunks off one unit (or one
+ * plenum) are siblings, so a candidate parent whose own first vertex sits
+ * within snap of the child's is skipped, and so is neither run's tap fitting.
+ */
+function ductTapParentOf(child, list, snap) {
+  const start = child?.vertices?.[0];
+  if (!start) return null;
+  let best = null;
+  (list || []).forEach(parent => {
+    if (!parent || parent === child || parent.id === child.id || (parent.vertices?.length || 0) < 2) return;
+    const p0 = parent.vertices[0];
+    if (Math.hypot(p0.x - start.x, p0.y - start.y) <= snap) return;   // siblings off one point
+    const hit = ductNearestOnPolyline(start, parent.vertices);
+    if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { parent: parent, s: hit.s, dist: hit.dist };
+  });
+  return best;
 }
 
 /**
@@ -1273,19 +1338,61 @@ function ductDownstreamCfm(opts) {
 }
 
 /**
+ * Where a point meets the IN-PROGRESS draft (DS-DUCT-DOWNSTREAM): the arclength s of
+ * the nearest point on the drafted polyline, with its distance, NOT counting the
+ * stretch before vertex 0. A point that lies behind the draft's start (its nearest
+ * point on the first leg would clamp to vertex 0) has no foot there: the trace has not
+ * gone its way yet. Returns { s, dist } or null (no foot anywhere, or < 2 vertices).
+ */
+function ductDraftFoot(p, verts) {
+  let best = null;
+  let acc = 0;
+  for (let i = 0; i < (verts?.length || 0) - 1; i++) {
+    const a = verts[i], b = verts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const segLen = Math.sqrt(len2);
+    const raw = len2 > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2 : 0;
+    if (!(i === 0 && raw < 0)) {
+      const t = Math.max(0, Math.min(1, raw));
+      const d = Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+      if (!best || d < best.dist) best = { s: acc + t * segLen, dist: d };
+    }
+    acc += segLen;
+  }
+  return best;
+}
+
+/**
  * Remaining downstream CFM for an IN-PROGRESS trace (the live suggestion's
  * number — DUCT-PLAN "every tap subtracts its air … the remaining downstream
- * CFM"). The draft is assumed to be heading toward everything its system has
- * not served yet:
+ * CFM"): the air of the system's devices still AHEAD of the draft's tip.
  *
- *   remaining = Σ cfm of the system's devices
- *             − Σ cfm of devices already SERVED (attached to a committed run
- *               of the same system, or passed by the draft — attached to the
- *               draft polyline strictly BEHIND its tip).
+ *   remaining = Σ cfm of the system's devices − Σ cfm of the ones behind the tip
  *
- * A device the tip has just reached (its nearest point IS the tip) is still
- * downstream — the segment being sized carries its air; it flips to served
- * once the trace moves past it.
+ * DS-DUCT-DOWNSTREAM (2026-09-27, TESTER-DOSSIER-HVAC P1): the rule follows the
+ * tap topology. Every device's air leaves the draft at ONE arclength, its tap, and
+ * is ahead when that tap is at or past the tip, behind when strictly before it.
+ * Where the tap is:
+ *   - a device ON the draft (within the tap snap): its own nearest point. A device
+ *     the tip has just reached is still ahead (the segment being sized carries it);
+ *     it flips once the trace moves past it.
+ *   - a device on a committed run that taps the draft (the run's first vertex within
+ *     the snap of the draft, ductChildLinks' rule), or on anything tapped off that
+ *     run: that run's tap on the draft. A branch traced before its main is still to
+ *     come while its tap is ahead of the tip.
+ *   - a device on the rest of the draft's own network (the run the draft taps off,
+ *     and that run's other branches): served some other way than through the draft.
+ *   - a device on a committed network the draft touches nowhere (a branch waiting
+ *     for its main): where that network's root meets the draft (its end nearer the
+ *     draft, by ductDraftFoot).
+ *   - a stray (on no run): it belongs to its nearest same-system run, which is the
+ *     draft when the draft's foot for it is nearer than every committed run. On the
+ *     draft its tap is that foot, the perpendicular it would hang from; a stray with
+ *     no foot (behind the draft's start) is ahead.
+ * A draft of one vertex has no direction yet: every stray, and every run tapped at
+ * that vertex, is ahead of it. A draft of no vertex keeps the flat rule (committed
+ * runs serve their devices, strays are ahead).
  *
  * System scope: a device is IN scope when its derived system (attachment
  * against committed runs + the draft, else its own groupId) matches the
@@ -1295,41 +1402,118 @@ function ductDownstreamCfm(opts) {
  *
  * opts: { runs (committed), draft ({ vertices, segments?, systemGroupId? }),
  *         devices, snapDist? }
- * Returns { cfm, totalCfm, servedCfm } or null when no in-scope device has
- * CFM (the clean-absence rule — no data, no suggestion).
+ * Returns { cfm, totalCfm, servedCfm } (servedCfm = the in-scope air behind the
+ * tip) or null when no in-scope device has CFM (the clean-absence rule — no data,
+ * no suggestion).
  */
 function ductDraftRemainingCfm(opts) {
   const o = opts || {};
   const draft = o.draft;
   if (!draft) return null;
   const EPS = 1e-6;
-  const draftRun = { id: '__draft__', systemGroupId: draft.systemGroupId || null, vertices: draft.vertices || [], segments: draft.segments || [] };
+  const DRAFT = '__draft__';
+  const verts = draft.vertices || [];
+  const draftRun = { id: DRAFT, systemGroupId: draft.systemGroupId || null, vertices: verts, segments: draft.segments || [] };
   const committed = (o.runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
-  const all = draftRun.vertices.length >= 2 ? committed.concat([draftRun]) : committed;
+  const all = verts.length >= 2 ? committed.concat([draftRun]) : committed;
   const devices = (o.devices || []).filter(d => d && d.cfm > 0);
   const { attached, unattached } = attachDuctDevices(devices, all, o);
   const sys = draftRun.systemGroupId;
   const runById = new Map(all.map(r => [r.id, r]));
-  const tipLen = ductPolylineLength(draftRun.vertices);
-  let totalCfm = 0, servedCfm = 0;
+  const tipLen = ductPolylineLength(verts);
+  const ahead = (s) => s == null || s >= tipLen - EPS;
+
+  // Each committed run's place against the draft: 'served', or { s }, its air's tap.
+  // The network is found with the draft in it (a one-vertex draft as a zero-length
+  // run, so a branch started on a committed run already knows its parent).
+  const place = new Map();
+  if (verts.length) {
+    const netDraft = verts.length >= 2 ? draftRun : { id: DRAFT, vertices: [verts[0], verts[0]] };
+    const links = ductChildLinks(committed.concat([netDraft]), o);
+    const parentOf = new Map(links.map(l => [l.childId, l]));
+    const childrenOf = new Map();
+    const adj = new Map();
+    const join = (a, b) => { if (!adj.has(a)) adj.set(a, []); adj.get(a).push(b); };
+    links.forEach(l => {
+      if (!childrenOf.has(l.parentId)) childrenOf.set(l.parentId, []);
+      childrenOf.get(l.parentId).push(l);
+      join(l.parentId, l.childId);
+      join(l.childId, l.parentId);
+    });
+    // The draft's parents (the run it taps off, and up): never its own branches, even
+    // when two runs start at one point and each snaps to the other.
+    const upstream = new Set();
+    for (let l = parentOf.get(DRAFT); l && l.parentId !== DRAFT && !upstream.has(l.parentId); l = parentOf.get(l.parentId)) upstream.add(l.parentId);
+    // The draft's branches: each subtree at its tap on the draft.
+    const claimed = new Set([DRAFT]);
+    (childrenOf.get(DRAFT) || []).forEach(l => {
+      if (upstream.has(l.childId) || claimed.has(l.childId)) return;
+      const where = { s: l.s };
+      const stack = [l.childId];
+      claimed.add(l.childId);
+      while (stack.length) {
+        const rid = stack.pop();
+        place.set(rid, where);
+        (childrenOf.get(rid) || []).forEach(c => {
+          if (claimed.has(c.childId) || upstream.has(c.childId)) return;
+          claimed.add(c.childId);
+          stack.push(c.childId);
+        });
+      }
+    });
+    const component = (start) => {
+      const seen = new Set([start]);
+      const stack = [start];
+      while (stack.length) (adj.get(stack.pop()) || []).forEach(n => { if (!seen.has(n)) { seen.add(n); stack.push(n); } });
+      return seen;
+    };
+    // The rest of the draft's network is served some other way.
+    component(DRAFT).forEach(rid => { if (rid !== DRAFT && !place.has(rid)) place.set(rid, 'served'); });
+    // A network the draft touches nowhere taps it where its root's nearer end meets
+    // it (a run traced from its far end still taps by the end nearer the trace).
+    const near = (p) => ductNearestOnPolyline(p, netDraft.vertices).dist;
+    committed.forEach(run => {
+      if (place.has(run.id)) return;
+      const members = [...component(run.id)];
+      const root = runById.get(members.find(id => !parentOf.has(id)) || run.id) || run;
+      const first = root.vertices[0], last = root.vertices[root.vertices.length - 1];
+      const tapEnd = near(last) < near(first) ? last : first;
+      const foot = ductDraftFoot(tapEnd, verts);
+      const where = { s: foot ? foot.s : null };
+      members.forEach(id => place.set(id, where));
+    });
+  }
+  const runAhead = (runId) => {
+    const where = place.get(runId);
+    return !!where && where !== 'served' && ahead(where.s);
+  };
+
+  let totalCfm = 0, aheadCfm = 0;
   attached.forEach(a => {
     const run = runById.get(a.runId);
-    const devSys = run.id === '__draft__' ? sys : (run.systemGroupId || null);
+    const devSys = run.id === DRAFT ? sys : (run.systemGroupId || null);
     if (devSys !== sys) return;   // another system's device — out of scope
     totalCfm += a.device.cfm;
-    if (run.id === '__draft__') {
-      if (a.s < tipLen - EPS) servedCfm += a.device.cfm;   // passed by the trace
-    } else {
-      servedCfm += a.device.cfm;   // a committed run of this system serves it
-    }
+    if (run.id === DRAFT ? ahead(a.s) : runAhead(run.id)) aheadCfm += a.device.cfm;
   });
+  const sameSystem = committed.filter(r => (r.systemGroupId || null) === sys);
   unattached.forEach(d => {
     const devSys = d.groupId || null;
     if (devSys !== null && devSys !== sys) return;   // assigned elsewhere
-    totalCfm += d.cfm;   // unserved — assumed downstream of this trace
+    totalCfm += d.cfm;
+    if (!(tipLen > 0)) { aheadCfm += d.cfm; return; }   // no direction yet: ahead
+    // Its nearest same-system run: the draft (by its foot) or a committed run.
+    const foot = ductDraftFoot(d, verts);
+    let best = foot ? { runId: DRAFT, dist: foot.dist } : null;
+    sameSystem.forEach(run => {
+      const hit = ductNearestOnPolyline(d, run.vertices);
+      if (!best || hit.dist < best.dist) best = { runId: run.id, dist: hit.dist };
+    });
+    const isAhead = !best ? true : best.runId === DRAFT ? ahead(foot.s) : runAhead(best.runId);
+    if (isAhead) aheadCfm += d.cfm;
   });
   if (!(totalCfm > 0)) return null;
-  return { cfm: totalCfm - servedCfm, totalCfm: totalCfm, servedCfm: servedCfm };
+  return { cfm: aheadCfm, totalCfm: totalCfm, servedCfm: totalCfm - aheadCfm };
 }
 
 // --- 3c-bis. Flex drops (unit D8) --------------------------------------------

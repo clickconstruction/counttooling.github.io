@@ -37,6 +37,7 @@ is unchanged (proved element for element before the refactor was kept).
 
 | # | id | The questions, answered by a click (or a reveal) | Doing (the app) |
 |---|---|---|---|
+| 0 | `before` | Before you count, the opener (2026-09-27): what a set and an E-sheet are, what an estimator does with them (the takeoff), the four verbs (count, trace, chain, check), where the header, sidebar and status bar are, the line beside Show me where. Ahead of the nine and not counted among them | none: five read cards, no zones, no rules |
 | 1 | `sheet` | why two plans (reveal); where the panel is (count it); how deep the space in front of it (measure 36"); which circuit is 208 V two-pole (highlight the row); why #10 (reveal) | scale, prove it, a Quick counter, Measure, Highlight |
 | 2 | `devices` | which receptacles must be GFCI (click all ten, none of the duplexes; a wrong click is told why); the one the engineer drew plain in the kitchen (find it, flag it with an RFI); where the heights come from (reveal) | Quick counters with mount heights, count 27 devices with circles, Quick Keys |
 | 3 | `lighting` | which fixtures stay lit when the power fails (a note on an X or EM); which rooms switch themselves off (count the OS); why (reveal) | the schedule reader on E-501, 36 fixtures placed by the letter, tag-aware placement |
@@ -50,6 +51,14 @@ is unchanged (proved element for element before the refactor was kept).
 **The reference** (chapter 8): 69 marks in twelve device types across the two plans; the west-wall
 chain 60.5 ft (22.5 on the plan and four 9.5 ft verticals the chain wrote), the homerun 84.17 ft,
 the feeder 12.33 ft with its rise. Computed from the same flat geometry the button lays.
+
+**The language (2026-09-27).** Todd read the language memo (`journeys/plans/COURSE-LANGUAGE-2026-09-27.md`)
+and chose option C: the reader is anyone at all. So the course opens with `before`, every trade and
+app word is glossed where the course first uses it (a receptacle is a wall outlet, a homerun the
+conduit that carries a circuit's wires back to the panel, VA volt-amperes), a doing card leads with
+its numbered steps (the last question's answer above them under "Answer:", at most two sentences of
+orientation), and no card sentence runs past 25 words. The numbers, the sections and the trade
+claims did not change; EC-TRADE and RULEBOOK-SIGN still hold them.
 
 ## Trade findings from the 2026-09-24 read
 

@@ -1,6 +1,7 @@
 // @ts-check
 /**
- * The plumbing course (features/course-plumbing.js): nine chapters on the tour engine,
+ * The plumbing course (features/course-plumbing.js): nine chapters and an uncounted
+ * opener, "Before you count" (chapter 0, reading cards only), on the tour engine,
  * on the lesson set (samples/sample-lessons.pdf), teaching the trade off the engineer's
  * sheet with the app's tools. Plan: journeys/plans/PLUMBING-COURSE.md.
  *
@@ -51,6 +52,15 @@ const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), 
 const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
 const EXPECT = {
+  // the uncounted opener (COURSE-LANGUAGE option C): five reading cards, nothing laid on the sheet
+  before: async (page) => {
+    const m = await page.evaluate(() => window.App.tutorialManifest('course:plumbing:before'));
+    expect(m.steps.map((s) => s.id)).toEqual(['sheets', 'set', 'estimator', 'verbs', 'screen', 'cards', 'done']);
+    expect(m.steps.slice(1).every((s) => s.kind === 'read' && s.zones === 0)).toBe(true);
+    const a = await ann(page, 0);
+    expect(Object.values(a.counterMarkers || {}).flat().length).toBe(0);
+    expect(await page.evaluate(() => window.App.courseChapterIds()[0])).toBe('before');
+  },
   sheet: async (page) => {
     expect(await page.evaluate(() => [window.App.getPageScale(0).pixelsPerUnit, window.state.pages[2].rotation, window.state.currentPage])).toEqual([9, 90, 2]);
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 31\'-8"');   // the string the engineer wrote, at the scale the title block claims
@@ -147,7 +157,7 @@ const EXPECT = {
 };
 // The reveal steps each chapter carries: every one must have shown its answer on the walk.
 const REVEALS = {
-  sheet: ['what', 'units'], fixtures: [], water: ['trunk'], waste: ['underslab'], riser: ['why'], gas: ['meter'], details: ['why'], whole: [], bid: ['rows'],
+  before: [], sheet: ['what', 'units'], fixtures: [], water: ['trunk'], waste: ['underslab'], riser: ['why'], gas: ['meter'], details: ['why'], whole: [], bid: ['rows'],
 };
 
 test.describe('The plumbing course: the chapters', () => {
@@ -380,10 +390,12 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     const errors = [];
     await boot(page, '/app/?course=plumbing', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(9);
+    // nine chapters and the uncounted opener ahead of them, lit first for a new reader
+    await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(10);
     await expect(page.locator('#learnCourseList-plumbing .learn-row').first()).toHaveClass(/learn-row-next/);
-    await expect(page.locator('#learnCourseProgress-plumbing')).toHaveText('0 of 9 done');
-    await expect(page.locator('#learnCourseList-plumbing .learn-row').first().locator('.learn-row-title')).toHaveText('Read the sheet');
+    await expect(page.locator('#learnCourseProgress-plumbing')).toHaveText('0 of 9 done');   // the opener, row 0, is read, not counted
+    await expect(page.locator('#learnCourseList-plumbing .learn-row').first().locator('.learn-row-title')).toHaveText('Before you count');
+    await expect(page.locator('#learnCourseList-plumbing .learn-row').nth(1).locator('.learn-row-title')).toHaveText('Read the sheet');
     await page.click('#learnModal [data-modal-close]');
     await expect(page.locator('#learnModal')).not.toHaveClass(/visible/);
     await page.click('#canvasEmptyHintCourse');
@@ -410,7 +422,7 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     await expect(page.locator('#tourReveal')).toHaveText('Show the engineer\'s answer');
     await expect(page.locator('#tourNext')).toBeEnabled();
     await expect(page.locator('.tour-reveal')).toHaveCount(0);
-    expect(await page.locator('#tourBody').innerText()).toContain('What does the P in P-101 tell you');
+    expect(await page.locator('#tourBody').innerText()).toContain('Which other letters would a full set carry');
     await page.click('#tourReveal');
     await expect(page.locator('.tour-reveal')).toHaveCount(1);
     expect(await page.locator('.tour-reveal').innerText()).toContain('P is the discipline');

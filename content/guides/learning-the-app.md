@@ -64,7 +64,7 @@ Two or three minutes each, in any order. They run on four sample sheets: a resta
 
 ## Then the trade itself: the plumbing, electrical and HVAC courses
 
-The tours and the lessons teach the app. The course teaches plumbing through it: nine chapters, about ninety minutes in all, on the engineered sample set, a restaurant with its water, hot water return, gas, waste and grease lines drawn by an engineer, its fixture schedule with the fixture units, and a riser. Each chapter asks why something is where it is on the sheet and takes the answer as a click: which hand sink serves the cook line, which fixture must never drain through the grease interceptor, where a cleanout has to be. A wrong click is refused and told why. Then the tool for counting it. The last chapters finish the whole sheet and set your takeoff beside the reference, run by run. Open it from **plumbing course** on the empty canvas, under **Project Settings** → **Help**, or [directly](/app/?course=plumbing).
+The tours and the lessons teach the app. The course teaches plumbing through it: a short opener (Before you count) for anyone who has never read a drawing, then nine chapters, about ninety minutes in all, on the engineered sample set, a restaurant with its water, hot water return, gas, waste and grease lines drawn by an engineer, its fixture schedule with the fixture units, and a riser. Each chapter asks why something is where it is on the sheet and takes the answer as a click: which hand sink serves the cook line, which fixture must never drain through the grease interceptor, where a cleanout has to be. A wrong click is refused and told why. Then the tool for counting it. The last chapters finish the whole sheet and set your takeoff beside the reference, run by run. Open it from **plumbing course** on the empty canvas, under **Project Settings** → **Help**, or [directly](/app/?course=plumbing).
 
 1. [Read the sheet](/app/?chapter=plumbing:sheet): the title block, the legend, the fixture the eye skips, the schedule and its fixture units, a scale you proved.
 2. [The fixtures, and where they sit](/app/?chapter=plumbing:fixtures): the wet wall, the hand sink for the cook line, floor sinks and the air gap, trap primers, counters read off the schedule by the app.
@@ -76,7 +76,7 @@ The tours and the lessons teach the app. The course teaches plumbing through it:
 8. [The whole sheet](/app/?chapter=plumbing:whole): finish the takeoff, compare it to the reference run by run, the legend on the sheet, the marked-up set.
 9. [Check it, prove it, hand it off](/app/?chapter=plumbing:bid): what each Bid Check row means in the trade, the proof view, the notes ledger, the hand-off.
 
-The electrical course is the same restaurant's electrical set: the power plan, the lighting plan with its lettered fixtures, the panel schedule and the one-line. Nine chapters, from **electrical course** under **Project Settings** → **Help**, the empty canvas, or [directly](/app/?course=electrical).
+The electrical course is the same restaurant's electrical set: the power plan, the lighting plan with its lettered fixtures, the panel schedule and the one-line. Nine chapters, after a short opener (Before you count) for anyone who has never read a drawing, from **electrical course** under **Project Settings** → **Help**, the empty canvas, or [directly](/app/?course=electrical).
 
 1. [Read the E-sheets](/app/?chapter=electrical:sheet): why two plans, where the panel sits and the space it needs, the panel schedule as the answer key.
 2. [Receptacles, and which must be GFCI](/app/?chapter=electrical:devices): the code's GFCI rooms, mount heights the app knows, every device counted.
@@ -88,7 +88,7 @@ The electrical course is the same restaurant's electrical set: the power plan, t
 8. [The whole set](/app/?chapter=electrical:whole): finish the takeoff, compare it to the reference, the circuit schedule in the report.
 9. [Check it, prove it, hand it off](/app/?chapter=electrical:bid): the electrical rows of Bid Check, the proof view, the hand-off to the electrical bid.
 
-The HVAC course is the same restaurant's mechanical set: the plan with its tagged diffusers and the main drawn at width, the equipment, diffuser and room air schedules, and a building section drawn to scale. Nine chapters, from **HVAC course** under **Project Settings** → **Help**, the empty canvas, or [directly](/app/?course=hvac).
+The HVAC course is the same restaurant's mechanical set: the plan with its tagged diffusers and the main drawn at width, the equipment, diffuser and room air schedules, and a building section drawn to scale. Nine chapters, after a short opener (Before you count) for anyone who has never read a drawing, from **HVAC course** under **Project Settings** → **Help**, the empty canvas, or [directly](/app/?course=hvac).
 
 1. [Read the M-sheets](/app/?chapter=hvac:sheet): what an M-sheet carries, which unit moves the most air, which room breathes hardest and why.
 2. [The rooms and their air](/app/?chapter=hvac:rooms): a room boxed with the schedule's type and CFM, where the number comes from, the deck height and why it matters.

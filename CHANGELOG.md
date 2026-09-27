@@ -13,6 +13,152 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the HVAC course, written for anyone at all (2026-09-27)
+
+Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the
+reader is anyone at all, a salesperson, a student, a spouse, someone who has never seen a
+construction drawing. This is the HVAC course's half; the plumbing and electrical courses get the
+same pass on their own branches.
+
+- **Chapter 0, Before you count** (`before`), five read cards ahead of the nine chapters and not
+  counted among them: what a set of drawings is and what an M-sheet carries (the plan, the
+  schedules, the section, the title block, the legend, the keynotes); what an estimator does with
+  it (count what is drawn, measure what is run, weigh the duct, price it: the takeoff); the app's
+  four verbs, count, trace, box a room, check; the header, the sidebar and the footer; and how a
+  card works, down to the line beside Show me where. It registers through `registerCourse` like
+  the others, so `?chapter=hvac:before` and the Learn menu's row come for free; `readOnly` marks
+  the row "· read".
+- **Every trade and app word glossed where it first appears**, two to six words in the same
+  sentence or the next: CFM, cubic feet per minute, how much air moves; ESP, external static
+  pressure, the push the unit has to spare for the duct; a plenum, the space above the ceiling the
+  air comes back through; make-up air, outside air brought in to replace what the hood throws out;
+  the RFI, the GC, UL, OA and the tags (SD, RG, EG, MA, VD, EF, RTU, MAU); and the parts
+  themselves, a diffuser, a grille, a register, the hood, a curb, a neck, flex, wrap and liner, a
+  tap, a branch, a transition, an elbow, a volume damper, a fire damper and its fusible link, a
+  duct's gauge. The HVAC words stay; each is explained, never replaced.
+- **A doing card leads with its numbered steps.** The previous question's answer sits above them
+  as "Answer:" (the unit, the depth), and the reasoning that used to come first follows the steps;
+  a line that asked for three actions is three lines.
+- **No card sentence over 25 words.** The static-path card's 62-word sentence is four; the grease
+  duct's reveal is paragraphs of short sentences.
+- **The estimator idioms stay, each with its plain twin once**: a callback, a trip back to fix it,
+  unpaid; the third addendum, the third round of changes before the bid is due; the most expensive
+  discovery on a job, found on site and fixed at the contractor's cost; a count you can defend, one
+  you can show your work for.
+
+What did not change: every card's id, kind, targets, zones, check, hint, action, onEnter and
+`rules:`; every number, code section and rule citation; and the trade claims the tester dossier
+holds open (the neck-velocity band, the make-up air keynote, "the corner" on the main). The
+course spec walks chapter 0 in its chapter loop (read cards only, nothing made) and counts ten
+rows in the Learn menu. Re-scored with the memo's method: 35 sentences over 25 words to 0.
+
+## feat(learn): the electrical course, written for anyone at all (2026-09-27)
+
+Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the
+reader is anyone at all, a salesperson, a student, someone who has never seen a construction
+drawing. features/course-electrical.js is rewritten card by card for that reader. Every card keeps
+its id, kind, targets, zones, check, hint, action and `rules:`; the numbers, the code sections and
+the trade claims are exactly as they were (EC-TRADE and RULEBOOK-SIGN still hold them).
+
+- **An opener, Before you count** (`before`, five read cards, no zones, no rules). What a set and an
+  E-sheet are and what each of the four sheets carries; what an estimator does with them (count
+  what is drawn, measure what runs, price it: the count and the feet are the takeoff); the four
+  verbs, count, trace, chain, check; where the header, the left sidebar and the status bar are; the
+  line beside Show me where; how a question card teaches. It registers through `registerCourse`
+  like every chapter, so `/app/?chapter=electrical:before` and the Learn menu reach it, and it
+  stands ahead of the nine chapters without being counted among them (its intro says so).
+- **Every trade and app word glossed where the course first uses it**, two to six words in the same
+  sentence or the next: the title block, a dimension, a homerun, conduit, a panel, a breaker, a
+  circuit, a load, VA, a pole, a conductor, ampacity, 208Y/120 V and its phases and neutral, the
+  NEC, a change order, a receptacle and a duplex, a GFCI, an RFI, the GC, a J-box, the ADA, the
+  rulebook, make-up, a keynote, THHN, EMT, a raceway, fill, a strap, a child count, voltage drop, a
+  branch circuit, three phase, an RTU, a disconnect, a shunt trip, the hood suppression, NFPA 96, a
+  callback, the service lateral, the feeder, 3/0, kVA, MDP, HVAC, a pull point, an exclusion.
+- **A doing card leads with its steps.** The last question's answer sits above them under one
+  word, "Answer:", and at most two sentences of orientation come before step 1; the teaching that
+  used to open the hood card (the shunt trip, the interlock, NFPA 96) moved under the steps.
+- **No sentence over 25 words** on a body, a reveal or an intro: the mount-heights reveal's list of
+  sections is one line per source now, the one-line's reveal one fact per line.
+- **The idioms stay, each with its plain twin once**: the bid carries it as a GFCI (priced as the
+  more expensive one), the hand never leaves the plan (no trips back to the sidebar), a kitchen that
+  calls the electrician (a callback), nobody sizes to today's load (sized with room to grow).
+
+Scored with the memo's method (the scratchpad `score.js`): 3,398 words and 49 cards at grade 5.8
+with 34 sentences over 25 words before; 4,990 words and 54 cards at grade 4.9 with none after. The longer cards were walked at the
+spec's viewport: the first draft of the manual-rows card, revealed, pushed Next off the screen, and
+its glosses now ride inside the row list.
+course-electrical.spec.js walks the opener like any chapter (`before`, no reveals, nothing counted)
+and reads the section's row count from `courseElectricalIds()` and the plumbing count from
+`courseChapterIds()`, so the other two courses' openers cannot break it.
+
+Left for the parent, because the files are shared by the three course branches: the "nine
+chapters" copy in app/index.html (the three Project Settings links' titles and the Learn ledes)
+and content/guides/learning-the-app.md; the Learn menu's row numbers (features/lessons.js
+`renderRows` numbers rows by position, so the opener reads 1 and Chapter 1 reads 2) and its
+progress line ("0 of 10 done"); course-hvac.spec.js's pin of nine electrical rows.
+
+## feat(learn): the plumbing course, written for anyone at all (2026-09-27)
+
+Todd read the COURSE-LANGUAGE-2026-09-27 memo and chose option C: the reader is anyone at all,
+a salesperson, a student, a spouse, someone who has never seen a construction drawing. The
+prose already read at grade 4; what made the course feel advanced was the trade and app words
+it used before it said what they meant, the answers that came before the instructions, and
+thirty-six sentences past 25 words. features/course-plumbing.js now carries the reader in.
+
+- **Chapter 0, "Before you count"** (id `before`): five reading cards ahead of chapter 1. What
+  a set of drawings is and what a P-sheet shows; what an estimator does (count what is drawn,
+  measure what is run, price it) and that the count and the feet are the takeoff; the four
+  verbs, count, trace, chain and check; where the sidebar, the header and the footer are; and
+  how a card works, down to the line beside Show me where. It registers through
+  `registerCourse` like the rest, so the Learn menu lists it first and lights it for a new
+  reader, and `/app/?chapter=plumbing:before` opens it. Its title carries no "Chapter N:", so
+  the course stays nine chapters; the menu's row numbers and its "0 of 10 done" are the
+  shared copy's to settle (below).
+- **Every word glossed the first time the course uses it**, in the same sentence or the next,
+  and kept: a takeoff, the bid, the title block, a keynote, the schedule, WSFU and DFU, the
+  IPC, an RFI, the GC, a lavatory (a bathroom sink), a water closet (a toilet), a floor sink, a
+  trap and its primer, a cleanout, a vent stack and its VTR, the RPZ backflow preventer, the
+  hot water return and its pump, SS, GW, the GI, PVC DWV, BI, BTU per hour, TYP. The idioms
+  keep their plain twin: the change order you eat is the extra the owner pays when the drawing
+  was wrong, paid by you.
+- **A doing card leads with its steps.** The previous question's answer sits above them under
+  "Answer:", in a sentence or two; the reasoning that used to stand between the reader and step
+  1 (the hot water return's pump and valves, the trench priced by length and depth, the air gap
+  under the prep sink) now follows the steps. One action per numbered line: a line that did two
+  became two.
+- **No card sentence runs past 25 words** (36 before, 0 now; the score script's count over
+  body, reveal and done). Numbers, code sections and rule citations are as they were:
+  check-lesson-rules still agrees on all five named numbers. Ids, kinds, targets, zones,
+  checks, hints, actions and `rules:` did not change.
+
+The score (the memo's script over body, reveal and done; words, Flesch-Kincaid grade, sentences
+over 25 words, before → after):
+
+| Chapter | Words | Grade | Over 25 |
+|---|---|---|---|
+| before (new) | 528 | 3.1 | 0 |
+| 1 sheet | 541 → 730 | 5.2 → 4.0 | 4 → 0 |
+| 2 fixtures | 576 → 725 | 3.6 → 3.4 | 4 → 0 |
+| 3 water | 783 → 916 | 4.5 → 4.2 | 8 → 0 |
+| 4 waste | 652 → 735 | 4.4 → 3.8 | 4 → 0 |
+| 5 riser | 401 → 439 | 4.7 → 3.4 | 5 → 0 |
+| 6 gas | 449 → 526 | 4.0 → 3.3 | 6 → 0 |
+| 7 details | 302 → 349 | 3.7 → 3.3 | 2 → 0 |
+| 8 whole | 206 → 215 | 6.3 → 4.4 | 1 → 0 |
+| 9 bid | 362 → 407 | 5.0 → 4.4 | 2 → 0 |
+| The course | 4,272 → 5,570 | 4.4 → 3.7 | 36 → 0 |
+
+The glosses cost words, and a card grew: chapter 3's "Why the trunk climbs" card, with its
+answer shown, now stands 652 px tall at a 720 px window (it was 673); each card was measured
+with its reveal open so none pushes Next off the screen.
+
+course-plumbing.spec.js walks chapter 0 (five reading steps, nothing laid) and pins the menu at
+ten rows with the opener first; the reveal test reads chapter 1's new question. tutorial.spec.js's
+manifest case counts each course's chapters from its own id list (nine, plus the opener where a
+course has one). The shared copy that says "nine chapters" (the app shell's Project Settings
+link titles and the Learn lede, the empty-canvas hint's title, the Learn guide) is left for one
+edit after the three course branches merge.
+
 ## fix(learn): the HVAC course's trace hint no longer deletes the reader's committed main (2026-09-27)
 
 Found by the DS-DUCT-DOWNSTREAM agent while proving the Duct tool never drops a run: chapter 5's

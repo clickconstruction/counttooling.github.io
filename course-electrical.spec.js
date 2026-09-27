@@ -1,8 +1,9 @@
 // @ts-check
 /**
- * The electrical course (features/course-electrical.js): nine chapters on the tour engine,
- * on the electrical set (samples/sample-electrical.pdf), the plumbing course's sibling.
- * Plan: journeys/plans/ELECTRICAL-COURSE.md.
+ * The electrical course (features/course-electrical.js): an opener, Before you count (id
+ * `before`, read cards only, ahead of and not counted among the nine), and nine chapters on
+ * the tour engine, on the electrical set (samples/sample-electrical.pdf), the plumbing
+ * course's sibling. Plan: journeys/plans/ELECTRICAL-COURSE.md.
  *
  * Guards: every chapter's path through the engine's seam runs end to end on REAL state and
  * leaves the takeoff it claims (the west-wall chain with its four verticals, the homerun to
@@ -48,6 +49,11 @@ const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), 
 const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
 const EXPECT = {
+  before: async (page) => {
+    // the opener only reads: the set is open on E-101, nothing counted, no scale set for the reader
+    expect(await page.evaluate(() => [window.state.trade, window.state.currentPage])).toEqual(['electrical', 0]);
+    expect(await page.evaluate(() => window.state.pages.every((p) => { const a = window.App.getActiveAnnotations(p); return !a || !Object.values(a.counterMarkers || {}).some((ms) => (ms || []).length); }))).toBe(true);
+  },
   sheet: async (page) => {
     expect(await page.evaluate(() => [window.App.getPageScale(0).pixelsPerUnit, window.state.trade, window.state.currentPage])).toEqual([9, 'electrical', 2]);
     expect(await page.evaluate(() => window.state.lastMeasure.text)).toBe('Distance: 3\'-0"');   // the working clearance in front of LP-1
@@ -124,7 +130,7 @@ const EXPECT = {
     expect(await page.evaluate(() => ['scale-verified', 'lighting-controls', 'equipment-connections'].map((k) => window.state.bidCheck.manual[k]))).toEqual([true, true, true]);
   },
 };
-const REVEALS = { sheet: ['what', 'row'], devices: ['heights'], lighting: ['why'], conduit: ['why12'], circuits: [], equipment: ['poles', 'dedicated'], service: ['read'], whole: [], bid: ['rows'] };
+const REVEALS = { before: [], sheet: ['what', 'row'], devices: ['heights'], lighting: ['why'], conduit: ['why12'], circuits: [], equipment: ['poles', 'dedicated'], service: ['read'], whole: [], bid: ['rows'] };
 
 test.describe('The electrical course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
@@ -316,10 +322,13 @@ test.describe('The electrical course: a question is answered with a click', () =
     const errors = [];
     await boot(page, '/app/?course=electrical', errors);
     await expect(page.locator('#learnModal')).toHaveClass(/visible/, { timeout: 5000 });
-    await expect(page.locator('#learnCourseList-electrical .learn-row')).toHaveCount(9);
-    await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(9);
+    // the opener and the nine chapters; the plumbing section holds whatever its course registers
+    const ids = await page.evaluate(() => window.App.courseElectricalIds());
+    expect([ids[0], ids.length]).toEqual(['before', 10]);
+    await expect(page.locator('#learnCourseList-electrical .learn-row')).toHaveCount(ids.length);
+    await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(await page.evaluate(() => window.App.courseChapterIds().length));
     await expect(page.locator('#learnCourseList-electrical .learn-row').first()).toHaveClass(/learn-row-next/);
-    await expect(page.locator('#learnCourseProgress-electrical')).toHaveText('0 of 9 done');
+    await expect(page.locator('#learnCourseProgress-electrical')).toHaveText('0 of ' + (ids.length - 1) + ' done');   // the opener, row 0, is read, not counted
     await page.click('#learnModal [data-modal-close]');
     await page.click('#canvasEmptyHintCourseElectrical');
     await expect(page.locator('#learnModal')).toHaveClass(/visible/);

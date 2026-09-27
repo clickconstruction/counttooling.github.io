@@ -889,15 +889,20 @@
   // `attr` names the row's data attribute (data-lesson, data-chapter: the specs find rows by it), and
   // only the lessons' list scrolls its lit row into view (a course's section is scrolled to by
   // openLearnMenu instead).
-  function renderRows({ list, prog, items, isDone, lit, title, attr, noun, start, scroll }) {
+  // A row's number is the one its title carries ("Chapter 0: Before you count" shows a 0, the
+  // uncounted opener the plain-language pass gave each course, 2026-09-27); a title with no
+  // number takes its position. Row 0 stays out of the "N of M done" count: it is read, not done.
+  function renderRows({ list, prog, items, isDone, lit, title, number, attr, noun, start, scroll }) {
     if (!list) return;
-    const count = items.filter(isDone).length;
+    const rowNumber = (it, i) => { const n = number ? number(it) : null; return n === null || n === undefined ? i + 1 : n; };
+    const counted = items.filter((it, i) => rowNumber(it, i) !== 0);
+    const count = counted.filter(isDone).length;
     const esc = App.escapeHtml || ((t) => String(t));
     list.innerHTML = items.map((it, i) => '<button type="button" class="learn-row' + (isDone(it) ? ' learn-row-done' : '') + (it.id === lit ? ' learn-row-next' : '') + '" data-' + attr + '="' + it.id + '">'
-      + '<span class="learn-row-no">' + (isDone(it) ? '✓' : (i + 1)) + '</span>'
+      + '<span class="learn-row-no">' + (isDone(it) ? '✓' : rowNumber(it, i)) + '</span>'
       + '<span class="learn-row-text"><span class="learn-row-title">' + esc(title(it)) + '</span><span class="learn-row-sub">' + esc(it.intro) + '</span></span>'
       + '<span class="learn-row-min">' + it.minutes + ' min' + (it.readOnly ? ' · read' : '') + '</span></button>').join('');
-    if (prog) prog.textContent = count === items.length ? 'All ' + items.length + ' ' + noun + ' done' : count + ' of ' + items.length + ' done';
+    if (prog) prog.textContent = count === counted.length ? 'All ' + counted.length + ' ' + noun + ' done' : count + ' of ' + counted.length + ' done';
     list.querySelectorAll('.learn-row').forEach((row) => { row.onclick = () => start(row.getAttribute('data-' + attr)); });
     const on = scroll && list.querySelector('.learn-row-next');
     if (on && on.scrollIntoView) on.scrollIntoView({ block: 'nearest' });
@@ -955,7 +960,7 @@
     }
     function render(nextId) {
       const done = courseDone();
-      renderRows({ list: el('learnCourseList-' + id), prog: el('learnCourseProgress-' + id), items: chapters, isDone: (c) => !!done[key(c.id)], lit: nextId === undefined ? suggested() : nextId, title: (c) => c.title.replace(/^Chapter \d+: /, ''), attr: 'chapter', noun: 'chapters', start, scroll: false });
+      renderRows({ list: el('learnCourseList-' + id), prog: el('learnCourseProgress-' + id), items: chapters, isDone: (c) => !!done[key(c.id)], lit: nextId === undefined ? suggested() : nextId, title: (c) => c.title.replace(/^Chapter \d+: /, ''), number: (c) => { const m = /^Chapter (\d+):/.exec(c.title); return m ? Number(m[1]) : null; }, attr: 'chapter', noun: 'chapters', start, scroll: false });
     }
     const openAtCourse = () => openLearnMenu(undefined, { course: id, chapter: suggested() });
     const d = doors || {};

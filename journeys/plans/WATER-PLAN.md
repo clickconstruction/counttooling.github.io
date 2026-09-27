@@ -280,20 +280,23 @@ before the ladder is called done — the DUCT-PLAN discipline).
 
 ## 7. Worked example (the sample plan, for the mockups and future specs)
 
-Women 108 on `sample-plan.pdf` (the design-build sample plan, since 2026-09-14), public occupancy. Illustrative values —
-the slice transcribes the real ones:
+Women 108 on `sample-plan.pdf` (the design-build sample plan, since 2026-09-14), public occupancy. The
+numbers are the slice's own tables (water-model.js, pinned by water-model.test.js), PEX throughout.
+(Corrected 2026-09-27, DS-AGENT-NITS: the first draft read 4.5 WSFU as about 4 gpm and a public
+flush-tank water closet as 2.5 WSFU, so every velocity after it was low.)
 
 - 3 lavatories on the north-wall counter, on one cold branch. Lavatory (public)
-  ≈ 1.5 WSFU cold each → **4.5 WSFU** at the branch root → demand curve
-  ≈ **4 gpm** (flush-tank column). Cold cap 8 fps: 1/2″ PEX (ID ≈ 0.48″)
-  runs ≈ 7 fps ✓ → *suggests 1/2″*; hot at 5 fps on the same three lavs
-  (≈ 1.5 hot each) → 1/2″ ≈ 7 fps ⚠ → *suggests 3/4″ @ 3.2 fps*.
-- Add the 3 water closets in the stalls on the south wall (flush tank, public ≈ 2.5 cold each) upstream:
-  **12 WSFU** cold → ≈ 8 gpm → 1/2″ ≈ 14 fps ⚠, 3/4″ (ID ≈ 0.68″) ≈ 7 fps ✓
-  → *suggests 3/4″*; the branch to the lavs steps down to 1/2″ after the
-  last WC — "a new run from here."
-- Bid Check: with the lav branch left at 1/2″ hot, row 1 reads *"Lav
-  battery hot: 1/2″ at 7.1 fps ⚠ → 3/4″ 3.2 fps ✓"*; attach the fourth
+  1.5 WSFU cold each → **4.5 WSFU** at the branch root → demand curve
+  **8.7 gpm** (flush-tank column, between 4 → 8.0 and 5 → 9.4). Cold cap 8 fps:
+  1/2″ PEX (ID 0.475″) runs ≈ 15.8 fps ⚠, 3/4″ (ID 0.671″) ≈ 7.9 fps ✓ →
+  *suggests 3/4″*; hot at 5 fps on the same three lavs (1.5 hot each, the
+  same 8.7 gpm) → 3/4″ ≈ 7.9 fps ⚠ → *suggests 1″ @ 4.8 fps*.
+- Add the 3 water closets in the stalls on the south wall (flush tank, public 5 cold each) upstream:
+  **19.5 WSFU** cold → 19.4 gpm → 3/4″ ≈ 17.6 fps ⚠, 1″ (ID 0.862″) ≈ 10.7 fps ⚠,
+  1-1/4″ (ID 1.054″) ≈ 7.1 fps ✓ → *suggests 1-1/4″*; the branch to the lavs
+  steps down to 3/4″ after the last WC — "a new run from here."
+- Bid Check: with the lav branch left at 3/4″ hot, row 1 reads *"Lav
+  battery hot: 3/4″ at 7.9 fps ⚠ → 1″ 4.8 fps ✓"*; attach the fourth
   lav and row 3 clears.
 
 ## 8. Telemetry (the day-7 line, again)

@@ -150,7 +150,8 @@ printed code.
   collides with "count one, bid four". Redraw P-401 to match, or make the mismatch the step (an RFI).
 - **Trap arm citation** (`riser:traparm` ~544-548 and the riser sheet's note): cited as IPC Table
   1002.2; the IPC trap-arm table is 906.1, and UPC Table 1002.2 would fail this 4' arm at 1-1/2"
-  (*from memory*). The step's check also reads only the value, so the FD arm's 4'-0" passes too.
+  (*from memory*). The step's check also reads only the value, so the FD arm's 4'-0" passes too
+  (the check fixed 2026-09-27, DS-AGENT-NITS: a click at each end of the lavatory's arm).
 - **Gas hanger spacing** (`gas` chapter ~598): cited as IPC 308.5 at 12 ft; gas piping support
   is the fuel gas code (IFGC 415.1), about 10 ft for 1-1/4" steel (*from memory*).
 - **The gas main's sizes** (`gas:meter` to `gas:trace`, ~570-580): the reveal teaches 1-1/2" from
@@ -172,7 +173,8 @@ printed code.
 - **Words that do not match the sheet**: `fixtures:keys` (~412) says ten little 1/2" lines ride the
   primers (only the primer row is added); `waste:layer` (~490) says the red note is nine words (it
   is seven); `gas:trace` / `gas:drops` (~578, ~587) say "behind the cook line", but the line is
-  drawn on the aisle side.
+  drawn on the aisle side. (The first two fixed 2026-09-27, DS-AGENT-NITS; the gas words wait on
+  the tester's redraw-or-reword call.)
 
 ## Open, and not blocking
 

@@ -66,8 +66,11 @@ function parseConductorSpec(text) {
   });
   return { conductors, bad };
 }
+// A gauge as the spec writes it: an aught size is stored bare ('3/0', the key the fill and
+// voltage-drop tables read) and written with its # like #6 beside it ("4 #3/0 THHN + 1 #6 G").
+const specGauge = (g) => (/^\d+\/0$/.test(String(g || '')) ? '#' + g : g);
 function formatConductorSpec(list) {
-  return (list || []).map((c) => c.n + ' ' + c.gauge + ' ' + c.insul + (c.role === 'ground' ? ' G' : c.role === 'neutral' ? ' N' : '')).join(' + ');
+  return (list || []).map((c) => c.n + ' ' + specGauge(c.gauge) + ' ' + c.insul + (c.role === 'ground' ? ' G' : c.role === 'neutral' ? ' N' : '')).join(' + ');
 }
 const conductorCount = (list) => (list || []).reduce((s, c) => s + (c.n || 0), 0);
 

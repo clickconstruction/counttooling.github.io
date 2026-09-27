@@ -27,6 +27,17 @@ test('formatConductorSpec round-trips', () => {
   assert.strictEqual(cm.formatConductorSpec(cm.parseConductorSpec(spec).conductors), spec);
 });
 
+// The Bid Check fill row printed the feeder "4 3/0 THHN + 1 #6 THHN G": the aught sizes are stored
+// bare ('3/0', the fill tables' key) and were printed bare beside a #6 (DS-AGENT-NITS, 2026-09-27).
+test('formatConductorSpec writes an aught size with its # like every other AWG size, and it still round-trips', () => {
+  const list = cm.parseConductorSpec('4 #3/0 THHN + 1 #6 G').conductors;
+  assert.strictEqual(list[0].gauge, '3/0');   // stored bare: the fill tables and the voltage-drop cmil table key on it
+  const out = cm.formatConductorSpec(list);
+  assert.strictEqual(out, '4 #3/0 THHN + 1 #6 THHN G');
+  assert.deepStrictEqual(cm.parseConductorSpec(out).conductors, list);
+  assert.strictEqual(cm.formatConductorSpec(cm.parseConductorSpec('4 250 kcmil').conductors), '4 250 kcmil THHN');
+});
+
 test('wireRowsFor: feet × n per gauge; hots and neutrals merge, ground is its own row', () => {
   const list = cm.parseConductorSpec('2 #12 THHN + 1 #12 N + 1 #12 G').conductors;
   const rows = cm.wireRowsFor(143, list);

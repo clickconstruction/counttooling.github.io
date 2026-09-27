@@ -66,7 +66,7 @@ printed code.
   already is. Ask for the dishwasher's row. Near it: `row` (~312) says every other circuit is #12
   (RTU-1 is #8) and `equipment:poles` (~482) says everything else is one pole (EF-1 is two).
 - **The receptacle story in chapter 2** (~325, ~337): "twenty receptacles" where the sheet has 21
-  (and the chapter's done text says 21); the kitchen duplex that 210.8(B)(2) makes GFCI is accepted
+  (and the chapter's done text says 21; the count fixed 2026-09-27, DS-AGENT-NITS); the kitchen duplex that 210.8(B)(2) makes GFCI is accepted
   as GFCI in `gfci` and then counted again as a duplex in `duplex`, whose body calls it both. Pick
   one answer, and tell `gfci` to leave it.
 - **E-601 calls the dishwasher three phase** (scripts/sample-electrical.js ~270, note 2); E-501 and
@@ -79,9 +79,8 @@ printed code.
   panel face, or draw the box from the wall.
 - **Arrows that are not where the text says**: `circuits:homerun` (~443) puts LP-1-1 at the top
   receptacle (it is between the 2nd and 3rd); `sheet:panel` (~295) has every homerun arrow point
-  at the panel (they are sideways stubs, LP-1-9 points away).
-- **Prove it** (~291) opens with "the same string" as the plumbing course, which a reader who
-  started here has not seen.
+  at the panel (they are sideways stubs, LP-1-9 points away). Reworded 2026-09-27 (DS-AGENT-NITS):
+  the arrows are named by their tags, not their aim.
 
 ## Open, and not blocking
 

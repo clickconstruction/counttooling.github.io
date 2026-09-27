@@ -582,7 +582,8 @@ equipment schedule prints no OA CFM (R1). Confidence: **medium**.
 - **A5.** Wording from HC-TRADE: `sheet:what` swaps the counts (the legend has four kinds of duct,
   three of grille); `diffusers:rest` and chapter 3's done text promise a ✓ the row never draws;
   `exhaust:makeup` opens with "Spiral round in ten-foot sticks…"; `main:trace` says "the corner" at a
-  straight point (after T3 is settled).
+  straight point (after T3 is settled). **Fixed 2026-09-27 (DS-AGENT-NITS): all but `main:trace`,
+  which still waits on T3.**
 - **A6.** While probing I pushed three branch runs straight into the annotations and clicking Duct
   left one of them; that was a non-standard path (no undo snapshot, no dirty), so it may be nothing,
   but whoever touches A4 should check that arming the tool never drops a committed run.

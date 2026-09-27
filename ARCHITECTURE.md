@@ -39,7 +39,7 @@ off — and where it doesn't.
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 872 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (101 files) | 33,601 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (101 files) | 33,607 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 

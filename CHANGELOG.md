@@ -13,6 +13,46 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): the wording, counts and one loose check the tester dossiers found beside the trade questions (DS-AGENT-NITS, 2026-09-27)
+
+The four tester dossiers (journeys/plans/TESTER-DOSSIER-*-2026-09-27.md) each ended with a "Not
+trade: for an agent" list: things wrong on a card or in a plan that need no one with the trade to
+say which side is right. This does those, one entry per dossier; the items that follow a tester's
+ruling stay in the lists with that note.
+
+- **Plumbing course.** `riser:traparm` passed on ANY 4 ft reading on P-601, so the floor drain's
+  2" arm, dimensioned 4'-0" under the slab, passed too. The step now takes the kit's measure proof
+  (the same one the Prove it steps use): a circle at each end of the lavatory's arm, r 18 so the
+  dimension 15 pt under the pipe counts, and the reading only counts with a click in each; a
+  4'-0" read anywhere else says "but not at the lavatory". The 14'-0" left standing from Prove it
+  draws no hint on entry (the HVAC `depth` step's pattern). New spec case in
+  course-plumbing.spec.js, red on the old check. Words: `fixtures:keys` no longer promises "ten
+  little 1/2" lines" (only the primer row is added), `waste:layer` counts the red note's words as
+  seven, and chapter 2's done text has the 22 fixtures under seven schedule tags (U-1 is not on
+  P-101).
+- **The plumbing tour.** The `wsfu` card says the 2 typed is hot and cold together and the cold
+  pipe carries 1.5 of it per lavatory; the `size` card says the water card reads 4.5 WSFU, not 6,
+  for the three lavatories. Checked against the live card ("1″ holds · 4.5 WSFU downstream ·
+  4.8 fps ✓ · 3/4″ would do"). It answers PT-TRADE's question before it is asked.
+- **WATER-PLAN.md §7.** The worked example read 4.5 WSFU as about 4 gpm and a public flush-tank
+  water closet as 2.5 WSFU; the tables (water-model.js, water-model.test.js) say 8.7 gpm and 5.
+  Every number after them is recomputed from the model: 3/4″ cold at 7.9 fps, 1″ hot at 4.8,
+  19.5 WSFU and 1-1/4″ once the closets join. Documentation only.
+- **Electrical course.** `sheet:panel` and `circuits:homerun` described the homerun arrows by
+  their aim, which is drafting: the arrows are sideways stubs, and LP-1-9's points away from the
+  panel. The cards now read them by their tags (every tag names LP-1; the LP-1-1 arrow sits beside
+  the west wall's receptacles and does not show the path). `devices:gfci` counts twenty-one
+  receptacles. ELECTRICAL-COURSE.md drops the "same string" finding (T7: the card no longer says
+  it). **The Bid Check fill row** printed the feeder "4 3/0 THHN + 1 #6 THHN G":
+  `formatConductorSpec` (conductor-model.js) now writes an aught size with its #, "4 #3/0 THHN",
+  while the stored gauge stays bare ('3/0', the key the fill and voltage-drop tables read); the
+  spec still round-trips through the parser. Pinned in conductor-model.test.js.
+- **HVAC course.** `sheet:what` has the legend's counts the right way round (four kinds of duct,
+  three of grille); `diffusers:rest` and chapter 3's done text no longer promise a ✓ the Rooms row
+  never draws (it reads "needs 1,200 · served 1,200" and the ⚠ goes); `exhaust:makeup` opens with
+  what the sheet shows, MAU-1 dropping in at the east wall and a 20x16 duct to MA-1, not the
+  restroom step's leftover spiral line. `main:trace`'s "the corner" waits on T3.
+
 ## feat(save): a lean permissions read, behind a fallback until its RPC is applied (MAP-PERMS, 2026-09-27)
 
 `refreshProjectPermissions` (save-engine.js) runs on every checkout-channel UPDATE, subscribe,

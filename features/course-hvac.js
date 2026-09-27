@@ -318,7 +318,7 @@
       seed() { /* the scale is the chapter's */ },
       steps: [
         { id: 'what', title: 'What is on an M-sheet?', kind: 'read', cardAt: 'br',
-          body: 'Look at the legend and the keynotes. Three kinds of duct, four kinds of grille, and four pieces of equipment that are not on this floor at all.\nWhere is the equipment, and why does the plan show it as a dashed box off to the side?',
+          body: 'Look at the legend and the keynotes. Four kinds of duct, three kinds of grille, and four pieces of equipment that are not on this floor at all.\nWhere is the equipment, and why does the plan show it as a dashed box off to the side?',
           reveal: 'On the roof. A restaurant this size is cooled and heated by a packaged rooftop unit, RTU-1, sitting on a curb over the kitchen; the hood exhaust fan, the make-up air unit and the restroom exhaust fan sit beside it. The plan can only show where each one\'s duct comes through the roof, so the engineer draws a roof key, a dashed box with the unit\'s name, its air and its power, and a leader to the penetration.\nAn HVAC estimator reads the equipment schedule and the room air schedule first: the unit\'s CFM is the whole job, and the rooms say where it goes.',
           target: [], check: () => true },
         { id: 'scale', title: 'Set the scale', kind: 'do',
@@ -415,7 +415,7 @@
           hint: () => (!K().onPage(M101) ? T().pagesFoldedHint('M-101') : byTag('SD-1') ? missing(byTag('SD-1'), pts(G.SD1).slice(0, 8), ['north-west', 'north', 'north', 'north-east', 'south-west', 'south', 'south', 'south-east'].map((d) => 'the dining room, ' + d), 10, M101) : ''),
           action: { label: 'Count the eight for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('SD-1'), pts(G.SD1).slice(0, 8), M101); K().dirty(); } } },
         { id: 'rest', title: 'The rest of the supply', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8)).concat(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10), circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
-          body: '1,200 served, and the row reads ✓. Now the rest.\n1. SD-1 is still armed from the dining room (clicking it in the sidebar would put it down): click the two in the bar and the one in the dish pit.\n2. Arm SD-2 and click the hall and storage diffusers.\n3. Arm SD-3 and click the four in the kitchen.',
+          body: '1,200 served: the DINING row reads needs 1,200 · served 1,200, and its ⚠ is gone. Now the rest.\n1. SD-1 is still armed from the dining room (clicking it in the sidebar would put it down): click the two in the bar and the one in the dish pit.\n2. Arm SD-2 and click the hall and storage diffusers.\n3. Arm SD-3 and click the four in the kitchen.',
           target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8))) && allDone(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10)) && allDone(circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
           hint: () => [row('SD-1', pts(G.SD1).slice(8), ['the bar (west)', 'the bar (east)', 'the dish pit']), row('SD-2', pts(G.SD2), ['the hall', 'storage']), row('SD-3', pts(G.SD3), ['the kitchen (west)', 'the kitchen', 'the kitchen', 'the kitchen (east)'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); seedDiffusers(); K().dirty(); } } },
@@ -430,7 +430,7 @@
           hint: () => [row('RG-1', pts(G.RG1), ['the dining room (west)', 'the dining room (east)', 'the kitchen']), row('EG-1', pts(G.EG1), ['MEN', 'WOMEN', 'the mop room'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); K().dirty(); } } },
       ],
-      done: 'A palette from the schedule, every diffuser with its air, and rooms that read ✓.\nNext: [[Learn]] → Chapter 4, the system.',
+      done: 'A palette from the schedule, every diffuser with its air, and rooms served in full, their ⚠ gone.\nNext: [[Learn]] → Chapter 4, the system.',
     },
     // 4 --------------------------------------------------------------------------------------------
     {
@@ -569,7 +569,7 @@
           hint: () => { const r = runWith(['8"ø']); return r && r.airside !== 'exhaust' ? 'The run is there but marked supply: right-click it and set its airside to Exhaust' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['8"ø'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust' }); K().dirty(); } } },
         { id: 'makeup', title: 'The make-up air', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.makeup), M101).concat(runWith(['20x16']) ? circlesOn(M101, byTag('MA-1'), pts(G.MA1), 12) : []),   // line 2 is on the sheet too: its circle (by hand, 2026-09-25)
-          body: 'Spiral round in ten-foot sticks: the schedule counts the joints. Now the air that replaces what the hood takes.\n1. [[Duct]] again: 20x16, supply, [[Start Tracing]]. Click the MAU-1 drop at the east wall and the register MA-1. Press Enter.\n2. Arm MA-1 and click the register.',
+          body: 'Now the air that replaces what the hood takes. MAU-1 on the roof drops in at the east wall, and a 20x16 rectangular duct carries it west across the kitchen to the MA-1 register.\n1. [[Duct]] again: 20x16, supply, [[Start Tracing]]. Click the MAU-1 drop at the east wall and the register MA-1. Press Enter.\n2. Arm MA-1 and click the register.',
           target: () => ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList']), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
           action: { label: 'Trace and count it for me', run: () => { K().goPage(M101); if (!runWith(['20x16'])) { if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air' }); } App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('MA-1'), pts(G.MA1), M101); K().dirty(); } } },
         { id: 'interlock', title: 'Why make-up air', kind: 'read',

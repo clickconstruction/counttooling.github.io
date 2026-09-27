@@ -2,7 +2,14 @@
  * features/course-plumbing.js - the plumbing course: how a restaurant gets its plumbing,
  * taught on the engineered sample plan with the app's own tools. Nine chapters on the
  * tour engine (features/tutorial.js), each the length of a lesson, resumable, ticked on
- * the device. Plan of record: journeys/plans/PLUMBING-COURSE.md.
+ * the device, and ahead of them an uncounted opener, "Before you count" (id `before`,
+ * reading cards only), for a reader who has never seen a construction drawing. Plan of
+ * record: journeys/plans/PLUMBING-COURSE.md.
+ *
+ * The reader is anyone at all (COURSE-LANGUAGE-2026-09-27, option C): every trade and app
+ * word is glossed the first time the course uses it, a doing card leads with its steps (the
+ * previous card's answer sits above them under "Answer:", the longer reasoning after them),
+ * and no card sentence runs past 25 words.
  *
  * The teaching mode: the engineer's drawing is the answer key, and the reader answers
  * with a click. Work on the sheet is asked for inside the engine's on-sheet TARGETS
@@ -286,7 +293,7 @@
   function compareBody() {
     const ref = referenceFeet();
     const seen = new Set();
-    const lines = ['The reference, on the left, is the right answer, from the sheet\'s own geometry. Yours, on the right, is from your Summary.'];
+    const lines = ['Reference on the left, the right answer from the sheet\'s geometry. Yours on the right, from your Summary.'];
     RUNS.forEach((r) => {
       if (seen.has(r.name)) return; seen.add(r.name);
       const mine = K().feetFor(r.re, r.key === 'hwr' ? null : RE.hwr);
@@ -297,7 +304,7 @@
     lines.push('0.75in Copper CW branches: 10.7 ft, yours ' + fmtFt(branches) + ' ft' + (branches >= 10 ? ' ✓' : ', short: the chained lavatories'));
     const bad = COUNTS().filter(([tag, spots]) => markCountNear(TAGS[tag][0], spots, 8) < spots.length).map((c) => c[2]);
     lines.push(bad.length ? 'Counts short: ' + bad.join(', ') + '.' : 'Every count matches: twelve fixture types, thirty-four marks.');
-    lines.push('A takeoff within a few feet of the geometry is right: the last inch is only where you clicked. What matters is that nothing is missing, and the row above says so.');
+    lines.push('A takeoff within a few feet of the geometry is right: the last inch is the click. What matters is that nothing is missing, and the row above says so.');
     return lines.join('\n');
   }
 
@@ -442,8 +449,8 @@
           action: { label: 'Find it for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('rpz'), SPOTS().rpz); K().dirty(); } } },
         { id: 'trunk', title: 'Why the trunk climbs the west walls', kind: 'read', cardAt: 'tl',
           rules: ['plumb.wsfu.fixtures', 'plumb.wsfu.demand'],
-          body: 'Answer: the RPZ, a reduced-pressure backflow preventer (IPC 608). Backflow is water running backwards, from the building into the city\'s water.\nIf the city main ever loses pressure, a hose left in a mop bucket could siphon (suck) the building\'s water back into the street. The RPZ makes that impossible. It sits where the service enters, so everything behind it is covered.\nOn the bid it is one assembly, two shutoff valves, a test port and a drain for its relief valve. The relief valve spills water when it trips.\nFrom the RPZ the cold runs west along the south wall. One trunk, the main pipe the branches come off, turns north up the dish pit\'s west wall. It climbs through the kitchen and the men\'s room to the top wall.\nWhy that route, when the east wall is nearer the meter?',
-          reveal: 'It feeds fixtures on the way. First the dish 3-comp, the kitchen hand sink and the prep sink. Then both restrooms and the mop sink, off the run along the top wall. The hot line rides beside it the whole way.\nOne trunk with branches is less pipe, and fewer hangers (the supports that hold a pipe up), than two.\nThe label on it, 1-1/2" CW · 1-1/4" HW, gives the cold water and hot water sizes. It is the engineer\'s fixture-unit math (IPC 604 and Appendix E).\nThe pipe shrinks downstream, to 3/4" by the mop room. You do not size it. You read the sizes and name your line types by them.',
+          body: 'Answer: the RPZ, a reduced-pressure backflow preventer (IPC 608). It stops water flowing back into the city\'s, as a hose left in a mop bucket could siphon (suck) it when the main loses pressure. It sits where the service enters, so everything behind it is covered. On the bid: one assembly, two shutoff valves, a test port and a drain for its relief valve.\nFrom the RPZ the cold runs west along the south wall. One trunk, the main pipe the branches come off, climbs the dish pit\'s west wall to the top wall. Why that route, when the east wall is nearer the meter?',
+          reveal: 'It feeds fixtures on the way: the dish 3-comp, the kitchen hand sink, the prep sink, both restrooms and the mop sink. The hot line rides beside it. One trunk with branches is less pipe, and fewer hangers (pipe supports), than two.\nThe label, 1-1/2" CW · 1-1/4" HW, gives the cold and hot water sizes, from the engineer\'s fixture-unit math (IPC 604 and Appendix E). It shrinks to 3/4" by the mop room. You do not size it: you name your line types by its sizes.',
           target: [], check: () => true },
         { id: 'linetypes', title: 'Line types by size and material', kind: 'do',
           rules: ['plumb.hanger.copper'],
@@ -462,7 +469,7 @@
           hint: () => (!S().drawingPolyline && polylinesOn(RE.hwr, K().P101).length && !allDone(traceZones(RE.hwr, pts(G.hwReturn), K().P101)) ? 'Trace the DOTTED line, the legend\'s HWR, not the dashed supply' : ''),
           action: { label: 'Trace the return for me', run: () => { const lt = lineType(RE.hwr) || K().makeLineType('0.75in Copper HWR', '#e8c547'); if (polylinesOn(RE.hwr).length) return; tracePlan(lt, G.hwReturn, 'Hot water return'); } } },
         { id: 'chain', title: 'Chain the fixtures off the top-wall run', kind: 'do', cardAt: 'bl', page: 0, zones: () => circlesOn(K().P101, RE.lav, K().LAVS, 14),
-          body: 'Answer: the dotted line, the hot water return. It carries unused hot water back to the heater, so every tap runs hot fast. Most bids miss it because it looks like the supply.\nBoth lavatories hang off the top-wall run on 3/4" branches, lav to lav (lavatory to lavatory).\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose L-1 and 0.75in Copper.\n3. Click the lavatory in MEN, then the one in WOMEN.\n4. Press Enter.\nEvery click places the fixture AND draws the branch back to the last one. (The mop sink has its own counter, so it is not on this chain.)\nThe return is forty feet of 3/4" pipe, insulated. Add the pump, a check valve (flow one way only) and a balancing valve (it sets the flow).\nWithout the loop the mop sink, forty feet from the heater, runs cold for a minute every time it is opened. And the health code wants hot water at every hand sink now (FDA Food Code 5-202.12, at least 100°F).',
+          body: 'Answer: the dotted line, the hot water return. It carries unused hot water back to the heater, so every tap runs hot fast. Most bids miss it because it looks like the supply.\nBoth lavatories hang off the top-wall run on 3/4" branches, lav to lav (lavatory to lavatory).\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose L-1 and 0.75in Copper.\n3. Click the lavatory in MEN, then the one in WOMEN.\n4. Press Enter.\nEvery click places the fixture AND draws the branch back to the last one. (The mop sink has its own counter, so it is not on this chain.)\nThe return is forty feet of insulated 3/4" pipe, plus the pump, a check valve (one-way) and a balancing valve (it sets the flow). Without it the mop sink, forty feet from the heater, runs cold for a minute each time. And the health code wants hot water at every hand sink now (FDA Food Code 5-202.12, at least 100°F).',
           target: ['#chainPanel', '#chainBtn'], check: () => { const a = ann(); return !!a && (a.quickLines || []).length >= 1 && allDone(circlesOn(K().P101, RE.lav, K().LAVS, 14)); },
           action: { label: 'Chain the two for me', run: () => { K().goPage(K().P101); seedCopperBranch(); } } },
         { id: 'drop', title: 'The riser the plan cannot show', kind: 'do', cardAt: 'bl', page: 0, zones: () => K().guide([P(564, 594)], 14, trunkDropped()),

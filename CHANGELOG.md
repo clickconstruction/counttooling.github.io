@@ -13,6 +13,68 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the plumbing course, written for anyone at all (2026-09-27)
+
+Todd read the COURSE-LANGUAGE-2026-09-27 memo and chose option C: the reader is anyone at all,
+a salesperson, a student, a spouse, someone who has never seen a construction drawing. The
+prose already read at grade 4; what made the course feel advanced was the trade and app words
+it used before it said what they meant, the answers that came before the instructions, and
+thirty-six sentences past 25 words. features/course-plumbing.js now carries the reader in.
+
+- **Chapter 0, "Before you count"** (id `before`): five reading cards ahead of chapter 1. What
+  a set of drawings is and what a P-sheet shows; what an estimator does (count what is drawn,
+  measure what is run, price it) and that the count and the feet are the takeoff; the four
+  verbs, count, trace, chain and check; where the sidebar, the header and the footer are; and
+  how a card works, down to the line beside Show me where. It registers through
+  `registerCourse` like the rest, so the Learn menu lists it first and lights it for a new
+  reader, and `/app/?chapter=plumbing:before` opens it. Its title carries no "Chapter N:", so
+  the course stays nine chapters; the menu's row numbers and its "0 of 10 done" are the
+  shared copy's to settle (below).
+- **Every word glossed the first time the course uses it**, in the same sentence or the next,
+  and kept: a takeoff, the bid, the title block, a keynote, the schedule, WSFU and DFU, the
+  IPC, an RFI, the GC, a lavatory (a bathroom sink), a water closet (a toilet), a floor sink, a
+  trap and its primer, a cleanout, a vent stack and its VTR, the RPZ backflow preventer, the
+  hot water return and its pump, SS, GW, the GI, PVC DWV, BI, BTU per hour, TYP. The idioms
+  keep their plain twin: the change order you eat is the extra the owner pays when the drawing
+  was wrong, paid by you.
+- **A doing card leads with its steps.** The previous question's answer sits above them under
+  "Answer:", in a sentence or two; the reasoning that used to stand between the reader and step
+  1 (the hot water return's pump and valves, the trench priced by length and depth, the air gap
+  under the prep sink) now follows the steps. One action per numbered line: a line that did two
+  became two.
+- **No card sentence runs past 25 words** (36 before, 0 now; the score script's count over
+  body, reveal and done). Numbers, code sections and rule citations are as they were:
+  check-lesson-rules still agrees on all five named numbers. Ids, kinds, targets, zones,
+  checks, hints, actions and `rules:` did not change.
+
+The score (the memo's script over body, reveal and done; words, Flesch-Kincaid grade, sentences
+over 25 words, before → after):
+
+| Chapter | Words | Grade | Over 25 |
+|---|---|---|---|
+| before (new) | 528 | 3.1 | 0 |
+| 1 sheet | 541 → 730 | 5.2 → 4.0 | 4 → 0 |
+| 2 fixtures | 576 → 725 | 3.6 → 3.4 | 4 → 0 |
+| 3 water | 783 → 916 | 4.5 → 4.2 | 8 → 0 |
+| 4 waste | 652 → 735 | 4.4 → 3.8 | 4 → 0 |
+| 5 riser | 401 → 439 | 4.7 → 3.4 | 5 → 0 |
+| 6 gas | 449 → 526 | 4.0 → 3.3 | 6 → 0 |
+| 7 details | 302 → 349 | 3.7 → 3.3 | 2 → 0 |
+| 8 whole | 206 → 215 | 6.3 → 4.4 | 1 → 0 |
+| 9 bid | 362 → 407 | 5.0 → 4.4 | 2 → 0 |
+| The course | 4,272 → 5,570 | 4.4 → 3.7 | 36 → 0 |
+
+The glosses cost words, and a card grew: chapter 3's "Why the trunk climbs" card, with its
+answer shown, now stands 652 px tall at a 720 px window (it was 673); each card was measured
+with its reveal open so none pushes Next off the screen.
+
+course-plumbing.spec.js walks chapter 0 (five reading steps, nothing laid) and pins the menu at
+ten rows with the opener first; the reveal test reads chapter 1's new question. tutorial.spec.js's
+manifest case counts each course's chapters from its own id list (nine, plus the opener where a
+course has one). The shared copy that says "nine chapters" (the app shell's Project Settings
+link titles and the Learn lede, the empty-canvas hint's title, the Learn guide) is left for one
+edit after the three course branches merge.
+
 ## fix(learn): the HVAC course's trace hint no longer deletes the reader's committed main (2026-09-27)
 
 Found by the DS-DUCT-DOWNSTREAM agent while proving the Duct tool never drops a run: chapter 5's

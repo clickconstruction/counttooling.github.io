@@ -4,34 +4,41 @@ title: Diffuser neck velocity
 trade: hvac
 kind: convention
 status: draft
-summary: The trade's rule of thumb keeps air through a supply diffuser's neck between about 400 and 600 feet a minute, so a diffuser carrying more air gets a bigger neck, and the neck size is the flex and tap size on the bid.
+summary: A diffuser's neck is picked from the maker's sound and throw data and the push its flex needs; makers keep neck velocity under about 1,000 feet a minute, and the app's own neck suggestion puts up to 150 CFM on an 8 in neck and up to 300 on a 10 in, so the neck size is the flex and tap size on the bid.
 values:
-  - when: neck velocity, the low end of the band
-    value: 400
-    unit: fpm
-  - when: neck velocity, the high end of the band
-    value: 600
+  - when: a common ceiling for air through a supply diffuser's neck (makers' selection guidance)
+    value: 1000
     unit: fpm
   - when: 150 CFM through an 8 in neck (the neck-size suggestion's first row)
     value: 430
     unit: fpm
+  - when: the most air the app's neck suggestion puts on an 8 in neck
+    value: 150
+    unit: CFM per neck
+    code: duct-model.js#NECK_SIZE_TABLE[0].maxCfm
+  - when: the most air the app's neck suggestion puts on a 10 in neck
+    value: 300
+    unit: CFM per neck
+    code: duct-model.js#NECK_SIZE_TABLE[1].maxCfm
 source:
   code: trade practice
-  section: diffuser selection rule of thumb (noise), not a code figure
+  section: diffuser selection from the maker's catalogued sound (NC) and throw data, not a code figure
   editions: []
 amendments: []
 used_by: []
-updated: 2026-09-26
+updated: 2026-09-27
 ---
 
-What sets a diffuser's neck is velocity. Air moving through the neck makes noise, and the faster it moves the louder it gets, so a designer picks the neck so the air goes through at roughly 400 to 600 feet a minute. At 150 CFM an 8 in neck runs about 430 fpm, comfortably inside. A diffuser that carries more air steps up a neck size to stay in the band.
+What sets a diffuser's neck is the maker's selection data, read by the engineer: the sound the diffuser makes at its air (its NC rating), its throw (how far the air carries across the room), and the pressure the runout and its flex take to deliver that air. Diffuser makers' guidance keeps neck velocity below about 1,000 feet a minute; inside that, the catalog decides. At 150 CFM an 8 in neck runs about 430 fpm, and at 200 CFM about 573, both quiet selections. A diffuser that carries more air often steps up a neck size anyway, because a bigger flex costs the fan less push.
 
-It matters on a bid because the neck size is the flex size and the tap size: the diffuser schedule's necks price every branch.
+It matters on a bid because the neck size is the flex size and the tap size: the diffuser schedule's necks price every branch. The flex is run at the size of the neck it feeds.
 
 ## What the app does with it
 
-The app does not read this band. A counter with a CFM suggests a neck from a CFM-to-neck table in duct-model.js (`NECK_SIZE_TABLE`: up to 150 CFM on 8 in, 300 on 10 in, 450 on 12 in, 700 on 14 in), and the flex that feeds it follows the neck. Those rows land near the band but not all inside it: the top of each row works out to about 430, 550, 573 and 655 fpm, so the 14 in row sits above 600. Because the band is not a number the app keeps, this rule has no code pointer and stays a draft; the table, not the band, is what a change would edit.
+The app does not read a velocity band. A counter with a CFM suggests a neck from a CFM-to-neck table in duct-model.js (`NECK_SIZE_TABLE`: up to 150 CFM on 8 in, 300 on 10 in, 450 on 12 in, 700 on 14 in), shown on the counter's details and its sidebar hover. The top of each row works out to about 430, 550, 573 and 655 fpm, all well under the makers' ceiling. The first two rows are pinned here, so a change to the table changes this rule in the same commit. On an engineered set the schedule's neck wins over the suggestion.
 
 ## Verify against your edition
 
-This is design practice, not code, and the band itself is open. The HVAC course's trade read (punch list HC-TRADE) found the card's own example sits inside it (200 CFM through an 8 in neck is about 573 fpm) while the 10 in neck the plan uses runs about 367, below it, and asks whether the trade quotes a lower band such as 300 to 500. A person with the trade settles the band before this rule is applied.
+This is design practice, not code. The earlier draft quoted a 400 to 600 fpm band and said an 8 in neck at 200 CFM would whistle; no public source for that band was found, and the makers' published figure is a ceiling of about 1,000 fpm with selection from their sound and throw tables (Nailor, "How ceiling diffusers are selected", 2022; Sheet Metal Journal repeats the figure). Your shop may carry a tighter number for quiet rooms; the maker's catalog for the diffuser in hand still governs.
+
+Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.

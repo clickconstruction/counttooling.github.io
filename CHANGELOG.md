@@ -88,6 +88,51 @@ book or a local amendment, and every signed rule says so.
   flagged receptacle, the circuit question, 2 #12 + G, the 8.5 ft drop and 15.83 ft, and a new test
   for the 5 ft drop the rise step now holds on.
 
+## docs(hvac): the HVAC dossier settled: the sheets, the course and the four drafts (DOSSIER-HVAC, 2026-09-27)
+
+Will delegated the tester dossiers' questions ("a lot of these you can just decide"). This settles
+journeys/plans/TESTER-DOSSIER-HVAC-2026-09-27.md: punch rows HC-REVIEW and HC-TRADE, the
+PP-DUCT-SUGGEST entries and the HVAC four of RULEBOOK-SIGN, from the dossier's research and the model
+code text. Nobody opened a printed code book; local amendments still govern. The decision log, one
+line per entry, is the dossier's new "Settled 2026-09-27" section: 25 applied, 7 already done
+(P1, T4, A1, A2, A4, A5 all but `main:trace`, A6: PR #231 and the day's merges), 1 left open (A3).
+
+- **The sheets** (scripts/sample-hvac.js, samples/sample-hvac.pdf regenerated). M-101: the air
+  balance keynote balances outside air (RTU-1 OA 1,300 + make-up 2,000 in, exhaust 2,400 + 270 out,
+  building positive), never supply (R1); the mop room gets its own grille, EG-2 at 120 CFM (1.0 CFM
+  a sq ft), so EF-2 is 270 (R4); the main is drawn a stretch per size with a line across the duct
+  at each change and the size printed there, not 5 ft downstream (T3); MAU-1's drop is drawn, and
+  moved 22 px east off RTU-1's back-rooms run it sat on (T5); MA-1 is a 24x48 perforated register,
+  not a four-way diffuser (R7); the keynotes say flex the size of the neck (R6), a listed wrap on
+  the grease duct above the ceiling (R11) and IMC 607.5 (R13). M-501: an OA CFM column (R1), the
+  EG-2 row and MOP 104 at 120 (R4), transfer air cited to IMC 403.2.2 (R5), a ventless dishwasher
+  note (R16). M-601: the wrap note cites IECC C403 without a subsection (R15).
+- **The course** (features/course-hvac.js). Chapter 1's balance card reads outside air; chapter 2's
+  `rooms:why` says the cooling load sets the supply and ventilation how much of it is outside air
+  (R2), and names the outdoor-air rule; chapter 3 reads seven counters off the schedule, counts
+  EG-1 ×2 and EG-2 ×1, and its neck card drops "whistles" and the 400 to 600 band (T1); chapter 5
+  says "where the size changes" (T3) and that this engineer sized the main tighter than the
+  ductulator's 0.08, so the SUGGESTED row reads bigger and the drawing is what you bid (P2, R8);
+  chapter 7 cites 607.5 with a line on the sprinkler exception (R13, R14), lays its exhaust and
+  make-up runs on no system and lets RTU-1 go, so RTU-1 reads 2,350 there, not 4,575 of 3,000
+  (T2), and cites 508.1.1 for the tempering (S1); chapter 8's reference reads eight device types
+  and the 20x16 grows to 23.8 ft, and its lay card says to let RTU-1 go before the exhausts;
+  chapter 9's OA tick reads RTU-1's 1,300 (S4).
+- **The rules** (content/rules/hvac): the four drafts are signed in their Verify paragraphs and
+  stay `draft`, because the rulebook's `applied` means the app applies a rule and it applies none
+  of these. Hood make-up air: interlock 508.1, temperature 508.1.1 (10°F, Minnesota's amendment
+  listed), the balance building-wide. Neck velocity: rewritten on the makers' selection data and a
+  ceiling of about 1,000 fpm; the neck table's first two rows pinned to duct-model.js. Fire damper:
+  607.5 with its three subsections and their exceptions. Outdoor air: the dining room's 7.5 and
+  0.18, and the 62.1 note.
+- **Left open**: A3, how the app gives a NEW duct run its system (a new run joins the lit group
+  whatever its unit). A product call, PUNCHLIST DUCT-RUN-SYSTEM. HC-REVIEW and HC-TRADE are
+  deleted; RULEBOOK-SIGN keeps its plumbing and electrical wording and says the HVAC four are done.
+- **Tests**: sample-hvac.test.js (new, Node) pins the sheets' settled numbers (the balance, EF-2 as
+  its three rooms, the citations, each size within 27 plan px of its change, MAU-1's drop off the
+  back-rooms run); course-hvac.spec.js pins the seven counters, EG-2, RTU-1 at 2,350 with nothing of
+  chapter 7 on it, and the callout read at each change vertex.
+
 ## fix(status-bar): one line on a phone, and the tool hint reads in full (MAP-PHONE-BAR, 2026-09-27)
 
 Signed in on a phone, the bottom bar was two rows: the save words ("Canvas", "PDF Synced with

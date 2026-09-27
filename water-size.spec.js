@@ -54,11 +54,13 @@ test.describe('The S moment for water (rung 4)', () => {
     // the three lavatories are behind the tip (served); the flush-valve WC is the pool ahead: 10 WSFU at valves = 27 gpm,
     // 3/4 in PEX runs 24.5 fps, the first size under 8 fps cold is 1-1/2 in
     const sug = await page.evaluate(() => { const s = window.App.getWaterDraftSuggestion(); return { wsfu: s.wsfu, served: s.served, column: s.column, gpm: s.gpm, sizeIn: s.sizeIn, over: s.over, currentSizeIn: s.currentSizeIn, material: s.material, chipText: s.chipText }; });
-    expect(sug).toEqual({ wsfu: 10, served: 4.5, column: 'flush-valve', gpm: 27, sizeIn: 1.5, over: true, currentSizeIn: 0.75, material: 'pex', chipText: '1-1/2″ suggested · 10 WSFU downstream · 7.1 fps · 3/4″ runs 24.5 ⚠. S accepts' });
+    expect(sug).toEqual({ wsfu: 10, served: 4.5, column: 'flush-valve', gpm: 27, sizeIn: 1.5, over: true, currentSizeIn: 0.75, material: 'pex', chipText: '1-1/2″ suggested · 10 WSFU downstream · 7.1 fps · 3/4″ runs 24.5 ⚠. S to choose' });
     const card = page.locator('#waterHintCard');
     await expect(card).toBeVisible();
     await expect(card).toContainText('1-1/2″ suggested');
     await expect(card.locator('kbd')).toHaveText('S');
+    await expect(card).toContainText('· S to choose');   // PP-DUCT-CHIP: S opens the box, a click takes the size
+    await expect(card).not.toContainText('accepts');
     // S opens the popover; Escape closes it without costing a vertex
     await page.keyboard.press('s');
     await expect(page.locator('#waterSizePopover')).toBeVisible();

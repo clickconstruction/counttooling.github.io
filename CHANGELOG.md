@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
+
+The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))
+caught the duct hint card promising more than the key does. It read *"Plan says 20×12 here · S
+accepts"*, but S opens the Duct size box and the size is a click there. The ductulator line and the
+water card said the same. Behavior is unchanged; the words now match it.
+
+- **Plan size:** *"Plan says 20×12 here · S to pick it"* (features/duct-callouts.js `chipText`).
+- **Ductulator:** *"450 CFM downstream · suggests 12"Ø or 16×8 @ 0.08″/100′ · S to choose"*
+  (features/duct-suggest.js). It offers two sizes, round and rectangular, so one key could not take
+  both anyway.
+- **Water:** *"3/4″ suggested · 6 WSFU downstream · 5.1 fps · S to choose"* (features/water-size.js).
+- **The keycap:** duct-tool.js `syncDuctHintCard` and water-size.js `syncWaterHintCard` put the
+  keycap on the new tails.
+- **Teaching:** the HVAC course's main-trace step and the HVAC tour's duct step quote the new line
+  and name where it sits (the hint at the bottom of the sheet, since DUCT-HINT moved it off the
+  cursor). The duct guide says the same.
+- **Pinned** by duct-callouts.spec.js (the card reads "Plan says 20×12 here · S to pick it"),
+  duct-suggest.spec.js and water-size.spec.js (the cards read "· S to choose", never "accepts").
+
+Built as a proposal for Will: the other options were leaving it, S taking the plan's size at once,
+and a second S taking it. The PUNCHLIST row stays open until he picks.
+
 ## fix(prepare): one name for the upload dialog, "Trim your set" (PP-TRIM-TITLE, 2026-09-27)
 
 A proposal for punch row PP-TRIM-TITLE ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md)

@@ -2,8 +2,8 @@
  * features/duct-suggest.js — the design-build ductulator suggestion (DUCT-PLAN
  * unit D6, "Design-build layer 1"). LIVE information, never automation: while
  * a duct trace is in progress and the system has CFM data, the size chip grows
- * a suggestion line ("450 CFM downstream · suggests 12×10 @ 0.08″/100′ — S
- * accepts") and the S popover's FIRST section is the pre-highlighted suggested
+ * a suggestion line ("450 CFM downstream · suggests 12×10 @ 0.08″/100′. S to
+ * choose") and the S popover's FIRST section is the pre-highlighted suggested
  * size — one tap applies it through the normal applyDuctSizeStep path.
  * Suggestions NEVER auto-apply (DUCT-PLAN philosophy: inference with override).
  *
@@ -230,7 +230,7 @@
       binding: s.binding,
       velocityFpm: s.round.velocityFpm,
       frictionRate: frictionRate,
-      chipText: cfmLabel + ' CFM downstream · suggests ' + sizeLabel + ' @ ' + frictionRate + '″/100′' + limitNote + '. S accepts',
+      chipText: cfmLabel + ' CFM downstream · suggests ' + sizeLabel + ' @ ' + frictionRate + '″/100′' + limitNote + '. S to choose',
       popoverLabel: 'Suggested: ' + sizeLabel + ' · from ' + cfmLabel + ' CFM' + limitNote,
     };
   }

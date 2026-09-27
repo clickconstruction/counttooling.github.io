@@ -130,6 +130,8 @@ The migration does **not** include the first admin insert. Do that in step 4.
 
 **view_link_access_log_viewer** (2026-09-06, viewer grants) — `view_link_access_log` gains `viewer_name` and `source` (null on the email-gate path; `pipetooling-sub-portal` for a PipeTooling viewer grant), and `get_view_link_access_log` returns both so the Share modal's access log reads "Behar Kraja · via PipeTooling portal". Additive; the function falls back to the old row shape if deployed before this is applied.
 
+**get_project_permissions** (2026-09-27, MAP-PERMS; **drafted, not yet applied to prod**) — Adds `get_project_permissions(p_project_id uuid)`: one project's `list_accessible_projects` row without `data`, `pdf_path` or `pdf_hash` (same column names and order, same expressions, same access rule plus `p.id = p_project_id`; no row when the caller cannot see the project). SECURITY DEFINER, `search_path = public, auth`, `stable`, execute for `authenticated` + `service_role`, anon and PUBLIC revoked. The client's permissions refresh (save-engine.js `refreshProjectPermissions`, both the supabase-js call and the raw-fetch twin) reads it instead of downloading every visible project's takeoff. **Safe to apply in either order**: while it is absent PostgREST answers PGRST202 and the client falls back to `list_accessible_projects`, latched until its next client recycle. Apply on the owner's go, then delete the fallback (PUNCHLIST MAP-PERMS).
+
 ### Migration file naming
 
 Every migration is a single file named `YYYYMMDDHHMMSS_<label>.sql` — a 14-digit timestamp version plus a descriptive label, the format the Supabase CLI expects. The `version` recorded in `supabase_migrations.schema_migrations` is the timestamp, and it matches the filename one-to-one.

@@ -565,6 +565,9 @@ function createSaveEngine(ctx) {
       }
       lastClientRecycleAt = Date.now();
       clientRecycleCountThisRun++;
+      // MAP-PERMS: a fresh client asks for the lean permissions RPC again (a
+      // migration may have landed while this tab was open).
+      permissionsRpcMissing = false;
       const elapsedMs = Date.now() - t0;
       saveDebugLog('autosave.client_recycle.ok', { reason, elapsedMs, resubscribed });
       pushSaveEvent('autosave_client_recycled', 'Supabase client recreated', autosaveEventDetail({ reason, elapsedMs, resubscribed, recycleCount: clientRecycleCountThisRun }));
@@ -716,6 +719,8 @@ function createSaveEngine(ctx) {
   function rawCheckInProject(projectId, signal) { return rawRpc('check_in_project', { p_project_id: projectId }, signal); }
   // Raw-fetch twin of supabase.rpc('list_accessible_projects').
   function rawListAccessibleProjects(signal) { return rawRpc('list_accessible_projects', {}, signal); }
+  // Raw-fetch twin of supabase.rpc('get_project_permissions') (MAP-PERMS).
+  function rawGetProjectPermissions(projectId, signal) { return rawRpc('get_project_permissions', { p_project_id: projectId }, signal); }
 
   function getLastSupabaseJsFailureAt() { return lastSupabaseJsFailureAt; }
   function isSbJsRecentlyBad() { return lastSupabaseJsFailureAt > 0 && Date.now() - lastSupabaseJsFailureAt < 5 * 60 * 1000; }
@@ -842,10 +847,58 @@ function createSaveEngine(ctx) {
       !!projectId && lastSelfReleaseProjectId === projectId;
   }
 
+  // --- [sync] The permissions read (MAP-PERMS) ----------------------------
+  // get_project_permissions returns the one row refreshProjectPermissions
+  // reads (can_edit, can_check_out, checked_out_*), where the list returned
+  // every visible project WITH its whole takeoff (`data`). Until its migration
+  // (supabase/migrations/20260927030000_get_project_permissions.sql) is on
+  // prod, PostgREST answers PGRST202 (function not in the schema cache): the
+  // read falls back to list_accessible_projects in the same refresh and
+  // latches, so the missing RPC is not asked again every refresh. A client
+  // recycle clears the latch (recreateSupabaseClient) so a long-open tab meets
+  // a freshly applied migration. Follow-up once prod has the function: delete
+  // the latch and the list fallback here.
+  let permissionsRpcMissing = false;
+  // Both answer shapes of a missing RPC: supabase-js's PostgrestError carries
+  // the code; rawRpc keeps RAW_RPC_HTTP_404 as the error code and hands the
+  // PostgREST body back as `data`. A bare 404 (a proxy page) does not latch.
+  function isMissingRpcAnswer(r) {
+    if (!r || !r.error) return false;
+    if (r.error.code === 'PGRST202') return true;
+    const body = r.data;
+    return !!(body && !Array.isArray(body) && typeof body === 'object' && body.code === 'PGRST202');
+  }
+  // One permissions read over the given transport: { data: rows[], error }.
+  // `inFlight.rpc` names the call in flight so a supabase-js timeout is
+  // attributed to the right RPC.
+  async function readProjectPermissionRows(projectId, useRaw, inFlight) {
+    const supabase = ctx.getSupabase();
+    if (!permissionsRpcMissing) {
+      inFlight.rpc = 'get_project_permissions';
+      const r = useRaw
+        ? await ctx.withTimeout((signal) => rawGetProjectPermissions(projectId, signal), REFRESH_PERMISSIONS_TIMEOUT_MS, 'get_project_permissions')
+        : await ctx.withTimeout(supabase.rpc('get_project_permissions', { p_project_id: projectId }), REFRESH_PERMISSIONS_TIMEOUT_MS, 'get_project_permissions');
+      if (!isMissingRpcAnswer(r)) {
+        if (!r.error && !Array.isArray(r.data)) {
+          return { data: null, error: new Error('get_project_permissions: unexpected answer (not a row list)') };
+        }
+        return { data: r.data, error: r.error };
+      }
+      permissionsRpcMissing = true;
+      try { pushSaveEvent('permissions_rpc_missing', 'get_project_permissions is not on the server yet; reading the project list instead until the client is recycled', JSON.stringify({ via: useRaw ? 'raw' : 'supabase-js' })); } catch (_) {}
+    }
+    inFlight.rpc = 'list_accessible_projects';
+    const r = useRaw
+      ? await ctx.withTimeout((signal) => rawListAccessibleProjects(signal), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects')
+      : await ctx.withTimeout(supabase.rpc('list_accessible_projects'), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects');
+    return { data: r.data, error: r.error };
+  }
+
   async function refreshProjectPermissions() {
     const state = ctx.getState();
     const supabase = ctx.getSupabase();
     if (!supabase || !state.currentProjectId || !state.supabaseSession?.user) return;
+    const projectId = state.currentProjectId;
     const prevCanCheckOut = state.canCheckOut;
     const prevCheckedOutEmail = state.checkedOutEmail;
     const prevCheckedOutAt = state.checkedOutAt;
@@ -858,10 +911,9 @@ function createSaveEngine(ctx) {
     // full timeout. Same pattern Turn In uses for check_in_project.
     for (let attempt = 0; attempt < 2; attempt++) {
       const useRaw = isSbJsRecentlyBad() || attempt > 0;
+      const inFlight = { rpc: 'get_project_permissions' };
       try {
-        const r = useRaw
-          ? await ctx.withTimeout((signal) => rawListAccessibleProjects(signal), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects')
-          : await ctx.withTimeout(supabase.rpc('list_accessible_projects'), REFRESH_PERMISSIONS_TIMEOUT_MS, 'list_accessible_projects');
+        const r = await readProjectPermissionRows(projectId, useRaw, inFlight);
         projects = r.data;
         error = r.error;
       } catch (e) {
@@ -874,11 +926,17 @@ function createSaveEngine(ctx) {
       // prefer raw fetch instead of each eating a full timeout first. Previously
       // these 10+/hour timeouts were dropped on the floor, so Turn In had no idea
       // the client was wedged and hung the full check-in timeout before retrying.
-      if (error && !useRaw) noteSupabaseJsFailure('list_accessible_projects', error);
+      if (error && !useRaw) noteSupabaseJsFailure(inFlight.rpc, error);
       if (attempt === 0) await new Promise(r2 => setTimeout(r2, 500));
     }
     if (error || !projects) {
       try { pushSaveEvent('refresh_permissions_err', 'refreshProjectPermissions failed', (error && (error.message || String(error))) || 'no data returned'); } catch (_) {}
+      return;
+    }
+    // The lean read answers for the project it was asked about; a project
+    // switched mid-read is not "no access" (its own load refreshes it).
+    if (state.currentProjectId !== projectId) {
+      saveDebugLog('permissions.refresh.stale_project', { asked: projectId, now: state.currentProjectId });
       return;
     }
     const proj = projects.find(function(p) { return p.id === state.currentProjectId; });

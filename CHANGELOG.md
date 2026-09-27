@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(save): a lean permissions read, behind a fallback until its RPC is applied (MAP-PERMS, 2026-09-27)
+
+`refreshProjectPermissions` (save-engine.js) runs on every checkout-channel UPDATE, subscribe,
+tab return, turn-in and recovery, and it read `list_accessible_projects` to keep one row's
+`can_edit`, `can_check_out` and `checked_out_*` fields: every project the user can see, each
+with its whole takeoff (`data`). For an admin or overseer that is the whole projects table per
+refresh, on the connection the autosave shares (DECOMPOSITION_MAP.md D28).
+
+- **The RPC, drafted, NOT applied**: `supabase/migrations/20260927030000_get_project_permissions.sql`
+  creates `get_project_permissions(p_project_id uuid)`, one row: the list's columns in the list's
+  order minus `data`, `pdf_path` and `pdf_hash`, every expression copied from the list's latest
+  definition (20260831100000), the list's access rule (owner, any share, admin, overseer) plus
+  `p.id = p_project_id`. No row when the caller cannot see the project, which the client reads
+  as "no longer have access", the verdict the list's missing row gave. Same security model:
+  SECURITY DEFINER, `search_path = public, auth`, execute for `authenticated` and `service_role`,
+  anon and PUBLIC revoked. One difference, on purpose: it is declared `stable`.
+- **The client asks it first, over both transports**: the supabase-js call and the raw-fetch twin
+  (`rawGetProjectPermissions`, over R21's `rawRpc`) the recovery machinery takes when the client
+  is wedged. A missing function answers PGRST202 (supabase-js puts the code on its error; the raw
+  fetch sees a 404 whose body carries it): the same refresh falls back to the list, logs
+  `permissions_rpc_missing` once, and latches, so the missing RPC is not asked again every
+  refresh. A client recycle clears the latch, so a long-open tab meets a freshly applied
+  migration. A clean PGRST202 is a server answer, not a wedged client: it is never recorded as a
+  supabase-js failure. A bare 404 without PostgREST's code does not latch.
+- A refresh whose project changed while the read was in flight now stops instead of applying an
+  answer for the old project (the lean row names only the project it was asked about; the new
+  project's own load refreshes it).
+- Self-release, the expiry routing and the force-turn-in notice read the same fields and are
+  unchanged. bid-chip's menu, pdf-intake's match, load-project and bid-board still read the list.
+
+Pinned by three save-engine.test.js cases (the lean answer applied with the list never read and a
+missing row meaning no access; PGRST202 to the list once, latched, cleared by a recycle; the raw
+path's lean read, its 404 fallback and latch, and a non-PostgREST 404 not latching). The test
+stubs now answer `get_project_permissions` the way prod does today (PGRST202), so the existing
+permission tests walk the fallback. **Left for the developer** (PUNCHLIST MAP-PERMS): apply the
+migration on the owner's go, then delete the latch and the list fallback.
+
 ## fix(learn): the electrical course's sensor step holds until a stray OS mark is undone (PP-OS-STRAY, 2026-09-26)
 
 The persona pass's prober put a fourth OS mark on a plain S switch in chapter 3's `lighting:os`

@@ -13,6 +13,49 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(duct): the size suggestion reads the air that really passes a vertex (DS-DUCT-DOWNSTREAM, 2026-09-27)
+
+The Duct size box's SUGGESTED row sizes the air still downstream of the trace's tip
+(duct-model.js `ductDraftRemainingCfm`, read by features/duct-suggest.js
+`getDuctDraftSuggestion`). It counted every device on no run as downstream, wherever it sat, and
+every device on a committed run of the system as served, wherever that run tapped. The HVAC
+course traces its main in chapter 5 before it hangs the diffusers, so every corner of the main
+read the whole building less the one diffuser on the line: 22"Ø or 26×16 from 2,550 CFM, where
+the sheet prints 20x12 (TESTER-DOSSIER-HVAC-2026-09-27.md P1 and A4). Traced the other way, the
+branches first, the 20x12 change read 1,200 where 1,500 flows, because the bar branch that taps
+the main further on counted as served.
+
+The rule now follows the taps. Each device's air leaves the draft at one point, and it is still
+to come when that point is at or past the tip:
+
+- a device on the draft: its own point (one at the tip is still ahead, as before);
+- a device on a branch that taps the draft, or on anything tapped off that branch: the branch's
+  tap, so a branch traced before its main counts until the main passes it;
+- a device on the network the draft taps off: served another way, as before;
+- a stray, or a branch not connected to anything yet: its foot on the draft, the nearest point
+  that is not behind the draft's first vertex (the new `ductDraftFoot`). A stray nearer a
+  committed run than the draft belongs to that run. One behind the start stays ahead.
+
+A draft of one vertex has no direction yet, so everything unplaced is ahead of it, and the
+friction rate and velocity cap (0.08" per 100 ft, 1,200 fpm) are unchanged.
+
+Chapter 5's main, before and after: the RTU drop and the hall corner 2,650 both times; the 20x12
+change 2,550 then 1,500 (18"Ø or 20×14, the dossier's true air); the 16x10 2,550 then 1,200
+(16"Ø or 16×14); the 12x10 2,550 then 750 (14"Ø or 14×12, the same size as the plan's 900: the
+bar diffuser at x=330 hangs from its perpendicular until the bar branch at 260 is traced); the
+far end, no suggestion. With the branches traced first and the diffusers hung, the 20x12 reads
+1,500 and the 16x10 1,200, and `ductDownstreamCfm` agrees on the committed main.
+
+A6, arming Duct never drops a committed run: pinned by a new duct-suggest.spec.js case (three
+runs pushed in with no undo snapshot survive the dialog and a re-press). The run the dossier saw
+vanish was not the tool: chapter 5's `trace` step hint in features/course-hvac.js reads
+`ductRuns(M101).pop()`, which removes the last run from the live annotations each time the hint
+is read with no draft and no finished main. Left for the course's owner, outside this change.
+
+Tests: duct-model.test.js pins the M-101 numbers in both orders and a branch drafted off the
+committed main; duct-suggest.spec.js traces chapter 5's main on the real sheet and reads the
+SUGGESTED row (red before: 22"Ø or 26×16 from 2,550).
+
 ## feat(save): a lean permissions read, behind a fallback until its RPC is applied (MAP-PERMS, 2026-09-27)
 
 `refreshProjectPermissions` (save-engine.js) runs on every checkout-channel UPDATE, subscribe,

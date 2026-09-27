@@ -1273,19 +1273,61 @@ function ductDownstreamCfm(opts) {
 }
 
 /**
+ * Where a point meets the IN-PROGRESS draft (DS-DUCT-DOWNSTREAM): the arclength s of
+ * the nearest point on the drafted polyline, with its distance, NOT counting the
+ * stretch before vertex 0. A point that lies behind the draft's start (its nearest
+ * point on the first leg would clamp to vertex 0) has no foot there: the trace has not
+ * gone its way yet. Returns { s, dist } or null (no foot anywhere, or < 2 vertices).
+ */
+function ductDraftFoot(p, verts) {
+  let best = null;
+  let acc = 0;
+  for (let i = 0; i < (verts?.length || 0) - 1; i++) {
+    const a = verts[i], b = verts[i + 1];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const segLen = Math.sqrt(len2);
+    const raw = len2 > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2 : 0;
+    if (!(i === 0 && raw < 0)) {
+      const t = Math.max(0, Math.min(1, raw));
+      const d = Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
+      if (!best || d < best.dist) best = { s: acc + t * segLen, dist: d };
+    }
+    acc += segLen;
+  }
+  return best;
+}
+
+/**
  * Remaining downstream CFM for an IN-PROGRESS trace (the live suggestion's
  * number — DUCT-PLAN "every tap subtracts its air … the remaining downstream
- * CFM"). The draft is assumed to be heading toward everything its system has
- * not served yet:
+ * CFM"): the air of the system's devices still AHEAD of the draft's tip.
  *
- *   remaining = Σ cfm of the system's devices
- *             − Σ cfm of devices already SERVED (attached to a committed run
- *               of the same system, or passed by the draft — attached to the
- *               draft polyline strictly BEHIND its tip).
+ *   remaining = Σ cfm of the system's devices − Σ cfm of the ones behind the tip
  *
- * A device the tip has just reached (its nearest point IS the tip) is still
- * downstream — the segment being sized carries its air; it flips to served
- * once the trace moves past it.
+ * DS-DUCT-DOWNSTREAM (2026-09-27, TESTER-DOSSIER-HVAC P1): the rule follows the
+ * tap topology. Every device's air leaves the draft at ONE arclength, its tap, and
+ * is ahead when that tap is at or past the tip, behind when strictly before it.
+ * Where the tap is:
+ *   - a device ON the draft (within the tap snap): its own nearest point. A device
+ *     the tip has just reached is still ahead (the segment being sized carries it);
+ *     it flips once the trace moves past it.
+ *   - a device on a committed run that taps the draft (the run's first vertex within
+ *     the snap of the draft, ductChildLinks' rule), or on anything tapped off that
+ *     run: that run's tap on the draft. A branch traced before its main is still to
+ *     come while its tap is ahead of the tip.
+ *   - a device on the rest of the draft's own network (the run the draft taps off,
+ *     and that run's other branches): served some other way than through the draft.
+ *   - a device on a committed network the draft touches nowhere (a branch waiting
+ *     for its main): where that network's root meets the draft (its end nearer the
+ *     draft, by ductDraftFoot).
+ *   - a stray (on no run): it belongs to its nearest same-system run, which is the
+ *     draft when the draft's foot for it is nearer than every committed run. On the
+ *     draft its tap is that foot, the perpendicular it would hang from; a stray with
+ *     no foot (behind the draft's start) is ahead.
+ * A draft of one vertex has no direction yet: every stray, and every run tapped at
+ * that vertex, is ahead of it. A draft of no vertex keeps the flat rule (committed
+ * runs serve their devices, strays are ahead).
  *
  * System scope: a device is IN scope when its derived system (attachment
  * against committed runs + the draft, else its own groupId) matches the
@@ -1295,41 +1337,118 @@ function ductDownstreamCfm(opts) {
  *
  * opts: { runs (committed), draft ({ vertices, segments?, systemGroupId? }),
  *         devices, snapDist? }
- * Returns { cfm, totalCfm, servedCfm } or null when no in-scope device has
- * CFM (the clean-absence rule — no data, no suggestion).
+ * Returns { cfm, totalCfm, servedCfm } (servedCfm = the in-scope air behind the
+ * tip) or null when no in-scope device has CFM (the clean-absence rule — no data,
+ * no suggestion).
  */
 function ductDraftRemainingCfm(opts) {
   const o = opts || {};
   const draft = o.draft;
   if (!draft) return null;
   const EPS = 1e-6;
-  const draftRun = { id: '__draft__', systemGroupId: draft.systemGroupId || null, vertices: draft.vertices || [], segments: draft.segments || [] };
+  const DRAFT = '__draft__';
+  const verts = draft.vertices || [];
+  const draftRun = { id: DRAFT, systemGroupId: draft.systemGroupId || null, vertices: verts, segments: draft.segments || [] };
   const committed = (o.runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
-  const all = draftRun.vertices.length >= 2 ? committed.concat([draftRun]) : committed;
+  const all = verts.length >= 2 ? committed.concat([draftRun]) : committed;
   const devices = (o.devices || []).filter(d => d && d.cfm > 0);
   const { attached, unattached } = attachDuctDevices(devices, all, o);
   const sys = draftRun.systemGroupId;
   const runById = new Map(all.map(r => [r.id, r]));
-  const tipLen = ductPolylineLength(draftRun.vertices);
-  let totalCfm = 0, servedCfm = 0;
+  const tipLen = ductPolylineLength(verts);
+  const ahead = (s) => s == null || s >= tipLen - EPS;
+
+  // Each committed run's place against the draft: 'served', or { s }, its air's tap.
+  // The network is found with the draft in it (a one-vertex draft as a zero-length
+  // run, so a branch started on a committed run already knows its parent).
+  const place = new Map();
+  if (verts.length) {
+    const netDraft = verts.length >= 2 ? draftRun : { id: DRAFT, vertices: [verts[0], verts[0]] };
+    const links = ductChildLinks(committed.concat([netDraft]), o);
+    const parentOf = new Map(links.map(l => [l.childId, l]));
+    const childrenOf = new Map();
+    const adj = new Map();
+    const join = (a, b) => { if (!adj.has(a)) adj.set(a, []); adj.get(a).push(b); };
+    links.forEach(l => {
+      if (!childrenOf.has(l.parentId)) childrenOf.set(l.parentId, []);
+      childrenOf.get(l.parentId).push(l);
+      join(l.parentId, l.childId);
+      join(l.childId, l.parentId);
+    });
+    // The draft's parents (the run it taps off, and up): never its own branches, even
+    // when two runs start at one point and each snaps to the other.
+    const upstream = new Set();
+    for (let l = parentOf.get(DRAFT); l && l.parentId !== DRAFT && !upstream.has(l.parentId); l = parentOf.get(l.parentId)) upstream.add(l.parentId);
+    // The draft's branches: each subtree at its tap on the draft.
+    const claimed = new Set([DRAFT]);
+    (childrenOf.get(DRAFT) || []).forEach(l => {
+      if (upstream.has(l.childId) || claimed.has(l.childId)) return;
+      const where = { s: l.s };
+      const stack = [l.childId];
+      claimed.add(l.childId);
+      while (stack.length) {
+        const rid = stack.pop();
+        place.set(rid, where);
+        (childrenOf.get(rid) || []).forEach(c => {
+          if (claimed.has(c.childId) || upstream.has(c.childId)) return;
+          claimed.add(c.childId);
+          stack.push(c.childId);
+        });
+      }
+    });
+    const component = (start) => {
+      const seen = new Set([start]);
+      const stack = [start];
+      while (stack.length) (adj.get(stack.pop()) || []).forEach(n => { if (!seen.has(n)) { seen.add(n); stack.push(n); } });
+      return seen;
+    };
+    // The rest of the draft's network is served some other way.
+    component(DRAFT).forEach(rid => { if (rid !== DRAFT && !place.has(rid)) place.set(rid, 'served'); });
+    // A network the draft touches nowhere taps it where its root's nearer end meets
+    // it (a run traced from its far end still taps by the end nearer the trace).
+    const near = (p) => ductNearestOnPolyline(p, netDraft.vertices).dist;
+    committed.forEach(run => {
+      if (place.has(run.id)) return;
+      const members = [...component(run.id)];
+      const root = runById.get(members.find(id => !parentOf.has(id)) || run.id) || run;
+      const first = root.vertices[0], last = root.vertices[root.vertices.length - 1];
+      const tapEnd = near(last) < near(first) ? last : first;
+      const foot = ductDraftFoot(tapEnd, verts);
+      const where = { s: foot ? foot.s : null };
+      members.forEach(id => place.set(id, where));
+    });
+  }
+  const runAhead = (runId) => {
+    const where = place.get(runId);
+    return !!where && where !== 'served' && ahead(where.s);
+  };
+
+  let totalCfm = 0, aheadCfm = 0;
   attached.forEach(a => {
     const run = runById.get(a.runId);
-    const devSys = run.id === '__draft__' ? sys : (run.systemGroupId || null);
+    const devSys = run.id === DRAFT ? sys : (run.systemGroupId || null);
     if (devSys !== sys) return;   // another system's device — out of scope
     totalCfm += a.device.cfm;
-    if (run.id === '__draft__') {
-      if (a.s < tipLen - EPS) servedCfm += a.device.cfm;   // passed by the trace
-    } else {
-      servedCfm += a.device.cfm;   // a committed run of this system serves it
-    }
+    if (run.id === DRAFT ? ahead(a.s) : runAhead(run.id)) aheadCfm += a.device.cfm;
   });
+  const sameSystem = committed.filter(r => (r.systemGroupId || null) === sys);
   unattached.forEach(d => {
     const devSys = d.groupId || null;
     if (devSys !== null && devSys !== sys) return;   // assigned elsewhere
-    totalCfm += d.cfm;   // unserved — assumed downstream of this trace
+    totalCfm += d.cfm;
+    if (!(tipLen > 0)) { aheadCfm += d.cfm; return; }   // no direction yet: ahead
+    // Its nearest same-system run: the draft (by its foot) or a committed run.
+    const foot = ductDraftFoot(d, verts);
+    let best = foot ? { runId: DRAFT, dist: foot.dist } : null;
+    sameSystem.forEach(run => {
+      const hit = ductNearestOnPolyline(d, run.vertices);
+      if (!best || hit.dist < best.dist) best = { runId: run.id, dist: hit.dist };
+    });
+    const isAhead = !best ? true : best.runId === DRAFT ? ahead(foot.s) : runAhead(best.runId);
+    if (isAhead) aheadCfm += d.cfm;
   });
   if (!(totalCfm > 0)) return null;
-  return { cfm: totalCfm - servedCfm, totalCfm: totalCfm, servedCfm: servedCfm };
+  return { cfm: aheadCfm, totalCfm: totalCfm, servedCfm: totalCfm - aheadCfm };
 }
 
 // --- 3c-bis. Flex drops (unit D8) --------------------------------------------

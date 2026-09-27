@@ -7,12 +7,12 @@
  * size — one tap applies it through the normal applyDuctSizeStep path.
  * Suggestions NEVER auto-apply (DUCT-PLAN philosophy: inference with override).
  *
- * The number: duct-model's ductDraftRemainingCfm — the system's total device
- * CFM minus what is already served (devices attached to a committed run of the
- * same system, or passed by the trace: attached to the draft polyline strictly
- * behind its tip). Devices are placed counter markers whose counter type
- * carries a `cfm` (unit D6's counter field); attachment/system inheritance is
- * the documented pure rule in duct-model.js (nearest-run-within-DUCT_TAP_SNAP_PDF,
+ * The number: duct-model's ductDraftRemainingCfm — the system's device CFM
+ * still ahead of the tip, by the tap each device's air leaves the draft at
+ * (DS-DUCT-DOWNSTREAM: its point on the draft, its branch's tap, or its foot on
+ * the draft for a stray; the full rule is that function's comment). Devices
+ * are placed counter markers whose counter type carries a `cfm` (unit D6's
+ * counter field); attachment/system inheritance is the documented pure rule in duct-model.js (nearest-run-within-DUCT_TAP_SNAP_PDF,
  * marker-group fallback). Devices are read from the page's MERGED annotations
  * (diffusers often live on their own layer); runs from the ACTIVE canvas (the
  * duct-sidebar/schedule convention). The draft's placed vertices only — the

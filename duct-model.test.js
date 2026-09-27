@@ -1101,6 +1101,98 @@ test('ductDraftRemainingCfm: no CFM data → null (the clean-absence rule)', () 
   assert.strictEqual(dm.ductDraftRemainingCfm({ runs: [], draft: null, devices: [dev(50, 5, 100)] }), null);
 });
 
+// DS-DUCT-DOWNSTREAM (TESTER-DOSSIER-HVAC-2026-09-27.md P1): the HVAC course's M-101 supply,
+// in plan px from scripts/sample-hvac.js scaled to PDF points (12 plan px to the foot; the
+// 12 pt tap snap is 16 plan px). The air per stretch from the plan: 1,500 at the 20x12
+// change, 1,200 at the 16x10, 900 at the 12x10 (the bar's 300 still to come).
+const m101 = (x, y) => ({ x: x * 0.75, y: y * 0.75 });
+const M101_MAIN = [[904, 328], [904, 282], [560, 282], [420, 282], [300, 282], [180, 282]].map(([x, y]) => m101(x, y));
+const M101_BRANCHES = {
+  kitchen: [[572, 282], [572, 440], [900, 440]],
+  back: [[904, 328], [904, 506], [596, 506]],
+  bar: [[260, 282], [260, 540]],
+};
+const m101Branch = (id) => netRun(id, M101_BRANCHES[id].map(([x, y]) => m101(x, y)));
+// The printed spots: dining SD-1 150 ×8, bar SD-1 150 ×2, dish SD-1 150, hall + storage SD-2 100, kitchen SD-3 200 ×4.
+const M101_PRINTED = {
+  dining: [[190, 210], [300, 210], [410, 210], [520, 210], [190, 350], [300, 350], [410, 350], [520, 350]],
+  bar: [[200, 540], [330, 540]],
+  dish: [[596, 506]],
+  hall: [[800, 282]],
+  storage: [[820, 506]],
+  kitchen: [[600, 440], [700, 440], [800, 440], [900, 440]],
+};
+const M101_CFM = { dining: 150, bar: 150, dish: 150, hall: 100, storage: 100, kitchen: 200 };
+// Where Attach to nearest run hangs each one once the branches are traced: the dining
+// pair on the main at their x, the bar pair at the bar branch's end; the rest already sit on a run.
+const M101_HUNG = { dining: ([x]) => [x, 282], bar: () => [260, 540] };
+const m101Devices = (hung) => Object.keys(M101_PRINTED).flatMap((k) => M101_PRINTED[k].map((p) => {
+  const [x, y] = hung && M101_HUNG[k] ? M101_HUNG[k](p) : p;
+  const at = m101(x, y);
+  return dev(at.x, at.y, M101_CFM[k]);
+}));
+const draftTo = (n) => ({ systemGroupId: null, vertices: M101_MAIN.slice(0, n), segments: [{ startVertexIdx: 0, size: dm.makeRectSize(24, 12) }] });
+
+test('DS-DUCT-DOWNSTREAM: chapter 5 order (main before the branches, every diffuser a stray): each corner reads the air still ahead of it', () => {
+  const devices = m101Devices(false);
+  const at = (n) => dm.ductDraftRemainingCfm({ runs: [], draft: draftTo(n), devices });
+  // The whole building is 2,650.
+  assert.strictEqual(at(1).totalCfm, 2650);
+  assert.strictEqual(at(1).cfm, 2650);   // one click: nothing is behind the tip yet
+  // The hall corner: the first leg runs north, so every device south of the drop is behind
+  // the draft's start and stays ahead (the back run's 250 cannot be told apart until it is traced).
+  assert.strictEqual(at(2).cfm, 2650);
+  // The 20x12 change at 560: the kitchen, the dish pit, the storage room and the hall diffuser
+  // all project onto the hall behind the tip; the dining room and the bar are ahead.
+  assert.strictEqual(at(3).cfm, 1500);   // was 2,550 (the whole building minus the hall's 100)
+  assert.strictEqual(at(3).servedCfm, 1150);
+  assert.strictEqual(at(4).cfm, 1200);   // the 16x10 at 420: the dining pair at 520 passed
+  // The 12x10 at 300: the pair at 410 passed, the pair AT 300 still ahead. The plan's air is
+  // 900 (the bar's 300 taps at 260); with the bar branch not traced yet, the bar diffuser at
+  // x=330 hangs from its perpendicular, behind the corner, so the rule reads 750. The size is
+  // the same: 900 and 750 both read 14"Ø / 14×12 at 0.08.
+  assert.strictEqual(at(5).cfm, 750);
+  assert.strictEqual(at(6).cfm, 0);      // the far end: nothing left
+  // And the size the Duct size box offers at the 20x12 corner (0.08"/100 ft, 1,200 fpm).
+  const s = dm.suggestRoundAndRect(at(3).cfm, { frictionRate: 0.08, maxVelocityFpm: 1200 });
+  assert.strictEqual(s.round.diameterIn, 18);
+  assert.deepStrictEqual([s.rect.w, s.rect.h], [20, 14]);
+});
+
+test('DS-DUCT-DOWNSTREAM: branches traced first and the diffusers hung on them: a branch tapped ahead of the tip is still to come', () => {
+  const runs = ['kitchen', 'back', 'bar'].map(m101Branch);
+  const devices = m101Devices(true);
+  const at = (n) => dm.ductDraftRemainingCfm({ runs, draft: draftTo(n), devices });
+  assert.strictEqual(at(3).totalCfm, 2650);
+  // The kitchen (tapped at 572) and the back run (from the drop) are behind the 560 corner;
+  // the bar branch taps at 260, ahead, so its 300 still passes (the old rule called it served: 1,200).
+  assert.strictEqual(at(3).cfm, 1500);
+  assert.strictEqual(at(4).cfm, 1200);
+  assert.strictEqual(at(5).cfm, 900);
+  // Once the trace passes 260 the bar branch is a tap behind the tip.
+  assert.strictEqual(at(6).cfm, 0);
+  // The committed network agrees: the main traced, the accumulation at each change.
+  const main = netRun('main', M101_MAIN);
+  const len = (n) => dm.ductPolylineLength(M101_MAIN.slice(0, n));
+  const q = (n) => dm.ductDownstreamCfm({ runs: [main].concat(runs), devices, runId: 'main', s: len(n) });
+  assert.strictEqual(q(3), 1500);
+  assert.strictEqual(q(4), 1200);
+  assert.strictEqual(q(5), 900);
+});
+
+test('DS-DUCT-DOWNSTREAM: a branch drafted off a committed main counts none of the air the main serves', () => {
+  // Chapter 5's kitchen step: the main committed, the diffusers still strays. At the
+  // branch's corner the dining room, the bar and the storage room hang nearer the main,
+  // so they are the main's; what is left is the kitchen side (the kitchen's 800 at most,
+  // with the dish pit's 150, which sits nearest this branch until the back run is traced).
+  const main = netRun('main', M101_MAIN);
+  const devices = m101Devices(false);
+  const kitchen = M101_BRANCHES.kitchen.map(([x, y]) => m101(x, y));
+  const at = (n) => dm.ductDraftRemainingCfm({ runs: [main], draft: { systemGroupId: null, vertices: kitchen.slice(0, n), segments: [] }, devices });
+  assert.ok(at(2).cfm > 0 && at(2).cfm <= 950, 'the corner reads the kitchen side, not the building: ' + at(2).cfm);
+  assert.strictEqual(at(3).cfm, 200);   // the far end: the dish pit passed, and the tip sits ON the last SD-3
+});
+
 // --- 3d. Room CFM defaults + air balance (unit D7) ---------------------------
 
 test('ROOM_TYPE_CFM_PER_SQFT: the documented rates (§7)', () => {

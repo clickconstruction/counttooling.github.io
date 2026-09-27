@@ -304,4 +304,80 @@ test.describe('Duct design-build suggestions (D6)', () => {
 
     expect(errors).toEqual([]);
   });
+
+  // DS-DUCT-DOWNSTREAM, A6 (TESTER-DOSSIER-HVAC-2026-09-27.md "Not trade: for an agent"): the
+  // dossier pushed branch runs straight into the annotations (no undo snapshot, no dirty) and
+  // saw one gone after clicking Duct. Arming never drops a committed run, down that path too.
+  test('arming Duct keeps every committed run, even ones pushed in without an undo snapshot', async ({ page }) => {
+    const runCount = () => page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).length);
+    await page.evaluate(() => {
+      const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations;
+      if (!a.ductRuns) a.ductRuns = [];
+      [100, 140, 180].forEach((y) => a.ductRuns.push(window.makeDuctRun({
+        name: 'Branch ' + y, vertices: [{ x: 100, y }, { x: 300, y }],
+        segments: [{ startVertexIdx: 0, size: { kind: 'rect', w: 12, h: 8 } }],
+      })));
+    });
+    expect(await runCount()).toBe(3);
+    await armDuct(page);
+    expect(await runCount()).toBe(3);
+    // Re-pressing Duct mid-draft re-arms and keeps them too.
+    await page.locator('#canvasWrapper').click({ position: { x: 100, y: 400 } });
+    await page.locator('#ductBtn').click();
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.DUCT && !!window.state.drawingDuct);
+    expect(await runCount()).toBe(3);
+    expect(errors).toEqual([]);
+  });
+});
+
+// DS-DUCT-DOWNSTREAM (TESTER-DOSSIER-HVAC-2026-09-27.md P1): the HVAC course's chapter 5, the
+// main traced BEFORE the diffusers are hung (the chapter's order), on the real sheet. The
+// SUGGESTED row at each printed size change reads the air still ahead of it, not the whole
+// building minus the hall diffuser (it read 22"Ø or 26×16 from 2,550 CFM at every corner).
+test.describe('Duct suggestion on the HVAC course main (DS-DUCT-DOWNSTREAM)', () => {
+  test('chapter 5: the SUGGESTED row at the 20x12 change sizes 1,500 CFM, 18"Ø or 20×14', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.goto('/app/?chapter=hvac:main');
+    await page.waitForFunction(() => window.App && window.App.startChapterHvac);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+    await page.click('#tourShow');
+    await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 });
+    await page.evaluate(() => window.App.tutorialGoTo('trace'));
+    await page.locator('#ductBtn').click();
+    await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    await page.evaluate(() => window.App.setDuctCreateSize({ kind: 'rect', w: 24, h: 12 }));
+    await page.locator('#ductCreateStart').click();
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.DUCT && !!window.state.drawingDuct);
+
+    const at = (x, y) => page.evaluate(([px, py]) => window.App.commitDuctClick(window.App.lessonKit.P(px, py)), [x, y]);
+    const sug = () => page.evaluate(() => { const s = window.App.getDuctDraftSuggestion(); return s && { cfm: Math.round(s.cfm), label: s.sizeLabel }; });
+    await at(904, 328);
+    await at(904, 282);
+    await at(560, 282);
+    // The 20x12 change: the dining room's 1,200 and the bar's 300 are ahead; the kitchen
+    // (its tap at 572), the dish pit, the storage room and the hall diffuser are behind.
+    expect(await sug()).toEqual({ cfm: 1500, label: '18"Ø or 20×14' });
+    await page.keyboard.press('s');
+    await expect(page.locator('#ductSizePopover')).toBeVisible();
+    await expect(page.locator('#ductSizeSections [data-section-id="ductulator-suggestion"] .duct-suggest-from')).toContainText('from 1,500 CFM');
+    await expect(page.locator('#ductSizeSections .duct-suggest-chip').first()).toHaveText('18"Ø');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#ductSizePopover')).toBeHidden();
+    await page.evaluate(() => window.App.applyDuctSizeStep({ kind: 'rect', w: 20, h: 12 }));
+    await at(420, 282);
+    expect(await sug()).toEqual({ cfm: 1200, label: '16"Ø or 16×14' });   // the dining pair at 520 passed
+    await page.evaluate(() => window.App.applyDuctSizeStep({ kind: 'rect', w: 16, h: 10 }));
+    await at(300, 282);
+    expect((await sug()).label).toBe('14"Ø or 14×12');   // the far dining room and the bar
+    await page.evaluate(() => window.App.applyDuctSizeStep({ kind: 'rect', w: 12, h: 10 }));
+    await at(180, 282);
+    expect(await sug()).toBeNull();   // the far end: nothing left ahead
+    await page.evaluate(() => window.App.finishDuctRun());
+    await page.waitForFunction(() => !window.state.drawingDuct);
+    expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[window.state.currentPage]).ductRuns || []).length)).toBe(1);
+    expect(errors).toEqual([]);
+  });
 });

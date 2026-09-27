@@ -29,6 +29,8 @@
 
 ### P1. The number is the downstream air, not the friction rate and not the sheet
 
+> **Fixed 2026-09-27 (DS-DUCT-DOWNSTREAM):** the suggestion follows the taps; chapter 5's corners now read 1,500 (18"Ø / 20×14), 1,200 and 750 CFM (CHANGELOG.md).
+
 **The claim.** PERSONA-PASS-2026-09-26.md "Tester questions": at the HVAC course main's 20x12 and
 16x10 corners (features/course-hvac.js, `main:trace`), the Duct size box's SUGGESTED row read
 22"Ø / 26×16 from 2,550 CFM, not the printed sizes. Is the sample's sizing, the ductulator's

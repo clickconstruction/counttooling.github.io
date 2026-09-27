@@ -29,6 +29,8 @@ The July tiers landed (pdf-tile-cache stages 1 and 2, the sidebar and status ren
 
 ## 1. Ranked shortlist
 
+**All 25 landed by 2026-09-26** (PRs #218 to #224; each heading below carries its Landed line and what it left). The bug rows became PUNCHLIST `MAP-*` rows and closed with them; MAP-PERMS (the lean permissions read, a developer item) and the two product calls (MAP-SUMMARY-LAYERS, MAP-PHONE-BAR) are what remains of the map in the punch list.
+
 Best value for risk first. Yield is lines removed or moved out of the monolith (estimates, skeptic-corrected where marked). Each item lists the shard findings it came from; their evidence and recipes follow it.
 
 | # | Item | Risk | Yield |

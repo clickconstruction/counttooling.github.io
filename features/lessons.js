@@ -463,7 +463,7 @@
           body: 'Three ways on from here, all under [[Learn]].\nA tour: five minutes, one small takeoff in your trade, start to finish.\nThe thirteen lessons: two or three minutes each, one part of the app at a time.\nA course: about ninety minutes that teach the trade itself, off an engineer\'s drawings.\nLearn is on the empty screen, and under Project Settings, the gear in the header: open Help, then lessons.\nWhen this lesson ends, Learn opens with the tours at the top.',
           target: ['#settingsGearBtn', '#sidebarLogoGear'], check: () => true },
         { id: 'words', title: 'The words', kind: 'read',
-          body: 'A card says what a word means the first time it uses it.\nForgot one? Every word the cards explain is in one list, Words the cards use, in the guide [Learn CountTooling by doing](/guides/learning-the-app/).\nThe guides are always under Project Settings, then Help.',
+          body: 'A card says what a word means the first time it uses it.\nForgot one? Type it in the box at the top of [[Learn]], and its meaning comes up.\nThe whole list is Words the cards use, in the guide [Learn CountTooling by doing](/guides/learning-the-app/).\nThe guides are always under Project Settings, then Help.',
           target: [], check: () => true },
       ],
       done: 'What this is, where things are, and how a card teaches.\nNext: [[Learn]] → a tour, a lesson or a course.',
@@ -1000,6 +1000,7 @@
     renderLearnList(suggested);
     (App.courseSections || []).forEach((sec) => sec.render(courseNext && courseNext.course === sec.id ? courseNext.chapter : undefined));
     App.showModal('learnModal');
+    App.onLearnMenuOpened && App.onLearnMenuOpened();   // the Words search opens empty (features/learn-words.js)
     if (courseNext) { const rule = el('learnCourseRule-' + courseNext.course); if (rule && rule.scrollIntoView) rule.scrollIntoView({ block: 'start' }); }
     return true;
   }

@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): a Words search at the top of Learn (LEARN-WORDS, 2026-09-27)
+
+The second half of [LEARN-START-HERE.md](journeys/plans/LEARN-START-HERE.md): the Learn guide's
+glossary, searchable inside the app.
+
+- **The guide stays the one list.** `npm run build:guides` now also writes `guides/words.json`
+  from the guide's "Words the cards use" section (scripts/lib/guide-words.js): 278 entries in the
+  guide's eight groups, each `{ term, text }`, the text plain. It is one more generated output, so
+  `build:guides --check` fails when the guide changed and the JSON did not. A word is added or
+  reworded in content/guides/learning-the-app.md and nowhere else.
+- **The box** (features/learn-words.js, `#learnWordsInput` at the top of `#learnModal`). Type a
+  word and its meaning comes up, with the group it belongs to. While the box holds a query the
+  matches take the place of the tours, the lessons and the courses; emptied (the ×, Esc, or Learn
+  opened again) the menu is back. Best match first: the term itself, a term that starts with the
+  query, a word inside the term, the term anywhere, then the meaning. Twelve show at most, with the
+  count and "type more to narrow it". A word that is not there says so and links the guide, and so
+  does a list that could not be loaded.
+- **Offline.** `/guides/words.json` is in scripts/build-sw.js `PRECACHE_EXTRA`, fetched the first
+  time the box is used.
+- **Esc** empties a box that holds a query before it closes Learn.
+- Lesson 0's The words card and the guide's glossary intro both name the box.
+- **Tests.** learn-words.test.js (the extractor, the committed JSON against the guide, the
+  ranking) and learn-words.spec.js (the matches in place of the menu, the three ways back, no
+  match, a list that cannot load, hotkey letters typed in the box arm no tool).
+- **Not built**, as planned: the glossed words as tap targets on the cards. It stays in the plan
+  as the later, separate step. sw.js restamped.
+
 ## feat(learn): lesson 0, Start here, and the one card a new device sees (LEARN-START, 2026-09-27)
 
 Todd's ask, planned in [LEARN-START-HERE.md](journeys/plans/LEARN-START-HERE.md): the Learn guide

@@ -64,6 +64,12 @@ the guide can stay if the opener is uncounted. Card 3 is a doing step, so the ro
 
 ## LEARN-WORDS · a Words search in Learn (second PR)
 
+**BUILT 2026-09-27** (CHANGELOG "feat(learn): a Words search at the top of Learn"): the box, the
+generated `guides/words.json`, the precache line. While the box holds a query its matches replace
+the menu; twelve show at most. The tap targets below are not built; they are punch row LEARN-TAPS.
+
+The plan as written:
+
 A search box at the top of the Learn modal over the guide's glossary (278 entries).
 `build:guides` also emits `guides/words.json` from the same Markdown section, so the guide
 stays the one list; the app fetches it (one line in build-sw.js `PRECACHE_EXTRA`). Later,

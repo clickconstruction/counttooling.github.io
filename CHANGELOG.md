@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(visuals): the three films, the guide pictures and the spotlight frames, re-shot (2026-09-27)
+
+A day of changes left every generated picture behind the app: the sheet legend's typeface, the
+gears beside the sidebar titles, Start here and the Words search in Learn, the Summary counting
+every layer, and the electrical tour's 2 #12 + G (EC-TOUR-WIRE, which this closes).
+
+- **The films:** `npm run build:hero-video -- --film plumbing | electrical | hvac`, each with its
+  poster, its chapters file and its two end-card images. The lengths are unchanged (47.0 s,
+  79.1 s, 128.6 s), and each script's Bid Check guard passed.
+- **The guide pictures:** `npm run build:screenshots`, all 51. The electrical Bid Check picture
+  reads 2 #12 THHN + 1 #12 THHN G at 7.5%; the Learn menu shows Start here at row 0 and the search
+  box.
+- **The landing's spotlight frames:** `node scripts/build-screenshots.js --set spotlight`.
+- Rendered with nothing else running on the machine, except the plumbing and HVAC films, which
+  were rendered while one agent ran specs at one worker. Pictures are checked by eye, not by a
+  test: the posters and a sample of the guide pictures were looked at.
+
 ## docs(rules): the seven lookups the dossiers left open, answered (2026-09-27)
 
 The four dossiers left seven points open because nobody had read the source. They were looked

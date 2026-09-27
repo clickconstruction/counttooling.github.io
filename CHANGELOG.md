@@ -13,6 +13,170 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(status-bar): one line on a phone, and the tool hint reads in full (MAP-PHONE-BAR, 2026-09-27)
+
+Signed in on a phone, the bottom bar was two rows: the save words ("Canvas", "PDF Synced with
+Cloud"), the pointer numbers and the email link needed about 500 px of the 351 at 375 px wide, so
+the email fell to a second row and the tool hint got about 35 px ("Tap…" of "Tap start point").
+Will accepted the brief's recommended option: slim the phone bar. Laptops are unchanged.
+
+- **The save words** (`.status-indicator-label`) hide on phones (768px and under). The dot and the
+  square stay and keep their colour; the detail stays under Save Status in the phone menu.
+- **The pointer numbers** (`#statusCoords`) hide on phones; they mean nothing to a finger.
+- **The email link** reads "Account" on phones. app.js `updateUI` fills `#statusBarAuth` with two
+  spans, `.status-auth-full` (the email) and `.status-auth-short` ("Account"), and CSS shows one.
+  The email stays in the link's `title` and its accessible name ("Account: <email>"). It opens My
+  Settings, where sign-out is, as before. Signed out it still reads "Sign In".
+- **The dead phone rule** (`.status-bar { flex-wrap: nowrap }`, overridden by the base rule below
+  it) is gone, and the stale "phones never wrap" comment in features/status-bar.js `composeMode`
+  now says what holds. The bar keeps `wrap` as its fallback, so a bar that still can't fit (a long
+  Measure chip) takes a row instead of running off the screen.
+- **Measured** (chromium, signed in, one line, 26 px): the hint gets 210 px at 375 and 249 px at
+  414 for an estimator, 150 / 189 px for an admin with the "all bids" link ("Tap start point"
+  needs about 87).
+- **Pinned** by footer-hint.spec.js: a new test at 414 and 375, estimator and admin, idle and
+  uploading, asserts one line, "Tap start point" unclipped, the words and pointer numbers hidden,
+  the dot and square shown, "Account" with the email in title and aria-label, the words back on a
+  laptop, and "Sign In" signed out. The laptop-to-phone sweep now also asserts the bare phone bar
+  is one line.
+
+## fix(summary): the Summary counts every layer, and the by-page window shows the split (MAP-SUMMARY-LAYERS, 2026-09-27)
+
+Punch row MAP-SUMMARY-LAYERS (DECOMPOSITION_MAP D37); Will accepted the brief's recommended option.
+On a sheet with two or more layers the Summary counted only the layer each sheet was last left on,
+while the counter and line-type badges, the Counter window's pick list and the footer total counted
+every layer. One screen could read 12 on a badge and [9] in the Summary for the same fixture, and
+the Summary total moved when someone switched a layer on a sheet they were not looking at.
+
+- **The Summary** (features/summary-list.js): both the grouped and the flat paths tally each sheet's
+  merged layers (`App.getMergedAnnotationsForPage`, merged once per render), the badges' and the
+  footer's arithmetic. The child-count and wire / cable lines follow: `renderSummary` passes the same
+  getter to `App.getChildCountTotals` / `App.getConductorTotals` through their existing
+  `getAnnotations` option (their defaults are unchanged, so report.js, the exports and Bid Check
+  read exactly what they read before).
+- **Fixture units** (features/water-fixtures.js `getWsfuTotals`): the Summary's WSFU line counts
+  every layer too.
+- **The by-page window** (features/summary-detail.js): each sheet's number counts every layer. A
+  sheet with more than one layer adds its split under the sheet name, *Main 9 · Alternate 3*, or
+  *Main 1 (12.00 ft) · Alternate 1 (6.00 ft)* for a line type (`.summary-count-detail-layers`;
+  layers that do not hold the item are left out). Each share reads the merged sheet's multiply and
+  scale zones, so the split always sums to the row. The thumbnail draws every layer, keeping the
+  active layer's legend placement.
+- **Unchanged:** Show Report and its **Every sheet (active layer)** choice (the way to read a base
+  bid alone), Copy to /Tooling and every export, the `window.*` report.js contract, and Bid Check,
+  which still reads the layer showing on each sheet.
+- **Words:** the Canvas layers guide no longer says the sidebar totals stay on the active layer, and
+  says an alternate on its own layer is in the Summary total with the split one click away; Reports
+  and exports says the same beside Count detail; the Learning glossary's *Layer*, the Busy-sheet
+  lesson's layer card, the blank-sheet tour's layers card and the plumbing course's Waste-layer card
+  say the sidebar totals count every layer (they said each layer had "its own totals").
+- **Pinned** by the new summary-layers.spec.js: two layers on one sheet plus a one-layer sheet; the
+  badge, the Summary row, the line row, a child count and the Fixture units line all count every
+  layer and do not move when the sheet's active layer changes; the by-page window shows the split
+  only on the multi-layer sheet and hands the thumbnail every layer's marks. The single-layer comment
+  in sidebar-lists.spec.js now points there.
+
+Not built (the brief's other options): leave it; keep the Summary on the showing layer and label
+it; or move the badges and the footer to the showing layer as well.
+
+## chore(water, save): the water events on for everyone, the lean permissions read live (WATER-TELEM, MAP-PERMS, 2026-09-27)
+
+On 2026-09-27 the owner had two migrations applied to the production database, and both were
+verified there: `supabase/migrations/20260923190000_log_user_event_water.sql` (`log_user_event`
+accepts `water_run` and `wsfu_prefill`) and `supabase/migrations/20260927030000_get_project_permissions.sql`
+(`public.get_project_permissions(uuid)` exists). This change is code and docs only; it touches no
+database. Nothing on screen changes.
+
+- **WATER-TELEM, closed.** The `water-telemetry` feature flag is gone: its line in the app.js
+  Feature flags list, and its reads in features/water-size.js `onPolylineCommitted` (the
+  `water_run` event: side, size, material, segments, fixture units and gpm at the head,
+  `suggestionTaken`) and features/water-fixtures.js `applyFieldToCounter` (the `wsfu_prefill`
+  event: the table's reading, the value kept, `accepted`). Both events now fire for every
+  signed-in session; as with every `logUserEvent`, a signed-out or Supabase-disabled session logs
+  nothing. [WATER-PLAN.md](journeys/plans/WATER-PLAN.md#8-telemetry-the-day-7-line-again) §8 and
+  its rung 6 status say so, and the ARCHITECTURE.md rows of both files name the events.
+- **Pinned** by water-size.spec.js (with no flag set, Enter on a cold 3/4 in PEX draft logs one
+  `water_run` with its side, size, material and one segment; a plain polyline logs none) and
+  water-fixtures.spec.js (with no flag set, a counter created at its prefill logs `wsfu_prefill`
+  accepted, one typed over logs it not accepted). Both new tests fail against the flag-gated code.
+- **MAP-PERMS, updated, not closed.** The permissions refresh now meets the one-project RPC on
+  prod, so it stops downloading every visible project's takeoff. The list fallback in
+  save-engine.js `refreshProjectPermissions` (the `permissionsRpcMissing` latch, the PGRST202
+  check, the client-recycle reset) **stays** as a safety net: the owner took "turn it on now,
+  clean up later". The PUNCHLIST row now says the migration is applied and that what is left is
+  deleting the fallback on or after 2026-10-04, after a week of normal use; its Who is now
+  `agent`. The save-engine.js comment, the save-engine.test.js stub comment, AGENTS.md and
+  SUPABASE_SETUP.md no longer call the function unapplied.
+
+## fix(turn-in): checking out again ends the quiet period; your own open project turns in, not forces (R1-WINDOW + R1-ADMIN, 2026-09-27)
+
+Two calls Will made on the self-release fix (R1), built together because they touch the same
+turn-in code. Both ride the `?ff=self-release` flag, which stays off for everyone until
+R1-TEST is signed and R1-FLIP ships. Detail in
+[_TODO.md](journeys/plans/_TODO.md#r1--review-our-own-turn-in-was-reported-as-an-admin-force).
+
+- **R1-WINDOW: the 15 s window ends on re-checkout.** After your own Turn In, the app treats
+  losing edit rights on that project as your own doing for 15 s. The R1 notes said a longer
+  window cost nothing ("we are already a viewer"); that was wrong. A demotion only reaches you
+  inside the window if you checked the project out again inside it, and then a real force by
+  an admin, or by your other device, passed with no notice and no yellow bell. Now the window
+  ends the moment you check out again: save-engine.js `clearSelfRelease()`, called by
+  `reCheckOutAfterExpiry` and, through `App.clearSelfRelease`, by features/turn-in.js
+  `doCheckoutCurrentProject`. A permissions read already in flight across the re-checkout
+  started inside the window and describes the lock you gave up, so it is dropped
+  (`self_release_refresh_superseded`), not applied. Flag off: no change at all.
+- **R1-ADMIN: Manage Projects offers Turn in on your own open project.** Its "Force turn-in
+  (admin)" showed on every checked-out row, the admin's own open project included. Forcing
+  that row released without saving and brought up the "turned in while you had it checked
+  out" notice every time. That row (the project open here, held by this tab, checked out to
+  you on the server) now reads **Turn in** and runs the header's Turn In (`App.tryTurnIn`):
+  save first, then release, "Project turned in.". Other rows keep the force. Project
+  Settings' own force button is unchanged: it only shows when someone else holds the lock.
+  With the flag off, that Turn In behaves like the header's today (edits saved, then the
+  known false notice); with it on, quiet.
+- **Pinned** by four save-engine.test.js cases (three RED on the old engine; the fourth pins
+  flag off) and an always-run manage-projects.spec.js case (routed list, stubbed RPCs). The
+  cloud behavior is not walked here: R1-TEST gains Walk B2 (re-checkout, then a release from
+  the other browser, shows the notice) and Walk D (admins: the row's Turn in).
+- **Docs:** the admin handbook guide, the AGENTS.md save/sync bullet, the ARCHITECTURE rows,
+  and the R1 notes and R1-FLIP steps in _TODO.md.
+
+## feat(legend): the sheet legend is set in Barlow Condensed (LEGEND-FACE, 2026-09-27)
+
+The sheet legend an electrical or HVAC project draws on the plan (the compact and full block:
+title, symbol column, caps descriptions, the mount or neck · CFM column, the count) was set in
+DM Sans, a wide face in capitals, so the block came out wider than the mock it was built from
+and covered more of the drawing. The owner chose the recommended option: a condensed drafting
+face for the legend only. The block now reads like a printed E-sheet or M-sheet legend and is
+about a sixth narrower at the same text size (the spec's electrical block: 128 pt against 154
+in DM Sans, the same height). The plumbing tally and the rest of the app are unchanged.
+
+- **The face:** Barlow Condensed (SIL Open Font License 1.1), vendored as the four latin woff2
+  weights the block draws (400, 500, 600, 700; about 15 KB each, 59 KB in all) from the files
+  Google's css2 API names, `vendor/fonts/barlowcondensed-v13-<w>-normal-latin.woff2`, with its
+  licence `vendor/fonts/OFL-BarlowCondensed.txt` beside them and four `@font-face` rules in
+  `vendor/fonts/fonts.css`. build-sw derives the precache from fonts.css, so the list went from
+  174 to 178 files and the face works offline. build-sw.test.js's every-font-file check now reads
+  the font files and fonts.css in that folder, not the licence text.
+- **Loaded before it is drawn:** a canvas falls back silently until a web face has loaded, and
+  the block is sized from `measureText`, so a draw in the fallback would come out at the wrong
+  width and then change. canvas-legend.js `createLegendFaceLoader` asks `document.fonts` for the
+  four weights once; app.js starts it at boot. A block drawn before the face arrived is redrawn
+  once when it does (`deps.onLegendFaceLoaded`, `renderAnnotations`). Export PDFs and Download
+  (features/pdf-bundle.js `rasterPageCanvas`) and the Summary detail thumbnails
+  (features/summary-detail.js) await `App.legendFaceReady()` before they draw the marks. It
+  never rejects and gives up after 4 s, so an export cannot hang on a face that cannot arrive;
+  the block then draws in DM Sans.
+- **Pinned:** canvas-legend.test.js (every block font is the condensed face at a weight the
+  loader fetches; the tally asks for none; one load and one redraw; `ready()` resolves false on a
+  failed load, an empty match, no FontFaceSet and a timeout), legend-sheet.spec.js (the four
+  weights load at boot, the block is under nine tenths of its DM Sans width at the same height,
+  the export canvas draws the face, the plumbing tally never does) and pwa.spec.js (the face
+  loads offline from the precache).
+- **Unchanged:** the render-pixels baselines draw the tally legend, not the block, so none moved.
+  Guide screenshots and landing films that show an electrical or HVAC legend will look different
+  on their next re-render.
+
 ## feat(sidebar): every title folds its list; settings move to a small gear (HEADING-CLICK, 2026-09-27)
 
 The persona calibration ([PERSONA-PLAN.md](journeys/plans/PERSONA-PLAN.md#calibration-results-2026-09-25),

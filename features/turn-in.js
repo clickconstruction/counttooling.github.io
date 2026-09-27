@@ -69,6 +69,9 @@
     opts = opts || {};
     return doTurnInAndHandleResult(opts);
   }
+  // R1-ADMIN: Manage Projects' row for the project open and held in this tab
+  // offers this same Turn In (save first, then release) instead of a force.
+  App.tryTurnIn = tryTurnIn;
   const headerEditBanner = document.getElementById('headerEditStatusBanner');
   // Shared checkout action for the header/sidebar banner buttons and the
   // Project Settings Check Out button (was two near-identical ~45-line
@@ -81,6 +84,9 @@
     App.updateServerClockFromRpc(data);
     const result = data || (error ? { ok: false, error: error.message } : { ok: false });
     if (result.ok) {
+      // R1-WINDOW: we hold the lock again, so the engine's self-release window
+      // ends here; a force after this is real and must reach the notice.
+      try { if (App.clearSelfRelease) App.clearSelfRelease(); } catch (_) {}
       const wasSuspended = App.isAutoSaveSuspended();
       App.clearCheckoutExpiredAttention();
       try { if (App.state.currentProjectId) App.resetAutoRecheckoutCounter(App.state.currentProjectId); } catch (_) {}

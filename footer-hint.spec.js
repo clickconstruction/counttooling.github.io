@@ -450,8 +450,89 @@ test.describe('Signed-in bar shows the tool hint and live readouts (MAP-HINTS)',
     expect(rows.find((r) => r.w === 1600 && r.saving).hint, JSON.stringify(rows)).toBe(true);
     expect(rows.find((r) => r.w === 1500 && !r.saving).hint, JSON.stringify(rows)).toBe(true);
     // On a phone the mode has a zero flex basis and ellipsizes, so the hint takes no room
-    // and rides; the signed-in bar's second row there is the sync labels' own, hint or not.
+    // and rides. Since MAP-PHONE-BAR the signed-in phone bar is one line too (the save
+    // words and pointer numbers hide there, the email link reads "Account").
     for (const w of [414, 375]) expect(rows.find((r) => r.w === w && !r.saving).hint, JSON.stringify(rows)).toBe(true);
+    for (const w of [414, 375]) for (const sv of [false, true]) expect(rows.find((r) => r.w === w && r.saving === sv).oneLineBare, JSON.stringify(rows)).toBe(true);
+  });
+
+  // MAP-PHONE-BAR (2026-09-27): signed in on a phone, the bar was two rows (the save words,
+  // the pointer numbers and the email outran 351px at 375) and the hint got ~35px, "Tap…".
+  // Now the save words and pointer numbers hide on phones, the email link reads "Account"
+  // (the email kept in its title and accessible name), and "Tap start point" reads in full,
+  // for an estimator and for an admin with the "all bids" link. Laptops are unchanged.
+  test('on a phone the signed-in bar is one line and "Tap start point" reads in full (MAP-PHONE-BAR)', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    if (!(await bootSignedInSeam(page, { width: 1600, height: 900 }))) { test.skip(true, 'Supabase disabled in this config'); return; }
+    await page.evaluate(() => {
+      const s = window.state;
+      s.counters = [{ id: 'c1', name: 'Water Closet', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547' }];
+      window.App.getActiveAnnotations(s.pages[0]).counterMarkers.c1 = [{ x: 50, y: 50, id: 'm1' }];
+      s.mousePos = { x: 120, y: 80 };
+      s.tool = window.App.TOOL.LINE;
+      window.App.isCoarsePointer = () => true;
+      window.App.invalidateFooterTotals();
+      window.App.updateUI();
+      window.App.updateStatus();
+    });
+    const read = () => page.evaluate(() => {
+      const shown = (id) => { const el = document.getElementById(id); return !!el && el.getClientRects().length > 0; };
+      const m = document.getElementById('statusMode');
+      const auth = document.getElementById('statusBarAuth');
+      const bar = m.parentElement;
+      return {
+        mode: m.textContent,
+        hintWhole: m.scrollWidth <= m.clientWidth,
+        oneLine: bar.offsetHeight < 40,
+        noOverflow: document.documentElement.scrollWidth <= window.innerWidth && bar.scrollWidth <= bar.clientWidth + 1,
+        canvasLabel: shown('statusCanvasLabel'),
+        pdfLabel: shown('statusPdfLabel'),
+        dot: shown('statusBarDot'),
+        square: shown('statusBarSquare'),
+        coords: shown('statusCoords'),
+        totals: shown('statusTotals'),
+        allBids: shown('statusBarBidBoard'),
+        authText: auth.innerText.trim(),
+        authTitle: auth.title,
+        authAria: auth.getAttribute('aria-label'),
+      };
+    });
+
+    // A laptop keeps every word: the labels, the pointer numbers and the email.
+    let r = await read();
+    expect(r, JSON.stringify(r)).toMatchObject({ canvasLabel: true, pdfLabel: true, coords: true, authText: 'test@clickplumbing.com' });
+
+    for (const admin of [false, true]) {
+      await page.evaluate((a) => { window.state.isAdmin = a; window.App.updateUI(); window.App.updateStatus(); }, admin);
+      for (const width of [414, 375]) {
+        for (const saving of [false, true]) {
+          await page.setViewportSize({ width, height: 800 });
+          await page.evaluate((sv) => { window.App.isSaveInProgress = () => sv; window.App.updateStatus(); }, saving);
+          r = await read();
+          const at = JSON.stringify({ admin, width, saving, ...r });
+          expect(r.mode, at).toBe('Tap start point');
+          expect(r, at).toMatchObject({
+            hintWhole: true, oneLine: true, noOverflow: true,
+            canvasLabel: false, pdfLabel: false, coords: false,
+            dot: true, square: true, totals: true, allBids: admin,
+            authText: 'Account', authTitle: 'test@clickplumbing.com', authAria: 'Account: test@clickplumbing.com',
+          });
+        }
+      }
+    }
+
+    // Back on a laptop the email and the labels return.
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.evaluate(() => window.App.updateStatus());
+    r = await read();
+    expect(r, JSON.stringify(r)).toMatchObject({ canvasLabel: true, coords: true, authText: 'test@clickplumbing.com' });
+
+    // Signed out on a phone: the link says Sign In, with no Account twin or email title.
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.evaluate(() => { window.state.supabaseSession = null; window.state.isAdmin = false; window.App.updateUI(); window.App.updateStatus(); });
+    r = await read();
+    expect(r, JSON.stringify(r)).toMatchObject({ authText: 'Sign In', authTitle: '', authAria: null, noOverflow: true, oneLine: true, allBids: false });
+    errors.assertNoErrors();
   });
 
   test('signed in for real (dev auth): the Line hint and its live readout', async ({ page }) => {

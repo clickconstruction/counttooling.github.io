@@ -79,10 +79,9 @@ test.describe('Sidebar lists (features/sidebar-lists.js)', () => {
   });
 
   // T2-11 — the Counters badge shows the multiply-adjusted total, so it can
-  // never silently disagree with the Summary row again. Single-layer fixture
-  // on purpose: Counters tallies MERGED canvases and Summary tallies the
-  // active layer (G10 convention, out of scope here) — cross-surface equality
-  // is only asserted where the layer axis cannot fork the numbers.
+  // never silently disagree with the Summary row again. Single-layer fixture;
+  // since MAP-SUMMARY-LAYERS both surfaces tally every layer, and the
+  // multi-layer equality is pinned in summary-layers.spec.js.
   test('counters badge matches the Summary number under a multiply zone; tooltip only when repeats apply', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => {

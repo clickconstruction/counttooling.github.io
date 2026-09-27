@@ -620,8 +620,6 @@
   // the tester signs off, the follow-up PR flips the default and deletes the
   // reads — the flag is a staging area, not a settings surface. Live flags:
   //   self-release   the save-engine self-release stamp (2026-09-15, _TODO R1)
-  //   water-telemetry  the water_run / wsfu_prefill events (2026-09-23, WATER-PLAN §8) until
-  //                    the allowlist migration 20260923190000 is on prod (punch row WATER-TELEM)
   const FEATURE_FLAG_KEY_PREFIX = 'clickcount-ff-';
   function featureFlagEnabled(name) {
     try { return localStorage.getItem(FEATURE_FLAG_KEY_PREFIX + name) === '1'; } catch (_) { return false; }
@@ -2006,7 +2004,13 @@
       if (lt.conductors && lt.conductors.length) return cm.formatConductorSpec(lt.conductors) || '';
       return lt.raceway && lt.raceway.kind ? cm.racewayLabel(lt.raceway) : '';
     },
+    // LEGEND-FACE: a sheet block painted before Barlow Condensed loaded is
+    // painted again once it has (the fallback measured a different width).
+    onLegendFaceLoaded: () => { if (state.pages && state.pages.length) renderAnnotations(); },
   });
+  // LEGEND-FACE: ask for the legend face at boot so it has loaded long before a
+  // sheet opens; the exports still await it (App.legendFaceReady) before drawing.
+  canvasDraw.legendFaceReady();
 
   function renderAnnotations() {
     const t0 = performance.now();
@@ -2767,7 +2771,28 @@
       const globalReloadBtn = document.getElementById('advancedGlobalForceReload');
       if (globalReloadBtn) globalReloadBtn.style.display = (loggedIn && state.isAdmin) ? '' : 'none';
       const statusBarAuth = document.getElementById('statusBarAuth');
-      if (statusBarAuth) { statusBarAuth.textContent = loggedIn ? (state.supabaseSession?.user?.email || 'Sign Out') : 'Sign In'; statusBarAuth.style.display = ''; }
+      if (statusBarAuth) {
+        // MAP-PHONE-BAR: signed in, the link carries the email (laptops) and a short
+        // "Account" twin (phones, 768px and under); CSS shows one. The full email stays
+        // in the title and the accessible name. It opens My Settings, where sign-out is.
+        const authEmail = loggedIn ? (state.supabaseSession?.user?.email || '') : '';
+        if (loggedIn) {
+          const full = document.createElement('span');
+          full.className = 'status-auth-full';
+          full.textContent = authEmail || 'Sign Out';
+          const short = document.createElement('span');
+          short.className = 'status-auth-short';
+          short.textContent = 'Account';
+          statusBarAuth.replaceChildren(full, short);
+          statusBarAuth.title = authEmail || 'Account';
+          statusBarAuth.setAttribute('aria-label', authEmail ? 'Account: ' + authEmail : 'Account');
+        } else {
+          statusBarAuth.textContent = 'Sign In';
+          statusBarAuth.removeAttribute('title');
+          statusBarAuth.removeAttribute('aria-label');
+        }
+        statusBarAuth.style.display = '';
+      }
       if (window.App?.renderTwinBanner) window.App.renderTwinBanner();
     } else {
       document.querySelectorAll('.supabase-only').forEach(el => { el.style.display = 'none'; });
@@ -6476,6 +6501,9 @@
   App.formatBidAge = formatBidAge;
   App.getPageCanvases = getPageCanvases;
   App.renderAnnotationsToContext = renderAnnotationsToContext;
+  // LEGEND-FACE: resolves once Barlow Condensed has loaded (or false after a few
+  // seconds); every export that draws the sheet legend awaits it first.
+  App.legendFaceReady = () => canvasDraw.legendFaceReady();
   // addReportPagesToPdf / addHighlightsToPdf / addNotesToPdf / hasAnyHighlights /
   // hasAnyNotes are registered from features/pdf-bundle.js.
   App.wrapNoteText = wrapNoteText;
@@ -6652,6 +6680,10 @@
   App.isAutoSaveSuspended = () => suspendAutoSaveUntilCheckout;
   App.setLastCheckoutRefreshAt = (ms) => { lastCheckoutRefreshAt = ms; };
   App.doTurnIn = () => saveEngine.doTurnIn();
+  // R1-WINDOW: features/turn-in.js doCheckoutCurrentProject ends the engine's
+  // self-release window on a successful checkout (the engine's own
+  // reCheckOutAfterExpiry does it internally).
+  App.clearSelfRelease = () => saveEngine.clearSelfRelease();
   App.featureFlagEnabled = featureFlagEnabled;
   App.setTurnInProgress = (msg) => setTurnInProgress(msg);
   App.updateSettingsCheckoutSection = (...a2) => updateSettingsCheckoutSection(...a2);

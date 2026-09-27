@@ -154,6 +154,42 @@ test.describe('Fixture units on counters', () => {
     expect(errors).toEqual([]);
   });
 
+  // WATER-TELEM (2026-09-27): the allowlist migration is on prod, so wsfu_prefill fires for
+  // everyone; no `water-telemetry` feature flag is set or read any more.
+  test('creating a counter logs wsfu_prefill with no feature flag: kept is accepted, typed over is not', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await load(page);
+    expect(await page.evaluate(() => localStorage.getItem('clickcount-ff-water-telemetry'))).toBe(null);
+    // Stub the registry seam: applyWsfuFieldToCounter resolves App.logUserEvent at call time.
+    await page.evaluate(() => {
+      window.__wsfuEvents = [];
+      window.App.logUserEvent = (type, pid, meta) => { window.__wsfuEvents.push({ type, meta }); };
+    });
+    const prefills = () => page.evaluate(() => window.__wsfuEvents.filter((e) => e.type === 'wsfu_prefill').map((e) => e.meta));
+    // the prefill kept
+    await openCreateTab(page);
+    await page.locator('#counterName').fill('Lavatory');
+    await expect(page.locator('#counterWsfu')).toHaveValue('2');
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.COUNTER);
+    let got = await prefills();
+    expect(got).toHaveLength(1);
+    expect(got[0]).toMatchObject({ occupancy: 'public', read: 2, kept: 2, accepted: true });
+    // the prefill typed over
+    await page.keyboard.press('Escape');
+    await openCreateTab(page);
+    await page.locator('#counterName').fill('Lavatory 2');
+    await page.locator('#counterWsfu').fill('3');
+    await page.locator('#counterCreate').click();
+    await page.waitForFunction(() => window.state.counters.length === 2);
+    got = await prefills();
+    expect(got).toHaveLength(2);
+    expect(got[1]).toMatchObject({ occupancy: 'public', read: 2, kept: 3, accepted: false });
+    expect(errors).toEqual([]);
+  });
+
   // MAP-ICON-SEARCH: the icon search rebuilt #counterIconGrid with a click of
   // its own that filled the name but never ran the fixture-unit sync, so a
   // built-in pick after a search left Fixture units empty. One builder now

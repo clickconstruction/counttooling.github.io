@@ -9,6 +9,11 @@
    * extracted from app.js's UI Render Functions region per the lines-list
    * recipe. updateUI reaches it defensively via App.renderSummary. Zero new
    * publish-only deps — everything it reads was already on the registry.
+   * MAP-SUMMARY-LAYERS (2026-09-27): every tally here reads the MERGED
+   * annotations of each sheet (every layer, App.getMergedAnnotationsForPage),
+   * the same arithmetic as the sidebar badges and the footer total, so the
+   * three numbers agree and no longer depend on which layer each sheet was
+   * last left on. The by-page window (summary-detail.js) shows the split.
    * Boundary rule: read shared deps from App.* at call time, never at load.
    */
 
@@ -54,13 +59,18 @@
     const el = document.getElementById('summaryList');
     el.innerHTML = '';
     const esc = App.escapeHtml;
-    const childTotals = App.getChildCountTotals ? App.getChildCountTotals() : null;
-    const conductorTotals = App.getConductorTotals ? App.getConductorTotals() : null;
+    // MAP-SUMMARY-LAYERS: every layer of each sheet, merged once per render
+    // (the badges' and footer's rule); the child-count and wire/cable engines
+    // take the same getter so their Summary lines agree with the rows above.
+    const annByPage = App.state.pages.map((p) => App.getMergedAnnotationsForPage(p));
+    const getAnnotations = (pi) => annByPage[pi];
+    const childTotals = App.getChildCountTotals ? App.getChildCountTotals({ getAnnotations }) : null;
+    const conductorTotals = App.getConductorTotals ? App.getConductorTotals({ getAnnotations }) : null;
     const groups = App.state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || 'Untagged';
     let hasAnyGroups = false;
     App.state.pages.forEach((p, pi) => {
-      const ann = App.getActiveAnnotations(p, pi);
+      const ann = annByPage[pi];
       Object.values(ann?.counterMarkers || {}).forEach(arr => arr.forEach(m => { if (m.group) hasAnyGroups = true; }));
       (ann?.quickLines || []).forEach(q => { if (q.group) hasAnyGroups = true; });
       (ann?.polylines || []).forEach(poly => { if (poly.group) hasAnyGroups = true; });
@@ -68,7 +78,7 @@
     const counterByGroup = {};
     const lineTypeByGroup = {};
     App.state.pages.forEach((p, pi) => {
-      const ann = App.getActiveAnnotations(p, pi);
+      const ann = annByPage[pi];
       (App.state.counters || []).forEach(c => {
         (ann?.counterMarkers?.[c.id] || []).forEach(m => {
           const gid = m.group || null;
@@ -155,8 +165,8 @@
         // T2-11: one shared arithmetic — the row shows withRepeats, the hover
         // title carries placed when a multiply zone makes them differ.
         let placed = 0, count = 0;
-        App.state.pages.forEach(p => {
-          const t = App.counterTally(App.getActiveAnnotations(p), c.id);
+        App.state.pages.forEach((p, pi) => {
+          const t = App.counterTally(annByPage[pi], c.id);
           placed += t.placed; count += t.withRepeats;
         });
         if (count > 0) {
@@ -174,7 +184,7 @@
       App.state.lineTypes.forEach(lt => {
         let runs = 0, lenFt = 0, lenPx = 0;
         App.state.pages.forEach((p, pi) => {
-          const ann = App.getActiveAnnotations(p);
+          const ann = annByPage[pi];
           const qLines = (ann?.quickLines || []).filter(q => q.lineTypeId === lt.id);
           const polys = (ann?.polylines || []).filter(poly => poly.lineTypeId === lt.id);
           const addSplit = (item, isPoly) => {

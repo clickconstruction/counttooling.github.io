@@ -1115,6 +1115,7 @@
     .summary-count-detail-count { font-weight: 700; font-size: 1.1rem; }
     .summary-count-detail-length { font-size: 0.9rem; color: var(--text2); }
     .summary-count-detail-page { font-size: 0.85rem; color: var(--text3); }
+    .summary-count-detail-layers { font-size: 0.8rem; color: var(--text2); max-width: 16em; }   /* MAP-SUMMARY-LAYERS: the per-layer split on a multi-layer sheet */
     .summary-count-detail-doc { color: var(--text2); font-size: 0.9rem; }
     .summary-count-detail-preview { display: flex; flex-direction: column; gap: 4px; }
     .summary-count-detail-row img { max-width: 200px; border-radius: 6px; border: 1px solid var(--border); display: block; }

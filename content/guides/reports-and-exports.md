@@ -1,7 +1,7 @@
 ---
 title: Reports, exports, and sending a takeoff onward
 description: Turn your marked-up plan into numbers and deliverables: the on-canvas legend, Show Report, Export PDFs, Copy to /Tooling, and email summaries.
-updated: 2026-09-21
+updated: 2026-09-27
 order: 6
 icon: legend
 category: Output
@@ -15,7 +15,7 @@ A takeoff is only useful once it's numbers someone can price or check. CountTool
 
 - **Legend** [[legend]]: the on-canvas summary shows your counts and lengths by type, right on the plan. It's draggable and resizable, so park it wherever it doesn't cover your work (styling options: [Highlights, notes, and the legend](/guides/annotating-and-reviewing/)).
 - **Footer totals**: the status bar keeps a running `[count | length]` across every page and canvas, with multiply and scale zones already applied.
-- **Count detail**: click any count or line total in the Summary for a per-page breakdown with thumbnails showing exactly where each item sits. The takeoff audits itself.
+- **Count detail**: click any count or line total in the Summary for a per-page breakdown with thumbnails showing exactly where each item sits. The takeoff audits itself. The Summary counts every [layer](/guides/canvas-layers/), like the sidebar badges and the footer total; on a sheet with more than one layer the breakdown shows each layer's share (*Main 9 · Alternate 3*).
 
 ![Clicking a Summary total opens the by-page breakdown, the count per sheet, with a thumbnail showing where the marks are.](/guides/img/summary-detail.png)
 

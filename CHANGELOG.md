@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(summary): the Summary counts every layer, and the by-page window shows the split (MAP-SUMMARY-LAYERS, 2026-09-27)
+
+Punch row MAP-SUMMARY-LAYERS (DECOMPOSITION_MAP D37); Will accepted the brief's recommended option.
+On a sheet with two or more layers the Summary counted only the layer each sheet was last left on,
+while the counter and line-type badges, the Counter window's pick list and the footer total counted
+every layer. One screen could read 12 on a badge and [9] in the Summary for the same fixture, and
+the Summary total moved when someone switched a layer on a sheet they were not looking at.
+
+- **The Summary** (features/summary-list.js): both the grouped and the flat paths tally each sheet's
+  merged layers (`App.getMergedAnnotationsForPage`, merged once per render), the badges' and the
+  footer's arithmetic. The child-count and wire / cable lines follow: `renderSummary` passes the same
+  getter to `App.getChildCountTotals` / `App.getConductorTotals` through their existing
+  `getAnnotations` option (their defaults are unchanged, so report.js, the exports and Bid Check
+  read exactly what they read before).
+- **Fixture units** (features/water-fixtures.js `getWsfuTotals`): the Summary's WSFU line counts
+  every layer too.
+- **The by-page window** (features/summary-detail.js): each sheet's number counts every layer. A
+  sheet with more than one layer adds its split under the sheet name, *Main 9 · Alternate 3*, or
+  *Main 1 (12.00 ft) · Alternate 1 (6.00 ft)* for a line type (`.summary-count-detail-layers`;
+  layers that do not hold the item are left out). Each share reads the merged sheet's multiply and
+  scale zones, so the split always sums to the row. The thumbnail draws every layer, keeping the
+  active layer's legend placement.
+- **Unchanged:** Show Report and its **Every sheet (active layer)** choice (the way to read a base
+  bid alone), Copy to /Tooling and every export, the `window.*` report.js contract, and Bid Check,
+  which still reads the layer showing on each sheet.
+- **Words:** the Canvas layers guide no longer says the sidebar totals stay on the active layer, and
+  says an alternate on its own layer is in the Summary total with the split one click away; Reports
+  and exports says the same beside Count detail; the Learning glossary's *Layer*, the Busy-sheet
+  lesson's layer card, the blank-sheet tour's layers card and the plumbing course's Waste-layer card
+  say the sidebar totals count every layer (they said each layer had "its own totals").
+- **Pinned** by the new summary-layers.spec.js: two layers on one sheet plus a one-layer sheet; the
+  badge, the Summary row, the line row, a child count and the Fixture units line all count every
+  layer and do not move when the sheet's active layer changes; the by-page window shows the split
+  only on the multi-layer sheet and hands the thumbnail every layer's marks. The single-layer comment
+  in sidebar-lists.spec.js now points there.
+
+Not built (the brief's other options): leave it; keep the Summary on the showing layer and label
+it; or move the badges and the footer to the showing layer as well.
+
 ## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
 
 The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))

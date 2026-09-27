@@ -1697,7 +1697,9 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 /* the interactive walkthrough (features/tutorial.js) */
 #tourOverlay { position: fixed; inset: 0; z-index: 320; pointer-events: none; }
 .tour-spot { position: fixed; border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 2px var(--accent); pointer-events: none; transition: left 160ms ease, top 160ms ease, width 160ms ease, height 160ms ease; }
-.tour-card { position: fixed; width: min(360px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 18px 44px rgba(0,0,0,0.45); padding: 14px 16px 12px; pointer-events: auto; font-size: 0.9rem; line-height: 1.45; }
+/* A card taller than the window (a long revealed answer on a short screen) scrolls, and its
+   Back / Next row stays in sight at the foot (features/tutorial.js keeps the card in the window). */
+.tour-card { position: fixed; width: min(360px, calc(100vw - 24px)); background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 18px 44px rgba(0,0,0,0.45); padding: 14px 16px 12px; pointer-events: auto; font-size: 0.9rem; line-height: 1.45; max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
 .tour-card h3 { margin: 6px 0 6px; font-size: 1.05rem; }
 .tour-card p { margin: 0 0 12px; color: var(--text2); }
 .tour-body { margin: 0 0 12px; }
@@ -1768,7 +1770,7 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-spot.is-pulsing { animation: tourSpotPulse 0.7s ease-in-out 3; }
 .tour-next:disabled { opacity: 0.4; cursor: default; }
 .tour-status.tour-status-miss { color: #e8795f; }
-.tour-card-nav { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.tour-card-nav { display: flex; align-items: center; gap: 8px; margin-top: 10px; position: sticky; bottom: -12px; background: var(--surface); padding-bottom: 12px; margin-bottom: -12px; }
 .tour-skip { display: block; margin: 0; background: none; border: none; padding: 0; color: var(--text3); font: inherit; font-size: 0.72rem; text-decoration: underline; cursor: pointer; }
 .tour-skip:hover { color: var(--text2); }
 /* Learn (features/lessons.js): the lesson list */

@@ -651,3 +651,72 @@ signing one is a judgment on its words.
   lesson coordinates checked in the same commit.
 - The Bid Check fill row prints the feeder as "4 3/0 THHN" beside "1 #6"; cosmetic, the "#" is
   missing on 3/0 only. **Fixed 2026-09-27 (DS-AGENT-NITS): `formatConductorSpec` writes "#3/0".**
+
+## Settled 2026-09-27
+
+Settled by Claude on the owner's delegation ("go through and answer all these questions"), from
+this dossier's research and the model code text. Nobody opened a printed code book or a local
+amendment; every signed rule says so in its Verify against your edition paragraph. **The course's
+edition is NEC 2023** (the app's own default, `CODE_DEFAULTS`), with IECC 2021 for the lighting
+controls and IBC 2021 for egress; a card names the 2023 number first, and a rule file names the
+earlier editions' numbers where they moved. A signed rule turns `status: applied` with
+`used_by: [course]`, a new surface in `USED_BY_LABEL` (scripts/lib/rules.js): the courses' cards,
+whose numbers `check-lesson-rules` holds to the rule. The sheets changed in words only (keynotes,
+notes, schedule text); no device moved, so no course coordinate moved.
+
+**EC-REVIEW**
+
+- R1: branch circuits are 2 #12 + 1 #12 G per 120 V circuit, not a multiwire homerun: E-101's keynote, `BRANCH_SPEC` for both 3/4" types, and the `conduit:linetype`, `why12`, `fill` and `circuits:homerun` cards. APPLIED
+- R2: the dishwasher gets a GFCI breaker (NEC 422.5(A)(7), 2020 on): "GFCI BKR" on E-501's row 2,4, E-501 note 7, one line on `sheet:row`'s reveal, and a row in elec.gfci.non-dwelling (not a rule of its own). APPLIED
+- R3: circuit 21 keeps its own circuit with a lock-on (the lean): E-201's keynote, E-501 row 21, `lighting:os`, and elec.emergency.battery-duration's body names both options. APPLIED
+- R4: the dining room gets a time switch (IECC C405.2.2), the dimmer on top (E-201 keynote, `lighting:why`); the 2021 edition's hall and mop room sensors are taught in words as an RFI with two sensors carried in the bid, not drawn. APPLIED
+- R5: the bar is cited by its sink, 210.8(B)(7) in 2023 (the mop room too), the kitchen and dish pit by (B)(2), in `devices:missed`; the course names NEC 2023 on `sheet:schedule`. APPLIED
+- R6: the rooftop unit's GFCI service receptacle within 25 ft (NEC 210.63, 210.8(B)(5)) is one line on `equipment:poles`'s reveal; no roof note on E-101. APPLIED
+- R7: `circuits:load` adds a caution that 720 VA is the calculation's 180 VA a receptacle, not a measured load, and a long run that passes only at that figure is worth an RFI. The dossier's suggested "would run #10" sentence was not used: the app's own numbers want #6 at 16 A on this run. APPLIED
+- R8: `sheet:row` and elec.conductor.small-protection say the breaker must be over 20 A and the engineer chose 30 A, the size the maker's label names, instead of "goes to a 30 A breaker". APPLIED
+- R9: E-601's service lateral drops "+ 1 #6 CU G" and reads THHN/THWN-2 (still "(UTILITY)"); note 3 reads THHN/THWN-2 with the #6 EGC "with the feeder only". APPLIED
+- R10: E-501 note 6 reads "#12 CU IS PROTECTED AT 20 A MAX (NEC 240.4(D))". APPLIED
+- R11: `service:gear` glosses the meter base and has the reader click it; the utility brings the meter. APPLIED
+- R12: the missed-receptacle RFI asks which circuit too (the card and the Flag it for me note). APPLIED
+- R13: E-501's loads and the 22.3 kVA · 62 A line left as they are (signed as is). APPLIED
+- R14: RTU-1's 9000 VA, 40 A, #8, 1" left as they are (signed as is). APPLIED
+
+**EC-TRADE**
+
+- T1: `sheet:schedule` asks for the two-pole circuit on a 30 A breaker (hint: the BKR column), `sheet:row` says every 20 A circuit is #12, `equipment:poles` says EF-1 takes two poles too; EF-1 stays single phase. APPLIED
+- T2: the missed kitchen receptacle is counted once, as a GFCI (the lean): `gfci` still accepts ten or eleven (asking eleven would give away the next question), `duplex` wants the flagged one on the GFCI counter and ten plain duplex, and refuses a Duplex mark on it; `COUNTS` is 10 duplex and 11 GFCI, still sixty-nine marks; the chapter 4, 5 and 9 seeds and `layEverything` follow. APPLIED
+- T3: E-601 note 2 reads "THREE PHASE FOR RTU-1; 120V FROM ANY PHASE TO NEUTRAL". APPLIED
+- T4: version (b): the feeder goes up 5 ft from the MDP into the 10 ft ceiling and down 3.5 ft into LP-1's top, 8.5 ft of vertical (`FEEDER_RISE_FT`, derived from `MOUNT` and the ceiling); E-601 says 16 FT, a new E-101 keynote draws the route in words, `RUNS` is 15.83 ft, and the `rise` card and its check want 8.5 ft (a 5 ft drop now holds with a hint). APPLIED
+- T5: `sheet:clearance` and its hint measure from the panel's face to the box's outer edge. APPLIED
+- T6: the arrows read by their tags. ALREADY DONE (DS-AGENT-NITS)
+- T7: "the same string" struck from ELECTRICAL-COURSE.md. ALREADY DONE (DS-AGENT-NITS)
+
+**RULEBOOK-SIGN, electrical**
+
+- S1 elec.panel.working-space: signed; the depth row reads "any condition", the body measures from the enclosure's front. APPLIED
+- S2 elec.conductor.small-protection: signed, with R8's clause. APPLIED
+- S3 elec.conductor.ampacity: signed; editions 2017 to 2023, section "310.16 (Table 310.15(B)(16) in 2017)". APPLIED
+- S4 elec.gfci.non-dwelling: signed with the 2023 numbers ((B)(2), (B)(3), (B)(7)) and the earlier ones named, the bar by its sink, the dishwasher's 422.5(A)(7) as a row; retitled "GFCI protection, non-dwelling". APPLIED
+- S5 elec.emergency.battery-duration: signed (90 minutes; unit equipment 700.12(F) in 2017, (I) in 2020, (H) in 2023; both branch-circuit options with the lock-on). APPLIED, except the letter of 2023's duration paragraph (700.12(C)), read only in an AI summary: LEFT OPEN in the rule's Verify paragraph.
+- S6 elec.egress.illumination: signed, section 1008.3.4. APPLIED
+- S7 elec.lighting.occupancy-sensors: signed with C405.2.2's time switch as a second row, corridors (2021) and small enclosed rooms named. APPLIED
+- S8 elec.emt.support: signed as is. APPLIED
+- S9 elec.emt.bends: signed as is. APPLIED
+- S10 elec.disconnect.within-sight: signed; "without a portable ladder or tools", and the lockable remote exception is industrial process equipment only. APPLIED
+- S11 elec.hood.shunt-trip: LEFT OPEN, still `draft`: NFPA 96 itself was not opened (only forum and UpCodes quotes of 10.4.1). The research is recorded in its Verify paragraph.
+- S12 elec.circuit.fixed-equipment: signed, section "210.23(B)(2) (210.23(A)(2) in 2017 and 2020)", the summary's "which is why" softened. APPLIED
+- S13 elec.ground.equipment-conductor: signed as is. APPLIED
+- S14 elec.ground.electrode-conductor: signed; the #6 cap named as 250.66(A). APPLIED
+- S15 elec.service.load-calculation: signed; section "Article 220 (220.88 for a new restaurant)", the body names 220.88, and a value row for its 100% (not all electric, 200 kVA or less; the table read from search text). APPLIED
+
+**Not trade: for an agent**
+
+- `devices:gfci` "twenty-one": ALREADY DONE (DS-AGENT-NITS)
+- The reference moves with T2 and T4 (`COUNTS`, `RUNS`, the compare card, the spec's pins, the sheet rebuilt with `npm run build:sample-electrical`): APPLIED (the compare card's "sixty-nine marks" holds: one mark moved from Duplex to GFCI)
+- "#3/0" in the Bid Check fill row: ALREADY DONE (DS-AGENT-NITS)
+
+**Noticed, outside this dossier:** the five-minute electrical tour (features/tutorial.js
+`ELECTRICAL_STEPS`, on the office sample plan), the landing's electrical film and the electrical
+takeoff guide still teach "3 #12 THHN + 1 #12 G" on one 120 V circuit, the pattern R1 corrected on
+the course. Left for a follow-up: changing the tour cascades into the landing film and the guide's
+screenshots.

@@ -127,7 +127,7 @@ const FIRST_USE = {
     'J-box': 'devices', 'junction box': 'devices',
     // Chapter 3, lighting
     'fixture schedule': 'lighting', 'armed': 'lighting', 'IBC': 'lighting', 'occupancy sensor': 'lighting',
-    'IECC': 'lighting',
+    'IECC': 'lighting', 'lock-on': 'lighting', 'time switch': 'lighting',
     // Chapter 4, conduit
     'keynote': 'conduit', 'raceway': 'conduit', 'ground': 'conduit', 'THHN': 'conduit', 'EMT': 'conduit',
     'gauge': 'conduit', 'gear': 'conduit', 'drop': 'conduit', 'fill': 'conduit', 'chip': 'conduit', 'strap': 'conduit',
@@ -142,7 +142,7 @@ const FIRST_USE = {
     // Chapter 7, the service
     'utility transformer': 'service', 'service lateral': 'service', 'meter': 'service', 'main disconnect': 'service',
     'feeder': 'service', 'terminal': 'service', 'equipment ground': 'service',
-    'grounding electrode conductor': 'service', 'kVA': 'service', 'MDP': 'service',
+    'grounding electrode conductor': 'service', 'kVA': 'service', 'MDP': 'service', 'meter base': 'service',
     // Chapter 8 and 9
     'reference': 'whole', 'legend': 'whole', 'HVAC': 'bid', 'exclusion': 'bid', 'temporary power': 'bid',
     'pull point': 'bid',

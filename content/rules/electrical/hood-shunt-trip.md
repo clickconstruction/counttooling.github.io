@@ -28,4 +28,6 @@ Nothing yet. The electrical course teaches it on a card (Chapter 6, The breaker 
 
 ## Verify against your edition
 
-The standard speaks of the power that produces heat to the protected equipment; whether receptacles for plug-in cooking appliances under the hood are on the shunt trip is the engineer's and the authority's reading. A tester signs the section number and that reading against the adopted edition before this rule is applied.
+The standard speaks of the power that produces heat to the protected equipment; whether receptacles for plug-in cooking appliances under the hood are on the shunt trip is the engineer's and the authority's reading (the course's circuit 12 puts them on it, the common and conservative reading). A tester signs the section number and that reading against the adopted edition before this rule is applied.
+
+Left open 2026-09-27, when the other electrical drafts were settled: the research (TESTER-DOSSIER-ELECTRICAL, S11) found 10.4.1 quoted for the 2017 and 2024 editions on Mike Holt's forum and NFPA Xchange, and the same Fuel and Electric Power Shutoff title in 2021 and 2024 on UpCodes, with 10.4.2 exempting steam from an outside source and 10.4.4 wanting a manual reset. NFPA 96 itself was not opened, so this rule stays a draft until someone reads 10.4.1 in the standard.

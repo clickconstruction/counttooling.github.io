@@ -122,6 +122,76 @@ code (IFGC Table 415.1) supports 1-1/4 in steel gas pipe at 10 ft. The IPC leave
 height above the roof to the jurisdiction. Each rule's "Verify against your edition" names its own.
 `node scripts/check-lesson-rules.js --gaps` now lists only the electrical and HVAC steps.
 
+## fix(persona): the first full persona pass, and what it changed (PERSONA-PASS, 2026-09-26)
+
+Row PERSONA-PASS, run as PERSONA-PLAN.md lays it out, over every teaching set: the three tours, the
+blank tour, the 13 lessons and the 27 course chapters, 44 sets and 373 steps, 265 of them doing
+steps. The digest is [PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md); how it
+ran, what it cost and what to change next time is PERSONA-PLAN.md "Pass 1 results (2026-09-26)".
+
+**The numbers.** The text pass, five persona kinds on every set, wrote 1,048 findings (644 gap,
+296 wording, 53 suggestion, 30 code-claim, 14 stall, 11 false-pass). It flagged 21 doing steps in 16
+sets for the live pass, which ran each of them on all four devices (51 findings); the prober ran
+every doing step of those 16 sets (99 steps, 37 findings) and the no-work sweep opened all 265 doing
+steps on two devices with no model (one flag, by design). The merge made 1,121 findings into 896
+groups, and a stronger model replayed the 212 worth it: **63 real, 117 false leads, 31 opinions, 1
+trade question**, 30% real (the text pass 25%, the live pass and prober 40%), about 30 mechanisms.
+The prober paid best: 16 of its false passes were real, most of them a wrong value reaching the bid.
+
+**Checks that passed the wrong thing**, now held with a hint that names what is off: the plumbing
+tour's line type (any fresh type; now 1in PEX), the electrical tour's line type (any raceway and
+conductors; now EMT, 3/4", 3 #12 + 1 #12 G), its counter (a Single Pole receptacle; now the duplex)
+and its ceiling (any height; now 10'-0"), the HVAC tour's diffuser (any CFM; now 150) and its room
+(any type and heights; now Office, 9 and 12), the electrical and plumbing tours' place steps (a
+stray mark stayed in the tally), the HVAC course's `main:arm` (Insulation at None), the four proof
+steps (any SUMMARY row's breakdown; now the one the card names, through two new kit helpers,
+`lessonKit.detailOpenFor` and `detailMiss`, that read the breakdown's title), and the Fixing
+lesson's Delete area (a box over the whole plan; now the kitchen drains must survive it).
+
+**Wording.** The three courses' finish cards promised a lay-it-all button that has not existed
+since the no-do-it-for-me rule, and sent the reader to "the status line", an engine word no card
+defined: both gone, the line is "the line beside Show me where on this card". The four Bid Check
+tick cards now start "In the left sidebar", so a tablet is told to open the drawer, and say one
+click signs the row. The HVAC tour's duct card and the course's main trace name the Duct size box
+S opens and the row to click; the tour's Bid Check lights the Curb & power row it names (it lit
+Fire dampers, below the fold at 1280 × 720); the course's "why" says three step-downs, not four, and
+no longer claims the ductulator agreed with every printed size. Six box cards say "in the shaded
+band, outside the dashed line", where "anywhere inside the shaded boundary" failed a box drawn
+inside the dashed line, and so does the hint. The lessons' opening step no longer lights the
+header's Upload PDF over the card's own button. The rest, one line each: the homerun card states
+the raceway and conductors it pointed at; "make-up" gets its 1 ft; "the airside chip Exhaust" is
+Airside Exhaust; the riser's cleanout card gives the route to make CO Cleanout; the gas hangers card
+names the child-count form's fields; Counting defines "arm" and gives the tablet route to Counter
+Settings, Notes gives the tap path and calls the RFI filter a button, Organize says "the COUNTERS list" and lets the layer take any name, Repeats
+names the multiplier field (a tablet does not focus it), and Deliverables says what the two pricing
+apps are.
+
+**Left for the trade.** The replay also found five items already listed in EC-TRADE, HC-TRADE and
+PC-TRADE (E-501's two 208 V two-pole circuits, the service rise, the leftover "Spiral round" line,
+the HVAC main's size changes, the trap-arm table), each a row that says someone with the trade
+settles it before anyone edits it. This branch left them alone; the digest counts them as the
+pass's recall signal.
+
+**Drafts, rows and the harness.** The Learn guide gets "Words the cards use" (armed, the line
+beside Show me where, the palette, a chip) and a box bullet that says how the band and the dashed
+line work; no rule draft, since every citation the pass questioned is one of the 29 RULEBOOK-GAPS or
+a TRADE item. New rows: PP-DUCT-SUGGEST (tester: the Duct size box's suggestion against the
+course's printed main), PP-OS-STRAY (agent: the OS step ignores extra marks), and three calls,
+PP-TRIM-TITLE, PP-WHOLE-SKIP and PP-DUCT-CHIP. The harness takes `"right":true` on `clickZone` and
+`clickAt` (the live personas stalled on every context-menu step without it), and the text pass reads
+rules/rules.json as the plan always said (`{{RULES}}` in text.md, pinned in persona-harness.test.js).
+Row PERSONA-PASS is closed.
+
+Pinned where a spec could: tutorial.spec.js "The tours hold a wrong value" (a 2in PEX,
+a 1/2" raceway, an 11 ft ceiling and a 149 CFM diffuser each hold their step with a wrong-value
+hint, and the card's value passes) and lessons.spec.js "the proof step wants the breakdown the
+card names". The prober's episodes on the old checks are the red half (written after the
+fix, not before it); these are the green. Writing them found the tours'
+own do-it-for-me seams trusting the lenient finders (a wrong type or counter already there, the
+seam made nothing): they read the strict ones now. The plumbing tour's pinned card text follows its
+reworded box line. `npm run check` is green; tutorial, lessons, tour-blank and the three
+course specs pass (113), and persona-harness.test.js (10).
+
 ## refactor(palettes): the Chain, Drop and Highlights palettes share one drag, and a cancelled touch drag lets go (R20, 2026-09-26)
 
 The decomposition map's R20, both items, and its defect D43. The three floating palettes drag

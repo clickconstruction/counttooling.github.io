@@ -25,6 +25,7 @@ so a prompt never goes out with a hole in it. `{{FINDING_FORMAT}}` is the sectio
 |---|---|---|
 | `MANIFEST` | text | the manifest file: `persona-out/manifest.jsonl` (`npm run build:persona-manifest`), or one set's manifest JSON (`GET /manifest?set=`) |
 | `LABELS` | text | `persona-out/labels.json` |
+| `RULES` | text | `rules/rules.json`, the rulebook the text pass checks a card's code numbers and sections against (PERSONA-PASS, 2026-09-26) |
 | `SET` | all | the set id (`GET /sets`): `plumbing`, `lesson:counting`, `course:plumbing:fixtures` |
 | `STEP` | live, prober | the step id the episode opens on |
 | `HARNESS` | live, prober | the harness's base URL, `http://127.0.0.1:3490` |

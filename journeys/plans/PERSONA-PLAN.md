@@ -228,6 +228,73 @@ prober and the cheaper live pass"; how it came out is in the Harness section bel
 5. **Keep returning devices in the grid.** Most of #207's findings exist only on a returning
    device, and only returning personas saw their symptoms.
 
+## Pass 1 results (2026-09-26)
+
+Run on `claude/map-phase0f` (what main becomes after PR #224) over all 44 sets: the three tours, the
+blank tour, the 13 lessons and the 27 course chapters, 373 steps, 265 of them doing steps. The
+findings, what landed and the rows are in [PERSONA-PASS-2026-09-26.md](PERSONA-PASS-2026-09-26.md).
+
+**How it ran.** The manifest and label index first (`build:persona-manifest`, 11 s from the
+engine). The text pass read every set as the five README kinds, one seed each, rotating: 220
+readings, 1,048 findings. The session's cap of 20 subagents at once (shared with the other agents
+on the machine) made one agent per reading too slow to schedule, so 85 agents did it: 31 read one
+set each, 54 read one persona kind across three to five sets in order, the labels and rules read
+once. The flag rule (a stall, wording or false-pass three persona kinds wrote, or two with a stall or
+false-pass; a wording finding whose control is in the label index did not count) picked 21 doing
+steps in 16 sets. The live pass ran those 21 steps on all four devices, one episode per step, 24
+agents each taking four to six steps in order; the prober ran every doing step of the 16 sets, 99
+steps, 25 agents; the no-work sweep opened all 265 doing steps on two devices with no model. The
+merge grouped 1,121 findings into 896 groups, and 11 replay agents (Opus) judged the 212 groups worth
+it: every live, prober and no-work group, and the text groups with two or more persona kinds or a
+severity 3.
+
+**Recall, against nothing.** There was no known list this time, so no recall number. One signal
+stands in for it: the three TRADE rows list 17 trade findings from the by-hand read of 2026-09-24,
+and the replay found about 5 of them with no list in its context (E-501's two 208 V two-pole
+circuits and "every other circuit is #12", the service rise's 5 ft, the leftover "Spiral round" line,
+the size changes on the HVAC main). The personas never saw the TRADE rows; the judges did not
+either, so they called these real where "known, trade-blocked" was the right word.
+
+**Precision.** Of the 212 replayed groups: 63 real, 117 false leads, 31 opinions, 1 trade
+question, so 30% real (the text pass 25%, the live pass and prober 40%). Real by kind: 27 wording,
+16 false-pass, 13 gap, 7 stall, about 30 mechanisms once each cause is counted once. The prober was
+the best yield per agent: 16 false passes were real, 12 of them checks that let a wrong value reach
+the bid (the tours' line types, the ceiling, the diffuser's CFM, the room's heights, the proof
+steps' breakdown). The live personas mostly stalled on their own budget: of the 43 live stalls,
+the real ones are the `whole:lay` cards (a button that no longer exists) and the tablet's missing
+drawer route.
+
+**Cost** (from the task notifications' token and tool-use counts, not a billing export). Text pass:
+85 Haiku agents, about 940 tool calls, about 110k tokens of context each at the end. Live pass: 24
+Haiku agents, about 900 calls, about 90k each. Prober: 25 Haiku agents, about 1,600 calls, about
+95k each. Replay: 11 Opus agents, about 410 calls, about 140k each. The no-work sweep: 530 episodes,
+no model. The live pass that read about forty times the text pass in calibration read about a fifth
+of it here: one step per episode and a list of actions per call did what the calibration said
+they would.
+
+**What to change for pass 2:**
+1. **Trade-matched kinds.** The five README kinds are plumbing people; reading the electrical and
+   HVAC courses they called every EMT, THHN, CFM and RTU a gap, and the judges called most of those
+   opinions (31). Add an electrical apprentice and an HVAC apprentice and run each trade's sets
+   with its own.
+2. **Run-time labels in the index.** The largest false-lead class (about 30): Category, Variant
+   and Rating (the Quick tab renames its pickers for an electrical project), the ✎ pencil and the ⋯
+   by their aria labels, the Bid Check row words. `build:persona-manifest` should add them with
+   their own source.
+3. **A budget per step.** Four /act calls stalled every step of eight actions (about 35 false
+   leads). Give an episode the step's numbered-line count and a budget from it.
+4. **The prober never probes with Skip.** 12 "false passes" were a Skip; the prompt should say
+   Skip, Back and Leave are the reader leaving (the no-work detector already knows it).
+5. **Give the judges the TRADE rows**, so a rediscovered trade item is judged "known", not "real",
+   and the digest counts it as recall.
+6. **Batching is the default.** One agent per persona kind over several sets lost nothing visible
+   and fits the subagent cap; the plan's "one fork per persona × set" should say so.
+7. **Small harness fixes**: a select option matched with its inch mark and × normalized; a step that
+   is a read by design in one state (the blank tour's `savestatus` signed out) declares it, so the
+   no-work sweep does not flag it.
+8. **Move the flag rule into code** (the label-index demotion and the kind thresholds), beside
+   `persona-merge.js`, so pass 2 does not rewrite it.
+
 ## Rulebook gaps
 
 **All 29 gaps drafted 2026-09-26** (32 rules, three trade agents, one branch each): the courses' `rulesExempt` lines are gone and `--gaps` lists nothing. Every draft carries a Verify against your edition paragraph; PUNCHLIST `RULEBOOK-SIGN` is the tester's signing row, and a draft turns `applied` only with that signature.
@@ -349,7 +416,7 @@ b312145 passes the zone step (zone -> rfi: K12), and on main the step holds with
 
 Actions: `{click:"+ Add"}` (with `within:"COUNTERS"` or `nth` when two controls share a name;
 "COUNTERS + Add" also works when the leading words are a section heading on screen),
-`{clickZone:n}`, `{dragZone:n}`, `{clickAt:[x,y]}`,
+`{clickZone:n}`, `{dragZone:n}`, `{clickAt:[x,y]}` (`"right":true` on either right-clicks, for a context menu; PERSONA-PASS),
 `{drag:[[x,y],[x,y]]}`, `{type:"text"}`, `{fill:["Name","Water Closet"]}`,
 `{select:["Size","1in"]}`, `{key:"U"}`, `{scroll:[x,y,dy]}`, `{screenshot:true}`, `{wait:ms}`,
 `{giveUp:"why"}`. A click by label looks in the open dialog, then a floating panel, the tour

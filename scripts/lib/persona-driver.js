@@ -692,8 +692,8 @@ async function act(page, action, ctx) {
         const hit = await page.evaluate(([x, y]) => window.__persona.hitAt(x, y), [z.cx, z.cy]);
         if (hit.card) return { ok: false, error: 'the tour card covers zone ' + n };
         await page.mouse.move(z.cx, z.cy, { steps: 4 });
-        await page.mouse.click(z.cx, z.cy);
-        events.push('clicked zone ' + n + (hit.sheet ? '' : ' (landed on "' + hit.label + '")'));
+        await page.mouse.click(z.cx, z.cy, a.right ? { button: 'right' } : undefined);   // "right":true, the context menu (PERSONA-PASS)
+        events.push((a.right ? 'right-clicked' : 'clicked') + ' zone ' + n + (hit.sheet ? '' : ' (landed on "' + hit.label + '")'));
         return { ok: true };
       }
       if (z.kind !== 'box') return { ok: false, error: 'zone ' + n + ' is a ' + z.kind + ': click it (clickZone)' };
@@ -708,8 +708,8 @@ async function act(page, action, ctx) {
       const [x, y] = a.clickAt;
       const hit = await page.evaluate(([px, py]) => window.__persona.hitAt(px, py), [x, y]);
       await page.mouse.move(x, y, { steps: 4 });
-      await page.mouse.click(x, y);
-      events.push('clicked at ' + x + ',' + y + ' on "' + hit.label + '"');
+      await page.mouse.click(x, y, a.right ? { button: 'right' } : undefined);
+      events.push((a.right ? 'right-clicked' : 'clicked') + ' at ' + x + ',' + y + ' on "' + hit.label + '"');
       return { ok: true };
     }
     if (a.drag) { await dragBetween(page, a.drag[0], a.drag[1]); events.push('dragged ' + a.drag[0].join(',') + ' to ' + a.drag[1].join(',')); return { ok: true }; }
@@ -729,7 +729,7 @@ async function act(page, action, ctx) {
     }
     if (a.wait != null) { await page.waitForTimeout(Math.max(0, Math.min(10000, +a.wait || 0))); return { ok: true }; }
     if (a.giveUp != null) { events.push('gave up: ' + short(a.giveUp, 120)); return { ok: true, gaveUp: true }; }
-    return { ok: false, error: 'unknown action ' + JSON.stringify(a) + ' (click, clickZone, dragZone, clickAt, drag, type, fill, select, key, scroll, screenshot, wait, giveUp)' };
+    return { ok: false, error: 'unknown action ' + JSON.stringify(a) + ' (click, clickZone, dragZone, clickAt, drag, type, fill, select, key, scroll, screenshot, wait, giveUp; "right":true on clickZone / clickAt right-clicks)' };
   })();
   return Object.assign(res, { events });
 }

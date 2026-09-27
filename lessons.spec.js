@@ -66,7 +66,7 @@ const EXPECT = {
     expect(a.polylines.length).toBe(1);
     expect(a.polylines[0].points.length).toBe(3);
     const summary = await page.evaluate(() => window.getPipeToolingSummary());
-    expect(summary).toMatch(/ft of 1-1\/4in Gas\t39\.5/);      // 23.83 + 11.67 plan feet + the 4 ft riser
+    expect(summary).toMatch(/ft of Gas Pipe\t39\.5/);      // 23.83 + 11.67 plan feet + the 4 ft riser
     expect(summary).toMatch(/90° elbow\t2/);                    // the corner, and the drop
   },
   chain: async (page) => {

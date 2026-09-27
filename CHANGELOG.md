@@ -13,6 +13,26 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(rules): one status for every settled rule, and the Measuring lesson's gas main (2026-09-27)
+
+The three trades' dossiers were settled the same day by three hands, and they disagreed on what a
+settled rule reads: the electrical ones turned `applied` with `used_by: [course]`, the plumbing and
+HVAC ones stayed `draft` with the sign-off in their Verify paragraph.
+
+- **One status.** The sixteen settled plumbing and HVAC rules a course card cites now read
+  `applied`, `used_by: [course]`, the way the README defines a rule only a course teaches
+  (`check-lesson-rules` holds the cards' numbers to them). Each keeps its sign-off sentence: settled
+  by Claude on the owner's delegation, not checked against a printed book or a local amendment.
+- **Still `draft`:** `plumb.gas.hood-shutoff` and `elec.hood.shunt-trip` (the NFPA 96 sub-section
+  numbers, unread) and `plumb.hanger.steel` (settled, but no card teaches it, so nothing uses it).
+  RULEBOOK-SIGN is rewritten to name only these.
+- **The gas hanger card** no longer says its rule is a draft: Bid Check is quiet about the gas
+  line because it does not read the gas hanger row yet.
+- **The Measuring lesson** traced the whole gas main as "1-1/4in Gas", while P-101 prints two
+  sizes along it and the plumbing course now traces each (PC-TRADE-4). The lesson's line type is
+  now "Gas Pipe", and the trace card says the plan prints two sizes and a real bid traces each as
+  its own line type. The trace, its feet (39.5) and its elbows are unchanged. sw.js restamped.
+
 ## docs(rules): the plumbing rules dossier settled (WATER-TABLES, RULEBOOK-SIGN plumbing, 2026-09-27)
 
 Will delegated the plumbing rules dossier's questions to Claude. Every answer and its reason is in

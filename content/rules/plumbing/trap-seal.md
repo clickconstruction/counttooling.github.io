@@ -3,7 +3,7 @@ id: plumb.trap.seal
 title: Trap seal depth and protection
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: Every fixture trap holds a water seal 2 to 4 inches deep, and a trap that can dry out, a floor drain that sees no water for months, gets seal protection such as a trap primer.
 values:
   - when: trap seal depth, at least
@@ -20,7 +20,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

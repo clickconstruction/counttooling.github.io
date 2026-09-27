@@ -3,7 +3,7 @@ id: plumb.waste.indirect
 title: Indirect waste for food equipment
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: A sink or machine that handles food drains through an air gap (an air break is allowed for a commercial dishwasher and a pot or dish sink) to a floor sink or other receptor, never straight into the waste pipe, so a sewer backup rises onto the floor and not into the food side.
 values:
   - when: food storage, preparation and handling equipment (a prep sink)
@@ -20,7 +20,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-8-indirect-special-waste
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

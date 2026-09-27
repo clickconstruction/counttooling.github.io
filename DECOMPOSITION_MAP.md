@@ -490,7 +490,7 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R23. Project Settings and the header output menus get their own feature files
 
-*The bug half landed 2026-09-26 (MAP-NOSUPA): the doors, the eye and the modal's local rows are bound outside the SUPABASE_ENABLED block in app.js. The feature-file split below remains.*
+**Landed 2026-09-26** (part of MAP-SHORTLIST): both items, 445 lines out of app.js (7,891 to 7,446). The bug half was MAP-NOSUPA's. New features/project-settings.js owns openProjectSettings and both doors, the eye, the per-project rows and syncProjectSettingsRows, the Groups gate, the local rows (Macros and Clear page included) and closeProject, and its `App.syncProjectSettingsChrome` is the settings-row slice of updateUIInner, called right after the `.supabase-only` pass. The skeptic was right that most of that stretch was other chrome; about forty lines moved, the Use groups switch's state among them. The cloud rows stay in the SUPABASE_ENABLED block. The output menus went into features/output.js as the skeptic said, not a new header-menus.js: the Export and Show Report openers bound at load, and `App.syncOutputMenus` called just before App.updateBurgerMenu. The copy menus' This sheet rows now sync there, before the drawer, beside their Everything rows; the drawer copies neither. CHANGELOG "refactor(settings): Project Settings has its own feature file, and the header output menus join the Copy and Download menus in output.js".
 
 *Risk medium, yield ~350.* Moves the wiring out of the SUPABASE_ENABLED block, which fixes the dead gear and Hide marks when Supabase is disabled.
 

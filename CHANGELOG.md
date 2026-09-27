@@ -13,6 +13,60 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## refactor(settings): Project Settings has its own feature file, and the header output menus join the Copy and Download menus in output.js (R23, 2026-09-26)
+
+The decomposition map's R23, both items, the split half. MAP-NOSUPA had already moved the
+Project Settings doors out of app.js's `if (SUPABASE_ENABLED)` block (that was the bug half);
+this moves the modal and the header's Export and Show Report menus out of app.js. Nothing moved
+changes behavior: the functions went over as they were apart from `App.*` reads at call time,
+and app.js calls the two new sync functions, guarded, where their lines used to run. app.js
+went from 7,891 lines to 7,446.
+
+**features/project-settings.js** (new) owns `openProjectSettings` behind both gears, the Hide
+marks eye, the footer Help fold, `syncProjectSettingsRows` with the trade, code editions,
+jurisdiction, occupancy and ceiling / make-up handlers, the Groups gate (`groupsUiVisible`,
+`turnOnGroups`, the Use groups switch), the local rows (Add pages, Download PDF, Macros, Clear
+page and Advanced's Load test PDF, Export, Import, Canvas Repair and Empty cache) and
+`closeProject`. The names the other files and the specs read stay the same:
+`App.syncProjectSettingsRows`, `App.groupsUiVisible`, `App.turnOnGroups`, `App.closeProject`.
+`App.syncProjectSettingsChrome` is the settings-row slice of updateUIInner, the rows that show
+or hide for the session (Close project, Add pages, Download PDF, the Sheets row, Share, Save,
+Advanced and its rows, and the Use groups switch's pressed state). As the map's skeptic said,
+most of the stretch it pointed at was other chrome (the upload buttons, the header Share, the
+sidebar logo's share, the phone view-mode class, Rotate page); that stays in app.js, and about
+forty lines moved. app.js calls the slice right after its `.supabase-only` pass, where the
+first of those rows used to be set, so that pass still never resets a row the slice sets. The
+cloud rows stay in the SUPABASE_ENABLED block with their own gates: the checkout strip
+(`openProjectSettings` reaches it through `App.updateSettingsCheckoutSection` only when
+Supabase is on), Load, Manage, Share's click, and the Manage, Bid review and admin reload
+visibility rows that come after the `.supabase-only` reset. Two new publish-only deps:
+`App.toggleHideMarks` and `App.IS_DEV_HOST`. The emptied app.js marker is
+`// SECTION: Project Settings pointer`.
+
+**The header output menus** went into features/output.js, which already owned the Copy and
+Download menus beside them, not into a new file. The Export and Show Report openers
+(`#exportDropdownBtn`, `.export-dropdown-option`, `#printReport`, `.show-report-option`) are
+bound there at load, and the Show Report close goes through the file's `closeScopeMenu`, which
+did the same two steps. `App.syncOutputMenus` is updateUIInner's output-row block: the bundle
+buttons, the report-data probes, the copy, report and Export PDFs buttons, the Export menu and
+its rows, the Download mode rows and the scope qualifiers. updateUIInner calls it just before
+`App.updateBurgerMenu`, because the drawer copies the visible download and export rows. The
+copy menus' This sheet rows used to be set after the drawer and the header-collapse check;
+they are set in `App.syncOutputMenus` now, next to their Everything rows. The drawer copies
+neither, and they sit in closed menus that take no header width, so nothing on screen changes.
+The marker left in app.js is `// SECTION: Macros & custom-icon tips openers`.
+
+The context menu's Assign to Group check and the header [Close] now read
+`App.groupsUiVisible()` and `App.closeProject()`.
+
+Pinned before and after by settings-modal, supabase-disabled, codes, groups-per-project,
+trade-quick, close-project, add-pdf-pages-canvas-jump, header-overflow, mobile-burger-menu,
+import-clear, view-only, bid-switcher, room-sizer, esc-dialogs, output and course-hvac:
+129 passed before the move and 129 after. The readers of the moved names were run after it too
+(tutorial, lessons, esc-ladder, menu-clamp, b20-patrol, header-strip-trade, drop-mode,
+duct-deferred, bid-check): 94 of 95 passed, and the one miss, the scale lesson timing out on a
+shared machine, passed alone, as did lessons.spec.js whole (26 of 26).
+
 ## refactor(app): five stretches of app.js move into the feature files that already own them (R14, 2026-09-26)
 
 The decomposition map's R14, all five items. Each was code that lived in app.js while the file

@@ -265,6 +265,8 @@
     const c = COUNTS().find((x) => !countOk(x));
     return c ? 'Not all counted: ' + c[3] + (c[2] === E201 ? ' (E-201)' : '') : '';
   }
+  // The lay step skipped with nothing done: the sheets carry no mark (PP-WHOLE-SKIP).
+  const takeoffSkipped = () => !App.projectHasAnyCanvasMarkup();
   function compareBody() {
     const lines = ['The reference is the course\'s own finished takeoff, worked from the sheets\' geometry. Reference on the left. Yours on the right, from your Summary.'];
     RUNS.forEach((r) => { const ref = r.feet(), mine = K().feetFor(r.re, r.exclude); const ok = mine >= ref * 0.95 && mine <= ref * 1.05; lines.push(r.name + ': ' + fmtFt(ref) + ' ft, yours ' + fmtFt(mine) + ' ft' + (ok ? ' ✓' : mine < ref * 0.95 ? ', short: ' + r.label : ', over: check for a doubled run')); });
@@ -597,14 +599,24 @@
       seed() { scaleE101(); K().setScale(E201, 9, '1/8" = 1\''); setCeiling(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Now all of it, by hand: every device on both plans, the gear, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each one.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time and reads ✓ Done when nothing is.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s own finished takeoff.',
+          body: 'Now all of it, by hand: every device on both plans, the gear, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each one.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time and reads ✓ Done when nothing is.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s own finished takeoff.\n[[Finish the takeoff for me]] lays that takeoff on the sheets instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
-          action: { label: 'Finish the takeoff for me', run: layEverything } },
+          action: { label: 'Finish the takeoff for me', run: layEverything },
+          // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
+          // step that is not handsOff, so the card the reader is sent Back to shows it as its alt.
+          alt: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
-          body: compareBody,
+          // PP-WHOLE-SKIP (2026-09-27): Skip on the lay step leaves the sheets as they are, and
+          // nothing fills them in. With no mark there is nothing to compare and no report, so the
+          // card says so and points back at the button beside Skip.
+          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets have no marks, and there is nothing to compare yet.\nTo see the answer, click [[Back]] and press [[Finish the takeoff for me]]. It lays the course\'s finished takeoff on both plans, and this card then checks it.\nOr read on: [[Next]] moves on with the sheets as they are.' : compareBody()),
           target: [], check: () => true },
         { id: 'report', title: 'The circuit schedule', kind: 'read',
-          body: '1. Under EXPORT OPTIONS, click [[Show Report]] (it appears once the sheets carry a mark).\nBesides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule.\nIt lists each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel.\nIt is the estimator\'s copy of E-501, built from what was drawn.',
+          // [[Show Report]] shows only once the sheets carry a mark (output.js syncOutputMenus): after
+          // a Skip the card says there is no report yet, and still says what the report holds.
+          body: () => (takeoffSkipped()
+            ? 'You skipped the takeoff, so the sheets have no marks and there is no report yet. [[Show Report]] shows under EXPORT OPTIONS once they do.\nTo see it, click [[Back]] twice and press [[Finish the takeoff for me]].\nOr read on. Besides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule.\nIt lists each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel.\nIt is the estimator\'s copy of E-501, built from what was drawn.'
+            : '1. Under EXPORT OPTIONS, click [[Show Report]].\nBesides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule.\nIt lists each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel.\nIt is the estimator\'s copy of E-501, built from what was drawn.'),
           target: ['#printReport', '#exportOptionsSectionTitle'], check: () => true },
         { id: 'legend', title: 'The legend on the sheet', kind: 'do', hold: true,
           body: '1. In the left sidebar, click the SUMMARY heading.\nA legend is the key on a sheet that says what each symbol means. On an electrical project the app draws it as a compact ruled block, the way an E-sheet draws its own.\nIt has a mount-height column and the panel in its footer.',

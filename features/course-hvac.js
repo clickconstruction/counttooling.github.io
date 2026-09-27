@@ -318,6 +318,8 @@
     const c = COUNTS().find((x) => !countOk(x));
     return c ? 'Not all counted: ' + c[0] : (system() ? '' : 'RTU-1 is not a system yet');
   }
+  // The lay step skipped with nothing done: the sheets carry no mark (PP-WHOLE-SKIP).
+  const takeoffSkipped = () => !App.projectHasAnyCanvasMarkup();
   function compareBody() {
     const f = scheduleFeet();
     const lines = ['The reference, the course\'s answer key, is on the left, measured from the sheet\'s own drawing. Yours is on the right, from the Duct Schedule.'];
@@ -636,17 +638,23 @@
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time, and reads ✓ Done when nothing is.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s answer key.',
+          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time, and reads ✓ Done when nothing is.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
-          action: { label: 'Finish the takeoff for me', run: layEverything } },
+          action: { label: 'Finish the takeoff for me', run: layEverything },
+          // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
+          // step that is not handsOff, so the card the reader is sent Back to shows it as its alt.
+          alt: { label: 'Finish the takeoff for me', run: layEverything } },
         { id: 'compare', title: 'Against the reference', kind: 'read', cardAt: 'tl',
-          body: compareBody,
+          // PP-WHOLE-SKIP (2026-09-27): Skip on the lay step leaves the sheets as they are, and
+          // nothing fills them in. With nothing on the sheets there is nothing to compare, so the
+          // card says so and points back at the button beside Skip, not a list of 0.0 ft and 0 lb.
+          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets are empty: no rooms, no diffusers, no duct. There is nothing to compare yet.\nTo see the answer key, click [[Back]] and press [[Finish the takeoff for me]]. It lays the whole takeoff on the sheets, and this card then checks it size by size.\nOr read on: [[Next]] moves on with the sheets as they are.' : compareBody()),
           target: [], check: () => true },
         { id: 'copy', title: 'The schedule, copied', kind: 'do', hold: true,
           body: '1. Under DUCT, click [[Schedule]].\n[[Copy Schedule]] at its foot copies it as text, ready to paste into the bid. It carries the straight duct by size and gauge, the fittings, and the flex drops by system. It also carries the wrap in square feet, seam and waste, and the bid weight.',
           target: ['#ductScheduleCopy', '#ductScheduleBtn', '#ductSectionTitle'], check: () => K().modalUp('ductScheduleModal'),
           // skipped past Finish the takeoff with nothing traced: there is no DUCT section to click (by hand, 2026-09-25)
-          hint: () => (ductRuns(M101).length ? '' : 'No duct is traced yet, so there is no DUCT section. Click Back and finish the takeoff, or Skip this step'),
+          hint: () => (ductRuns(M101).length ? '' : 'No duct is traced yet, so there is no DUCT section. Click Back twice and press Finish the takeoff for me, or Skip this step'),
           action: { label: 'Open the schedule', run: () => { if (App.openDuctScheduleModal) App.openDuctScheduleModal(); else if (el('ductScheduleBtn')) el('ductScheduleBtn').click(); } } },
       ],
       done: 'The whole set, counted and traced, checked against the reference, and a schedule in pounds.\nNext: [[Learn]] → Chapter 9, the bid.',

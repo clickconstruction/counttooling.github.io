@@ -13,6 +13,33 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(courses): a skipped whole takeoff is said so on the cards (PP-WHOLE-SKIP, 2026-09-27)
+
+The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))
+caught chapter 8 of the three trade courses reading as if the work were done after **Skip this
+step** on "Finish the takeoff". Will took the proposal's option: Skip still leaves the sheets as
+they are, and the cards that follow say so.
+
+- **The compare card** (all three courses): with no mark on the sheets (`takeoffSkipped`, the
+  same `!App.projectHasAnyCanvasMarkup()` the plumbing `pdfs` step already passed on), it reads
+  *"You skipped the takeoff, so … there is nothing to compare yet"* and sends the reader Back to
+  **Finish the takeoff for me**, in place of every run listed short (plumbing), a schedule line that
+  was not there (electrical), or 0.0 ft and a 0 lb bid weight (HVAC).
+- **The electrical report card**: after a Skip it says there is no report yet and that
+  **Show Report** shows once the sheets carry marks, then still says what the circuit schedule
+  holds. With marks it names Show Report plainly; the bracketed hedge is gone.
+- **Finish the takeoff for me is now a button.** The brief took it for one already, but a step's
+  `action` is only the engine's spec seam (`App.tutorialDoStep`) and draws a button only on a
+  `handsOff` step. Each course's `lay` step now also carries it as `alt`, the second card button
+  the blank-sheet tour's welcome uses, and its card says what it does. The HVAC schedule step's
+  hint names it too.
+- **Keep every card on screen** was built first in #244 (the card is clamped to the window and a
+  tall one scrolls with Back / Next pinned). course-plumbing.spec.js now pins the row's own case:
+  a takeoff begun then skipped, the long compare card at 1280 x 720, Next inside the card and the
+  window.
+- **Guide:** learning-the-app.md says what chapter 8's two buttons do. Specs: one skip case per
+  course in course-plumbing.spec.js, course-electrical.spec.js and course-hvac.spec.js.
+
 ## fix(duct): the hint card says what S does (PP-DUCT-CHIP, 2026-09-27)
 
 The persona pass ([PERSONA-PASS-2026-09-26.md](journeys/plans/PERSONA-PASS-2026-09-26.md#calls))

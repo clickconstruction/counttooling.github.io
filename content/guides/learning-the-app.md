@@ -401,6 +401,8 @@ The HVAC course is the same restaurant's mechanical set: the plan with its tagge
 8. [The whole set](/app/?chapter=hvac:whole): finish the takeoff, compare it to the reference by size, the pounds, the schedule copied.
 9. [Check it, sign it, hand it off](/app/?chapter=hvac:bid): the duct rows of Bid Check, the ones the set already answers, the proof view, the hand-off.
 
+Each course's chapter 8 opens on the whole takeoff. Do it by hand, or press **Finish the takeoff for me** to lay the reference on the sheets. **Skip this step** leaves the sheets as they are, and the cards after it say the takeoff was skipped instead of comparing an empty sheet.
+
 The coaching cites the code by section (the IPC, the FDA Food Code, the fuel gas code, the NEC, the IMC, NFPA 96, the SMACNA tables) and never reprints it; where a reason is practice rather than rule, it says so.
 
 When you are ready for a real plan, [How to do a takeoff from a PDF](/guides/how-to-do-a-pdf-takeoff/) is the same workflow on your own sheet.

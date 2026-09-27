@@ -350,3 +350,42 @@ test.describe('The electrical course: a question is answered with a click', () =
     expect(errors).toEqual([]);
   });
 });
+
+// PP-WHOLE-SKIP (2026-09-27): Skip on chapter 8's lay step leaves the sheets as they are and nothing
+// fills them in. The compare card and the report card say the takeoff was skipped, in place of a
+// schedule and a Show Report that are not there, and send the reader Back to Finish the takeoff for
+// me, a button the lay card now draws. With the takeoff laid, the report card names Show Report plainly.
+test.describe('The electrical course: the whole set, skipped', () => {
+  test('the compare and report cards say the takeoff was skipped; Back finds Finish the takeoff for me, and then Show Report is there', async ({ page }) => {
+    test.setTimeout(150000);
+    const errors = [];
+    await boot(page, '/app/?chapter=electrical:whole', errors);
+    await openSheets(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await expect(page.locator('#tourAlt')).toHaveText('Finish the takeoff for me');
+    await page.click('#tourSkip');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await expect(page.locator('#tourBody')).toContainText('You skipped the takeoff');
+    await expect(page.locator('#tourBody')).not.toContainText('circuit schedule lists circuit 1');
+    await page.click('#tourNext');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'report');
+    await expect(page.locator('#tourBody')).toContainText('there is no report yet');
+    await expect(page.locator('#printReport')).toBeHidden();
+    await expect.poll(() => page.evaluate(() => { const b = document.getElementById('tourNext').getBoundingClientRect(); return b.top >= 0 && b.bottom <= window.innerHeight; })).toBe(true);
+    await page.click('#tourBack');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await page.click('#tourBack');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await page.click('#tourAlt');
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true || window.App.tutorialStepId() === 'compare', null, { timeout: 15000 });
+    if (await stepId(page) === 'lay') await page.click('#tourNext');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await expect(page.locator('#tourBody')).toContainText('Every count matches');
+    await page.click('#tourNext');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'report');
+    await expect(page.locator('#tourBody')).toContainText('click Show Report');
+    await expect(page.locator('#tourBody')).not.toContainText('skipped');
+    await expect(page.locator('#printReport')).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+});

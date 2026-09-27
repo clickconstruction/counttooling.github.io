@@ -102,14 +102,13 @@ salesperson, a spouse, a student), C.
 - The Learn guide's glossary is the one list; every gloss on a card matches it.
 
 **Landed (2026-09-27, wave 2, claude/plain-glossary).** The Learn guide's "Words the cards use" is
-the one list, 240 entries grouped by the set, the estimator, the codes, the building, each trade and
+the one list, 278 entries grouped by the set, the estimator, the codes, the building, each trade and
 the app. `scripts/score-courses.js` (`npm run check:courses`, and `check-courses` in `npm run check`)
-holds the three courses to it: the 25-word sentence cap, grade 6 at most, a `FIRST_USE` table per
-course (each word and the chapter that glosses it, a use before that chapter failing unless `EARLY`
-lists it) and every such word in the guide's list. The courses scored 3.7 (plumbing), 4.9
-(electrical) and 4.1 (HVAC), no sentence over 25 words. The `EARLY` rows and the words no card
-glosses (`--gaps`) are the next course pass's list. The tours and the lessons join with one line
-each once their rewrite lands.
+holds the three courses, the four tours and the thirteen lessons to it: the 25-word sentence cap,
+grade 6 at most, a `FIRST_USE` table per entry (each word and the chapter, or for a tour the card,
+that glosses it, a use before it failing unless `EARLY` lists it as another sense of the word) and
+every such word in the guide's list. Grades: plumbing 3.7, electrical 4.9, HVAC 4.1, the tours 3.4
+to 3.8, the lessons 3.7; no sentence over 25 words.
 
 ## Not in this read
 

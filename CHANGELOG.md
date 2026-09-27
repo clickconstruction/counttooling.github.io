@@ -13,33 +13,46 @@ expired recovery UX" work occupies that slot).
 
 ---
 
-## feat(learn): one glossary, and a check that holds the courses to it (2026-09-27)
+## feat(learn): one glossary, and a check that holds the courses, tours and lessons to it (2026-09-27)
 
 Wave 2 of COURSE-LANGUAGE option C (journeys/plans/COURSE-LANGUAGE-2026-09-27.md, "What to hold
-once it lands"). Wave 1 rewrote the three courses for a reader who has never seen a drawing; this
-keeps them that way.
+once it lands"). Wave 1 rewrote the courses, the tours and the lessons for a reader who has never
+seen a drawing; this keeps them that way.
 
 - **The one glossary.** The Learn guide's "Words the cards use" (content/guides/learning-the-app.md)
-  now holds every word a course card stops to explain, 240 entries in eight groups (the set and the
-  sheet, the estimator's words, codes and standards, the building, plumbing, electrical, HVAC, the
-  app), alphabetical in each, one line per word. Where two courses glossed a word differently, one
-  gloss fits both: a takeoff, a change order, a keynote (a tag, or a numbered note), gauge (wire and
-  sheet metal), a drop, a branch, the main, a terminal, the header (the app's tools, and the beam
-  over a door), the gear (the settings icon, and a service's heavy equipment), and others. The groups are
-  `####` headings inside the one section; marketing.css gains a `.prose h4` rule for them.
+  holds every word a course, tour or lesson card stops to explain: 278 entries in eight groups (the
+  set and the sheet, the estimator's words, codes and standards, the building, plumbing,
+  electrical, HVAC, the app), alphabetical in each, one line per word. Where two cards glossed a
+  word differently, one gloss fits both: a takeoff, a bid (the price, and one job you are pricing),
+  a change order, a keynote, gauge (wire and sheet metal), a drop, a branch, the main, a terminal,
+  the header (the app's tools, and the beam over a door), the gear, the hanger (a support, often a
+  strap), the legend (the engineer's key, and the app's own on the sheet), the palette (your
+  counters, and a tool's small panel), the leader, flex, a highlight, THHN, voltage drop, and
+  others. The groups are `####` headings inside the one section; marketing.css gains a `.prose h4`
+  rule for them.
 - **`scripts/score-courses.js`**, step fourteen of `npm run check` (`check-courses`; alone,
-  `npm run check:courses`). espree reads each course's cards (body, reveal, and each chapter's done
-  text) the way check-lesson-rules reads its steps. A plain run prints per course and chapter the
-  cards, words, Flesch-Kincaid grade, average sentence, sentences over 25 words, and the terms first
-  used there. `--check` fails a sentence over 25 words, a course above grade 6, a trade or app word
-  used before the chapter that glosses it (the `FIRST_USE` table, 347 rows over the three courses),
-  and a `FIRST_USE` word with no bold entry in the guide's list. The uses the courses make today
-  before their gloss are the `EARLY` rows (sixteen cards: plumbing's hand sink and slab in Chapter 1,
-  the enlarged plan in the gas chapter's done line; electrical's scale and quick keys in Chapter 0;
-  HVAC's run, tag, drop and ventilation), and plumbing leaves the engineer, the rulebook and the
-  reference to the guide, as HVAC does a mark: `--gaps` lists them all, and a row that stops matching
-  fails as stale, so the list only shrinks. The tours and the lessons join with one `COURSES` line
-  each. Pinned by score-courses.test.js.
+  `npm run check:courses`). espree reads the cards (body, reveal, and each chapter's done text)
+  the way check-lesson-rules reads its steps, in eight entries: the three courses chapter by
+  chapter; the plumbing, electrical and HVAC tours and the blank-sheet tour card by card, each tour
+  standing alone (the shared scale and measure cards read in place in each); the thirteen lessons
+  lesson by lesson in the Learn menu's order. A plain run prints per entry and chapter the cards,
+  words, Flesch-Kincaid grade, average sentence, sentences over 25 words, and the words first used
+  there. `--check` fails a sentence over 25 words, an entry above grade 6, a word in the
+  `FIRST_USE` table (632 rows) used before the chapter or card that glosses it, and a `FIRST_USE`
+  word with no bold entry in the guide's list. `EARLY` holds only the other-sense uses (the verb
+  "run", "set the scale", the Chain panel); a row that stops matching fails as stale. Pinned by
+  score-courses.test.js.
+- **Glosses added where a tour or lesson used a word first.** The three tour welcomes say what a
+  scale is; the tours' counter cards say the tool is armed; the plumbing tour glosses the Drop size
+  palette, the Summary and an export on the hangers card (tutorial.spec.js's `CARD_BEFORE` pin
+  moves with it) and the chip; the electrical tour glosses Chain and the vertical on its counter
+  card and the export options on its summary card; the HVAC tour glosses the engineer, the main,
+  the totals tag, the chip, tracing and the SUMMARY heading. The blank-sheet tour glosses a mark,
+  a duct, the number row, a PDF and the export options, the clipboard and a multiply zone, and its
+  snap card says "level, upright or at 45°". The lessons gloss a PDF and a set on the opening step,
+  the sidebar, a detail, line types, a polyline, tracing, the gas main, the riser, a hanger, the
+  next lesson's chain and child counts, and a takeoff. Ids, targets, zones, checks, control labels
+  and numbers are unchanged; sw.js restamped.
 
 ## feat(learn): the thirteen lessons, written for anyone at all (2026-09-27)
 

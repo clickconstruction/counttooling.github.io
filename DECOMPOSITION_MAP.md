@@ -534,6 +534,8 @@ Best value for risk first. Yield is lines removed or moved out of the monolith (
 
 ### R25. One page→JPEG→jsPDF pipeline for Download, Export PDFs and bundles
 
+**Landed 2026-09-26**: `rasterPageCanvas` / `rasterPageJpeg` and `addImagePage` in features/pdf-bundle.js, with `runSpecificPagesExport` moved there on top of them and registered again (`App.runSpecificPagesExport`, read by Export PDFs and the Download). `downloadCurrentPageAsPdf` builds its selections and layer mode per Download mode and keeps its names, progress and log source; the drift became options (`ensureActiveCanvas`, `captionSingleLayer`, `skipSheetsWithoutLayers`, `progressNoun`). The notes and highlights bundles render each sheet once per export (a one-sheet memo). The four Download modes were pinned first in output.spec.js (file name, page count, page size, captions via pdf-lib). The saving is smaller than the map's ~110: output.js and export-pdfs.js lost 160 lines, pdf-bundle.js gained 143 (the helpers, the moved export, its option notes). CHANGELOG "refactor(export): Download, Export PDFs and the note and highlight pages render sheets through one pipeline".
+
 *Risk medium, yield ~110.* Nine copies. First pin the three untested Download modes.
 
 - **`draw-output-edit:export-raster-pipeline`** (dedupe, high confidence; check: adjusted) One page→JPEG→jsPDF pipeline for Download, Export PDFs and the notes/highlights bundles

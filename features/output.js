@@ -639,128 +639,59 @@
     };
   });
 
+  // R25: every Download mode is the shared export (features/pdf-bundle.js
+  // App.runSpecificPagesExport) with this mode's selections and layer mode, at
+  // the Export settings' marker/line sizes, scale 4, JPEG 0.95. The name, the
+  // progress text on the button's title and the export_pdf event stay here.
+  //   this-canvas         this sheet, active layer, a plain page
+  //   all-canvases        this sheet, one captioned page per layer (even ONE layer)
+  //   all-pages           every sheet, active layer, plain pages ("Exporting plan n/N")
+  //   all-pages-canvases  every sheet; a sheet with 2+ layers gets a captioned page per
+  //                       layer, a one-layer sheet a plain page ("Exporting page n/N")
   async function downloadCurrentPageAsPdf(mode) {
     const state = App.state;
     const page = state.pages[state.currentPage];
     const isAllPages = mode === 'all-pages' || mode === 'all-pages-canvases';
+    const everyLayer = mode === 'all-canvases' || mode === 'all-pages-canvases';
     if (!isAllPages && !page?.pdfPage) return;
     if (!isAllPages) App.ensureActiveCanvas(page);
     const jsPDFLib = window.jspdf;
     if (!jsPDFLib?.jsPDF) { App.showToast('Download requires jsPDF. Please refresh the page.', 4000); return; }
-    const EXPORT_SCALE = 4;
-    const PT_TO_MM = 25.4 / 72;
-    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
     const btn = document.getElementById('downloadCurrentPageBtn');
     const origText = btn?.title || '';
     if (btn) { btn.disabled = true; btn.title = 'Downloading…'; }
     const baseName = App.sanitizeForFilename(state.currentProjectName);
     const pageNum = state.currentPage + 1;
+    const filename = {
+      'all-canvases': 'takeoff-page' + pageNum + '_all-canvases_' + baseName + '.pdf',
+      'all-pages': 'takeoff-all-pages_' + baseName + '.pdf',
+      'all-pages-canvases': 'takeoff-all-pages-canvases_' + baseName + '.pdf',
+    }[mode] || ('takeoff-page' + pageNum + '_' + baseName + '.pdf');
+    const nothingToDo = mode === 'all-canvases' ? App.getPageCanvases(page).length === 0 : isAllPages && state.pages.length === 0;
+    if (nothingToDo) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
+    const selections = {};
+    const canvasMode = {};
+    state.pages.forEach((_, i) => {
+      selections[i] = isAllPages || i === state.currentPage ? 'marked' : 'exclude';
+      canvasMode[i] = everyLayer ? 'all' : 'current';
+    });
     try {
-      if (mode === 'all-canvases') {
-        const canvases = App.getPageCanvases(page);
-        if (canvases.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let i = 0; i < canvases.length; i++) {
-          const c = canvases[i];
-          const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides, c.annotations || App.makeAnnotations());
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          const caption = c.name || 'Main';
-          const captionTop = 10;
-          const imageTop = 14;
-          const pdfPageW = Math.max(210, wMm + 28);
-          const pdfPageH = imageTop + hMm + 14 + 20;
-          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-          else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-          doc.setFontSize(9);
-          doc.text(caption, 14, captionTop);
-          doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-        }
-        if (doc) doc.save('takeoff-page' + pageNum + '_all-canvases_' + baseName + '.pdf');
-      } else if (mode === 'all-pages') {
-        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let i = 0; i < state.pages.length; i++) {
-          if (btn) btn.title = 'Exporting plan ' + (i + 1) + '/' + state.pages.length + '…';
-          const p = state.pages[i];
-          App.ensureActiveCanvas(p);
-          const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
-          const canvas = document.createElement('canvas');
-          canvas.width = viewport.width;
-          canvas.height = viewport.height;
-          const ctx = canvas.getContext('2d');
-          await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-          App.renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides);
-          const imgData = canvas.toDataURL('image/jpeg', 0.95);
-          const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-          const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-          if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-          else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-          doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        }
-        if (doc) doc.save('takeoff-all-pages_' + baseName + '.pdf');
-      } else if (mode === 'all-pages-canvases') {
-        if (state.pages.length === 0) { if (btn) { btn.disabled = false; btn.title = origText; } return; }
-        let doc = null;
-        for (let pageIdx = 0; pageIdx < state.pages.length; pageIdx++) {
-          const p = state.pages[pageIdx];
-          App.ensureActiveCanvas(p);
-          const canvases = App.getPageCanvases(p);
-          if (canvases.length === 0) continue;
-          for (let ci = 0; ci < canvases.length; ci++) {
-            if (btn) btn.title = 'Exporting page ' + (pageIdx + 1) + '/' + state.pages.length + '…';
-            const c = canvases[ci];
-            const viewport = p.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: p.rotation ?? 0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d');
-            await p.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-            App.renderAnnotationsToContext(ctx, p, EXPORT_SCALE, exportOverrides, c.annotations || App.makeAnnotations());
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-            const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-            if (canvases.length === 1) {
-              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-              else doc.addPage([wMm, hMm], wMm > hMm ? 'l' : 'p');
-              doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-            } else {
-              const caption = c.name || 'Main';
-              const captionTop = 10;
-              const imageTop = 14;
-              const pdfPageW = Math.max(210, wMm + 28);
-              const pdfPageH = imageTop + hMm + 14 + 20;
-              if (!doc) doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [pdfPageW, pdfPageH], orientation: pdfPageW > pdfPageH ? 'l' : 'p' });
-              else doc.addPage([pdfPageW, pdfPageH], pdfPageW > pdfPageH ? 'l' : 'p');
-              doc.setFontSize(9);
-              doc.text(caption, 14, captionTop);
-              doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
-            }
-          }
-        }
-        if (doc) doc.save('takeoff-all-pages-canvases_' + baseName + '.pdf');
-      } else {
-        const viewport = page.pdfPage.getViewport({ scale: EXPORT_SCALE, rotation: page.rotation ?? 0 });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        await page.pdfPage.render({ canvasContext: ctx, viewport, intent: 'print' }).promise;
-        App.renderAnnotationsToContext(ctx, page, EXPORT_SCALE, exportOverrides);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const wMm = (viewport.width / EXPORT_SCALE) * PT_TO_MM;
-        const hMm = (viewport.height / EXPORT_SCALE) * PT_TO_MM;
-        const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: [wMm, hMm], orientation: wMm > hMm ? 'l' : 'p' });
-        doc.addImage(imgData, 'JPEG', 0, 0, wMm, hMm);
-        doc.save('takeoff-page' + pageNum + '_' + baseName + '.pdf');
-      }
+      const { doc } = await App.runSpecificPagesExport({
+        selections,
+        canvasMode,
+        exportScale: 4,
+        jpegQuality: 0.95,
+        markerScale: state.exportSettings?.markerScale ?? 0.75,
+        lineScale: state.exportSettings?.lineScale ?? 0.75,
+        includeReport: false,
+        bundleHighlights: false,
+        bundleNotes: false,
+        ensureActiveCanvas: true,
+        captionSingleLayer: mode === 'all-canvases',
+        skipSheetsWithoutLayers: mode === 'all-pages-canvases',
+        progressNoun: mode === 'all-pages' ? 'plan' : 'page',
+      }, isAllPages && btn ? (text) => { btn.title = text; } : null);
+      if (doc) doc.save(filename);
       App.logUserEvent('export_pdf', state.currentProjectId, { source: 'download-current-page', mode: mode || 'this-canvas' });
     } catch (err) {
       console.error(err);

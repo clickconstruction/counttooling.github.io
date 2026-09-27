@@ -52,6 +52,51 @@ holds open (the neck-velocity band, the make-up air keynote, "the corner" on the
 course spec walks chapter 0 in its chapter loop (read cards only, nothing made) and counts ten
 rows in the Learn menu. Re-scored with the memo's method: 35 sentences over 25 words to 0.
 
+## feat(learn): the electrical course, written for anyone at all (2026-09-27)
+
+Todd read the language memo (journeys/plans/COURSE-LANGUAGE-2026-09-27.md) and chose option C: the
+reader is anyone at all, a salesperson, a student, someone who has never seen a construction
+drawing. features/course-electrical.js is rewritten card by card for that reader. Every card keeps
+its id, kind, targets, zones, check, hint, action and `rules:`; the numbers, the code sections and
+the trade claims are exactly as they were (EC-TRADE and RULEBOOK-SIGN still hold them).
+
+- **An opener, Before you count** (`before`, five read cards, no zones, no rules). What a set and an
+  E-sheet are and what each of the four sheets carries; what an estimator does with them (count
+  what is drawn, measure what runs, price it: the count and the feet are the takeoff); the four
+  verbs, count, trace, chain, check; where the header, the left sidebar and the status bar are; the
+  line beside Show me where; how a question card teaches. It registers through `registerCourse`
+  like every chapter, so `/app/?chapter=electrical:before` and the Learn menu reach it, and it
+  stands ahead of the nine chapters without being counted among them (its intro says so).
+- **Every trade and app word glossed where the course first uses it**, two to six words in the same
+  sentence or the next: the title block, a dimension, a homerun, conduit, a panel, a breaker, a
+  circuit, a load, VA, a pole, a conductor, ampacity, 208Y/120 V and its phases and neutral, the
+  NEC, a change order, a receptacle and a duplex, a GFCI, an RFI, the GC, a J-box, the ADA, the
+  rulebook, make-up, a keynote, THHN, EMT, a raceway, fill, a strap, a child count, voltage drop, a
+  branch circuit, three phase, an RTU, a disconnect, a shunt trip, the hood suppression, NFPA 96, a
+  callback, the service lateral, the feeder, 3/0, kVA, MDP, HVAC, a pull point, an exclusion.
+- **A doing card leads with its steps.** The last question's answer sits above them under one
+  word, "Answer:", and at most two sentences of orientation come before step 1; the teaching that
+  used to open the hood card (the shunt trip, the interlock, NFPA 96) moved under the steps.
+- **No sentence over 25 words** on a body, a reveal or an intro: the mount-heights reveal's list of
+  sections is one line per source now, the one-line's reveal one fact per line.
+- **The idioms stay, each with its plain twin once**: the bid carries it as a GFCI (priced as the
+  more expensive one), the hand never leaves the plan (no trips back to the sidebar), a kitchen that
+  calls the electrician (a callback), nobody sizes to today's load (sized with room to grow).
+
+Scored with the memo's method (the scratchpad `score.js`): 3,398 words and 49 cards at grade 5.8
+with 34 sentences over 25 words before; 4,990 words and 54 cards at grade 4.9 with none after. The longer cards were walked at the
+spec's viewport: the first draft of the manual-rows card, revealed, pushed Next off the screen, and
+its glosses now ride inside the row list.
+course-electrical.spec.js walks the opener like any chapter (`before`, no reveals, nothing counted)
+and reads the section's row count from `courseElectricalIds()` and the plumbing count from
+`courseChapterIds()`, so the other two courses' openers cannot break it.
+
+Left for the parent, because the files are shared by the three course branches: the "nine
+chapters" copy in app/index.html (the three Project Settings links' titles and the Learn ledes)
+and content/guides/learning-the-app.md; the Learn menu's row numbers (features/lessons.js
+`renderRows` numbers rows by position, so the opener reads 1 and Chapter 1 reads 2) and its
+progress line ("0 of 10 done"); course-hvac.spec.js's pin of nine electrical rows.
+
 ## fix(learn): the HVAC course's trace hint no longer deletes the reader's committed main (2026-09-27)
 
 Found by the DS-DUCT-DOWNSTREAM agent while proving the Duct tool never drops a run: chapter 5's

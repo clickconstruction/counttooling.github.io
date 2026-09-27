@@ -28,8 +28,8 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,068 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 3,217 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 7,066 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 3,218 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,409 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 3,783 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
@@ -39,7 +39,7 @@ off — and where it doesn't.
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 872 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (103 files) | 34,189 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (103 files) | 34,190 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -292,16 +292,8 @@ modules. Candidates in priority order:
 | [bend-fittings.spec.js](bend-fittings.spec.js) | Playwright regression for BEND-FITTINGS: a seeded 2in Cu type with the option on derives 2 × 45, 1 × 90 and a drop's 90 from its runs (a 10° wobble counts nothing; a type with the option off has no rows); the rows in the Summary and the PipeTooling text; the details dialog's toggle and three rows (a renamed 90 and a drop quantity of 2 follow into the tally; off empties it; on keeps the names; a counter's dialog never shows it); the Bid Check row's na / warn / ok / absent states. |
 | [features/duct-callouts.js](features/duct-callouts.js) | **Plan-and-spec callout reading** (DUCT-PLAN.md "Two modes, one machine", unit D10 — the secondary mode; implicit, no toggle). Regex over the PDF text layer (tag-reader.js's shared `pageTextItems`/`queryPdfTextNear` primitive — fetched lazily once per page, then geometric lookups memoized per 2-pt cursor cell: no per-mousemove pdf.js work), the grammar + pick in duct-model.js §8. **Starting-size prefill:** `App.syncDuctCalloutPrefill()` (called by duct-tool's `openDuctCreateModal`, and again through `App.onPageTextLoaded` when the text layer lands after the open — unless the user already touched a size field) reads the nearest callout to `state.mousePos` (the cursor's last canvas position) within `DUCT_CALLOUT_RADIUS_PT` (60 pt), writes it via `App.setDuctCreateSize` and shows `#ductCreateCalloutNote` "from the plan: 24×12"; no callout = fields untouched, note hidden. **Step-down offers while tracing:** `App.getDuctCalloutOffer()` — a callout within reach of the cursor whose size DIFFERS from the current segment's → `{ size, str, …, chipText: 'Plan says 20×12 here. S to pick it' }`; the S-popover section `plan-callout` at **order 3** (before D6's suggestion at 5) renders the pre-highlighted size + "reads \"20x12\" on the sheet", one tap applies through the normal `applyDuctSizeStep` path (the step is recorded → a D3 transition); never auto-applied. **Precedence** (`App.getDuctCursorLine()`, the one resolver duct-tool's overlay draws): the plan callout outranks the ductulator suggestion on the chip line — one line, never two — and the popover shows both sections, callout first. A sheet with no text layer (a scan) produces no callout anywhere — pure design-build behavior, unchanged. Regression: [duct-callouts.spec.js](duct-callouts.spec.js). |
 | [duct-static.spec.js](duct-static.spec.js) | Playwright regression for D11: the group modal's ESP round-trip (stored at 0.8, shown back on edit, carried by `buildCanvasExportData`, DELETED when cleared / 0, a tagless group stays `{id,name,color}`); the static-path row manual without an ESP (its tick honored) → AUTO once the system has an ESP and a run, with the exact copy ("RTU-1: 0.15\" of 0.80\" ESP · critical path 62 eq ft (40' duct + 1 elbow + 1 tap + 1 VD @ 0.08\"/100' + 0.10\" terminal) ✓" for a 30' trunk + a tapped 20' branch with one elbow), ⚠ naming the long leg and the size to upsize when over (the gate badge counts it), the friction / terminal knobs moving the number (terminal riding `ductSettings`), two systems on one row, back to a checkbox when the ESP clears; the system header's "· 0.15\" of 0.8\" ESP" fragment on the capacity line (⚠ + `.over`), absent until the system has a root run. |
-<<<<<<< HEAD
-| [features/water-fixtures.js](features/water-fixtures.js) | **Fixture units on counters** (WATER-PLAN.md rung 2, 2026-09-23): the Fixture units field on the Counter modal's Create tab (`#counterWsfu`), its Quick Count twin (`#counterQuickCountWsfu`) and the details modal (`#counterLineTypeDetailsWsfu`), each a registered "form" (`App.registerWsfuForm(key, { inputId, chipId, groupId, name(), onFlip? })`, `resetWsfuForm`, `loadWsfuForm(key, item)`, `syncWsfuForm`, `wsfuFieldValue`, `applyWsfuFieldToCounter`) prefilled from the name for the project's occupancy while untyped (water-model `wsfuPrefillFor`), with a chip naming the row read ("→ 2 WSFU · public lavatory, faucet" + the `plumb.wsfu.fixtures` § chip) whose occupancy word flips THIS counter's column (`counter.wsfuOccupancy`, absent = the project's); shown on a plumbing-shaped project (`App.getQuickTrade() === 'plumbing'`) or when the counter carries a number. The per-mark override `#ctxMarkerWsfu` → `#markerWsfuModal` → `marker.wsfuOverride` (the D15 CFM twin; cleared deletes the key). Read-back: `getCounterWsfuText` / `getCounterWsfuOverrideText` (sidebar row title, details modal), `getWsfuTotals` + `appendWsfuSummaryRow` (the Summary's "Fixture units" line, multiply zones honoured, per sheet in the hover). Telemetry (WATER-PLAN §8): `applyWsfuFieldToCounter` logs `wsfu_prefill` (the table's reading, the value kept, `accepted`) through `App.logUserEvent` whenever the name had a reading, for everyone since 2026-09-27 (WATER-TELEM; the `water-telemetry` flag is gone). Deps: `App.getProjectCodes`, `getQuickTrade`, `ruleChipHtml`, `syncRuleChips`, `getActiveAnnotations`, `getPageCanvases`, `getMultiplyZoneForPoint`, `showModal`/`hideModal`, `pushUndoSnapshotCurrentPage`, `markProjectDirty`, `renderAnnotations`, `updateUI`, `escapeHtml`. |
+| [features/water-fixtures.js](features/water-fixtures.js) | **Fixture units on counters** (WATER-PLAN.md rung 2, 2026-09-23): the Fixture units field on the Counter modal's Create tab (`#counterWsfu`), its Quick Count twin (`#counterQuickCountWsfu`) and the details modal (`#counterLineTypeDetailsWsfu`), each a registered "form" (`App.registerWsfuForm(key, { inputId, chipId, groupId, name(), onFlip? })`, `resetWsfuForm`, `loadWsfuForm(key, item)`, `syncWsfuForm`, `wsfuFieldValue`, `applyWsfuFieldToCounter`) prefilled from the name for the project's occupancy while untyped (water-model `wsfuPrefillFor`), with a chip naming the row read ("→ 2 WSFU · public lavatory, faucet" + the `plumb.wsfu.fixtures` § chip) whose occupancy word flips THIS counter's column (`counter.wsfuOccupancy`, absent = the project's); shown on a plumbing-shaped project (`App.getQuickTrade() === 'plumbing'`) or when the counter carries a number. The per-mark override `#ctxMarkerWsfu` → `#markerWsfuModal` → `marker.wsfuOverride` (the D15 CFM twin; cleared deletes the key). Read-back: `getCounterWsfuText` / `getCounterWsfuOverrideText` (sidebar row title, details modal), `getWsfuTotals` + `appendWsfuSummaryRow` (the Summary's "Fixture units" line, every layer of each sheet since MAP-SUMMARY-LAYERS, multiply zones honoured, per sheet in the hover). Telemetry (WATER-PLAN §8): `applyWsfuFieldToCounter` logs `wsfu_prefill` (the table's reading, the value kept, `accepted`) through `App.logUserEvent` whenever the name had a reading, for everyone since 2026-09-27 (WATER-TELEM; the `water-telemetry` flag is gone). Deps: `App.getProjectCodes`, `getQuickTrade`, `ruleChipHtml`, `syncRuleChips`, `getActiveAnnotations`, `getPageCanvases`, `getMultiplyZoneForPoint`, `showModal`/`hideModal`, `pushUndoSnapshotCurrentPage`, `markProjectDirty`, `renderAnnotations`, `updateUI`, `escapeHtml`. |
 | [water-fixtures.spec.js](water-fixtures.spec.js) | Playwright regression for rung 2: on a trade-less project the Create tab's field shows and prefills "Lavatory" → 2 (public), the chip names the row and carries § IPC, the flip reads 0.7 (private) and back, a typed 3 survives a name change; the counter carries `wsfu` 3 and no `wsfuOccupancy`; two marks make the Summary line 6 WSFU; the context row writes a 4.5 override (7.5 WSFU, the "(WSFU override 4.5)" title) and Enter on an empty field deletes the key; the details modal shows 3 with the table's 2, its flip writes private + 0.7, blur commits 5 then deletes on empty (the Summary line goes); the Quick Count twin prefills "Urinal" → 5 (3/4 in flush valve); a private project reads WC → 2.2 flush tank; an HVAC project hides the field but a counter carrying one still shows it in its details. Telemetry: with no feature flag set, creating a counter at its prefill logs `wsfu_prefill` accepted, one typed over logs it not accepted. |
-||||||| 880028f
-| [features/water-fixtures.js](features/water-fixtures.js) | **Fixture units on counters** (WATER-PLAN.md rung 2, 2026-09-23): the Fixture units field on the Counter modal's Create tab (`#counterWsfu`), its Quick Count twin (`#counterQuickCountWsfu`) and the details modal (`#counterLineTypeDetailsWsfu`), each a registered "form" (`App.registerWsfuForm(key, { inputId, chipId, groupId, name(), onFlip? })`, `resetWsfuForm`, `loadWsfuForm(key, item)`, `syncWsfuForm`, `wsfuFieldValue`, `applyWsfuFieldToCounter`) prefilled from the name for the project's occupancy while untyped (water-model `wsfuPrefillFor`), with a chip naming the row read ("→ 2 WSFU · public lavatory, faucet" + the `plumb.wsfu.fixtures` § chip) whose occupancy word flips THIS counter's column (`counter.wsfuOccupancy`, absent = the project's); shown on a plumbing-shaped project (`App.getQuickTrade() === 'plumbing'`) or when the counter carries a number. The per-mark override `#ctxMarkerWsfu` → `#markerWsfuModal` → `marker.wsfuOverride` (the D15 CFM twin; cleared deletes the key). Read-back: `getCounterWsfuText` / `getCounterWsfuOverrideText` (sidebar row title, details modal), `getWsfuTotals` + `appendWsfuSummaryRow` (the Summary's "Fixture units" line, multiply zones honoured, per sheet in the hover). Deps: `App.getProjectCodes`, `getQuickTrade`, `ruleChipHtml`, `syncRuleChips`, `getActiveAnnotations`, `getPageCanvases`, `getMultiplyZoneForPoint`, `showModal`/`hideModal`, `pushUndoSnapshotCurrentPage`, `markProjectDirty`, `renderAnnotations`, `updateUI`, `escapeHtml`. |
-| [water-fixtures.spec.js](water-fixtures.spec.js) | Playwright regression for rung 2: on a trade-less project the Create tab's field shows and prefills "Lavatory" → 2 (public), the chip names the row and carries § IPC, the flip reads 0.7 (private) and back, a typed 3 survives a name change; the counter carries `wsfu` 3 and no `wsfuOccupancy`; two marks make the Summary line 6 WSFU; the context row writes a 4.5 override (7.5 WSFU, the "(WSFU override 4.5)" title) and Enter on an empty field deletes the key; the details modal shows 3 with the table's 2, its flip writes private + 0.7, blur commits 5 then deletes on empty (the Summary line goes); the Quick Count twin prefills "Urinal" → 5 (3/4 in flush valve); a private project reads WC → 2.2 flush tank; an HVAC project hides the field but a counter carrying one still shows it in its details. |
-=======
-| [features/water-fixtures.js](features/water-fixtures.js) | **Fixture units on counters** (WATER-PLAN.md rung 2, 2026-09-23): the Fixture units field on the Counter modal's Create tab (`#counterWsfu`), its Quick Count twin (`#counterQuickCountWsfu`) and the details modal (`#counterLineTypeDetailsWsfu`), each a registered "form" (`App.registerWsfuForm(key, { inputId, chipId, groupId, name(), onFlip? })`, `resetWsfuForm`, `loadWsfuForm(key, item)`, `syncWsfuForm`, `wsfuFieldValue`, `applyWsfuFieldToCounter`) prefilled from the name for the project's occupancy while untyped (water-model `wsfuPrefillFor`), with a chip naming the row read ("→ 2 WSFU · public lavatory, faucet" + the `plumb.wsfu.fixtures` § chip) whose occupancy word flips THIS counter's column (`counter.wsfuOccupancy`, absent = the project's); shown on a plumbing-shaped project (`App.getQuickTrade() === 'plumbing'`) or when the counter carries a number. The per-mark override `#ctxMarkerWsfu` → `#markerWsfuModal` → `marker.wsfuOverride` (the D15 CFM twin; cleared deletes the key). Read-back: `getCounterWsfuText` / `getCounterWsfuOverrideText` (sidebar row title, details modal), `getWsfuTotals` + `appendWsfuSummaryRow` (the Summary's "Fixture units" line, every layer of each sheet since MAP-SUMMARY-LAYERS, multiply zones honoured, per sheet in the hover). Deps: `App.getProjectCodes`, `getQuickTrade`, `ruleChipHtml`, `syncRuleChips`, `getActiveAnnotations`, `getPageCanvases`, `getMultiplyZoneForPoint`, `showModal`/`hideModal`, `pushUndoSnapshotCurrentPage`, `markProjectDirty`, `renderAnnotations`, `updateUI`, `escapeHtml`. |
-| [water-fixtures.spec.js](water-fixtures.spec.js) | Playwright regression for rung 2: on a trade-less project the Create tab's field shows and prefills "Lavatory" → 2 (public), the chip names the row and carries § IPC, the flip reads 0.7 (private) and back, a typed 3 survives a name change; the counter carries `wsfu` 3 and no `wsfuOccupancy`; two marks make the Summary line 6 WSFU; the context row writes a 4.5 override (7.5 WSFU, the "(WSFU override 4.5)" title) and Enter on an empty field deletes the key; the details modal shows 3 with the table's 2, its flip writes private + 0.7, blur commits 5 then deletes on empty (the Summary line goes); the Quick Count twin prefills "Urinal" → 5 (3/4 in flush valve); a private project reads WC → 2.2 flush tank; an HVAC project hides the field but a counter carrying one still shows it in its details. |
->>>>>>> origin/main
 | [features/water-runs.js](features/water-runs.js) | **Water runs and the fixtures they serve** (WATER-PLAN.md rung 3, 2026-09-23): a line type's `waterSide` (`'cold' | 'hot'`, the airside precedent) makes every quick line and polyline of the type a water run; fixture-unit marks attach per side to the nearest run of that side within snap (water-model `attachWaterFixtures`, the duct rule twinned per side; derived from geometry, never stored). Owns the Water field (—, Cold, Hot) on the sidebar Add Line Type modal, the Choose Line Type modal's Create and Quick tabs and the details modal (`App.registerWaterSideForm(key, { radioName, groupId, nameInputId?, name(), onPick? })`, `resetWaterSideForm`, `loadWaterSideForm`, `syncWaterSideForm`, `applyWaterSideToLineType`; prefilled from the name by `waterSideFromName` while unpicked, set-only on create, the details radio writes at once); the collectors `collectWaterFixtures(pageIdx, ann)` (loads per side from `waterFixtureLoads` × the multiply zone), `getWaterRuns`, `getWaterServed(pageIdx)` → `{ [runId]: { side, wsfu, fixtures } }` (the sidebar rows read one run's through the local `getWaterServedForLine`); the stray rescue `waterStrayTarget(marker, counter, ann)` that duct-suggest.js's `strayDeviceAttachTarget` asks after the CFM rule (the shared "Attach to nearest run" row moves the fixture onto the nearest run of a side nothing serves); the sidebar read-back `waterLineTypeMetaHtml` ("cold · 12 WSFU served · 2 fixtures" under the line type row) and `waterLineMetaHtml` (the Lines list's per-run "cold · 6 WSFU"). canvas-draw.js paints the leaders (`waterFixtureLeaders`, dashed, the run's color, under the strokes). Rung 4 reads `getWaterServed` for the downstream load. |
 | [water-runs.spec.js](water-runs.spec.js) | Playwright regression for rung 3: a seeded cold quick line and hot polyline with two lavatories, a WC and a floor drain attach per side (the lavatory's cold at 10 pt snaps, its hot at 20 does not; the drain never), `getWaterServed` reads 11.5 cold / 0 hot, the line type rows and the Lines list carry the served text, the leaders exist for the two attached ties, a ×3 zone triples the WC's share, the shared "Attach to nearest run" row moves the stray lavatory onto the hot run (30 pt beats the cold at 60) and is not offered to an attached fixture; the Water field prefills "hot" / "CW" / "Domestic cold water" on the three create surfaces (set-only; a pick wins over a later name), the details radio writes and — deletes the key; an HVAC project hides the field but a sided type still shows it in its details. |
 | [features/water-size.js](features/water-size.js) | **The S moment for water** (WATER-PLAN.md rung 4, 2026-09-23), the ductulator suggestion twinned: while a POLYLINE of a water-sided type is traced, `#waterHintCard` (the duct hint card's twin, above the footer) reads the fixture units still to serve beyond the tip and the smallest size of the type's material under the side's cap ("3/4″ suggested · 6 WSFU downstream · 5.1 fps · S to choose"; "1/2″ holds · … ✓"; a flow-only line with no material in the name). The number: water-model `waterDraftRemainingLoad` over the page's committed water runs, the draft's PLACED vertices and the collected fixtures (at or past the tip, on child branches, or on no run of the side); a flush valve picks the demand column; the material and the run's own size are read off the type's name. `S` (app.js keydown, after the duct rule), the card's Pipe size button (`#waterHintSize`, the touch way, 2026-09-25) or, on a touch screen, a tap anywhere on the card (with a mouse the card body lets clicks through to the sheet, styles.css `pointer: coarse`) opens `#waterSizePopover`; the card's presses are wired the first time `drawWaterOverlay` shows it, never waiting on a first S, and stop at the card, so a tap on it never places a vertex (water-size.spec.js pins a tablet, a phone and a mouse) (the duct popover's classes): the suggested chip, the material's ladder with each size's velocity (✓ / ⚠, the current one marked), the note that a size change is a new run; Escape closes it first on the polyline ladder. `App.applyWaterSize(sizeIn)` is WATER-PLAN Q1: the draft so far commits (`App.settlePolylineDraft`), a line type of the new size is found or made (`App.lineTypeForWaterSize`: the name with its size swapped by `replaceSizeInName`, side / curve / bend fittings carried, hanger rows re-read from the rulebook for the new size, a palette color no type uses) and a new draft starts at the last point in it. Telemetry (WATER-PLAN §8): `onPolylineCommitted` (called by app.js `finishPolyline`) logs `water_run` (side, size, material, segments, WSFU and gpm at the head, `suggestionTaken`) through `App.logUserEvent` for every committed water-sided polyline, for everyone since 2026-09-27 (WATER-TELEM; the `water-telemetry` flag is gone). Seams: `getWaterDraftSuggestion`, `isWaterDrawing`, `drawWaterOverlay` (renderAnnotations after the duct overlay; paints nothing, syncs the card), `open/close/toggleWaterSizePopover`, `isWaterPopoverOpen`. |
@@ -650,70 +642,70 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L293 - State
 - L530 - [sync] Sync recovery & client recycle
 - L613 - Feature flags (per device, dormant-by-default ships)
-- L642 - [sync] Global force reload
-- L733 - [sync] Save Status log & envelope
-- L736 - [sync] Field-error telemetry
-- L795 - [sync] Dirty tracking & local session reset
-- L801 - Undo/redo stacks
-- L1000 - [sync] Checkout probe, hashing & PDF cache
-- L1062 - Math & Format Helpers
-- L1580 - Coordinate Helpers
-- L1588 - PDF render bitmap cache
-- L1642 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1653 - PDF Rendering
-- L2492 - Recent bids
-- L2519 - UI Render Functions
-- L2872 - Placing selection (setActiveCounterType / setActiveLineType)
-- L2982 - Inline rename & polyline edit mode
-- L3098 - Modal primitives (showModal / hideModal)
-- L3241 - Toasts & line color picker
-- L3309 - Airboard cloud sync
-- L3354 - Supabase RPC & presence heartbeat
-- L3394 - User activity / event telemetry
-- L3453 - Supabase auth & dev auth
-- L3639 - [sync] Checkout subscription & permission refresh
-- L3649 - Modals & Handlers
-- L3717 - PDF intake (upload, test PDF, hashing)
-- L3725 - Toolbar tool buttons
-- L3886 - Tool sidebar buttons & legend overlay
-- L3972 - Add Line Type modal
-- L4054 - Line color & sidebar handlers
-- L4125 - Polyline modal & drawing
-- L4182 - Zoom bar & page navigation
-- L4208 - Export canvas JSON
-- L4233 - PDF download helpers
-- L4242 - View-link URL helpers & show-highlights/notes
-- L4314 - Custom icon upload handler
-- L4324 - Macros & custom-icon tips openers
-- L4344 - Sidebar drawer toggles
-- L4375 - Mobile actions burger menu pointer & header logo
-- L4387 - User Activity pointer (format.js + features/user-activity.js)
-- L4399 - My Settings pointer (features/my-settings.js)
-- L4424 - Project Settings pointer (features/project-settings.js)
-- L4430 - Auth & settings entry buttons
-  - L4475 - Project Settings checkout & Save Status bell
-  - L4582 - [sync] Checkout expired recovery
-  - L4638 - [sync] Turn In
-  - L4703 - Share modal pointer & copy-project openers
-  - L4734 - Settings menu actions
-  - L4746 - Auth sign-in form
-  - L4771 - Save Project modal
-  - L4782 - Checkout expired recovery modal wiring
-  - L4885 - Last-session restore prompt
-- L4897 - Canvas Event Handlers
-- L5279 - Event Binding
-- L5289 - Aim loupe (mobile press-hold precise placement)
-- L5442 - Zoom transform preview & commit
-- L5521 - Canvas mouse, wheel & touch handlers
-- L6181 - Global dropdown dismissal & keyboard hotkeys
-- L6358 - [sync] Manual save to cloud
-- L6368 - [sync] Auto-save
-- L6375 - [sync] Local backup (IndexedDB takeoff state)
-- L6384 - [sync] Visibility & timers
-- L6401 - [sync] Checkout keep-alive
-- L6415 - App feature registry
-- L6788 - View-only mode
-- L6794 - Init / boot
+- L640 - [sync] Global force reload
+- L731 - [sync] Save Status log & envelope
+- L734 - [sync] Field-error telemetry
+- L793 - [sync] Dirty tracking & local session reset
+- L799 - Undo/redo stacks
+- L998 - [sync] Checkout probe, hashing & PDF cache
+- L1060 - Math & Format Helpers
+- L1578 - Coordinate Helpers
+- L1586 - PDF render bitmap cache
+- L1640 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1651 - PDF Rendering
+- L2490 - Recent bids
+- L2517 - UI Render Functions
+- L2870 - Placing selection (setActiveCounterType / setActiveLineType)
+- L2980 - Inline rename & polyline edit mode
+- L3096 - Modal primitives (showModal / hideModal)
+- L3239 - Toasts & line color picker
+- L3307 - Airboard cloud sync
+- L3352 - Supabase RPC & presence heartbeat
+- L3392 - User activity / event telemetry
+- L3451 - Supabase auth & dev auth
+- L3637 - [sync] Checkout subscription & permission refresh
+- L3647 - Modals & Handlers
+- L3715 - PDF intake (upload, test PDF, hashing)
+- L3723 - Toolbar tool buttons
+- L3884 - Tool sidebar buttons & legend overlay
+- L3970 - Add Line Type modal
+- L4052 - Line color & sidebar handlers
+- L4123 - Polyline modal & drawing
+- L4180 - Zoom bar & page navigation
+- L4206 - Export canvas JSON
+- L4231 - PDF download helpers
+- L4240 - View-link URL helpers & show-highlights/notes
+- L4312 - Custom icon upload handler
+- L4322 - Macros & custom-icon tips openers
+- L4342 - Sidebar drawer toggles
+- L4373 - Mobile actions burger menu pointer & header logo
+- L4385 - User Activity pointer (format.js + features/user-activity.js)
+- L4397 - My Settings pointer (features/my-settings.js)
+- L4422 - Project Settings pointer (features/project-settings.js)
+- L4428 - Auth & settings entry buttons
+  - L4473 - Project Settings checkout & Save Status bell
+  - L4580 - [sync] Checkout expired recovery
+  - L4636 - [sync] Turn In
+  - L4701 - Share modal pointer & copy-project openers
+  - L4732 - Settings menu actions
+  - L4744 - Auth sign-in form
+  - L4769 - Save Project modal
+  - L4780 - Checkout expired recovery modal wiring
+  - L4883 - Last-session restore prompt
+- L4895 - Canvas Event Handlers
+- L5277 - Event Binding
+- L5287 - Aim loupe (mobile press-hold precise placement)
+- L5440 - Zoom transform preview & commit
+- L5519 - Canvas mouse, wheel & touch handlers
+- L6179 - Global dropdown dismissal & keyboard hotkeys
+- L6356 - [sync] Manual save to cloud
+- L6366 - [sync] Auto-save
+- L6373 - [sync] Local backup (IndexedDB takeoff state)
+- L6382 - [sync] Visibility & timers
+- L6399 - [sync] Checkout keep-alive
+- L6413 - App feature registry
+- L6786 - View-only mode
+- L6792 - Init / boot
 
 <!-- END SECTION TOC -->
 

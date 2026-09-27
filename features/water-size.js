@@ -236,14 +236,15 @@
     wireCard();
   }
 
-  // --- telemetry (WATER-PLAN §8), behind the water-telemetry flag until the allowlist
-  // migration is on prod: water_run on every committed water-sided polyline, with the
-  // load and flow at its head and whether the S moment's suggestion sized it.
+  // --- telemetry (WATER-PLAN §8), on for everyone since the allowlist migration
+  // 20260923190000 reached prod (2026-09-27): water_run on every committed water-sided
+  // polyline, with the load and flow at its head and whether the S moment's suggestion
+  // sized it.
   let lastSizedTypeId = null;
   function onPolylineCommitted(poly) {
     const wm = WM();
     const state = App.state;
-    if (!wm || !poly || !(App.featureFlagEnabled && App.featureFlagEnabled('water-telemetry')) || !App.logUserEvent) return;
+    if (!wm || !poly || !App.logUserEvent) return;
     const lt = (state.lineTypes || []).find((l) => l.id === poly.lineTypeId);
     if (!lt || !(lt.waterSide === 'cold' || lt.waterSide === 'hot')) return;
     const pageIdx = state.currentPage;

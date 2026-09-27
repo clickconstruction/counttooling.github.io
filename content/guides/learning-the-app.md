@@ -206,9 +206,11 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Interlocked.** Wired so one starts or stops the other: the make-up air unit with the hood fan, the breaker with the hood's fire system.
 - **J-box (junction box).** A metal box where wires are joined.
 - **kVA.** A thousand VA.
+- **Lock-on.** A clip on a breaker's handle so nobody switches the circuit off, such as the exit lights' circuit.
 - **Main disconnect.** The switch that shuts off the whole building.
 - **Make-up.** The extra foot of conduit for the bend and the box. No drawing shows it.
 - **MDP (main distribution panel).** The panel the service feeds first.
+- **Meter base.** The socket the power company's meter plugs into. The bid carries the base; the power company brings the meter.
 - **Mount height.** How high a device hangs on the wall. The app uses it for the vertical.
 - **Neutral.** The wire the current returns on.
 - **Occupancy sensor (OS).** A switch that turns the lights off when nobody is in the room.
@@ -223,6 +225,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **Strap.** The clamp that holds conduit to the building.
 - **THHN.** The everyday building wire, named for its insulation.
 - **Three phase.** Power on all three phases, for motors like a rooftop unit's.
+- **Time switch.** A clock that turns the lights off after hours, in the rooms that have no occupancy sensor.
 - **Utility transformer.** The power company's equipment at the street.
 - **VA (volt-amperes).** The load a circuit is sized for.
 - **Volt (V).** The measure of electrical push. The building has 120 V and 208 V.

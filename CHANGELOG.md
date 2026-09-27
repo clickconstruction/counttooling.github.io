@@ -45,6 +45,49 @@ and the thirteen drafts stay `status: draft`, since `applied` means an app surfa
   basis is decided, the figures unread), Table 604.5's manifold footnote limits, and the NFPA 96
   sub-section numbers under 10.4.
 
+## docs(course-electrical): the electrical dossier settled (EC-REVIEW, EC-TRADE, RULEBOOK-SIGN electrical, 2026-09-27)
+
+Will delegated the electrical tester dossier's questions ("go through and answer all these
+questions"). Claude decided them from the dossier's research and the model code text, applied them,
+and logged each one in the dossier's new "Settled 2026-09-27" section. Nobody opened a printed code
+book or a local amendment, and every signed rule says so.
+
+- **One edition.** The course speaks NEC 2023 (the app's own default), IECC 2021 and IBC 2021, and
+  `sheet:schedule` says so. The GFCI card cites the 2023 numbers: the kitchen by 210.8(B)(2), the bar
+  and the mop room by their sinks, (B)(7).
+- **The receptacle story (T2).** The engineer's missed kitchen receptacle is counted once, as a
+  GFCI. The `duplex` step wants the GFCI mark on it and ten plain duplex, and refuses a Duplex mark
+  there. The reference is 10 duplex and 11 GFCI, still sixty-nine marks. The RFI asks which circuit
+  too (R12).
+- **The feeder (T4).** Up 5 ft from the main into the 10 ft ceiling and down 3.5 ft into LP-1's top:
+  8.5 ft of vertical (`FEEDER_RISE_FT`). E-601 calls the feeder 16 ft, an E-101 keynote gives the
+  route, the reference is 15.83 ft, and the `rise` step now checks the 8.5 (a 5 ft drop holds with a
+  hint saying what it reads).
+- **The cards.** The dishwasher's row is asked for by its 30 A two-pole breaker (T1); every 20 A
+  circuit is #12; EF-1 takes two poles too; the clearance is measured from the panel's face (T5);
+  branch circuits are 2 #12 + G (R1); the dishwasher's breaker is GFCI since 2020 (R2); circuit 21
+  has a lock-on (R3); the dining room gets a time switch and the hall and mop room want sensors under
+  IECC 2021, taught as an RFI (R4); the roof's service receptacle (R6); a caution on the 720 VA
+  voltage-drop load (R7); the 30 A breaker explained (R8); the meter base (R11).
+- **The sheets** (`npm run build:sample-electrical`), words only, no device moved: E-101's branch
+  keynote 2 #12 + G and a feeder-route keynote; E-201's circuit 21 lock-on and the dining time
+  switch; E-501's dishwasher GFCI breaker, row 21's lock-on, note 6 "protected at 20 A max" (R10) and
+  note 7; E-601's note 2 names RTU-1 alone (T3), the lateral carries no ground and reads THHN/THWN-2
+  (R9), the feeder 16 ft, and the branch labels no longer overlap.
+- **The rulebook.** Fourteen of the fifteen electrical drafts are signed: `status: applied`,
+  `used_by: [course]`, a new surface in `USED_BY_LABEL` (the courses' cards, whose numbers
+  check-lesson-rules holds to the rule), each with the dossier's corrections (per-edition section
+  letters, the 2017 table name, 1008.3.4, C405.2.2, 220.88, the 440.14 wording) and the sign-off
+  line. elec.hood.shunt-trip stays a draft: NFPA 96 itself was not opened.
+- **Words.** lock-on, time switch and meter base join the course's first-use table and the Learn
+  guide's word list.
+- **The list.** EC-REVIEW and EC-TRADE are closed; RULEBOOK-SIGN names the one electrical rule and
+  the one 2023 letter still open. EC-TOUR-WIRE is new: the five-minute tour, the landing film and the
+  electrical guide still teach 3 #12 + G on one circuit.
+- **Specs.** course-electrical.spec.js pins 10 duplex and 11 GFCI, the refused Duplex mark on the
+  flagged receptacle, the circuit question, 2 #12 + G, the 8.5 ft drop and 15.83 ft, and a new test
+  for the 5 ft drop the rise step now holds on.
+
 ## fix(status-bar): one line on a phone, and the tool hint reads in full (MAP-PHONE-BAR, 2026-09-27)
 
 Signed in on a phone, the bottom bar was two rows: the save words ("Canvas", "PDF Synced with

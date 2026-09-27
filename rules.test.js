@@ -27,8 +27,11 @@ test('every code pointer resolves and agrees with its rule (the drift check)', (
   const d = driftCheck(rules);
   assert.deepStrictEqual(d.problems, []);
   assert.ok(d.checked >= 30, 'expected the slice-1 pointers');
-  // an applied rule must be pinned to code somewhere
-  for (const r of rules.filter((x) => x.status === 'applied')) assert.ok(r.values.some((v) => v.code), `${r.id}: applied but no code pointer`);
+  // an applied rule must be pinned to code somewhere, unless the courses' cards are its only surface
+  // (used_by: [course], 2026-09-27): then check-lesson-rules holds the cards' numbers to it instead
+  const courseOnly = (r) => r.used_by.length === 1 && r.used_by[0] === 'course';
+  for (const r of rules.filter((x) => x.status === 'applied')) assert.ok(r.values.some((v) => v.code) || courseOnly(r), `${r.id}: applied but no code pointer`);
+  assert.strictEqual(USED_BY_LABEL.course, 'Courses');
 });
 
 test('pointer resolution walks exports without eval and rejects the unknown', () => {

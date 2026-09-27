@@ -7,7 +7,9 @@
  * record: journeys/plans/ELECTRICAL-COURSE.md. The cards are written for anyone at all
  * (COURSE-LANGUAGE option C, 2026-09-27): every trade and app word glossed where it first
  * appears, a doing card leads with its steps (the last question's answer above them under
- * "Answer:"), no sentence over 25 words.
+ * "Answer:"), no sentence over 25 words. The course speaks ONE edition, NEC 2023 (and IECC 2021
+ * for the lighting controls, IBC 2021 for egress), settled 2026-09-27 from the tester dossier
+ * (journeys/plans/TESTER-DOSSIER-ELECTRICAL-2026-09-27.md "Settled 2026-09-27").
  *
  * The set (samples/sample-electrical.pdf, scripts/sample-electrical.js): the same Main St
  * Restaurant as P-101 on the same shell, so a device sits at a P-101 coordinate. E-101 the
@@ -58,7 +60,7 @@
   const G = {
     dim318: [560, 84, 940, 84],
     duplex: [136, 160, 136, 250, 136, 340, 136, 430, 200, 106, 300, 106, 400, 106, 500, 596, 760, 476, 930, 590, 600, 460],  // 11 drawn as duplex, at 18"; the last is the engineer's miss
-    missed: [600, 460],                                                                                                    // a plain duplex in the kitchen: 210.8(B)(2) wants it GFCI; the reader finds it
+    missed: [600, 460],                                                                                                    // a plain duplex in the kitchen: 210.8(B)(2) wants it GFCI; the reader finds it, and it is counted ONCE, as a GFCI (T2, 2026-09-27)
     gfci: [200, 594, 300, 594, 640, 106, 776, 106, 900, 106, 575, 302, 930, 360, 720, 358, 800, 358, 660, 476],          // 10, at 44": the bar, the restrooms, the kitchen, the dish pit
     diningW: [136, 160, 136, 250, 136, 340, 136, 430],                                                                    // circuit 1, chained
     jbox: [400, 585, 643, 592, 887, 552, 860, 380, 730, 590, 812, 548],                                                   // ice, DW, RP, EF-1, RTU-1, WH
@@ -77,6 +79,12 @@
   const pts = (flat) => K().pts(flat), planFeet = (flat) => K().planFeet(flat);   // the kit's flat-list readers
   const CEILING_FT = 10, MAKE_UP_FT = 1;
   const MOUNT = { duplex: 18, gfci: 44, panel: 78, meter: 60, disconnect: 60 };
+  // The feeder's vertical (T4, settled 2026-09-27): up from the main disconnect at 5 ft into the 10 ft
+  // ceiling, across, and down into LP-1's top at 78 in: 5 + 3.5 = 8.5 ft. E-601 calls the feeder 16 ft.
+  const FEEDER_RISE_FT = (CEILING_FT - MOUNT.disconnect / 12) + (CEILING_FT - MOUNT.panel / 12);
+  // The branch circuits' wire (R1, settled 2026-09-27): one 120 V circuit is two #12 and a ground, as
+  // E-101's keynote now says (it said 3 #12, a third wire no single circuit carries).
+  const BRANCH_SPEC = '2 #12 THHN + 1 #12 G';
 
   // ----- readers ---------------------------------------------------------------------------------
   const counter = (re) => K().counterNamed(re);
@@ -119,8 +127,11 @@
     const where = i >= 0 ? 'The OS mark at ' + PLAIN_S[i] + ' is a plain S switch' : 'An OS mark away from the three doors';
     return { code: 'outside-zone', text: where + ', and it still counts in the tally. Press Ctrl+Z to undo it, or right-click it and click Delete' };
   }
-  const DUPLEX_LABELS = ['the dining west wall (top)', 'the dining west wall', 'the dining west wall', 'the dining west wall (bottom)', 'the dining north wall (west)', 'the dining north wall (middle)', 'the dining north wall (east)', 'the server station', 'storage (north wall)', 'storage (south wall)', 'the kitchen south wall'];
+  const DUPLEX_LABELS = ['the dining west wall (top)', 'the dining west wall', 'the dining west wall', 'the dining west wall (bottom)', 'the dining north wall (west)', 'the dining north wall (middle)', 'the dining north wall (east)', 'the server station', 'storage (north wall)', 'storage (south wall)'];
+  // T2 (settled 2026-09-27): the engineer's missed kitchen receptacle is counted once, as a GFCI, since
+  // the inspector fails a plain duplex in a kitchen. So the plain duplex are ten and the GFCIs eleven.
   const plainDuplex = () => pts(G.duplex).filter((pt) => !K().near(pt, pts(G.missed)[0], 2));
+  const gfciAll = () => pts(G.gfci).concat(pts(G.missed));
   const GFCI_LABELS = ['the bar (west)', 'the bar (east)', 'MEN', 'WOMEN', 'the mop room', 'the kitchen hand sink', 'the kitchen exit hand sink', 'the cook line (west)', 'the cook line (east)', 'the dish pit'];
   const JBOX_LABELS = ['the ice machine', 'the dishwasher', 'the recirc pump', 'EF-1 by the exit door', 'RTU-1 in storage', 'the water heater'];
 
@@ -176,7 +187,7 @@
     const k = K();
     let lt = lineType(RE.emt75);
     if (!lt) {
-      const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [];
+      const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec(BRANCH_SPEC).conductors : [];
       lt = k.makeLineType('0.75in EMT', '#8a4bb0', { raceway: { kind: 'EMT', size: '3/4"' }, conductors });
     }
     return lt;
@@ -185,7 +196,7 @@
     const k = K();
     let lt = lineType(RE.hr);
     if (!lt) {
-      const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors : [];
+      const conductors = window.ConductorModel ? window.ConductorModel.parseConductorSpec(BRANCH_SPEC).conductors : [];
       lt = k.makeLineType('0.75in EMT HR', '#e85447', { raceway: { kind: 'EMT', size: '3/4"' }, conductors, homerun: true });
     }
     return lt;
@@ -226,11 +237,14 @@
     K().dirty();
     return g;
   }
+  // the feeder's vertical as drawn: the drop on either end of the reader's 2in EMT
+  const feederDrop = () => { const l = polylinesOn(RE.emt2, E101).find((x) => (x.startDrop || 0) > 0 || (x.endDrop || 0) > 0); return l ? (l.startDrop || 0) + (l.endDrop || 0) : 0; };
+  const feederRiseOk = () => Math.abs(feederDrop() - FEEDER_RISE_FT) < 0.3;
   const circuit1 = () => (S().groups || []).find((x) => x.panel === 'LP-1' && String(x.circuit) === '1');
 
   // ----- the reference takeoff -------------------------------------------------------------------------
   const COUNTS = () => [
-    ['duplex', pts(G.duplex), E101, 'Duplex'], ['gfci', pts(G.gfci), E101, 'GFCI'], ['jbox', pts(G.jbox), E101, 'J-Box'], ['panel', pts(G.panel), E101, 'Panelboard'],
+    ['duplex', plainDuplex(), E101, 'Duplex'], ['gfci', gfciAll(), E101, 'GFCI'], ['jbox', pts(G.jbox), E101, 'J-Box'], ['panel', pts(G.panel), E101, 'Panelboard'],
     ['meter', pts(G.meter), E101, 'Meter'], ['disc', pts(G.mdp), E101, 'Disconnect'], ['os', pts(G.OS), E201, 'Occupancy'],
     ['A', pts(G.A), E201, 'Type A'], ['B', pts(G.B), E201, 'Type B'], ['C', pts(G.C), E201, 'Type C'], ['X', pts(G.X), E201, 'Type X'], ['EM', pts(G.EM), E201, 'Type EM'],
   ];
@@ -238,7 +252,7 @@
   const RUNS = [
     { name: '0.75in EMT', re: RE.emt75, exclude: RE.hr, feet: () => planFeet(G.diningW) + 4 * (CEILING_FT - MOUNT.duplex / 12 + MAKE_UP_FT), label: 'the west wall chain with its four verticals' },
     { name: '0.75in EMT HR', re: RE.hr, exclude: null, feet: () => planFeet(G.homerun1), label: 'the homerun from the west wall to LP-1' },
-    { name: '2in EMT', re: RE.emt2, exclude: null, feet: () => planFeet(G.feeder) + 5, label: 'the feeder from the main to LP-1, with its 5 ft rise' },
+    { name: '2in EMT', re: RE.emt2, exclude: null, feet: () => planFeet(G.feeder) + FEEDER_RISE_FT, label: 'the feeder from the main to LP-1, with its 8.5 ft of vertical' },
   ];
   // The reader's feet are the kit's feetFor, read off the summary Copy to /Tooling copies.
   const fmtFt = (n) => (Math.round(n * 10) / 10).toFixed(1);
@@ -248,12 +262,12 @@
     K().setScale(E201, 9, '1/8" = 1\'');
     App.pushUndoSnapshotCurrentPage();
     chainWestWall();
-    markMissing(pick('duplex'), pts(G.duplex), E101); markMissing(pick('gfci'), pts(G.gfci), E101); markMissing(pick('jbox'), pts(G.jbox), E101);
+    markMissing(pick('duplex'), plainDuplex(), E101); markMissing(pick('gfci'), gfciAll(), E101); markMissing(pick('jbox'), pts(G.jbox), E101);
     markMissing(pick('panel'), pts(G.panel), E101); markMissing(pick('meter'), pts(G.meter), E101); markMissing(pick('disc'), pts(G.mdp), E101);
     Object.keys(LIGHT_TYPES).forEach((t) => markMissing(pickLight(t), pts(G[t]), E201));
     markMissing(pick('os'), pts(G.OS), E201);
     if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101);
-    if (!polylinesOn(RE.emt2, E101).length) { tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], 5, E101); }
+    if (!polylinesOn(RE.emt2, E101).length) { tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], FEEDER_RISE_FT, E101); }
     const g = circuitOne(); g.loadAmps = 6;
     K().goPage(E101);
     K().dirty();
@@ -333,21 +347,21 @@
           action: { label: 'Find it for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('panel'), pts(G.panel), E101); K().dirty(); } } },
         { id: 'clearance', title: 'The space in front of it', kind: 'do', cardAt: 'tl', page: E101, zones: () => K().guide(pts(G.clearance), 12, K().measured(E101, 3, 0.3)),
           rules: ['elec.mount-height.defaults'],
-          body: 'Answer: LP-1, on the west wall of STORAGE. Its counter already carries a mount height, how high it hangs: 78 in to the top, the rule the app applies.\nThe engineer drew a dashed box in front of the panel.\n1. Click [[Measure]] (or press D).\n2. Click the two circled ends of the box, wall to its outer edge.\nHow deep is it?',
+          body: 'Answer: LP-1, on the west wall of STORAGE. Its counter already carries a mount height, how high it hangs: 78 in to the top, the rule the app applies.\nThe engineer drew a dashed box in front of the panel.\n1. Click [[Measure]] (or press D).\n2. Click the two circled ends of the box, from the panel\'s face to the box\'s outer edge.\nHow deep is it?',
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => K().measured(E101, 3, 0.3),
-          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === E101 && T().measuredFeet() != null && Math.abs(T().measuredFeet() - 31.67) > 0.4 ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. Wall to the box\'s outer edge' : ''; },
+          hint: () => { const lm = S().lastMeasure; return lm && lm.pageIdx === E101 && T().measuredFeet() != null && Math.abs(T().measuredFeet() - 31.67) > 0.4 ? 'Read ' + String(lm.text || '').replace(/^Distance:\s*/, '') + '. The panel\'s face to the box\'s outer edge' : ''; },
           action: { label: 'Measure it for me', run: () => { K().goPage(E101); const d = pts(G.clearance); K().measure(d[0], d[1]); } } },
         { id: 'schedule', title: 'The panel schedule', kind: 'do', cardAt: 'br',
           rules: ['elec.panel.working-space'],
-          body: 'Answer: three feet. That is working space: an electrician has to stand in front of a live panel, one with the power on, and work on it.\nSo the code keeps 36 in clear in front, 30 in wide, to 6 ft 6 in high (NEC 110.26). The NEC is the National Electrical Code, the code book electrical work is built to.\nA panel behind the ice machine breaks that rule. The estimator flags it before the bid, because moving it later is a change order: a priced change after the contract is signed.\nNow the answer key, the panel schedule: one row per circuit. A pole is one breaker position, and a two-pole breaker takes two.\n1. Under PAGES, click E-501.\n2. Find the one circuit on LP-1 that is 208 V and two-pole. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
+          body: 'Answer: three feet. That is working space: an electrician has to stand in front of a live panel, one with the power on, and work on it.\nSo the code keeps 36 in clear in front, 30 in wide, to 6 ft 6 in high (NEC 110.26). The NEC is the National Electrical Code, the code book electrical work is built to.\nThis course reads its 2023 edition. Your city may use an older one, with some numbers moved.\nA panel behind the ice machine breaks that rule. The estimator flags it before the bid, because moving it later is a change order: a priced change after the contract is signed.\nNow the answer key, the panel schedule: one row per circuit. A pole is one breaker position, and a two-pole breaker takes two.\n1. Under PAGES, click E-501.\n2. Find the one two-pole circuit on LP-1 with a 30 A breaker. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
           target: () => (K().onPage(E501) ? ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'] : ['#pagesList']),
           check: () => { const a = pageAnn(E501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 400 && Math.max(h.x1, h.x2) >= 400 && Math.min(h.y1, h.y2) <= 549 && Math.max(h.y1, h.y2) >= 549); },
-          hint: () => { if (!K().onPage(E501)) return T().pagesFoldedHint('E-501'); const a = pageAnn(E501); return a && (a.highlights || []).length ? 'Not that row. Read down the P column for a 2, and the description for 208V' : ''; },
+          hint: () => { if (!K().onPage(E501)) return T().pagesFoldedHint('E-501'); const a = pageAnn(E501); return a && (a.highlights || []).length ? 'Not that row. Read down the P column for a 2, and the BKR column for 30' : ''; },
           action: { label: 'Highlight the dishwasher for me', run: () => { K().goPage(E501); const a = App.ensureActiveCanvas(S().pages[E501]).annotations; if (!a.highlights) a.highlights = []; if (a.highlights.length) return; App.pushUndoSnapshotCurrentPage(); a.highlights.push(Object.assign({ color: '#e8c547', opacity: 0.25, id: App.uid() }, DW_ROW)); S().tool = App.TOOL.NONE; K().dirty(); } } },
         { id: 'row', title: 'Read a row', kind: 'read', cardAt: 'br',
-          rules: ['elec.conductor.small-protection', 'elec.conductor.ampacity'],
-          body: 'Answer: circuits 2 and 4, the dishwasher: 4800 VA at 208 V, two poles, a 30 A breaker, #10 wire.\nVA is volt-amperes, the load a circuit is sized for. V is volts and A is amps, the current. #10 and #12 are wire sizes: the smaller the number, the thicker the wire.\nEvery column is a decision the estimator prices.\nWhy #10 for the dishwasher when every other circuit is #12?',
-          reveal: '4800 VA at 208 V is 23 A. A conductor is a wire, and a #12 copper conductor may be protected at no more than 20 A (NEC 240.4(D)).\nSo the circuit goes to a 30 A breaker, and a 30 A breaker wants #10 (240.4(D) again, 310.16 for the ampacity). Ampacity is the current a wire can carry without overheating.\nTwo poles because 208 V is taken across two phases of the 208Y/120 V panel; no neutral.\n208Y/120 V means the power arrives on three live wires, the phases, and a neutral, the wire the current returns on. From one phase to another is 208 V; from any phase to the neutral is 120 V.\nThe schedule is the engineer\'s arithmetic. The estimator\'s job is to price what it says: the breaker, the wire, the conduit. And to notice when the plan disagrees with it.',
+          rules: ['elec.conductor.small-protection', 'elec.conductor.ampacity', 'elec.gfci.non-dwelling'],
+          body: 'Answer: circuits 2 and 4, the dishwasher: 4800 VA at 208 V, two poles, a 30 A breaker, #10 wire.\nVA is volt-amperes, the load a circuit is sized for. V is volts and A is amps, the current. #10 and #12 are wire sizes: the smaller the number, the thicker the wire.\nEvery column is a decision the estimator prices.\nWhy #10 for the dishwasher when every 20 A circuit is #12?',
+          reveal: '4800 VA at 208 V is 23 A. A conductor is a wire, and a #12 copper conductor may be protected at no more than 20 A (NEC 240.4(D)).\nSo the breaker must be bigger than 20 A. The engineer chose 30 A, the size the maker\'s label names. A 30 A breaker wants #10 (240.4(D) again, 310.16 for the ampacity). Ampacity is the current a wire can carry without overheating.\nSince the 2020 code, a dishwasher\'s breaker also cuts the power when current leaks through a person (NEC 422.5(A)(7)). That breaker costs several times a plain one.\nTwo poles because 208 V is taken across two phases of the 208Y/120 V panel; no neutral.\n208Y/120 V means the power arrives on three live wires, the phases, and a neutral, the wire the current returns on. From one phase to another is 208 V; from any phase to the neutral is 120 V.\nThe schedule is the engineer\'s arithmetic. The estimator\'s job is to price what it says: the breaker, the wire, the conduit. And to notice when the plan disagrees with it.',
           target: [], check: () => true },
       ],
       done: 'The two plans, the schedules, the one-line, the panel and the space it needs, and a scale you proved.\nNext: [[Learn]] → Chapter 2, the devices.',
@@ -367,17 +381,21 @@
           action: { label: 'Click the ten for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('gfci'), pts(G.gfci), E101); K().dirty(); } } },
         { id: 'missed', title: 'The one the engineer missed', kind: 'do', cardAt: 'tl',
           rules: ['elec.gfci.non-dwelling'],
-          body: 'Answer: the ten with GFI beside them, the drawing\'s short word for GFCI. The bar and the kitchen have a sink and food preparation (NEC 210.8(B)(2)). The restrooms are covered too (210.8(B)(1)). So is the mop room, whose receptacle sits within 6 ft of the mop sink (210.8(B)(5)), and the dish pit, where the dishes are washed.\nThe engineer drew one more receptacle in a room the code wants protected, and left the GFI off it. Flag it with an RFI, a written question to the designer.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that receptacle, type RFI: and why it should be a GFCI, and click [[Done]].',
+          body: 'Answer: the ten with GFI beside them, the drawing\'s short word for GFCI. Every receptacle in a kitchen is covered (NEC 210.8(B)(2)), the dish pit too, where the dishes are washed.\nThe bar\'s two sit within 6 ft of its hand sink (210.8(B)(7)). The restrooms are covered too (210.8(B)(1)). So is the mop room\'s, within 6 ft of the mop sink.\nThe engineer drew one more receptacle in a room the code wants protected, and left the GFI off it. Flag it with an RFI, a written question to the designer.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that receptacle and type RFI: with two questions. Should it be a GFCI? Which circuit is it on? Click [[Done]].',
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.missed)[0], 26, E101).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
           hint: () => { const a = pageAnn(E101); if (!a || !(a.notes || []).length) return ''; const rfi = (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))); if (!rfi) return 'Start the note with RFI:'; return pts(G.gfci).some((pt) => notesNear(pt, 26, E101).length) ? 'That one already says GFI. Look for a plain duplex in a room where every receptacle must be protected' : 'Not that room. Where does the code protect every receptacle?'; },
-          action: { label: 'Flag it for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.missed)[0]; if (a.notes.some((n) => K().near(n, spot, 26))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Kitchen receptacle drawn as a plain duplex; every receptacle in a commercial kitchen is GFCI (NEC 210.8(B)(2)). Bid it as GFCI?', id: App.uid(), width: 160, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
-        { id: 'duplex', title: 'Count the rest', kind: 'do', cardAt: 'tl', page: E101, zones: () => circlesOn(E101, counter(RE.duplex), pts(G.duplex)),
+          action: { label: 'Flag it for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.missed)[0]; if (a.notes.some((n) => K().near(n, spot, 26))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RFI: Kitchen receptacle drawn as a plain duplex, on no circuit of LP-1; every receptacle in a commercial kitchen is GFCI (NEC 210.8(B)(2)). Bid it as GFCI, and on which circuit?', id: App.uid(), width: 160, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
+        { id: 'duplex', title: 'Count the rest', kind: 'do', cardAt: 'tl', page: E101,
+          // T2 (settled 2026-09-27): the flagged receptacle is counted ONCE, as a GFCI (its circle is the
+          // GFCI counter's), and the Duplex circles are the ten plain ones; a Duplex mark on it is refused.
+          zones: () => circlesOn(E101, counter(RE.gfci), pts(G.missed)).concat(circlesOn(E101, counter(RE.duplex), plainDuplex())),
           rules: ['elec.mount-height.defaults'],
-          body: 'Answer: the kitchen\'s south wall, by the dish door. It is a plain duplex in a commercial kitchen, where 210.8(B)(2) wants every receptacle protected. The engineer\'s miss is now the GC\'s question: the GC, the general contractor, runs the job and passes your RFI to the designer. Until the answer comes back, the bid carries it as a GFCI, priced as the more expensive one.\nThe dining room and storage have no sink and are not a kitchen: plain duplex receptacles at 18 in. A duplex is the ordinary receptacle, two sockets in one.\n1. Make a Duplex 20A counter the same way: Category Receptacle, Variant Duplex.\n2. Click the eleven circled receptacles, the flagged one among them.\nCount what is drawn, and let the note carry the question.',
-          target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => allDone(circlesOn(E101, counter(RE.duplex), pts(G.duplex))),
-          hint: () => (counter(RE.duplex) ? missing(counter(RE.duplex), pts(G.duplex), DUPLEX_LABELS, 10, E101) : ''),
-          action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('duplex'), pts(G.duplex), E101); K().dirty(); } } },
+          body: 'Answer: the kitchen\'s south wall, by the dish door. It is a plain duplex in a commercial kitchen, where 210.8(B)(2) wants every receptacle protected.\nThe engineer\'s miss is now the GC\'s question. The GC, the general contractor, runs the job and passes your RFI to the designer.\nUntil the answer comes back, the bid carries it as a GFCI, the one the inspector will pass. Count it once, as a GFCI.\n1. Under COUNTERS, click GFCI, then click the flagged receptacle, unless you clicked it in the first step.\n2. Make a Duplex 20A counter the same way: Category Receptacle, Variant Duplex.\n3. Click the ten circled receptacles.\nThe dining room and storage have no sink and are not a kitchen: plain duplex receptacles at 18 in. A duplex is the ordinary receptacle, two sockets in one.',
+          target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'],
+          check: () => { const d = counter(RE.duplex), g = counter(RE.gfci); return !!d && !!g && markNear(g, pts(G.missed)[0], 10, E101) && allDone(circlesOn(E101, d, plainDuplex())) && !markNear(d, pts(G.missed)[0], 10, E101); },
+          hint: () => { const d = counter(RE.duplex), g = counter(RE.gfci); if (d && markNear(d, pts(G.missed)[0], 10, E101)) return { code: 'wrong-item', text: 'The flagged one is counted as a GFCI, not a duplex. Press Ctrl+Z' }; const miss = d ? missing(d, plainDuplex(), DUPLEX_LABELS, 10, E101) : ''; if (miss) return miss; return g && !markNear(g, pts(G.missed)[0], 10, E101) ? 'Now click GFCI under COUNTERS, then the flagged receptacle' : ''; },
+          action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('gfci'), pts(G.missed), E101); markMissing(pick('duplex'), plainDuplex(), E101); K().dirty(); } } },
         { id: 'heights', title: 'Where the heights come from', kind: 'read', cardAt: 'tl',
           rules: ['elec.mount-height.defaults', 'elec.vertical.make-up'],
           body: 'The Duplex counter arrived with 18 in, the GFCI with 44 in, the panel with 78 in, without your typing them.\nWhere do those numbers come from, and what does the app do with them?',
@@ -397,7 +415,7 @@
           hint: () => { const bound = (re) => { const c = counter(re); return !!c && Object.values(S().numberKeyBindings || {}).some((x) => x && x.id === c.id); }; if (!bound(RE.duplex)) return ''; if (!bound(RE.gfci)) return 'Key 1 is Duplex. Now key 2: GFCI'; return K().modalUp('quickKeysModal') ? 'Both keys are set. Close the dialog' : ''; },
           action: { label: 'Bind 1 and 2 for me', run: () => { if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: pick('duplex').id }; S().numberKeyBindings[2] = { kind: 'counter', id: pick('gfci').id }; K().dirty(); } } },
       ],
-      done: 'Twenty-one receptacles sorted by what the code wants, one of them the engineer\'s miss flagged, six equipment connections, and heights the app already knew.\nNext: [[Learn]] → Chapter 3, the lighting.',
+      done: 'Twenty-one receptacles sorted by what the code wants, the engineer\'s miss flagged and counted as a GFCI. Six equipment connections, and heights the app already knew.\nNext: [[Learn]] → Chapter 3, the lighting.',
     },
     // 3 ----------------------------------------------------------------------------------------
     {
@@ -423,14 +441,14 @@
           action: { label: 'Note an exit sign for me', run: () => { K().goPage(E201); const page = S().pages[E201]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.X)[0]; if (a.notes.some((n) => K().near(n, spot, 24))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'Exit sign: battery backed, stays lit 90 minutes', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e85447' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
         { id: 'os', title: 'Which rooms switch themselves off?', kind: 'do', cardAt: 'bl',
           rules: ['elec.emergency.battery-duration', 'elec.egress.illumination'],
-          body: 'Answer: the exit signs and the emergency lights, Type X and Type EM. They are on circuit 21 with a battery in each: ninety minutes of light with the power out (NEC 700.12, IBC 1008). The IBC is the International Building Code. They cost more than a fixture: a battery, a test switch, and a circuit that must not be switched.\nThree switches on this plan are not switches. They are OS, occupancy sensors: they turn the lights off when nobody is in the room.\n1. Make an OS counter: Category Switch, Variant Occupancy.\n2. Click the three OS marks on the plan.',
+          body: 'Answer: the exit signs and the emergency lights, Type X and Type EM. They are on circuit 21 with a battery in each: ninety minutes of light with the power out (NEC 700.12, IBC 1008). The IBC is the International Building Code. They cost more than a fixture: a battery and a test switch in each.\nCircuit 21 feeds nothing else. The code allows that when its breaker has a lock-on, a clip that stops anyone switching it off (NEC 700.12). The lock-on is on the bid too.\nThree switches on this plan are not switches. They are OS, occupancy sensors: they turn the lights off when nobody is in the room.\n1. Make an OS counter: Category Switch, Variant Occupancy.\n2. Click the three OS marks on the plan.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => { const c = counter(RE.os); return !!c && pts(G.OS).every((pt) => markNear(c, pt, 12, E201)) && !T().strayMarks(E201, c.id, osZones(c)); },
           hint: () => { const c = counter(RE.os); return c ? osStrayHint(c) || missing(c, pts(G.OS), OS_DOORS, 12, E201) : ''; },
           action: { label: 'Count the three for me', run: () => { K().goPage(E201); App.pushUndoSnapshotCurrentPage(); markMissing(pick('os'), pts(G.OS), E201); K().dirty(); } } },
         { id: 'why', title: 'Why those three rooms', kind: 'read', cardAt: 'bl',
           rules: ['elec.lighting.occupancy-sensors'],
           body: 'Occupancy sensors at the restroom doors and the storage door.\nWhy those rooms and not the dining room?',
-          reveal: 'The energy code, not the electrical code. The IECC, the International Energy Conservation Code, sets how a building saves power.\nIECC C405.2.1 wants the lights in rooms people leave to shut themselves off: restrooms, storage, break rooms.\nThe dining room is occupied whenever the restaurant is, so it gets a dimmer at the entry instead.\nOn the bid an occupancy sensor is a device, a box and a plate like a switch, at a different price.\nThe row Lighting controls meet the energy code, in Bid Check, is where you sign that you looked.',
+          reveal: 'The energy code, not the electrical code. The IECC, the International Energy Conservation Code, sets how a building saves power.\nIECC C405.2.1 wants the lights in rooms people leave to shut themselves off: restrooms, storage, break rooms. This course reads the 2021 edition.\nThat edition adds halls and small closed rooms. So the hall and the mop room want sensors too, and the engineer drew neither.\nThat is another RFI. Until it is answered, the bid carries two more sensors.\nThe dining room is busy whenever the restaurant is open. So it gets a time switch, a clock that turns the lights off after hours (C405.2.2). The dimmer at the entry is extra.\nOn the bid an occupancy sensor is a device, a box and a plate like a switch, at a different price.\nThe row Lighting controls meet the energy code, in Bid Check, is where you sign that you looked.',
           target: [], check: () => true },
       ],
       done: 'Your counters from the schedule, thirty-six fixtures by the letter, the ones with a battery, and the rooms that switch themselves off.\nNext: [[Learn]] → Chapter 4, the conduit.',
@@ -439,18 +457,18 @@
     {
       id: 'conduit', title: 'Chapter 4: Conduit, wire and the vertical', short: 'a circuit, traced', minutes: 12, page: E101, noun: 'chapter', set: ESET,
       intro: 'A line type that knows its conduit and its wires, and why #12 goes with a 20 A breaker. Then the ceiling that turns a chain into verticals, and how full a conduit may be.',
-      seed() { scaleE101(); markMissing(pick('duplex'), pts(G.duplex).slice(4), E101); markMissing(pick('gfci'), pts(G.gfci), E101); },   // not the west wall's four: the reader's chain places them (seeded, the chain doubled them to 15)
+      seed() { scaleE101(); markMissing(pick('duplex'), plainDuplex().slice(4), E101); markMissing(pick('gfci'), gfciAll(), E101); },   // not the west wall's four: the reader's chain places them (seeded, the chain doubled them to 15)
       steps: [
         { id: 'linetype', title: 'A line type that knows what is in it', kind: 'do',
-          body: 'The keynotes, the numbered notes on the sheet, say 3 #12 CU THHN + 1 #12 G in 3/4" EMT. Make a line type that knows it.\n1. Under LINE TYPES, click [[+ Add]], then [[Quick]]. Pick 0.75in and, beside Material, add EMT with [[+]] if it is not there. Click [[Add Line Type]].\n2. Click the pencil beside it. Set the raceway, what the wire runs in, to EMT, 3/4".\n3. In Conductors, type 3 #12 THHN + 1 #12 G, and click [[Done]].\nIn words: three #12 copper (CU) wires and one #12 ground (G), the green safety wire. THHN is the common building wire\'s insulation. EMT, electrical metallic tubing, is thin-wall steel conduit.',
+          body: 'The keynotes, the numbered notes on the sheet, say 2 #12 CU THHN + 1 #12 G in 3/4" EMT. Make a line type that knows it.\n1. Under LINE TYPES, click [[+ Add]], then [[Quick]]. Pick 0.75in and, beside Material, add EMT with [[+]] if it is not there. Click [[Add Line Type]].\n2. Click the pencil beside it. Set the raceway, what the wire runs in, to EMT, 3/4".\n3. In Conductors, type 2 #12 THHN + 1 #12 G, and click [[Done]].\nIn words: two #12 copper (CU) wires, the live one and the neutral, and one #12 ground (G), the green safety wire. THHN is the common building wire\'s insulation. EMT, electrical metallic tubing, is thin-wall steel conduit.',
           // once the reader's own 0.75in EMT exists, its pencil (line 2) outranks + Add (line 1); never the standing "3/4in EMT old"
           target: () => { const lt = lineType(RE.emt75); return T().ladder('#conductorsSpec', '#racewayKind', '#counterLineTypeDetailsModal .modal-card', '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', lt && !K().isStanding(lt.id) ? T().pencilOf('lineType', lt) : null, '#addLineType'); },
           check: () => K().someLineType(RE.emt75, (lt) => lt.raceway && lt.raceway.kind === 'EMT' && (lt.conductors || []).length >= 2),
-          action: { label: 'Make 0.75in EMT · 3 #12 + G', run: () => { App.pushUndoSnapshot(); const lt = makeEmt(); S().activeLineTypeId = lt.id; K().dirty(); } } },
+          action: { label: 'Make 0.75in EMT · 2 #12 + G', run: () => { App.pushUndoSnapshot(); const lt = makeEmt(); S().activeLineTypeId = lt.id; K().dirty(); } } },
         { id: 'why12', title: 'Why #12', kind: 'read', cardAt: 'tl',
           rules: ['elec.conductor.small-protection'],
           body: 'Every 20 A circuit on the schedule is #12 copper.\nWhy that gauge, that wire size, and what would #14 or #10 mean?',
-          reveal: 'The breaker protects the wire: it trips before the wire can overheat.\nA #12 copper conductor may be protected at no more than 20 A and a #14 at no more than 15 A (NEC 240.4(D)). A #10 carries 30 A.\nA restaurant\'s receptacle circuits are 20 A by convention, so they are #12. Go up a size when a run is long (Chapter 5), never down.\nOn the bid the conductor count is what matters: three #12 plus a ground in every foot of that conduit. The app counts the wire from the runs, so it can never be missed.',
+          reveal: 'The breaker protects the wire: it trips before the wire can overheat.\nA #12 copper conductor may be protected at no more than 20 A and a #14 at no more than 15 A (NEC 240.4(D)). A #10 carries 30 A.\nA restaurant\'s receptacle circuits are 20 A by convention, so they are #12. Go up a size when a run is long (Chapter 5), never down.\nOn the bid the conductor count is what matters: two #12 plus a ground in every foot of that conduit. The app counts the wire from the runs, so it can never be missed.',
           target: [], check: () => true },
         { id: 'ceiling', title: 'The ceiling, and the foot nobody draws', kind: 'do',
           rules: ['elec.vertical.make-up', 'elec.mount-height.defaults'],
@@ -466,7 +484,7 @@
           action: { label: 'Chain the four for me', run: chainWestWall } },
         { id: 'fill', title: 'Conduit fill', kind: 'do',
           rules: ['elec.conduit.fill-limit'],
-          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe first row is judged already: Conduit fill within the table limit. Fill is how much of the conduit\'s inside the wires take up.\nHere 3 #12 and a ground in 3/4" EMT take about a tenth of the conduit. The § chip beside the row, the small section mark, names the rule.\nThree or more conductors may fill 40% of a raceway (NEC Chapter 9, Table 1); the app does the areas.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nThe first row is judged already: Conduit fill within the table limit. Fill is how much of the conduit\'s inside the wires take up.\nHere 2 #12 and a ground in 3/4" EMT take less than a tenth of the conduit. The § chip beside the row, the small section mark, names the rule.\nThree or more conductors may fill 40% of a raceway (NEC Chapter 9, Table 1); the app does the areas.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
           action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'straps', title: 'A support row of your own', kind: 'do',
@@ -485,7 +503,7 @@
     {
       id: 'circuits', title: 'Chapter 5: The circuit, the homerun and the drop', short: 'a circuit that checks itself', minutes: 12, page: E101, noun: 'chapter', set: ESET,
       intro: 'A group with a panel and a number is a circuit. The homerun reaches the panel, and the voltage-drop row says whether the engineer\'s #12 is enough for the farthest device.',
-      seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), pts(G.gfci), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); },
+      seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), gfciAll(), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); },
       steps: [
         { id: 'group', title: 'Make it a circuit', kind: 'do',
           body: 'The chain on the west wall is circuit 1 on LP-1. A group with a panel and a circuit number is how the app knows a circuit.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]] if it is off.\n2. In the left sidebar, under GROUPS, click [[+ Add]]. In Name, type Dining receptacles, west wall. In Panel, type LP-1. In Circuit, type 1. Click [[Done]].\n3. Right-click a west-wall receptacle, click [[Assign to group]], pick the group and click [[Done]].\n4. Do the same for the runs between them.\nNext time, click the group first: everything placed after joins it.',
@@ -494,7 +512,7 @@
           hint: () => (circuit1() ? 'The circuit exists: now put the west-wall receptacles and their runs in it' : ''),
           action: { label: 'Make LP-1 · 1 and assign the west wall', run: circuitOne } },
         { id: 'homerun', title: 'The homerun', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.hr, pts(G.homerun1), E101),
-          body: 'The arrow beside the west wall\'s receptacles says LP-1-1: this string of receptacles goes home, back to the panel, on circuit 1 of LP-1. The arrow is shorthand and does not show the path, so you trace it.\n1. Under LINE TYPES, click [[+ Add]]. In Name, type 0.75in EMT HR and click [[Create Line Type]]. HR stands for homerun.\n2. Click the pencil beside it. Set the raceway to EMT, 3/4", and Conductors to 3 #12 THHN + 1 #12 G, the same as 0.75in EMT.\n3. Turn on [[Homerun]].\n4. Under GROUPS, click the circuit, so the run you draw joins it.\n5. With the type active, click [[Polyline]], the tool that draws a run through several clicks.\n6. Trace from the top receptacle straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.\nThe conduit does the same: it leaves the top receptacle, goes up into the ceiling and across to the panel.',
+          body: 'The arrow beside the west wall\'s receptacles says LP-1-1: this string of receptacles goes home, back to the panel, on circuit 1 of LP-1. The arrow is shorthand and does not show the path, so you trace it.\n1. Under LINE TYPES, click [[+ Add]]. In Name, type 0.75in EMT HR and click [[Create Line Type]]. HR stands for homerun.\n2. Click the pencil beside it. Set the raceway to EMT, 3/4", and Conductors to 2 #12 THHN + 1 #12 G, the same as 0.75in EMT.\n3. Turn on [[Homerun]].\n4. Under GROUPS, click the circuit, so the run you draw joins it.\n5. With the type active, click [[Polyline]], the tool that draws a run through several clicks.\n6. Trace from the top receptacle straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.\nThe conduit does the same: it leaves the top receptacle, goes up into the ceiling and across to the panel.',
           target: () => T().ladder('#lineTypeHomerunBtn', '#polylineBtn', '#polylineBtnSidebar', '#lineTypeCreate', '#addLineType', T().pencilOf('lineType', lineType(RE.hr))),
           check: () => (S().lineTypes || []).some((l) => l.homerun) && allDone(traceZones(RE.hr, pts(G.homerun1), E101)),
           hint: () => { const lt = lineType(RE.hr); return lt && !lt.homerun ? 'The type exists: open its details and turn on Homerun' : ''; },
@@ -514,7 +532,7 @@
           action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'load', title: 'The load the engineer scheduled', kind: 'do',
           rules: ['elec.voltage-drop.branch-limit'],
-          body: 'Answer: not yet. The app assumed 12 A because you did not say. E-501 schedules circuit 1 at 720 VA, which is 6 A at 120 V.\n1. Under GROUPS, click the pencil beside the circuit.\n2. In Load, type 6. Click [[Done]].\nThe row turns to a tick: at 6 A the drop is under 3% on #12.\nWhen the schedule gives a load, use it. When it does not, the default is the honest warning: the app says so rather than guess low.',
+          body: 'Answer: not yet. The app assumed 12 A because you did not say. E-501 schedules circuit 1 at 720 VA, which is 6 A at 120 V.\n1. Under GROUPS, click the pencil beside the circuit.\n2. In Load, type 6. Click [[Done]].\nThe row turns to a tick: at 6 A the drop is under 3% on #12.\nWhen the schedule gives a load, use it. When it does not, the default is the honest warning: the app says so rather than guess low.\nOne caution: 720 VA is the load calculation\'s figure, 180 VA for each receptacle. It is not a measured load. A long run that passes only at that figure is worth an RFI.',
           target: ['#groupModalLoadAmps', '#groupModalDone', '#groupsSectionTitle', '#groupsList .edit-btn'],
           check: () => { const g = circuit1(); return !!(g && g.loadAmps === 6 && bidRow('voltage-drop') && bidRow('voltage-drop').verdict === 'ok'); },
           hint: () => { const g = circuit1(); return g && g.loadAmps && g.loadAmps !== 6 ? 'Read circuit 1 on E-501: 720 VA at 120 V' : ''; },
@@ -539,8 +557,8 @@
           action: { label: 'Note RTU-1 for me', run: () => { K().goPage(E101); const page = S().pages[E101]; const a = App.ensureActiveCanvas(page).annotations; if (!a.notes) a.notes = []; const spot = pts(G.rtu)[0]; if (a.notes.some((n) => K().near(n, spot, 26))) return; App.pushUndoSnapshotCurrentPage(); a.notes.push({ x: spot.x, y: spot.y, text: 'RTU-1 on the roof: 208 V three phase, circuits 18, 20, 22', id: App.uid(), width: 150, fontSize: 14, placementRotation: page.rotation ?? 0, color: '#e8c547' }); S().tool = App.TOOL.NONE; K().dirty(); } } },
         { id: 'poles', title: 'Poles', kind: 'read', cardAt: 'tl',
           rules: ['elec.disconnect.within-sight'],
-          body: 'Answer: RTU-1, the rooftop unit, the box on the roof that heats and cools the building. It is on 18, 20 and 22: three poles, 208 V three phase, a 40 A breaker and #8 wire.\nThe dishwasher takes two poles, 208 V single phase. Everything else is one pole at 120 V.\nWhy give a building three phase at all?',
-          reveal: 'Motors. A three-phase motor is smaller, cheaper and smoother than a single-phase one of the same power.\nSo rooftop units, walk-in cooler compressors and exhaust fans want it. And a 208Y/120 V service gives 120 V to the receptacles from any phase to neutral at the same time.\nThe one-line on E-601 says it: 208Y/120V, 3Φ, 4W. That reads three phase, four wires: three phases and a neutral.\nOn the bid a three-pole circuit is three conductors and a ground in the conduit, and a three-pole breaker.\nIt also wants a disconnect within sight of the unit (NEC 440.14), on the roof. A disconnect is a switch at the unit that cuts its power for service.',
+          body: 'Answer: RTU-1, the rooftop unit, the box on the roof that heats and cools the building. It is on 18, 20 and 22: three poles, 208 V three phase, a 40 A breaker and #8 wire.\nThe dishwasher takes two poles, 208 V single phase, and so does EF-1, the hood\'s exhaust fan. Everything else is one pole at 120 V.\nWhy give a building three phase at all?',
+          reveal: 'Motors. A three-phase motor is smaller, cheaper and smoother than a single-phase one of the same power.\nSo rooftop units, walk-in cooler compressors and exhaust fans want it. And a 208Y/120 V service gives 120 V to the receptacles from any phase to neutral at the same time.\nThe one-line on E-601 says it: 208Y/120V, 3Φ, 4W. That reads three phase, four wires: three phases and a neutral.\nOn the bid a three-pole circuit is three conductors and a ground in the conduit, and a three-pole breaker.\nIt also wants a disconnect within sight of the unit (NEC 440.14), on the roof. A disconnect is a switch at the unit that cuts its power for service.\nThe roof also gets a GFCI receptacle within 25 ft of the unit, for the service tech (NEC 210.63, 210.8(B)(5)). The set has no roof plan, so add it to the bid by hand.',
           target: [], check: () => true },
         { id: 'hood', title: 'The breaker the hood trips', kind: 'do', cardAt: 'bl',
           rules: ['elec.hood.shunt-trip'],
@@ -574,17 +592,20 @@
           check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)),
           hint: () => { const lt = lineType(RE.emt2); return lt && !(lt.conductors || []).length ? 'The type exists: give it the conductors, 4 #3/0 THHN + 1 #6 G' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeFeeder(); if (!polylinesOn(RE.emt2, E101).length) tracePlan(lt, G.feeder, 'Feeder', E101); } } },
-        { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => K().guide([pts(G.feeder)[0]], 14, polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0)),
-          body: 'Seven feet on the plan, and the one-line calls the whole feeder 12 ft. The rest is vertical, so add it.\n1. Click [[Drop]] (or press B), choose or type 5 ft, and click the circled end at the main disconnect.\nThe main disconnect is at 5 ft on the outside wall and the panel top at 6 ft 6 in inside. The feeder comes through the wall and up.\nDrop adds a rise or a fall at the end of a run, feet the plan cannot show.',
-          target: ['#dropPanel', '#dropBtn'], check: () => polylinesOn(RE.emt2, E101).some((l) => (l.startDrop || 0) > 0 || (l.endDrop || 0) > 0),
-          action: { label: 'Add the 5 ft rise for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], 5, E101); } } },
+        { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => K().guide([pts(G.feeder)[0]], 14, feederRiseOk()),
+          rulesExempt: 'no rulebook entry: the feeder\'s 8.5 ft of vertical is this set\'s route (E-101 keynote), not a code figure',
+          body: 'Seven feet on the plan, and the one-line calls the whole feeder 16 ft. The rest is vertical, so add it.\n1. Click [[Drop]] (or press B).\n2. In the Drop size palette, type 8.5 in its box and click [[Add]].\n3. Click the circled end at the main disconnect.\nThe main disconnect sits 5 ft up the outside wall. The feeder goes through the wall and up 5 ft into the 10 ft ceiling.\nIt runs across, then comes down 3 ft 6 in into the top of the panel. The keynote on E-101 says so.\nThat is 8 ft 6 in of vertical. Drop adds a rise or a fall at the end of a run, feet the plan cannot show.',
+          target: ['#dropPanel', '#dropBtn'], check: feederRiseOk,
+          // T4 (2026-09-27): the card names 8.5 ft, so a 5 ft drop (the old card's) no longer passes
+          hint: () => { const d = feederDrop(); return d > 0 && !feederRiseOk() ? { code: 'wrong-value', text: 'The drop reads ' + (Math.round(d * 100) / 100) + ' ft. Type 8.5 in the Drop size palette, click Add, and click the end again' } : ''; },
+          action: { label: 'Add the 8.5 ft for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], FEEDER_RISE_FT, E101); } } },
         { id: 'fill', title: 'Fill on the feeder', kind: 'do',
           rules: ['elec.conduit.fill-limit'],
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill within the table limit now judges the feeder too: four 3/0 and a #6 in 2" EMT, about a third of the raceway.\nThat is under the 40% the table allows for three or more conductors (NEC Chapter 9, Table 1).\nHad the engineer written 1-1/2", the row would say so and name the size that fits.',
           target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
           action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'gear', title: 'Count the gear', kind: 'do', cardAt: 'br', page: E101, zones: () => circlesOn(E101, counter(RE.meter), [pts(G.meter)[0]], 12).concat(circlesOn(E101, counter(RE.disc), [pts(G.mdp)[0]], 12)),
-          body: 'The service is gear, the heavy electrical equipment, and the bid carries it at a price nothing else on the sheet approaches. It is the most expensive thing you count.\n1. Make a Meter counter (Category Panel, Variant Meter) and click the meter, the M outside the south wall.\n2. Make a Disconnect counter (Category Disconnect, Variant Disconnect) and click the MDP beside it, the main distribution panel.',
+          body: 'The service is gear, the heavy electrical equipment, and the bid carries it at a price nothing else on the sheet approaches. It is the most expensive thing you count.\nA meter base is the socket the power company\'s meter plugs into. The power company brings the meter, and the bid carries the base.\n1. Make a Meter counter (Category Panel, Variant Meter) and click the meter base, the M outside the south wall.\n2. Make a Disconnect counter (Category Disconnect, Variant Disconnect) and click the MDP beside it, the main distribution panel.',
           target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => markNear(counter(RE.meter), pts(G.meter)[0], 12, E101) && markNear(counter(RE.disc), pts(G.mdp)[0], 12, E101),
           // the two circles are 17 pt apart, so a click with the other counter armed is easy
           hint: () => { const m = counter(RE.meter), d = counter(RE.disc); if (m && markNear(m, pts(G.mdp)[0], 12, E101)) return 'The Meter counter landed on the MDP. Press Ctrl+Z, arm the Disconnect, and click the MDP'; if (d && markNear(d, pts(G.meter)[0], 12, E101)) return 'The Disconnect landed on the meter. Press Ctrl+Z, arm the Meter, and click the M'; return ''; },
@@ -629,7 +650,7 @@
     {
       id: 'bid', title: 'Chapter 9: Check it, prove it, hand it off', short: 'a bid you can defend', minutes: 8, page: E101, noun: 'chapter', set: ESET,
       intro: 'What the electrical rows of Bid Check mean, and which the set already answers. Then where a number came from, and the hand-off to the electrical bid.',
-      seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), pts(G.gfci), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); const g = circuitOne(); g.loadAmps = 6; if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101); circuitOne(); flagShuntTrip(); },
+      seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), gfciAll(), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); const g = circuitOne(); g.loadAmps = 6; if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101); circuitOne(); flagShuntTrip(); },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nFour rows marked AUTO the app judges from your runs: conduit fill, voltage drop, circuits against the panel schedule, every device on a circuit.\nThe rest are yours, the manual rows: you tick each one when you have checked it.',

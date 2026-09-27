@@ -68,8 +68,9 @@ const EXPECT = {
     expect((await ann(page, 2)).highlights.length).toBe(1);                                    // the dishwasher's row
   },
   devices: async (page) => {
-    for (const [re, n] of [['Duplex', 11], ['GFCI', 10], ['J-Box', 6]]) expect([re, await countOf(page, re)]).toEqual([re, n]);
-    expect((await ann(page, 0)).notes.some((n) => /^RFI: Kitchen receptacle drawn as a plain duplex/.test(n.text))).toBe(true);   // the engineer's miss, flagged
+    // T2 (settled 2026-09-27): the engineer's missed kitchen receptacle is counted once, as a GFCI
+    for (const [re, n] of [['Duplex', 10], ['GFCI', 11], ['J-Box', 6]]) expect([re, await countOf(page, re)]).toEqual([re, n]);
+    expect((await ann(page, 0)).notes.some((n) => /^RFI: Kitchen receptacle drawn as a plain duplex.*which circuit\?$/.test(n.text))).toBe(true);   // the engineer's miss, flagged, and its circuit asked (R12)
     expect(await page.evaluate(() => window.state.counters.filter((c) => /Duplex|GFCI/.test(c.name)).map((c) => c.mountHeightIn).sort())).toEqual([18, 44]);   // the rulebook's heights, from the Quick variants
     expect(await page.evaluate(() => { const b = window.state.numberKeyBindings; const n = (id) => window.state.counters.find((c) => c.id === id).name; return [n(b[1].id), n(b[2].id)]; })).toEqual(['Duplex Receptacle 20A', 'GFCI Receptacle 20A']);
   },
@@ -88,6 +89,8 @@ const EXPECT = {
     const s = await summary(page);
     expect(s).toMatch(/ft of 0\.75in EMT\t60\.5/);                                                // 3 × 7.5 ft on the plan + 4 verticals of 9.5
     expect(s).toMatch(/#12 THHN/);                                                                // the wire, derived
+    // R1 (settled 2026-09-27): one 120 V circuit is two #12 and a ground, as E-101's keynote says
+    expect(await page.evaluate(() => window.ConductorModel.formatConductorSpec(window.state.lineTypes.find((l) => /0\.75in EMT/.test(l.name) && !l.homerun).conductors))).toBe('2 #12 THHN + 1 #12 THHN G');
     expect(s).toMatch(/Strap\t\d+/);
     expect((await bidRow(page, 'conduit-fill')).verdict).toBe('ok');
     expect(await page.evaluate(() => [window.state.ceilingHeightFt, window.state.makeUpFt])).toEqual([10, 1]);
@@ -113,8 +116,8 @@ const EXPECT = {
     expect(lt.raceway).toEqual({ kind: 'EMT', size: '2"' });
     expect(lt.conductors.length).toBe(2);
     const feeder = a.polylines.find((pl) => pl.lineTypeId === lt.id);
-    expect(feeder.startDrop || feeder.endDrop).toBe(5);
-    expect(await summary(page)).toMatch(/ft of 2in EMT\t12\.33/);                                // 88 plan px + the 5 ft rise
+    expect(feeder.startDrop || feeder.endDrop).toBe(8.5);                                        // T4: up 5 ft into the ceiling, down 3.5 ft into LP-1's top
+    expect(await summary(page)).toMatch(/ft of 2in EMT\t15\.83/);                                // 88 plan px + the 8.5 ft of vertical
     const fill = await bidRow(page, 'conduit-fill');
     expect(fill.verdict).toBe('ok');
     expect(fill.detail).toMatch(/2" EMT · .*3[0-9](\.\d)?% ✓/);                                   // four 3/0 and a #6: about a third
@@ -202,6 +205,19 @@ test.describe('The electrical course: a question is answered with a click', () =
     await expect(page.locator('#tourStatus')).toHaveText(/That one already says GFI/);
     await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.P(600, 460), 'RFI: a plain duplex in the kitchen', '#e85447'); });
     await page.waitForFunction(() => window.App.tutorialStepId() === 'duplex', null, { timeout: 5000 });
+    // T2 (settled 2026-09-27): the flagged receptacle is counted once, as a GFCI. A Duplex mark on it is
+    // refused; the ten plain ones and the GFCI on the flagged one pass.
+    const plain = [[136, 160], [136, 250], [136, 340], [136, 430], [200, 106], [300, 106], [400, 106], [500, 596], [760, 476], [930, 590]];
+    await page.evaluate((spots) => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'Duplex Receptacle 20A', icon: window.App.getOrderedIcons()[0].value, color: '#e85447', mountHeightIn: 18, lesson: true }; window.state.counters.push(c); k.mark(0, c, spots.concat([[600, 460]]).map(([x, y]) => k.P(x, y))); k.dirty(); }, plain);
+    await page.waitForTimeout(500);
+    expect((await page.evaluate(() => window.App.tutorialStepInfo())).done).toBe(false);
+    await expect(page.locator('#tourStatus')).toHaveText(/counted as a GFCI, not a duplex/);
+    await page.evaluate(() => { const c = window.state.counters.find((x) => /Duplex/.test(x.name)); const a = window.App.getActiveAnnotations(window.state.pages[0]); a.counterMarkers[c.id] = a.counterMarkers[c.id].slice(0, 10); window.App.lessonKit.dirty(); });
+    await page.waitForTimeout(500);
+    await expect(page.locator('#tourStatus')).toHaveText(/click GFCI under COUNTERS, then the flagged receptacle/);
+    await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => /GFCI/.test(x.name)); k.mark(0, c, [k.P(600, 460)]); k.dirty(); });
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true || window.App.tutorialStepId() !== 'duplex', null, { timeout: 5000 });
+    expect([await countOf(page, 'Duplex'), await countOf(page, 'GFCI')]).toEqual([10, 11]);
     expect(errors).toEqual([]);
   });
 
@@ -277,6 +293,24 @@ test.describe('The electrical course: a question is answered with a click', () =
     await page.evaluate(() => window.App.handleCanvasClick(null, window.App.lessonKit.P(640, 380)));
     await page.evaluate(() => window.App.handleCanvasClick(null, window.App.lessonKit.P(665, 272)));
     expect(await page.evaluate(() => { const s = window.state; const m = window.App.getActiveAnnotations(s.pages[1]).counterMarkers; const n = (re) => { const c = s.counters.find((x) => re.test(x.name)); return c ? (m[c.id] || []).length : -1; }; return { a: n(/^Type A$/), b: n(/^B · /), c: n(/^C · /) }; })).toEqual({ a: 0, b: 1, c: 1 });
+    expect(errors).toEqual([]);
+  });
+
+  test('the rise wants the 8.5 ft of vertical the card names: a 5 ft drop holds and says what it reads (T4, 2026-09-27)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await boot(page, '/app/?chapter=electrical:service', errors);
+    await openSheets(page);
+    await gotoStep(page, 'feeder');
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'feeder');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'rise', null, { timeout: 8000 });
+    await page.evaluate(() => { const k = window.App.lessonKit; k.dropAt(k.P(705, 604), 5, 0); });
+    await page.waitForTimeout(500);
+    expect((await page.evaluate(() => window.App.tutorialStepInfo())).done).toBe(false);
+    await expect(page.locator('#tourStatus')).toHaveText(/The drop reads 5 ft\. Type 8\.5/);
+    await page.evaluate(() => { const k = window.App.lessonKit; k.dropAt(k.P(705, 604), 8.5, 0); });
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true || window.App.tutorialStepId() !== 'rise', null, { timeout: 5000 });
     expect(errors).toEqual([]);
   });
 

@@ -25,7 +25,7 @@
  *     editions: [2017, 2020, 2023]
  *     url: https://...                            # where the public text lives
  *   amendments: []                                # [{ jurisdiction, note }]
- *   used_by: [bidCheck]                           # app surfaces that apply it (USED_BY_LABEL ids)
+ *   used_by: [bidCheck]                           # app surfaces that apply it (USED_BY_LABEL ids; course = the courses' cards)
  *   updated: 2026-09-09
  *   ---
  *   Markdown body: what the rule says as the app applies it, and why.
@@ -54,6 +54,9 @@ const USED_BY_LABEL = {
   roomSizer: 'Room Sizer',
   quickCreate: 'Quick creator',
   waterSchedule: 'Water Sizing',
+  // a course card that teaches the rule, held to its number by scripts/check-lesson-rules.js (a rule a
+  // tester, or the owner's delegate, has signed and only the courses apply; 2026-09-27)
+  course: 'Courses',
 };
 
 // --- YAML subset -------------------------------------------------------------------

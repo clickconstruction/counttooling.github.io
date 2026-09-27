@@ -441,7 +441,7 @@
     },
     {
       id: 'move', title: 'Header: Move', kind: 'do',
-      body: 'Move is the resting tool, the one that is on when no other is. It drags the sheet, and it drags a mark you put in the wrong place.\n1. In the header, click [[Move]] (or press M).\n2. Drag the sheet a little: hold the mouse button down and slide.\nThe mouse wheel zooms where the pointer is. The Esc key, at the top left of the keyboard, brings you back here from any tool.',
+      body: 'Move is the resting tool, the one that is on when no other is. It drags the sheet, and it drags a mark, a thing you placed on the sheet, that sits in the wrong place.\n1. In the header, click [[Move]] (or press M).\n2. Drag the sheet a little: hold the mouse button down and slide.\nThe mouse wheel zooms where the pointer is. The Esc key, at the top left of the keyboard, brings you back here from any tool.',
       target: ['#moveBtn', '#moveBtnSidebar'],
       check: () => { const s = S(); const p = s.pan || { x: 0, y: 0 }; if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; } const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01; return s.tool === App.TOOL.NONE && moved; },
       progress: () => (S().tool !== App.TOOL.NONE ? '' : 'Now drag the sheet'),
@@ -449,7 +449,7 @@
     },
     {
       id: 'counter', title: 'Header: Counter', kind: 'do',
-      body: 'A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Fixture.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe [[Quick]] tab builds the name from your trade\'s pickers instead. Either way the Counter tool arms itself: it switches on, ready to mark. [[Counter]] in the header (or C) brings you back to it.\nThe palette is your list of counters. The funnel beside its search box narrows a long palette to what this sheet uses.',
+      body: 'A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Fixture.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe [[Quick]] tab builds the name from your trade\'s pickers instead. Either way the Counter tool arms itself: it is armed, switched on and ready to mark. [[Counter]] in the header (or C) brings you back to it.\nThe palette is your list of counters. The funnel beside its search box narrows a long palette to what this sheet uses.',
       target: () => K().counterFormTargets(/fixture/i),
       check: () => !!counter(),
       action: { label: 'Create it for me', run: ACT.counter },
@@ -466,7 +466,7 @@
     {
       id: 'quickkeys', title: 'Footer: quick keys', kind: 'do',
       body: () => (narrow()
-        ? 'Quick keys put a counter on a number key.\n1. Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]).\n2. Beside Quick keys, tap [[Edit]]. Beside key 1, choose your counter. Close the dialog.\n3. With a keyboard attached, press 1 and the counter arms; without one, tap the counter in the sidebar.\n4. Tap inside the circle.\nOn a desk the number row is the rhythm: 1, click, click, 2, click, click.'
+        ? 'Quick keys put a counter on a number key.\n1. Tap ☰ at the top left, then the gear at the top of the sidebar ([[Project Settings]]).\n2. Beside Quick keys, tap [[Edit]]. Beside key 1, choose your counter. Close the dialog.\n3. With a keyboard attached, press 1 and the counter arms; without one, tap the counter in the sidebar.\n4. Tap inside the circle.\nOn a desk the number row, the keys 1 to 0, is the rhythm: 1, click, click, 2, click, click.'
         : 'Quick keys put a counter on a number key.\n1. In the status bar, the strip along the bottom of the screen, click [[quick keys]] at the right.\n2. Beside key 1, choose your counter. Close the dialog.\n3. Press M, then 1: the counter arms again from the keyboard.\n4. Click inside the circle.\nOn a real sheet that is the rhythm: 1, click, click, 2, click, click.'),
       target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys', '#settingsQuickKeys', '#settingsGearBtn', '#sidebarLogoGear'], page: 0,
       zones: () => K().markZones(0, cid(), [KEY], 16),
@@ -477,7 +477,7 @@
     },
     {
       id: 'linetype', title: 'Header: Quick Line', kind: 'do',
-      body: 'A run is a length of pipe, wire or duct you trace. A line type is one kind of run: it is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage, its length in feet, is measured between your two clicks. So these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
+      body: 'A run is a length of pipe, wire or duct (air pipe) you trace. A line type is one kind of run: it is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself ([[Quick Line]] in the header, or L). Click the centre of one circle, then the other.\nA run\'s footage, its length in feet, is measured between your two clicks. So these circles are tight: the run should read ' + feetText(LINE_FT) + ' in the sidebar. Aim, or zoom in first.',
       target: ['#lineTypeCreate', '#addLineType'], page: 0,
       zones: () => LINE.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: LINE_R, done: lineClose() })),
       check: () => !!lineType() && lineClose(),
@@ -487,7 +487,7 @@
     },
     {
       id: 'snap', title: 'Header: Snap to 45°', kind: 'do',
-      body: () => 'Runs on a plan are square. With snap on, a line you draw holds to horizontal, vertical or 45°, however your hand wobbles.\n' + (narrow()
+      body: () => 'Runs on a plan are square. With snap on, a line you draw holds level, upright or at 45°, however your hand wobbles.\n' + (narrow()
         ? '1. Tap ☰ at the top left, then the LINE TYPES heading in the sidebar: Line Type Settings opens.\n2. Turn on [[Snap to 45° angles]] and close the dialog.\n'
         : '1. In the header, click [[Snap to 45° angles]] (or press J) so it lights.\n') + 'It is a setting for this device, not this project. The tour puts it back the way it was when you leave.',
       target: ['#lineTypeSnapToHVBtn', '#lineTypeSnapToHVHeaderBtn', '#lineTypesSectionTitle'],
@@ -535,7 +535,7 @@
     },
     {
       id: 'highlight', title: 'Header: Highlight', kind: 'do',
-      body: () => '1. In the header, click [[Highlight]] (or press H).' + more() + '\n2. Drag a box over the three marks, inside the shaded boundary.\nA highlight is a marker pen, never a count. The panel that opens picks its colour. Highlight Pages (PDF) under EXPORT OPTIONS collects every highlighted sheet.',
+      body: () => '1. In the header, click [[Highlight]] (or press H).' + more() + '\n2. Drag a box over the three marks, inside the shaded boundary.\nA highlight is a marker pen, never a count. The panel that opens picks its colour. EXPORT OPTIONS is where the files you send out are made. There, Highlight Pages (PDF) collects every highlighted sheet into one PDF, a file of drawings.',
       target: ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [K().boxZone(rects('highlights'), HL_IN, HL_OUT, 'Drag your highlight over the three marks')],
       check: () => K().boxZone(rects('highlights'), HL_IN, HL_OUT).done,
@@ -544,7 +544,7 @@
     },
     {
       id: 'multiply', title: 'Header: Multiply Zone', kind: 'do',
-      body: () => 'A typical is a part drawn once that repeats, such as a floor. Count it once, and the bid, the price you send, carries it many times.\n1. In the header, click [[Multiply Zone]] (or press X).' + more() + '\n2. Drag a box around the two chained marks, inside the shaded boundary.\n3. Type 2.\n4. Click [[Apply]].\nThe two marks and the run between them count double in every total. The sheet itself stays as it is.',
+      body: () => 'A typical is a part drawn once that repeats, such as a floor. Count it once, and the bid, the price you send, carries it many times.\n1. In the header, click [[Multiply Zone]] (or press X).' + more() + '\n2. Drag a box around the two chained marks, inside the shaded boundary.\n3. Type 2.\n4. Click [[Apply]].\nA multiply zone is a box whose marks count that many times over. The two marks and the run between them count double in every total. The sheet itself stays as it is.',
       target: ['#multiplyZoneApply', '#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [K().boxZone(rects('multiplyZones', (z) => (z.multiplier || 1) > 1), MZ_IN, MZ_OUT, 'Drag your box around the chained pair, anywhere in here')],
       check: () => K().boxZone(rects('multiplyZones', (z) => (z.multiplier || 1) > 1), MZ_IN, MZ_OUT).done,
@@ -702,7 +702,7 @@
     },
     {
       id: 'share', title: 'Header: Share, and Copy view link', kind: 'read',
-      body: 'The two buttons this tour cannot press. They work on a project saved to the cloud, kept online, and this sheet stays on your device on purpose.\n1. [[Share]] puts a read-only link to the takeoff on the clipboard, making one the first time. Read-only means people can look but not change.\n2. [[Copy view link]] copies that same link again later.\nA GC opens the link in a browser and sees the marked-up sheets and the totals.\nTo press them for real: [[Sign In]], open any bid, and click [[Save Project to Cloud]] under the gear. Both buttons then appear in the header beside the bell. The walk with a real bid is [Sharing and view links](/guides/sharing-and-view-links/), and the Saving and sharing lesson under [[Learn]] reads the whole signed-in half.',
+      body: 'The two buttons this tour cannot press. They work on a project saved to the cloud, kept online, and this sheet stays on your device on purpose.\n1. [[Share]] puts a read-only link to the takeoff on the clipboard, where a copy waits to be pasted. It makes the link the first time. Read-only means people can look but not change.\n2. [[Copy view link]] copies that same link again later.\nA GC opens the link in a browser and sees the marked-up sheets and the totals.\nTo press them for real: [[Sign In]], open any bid, and click [[Save Project to Cloud]] under the gear. Both buttons then appear in the header beside the bell. The walk with a real bid is [Sharing and view links](/guides/sharing-and-view-links/), and the Saving and sharing lesson under [[Learn]] reads the whole signed-in half.',
       target: ['#headerShareBtn', '#copyViewLinkBtn', '#authBtn', '#sidebarLogoUser'],
       check: () => true,
     },

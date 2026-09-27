@@ -3,7 +3,7 @@ id: hvac.diffuser.neck-velocity
 title: Diffuser neck velocity
 trade: hvac
 kind: convention
-status: draft
+status: applied
 summary: A diffuser's neck is picked from the maker's sound and throw data and the push its flex needs; makers keep neck velocity under about 1,000 feet a minute, and the app's own neck suggestion puts up to 150 CFM on an 8 in neck and up to 300 on a 10 in, so the neck size is the flex and tap size on the bid.
 values:
   - when: a common ceiling for air through a supply diffuser's neck (makers' selection guidance)
@@ -25,7 +25,7 @@ source:
   section: diffuser selection from the maker's catalogued sound (NC) and throw data, not a code figure
   editions: []
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

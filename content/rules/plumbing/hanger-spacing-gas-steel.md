@@ -3,7 +3,7 @@ id: plumb.hanger.gas-steel
 title: Hanger spacing for steel gas pipe
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: How far apart steel gas pipe may be supported under the fuel gas code, by size, 6 feet at 1/2 inch, 8 feet at 3/4 and 1 inch, 10 feet horizontal at 1-1/4 inch and larger, and vertical pipe at every floor.
 values:
   - when: 1/2 in steel pipe
@@ -25,7 +25,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

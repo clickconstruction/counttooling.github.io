@@ -3,7 +3,7 @@ id: plumb.waste.grease-interceptor
 title: Grease interceptors
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: Kitchen, dish and bar fixtures that carry grease drain through a grease interceptor, and the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste only.
 values:
   - when: fixtures and equipment with grease-laden waste in a food preparation area (a restaurant, a kitchen, a bar)
@@ -16,7 +16,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

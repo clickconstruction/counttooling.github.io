@@ -66,7 +66,7 @@ const EXPECT = {
     expect(a.polylines.length).toBe(1);
     expect(a.polylines[0].points.length).toBe(3);
     const summary = await page.evaluate(() => window.getPipeToolingSummary());
-    expect(summary).toMatch(/ft of 1-1\/4in Gas\t39\.5/);      // 23.83 + 11.67 plan feet + the 4 ft riser
+    expect(summary).toMatch(/ft of Gas Pipe\t39\.5/);      // 23.83 + 11.67 plan feet + the 4 ft riser
     expect(summary).toMatch(/90° elbow\t2/);                    // the corner, and the drop
   },
   chain: async (page) => {
@@ -178,6 +178,12 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the card starts lesson 0
     await page.click('#canvasEmptyHintStart');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['lesson:start', 'sheets']);
+    // the open card says one thing, that this is a sample and nothing here touches the reader's work;
+    // it repeats neither the Learn row's line nor itself
+    await expect(page.locator('#tourBody')).toContainText('Nothing you do on them touches your own projects');
+    await expect(page.locator('#tourBody')).not.toContainText('Four minutes for anyone new');
+    await expect(page.locator('#tourBody')).not.toContainText('whatever it takes for granted');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 9');
     await page.evaluate(() => window.App.tutorialDoStep());
     await page.waitForFunction(() => window.App.tutorialStepId() === 'what', null, { timeout: 30000 });
     // where things are: Next moves the light, one part of the screen per card

@@ -3,7 +3,7 @@ id: plumb.trap.arm-length
 title: Trap arms
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: How far a fixture's trap may sit from its vent along the drain, by trap size: 5 feet at 1-1/4 inch, 6 feet at 1-1/2 inch, 8 feet at 2 inch, 12 feet at 3 inch, 16 feet at 4 inch.
 values:
   - when: 1-1/4 in trap, at 1/4 in per foot, at most
@@ -27,7 +27,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

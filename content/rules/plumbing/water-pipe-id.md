@@ -87,32 +87,32 @@ values:
     note: ASTM B88
     code: water-model.js#PIPE_ID_IN.copper.sizes["2.5"]
   - when: CPVC 1 in nominal
-    value: 0.921
+    value: 0.901
     unit: in
     note: ASTM D2846, CTS SDR 11
     code: water-model.js#PIPE_ID_IN.cpvc.sizes["1"]
   - when: CPVC 2 in nominal
-    value: 1.739
+    value: 1.716
     unit: in
     note: ASTM D2846, CTS SDR 11
     code: water-model.js#PIPE_ID_IN.cpvc.sizes["2"]
   - when: CPVC 1/2 in nominal
-    value: 0.489
+    value: 0.469
     unit: in
     note: ASTM D2846, CTS SDR 11
     code: water-model.js#PIPE_ID_IN.cpvc.sizes["0.5"]
   - when: CPVC 3/4 in nominal
-    value: 0.715
+    value: 0.695
     unit: in
     note: ASTM D2846, CTS SDR 11
     code: water-model.js#PIPE_ID_IN.cpvc.sizes["0.75"]
   - when: CPVC 1-1/4 in nominal
-    value: 1.125
+    value: 1.105
     unit: in
     note: ASTM D2846, CTS SDR 11
     code: water-model.js#PIPE_ID_IN.cpvc.sizes["1.25"]
   - when: CPVC 1-1/2 in nominal
-    value: 1.329
+    value: 1.309
     unit: in
     note: ASTM D2846, CTS SDR 11
     code: water-model.js#PIPE_ID_IN.cpvc.sizes["1.5"]
@@ -180,4 +180,4 @@ It does not know Type K or Type M copper, PEX-AL-PEX, or stainless: a line type 
 
 Copper Type L matched the B88 dimension table at every size, Schedule 40 steel is the standard pipe schedule, and the PEX bores are Uponor's published AquaPEX figures. For those three materials: Settled 2026-09-27 by Claude on the owner's delegation, from the dossier's research and the model code text; not checked against a printed book or a local amendment.
 
-The CPVC rows are not settled. They use the largest possible bore while PEX allows for wall tolerance, so the two materials are read on different bases: a maker's published 1/2 in bore of about 0.469 in, against this table's 0.489, reads about 9 percent faster, and a CPVC branch near the cap could be suggested one size smaller than it should be. The basis to move to is the tolerance-allowing bore, the one that never suggests too small a pipe, but a maker's bores for every size from 1/2 to 2 in were not in the sources read, so the rows stay as they are until that table is read.
+The CPVC rows were settled 2026-09-27 on the same basis as PEX, the average bore: the outside diameter less two average walls, where the average wall is ASTM D2846's minimum wall plus half its tolerance. The outside diameters and minimum walls (0.625 / 0.068, 0.875 / 0.080, 1.125 / 0.102, 1.375 / 0.125, 1.625 / 0.148, 2.125 / 0.193 in) were read in Charlotte Pipe's FlowGuard Gold CTS submittal; the wall tolerance (0.020 in through 1-1/2 in, 0.023 in at 2 in) was read in a secondary table of D2846, not in the standard. The rows were the largest bore before (0.489 in at 1/2 in, now 0.469), which read about 9 percent slow and could suggest a CPVC branch one size too small near the cap.

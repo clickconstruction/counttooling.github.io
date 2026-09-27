@@ -3,7 +3,7 @@ id: plumb.drain.cleanouts
 title: Cleanouts on drainage piping
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: A drain gets a cleanout wherever a snake has to go in, at the turns of more than 45 degrees, at or just upstream of where the building drain meets the sewer, and at least every 100 feet along a horizontal run.
 values:
   - when: horizontal drain, building drain or building sewer, between cleanouts, at most
@@ -19,7 +19,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

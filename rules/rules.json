@@ -727,7 +727,7 @@
       "id": "hvac.diffuser.neck-velocity",
       "trade": "hvac",
       "kind": "convention",
-      "status": "draft",
+      "status": "applied",
       "title": "Diffuser neck velocity",
       "summary": "A diffuser's neck is picked from the maker's sound and throw data and the push its flex needs; makers keep neck velocity under about 1,000 feet a minute, and the app's own neck suggestion puts up to 150 CFM on an 8 in neck and up to 300 on a 10 in, so the neck size is the flex and tap size on the bid.",
       "values": [
@@ -758,7 +758,9 @@
         "editions": []
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/hvac/diffuser-neck-velocity/",
       "updated": "2026-09-27"
     },
@@ -871,7 +873,7 @@
       "id": "hvac.damper.fire-damper",
       "trade": "hvac",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Fire dampers at rated walls",
       "summary": "Where a duct passes through a fire-resistance-rated wall, the code wants a listed fire damper at the penetration unless an exception removes it, so each crossing of a rated wall is a damper, an access door and a sleeve on the bid.",
       "values": [
@@ -896,7 +898,9 @@
         "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-6-duct-systems"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/hvac/fire-damper/",
       "updated": "2026-09-27"
     },
@@ -953,7 +957,7 @@
       "id": "hvac.exhaust.hood-makeup-air",
       "trade": "hvac",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Make-up air for a kitchen hood",
       "summary": "A commercial kitchen hood that exhausts air needs make-up air brought in to replace it, delivered while the hood runs and interlocked with its exhaust fan, so a hood on a plan means a second unit, its duct and its controls on the bid.",
       "values": [
@@ -987,7 +991,9 @@
           "note": "Rule 1346.0508 amends the temperature limit to make-up air not less than 50°F at the diffuser."
         }
       ],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/hvac/hood-makeup-air/",
       "updated": "2026-09-27"
     },
@@ -995,7 +1001,7 @@
       "id": "hvac.ventilation.outdoor-air",
       "trade": "hvac",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Outdoor air for ventilation",
       "summary": "Occupied spaces get a code minimum of outdoor air, set by the kind of room, the people in it and its floor area (a dining room 7.5 CFM a person plus 0.18 a square foot); on a bid the question is whether the plan's supply already carries it or a separate unit does.",
       "values": [
@@ -1029,7 +1035,9 @@
         "url": "https://codes.iccsafe.org/content/IMC2021P1/chapter-4-ventilation"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/hvac/outdoor-air/",
       "updated": "2026-09-27"
     },
@@ -1126,7 +1134,7 @@
       "id": "plumb.drain.cleanouts",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Cleanouts on drainage piping",
       "summary": "A drain gets a cleanout wherever a snake has to go in, at the turns of more than 45 degrees, at or just upstream of where the building drain meets the sewer, and at least every 100 feet along a horizontal run.",
       "values": [
@@ -1156,7 +1164,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/cleanouts/",
       "updated": "2026-09-27"
     },
@@ -1164,7 +1174,7 @@
       "id": "plumb.drain.dfu-capacity",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Building drain and sewer capacity in drainage fixture units",
       "summary": "How many drainage fixture units a building drain or sewer may carry by size and slope; at 1/8 inch per foot a 3 inch sewer carries 36 and the course's 4 inch carries 180.",
       "values": [
@@ -1209,7 +1219,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/drainage-fixture-units/",
       "updated": "2026-09-27"
     },
@@ -1217,7 +1229,7 @@
       "id": "plumb.drain.slope",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Slope of horizontal drainage pipe",
       "summary": "Horizontal waste pipe falls at least 1/4 inch per foot at 2-1/2 inch and smaller, 1/8 inch per foot at 3 to 6 inch, and 1/16 inch per foot at 8 inch and larger, except that pipe upstream of a grease interceptor falls at least 1/4 inch per foot at any size.",
       "values": [
@@ -1252,7 +1264,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/drainage-slope/",
       "updated": "2026-09-27"
     },
@@ -1260,7 +1274,7 @@
       "id": "plumb.gas.appliance-shutoff",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Appliance shutoff valves",
       "summary": "Every gas appliance has its own shutoff valve, in the same room and within 6 feet of it, upstream of its connector, so one appliance can come off the line without shutting the rest.",
       "values": [
@@ -1285,7 +1299,9 @@
         "url": "https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/gas-appliance-shutoff/",
       "updated": "2026-09-27"
     },
@@ -1293,7 +1309,7 @@
       "id": "plumb.gas.pipe-sizing",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Gas pipe sizing",
       "summary": "Each section of gas pipe is sized for the load it carries downstream, in Btu per hour, over the longest run from the meter to the farthest outlet, so like water it shrinks as it goes.",
       "values": [
@@ -1318,7 +1334,9 @@
         "url": "https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/gas-pipe-sizing/",
       "updated": "2026-09-27"
     },
@@ -1326,7 +1344,7 @@
       "id": "plumb.waste.grease-interceptor",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Grease interceptors",
       "summary": "Kitchen, dish and bar fixtures that carry grease drain through a grease interceptor, and the restrooms join the sewer downstream of it, because the interceptor is for grease-laden waste only.",
       "values": [
@@ -1351,7 +1369,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/grease-interceptor/",
       "updated": "2026-09-27"
     },
@@ -1437,7 +1457,7 @@
       "id": "plumb.hanger.gas-steel",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Hanger spacing for steel gas pipe",
       "summary": "How far apart steel gas pipe may be supported under the fuel gas code, by size, 6 feet at 1/2 inch, 8 feet at 3/4 and 1 inch, 10 feet horizontal at 1-1/4 inch and larger, and vertical pipe at every floor.",
       "values": [
@@ -1477,7 +1497,9 @@
         "url": "https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/hanger-spacing-gas-steel/",
       "updated": "2026-09-27"
     },
@@ -1628,7 +1650,7 @@
       "id": "plumb.waste.indirect",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Indirect waste for food equipment",
       "summary": "A sink or machine that handles food drains through an air gap (an air break is allowed for a commercial dishwasher and a pot or dish sink) to a floor sink or other receptor, never straight into the waste pipe, so a sewer backup rises onto the floor and not into the food side.",
       "values": [
@@ -1663,7 +1685,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-8-indirect-special-waste"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/indirect-waste/",
       "updated": "2026-09-27"
     },
@@ -1671,7 +1695,7 @@
       "id": "plumb.trap.arm-length",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Trap arms",
       "summary": "How far a fixture's trap may sit from its vent along the drain, by trap size: 5 feet at 1-1/4 inch, 6 feet at 1-1/2 inch, 8 feet at 2 inch, 12 feet at 3 inch, 16 feet at 4 inch.",
       "values": [
@@ -1711,7 +1735,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/trap-arm-length/",
       "updated": "2026-09-27"
     },
@@ -1719,7 +1745,7 @@
       "id": "plumb.trap.seal",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Trap seal depth and protection",
       "summary": "Every fixture trap holds a water seal 2 to 4 inches deep, and a trap that can dry out, a floor drain that sees no water for months, gets seal protection such as a trap primer.",
       "values": [
@@ -1749,7 +1775,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-10-traps-interceptors-and-separators"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/trap-seal/",
       "updated": "2026-09-27"
     },
@@ -1757,7 +1785,7 @@
       "id": "plumb.vent.terminal",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Vent terminals",
       "summary": "A vent stack ends open above the roof, at a height the adopting jurisdiction sets (the model code leaves it blank), 7 feet up on a roof people use, and clear of air intakes, at least 10 feet away from a door, window or intake unless it rises 3 feet above the top of it.",
       "values": [
@@ -1797,7 +1825,9 @@
           "note": "6 inches above the roof"
         }
       ],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/vent-terminal/",
       "updated": "2026-09-27"
     },
@@ -1805,7 +1835,7 @@
       "id": "plumb.vent.trap-protection",
       "trade": "plumbing",
       "kind": "code",
-      "status": "draft",
+      "status": "applied",
       "title": "Venting protects every trap seal",
       "summary": "The drainage system carries vent piping that lets air in and out, so no fixture trap sees more than 1 inch of water column of pressure difference and no seal siphons out when the fixture upstream drains.",
       "values": [
@@ -1830,7 +1860,9 @@
         "url": "https://codes.iccsafe.org/content/IPC2021P1/chapter-9-vents"
       },
       "amendments": [],
-      "used_by": [],
+      "used_by": [
+        "course"
+      ],
       "url": "/rules/plumbing/vents/",
       "updated": "2026-09-27"
     },
@@ -2090,37 +2122,37 @@
         },
         {
           "when": "CPVC 1 in nominal",
-          "value": 0.921,
+          "value": 0.901,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 2 in nominal",
-          "value": 1.739,
+          "value": 1.716,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 1/2 in nominal",
-          "value": 0.489,
+          "value": 0.469,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 3/4 in nominal",
-          "value": 0.715,
+          "value": 0.695,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 1-1/4 in nominal",
-          "value": 1.125,
+          "value": 1.105,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },
         {
           "when": "CPVC 1-1/2 in nominal",
-          "value": 1.329,
+          "value": 1.309,
           "unit": "in",
           "note": "ASTM D2846, CTS SDR 11"
         },

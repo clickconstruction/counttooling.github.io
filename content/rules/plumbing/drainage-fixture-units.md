@@ -3,7 +3,7 @@ id: plumb.drain.dfu-capacity
 title: Building drain and sewer capacity in drainage fixture units
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: How many drainage fixture units a building drain or sewer may carry by size and slope; at 1/8 inch per foot a 3 inch sewer carries 36 and the course's 4 inch carries 180.
 values:
   - when: 3 in building drain or sewer, at 1/8 in per foot
@@ -30,7 +30,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IPC2021P1/chapter-7-sanitary-drainage
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

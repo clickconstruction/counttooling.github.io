@@ -3,7 +3,7 @@ id: plumb.vent.terminal
 title: Vent terminals
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: A vent stack ends open above the roof, at a height the adopting jurisdiction sets (the model code leaves it blank), 7 feet up on a roof people use, and clear of air intakes, at least 10 feet away from a door, window or intake unless it rises 3 feet above the top of it.
 values:
   - when: above the roof, an unprotected roof extension
@@ -25,7 +25,7 @@ source:
 amendments:
   - jurisdiction: Colorado (IPC 2021 adoption)
     note: 6 inches above the roof
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

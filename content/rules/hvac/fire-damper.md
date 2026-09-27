@@ -3,7 +3,7 @@ id: hvac.damper.fire-damper
 title: Fire dampers at rated walls
 trade: hvac
 kind: code
-status: draft
+status: applied
 summary: Where a duct passes through a fire-resistance-rated wall, the code wants a listed fire damper at the penetration unless an exception removes it, so each crossing of a rated wall is a damper, an access door and a sleeve on the bid.
 values:
   - when: a duct through a fire-resistance-rated wall, a listed fire damper at the penetration, unless an exception of 607.5.2 or 607.5.3 removes it
@@ -16,7 +16,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IMC2021P1/chapter-6-duct-systems
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

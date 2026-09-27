@@ -806,6 +806,9 @@ function lessonRiserSheet() {
     '   AIR INTAKE.',
     '4. CLEANOUT AT THE BASE OF',
     '   EACH STACK.',
+    '5. WC AND FD ARE WET VENTED',
+    '   THROUGH THE LAVATORY DRAIN,',
+    '   IPC 912.1.1. VERIFY WITH AHJ.',
   ])}
   ${titleBlock({ sheet: 'P-601', sheetName: 'WASTE &amp; VENT RISER', project: 'MAIN ST RESTAURANT', scale: '1/4" = 1&#39;-0"', date: '07/31/26' })}`;
 }

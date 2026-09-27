@@ -3,7 +3,7 @@ id: plumb.gas.appliance-shutoff
 title: Appliance shutoff valves
 trade: plumbing
 kind: code
-status: draft
+status: applied
 summary: Every gas appliance has its own shutoff valve, in the same room and within 6 feet of it, upstream of its connector, so one appliance can come off the line without shutting the rest.
 values:
   - when: each gas appliance
@@ -17,7 +17,7 @@ source:
   editions: [2018, 2021]
   url: https://codes.iccsafe.org/content/IFGC2021P1/chapter-4-gas-piping-installations
 amendments: []
-used_by: []
+used_by: [course]
 updated: 2026-09-27
 ---
 

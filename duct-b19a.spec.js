@@ -468,11 +468,12 @@ test.describe('B19 part 1 (D18)', () => {
     expect(stale.status).toBe(1);
     expect(stale.stderr).toMatch(/icons-custom\.js is stale vs my-counters\//);
     fs.rmSync(path.dirname(tmp), { recursive: true, force: true });
-    // The aggregate runner lists it (13 steps since the project-map invariants, 2026-09-25; 12 since
-    // the lesson rules check, 2026-09-25; 11 since the punch-list check, 2026-09-16).
+    // The aggregate runner lists it (14 steps since the course language check, 2026-09-27; 13 since
+    // the project-map invariants, 2026-09-25; 12 since the lesson rules check, 2026-09-25; 11 since
+    // the punch-list check, 2026-09-16).
     const check = fs.readFileSync(path.join(__dirname, 'scripts', 'check.js'), 'utf8');
     const steps = check.match(/^\s*\{ name: '/gm) || [];
-    expect(steps.length).toBe(13);
+    expect(steps.length).toBe(14);
     expect(check).toMatch(/name: 'build:icons --check', cmd: 'node', args: \['scripts\/build-custom-icons\.js', '--check'\]/);
   });
 });

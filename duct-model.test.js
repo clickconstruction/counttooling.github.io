@@ -1013,6 +1013,31 @@ test('ductNearestRunPoint: the stray rescue finds the nearest run within the sea
   assert.strictEqual(dm.ductNearestRunPoint({ x: 0, y: 0 }, []), null);
 });
 
+test('ductNearestRunPoint: a diffuser hangs from a run over its own room before a nearer one through the wall (DS-DINING-ATTACH)', () => {
+  // M-101's south-east dining diffuser: the main runs along the dining room 68 off it, the
+  // kitchen branch drops 52 off it on the other side of the dining room's east wall.
+  const main = netRun('main', [{ x: 0, y: 0 }, { x: 400, y: 0 }]);
+  const branch = netRun('branch', [{ x: 312, y: 0 }, { x: 312, y: 200 }]);
+  const rooms = [{ x1: -20, y1: -100, x2: 290, y2: 150, roomId: 'dining' }, { x1: 300, y1: 10, x2: 400, y2: 200, roomId: 'kitchen' }];
+  const sd = { x: 260, y: 68 };
+  assert.strictEqual(dm.ductNearestRunPoint(sd, [main, branch]).runId, 'branch');           // by distance alone: through the wall
+  const near = dm.ductNearestRunPoint(sd, [main, branch], { rooms });
+  assert.strictEqual(near.runId, 'main');                                                    // the run over its own room
+  close(near.point.x, 260); close(near.point.y, 0); close(near.dist, 68);
+  // Only the far side of the wall within reach: the nearest still wins (today's rescue, never none).
+  assert.strictEqual(dm.ductNearestRunPoint(sd, [branch], { rooms }).runId, 'branch');
+  // The run's nearest point is past the wall but the run also crosses the room: the point in the room.
+  const bent = netRun('bent', [{ x: 250, y: -40 }, { x: 330, y: 60 }]);
+  const inRoom = dm.ductNearestRunPoint({ x: 285, y: 60 }, [bent], { rooms });
+  assert.ok(inRoom.point.x <= 290 + 1e-9, 'kept inside the dining room: ' + JSON.stringify(inRoom.point));
+  // A device in no room prefers a point in no room.
+  const hallRun = netRun('hall', [{ x: 500, y: 0 }, { x: 500, y: 200 }]);
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 440, y: 100 }, [branch, hallRun], { rooms }).runId, 'hall');   // 60 to the hall run beats 128 into the kitchen anyway
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 420, y: 100 }, [branch, hallRun], { rooms }).runId, 'hall');   // 80 in no room beats 108 into the kitchen
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 405, y: 100 }, [branch, hallRun], { rooms }).runId, 'hall');   // 95 in no room beats 93 through the kitchen wall
+  assert.strictEqual(dm.ductNearestRunPoint({ x: 405, y: 100 }, [branch, hallRun]).runId, 'branch');           // no rooms known: distance alone
+});
+
 test('ductChildLinks: a run starting on another run links to that parent at the tap arclength', () => {
   const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }]);
   const branch = netRun('branch', [{ x: 120, y: 6 }, { x: 120, y: 150 }]);
@@ -1022,6 +1047,23 @@ test('ductChildLinks: a run starting on another run links to that parent at the 
   assert.strictEqual(links[0].childId, 'branch');
   assert.strictEqual(links[0].parentId, 'trunk');
   close(links[0].s, 120);
+});
+
+test('ductChildLinks: two runs leaving one point are both roots, not each other\'s tap (DS-DINING-ATTACH)', () => {
+  // M-101: the main goes north from the RTU-1 drop and the back-rooms run south from it. Each
+  // starts on the other, so the tap rule made each the other's child and RTU-1 had no root.
+  const main = netRun('main', [{ x: 0, y: 0 }, { x: 0, y: -50 }, { x: -300, y: -50 }], { systemGroupId: 'rtu1' });
+  const back = netRun('back', [{ x: 0, y: 0 }, { x: 0, y: 200 }, { x: -300, y: 200 }], { systemGroupId: 'rtu1' });
+  const branch = netRun('branch', [{ x: -150, y: -50 }, { x: -150, y: 100 }]);
+  const links = dm.ductChildLinks([main, back, branch]);
+  assert.deepStrictEqual(links.map((l) => [l.childId, l.parentId]), [['branch', 'main']]);
+  const devices = [dev(-200, -50, 150), dev(-150, 80, 200), dev(-300, 200, 100)];
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs: [main, back, branch], devices, systemGroupId: 'rtu1' }), 450);
+  // no tap fitting on either at the shared start; the branch's tap stays
+  const taps = dm.inferAutoDuctFittings([main, back, branch]).filter((f) => f.type === 'tap');
+  assert.deepStrictEqual(taps.map((f) => f.runId), ['main']);
+  const path = dm.ductStaticPath({ runs: [main, back, branch], fittings: [], systemGroupId: 'rtu1', frictionRate: 0.08 });
+  assert.ok(path && ['main', 'back'].includes(path.path[0]));
 });
 
 test('ductDeviceSystemId: attachment-derived, marker-group fallback, else null', () => {

@@ -362,7 +362,11 @@
     if (!runs.length) return null;
     // Already attached? Then there is nothing to rescue.
     if (attachDuctDevices([{ x: marker.x, y: marker.y }], runs).attached.length) return null;
-    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs);
+    // DS-DINING-ATTACH: the page's room boxes (every layer, as the Rooms totals read
+    // them) are the walls: a diffuser hangs from the run over its own room before a
+    // nearer one behind a wall (the room rule in duct-model ductNearestRunPoint).
+    const rooms = (App.getPageCanvases ? App.getPageCanvases(page) : []).flatMap((c) => c?.annotations?.roomBoxes || []);
+    const near = ductNearestRunPoint({ x: marker.x, y: marker.y }, runs, { rooms });
     return near ? { marker, point: near.point, runId: near.runId } : null;
   }
   // D19 (J19 Friction #3): the stray-device rescue. Attachment is derived from

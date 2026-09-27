@@ -13,6 +13,50 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(duct): a diffuser attaches to the run its flex leaves from, and the HVAC course's finished takeoff reads finished (DS-DINING-ATTACH, 2026-09-27)
+
+The HVAC dossier's A1 and A2 (journeys/plans/TESTER-DOSSIER-HVAC-2026-09-27.md, "Not trade: for
+an agent"). From chapter 5 on, DINING read "needs 1,200 · served 1,050 ⚠" against chapter 3's
+promised ✓, and after chapter 8's Finish the takeoff for me RTU-1 read 0 designed of 3,000 with
+its Static path on the restroom exhaust.
+
+- **The attach, the room rule** (duct-model.js `ductNearestRunPoint`, fed by features/duct-suggest.js
+  `strayDeviceAttachTarget`, which the right-click Attach to nearest run, the tour and the course's
+  attach seam all read). Distance alone moved the south-east dining SD-1 at plan (520,350) onto
+  the kitchen branch 52 px away, across the dining room's east wall and out of its box, where the
+  flex on the plan runs 68 px straight to the main. A flex drop goes up to the duct over the room
+  the diffuser sits in, never through a wall, and the Room Sizer's boxes are the walls the app
+  knows. So a point on a run that keeps the device in its own room (a box of the same room; for a
+  device in no room, no box) now wins over a nearer one that does not, including the part of a run
+  that crosses the room when its nearest point lies past the wall. With no such run in reach the
+  nearest point overall still wins, so the rescue never goes quiet; with no rooms drawn nothing
+  changes. Airside and system could not decide it (both runs are RTU-1 supply), and a tighter
+  search could not either (both are inside the 6'-0" flex). DINING now reads 1,200 ✓ from chapter
+  5 through 9; RTU-1 still reads 2,350 in chapter 5.
+- **Two runs leaving one point are both roots** (duct-model.js `ductTapParentOf`, the one tap rule
+  `ductChildLinks` and `inferAutoDuctFittings` now share). On M-101 the main goes north from the
+  RTU-1 drop and the back-rooms run south from it; each first vertex lies on the other run, so
+  each was the other's child, RTU-1 had no root run, its designed air read 0 and its Static path
+  fell to the only roots on it, the exhaust runs. A candidate parent whose own first vertex sits
+  within the tap snap of the child's is now a sibling, and neither gets a tap fitting there. A
+  hand-traced chapter 8 hit the same.
+- **Finish the takeoff for me** (features/course-hvac.js `layEverything`): lays every run but the
+  bar, attaches, then the bar and attaches again, so each device sits on the run the plan draws to
+  it (the dish and storage diffusers on the back rooms, MA-1 on the make-up run, the EG-1 grilles
+  on the restroom exhaust; before, an attach ran after the main and kitchen branch and pulled them
+  all onto those). The make-up air and both exhausts go on no system, and the make-up run is laid
+  from its register to MAU-1 (the back-rooms run passes over MAU-1's drop on the sheet, so traced
+  from the drop it tapped RTU-1's back rooms). The finished takeoff reads RTU-1 · 2,650 designed /
+  3,000 capacity ✓, three rooms served, and a Static path from RTU-1 down the supply main.
+- **Left alone**: how the app gives a NEW run its system (A3): a hand-traced exhaust or make-up run
+  still takes the active group, so chapter 7 still reads 4,575 on RTU-1 (the dossier's T2, a
+  product call for the tester).
+- **Tests**: duct-model.test.js (the room rule, the in-room part of a run, the no-room case, the
+  fallback; two runs off one point as roots with no tap, the designed air and a static path);
+  course-hvac.spec.js (chapter 5's attach hangs both east dining diffusers on the main and DINING
+  reads ✓; chapter 8's Finish reads 2,650 and walks the supply main, the dish diffuser on the back
+  rooms).
+
 ## feat(save): a lean permissions read, behind a fallback until its RPC is applied (MAP-PERMS, 2026-09-27)
 
 `refreshProjectPermissions` (save-engine.js) runs on every checkout-channel UPDATE, subscribe,

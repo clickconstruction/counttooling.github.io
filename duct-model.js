@@ -820,15 +820,11 @@ function inferAutoDuctFittings(runs, opts) {
       out.push({ runId: run.id, vertexIdx: run.segments[i].startVertexIdx, origin: 'step', type: 'transition', size: size, auto: true });
     }
   });
-  // taps: child's first vertex on a parent's polyline → tap ON THE PARENT.
+  // taps: child's first vertex on a parent's polyline → tap ON THE PARENT
+  // (ductTapParentOf: the one rule, shared with ductChildLinks' network).
   list.forEach(child => {
     const start = child.vertices[0];
-    let parent = null, best = Infinity;
-    list.forEach(other => {
-      if (other === child || other.id === child.id) return;
-      const d = ductDistToPolyline(start, other.vertices);
-      if (d <= tapSnap && d < best) { best = d; parent = other; }
-    });
+    const parent = ductTapParentOf(child, list, tapSnap)?.parent;
     if (!parent) return;
     out.push({
       runId: parent.id, position: { x: start.x, y: start.y }, origin: 'tap',
@@ -1154,20 +1150,68 @@ function ductDeviceLeaders(devices, runs, opts) {
  * is close enough to be the obvious intent. searchDist is deliberately wider
  * than the tap snap (the device is by definition outside that) but bounded, so
  * a click never teleports a diffuser across the sheet.
+ *
+ * DS-DINING-ATTACH, THE ROOM RULE: a diffuser hangs from the duct over its own
+ * room. A flex drop runs from the diffuser up to the duct above the ceiling it
+ * sits in, never through a wall to the duct over the next room (M-101 draws
+ * every dining flex straight to the main, 68 off; the kitchen branch 52 off is
+ * behind the dining room's east wall). Distance alone moved that diffuser onto
+ * the kitchen branch, out of the dining room's box, and DINING lost its 150.
+ * So with opts.rooms (the page's room boxes, [{ x1, y1, x2, y2, roomId? }],
+ * the Room Sizer's walls) a point on a run that keeps the device in its room
+ * (inside a box of the same room; for a device in no room, inside no box) wins
+ * over a nearer one that does not, and the nearest point overall is the
+ * fallback only when no run within reach keeps it there (the rescue never goes
+ * quiet because of a wall). Airside and system do not decide it: both runs
+ * are the same supply on the same unit. Without rooms: distance alone.
  */
 const DUCT_ATTACH_SEARCH_PDF = 96;
 function ductNearestRunPoint(device, runs, opts) {
   const search = opts?.searchDist > 0 ? opts.searchDist : DUCT_ATTACH_SEARCH_PDF;
   const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
   if (!device || !Number.isFinite(device.x) || !Number.isFinite(device.y)) return null;
-  let best = null;
+  const boxes = (opts?.rooms || []).filter(b => b && [b.x1, b.y1, b.x2, b.y2].every(Number.isFinite));
+  const roomKey = (b) => (b.roomId != null ? 'r:' + b.roomId : b);
+  const roomsAt = (p) => boxes.filter(b => pointInRoomBox(p, b)).map(roomKey);
+  const home = roomsAt(device);
+  const keepsRoom = (p) => { const at = roomsAt(p); return home.length ? at.some(k => home.includes(k)) : !at.length; };
+  const deviceBoxes = boxes.filter(b => pointInRoomBox(device, b));
+  let best = null, bestHome = null;
+  const consider = (run, hit) => {
+    if (!hit || !hit.point || !(hit.dist <= search)) return;
+    const cand = { runId: run.id, point: hit.point, dist: hit.dist };
+    if (!best || cand.dist < best.dist) best = cand;
+    if (boxes.length && keepsRoom(cand.point) && (!bestHome || cand.dist < bestHome.dist)) bestHome = cand;
+  };
   list.forEach(run => {
-    const hit = ductNearestOnPolyline(device, run.vertices);
-    if (hit.point && hit.dist <= search && (!best || hit.dist < best.dist)) {
-      best = { runId: run.id, point: hit.point, dist: hit.dist };
-    }
+    consider(run, ductNearestOnPolyline(device, run.vertices));
+    // the run's nearest point can sit past the wall while the run also crosses
+    // the device's room: its nearest point inside that room is a candidate too
+    deviceBoxes.forEach(b => {
+      for (let i = 0; i < run.vertices.length - 1; i++) {
+        const seg = ductClipSegmentToBox(run.vertices[i], run.vertices[i + 1], b);
+        if (seg) consider(run, ductNearestOnPolyline(device, seg));
+      }
+    });
   });
-  return best;
+  return bestHome || best;
+}
+
+// The part of segment a→b inside an axis-aligned box (Liang-Barsky), as a
+// two-vertex list, or null when the segment misses the box.
+function ductClipSegmentToBox(a, b, box) {
+  const xMin = Math.min(box.x1, box.x2), xMax = Math.max(box.x1, box.x2);
+  const yMin = Math.min(box.y1, box.y2), yMax = Math.max(box.y1, box.y2);
+  const dx = b.x - a.x, dy = b.y - a.y;
+  let t0 = 0, t1 = 1;
+  const edges = [[-dx, a.x - xMin], [dx, xMax - a.x], [-dy, a.y - yMin], [dy, yMax - a.y]];
+  for (const [p, q] of edges) {
+    if (p === 0) { if (q < 0) return null; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  const at = (t) => ({ x: Math.min(xMax, Math.max(xMin, a.x + t * dx)), y: Math.min(yMax, Math.max(yMin, a.y + t * dy)) });   // clamped: an edge point stays in the box
+  return [at(t0), at(t1)];
 }
 
 /**
@@ -1181,16 +1225,37 @@ function ductChildLinks(runs, opts) {
   const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
   const out = [];
   list.forEach(child => {
-    const start = child.vertices[0];
-    let best = null;
-    list.forEach(parent => {
-      if (parent === child || parent.id === child.id) return;
-      const hit = ductNearestOnPolyline(start, parent.vertices);
-      if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { childId: child.id, parentId: parent.id, s: hit.s, dist: hit.dist };
-    });
-    if (best) out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
+    const best = ductTapParentOf(child, list, snap);
+    if (best) out.push({ childId: child.id, parentId: best.parent.id, s: best.s });
   });
   return out;
+}
+
+/**
+ * The tap rule for one run (D3), shared by the fittings walk and the network:
+ * the nearest run within snap of `child`'s FIRST vertex is its parent —
+ * { parent, s, dist } (s = arclength along the parent), or null for a root.
+ *
+ * DS-DINING-ATTACH: two runs that LEAVE ONE POINT are both roots. On M-101 the
+ * main goes north from the RTU-1 drop and the back-rooms run goes south from
+ * the same drop; each first vertex lies on the other run, so the bare rule made
+ * each the other's child, the system had no root, and RTU-1 read 0 designed
+ * with its Static path on an exhaust run. Two trunks off one unit (or one
+ * plenum) are siblings, so a candidate parent whose own first vertex sits
+ * within snap of the child's is skipped, and so is neither run's tap fitting.
+ */
+function ductTapParentOf(child, list, snap) {
+  const start = child?.vertices?.[0];
+  if (!start) return null;
+  let best = null;
+  (list || []).forEach(parent => {
+    if (!parent || parent === child || parent.id === child.id || (parent.vertices?.length || 0) < 2) return;
+    const p0 = parent.vertices[0];
+    if (Math.hypot(p0.x - start.x, p0.y - start.y) <= snap) return;   // siblings off one point
+    const hit = ductNearestOnPolyline(start, parent.vertices);
+    if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { parent: parent, s: hit.s, dist: hit.dist };
+  });
+  return best;
 }
 
 /**

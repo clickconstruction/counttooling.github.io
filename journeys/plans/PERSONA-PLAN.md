@@ -230,6 +230,8 @@ prober and the cheaper live pass"; how it came out is in the Harness section bel
 
 ## Rulebook gaps
 
+**All 29 gaps drafted 2026-09-26** (32 rules, three trade agents, one branch each): the courses' `rulesExempt` lines are gone and `--gaps` lists nothing. Every draft carries a Verify against your edition paragraph; PUNCHLIST `RULEBOOK-SIGN` is the tester's signing row, and a draft turns `applied` only with that signature.
+
 Found by the lesson rules check the day it was built (2026-09-25): the courses teach code the
 rulebook does not hold. `node scripts/check-lesson-rules.js --gaps` lists them, each with the step
 and the section it cites. There are 29: eleven in the plumbing course (indirect waste and trap

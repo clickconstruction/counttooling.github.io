@@ -13,6 +13,47 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(rules): the seven lookups the dossiers left open, answered (2026-09-27)
+
+The four dossiers left seven points open because nobody had read the source. They were looked
+up the same day; what was read, and where, is in each file.
+
+- **Table 604.5's manifold footnote: 50 ft and 35 psi**, read in the IPC 2021 as Colorado adopts
+  it. The dossier had it right; the 60 ft remembered against it was wrong. In
+  `plumb.water.fixture-supply-min`.
+- **CPVC bores: the average bore**, like PEX: 0.469, 0.695, 0.901, 1.105, 1.309 and 1.716 in for
+  1/2 to 2 in (they were the largest bore, 0.489 to 1.739). The outside diameters and minimum walls
+  were read in Charlotte Pipe's FlowGuard Gold submittal; the wall tolerance in a secondary table of
+  ASTM D2846. `water-model.js` `PIPE_ID_IN.cpvc` and `plumb.water.pipe-id` change together, so a
+  CPVC run near the velocity cap may now be suggested one size larger.
+- **IFGC 409.5, FDA Food Code 5-204.11, IPC 608:** the three citations the plumbing cards carry
+  were confirmed (409.5 in the residential code's copy of it, G2420.5; 608.1 in the IPC 2021).
+- **NEC 2023 700.12(C), Supply Duration:** the letter and title agree in two secondary sources;
+  the paragraph itself is unread, and `elec.emergency.battery-duration` says so.
+- **NFPA 96 10.4:** still unread in the standard. More secondary sources quote 10.4.1, 10.4.3,
+  10.4.4 and 10.4.4.1 alike; the two hood rules stay `draft`, and RULEBOOK-SIGN is now only this.
+- **Where the water rises (PC-REVIEW-9):** the card keeps its 4 ft as practice and an RFI, and adds
+  that the service most often rises where it enters and runs above the ceiling, with a pipe down
+  the wall at each fixture.
+- **P-601's venting (PC-REVIEW-10):** the riser is a vertical wet vent (IPC 912.1.1): the water
+  closet and the floor drain connect at the same level, the lavatory above, and the stack
+  continues as the dry vent. Riser note 5 now names the method and says to verify it with the
+  authority, since a public restroom is not plainly a bathroom group; the card says the same. The
+  lesson set is regenerated, words only.
+- **Punch list:** PC-TRADE and PT-TRADE are closed (the rules PR had done both), and so are
+  PC-REVIEW and WATER-TABLES. `conduit-fill`'s example now reads 2 #12 THHN + 1 #12 G. sw.js
+  restamped.
+
+## fix(learn): Start here's open card says one thing: this is a sample, and nothing here touches your work (2026-09-27)
+
+Will, 2026-09-27: the card repeated the line the reader had just read on the Learn row, and the rest
+of it taught nothing about where things are. What the card is for is the promise that the lesson
+runs on a sample plan and cannot affect anything else. So Start here's open card now reads: the
+lesson runs on sample sheets, a small restaurant's plumbing plan, opened for you; nothing you do on
+them touches your own projects; if a plan of yours is open, the app asks before it closes it; then
+the one action. A lesson that gives an `opener` gets that card, with the generic closing paragraph
+left out. The other lessons and the course chapters still open on their intro. sw.js restamped.
+
 ## docs(rules): one status for every settled rule, and the Measuring lesson's gas main (2026-09-27)
 
 The three trades' dossiers were settled the same day by three hands, and they disagreed on what a
@@ -32,6 +73,42 @@ HVAC ones stayed `draft` with the sign-off in their Verify paragraph.
   sizes along it and the plumbing course now traces each (PC-TRADE-4). The lesson's line type is
   now "Gas Pipe", and the trace card says the plan prints two sizes and a real bid traces each as
   its own line type. The trace, its feet (39.5) and its elbows are unchanged. sw.js restamped.
+
+## fix(tour): one circuit's wire in the electrical tour, guide and film script (EC-TOUR-WIRE, 2026-09-27)
+
+The electrical dossier settled R1 on 2026-09-27: a 120 V branch circuit is 2 #12 + 1 #12 G, the hot,
+the neutral and the ground, not 3 #12 + G. The course took it that day. The five-minute tour, the
+electrical takeoff guide, the landing's electrical film and its spotlight still taught three #12;
+they teach two now. The figures the tour cards and the landing captions state were read off the
+app with the new spec.
+
+- **The tour** (features/tutorial.js, `ELECTRICAL_STEPS`). The `linetype` card has the reader type
+  `2 #12 THHN + 1 #12 G` and reads it as two #12 wires, the live one and the neutral, and one
+  ground. Its check wants two current-carrying #12 (written `2 #12` or `1 #12 + 1 #12 N`) and one
+  #12 ground, so 3 #12 + G now holds the step with the hint "type 2 #12 THHN + 1 #12 G". The
+  do-it-for-me action makes that type and its label reads 2 #12 + G. The `bidcheck` card's fill
+  figure is 7.5%, the app's own number for 2 #12 + G in 3/4" EMT (it said 10%).
+- **The guide** (content/guides/electrical-takeoff.md, rebuilt). The shorthand example is
+  `2 #12 THHN + 1 #12 G` for one 120 V circuit, the illustrative roll-up is twice the green (314 ft
+  of #12 against 157 ft of green), and the Bid Check picture's caption says 7.5%.
+- **The film script** (scripts/build-hero-video.js, the electrical film). It types
+  `2 #12 THHN + 1 #12 G` and the caption reads "List the wires one circuit carries: two #12
+  conductors and a ground." The three circuits and their typed 6 A loads are unchanged. The
+  `--chapters-only` pass passed the Bid Check guard (fill ok, voltage drop ok, every device
+  reached) and rewrote img/hero-electrical.chapters.json and the two end-card images; the timings
+  did not move.
+- **The landing.** The spotlight seed (scripts/build-screenshots.js `electricalBase`) makes the
+  same conduit, and the three electrical captions quote it: two #12 and a ground, three
+  conductors a run; circuit 11's 59.49 ft of EMT carrying 118.98 ft of #12 THHN; fill 7.5%.
+- **The conductor field's examples.** The Conductors placeholder (app/index.html) and the two
+  hints under it (features/conductors.js) say `2 #12 THHN + 1 #12 G`.
+- **Specs.** tutorial.spec.js pins the card's spec and its 7.5%, the line type's conductors, the
+  Bid Check fill detail and the wire row at twice the green row; the PERSONA-PASS test holds a
+  3 #12 + G type with the conductors hint.
+- **Still to shoot** (PUNCHLIST EC-TOUR-WIRE): the electrical film's MP4 and poster, the guide's
+  two electrical tour pictures and the three electrical spotlight frames. Also left: the conduit
+  fill rule's own example in content/rules/electrical/conduit-fill.md, which another change was
+  editing.
 
 ## docs(rules): the plumbing rules dossier settled (WATER-TABLES, RULEBOOK-SIGN plumbing, 2026-09-27)
 

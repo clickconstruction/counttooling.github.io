@@ -166,13 +166,13 @@ const WATER_VELOCITY_CAP_FPS = { cold: 8, hot: 5 };
 // DATA TABLE — inside diameter, inches, per nominal size for the materials the
 // Quick Line knows, from the dimension standards (velocity = flow ÷ area).
 // Keys are the nominal size in decimal inches as a string. PEX is Uponor's
-// published AquaPEX bores (they allow for wall tolerance); CPVC is the outside
-// diameter less two minimum walls, the largest bore (the basis is an open
-// question in plumb.water.pipe-id's Verify paragraph).
+// published AquaPEX bores (they allow for wall tolerance); CPVC is the average
+// bore too, the outside diameter less two average walls (ASTM D2846's minimum
+// wall plus half its tolerance), settled 2026-09-27 in plumb.water.pipe-id.
 const PIPE_ID_IN = {
   pex: { label: 'PEX', standard: 'ASTM F876, SDR 9', sizes: { '0.375': 0.35, '0.5': 0.475, '0.75': 0.671, '1': 0.862, '1.25': 1.054, '1.5': 1.244, '2': 1.629 } },
   copper: { label: 'copper Type L', standard: 'ASTM B88', sizes: { '0.375': 0.43, '0.5': 0.545, '0.75': 0.785, '1': 1.025, '1.25': 1.265, '1.5': 1.505, '2': 1.985, '2.5': 2.465, '3': 2.945 } },
-  cpvc: { label: 'CPVC', standard: 'ASTM D2846, CTS SDR 11', sizes: { '0.5': 0.489, '0.75': 0.715, '1': 0.921, '1.25': 1.125, '1.5': 1.329, '2': 1.739 } },
+  cpvc: { label: 'CPVC', standard: 'ASTM D2846, CTS SDR 11', sizes: { '0.5': 0.469, '0.75': 0.695, '1': 0.901, '1.25': 1.105, '1.5': 1.309, '2': 1.716 } },
   galvanized: { label: 'galvanized steel', standard: 'ASTM A53, Schedule 40', sizes: { '0.5': 0.622, '0.75': 0.824, '1': 1.049, '1.25': 1.38, '1.5': 1.61, '2': 2.067, '2.5': 2.469, '3': 3.068 } },
 };
 const WATER_MATERIAL_ORDER = ['pex', 'copper', 'cpvc', 'galvanized'];

@@ -578,3 +578,9 @@ the cards that cite it) and were not touched here. Branch `claude/dossier-plumbi
   paragraph says the card gives an air gap for both), plumb.drain.dfu-capacity (its body says 47
   and "dumps a tank"), plumb.water.velocity (the UPC and NSPC sentence). LEFT OPEN.
 - RUNS in the course if the gas main splits: APPLIED (PC-TRADE-4).
+
+### Looked up later the same day
+
+- **PC-REVIEW-9:** settled as teaching. The card keeps 4 ft as practice and an RFI, and adds the usual route: the service rises where it enters, the pipe runs above the ceiling, a pipe down the wall at each fixture. APPLIED
+- **PC-REVIEW-10:** the riser is a vertical wet vent, IPC 912.1.1 (read in the IPC 2021 as Colorado adopts it, with the definition of a bathroom group). Riser note 5 names the method and says to verify with the authority; the card says so. Confidence medium: whether a public restroom counts as a bathroom group is the authority's reading. APPLIED
+- **IFGC 409.5, Food Code 5-204.11, IPC 608:** confirmed (409.5 in the residential code's copy, G2420.5; 5-204.11 in summaries of the 2022 Food Code; 608.1 read in the IPC 2021). **NFPA 96 10.4:** still unread in the standard, RULEBOOK-SIGN.

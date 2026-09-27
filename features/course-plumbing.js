@@ -315,7 +315,7 @@
     // seen a construction drawing. Reading steps only, no zones; it names the words the nine
     // chapters take for granted. Its title carries no "Chapter N:", so it stays outside the count.
     {
-      id: 'before', title: 'Before you count', short: 'the ground the course stands on', minutes: 4, page: 0, noun: 'chapter',
+      id: 'before', title: 'Chapter 0: Before you count', short: 'the ground the course stands on', minutes: 4, page: 0, noun: 'chapter',
       intro: 'For anyone who has never seen a construction drawing. What the sheets are, what an estimator does with them, and how the app and its cards work.',
       seed() { /* nothing: this chapter only reads */ },
       steps: [

@@ -393,7 +393,7 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     // nine chapters and the uncounted opener ahead of them, lit first for a new reader
     await expect(page.locator('#learnCourseList-plumbing .learn-row')).toHaveCount(10);
     await expect(page.locator('#learnCourseList-plumbing .learn-row').first()).toHaveClass(/learn-row-next/);
-    await expect(page.locator('#learnCourseProgress-plumbing')).toHaveText('0 of 10 done');
+    await expect(page.locator('#learnCourseProgress-plumbing')).toHaveText('0 of 9 done');   // the opener, row 0, is read, not counted
     await expect(page.locator('#learnCourseList-plumbing .learn-row').first().locator('.learn-row-title')).toHaveText('Before you count');
     await expect(page.locator('#learnCourseList-plumbing .learn-row').nth(1).locator('.learn-row-title')).toHaveText('Read the sheet');
     await page.click('#learnModal [data-modal-close]');

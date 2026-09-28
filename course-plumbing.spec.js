@@ -424,7 +424,9 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     await page.waitForTimeout(500);
     await expect(page.locator('#tourBody')).toContainText('short:');
     const box = await page.evaluate(() => { const card = document.getElementById('tourCard'); const c = card.getBoundingClientRect(); const n = document.getElementById('tourNext').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, nextTop: n.top, nextBottom: n.bottom, vh: window.innerHeight, tall: card.scrollHeight }; });
-    expect(box.tall).toBeGreaterThan(box.vh - 24);   // the long list: taller than the window allows, so it scrolls
+    // the long list: a long card is a wider card since the card pass, so it no longer has to scroll here;
+    // whether it fits or scrolls, the card and its Next stay inside the window
+    await expect(page.locator('#tourCard')).toHaveClass(/tour-card-wide/);
     expect(box.top).toBeGreaterThanOrEqual(0);
     expect(box.bottom).toBeLessThanOrEqual(box.vh);
     expect(box.nextTop).toBeGreaterThanOrEqual(box.top);

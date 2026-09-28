@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the lessons. `start` to `measuring` are done; `chain` is next, card `(open)`.
+**Now:** the lessons and the three trade tours are done. The blank-sheet tour is next, card `welcome`.
 
 ### The six fixes, before the pass
 
@@ -69,6 +69,17 @@ Engine changes the pass has made so far, which every later card gets for free:
 - A doing card whose text ran on after its steps now gives that text as its `answer`, once the step
   is done: shorter while the reader works, and the result is read when there is a result.
 
+- `answerWaits`: an answer whose step ends with Click Done waits until the dialog is closed; the status
+  line says "That is in. Now close the dialog" meanwhile.
+- An answered step stays done for the rest of its visit, so closing the dialog the answer explains
+  does not take Next away.
+- `bidCheckRows(key, ids)` (tourKit): once BID CHECK is open its heading goes to the top of the sidebar
+  and the named rows are lit. It opened under the fold of a laptop screen.
+- Specs wait for a step with `stepTo(page, id)` (spec-helpers.js): it clicks Next on a card that is
+  done and holding on its answer, the way a reader does.
+- The plumbing tour's size card and the HVAC tour's duct card are three states each, as long as what
+  the reader is doing: the size card was 696 px of a 720 px window and scrolled.
+
 Found on the way, fixed: the page badge was described the wrong way round in three cards (a yellow
 NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 
@@ -79,70 +90,70 @@ NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 - [x] **scale** (7): (open), set, prove, zone, provezone, more, (done)
 - [x] **counting** (7): (open), counter, place, bind, usekey, settings, (done)
 - [x] **measuring** (7): (open), snap, trace, bends, drop, read, (done)
-- [ ] **chain** (5): (open), chain, hangers, rule, (done)
-- [ ] **repeats** (4): (open), zone, read, (done)
-- [ ] **organize** (8): (open), groupson, group, assign, filter, layer, hide, (done)
-- [ ] **fixing** (6): (open), undo, context, details, area, (done)
-- [ ] **notes** (6): (open), note, rfi, highlight, ledger, (done)
-- [ ] **check** (7): (open), open, fix, tick, proof, legend, (done)
-- [ ] **deliver** (6): (open), report, pdfs, tooling, email, (done)
-- [ ] **speed** (5): (open), map, rail, rightclick, (done)
-- [ ] **cloud** (5): (open), saved, share, bids, (done)
+- [x] **chain** (5): (open), chain, hangers, rule, (done)
+- [x] **repeats** (4): (open), zone, read, (done)
+- [x] **organize** (8): (open), groupson, group, assign, filter, layer, hide, (done)
+- [x] **fixing** (6): (open), undo, context, details, area, (done)
+- [x] **notes** (6): (open), note, rfi, highlight, ledger, (done)
+- [x] **check** (7): (open), open, fix, tick, proof, legend, (done)
+- [x] **deliver** (6): (open), report, pdfs, tooling, email, (done)
+- [x] **speed** (5): (open), map, rail, rightclick, (done)
+- [x] **cloud** (5): (open), saved, share, bids, (done)
 
 ## The plumbing tour  (features/tutorial.js)
 
-- [ ] **welcome** (1): welcome
-- [ ] **scale** (1): scale
-- [ ] **measure** (1): measure
-- [ ] **counter** (1): counter
-- [ ] **place** (1): place
-- [ ] **linetype** (1): linetype
-- [ ] **chain** (1): chain
-- [ ] **drop** (1): drop
-- [ ] **hangers** (1): hangers
-- [ ] **waterside** (1): waterside
-- [ ] **wsfu** (1): wsfu
-- [ ] **size** (1): size
-- [ ] **zone** (1): zone
-- [ ] **rfi** (1): rfi
-- [ ] **proof** (1): proof
-- [ ] **bidcheck** (1): bidcheck
-- [ ] **handoff** (1): handoff
-- [ ] **done** (1): done
+- [x] **welcome** (1): welcome
+- [x] **scale** (1): scale
+- [x] **measure** (1): measure
+- [x] **counter** (1): counter
+- [x] **place** (1): place
+- [x] **linetype** (1): linetype
+- [x] **chain** (1): chain
+- [x] **drop** (1): drop
+- [x] **hangers** (1): hangers
+- [x] **waterside** (1): waterside
+- [x] **wsfu** (1): wsfu
+- [x] **size** (1): size
+- [x] **zone** (1): zone
+- [x] **rfi** (1): rfi
+- [x] **proof** (1): proof
+- [x] **bidcheck** (1): bidcheck
+- [x] **handoff** (1): handoff
+- [x] **done** (1): done
 
 ## The electrical tour  (features/tutorial.js)
 
-- [ ] **welcome** (1): welcome
-- [ ] **scale** (1): scale
-- [ ] **measure** (1): measure
-- [ ] **trade** (1): trade
-- [ ] **counter** (1): counter
-- [ ] **place** (1): place
-- [ ] **linetype** (1): linetype
-- [ ] **ceiling** (1): ceiling
-- [ ] **chain** (1): chain
-- [ ] **circuit** (1): circuit
-- [ ] **summary** (1): summary
-- [ ] **bidcheck** (1): bidcheck
-- [ ] **handoff** (1): handoff
-- [ ] **done** (1): done
+- [x] **welcome** (1): welcome
+- [x] **scale** (1): scale
+- [x] **measure** (1): measure
+- [x] **trade** (1): trade
+- [x] **counter** (1): counter
+- [x] **place** (1): place
+- [x] **linetype** (1): linetype
+- [x] **ceiling** (1): ceiling
+- [x] **chain** (1): chain
+- [x] **circuit** (1): circuit
+- [x] **summary** (1): summary
+- [x] **bidcheck** (1): bidcheck
+- [x] **handoff** (1): handoff
+- [x] **done** (1): done
 
 ## The HVAC tour  (features/tutorial.js)
 
-- [ ] **welcome** (1): welcome
-- [ ] **scale** (1): scale
-- [ ] **measure** (1): measure
-- [ ] **room** (1): room
-- [ ] **counter** (1): counter
-- [ ] **place** (1): place
-- [ ] **system** (1): system
-- [ ] **duct** (1): duct
-- [ ] **attach** (1): attach
-- [ ] **schedule** (1): schedule
-- [ ] **bidcheck** (1): bidcheck
-- [ ] **handoff** (1): handoff
-- [ ] **legend** (1): legend
-- [ ] **done** (1): done
+- [x] **welcome** (1): welcome
+- [x] **scale** (1): scale
+- [x] **measure** (1): measure
+- [x] **room** (1): room
+- [x] **counter** (1): counter
+- [x] **place** (1): place
+- [x] **system** (1): system
+- [x] **duct** (1): duct
+- [x] **attach** (1): attach
+- [x] **schedule** (1): schedule
+- [x] **bidcheck** (1): bidcheck
+- [x] **handoff** (1): handoff
+- [x] **legend** (1): legend
+- [x] **done** (1): done
 
 ## The blank-sheet tour  (features/tour-blank.js)
 

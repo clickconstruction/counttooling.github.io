@@ -1285,12 +1285,12 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       const errors = [];
       page.on('pageerror', (e) => errors.push(e.message));
       await walkTo(page, 'size');
-      const body = await page.locator('#tourBody').textContent();
-      expect(body).not.toMatch(/press/i);
-      expect(body).toContain('Tap ☰ at the top left, then Polyline');
-      expect(body).toContain('On that card, tap Pipe size');
-      expect(body).toContain('In the list of sizes, tap 3/4″');
-      expect(body).toContain('Tap Finish under the sheet');
+      // the card is three states, each as long as what the reader is doing (the card pass): the trace,
+      // the water card and its sizes, the last circle and Finish
+      const body = () => page.locator('#tourBody').textContent();
+      expect(await body()).not.toMatch(/press/i);
+      expect(await body()).toContain('Tap ☰ at the top left, then Polyline');
+      expect(await body()).not.toContain('Pipe size');
       const pt = (p) => page.evaluate((q) => { const c = document.getElementById('annCanvas'); const r = c.getBoundingClientRect(); const b = window.App.toCanvas(q); return { x: r.left + b.x * (r.width / c.width), y: r.top + b.y * (r.height / c.height) }; }, p);
       await page.tap('#hamburger');
       await page.waitForTimeout(500);
@@ -1303,6 +1303,9 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       await page.touchscreen.tap(zs[0].cx, zs[0].cy);
       await expect(page.locator('#waterHintSize')).toBeVisible();
       await page.waitForTimeout(700);
+      expect(await body()).toContain('On that card, tap Pipe size');
+      expect(await body()).toContain('In the list of sizes, tap 3/4″');
+      expect(await body()).not.toMatch(/press/i);
       await expect.poll(() => litIs(page, '#waterHintSize')).toBe(true);
       await page.tap('#waterHintSize');
       await expect(page.locator('#waterSizePopover')).toBeVisible();
@@ -1310,6 +1313,8 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       await page.locator('.water-size-step', { hasText: '3/4″' }).tap();
       await expect(page.locator('#waterSizePopover')).toBeHidden();
       await page.waitForTimeout(700);
+      expect(await body()).toContain('Tap inside the second circle');
+      expect(await body()).toContain('Tap Finish under the sheet');
       // the tour card docks at the top and the second circle is out from under it
       zs = await page.evaluate(() => window.App.tutorialZoneScreen());
       expect(overlaps(circleBox(zs[1]), await rectOf(page, '#tourCard'))).toBe(false);
@@ -1357,9 +1362,10 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
     await page.evaluate(() => window.App.tutorialGoTo('counter'));
     const body = await page.locator('#tourBody').textContent();
     expect(body).not.toContain('plumbing set');
-    // a statement between the actions, not a numbered 'see that' (review of the persona fixes, 2026-09-25)
-    expect(body).toContain('Under Icon the toilet lights as you type the name. The app ships the trade\'s icons');
-    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => [o.start, o.children.length]))).toEqual([[1, 3], [4, 2]]);
+    // a statement, not a numbered 'see that' (review of the persona fixes, 2026-09-25); since the card pass
+    // it closes the line that types the name, so the five actions are one list
+    expect(body).toContain('Under Icon the toilet lights as you type.');
+    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => [o.start, o.children.length]))).toEqual([[1, 5]]);
     await page.click('#addCounter');
     await page.click('#counterModal .counter-tab[data-tab="create"]');
     const sel = () => page.evaluate(() => { const c = document.querySelector('#counterIconGrid .icon-cell.selected'); return c ? window.App.getIconName(c.dataset.path) : null; });

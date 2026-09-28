@@ -225,7 +225,7 @@ const FIRST_USE = {
   },
   'tour-hvac': {
     'takeoff': 'welcome', 'HVAC': 'welcome', 'ventilation': 'welcome', 'duct': 'welcome', 'engineer': 'welcome',
-    'design-build': 'welcome', 'diffuser': 'welcome', 'CFM': 'welcome', 'main': 'welcome', 'fitting': 'welcome',
+    'design-build': 'welcome', 'diffuser': 'welcome', 'CFM': 'welcome', 'main': 'welcome', 'fitting': 'schedule',
     'bid': 'welcome',
     'scale': 'scale', 'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
     'room sizer': 'room', 'deck': 'room', 'deck height': 'room', 'tag': 'room',

@@ -893,6 +893,70 @@ test.describe('Every button, on a blank sheet', () => {
     expect(await page.evaluate(() => [window.state.counters.filter((c) => c.name === 'Fixture').length, localStorage.getItem('clickcount-tour-blank-step')])).toEqual([0, null]);
   });
 
+  // The Move card passes on the view changing, and the engine changes the view itself: the Measure
+  // card zooms onto its circles, and the sheet glides back out as Move opens. A reader saw the card
+  // for under two seconds and the tour moved on with nothing clicked (wendi, 2026-09-28). A spec's
+  // browser gets the jump, not the glide (navigator.webdriver), so this test turns the glide on.
+  const toMove = async (page) => {
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    await doAndGo(page);
+    await waitForStep(page, 'measure');
+    await page.waitForTimeout(400);   // the focus on the circles starts 60 ms in
+    await page.waitForFunction(() => !window.App.tourKit.gliding(), null, { timeout: 8000 });
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    await page.click('#tourNext');   // the measure card holds on its reading
+    expect(await stepId(page)).toBe('move');
+  };
+  const dragSheet = async (page) => {
+    const at = await page.evaluate(() => { const r = document.querySelector('.canvas-wrapper').getBoundingClientRect(); return { x: r.left + r.width * 0.7, y: r.top + r.height * 0.6 }; });
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x + 60, at.y + 30, { steps: 8 });
+    await page.mouse.up();
+  };
+
+  test('the Move card waits for the reader: the tour\'s own glide back to the whole sheet is not their drag', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.addInitScript(() => { Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await toMove(page);
+    // the glide is really on, and the sheet was zoomed onto the circles when it began
+    expect(await page.evaluate(() => [window.App.tourKit.gliding(), window.state.zoom > 1.5])).toEqual([true, true]);
+    // hands off, for the glide (2.6 s), the beat a done step waits (0.9 s) and a second over
+    await page.waitForTimeout(4600);
+    expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done, window.App.tourKit.gliding()])).toEqual(['move', false, false]);
+    await expect(page.locator('#tourBody')).toContainText('Drag the sheet a little');
+    // the reader's own drag is what passes it
+    await dragSheet(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+  });
+
+  test('the Move card opened a second time starts from the view it opens on, not the first visit\'s', async ({ page }) => {
+    test.setTimeout(90000);
+    // a monitor large enough that the Measure circles need no zoom: the view is the reader's throughout
+    await page.setViewportSize({ width: 2800, height: 1700 });
+    await toMove(page);
+    await page.waitForTimeout(600);
+    await dragSheet(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+    // back to Measure, then forward again: the sheet is where the drag left it
+    await page.click('#tourBack');
+    await page.click('#tourBack');
+    expect(await stepId(page)).toBe('measure');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('move');
+    await page.waitForTimeout(2200);
+    expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done])).toEqual(['move', false]);
+    await dragSheet(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+  });
+
   test('?tour=blank, the Learn button and the Settings link start it; over a teaching set it resets without asking', async ({ page }) => {
     await page.goto('/app/?tour=blank');
     await ready(page);
@@ -914,6 +978,35 @@ test.describe('Every button, on a blank sheet', () => {
     await waitForStep(page, 'scale');
     expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, document.querySelectorAll('.modal-overlay.visible').length])).toEqual([2, 'blank-sheet', 0]);
   });
+  // Wendi, 2026-09-28: "this button doesn't exist where highlighted, have to scroll down". Project
+  // Settings' Save row sticks to the dialog's foot and lay over Close project, so the ring was
+  // drawn on Save. The dialog scrolls until the control the card names is the thing on top.
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1707, height: 916 }]) {
+    test('the close step lights Close project where it shows, clear of the Save row (' + viewport.width + ' x ' + viewport.height + ')', async ({ page }) => {
+      test.setTimeout(90000);
+      await page.setViewportSize(viewport);
+      await page.goto('/app/?tour=blank');
+      await ready(page);
+      await waitForStep(page, 'welcome');
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await waitForStep(page, 'scale');
+      await page.evaluate(() => window.App.tutorialGoTo('close'));
+      await waitForStep(page, 'close');
+      await page.click('#settingsGearBtn');
+      const lit = () => page.evaluate(() => {
+        const t = document.getElementById('settingsCloseProject'), r = t.getBoundingClientRect();
+        const top = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        const s = document.getElementById('tourSpot').getBoundingClientRect();
+        const save = document.querySelector('#settingsModal .settings-actions').getBoundingClientRect();
+        return { onTop: top === t, ringed: s.left <= r.left && s.top <= r.top && s.right >= r.right && s.bottom >= r.bottom && s.height < r.height + 20, clearOfSave: s.bottom <= save.top };
+      });
+      await expect.poll(lit, { timeout: 8000 }).toEqual({ onTop: true, ringed: true, clearOfSave: true });
+      // and it is the real button: the click asks, the answer closes the sheet
+      await page.click('#settingsCloseProject');
+      await page.click('#confirmOk');
+      await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(0);
+    });
+  }
   // A tablet in portrait (768 × 1024, touch): the app's own breakpoint, where the sidebar is a
   // drawer, the status-bar links are gone, the header strip scrolls and several controls live
   // under the ☰. Every step still has a door, the door is lit on screen, and the walk completes.

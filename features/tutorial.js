@@ -834,10 +834,10 @@
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
       body: () => 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\n'
         + (isNarrow() ? '1. Tap ☰ at the top left, then [[Room Sizer]] in the list that opens.' : '1. In the header, click [[⋯]], then [[Room Sizer]] (or press V).')
-        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n4. In {{Ceiling height|#roomBoxHeight}}, type 9.\n5. In {{Deck height|#roomBoxDeck}}, type 12.\n6. Click {{Apply|#roomBoxApply}}.',
+        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. In {{Ceiling height|#roomBoxHeight}}, type 9.\n4. In {{Deck height|#roomBoxDeck}}, type 12.\n5. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n6. Click {{Apply|#roomBoxApply}}.',
       answer: 'The sheet gets one small totals tag, a label, placed off the printed name.\nIt reads the room\'s area and the air it needs.',
-      // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
-      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreMenu .hm-row[data-tool-id="roomBtn"]', '#headerMoreBtn'); },
+      // the dialog's fields top to bottom, the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : v('roomBoxType') !== 'office' ? '#roomBoxType' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreMenu .hm-row[data-tool-id="roomBtn"]', '#headerMoreBtn'); },
       page: 0,
       zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
       hint: () => {
@@ -1578,7 +1578,14 @@
         }
       }
       const inView = seen(target, r);
-      if (!inView && (!scrollSettled || inStrip(target))) { try { target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
+      if (!inView && (!scrollSettled || inStrip(target))) {
+        try {
+          target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect();
+          // The nearest edge of a dialog can be under a row that sticks to it (Project Settings'
+          // Save row): the middle of the panel is clear of it (Wendi, 2026-09-28).
+          if (!inStrip(target) && !seen(target, r)) { target.scrollIntoView({ block: 'center', inline: 'nearest' }); r = target.getBoundingClientRect(); }
+        } catch (_) {}
+      }
       else if (inView) scrollSettled = true;
       const arrived = target !== lastTarget;   // the light has moved to a new control
       lastTarget = target;
@@ -1787,7 +1794,18 @@
       if (!b.width || !b.height) continue;   // a zero box clips nothing that shows (#annCanvas's wrapper: the canvas is positioned out of it)
       if (cy < b.top || cy > b.bottom || cx < b.left || cx > b.right) return false;
     }
-    return true;
+    return !underStickyRow(t, cx, cy);
+  }
+  // Inside the scrolling box and still not showing: a row that sticks to the box's edge lies over
+  // it. Project Settings' Save row covered Close project, and the ring was drawn on Save (Wendi,
+  // 2026-09-28: "this button doesn't exist where highlighted, have to scroll down").
+  function underStickyRow(t, cx, cy) {
+    const top = document.elementFromPoint(cx, cy);
+    if (!top || top === t || t.contains(top) || top.contains(t)) return false;
+    for (let p = top; p && p !== document.body; p = p.parentElement) {
+      if (getComputedStyle(p).position === 'sticky') return !p.contains(t);
+    }
+    return false;
   }
   // The pencil beside ONE palette row. "#lineTypesList .edit-btn" alone lights the first pencil in
   // the list: the reader's own 1.5in Copper on a device with a standing palette, while the card said
@@ -2286,7 +2304,11 @@
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
     markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, bidCheckRows, allDone, grow, norm, inCircle, markersOf, counterFormTargets, lineTypeFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
-    lastSheetClick: () => lastSheetClick };   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
+    lastSheetClick: () => lastSheetClick,   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
+    // The engine is moving the sheet itself (the glide onto a step's circles, or back out to the whole
+    // sheet). A check that reads the view waits for it: the blank tour's Move card took the glide for
+    // the reader's drag and passed with nobody touching it (wendi, 2026-09-28).
+    gliding: () => !!gliding };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

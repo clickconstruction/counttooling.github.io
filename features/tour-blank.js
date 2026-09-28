@@ -463,7 +463,17 @@
         ? '1. In the header, tap [[Move]].\n2. Drag the sheet a little with one finger.\nTwo fingers pinch to zoom.'
         : '1. In the header, click [[Move]] (or press M).\n2. Drag the sheet a little: hold the mouse button down and slide.\nThe mouse wheel zooms where the pointer is. The Esc key, at the top left of the keyboard, brings you back here from any tool.'),
       target: ['#moveBtn', '#moveBtnSidebar'],
-      check: () => { const s = S(); const p = s.pan || { x: 0, y: 0 }; if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; } const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01; return s.tool === App.TOOL.NONE && moved; },
+      // The view the reader starts from is taken when the step opens and the sheet is still. The
+      // Measure card before this one zooms onto its circles, and the engine glides back out to the
+      // whole sheet as this card opens: that motion is the tour's, not the reader's drag.
+      onEnter: () => { moveBase = null; },
+      check: () => {
+        const s = S(); const p = s.pan || { x: 0, y: 0 };
+        if (K().gliding()) { moveBase = null; return false; }
+        if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; }
+        const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01;
+        return s.tool === App.TOOL.NONE && moved;
+      },
       progress: () => (S().tool !== App.TOOL.NONE ? '' : 'Now drag the sheet'),
       action: { label: 'Nudge the sheet for me', run: ACT.move },
     },
@@ -583,8 +593,10 @@
     },
     {
       id: 'room', title: 'Header: Room Sizer', kind: 'do',
-      body: () => 'Room Sizer boxes a room and works out its size.\n1. ' + tool('[[Room Sizer]]', 'roomBtn', 'V') + '\n2. Drag a box inside the shaded boundary.\n3. In Name, type Office. In Ceiling, type 9.\n4. Click {{Apply|#roomBoxApply}}.\nThe room\'s area and volume land under ROOMS in the sidebar and in the legend, the key drawn on the sheet. An HVAC (heating and cooling) bid reads the room\'s air from here.',
-      target: ladderOf('roomBtn', ['#roomBoxApply']), page: 0,
+      body: () => 'Room Sizer boxes a room and works out its size.\n1. ' + tool('[[Room Sizer]]', 'roomBtn', 'V') + '\n2. Drag a box inside the shaded boundary.\n3. In {{Ceiling height|#roomBoxHeight}}, type 9.\n4. In {{Add new room|#roomBoxNewRoomName}}, type Office.\n5. Click {{Apply|#roomBoxApply}}.\nThe room\'s area and volume land under ROOMS in the sidebar and in the legend, the key drawn on the sheet. An HVAC (heating and cooling) bid reads the room\'s air from here.',
+      // the dialog's fields top to bottom, each by its own label, then Apply (the card said Name and Ceiling, in that order; a tester, 2026-09-28)
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); return ladderOf('roomBtn', [!v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxNewRoomName') ? '#roomBoxNewRoomName' : null, '#roomBoxApply'].filter(Boolean)); },
+      page: 0,
       zones: () => [K().boxZone(rects('roomBoxes'), ROOM_IN, ROOM_OUT, 'Drag your room anywhere in here')],
       check: () => K().boxZone(rects('roomBoxes'), ROOM_IN, ROOM_OUT).done && (S().rooms || []).length > 0,
       hint: () => K().boxMiss(rects('roomBoxes'), ROOM_IN, ROOM_OUT),
@@ -658,7 +670,9 @@
       target: () => (seen.zoomedIn ? ['#zoomFit'] : ['#zoomIn', '#zoomFit']),
       // the zoom the step started at is the app's own fit (the sheet step before it ends on ‹, which fits);
       // Fit from anywhere lands at or under it
-      check: () => { const z = S().zoom || 0; if (zoomBase == null) { zoomBase = z; return false; } const inn = latch('zoomedIn', z > zoomBase + 0.05); return inn && z <= zoomBase + 0.02; },
+      // taken afresh each time the step opens, and never while the engine is moving the sheet itself
+      onEnter: () => { zoomBase = null; delete seen.zoomedIn; },
+      check: () => { const z = S().zoom || 0; if (K().gliding()) { if (!seen.zoomedIn) zoomBase = null; return false; } if (zoomBase == null) { zoomBase = z; return false; } const inn = latch('zoomedIn', z > zoomBase + 0.05); return inn && z <= zoomBase + 0.02; },
       progress: () => (seen.zoomedIn ? 'Zoomed in. Now click Fit' : ''),
       action: { label: 'Zoom in and fit', run: ACT.zoom },
     },

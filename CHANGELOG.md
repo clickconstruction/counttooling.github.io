@@ -37,6 +37,104 @@ Pinned by tutorial.spec.js "the line type card lights + Add, then Name until it 
 Create Line Type", at 1280 x 720. The colour row stays dimmed while Name is lit, as the symbol and
 colour do on the counter cards: picking one is optional, and the ring names the one thing that
 moves the step on.
+## fix(tour): a card lights a control where it shows, never under a dialog's Save row (2026-09-28)
+
+Wendi, on the blank-sheet tour's close step: "this button doesn't exist where highlighted, have to
+scroll down which is confusing". The card says to click Close project in Project Settings. The
+ring was drawn over the left end of the Save row and the link itself was out of sight under it.
+
+- **Cause.** Project Settings' Save row sticks to the foot of the dialog (`.settings-actions`,
+  `position: sticky`). The engine's `seen()` asked only whether the control's centre was inside
+  the scrolling box, which it was, so nothing scrolled. When it did scroll, it asked for the
+  nearest edge, which is the edge the Save row covers.
+- **Fix** (features/tutorial.js). `seen()` also asks what is on top at the control's centre
+  (`underStickyRow`): a sticky row that does not hold the control means it does not show. And a
+  scroll to the nearest edge that leaves the control unseen is followed by one to the middle of
+  the panel. This is the engine, so every tour, lesson and course card gets it.
+- **Pinned** by tutorial.spec.js, "the close step lights Close project where it shows, clear of
+  the Save row", at 1280 x 720 and at Wendi's 1707 x 916: the link is the element on top, the
+  ring is around it and above the Save row, and the click closes the sheet. Both fail on the old
+  engine.
+
+## fix(tour): the Room Sizer cards name the dialog's fields, top to bottom (2026-09-28)
+
+A tester on the blank-sheet tour's Room Sizer card: "confusing as the fields are not named
+'name' and 'ceiling', also better flow if they are in order". The card said "In Name, type
+Office. In Ceiling, type 9." The dialog's fields are Ceiling height and Add new room, in that
+order, and the card lit Apply the whole time the dialog was open.
+
+- **The blank-sheet tour** (features/tour-blank.js `room`): one line per field, in the dialog's
+  order and by its label, each a pointer that lights its field: Ceiling height, then Add new
+  room, then Apply. The ring follows the reader: the first empty field, then Apply.
+- **The HVAC tour** (features/tutorial.js `room`) had the same fault, on the owner's list with
+  "reorder" recommended: it asked for Room type first, the dialog's last field. It reads Ceiling
+  height, Deck height, Room type now, and the ring goes in that order.
+- The HVAC course's room cards already named the fields in order. No check changed.
+
+Walked on screen at 1280 x 720 in both tours: every chip live, neither card scrolls, and the
+ring moved field by field to Apply as each was filled.
+
+## fix(tour): the Move card waits for the reader's own drag (TOUR-MOVE-GLIDE, 2026-09-28)
+
+Reported by wendi on 2026-09-28, on the blank-sheet tour's card 4 of 37, Header: Move: it
+"briefly showed this step and then moved to the next one without me clicking anything".
+Reproduced with the mouse parked: the card opened, and 1.8 seconds later the tour was on the
+counter card.
+
+- **The cause.** The Move card passes when the view has changed from where the card found it.
+  The Measure card before it zooms the sheet onto its two circles (2.7x at 1280 x 720), and
+  since the card review (#270, rule 10, "it moves gently") the engine glides back out to the
+  whole sheet over 2.6 seconds as the next card opens. The card took its starting view on its
+  first check, before the glide's first frame, so the glide itself read as the drag; 0.9
+  seconds after that the engine moved on. Before #270 the view jumped in one move, ahead of
+  that first check.
+- **Why no spec saw it.** The glide is off under `navigator.webdriver` (and for a device set
+  to reduce motion): every Playwright run gets the jump.
+- **The fix.** `App.tourKit.gliding()` (features/tutorial.js) says the engine is moving the
+  sheet itself. The Move check (features/tour-blank.js) takes no starting view and passes
+  nothing while it is; the Zoom check does the same. Both now take their starting view each
+  time the card opens going forward (`onEnter`), not once per tour: on a monitor large enough
+  that Measure needs no zoom, Back to Measure and Next again passed Move on the first visit's
+  view.
+- **No other card.** No lesson, course or trade-tour check reads the pan or the zoom.
+- **Pinned** by two tests in tutorial.spec.js, "Every button, on a blank sheet". The first turns
+  the glide on (it sets `navigator.webdriver` false), parks the mouse for 4.6 seconds and wants
+  the card still there and not done, then drags and wants the counter card. The second walks
+  the second visit at 2800 x 1700. Each was run with its own fix reverted alone and failed.
+- **Left for the owner:** after a real drag the card still moves on 0.9 seconds later, so its
+  two closing lines (the wheel, Esc) are barely read. Holding it for Next, as Measure does, is
+  the same question the owner's list asks of `wsfu` and `circuits/load`.
+
+## feat(settings): a project is renamed from Project Settings (PROJECT-RENAME, 2026-09-28)
+
+Reported by an estimator on 2026-09-28: "I am not finding where to rename a project under
+project settings". It was not there. The name was read-only text under the dialog's title, and
+its one door was the Project name field inside the Save dialog, behind Save Changes, which
+nothing on the card pointed at.
+
+- **The name line is the control.** Under the title the name is followed by **Rename** (or
+  **Name this project** while the bid is still Untitled). A click turns the name into a field in
+  place, with **Save** beside it: Enter or a click away keeps the name, Esc puts the old one
+  back and leaves the dialog open (the field stops the key before the Esc ladder sees it). No new
+  row, so the card is no taller.
+- **One writer**, `App.renameProject(name)` in features/project-settings.js: spaces folded and
+  trimmed, 120 characters at most, an empty field keeps the old name. It sets
+  `state.currentProjectName`, marks the project dirty and redraws, so the header bid chip, the
+  status bar, the recent-bids list and the export file names follow at once, and the next
+  autosave's update writes `name` to the project row. Nothing new talks to the cloud.
+- **Who is not offered it:** nothing open (no name line), a view link, a viewer who cannot check
+  out, and a sample plan. A viewer who can check out sees Rename and is told to check out first.
+- **A sample plan's name is kept for it.** A tour or lesson finds its sheets by the project's name
+  (tutorial.js `TEACHING_SETS`) and resets a project that carries one, so a project may not be
+  renamed to `sample-plan`, `sample-lessons` and the rest; the card says so.
+- **A second door:** the header bid menu lists **Rename this bid…** under the open bid
+  (`App.openProjectRename`), which opens Project Settings with the name already a field.
+- The Save dialog's name field is unchanged. The Learn cards do not teach renaming a project, so
+  no card changed; the Preparing a plan set guide says where it is.
+
+Spec: [project-rename.spec.js](project-rename.spec.js), nine tests (the rename and every place
+the name is read, the autosave's PATCH carrying the name, Enter / Esc / a click away / Save, the Untitled wording, signed out, who may not, the kept names, the bid menu's door, a
+phone). Not walked against the live cloud: this checkout has no test account configured.
 
 ## feat(learn): the card pass: the six fixes, then every card one at a time (2026-09-28)
 

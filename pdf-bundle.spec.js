@@ -166,8 +166,8 @@ test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
     });
 
     const result = await page.evaluate(async () => {
-      const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-      await window.App.addNotesToPdf(doc, {});
+      // doc = null: the builder makes its own A4 doc (BUNDLE-ONE-SHEET).
+      const doc = await window.App.addNotesToPdf(null, {});
       const bytes = doc.output('arraybuffer');
       const pdf = await window.PDFLib.PDFDocument.load(bytes);
       const pages = pdf.getPages();
@@ -224,13 +224,12 @@ test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
       });
       const count = async (fn) => {
         renders[0] = 0; renders[1] = 0;
-        const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-        const added = await fn(doc);
-        return { renders: renders.slice(), added, pages: doc.getNumberOfPages() };
+        const doc = await fn();
+        return { renders: renders.slice(), pages: doc.getNumberOfPages() };
       };
       return {
-        highlights: await count((doc) => App.addHighlightsToPdf(doc, {})),
-        notes: await count((doc) => App.addNotesToPdf(doc, {})),
+        highlights: await count(() => App.addHighlightsToPdf(null, {})),
+        notes: await count(() => App.addNotesToPdf(null, {})),
       };
     });
 
@@ -241,6 +240,186 @@ test.describe('Tier-3 B5 - pdf-bundle pagination', () => {
     expect(result.highlights.pages).toBe(4);
     // Notes: the summary folds onto the first note's page (3 notes -> 3 pages).
     expect(result.notes.pages).toBe(3);
+
+    errors.assertNoErrors();
+  });
+});
+
+// BUNDLE-ONE-SHEET (DECOMPOSITION_MAP S05, defects N03 + N10 + the highlights
+// overflow). Each test was written and run red against the old builders first.
+test.describe('BUNDLE-ONE-SHEET - the notes and highlights bundles', () => {
+  // N03: one sheet exported, report off, a bundle on. The old builders guessed
+  // "is this a fresh doc?" from getNumberOfPages() > 1, so with exactly one
+  // sheet page the summary table was drawn ON the sheet image.
+  test('one sheet, report off: the summary gets its own page, never the sheet', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = collectConsoleErrors(page);
+
+    await bootApp(page);
+    await uploadPdf(page);
+
+    const result = await page.evaluate(async () => {
+      const s = window.state, App = window.App;
+      const a0 = App.getActiveAnnotations(s.pages[0]);
+      a0.highlights.push({ x1: 20, y1: 20, x2: 120, y2: 80 });
+      a0.notes.push({ x: 40, y: 40, width: 150, fontSize: 14, text: 'One-sheet fixture note.' });
+      const run = async (bundleHighlights, bundleNotes) => {
+        const { doc } = await App.runSpecificPagesExport({
+          selections: { 0: 'marked', 1: 'exclude' },
+          canvasMode: { 0: 'current' },
+          exportScale: 1,
+          includeReport: false,
+          bundleHighlights,
+          bundleNotes,
+        });
+        const pages = [];
+        for (let n = 1; n <= doc.getNumberOfPages(); n++) {
+          const ops = doc.internal.pages[n].join('\n');
+          doc.setPage(n);
+          pages.push({
+            hasText: /\bBT\b/.test(ops),
+            w: Math.round(doc.internal.pageSize.getWidth() * 10) / 10,
+            h: Math.round(doc.internal.pageSize.getHeight() * 10) / 10,
+          });
+        }
+        return pages;
+      };
+      return { highlights: await run(true, false), notes: await run(false, true) };
+    });
+
+    // Page 1 is the sheet (US Letter, 215.9 x 279.4 mm) with no text on it.
+    for (const pages of [result.highlights, result.notes]) {
+      expect(pages[0]).toEqual({ hasText: false, w: 215.9, h: 279.4 });
+      // Page 2 is the A4 summary page.
+      expect(pages[1]).toMatchObject({ hasText: true, w: 210, h: 297 });
+    }
+    // Highlights: sheet, summary, one page per highlight.
+    expect(result.highlights.length).toBe(3);
+    // Notes: sheet, then the summary with the one note folded under it.
+    expect(result.notes.length).toBe(2);
+
+    errors.assertNoErrors();
+  });
+
+  // N10: the sidebar buttons show when ANY layer holds a note or highlight,
+  // and the bundles now collect from every layer too (the Summary has counted
+  // every layer since MAP-SUMMARY-LAYERS). Each crop is cut from its own
+  // layer's raster, so the item is in the picture.
+  test('an item on a layer that is not active: the button opens a PDF with its page', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = collectConsoleErrors(page);
+
+    await bootApp(page);
+    await uploadPdf(page);
+
+    await page.evaluate(() => {
+      const s = window.state, App = window.App;
+      const p0 = s.pages[0];
+      const active = App.ensureActiveCanvas(p0);
+      s.activeCanvasIdByPage = s.activeCanvasIdByPage || {};
+      s.activeCanvasIdByPage[0] = active.id;
+      const other = { id: 'bundle-other-layer', name: 'Second', annotations: App.makeAnnotations() };
+      other.annotations.highlights.push({ x1: 20, y1: 20, x2: 120, y2: 80 });
+      other.annotations.notes.push({ x: 40, y: 40, width: 150, fontSize: 14, text: 'Note on the second layer.' });
+      p0.canvases.push(other);
+      window.__bundleOpened = [];
+      window.open = (url) => { window.__bundleOpened.push(url); return null; };
+      window.__bundleRasterLayers = [];
+      const orig = App.renderAnnotationsToContext;
+      App.renderAnnotationsToContext = (...args) => {
+        window.__bundleRasterLayers.push(args[4] === other.annotations ? 'other' : 'not-other');
+        return orig(...args);
+      };
+      App.updateUI();
+    });
+    await expect(page.locator('#bundleHighlights')).not.toHaveCSS('display', 'none');
+    await expect(page.locator('#bundleNotes')).not.toHaveCSS('display', 'none');
+    // The buttons are bound by features/output.js through the registry.
+    expect(await page.evaluate(() => typeof window.App.openBundlePdf)).toBe('function');
+
+    const openAndRead = async (btnId) => {
+      const before = await page.evaluate(() => window.__bundleOpened.length);
+      await page.evaluate((id) => document.getElementById(id).click(), btnId);
+      await page.waitForFunction((n) => window.__bundleOpened.length > n, before, { timeout: 60000 });
+      return page.evaluate(async () => {
+        const url = window.__bundleOpened[window.__bundleOpened.length - 1];
+        const bytes = await (await fetch(url)).arrayBuffer();
+        const L = window.PDFLib;
+        const pdf = await L.PDFDocument.load(bytes);
+        // jsPDF shares one Resources dict across pages, so ask the page's own
+        // content stream whether it paints an image (the `Do` operator).
+        const drawsImage = (p) => {
+          const c = p.node.Contents();
+          if (!c) return false;
+          const streams = c instanceof L.PDFArray ? c.asArray().map((r) => pdf.context.lookup(r)) : [c];
+          return streams.some((st) => /\bDo\b/.test(new TextDecoder('latin1').decode(st.getContents())));
+        };
+        return { pageCount: pdf.getPageCount(), images: pdf.getPages().map(drawsImage) };
+      });
+    };
+
+    // Highlights: the summary page, then the highlight's page with its crop.
+    const high = await openAndRead('bundleHighlights');
+    expect(high).toEqual({ pageCount: 2, images: [false, true] });
+    // Notes: the summary with the note folded under it, crop included.
+    const notes = await openAndRead('bundleNotes');
+    expect(notes).toEqual({ pageCount: 1, images: [true] });
+    // Both crops were cut from the second layer's raster.
+    const layers = await page.evaluate(() => window.__bundleRasterLayers);
+    expect(layers).toContain('other');
+    expect(layers).not.toContain('not-other');
+
+    errors.assertNoErrors();
+  });
+
+  // The Highlights Summary had no page-overflow guard (the Notes one did), so
+  // past about 36 sheets its rows ran off the bottom of the page.
+  test('a long summary table breaks onto the next page (highlights and notes)', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = collectConsoleErrors(page);
+
+    await bootApp(page);
+    await uploadPdf(page);
+
+    const result = await page.evaluate(async () => {
+      const s = window.state, App = window.App;
+      const saved = s.pages;
+      const p0 = saved[0];
+      // 40 sheets, each with one highlight and one note on its only layer.
+      s.pages = Array.from({ length: 40 }, (_, i) => {
+        const ann = App.makeAnnotations();
+        ann.highlights.push({ x1: 20, y1: 20, x2: 60, y2: 50 });
+        ann.notes.push({ x: 40, y: 40, width: 100, fontSize: 10, text: 'N' + (i + 1) });
+        return { ...p0, label: 'Sheet ' + (i + 1), canvases: [{ id: 'long-' + i, name: 'Main', annotations: ann }] };
+      });
+      const measure = async (build) => {
+        const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+        const texts = [];
+        const origText = doc.text.bind(doc);
+        doc.text = (t, x, y, o) => {
+          texts.push({ t: String(t), y, pageH: doc.internal.pageSize.getHeight() });
+          return origText(t, x, y, o);
+        };
+        await build(doc);
+        return texts;
+      };
+      try {
+        return {
+          highlights: await measure((doc) => App.addHighlightsToPdf(doc, { scale: 1 })),
+          notes: await measure((doc) => App.addNotesToPdf(doc, { scale: 1 })),
+        };
+      } finally {
+        s.pages = saved;
+      }
+    });
+
+    for (const texts of [result.highlights, result.notes]) {
+      // Every sheet has its summary row...
+      expect(texts.filter((x) => /^Sheet \d+$/.test(x.t)).length).toBe(40);
+      // ...and no text of any kind lands below the page's bottom margin.
+      const off = texts.filter((x) => x.y > x.pageH - 10);
+      expect(off).toEqual([]);
+    }
 
     errors.assertNoErrors();
   });

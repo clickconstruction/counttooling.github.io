@@ -1738,6 +1738,12 @@
   function startTutorial(id) {
     const s = state();
     if (s.currentProjectId) { App.showToast('Close the cloud project first: the tour runs on the sample plan'); return false; }
+    // TOUR-RESTART (S07, N11): a tour, lesson or chapter started while another runs (the overlay
+    // takes no pointer events, so Learn, Project Settings and the links stay reachable) stops the
+    // running one first, as left, not finished, so its clean-up runs: a lesson's Snap and sidebar
+    // filter go back, a tour's search words are typed back, the blank tour sweeps its palette, and
+    // its "left" event is logged. The same tour again starts over from its first step.
+    if (active) stopTutorial(false, { switching: true });
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
@@ -1756,7 +1762,9 @@
     render();
     return true;
   }
-  function stopTutorial(finished) {
+  // `switching`: the stop inside startTutorial. The next tour starts at once, so a deferred
+  // "Project from Last Session" offer keeps waiting for the stop that really ends teaching.
+  function stopTutorial(finished, { switching = false } = {}) {
     active = false;
     App.onTourStepChanged && App.onTourStepChanged();
     if (timer) { clearInterval(timer); timer = null; }
@@ -1769,7 +1777,7 @@
     syncEntryPoints();
     // A "Project from Last Session" offer that arrived mid-tour waited for
     // this moment (features/restore-last-session.js; no-op otherwise).
-    if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
+    if (!switching && App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
     if (!String(tourId).includes(':')) restoreSearchesAfterTour();
     const def = TOURS[tourId];
     if (def && def.onStop) { try { def.onStop(!!finished); } catch (_) { /* a lesson's own bookkeeping never breaks the stop */ } }
@@ -1982,7 +1990,7 @@
   App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
-  App.stopTutorial = stopTutorial;
+  App.stopTutorial = (finished) => stopTutorial(finished);
   App.isTutorialActive = () => active;
   App.isTutorialPending = () => pending;
   App.onTutorialTick = () => { if (active) render(); };

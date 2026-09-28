@@ -80,6 +80,8 @@ A colour or an icon path from a shared or imported project is concatenated raw i
 
 ### S05. One bundle builder, and the bundle buttons leave app.js
 
+**Landed 2026-09-27 (BUNDLE-ONE-SHEET).** All three defects reproduced in pdf-bundle.spec.js before the fix; the bundles now collect from every layer.
+
 `features/pdf-bundle.js` 264-371 (notes) and 373-448 (highlights) repeat item collection, the summary table and the crop; `app.js` 4274-4313 still wires both buttons as twins. Three defects ride here, all read in code: with exactly one sheet exported, the report off and bundles on, `getNumberOfPages() > 1` is false and the summary table prints on top of the sheet (pdf-bundle.js:292, 393); the bundles collect from the active layer only while the has-any check reads every layer, so items on another layer open a blank page (272, 381); the highlights table has no page-overflow guard (402-407). **Recipe:** `collectBundleItems`, `cropSheetJpeg`, `addBundleSummary`; both builders take `doc = null` and make their own A4, which removes the page-count guess. **Pin first:** a one-sheet Export PDFs spec with bundles on (it fails today).
 
 ### S06. Esc closes the painted top; dialogs stack by open order
@@ -92,7 +94,7 @@ A colour or an icon path from a shared or imported project is concatenated raw i
 
 ### S08. One mark-presence predicate
 
-Three hand lists of what counts as a mark have drifted: `annotation-model.js:286-291`, `app.js:3153-3158`, `features/pdf-intake.js:283-291`. The last lacks `ductRuns`, so a signed-out HVAC backup holding only duct runs is never re-applied when the same PDF is uploaded again (D30). **Pin:** an annotation-model.test.js case that walks `makeAnnotations()` keys and fails on a kind no list classifies.
+Three hand lists of what counts as a mark have drifted: `annotation-model.js:286-291`, `app.js:3153-3158`, `features/pdf-intake.js:283-291`. The last lacks `ductRuns`, so a signed-out HVAC backup holding only duct runs is never re-applied when the same PDF is uploaded again (D30). **Pin:** an annotation-model.test.js case that walks `makeAnnotations()` keys and fails on a kind no list classifies. **Built 2026-09-27 (REAPPLY-DUCT):** `ANNOTATION_KINDS` in annotation-model.js is the one table; see the CHANGELOG. `bid-basis-model.js pageHasBidMarks` and `features/export-pdfs.js countPageMarks` still keep their own take-off-only list.
 
 ### S09. One duct system rule, then a way to set a run's system
 
@@ -174,14 +176,14 @@ Confirmed means reproduced by running code. Read means read in code at `3eb45a9`
 |---:|---|---|---|---|
 | N01 | bug | confirmed | `water-model.js:396` | Two water runs leaving one point each get both loads (S01). |
 | N02 | bug | read | `features/sidebar-lists.js:268`, `lines-list.js:121`, `counter.js:85`, `room-sizer.js:142` | A colour or icon value is written into the page unescaped (S02). |
-| N03 | bug | read | `features/pdf-bundle.js:292, 393` | Export PDFs with one sheet prints the notes or highlights summary over the sheet (S05). |
+| N03 | bug | confirmed, fixed | `features/pdf-bundle.js:292, 393` | Export PDFs with one sheet prints the notes or highlights summary over the sheet (S05). |
 | N04 | bug | read | `features/esc-ladder.js:223` | Esc closes the dialog under the colour picker, not the picker (S06). |
 | N05 | bug | read | `app.js:4341` | The Custom Icons tips dialog opens behind the details dialog (S06). |
 | N06 | bug | read | `.github/workflows/ci.yml:15` | Every push to main cancels main's run in progress (S03). |
 | N07 | bug | read | `features/duct-tool.js:411` | The toast names an assignment no surface can make (S09). |
 | N08 | bug, cosmetic | read | `app.js:5757` | Desktop Measure's band does not follow the mouse (S15). |
 | N09 | latent | confirmed | `duct-model.js:1655` vs `1547`, `1409` | Two rules for which system a run belongs to (S09). |
-| N10 | latent | read | `features/pdf-bundle.js:272, 381` | Bundles read the active layer only; items elsewhere open a blank page (S05). |
+| N10 | latent | confirmed, fixed | `features/pdf-bundle.js:272, 381` | Bundles read the active layer only; items elsewhere open a blank page (S05). |
 | N11 | latent | read | `features/tutorial.js:1735` | Starting a tour never stops the one running (S07). |
 | N12 | latent | read | `features/pdf-intake.js:283` | D30: a backup holding only duct runs is never re-applied (S08). |
 | N13 | latent | read | `features/turn-in.js:83` | The manual Check Out has no timeout (S17). |

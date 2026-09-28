@@ -460,9 +460,8 @@ professional), no partner or pricing language. Pinned by `landing-trade.spec.js`
   headless Playwright script instead (`NODE_PATH=$PWD/node_modules node script.js` from the
   worktree). The pane also caches `marketing.css` and images hard; refetch with
   `fetch(url, {cache: "reload"})` before judging a change.
-- **Running specs from a `.claude/worktrees/` copy** needs
-  `npx playwright test --config playwright.worktree.config.js`, because the base config ignores
-  `**/.claude/**`. A fresh worktree also needs an `echo "// stub" > config.local.js`.
+- **Running specs from a `.claude/worktrees/` copy** is plain `npx playwright test` since
+  WORKTREE-SPECS (2026-09-27): the config ignores only its own directory's `.claude/`. A fresh worktree also needs an `echo "// stub" > config.local.js`.
 - The Copy to PipeTooling beat needs a Playwright context with clipboard permissions, and the
   trades film warms the page text layer before recording so the plan-named room tag appears on
   its first frame.

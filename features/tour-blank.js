@@ -463,7 +463,17 @@
         ? '1. In the header, tap [[Move]].\n2. Put one finger on the sheet and slide it a little.\nTo zoom, pinch with two fingers.\nMove also slides a mark, a thing you placed on the sheet.'
         : '1. In the header, click [[Move]] (or press M).\n2. Hold the mouse button down on the sheet and slide it a little.\nTo zoom, roll the mouse wheel.\nPress Esc, the key at the top left of the keyboard, to put any tool down. That gives you Move back.\nMove also slides a mark, a thing you placed on the sheet.'),
       target: ['#moveBtn', '#moveBtnSidebar'],
-      check: () => { const s = S(); const p = s.pan || { x: 0, y: 0 }; if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; } const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01; return s.tool === App.TOOL.NONE && moved; },
+      // The view the reader starts from is taken when the step opens and the sheet is still. The
+      // Measure card before this one zooms onto its circles, and the engine glides back out to the
+      // whole sheet as this card opens: that motion is the tour's, not the reader's drag.
+      onEnter: () => { moveBase = null; },
+      check: () => {
+        const s = S(); const p = s.pan || { x: 0, y: 0 };
+        if (K().gliding()) { moveBase = null; return false; }
+        if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; }
+        const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01;
+        return s.tool === App.TOOL.NONE && moved;
+      },
       progress: () => (S().tool !== App.TOOL.NONE ? '' : 'Now drag the sheet'),
       action: { label: 'Nudge the sheet for me', run: ACT.move },
     },
@@ -660,7 +670,9 @@
       target: () => (seen.zoomedIn ? ['#zoomFit'] : ['#zoomIn', '#zoomFit']),
       // the zoom the step started at is the app's own fit (the sheet step before it ends on ‹, which fits);
       // Fit from anywhere lands at or under it
-      check: () => { const z = S().zoom || 0; if (zoomBase == null) { zoomBase = z; return false; } const inn = latch('zoomedIn', z > zoomBase + 0.05); return inn && z <= zoomBase + 0.02; },
+      // taken afresh each time the step opens, and never while the engine is moving the sheet itself
+      onEnter: () => { zoomBase = null; delete seen.zoomedIn; },
+      check: () => { const z = S().zoom || 0; if (K().gliding()) { if (!seen.zoomedIn) zoomBase = null; return false; } if (zoomBase == null) { zoomBase = z; return false; } const inn = latch('zoomedIn', z > zoomBase + 0.05); return inn && z <= zoomBase + 0.02; },
       progress: () => (seen.zoomedIn ? 'Zoomed in. Now click Fit' : ''),
       action: { label: 'Zoom in and fit', run: ACT.zoom },
     },

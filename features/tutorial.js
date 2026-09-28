@@ -2274,7 +2274,11 @@
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
     markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, bidCheckRows, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
-    lastSheetClick: () => lastSheetClick };   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
+    lastSheetClick: () => lastSheetClick,   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
+    // The engine is moving the sheet itself (the glide onto a step's circles, or back out to the whole
+    // sheet). A check that reads the view waits for it: the blank tour's Move card took the glide for
+    // the reader's drag and passed with nobody touching it (wendi, 2026-09-28).
+    gliding: () => !!gliding };
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
   // without scripting forty clicks and the guide shots can reach a finished tour.

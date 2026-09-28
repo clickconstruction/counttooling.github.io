@@ -74,6 +74,8 @@ Two confirmed defects with one home. **The system rule (Q08, was N09):** run in 
 
 **Recipe:** one `ductRunSystemId(run, runs, opts)` in the model that walks `ductTapParentOf` to the root and returns the root's system, else the run's own; `tallyFlexDrops` and the draft scope read it. In `ductChildLinks` after collecting, break each mutual pair: keep the link whose parent's first vertex is nearer `opts.equipmentPos` (every caller already passes it), else the earlier run in the list. **Pin:** two cases in duct-model.test.js beside the DS-DINING-ATTACH sibling test at `:1052`: the two-run system case (flex under RTU, `totalCfm` 500) and the loop (one link, designed 500 not 0, a static path, one tap). Existing tests (`:1369-1393`, `:1505`) never mix a null-system child under a system root, which is why neither showed. This is the code half of punch row DUCT-RUN-SYSTEM; the product half (a System choice for a run) is the old S09, below in T28's "after the call" note.
 
+**Landed 2026-09-28 (DUCT-TAP-LOOP, DUCT-RUN-SYSTEM's code half).** Built to the recipe: `breakTapLoops` inside `ductChildLinks` (a loop of any length, broken at the run nearest the equipment, else the one drawn first) and `ductRunSystems` / `ductRunSystemId`, read by the flex tally, the device system and the draft's scope; the fittings walk lays its taps from the same links. Both new duct-model.test.js cases were run against the previous file first and every assertion was wrong there. The water copy of the loop keeps waiting on T05. The product half stays on the punch list.
+
 ### T03. idb.js: a re-put is a replace
 
 Q03 (was N18, "read"), now confirmed in node with fake-indexeddb, three shapes, all at `idb.js:141-148` (`pdfCachePut`) and `209-216` (`idbTakeoffBackupPut`): (A) at the entry cap of 10, a re-put of a middle key evicts the oldest neighbour though the put replaces a key and the count would not grow (`entries.length < MAX` is false at 143 and the self-check at 144 never fires because the oldest is a different key); (B) over the byte cap, when the re-put key IS the oldest, the loop breaks on it at 144 and never reaches the next-oldest: a (100 MB) + b (300 MB), then a re-put as 400 MB, leaves 700 MB in a 500 MB cache; (C) the takeoff-backup store shows (A) at its cap of 5. **Fix:** before the loop, drop the entry whose key equals the one being put from `entries` and `totalBytes`, then loop without the self-check. **Pin:** cases (A) and (B) in idb.test.js on each store.
@@ -207,13 +209,13 @@ Confirmed means reproduced by running code. Read means read in code at `65f712f`
 | # | Severity | Check | Where | Defect |
 |---:|---|---|---|---|
 | Q01 | bug | confirmed | `water-model.js:396` | Two water runs leaving one point each get both loads (T05). Was N01. |
-| Q02 | bug | confirmed | `duct-model.js:1223`, `water-model.js:396` | Runs drawn head to tail are each the other's child: designed CFM 0, no static path, two taps (T02). Both networks accept a 3-cycle. |
+| Q02 | bug | confirmed, fixed (duct) | `duct-model.js:1223`, `water-model.js:396` | Runs drawn head to tail are each the other's child: designed CFM 0, no static path, two taps (T02). Both networks accept a 3-cycle. |
 | Q03 | bug | confirmed | `idb.js:141, 209` | A re-put at the cap evicts a neighbour; a re-put of the oldest over the byte cap stops eviction early (T03). Was N18, read. |
 | Q04 | bug, cosmetic | confirmed (string half) | `features/tutorial.js:1381` | A chip whose label carries a quote finds no control; ten cards (T04). |
 | Q05 | test | read | `lessons.spec.js:210` | The undo card's click races the engine's 60 ms focus timer (T01, FLAKE-START-UNDO). |
 | Q06 | bug | read | `features/duct-tool.js:411` | The first-run toast names an assignment no surface can make (T28, after DUCT-RUN-SYSTEM). Was N07. |
 | Q07 | bug, cosmetic | read | `app.js:5744` | Desktop Measure's band does not follow the mouse between the first and second click (T16). Was N08; punch row MEASURE-BAND. |
-| Q08 | latent | confirmed | `duct-model.js:1663` vs `1555`, `1416` | Two rules for which system a run belongs to (T02). Was N09. |
+| Q08 | latent | confirmed, fixed | `duct-model.js:1663` vs `1555`, `1416` | Two rules for which system a run belongs to (T02). Was N09. |
 | Q09 | latent | confirmed | `water-model.js:438` vs `duct-model.js:1369` | The water draft counts a branch tapped behind the tip; the duct draft does not (T05). |
 | Q10 | latent | read | `features/turn-in.js:83` | The manual Check Out has no timeout (T08). Was N13. |
 | Q11 | latent | read | `features/bid-check.js:150` | A project with no trade gets an inconsistent Bid Check (T06). Was N14. |

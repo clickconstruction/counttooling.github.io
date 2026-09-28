@@ -79,10 +79,10 @@
         const t = App.counterTally(App.getMergedAnnotationsForPage(p), c.id);
         placed += t.placed; withRepeats += t.withRepeats;
       });
-      const badgeTitle = withRepeats !== placed ? ' title="' + placed + ' placed · ' + withRepeats + ' with repeats"' : '';
+      const badgeTitle = withRepeats !== placed ? ' title="' + esc(placed + ' placed · ' + withRepeats + ' with repeats') + '"' : '';
       const div = document.createElement('div');
       div.className = 'sidebar-item';
-      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + c.color + '" d="' + c.icon + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge"' + badgeTitle + '>' + withRepeats + '</span><span class="swatch" style="background:' + c.color + '"></span>';
+      div.innerHTML = '<span class="icon-svg"><svg viewBox="' + esc(App.iconVbFor(c.icon)) + '" width="20" height="20"><path fill="' + esc(c.color) + '" d="' + esc(c.icon) + '"/></svg></span><span class="name">' + esc(c.name || 'Counter') + '</span><span class="badge"' + badgeTitle + '>' + esc(withRepeats) + '</span><span class="swatch" style="background:' + esc(c.color) + '"></span>';   // XSS-COLOR: a color, an icon path and its viewBox ride a project, so they are attribute text
       div.onclick = () => {
         state.activeCounterType = c.id;
         state.tool = App.TOOL.COUNTER;
@@ -221,7 +221,7 @@
     if (!show) { chip.innerHTML = ''; delete chip.dataset.path; return; }
     const name = App.getIconName(opts.iconPath);
     chip.innerHTML = '<span class="cfm-icon-chip-arrow" aria-hidden="true">→</span>'
-      + '<span class="cfm-icon-chip-glyph"><svg viewBox="' + App.iconVbFor(opts.iconPath) + '" width="18" height="18"><path fill="currentColor" d="' + opts.iconPath + '"/></svg></span>'
+      + '<span class="cfm-icon-chip-glyph"><svg viewBox="' + App.escapeHtml(App.iconVbFor(opts.iconPath)) + '" width="18" height="18"><path fill="currentColor" d="' + App.escapeHtml(opts.iconPath) + '"/></svg></span>'   // XSS-COLOR sweep
       + '<span class="cfm-icon-chip-name">' + App.escapeHtml(name) + '</span>'
       + '<span class="cfm-icon-chip-sep" aria-hidden="true">·</span>'
       + '<button type="button" class="cfm-icon-chip-change" title="Pick a different icon. Opens the Custom Icons grid at the HVAC group">change</button>';

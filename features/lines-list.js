@@ -114,11 +114,12 @@
         if (sd > 0 || ed > 0) {
           const su = line.startDropUnit || pageScale?.unit, eu = line.endDropUnit || pageScale?.unit;
           const parts = [];
-          if (sd > 0) parts.push('↧ ' + sd + (su ? ' ' + su : ''));
-          if (ed > 0) parts.push('↧ ' + ed + (eu ? ' ' + eu : ''));
+          // XSS-COLOR sweep: a drop's unit rides the line (a project), so it is text
+          if (sd > 0) parts.push('↧ ' + esc(sd) + (su ? ' ' + esc(su) : ''));
+          if (ed > 0) parts.push('↧ ' + esc(ed) + (eu ? ' ' + esc(eu) : ''));
           dropsHtml = '<div class="line-drops">' + parts.join(' + ') + '</div>';
         }
-        div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + color + '"></span>' : '') + '<span class="badge">' + dist + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;
+        div.innerHTML = '<span class="name line-type-name">' + esc(name) + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + esc(color) + '"></span>' : '') + '<span class="badge">' + esc(dist) + '</span>' + (showEdit ? '<span class="edit-btn" title="' + (it.type === 'poly' ? 'Edit vertices' : 'Rename') + '">✎</span>' : '') + '</div>' + dropsHtml;   // XSS-COLOR: a line's color rides a project, so it is attribute text
         if (App.waterLineMetaHtml) div.insertAdjacentHTML('beforeend', App.waterLineMetaHtml(line, it.pageIdx));   // WATER-PLAN rung 3: "cold · 6 WSFU"
         div.onclick = (e) => {
           if (showEdit && (e.target.closest('.swatch') || e.target.closest('.edit-btn'))) return;

@@ -275,4 +275,127 @@ test.describe('window.App registry pilot - Choose/Create Line Type modal', () =>
     expect(await page.evaluate(() => ({ ran: window.__xss, handlers: document.querySelectorAll('[onmouseover], [onerror]').length }))).toEqual({ ran: undefined, handlers: 0 });
     errors.assertNoErrors();
   });
+
+  // XSS-COLOR (DECOMPOSITION_MAP S02 / N02): the four surfaces MAP-XSS missed. A
+  // group's color in the groups list, a line's color in the Lines list, a counter's
+  // color and icon path in the Counter chooser, and a room's color and id in the room
+  // picker. The hostile values are inert: breaking out of the attribute would only
+  // plant a data-xss attribute or a <b data-xss> element, so the test asserts none
+  // exists anywhere on the page and each value reads back whole as its attribute.
+  test('XSS-COLOR: a color, an icon path or a room id that closes its attribute stays attribute text on the four surfaces MAP-XSS missed', async ({ page }) => {
+    // The browser refusing the poisoned icon as path data is the escape working.
+    const errors = collectConsoleErrors(page, { ignore: ['<path> attribute d'] });
+    await bootApp(page);
+    await uploadPdf(page);
+
+    const COLOR = '#4a9eff" data-xss="attr"><b data-xss="el"></b><i title="';
+    const ICON = 'M0 0h10v10H0z"/><b data-xss="icon"></b><path d="';
+    const ROOM_ID = 'room-x" data-xss="room-id';
+    const UNIT = 'ft<b data-xss="unit"></b>';
+    const injected = () => page.evaluate(() => [...document.querySelectorAll('[data-xss]')].map((e) => e.tagName + ':' + e.getAttribute('data-xss')));
+
+    await page.evaluate(({ COLOR, ICON, ROOM_ID, UNIT }) => {
+      const s = window.state;
+      s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1 ft' };
+      s.lineTypes.push({ id: 'lt-x', name: 'Plain', color: '#47c88e' });
+      s.groupsEnabled = true;
+      s.groups.push({ id: 'g-x', name: 'Plain Group', color: COLOR });
+      s.pages[0].canvases[0].annotations.quickLines.push({ x1: 100, y1: 500, x2: 220, y2: 500, id: 'q-x', lineTypeId: 'lt-x', color: COLOR, endDrop: 3, endDropUnit: UNIT });
+      s.counters.push({ id: 'c-x', name: 'Plain Counter', icon: ICON, color: COLOR });
+      s.rooms.push({ id: ROOM_ID, name: 'Plain Room', color: COLOR });
+      window.App.updateUI();
+    }, { COLOR, ICON, ROOM_ID, UNIT });
+
+    // The groups list and the Lines list (the swatch shows only to an editor).
+    expect(await page.evaluate(() => document.querySelector('#groupsList .swatch')?.getAttribute('style'))).toBe('background:' + COLOR);
+    expect(await page.evaluate(() => document.querySelector('#linesList .swatch')?.getAttribute('style'))).toBe('background:' + COLOR);
+    expect(await page.evaluate(() => document.querySelector('#linesList .line-drops')?.textContent)).toContain(UNIT);
+    expect(await injected()).toEqual([]);
+
+    // The Counter chooser: the list opens on Choose when counters exist.
+    await page.evaluate(() => document.getElementById('counterBtn').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.waitForSelector('#counterChooseList .sidebar-item', { timeout: 5000 });
+    expect(await page.evaluate(() => document.querySelector('#counterChooseList path')?.getAttribute('d'))).toBe(ICON);
+    expect(await page.evaluate(() => document.querySelector('#counterChooseList path')?.getAttribute('fill'))).toBe(COLOR);
+    expect(await page.evaluate(() => document.querySelector('#counterChooseList .swatch')?.getAttribute('style'))).toBe('background:' + COLOR);
+    expect(await injected()).toEqual([]);
+    await page.evaluate(() => window.App.hideModal('counterModal'));
+
+    // The room picker in the Room Size dialog.
+    await page.evaluate(() => window.App.openRoomBoxModal({ x1: 0, y1: 0, x2: 240, y2: 120 }));
+    await page.waitForSelector('#roomBoxModal.visible', { timeout: 5000 });
+    expect(await page.evaluate(() => document.querySelector('#roomBoxRoomList .room-picker-item')?.dataset.roomId)).toBe(ROOM_ID);
+    expect(await page.evaluate(() => document.querySelector('#roomBoxRoomList .room-swatch')?.getAttribute('style'))).toBe('background:' + COLOR);
+    // Picking the room still selects it by its exact id.
+    await page.click('#roomBoxRoomList .room-picker-item');
+    expect(await page.locator('#roomBoxRoomList .room-picker-item.selected').count()).toBe(1);
+    expect(await injected()).toEqual([]);
+    errors.assertNoErrors();
+  });
+
+  // XSS-COLOR sweep: what the sweep found past the four named surfaces. A project's
+  // custom icon (customIconPaths) sets the viewBox and the set heading of every icon
+  // grid; a zone multiplier is SUMMED into every count; a circuit group's load and a
+  // room's color print in the sidebar and the report. All inert, as above.
+  test('XSS-COLOR sweep: a custom icon, a zone multiplier, a circuit load and a room color from a project stay text in the sidebar, the icon grid and the printed report', async ({ page }) => {
+    const errors = collectConsoleErrors(page, { ignore: ['<path> attribute d', '<svg> attribute viewBox'] });
+    await bootApp(page);
+    await uploadPdf(page);
+
+    const COLOR = '#4a9eff" data-xss="attr"><b data-xss="el"></b><i title="';
+    const ICON = 'M0 0h5v5H0z';
+    const VB = '0 0 5 5" data-xss="viewbox"><b data-xss="vb-el"></b><i title="';
+    const SET = 'odd<b data-xss="set"></b>';
+    const MULT = '<b data-xss="mult"></b>';
+    const AMPS = '<b data-xss="amps"></b>';
+    const injected = () => page.evaluate(() => [...document.querySelectorAll('[data-xss]')].map((e) => e.tagName + ':' + e.getAttribute('data-xss')));
+
+    await page.evaluate(({ COLOR, ICON, VB, SET, MULT, AMPS }) => {
+      const s = window.state;
+      window.App.saveUserCustomIcons([{ value: ICON, viewBox: VB, name: 'Odd icon', set: SET }]);   // as a project's customIconPaths would
+      s.pages[0].scale = { pixelsPerUnit: 9, unit: 'ft', label: '1/8" = 1 ft' };
+      s.lineTypes.push({ id: 'lt-s', name: 'Plain Line', color: COLOR });
+      s.counters.push({ id: 'c-s', name: 'Plain Counter', icon: ICON, color: COLOR });
+      s.groupsEnabled = true;
+      s.groups.push({ id: 'g-s', name: 'Circuit', color: '#47c88e', panel: 'LP-1', circuit: '7', loadAmps: AMPS });
+      s.rooms.push({ id: 'r-s', name: 'Plain Room', color: COLOR });
+      const ann = s.pages[0].canvases[0].annotations;
+      ann.counterMarkers['c-s'] = [{ x: 50, y: 50 }];
+      ann.multiplyZones.push({ id: 'z-s', x1: 0, y1: 0, x2: 100, y2: 100, multiplier: MULT });
+      ann.quickLines.push({ x1: 100, y1: 500, x2: 220, y2: 500, id: 'q-s', lineTypeId: 'lt-s', color: COLOR });
+      ann.roomBoxes.push({ x1: 300, y1: 300, x2: 400, y2: 380, roomId: 'r-s', heightFt: 9 });
+      window.App.updateUI();
+    }, { COLOR, ICON, VB, SET, MULT, AMPS });
+
+    // The sidebar: the counter row's viewBox and its repeat badge (the junk multiplier reads as 1),
+    // and the circuit group's tag.
+    expect(await page.evaluate(() => document.querySelector('#countersList .counter-drag-handle svg')?.getAttribute('viewBox'))).toBe(VB);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#countersList .badge')].map((b) => b.textContent))).toContain('1');
+    expect(await page.evaluate(() => document.querySelector('#groupsList .group-system-tag')?.textContent)).toBe('LP-1/7 · ' + AMPS + ' A');
+    expect(await injected()).toEqual([]);
+
+    // The Counter dialog's Create tab: the custom icon grid, its cell and its set heading.
+    await page.evaluate(() => document.getElementById('addCounter').click());
+    await page.waitForSelector('#counterModal.visible', { timeout: 5000 });
+    await page.evaluate(() => window.App.buildCreateCustomIconGrid());
+    expect(await page.evaluate((icon) => [...document.querySelectorAll('#counterIconGridCustom .icon-cell')].some((c) => c.dataset.path === icon), ICON)).toBe(true);
+    expect(await page.evaluate(() => [...document.querySelectorAll('#counterIconGridCustom .icon-grid-heading')].map((h) => h.textContent))).toContain('Odd<b data-xss="set"></b>');
+    expect(await injected()).toEqual([]);
+    await page.evaluate(() => window.App.hideModal('counterModal'));
+
+    // The printed report, parsed as the print window would parse it.
+    const report = await page.evaluate(() => {
+      const doc = new DOMParser().parseFromString(window.buildReportHtml(), 'text/html');
+      return {
+        injected: [...doc.querySelectorAll('[data-xss]')].map((e) => e.tagName + ':' + e.getAttribute('data-xss')),
+        swatches: [...doc.querySelectorAll('.report-type-swatch')].map((e) => e.getAttribute('style')),
+        viewBoxes: [...doc.querySelectorAll('.report-type-icon svg')].map((e) => e.getAttribute('viewBox')),
+      };
+    });
+    expect(report.injected).toEqual([]);
+    expect(report.swatches).toContain('background:' + COLOR + ';');
+    expect(report.viewBoxes).toContain(VB);
+    errors.assertNoErrors();
+  });
 });

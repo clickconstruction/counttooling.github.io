@@ -163,7 +163,7 @@
     else {
       html = rows.map((c) =>
         '<div class="chain-row' + (state.activeCounterType === c.id ? ' selected' : '') + '" data-id="' + esc(c.id) + '">' +
-        '<span class="icon-svg chain-glyph" title="' + esc('Edit ' + (c.name || 'Counter') + '…') + '"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="18" height="18"><path fill="' + esc(c.color || '#e8c547') + '" d="' + c.icon + '"/></svg></span>' +
+        '<span class="icon-svg chain-glyph" title="' + esc('Edit ' + (c.name || 'Counter') + '…') + '"><svg viewBox="' + esc(App.iconVbFor(c.icon)) + '" width="18" height="18"><path fill="' + esc(c.color || '#e8c547') + '" d="' + esc(c.icon) + '"/></svg></span>' +   // XSS-COLOR sweep: an icon path rides a project
         '<span class="chain-row-name">' + esc(c.name || 'Counter') + '</span>' +
         '</div>').join('');
     }
@@ -215,7 +215,7 @@
     chip.style.display = show ? '' : 'none';
     if (!show) return;
     const iconHtml = counter
-      ? '<span class="chain-pair-icon"><svg viewBox="' + App.iconVbFor(counter.icon) + '"><path fill="' + esc(counter.color || '#e8c547') + '" d="' + counter.icon + '"/></svg></span>'
+      ? '<span class="chain-pair-icon"><svg viewBox="' + esc(App.iconVbFor(counter.icon)) + '"><path fill="' + esc(counter.color || '#e8c547') + '" d="' + esc(counter.icon) + '"/></svg></span>'   // XSS-COLOR sweep
       : '<span class="chain-pair-icon">?</span>';
     const swatchHtml = '<span class="chain-pair-swatch" style="background:' + esc(lt?.color || '#4a9eff') + '"></span>';
     chip.innerHTML = iconHtml + '<span class="chain-pair-plus">+</span>' + swatchHtml;

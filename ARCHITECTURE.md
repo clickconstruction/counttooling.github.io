@@ -28,7 +28,7 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,034 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,036 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,261 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,410 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
@@ -39,7 +39,7 @@ off — and where it doesn't.
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 872 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (103 files) | 34,894 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (103 files) | 34,898 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -71,7 +71,7 @@ modules. Candidates in priority order:
 | [styles.css](styles.css) | All CSS (design tokens, layout, modals, sidebar, mobile); linked from `<head>` |
 | [icons.js](icons.js) | Bundled icon data — `*_PATH` consts, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CUSTOM_ICONS`, `ICONS`; classic `<script src>` loaded before app.js; values resolve in the shared global lexical scope; guarded CommonJS export footer (`ICONS`, `CUSTOM_ICONS`, `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `CIRCLE_PATH`, `SCALE_CROSSHAIR_PATH`) so `eslint.config.js` can derive the app.js lint globals **CUSTOM_ICONS moved out** to [icons-custom.js](icons-custom.js) (generated; loads right after this file) |
 | [icons-custom.js](icons-custom.js) | **The GENERATED bundled custom-icon data** — the `CUSTOM_ICONS` array (~163KB, `{value, viewBox, name, set, terms?}` literals sourced from `my-counters/*.svg` + the `electrical/` and `hvac/` set subfolders). `npm run build:icons` ([scripts/build-custom-icons.js](scripts/build-custom-icons.js)) overwrites the file wholesale — no more paste-into-icons.js step, and regenerations stop churning the 246KB icons.js. Classic `<script src>` loaded between [icons.js](icons.js) and [icon-render.js](icon-render.js) (which builds `CUSTOM_ICON_META` from `CUSTOM_ICONS` at parse time — the load-order constraint). Guarded CommonJS footer for the Node tests + the eslint derived-globals wiring D18: `npm run build:icons -- --check` (in `npm run check`) fails when this file is stale vs `my-counters/`. |
-| [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, `clampMenuPosition` (the popover viewport clamp behind `App.placeFixedMenu`), the zone locators (`getMultiplyZoneForPoint/Line`, `getScaleZoneForLine`) + `counterTally` (T2-11: `{ placed, withRepeats }` for one annotations object — the one counter arithmetic behind every badge/rollup surface), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
+| [geometry.js](geometry.js) | Pure math/geometry/parse primitives — `ptDist`, `polylineDistance`, `polygonArea`, `distToSegment`, the quadratic-bezier helpers, `rotatePoint90CW`, `pointInRect`, `rectsOverlap`, `clampMenuPosition` (the popover viewport clamp behind `App.placeFixedMenu`), the zone locators (`getMultiplyZoneForPoint/Line` — a multiplier that is not a finite number ≥ 1 reads as 1, the rule `ductZoneMultiplier` already had, so a project's junk multiplier can never be summed into a count as a string (XSS-COLOR) — `getScaleZoneForLine`) + `counterTally` (T2-11: `{ placed, withRepeats }` for one annotations object — the one counter arithmetic behind every badge/rollup surface), `formatLineLengthRealSum`, `parseRealWorldLength`, `parseFraction`, `formatAgo`, `formatFeetInchesFromVal`; classic `<script src>` loaded before the IIFE; no `state` dependency; has a guarded CommonJS export footer (`if (typeof module !== 'undefined' …)`, inert in the browser) so the primitives can be `require()`d by [geometry.test.js](geometry.test.js) |
 | [constants.js](constants.js) | Pure module-level constant literals — `TOOL`, `SCALE_MODES`, `PLUMBING_DEFAULTS`, `LINE_DEFAULTS`, `COLORS`, `SCALE_PRESETS`, the autosave/checkout timing & threshold block, IndexedDB store names + caps, Save Status log windows, checkout messages, and assorted keys/URLs/TZ (the recent-color helpers `nextRecentColors` + `RECENT_COLORS_MAX` live in the sibling [recent-colors.js](recent-colors.js), split out 2026-07-30 — behavior, not literals); classic `<script src>` loaded before the IIFE; no `state`/`window`/icon dependency (env reads like `SUPABASE_*`/`BACKUP_PDF_TO_INDEXEDDB`/`IS_DEV_HOST`, icon-derived consts, and function-local consts stay in app.js); guarded CommonJS export footer so the values can be `require()`d by [constants.test.js](constants.test.js). MAP-SETTINGS (2026-09-26): also `COUNTER_SETTINGS_DEFAULTS` / `LINE_TYPE_SETTINGS_DEFAULTS` (the display settings' defaults, app.js state starts from them), `DISPLAY_SETTINGS_SCOPE_FIELDS` and the pure `displaySettingsFields(defaults, raw)`, what a device's stored blob may set and what is written back; MAP-RING-DEFAULT: `DISPLAY_SETTINGS_MINIMUMS` (`ringSize` 50, the Ring size slider's minimum), under which a stored number reads as the default |
 | [geometry.test.js](geometry.test.js) | Node `node:test` + `node:assert` unit tests for the [geometry.js](geometry.js) primitives (including the T2-11 `counterTally` placed/with-repeats cases); run with `npm run test:unit` (no deps). Naming split: `*.test.js` = Node unit tests, `*.spec.js` = Playwright (see `testMatch` in [playwright.config.js](playwright.config.js)) |
 | [spec-helpers.js](spec-helpers.js) | **The shared Playwright spec helpers** (R07, 2026-09-26): `collectConsoleErrors(page, { ignore })` (console errors + uncaught page errors, minus the suite's allowlist: a line whose source is the gitignored `config.local.js` include, and `BENIGN_ERRORS`, today pdf.js's 'multiple render() operations'; the returned array carries a non-enumerable `assertNoErrors()`, so `expect(errors).toEqual([])` still holds), `bootApp(page, { url, viewport, timeout, ready })` (goto, default `/app/`, then `waitForBoot`: `App.bootSettled`, plus an optional `ready` condition), `reloadApp(page)`, `uploadPdf(page, file, { timeout, waitForPages })` (`#pdfInput` then `#pagesList .sidebar-item`; the default file is `test-2pages.pdf`, a bare name resolves from the repo root) and `PDFS`. Not a `*.spec.js`, so `testMatch` never collects it; linted in eslint's Node group. [scripts/lib/project-map.js](scripts/lib/project-map.js) counts a helper's `App.*` reads as read by every spec that requires it, so a spec that boots through the helper still pins what it pinned. A new spec boots this way; the first fifteen specs were converted with it, the rest are DECOMPOSITION_MAP.md R07's follow-up |
@@ -90,7 +90,7 @@ modules. Candidates in priority order:
 | [idb.test.js](idb.test.js) | Node `node:test` unit tests for [idb.js](idb.js) using `fake-indexeddb` (a fresh `IDBFactory` per test) — pdf-cache hash-mismatch + byte-cap LRU eviction, takeoff-backup round-trip + stale-skip + delete, custom-icon legacy→per-user migration, and save-logs-snapshot prune/newest-first ordering; run with `npm run test:unit` |
 | [format.js](format.js) | Pure date/time/text formatters extracted from app.js — `wrapNoteTextCore` (the note word-wrap core with hyphen/underscore break opportunities; app.js's `wrapNoteText` wrapper supplies the canvas-backed measurer, tests stub it), `escapeHtml` (THE canonical HTML escaper, `& < > " '` superset; app.js reads it by bare name and publishes `App.escapeHtml` for feature files, replacing what were 27 inline copies in four behavioral variants — some skipped the quote entities), `formatLastSignIn`, `dateKeyInTimeZone`, `calendarDaysFromSignInToNowInZone`, `formatLastSignInUserActivity`, `formatUserActivityDateTime`, `filterUserActivityRows`, `renderUserActivityAllUsersTableHtml`. Classic `<script src>` loaded after [constants.js](constants.js) (reads `USER_ACTIVITY_TZ` by bare name) and before [app.js](app.js); no `state`/DOM dependency (the DOM-coupled User Activity modal code — `applyUserActivityFilter`, `populateUserActivityUserSelect` — stays in app.js). Guarded CommonJS export footer so the formatters can be `require()`d by [format.test.js](format.test.js) |
 | [format.test.js](format.test.js) | Node `node:test` unit tests for [format.js](format.js) — `calendarDaysFromSignInToNowInZone` integer deltas (incl. year boundary / future), `filterUserActivityRows` match/case rules, `renderUserActivityAllUsersTableHtml` cells + escaping, `formatLastSignIn` relative buckets, `formatUserActivityDateTime`; the two en-CA-hyphen-dependent cases (`dateKeyInTimeZone`, `formatLastSignInUserActivity` Today) auto-skip on a limited-ICU runtime and run on full-ICU (browser-equivalent / CI Node 20); run with `npm run test:unit` |
-| [icon-render.js](icon-render.js) | Pure icon geometry / render-rule helpers extracted from app.js — the `CUSTOM_ICON_META` table (derived from `CUSTOM_ICONS`) plus `iconMetaFromList`, `iconViewBoxFromList`, `iconRenderVbRule`, `iconRenderCenterRule`, `iconViewBoxStringRule`, `iconSvgHtml`, and the shared picker-grid cell builders `iconCellHtml` / `iconGridCellsHtml` / `customIconCellsHtml` (+ `cfmDefaultIconFromList`, the D16 CFM→Supply Diffuser default resolved by set + name) (+ `ICON_UPLOAD_CELL_HTML`) that replaced the cell markup copy-pasted across counter.js / item-details.js / quick-modals.js / custom-icon-upload.js (published on `App` as `iconGridCellsHtml` / `customIconCellsHtml`; each picker keeps its own click wiring). Classic `<script src>` loaded after [icons.js](icons.js) (reads `CUSTOM_ICONS`/`VB_384_512_PATHS`/`FA_PATHS` by bare name; the top-level `CUSTOM_ICON_META` read is `typeof`-guarded so Node `require` stays load-safe) and before [app.js](app.js). Depends only on icons.js globals + args — no `state`/DOM/user-icon-cache. app.js keeps the cache-coupled lookups (`getCustomIconMeta`, `getCustomIconViewBox`, `iconRenderVb`, `iconRenderCenter`, `iconViewBoxString`, `renderIconHtml`) as same-named thin wrappers that inject `getEffectiveCustomIcons()`. Guarded CommonJS export footer so the primitives can be `require()`d by [icon-render.test.js](icon-render.test.js) |
+| [icon-render.js](icon-render.js) | Pure icon geometry / render-rule helpers extracted from app.js — the `CUSTOM_ICON_META` table (derived from `CUSTOM_ICONS`) plus `iconMetaFromList`, `iconViewBoxFromList`, `iconRenderVbRule`, `iconRenderCenterRule`, `iconViewBoxStringRule`, `iconSvgHtml`, and the shared picker-grid cell builders `iconCellHtml` / `iconGridCellsHtml` / `customIconCellsHtml` (+ `cfmDefaultIconFromList`, the D16 CFM→Supply Diffuser default resolved by set + name) (+ `ICON_UPLOAD_CELL_HTML`) that replaced the cell markup copy-pasted across counter.js / item-details.js / quick-modals.js / custom-icon-upload.js (published on `App` as `iconGridCellsHtml` / `customIconCellsHtml`; each picker keeps its own click wiring). Classic `<script src>` loaded after [icons.js](icons.js) (reads `CUSTOM_ICONS`/`VB_384_512_PATHS`/`FA_PATHS` by bare name; the top-level `CUSTOM_ICON_META` read is `typeof`-guarded so Node `require` stays load-safe) and before [app.js](app.js). Depends only on icons.js globals + args, plus format.js's `escapeHtml` read by bare name at call time — no `state`/DOM/user-icon-cache. XSS-COLOR: the string builders escape every path, viewBox, color, title and set heading they write (a counter's icon and a project's `customIconPaths` ride shared and imported projects); the unit test puts `escapeHtml` on `globalThis`. app.js keeps the cache-coupled lookups (`getCustomIconMeta`, `getCustomIconViewBox`, `iconRenderVb`, `iconRenderCenter`, `iconViewBoxString`, `renderIconHtml`) as same-named thin wrappers that inject `getEffectiveCustomIcons()`. Guarded CommonJS export footer so the primitives can be `require()`d by [icon-render.test.js](icon-render.test.js) |
 | [icon-render.test.js](icon-render.test.js) | Node `node:test` unit tests for [icon-render.js](icon-render.js) — `CUSTOM_ICON_META` derivation, `iconMetaFromList` (built-in fast path / injected user-icon parse / unknown→null), `iconViewBoxFromList`, the three rule functions across an `FA_PATHS` member / a `VB_384_512_PATHS` member / a default path, and `iconSvgHtml` markup + default color; run with `npm run test:unit` |
 | [line-metrics.js](line-metrics.js) | Pure line-length / scale math extracted from app.js — `lineSegmentLength` (arc-aware chord), `lineGeomPdfPts`, `lineLengthPdfPts` (adds drop length), `effectiveScaleForLine` (scale-zone override vs page scale), `lineRealWorldLength`, `lineLengthForTotals` (× multiply-zone factor), `lineLengthFeetForTotals` (the same total converted to feet, for the always-feet tallies), `scaleForLineType` (unit-preference pick across pages). Classic `<script src>` loaded after [geometry.js](geometry.js) (reads `ptDist`/`polylineDistance`/the bezier helpers/`getScaleZoneForLine`/`getMultiplyZoneForLine` by bare name) and before [app.js](app.js). Depends only on geometry.js globals + args — no `state`. app.js keeps the state-coupled, report.js-facing API (`quickLineLength`, `getLineLengthPdfPts`, `getEffectiveScaleForLine`, `getLineRealWorldLength`, `getLineLengthForTotals`, `pickScaleForLineType`) as same-named thin wrappers that resolve the per-page scale / line-type / pages from `state` and keep their `window.*` exports; the module's function names are deliberately distinct from the wrappers so the app.js-derived globals don't trip `no-redeclare`. Guarded CommonJS export footer so the primitives can be `require()`d by [line-metrics.test.js](line-metrics.test.js) |
 | [conductor-model.js](conductor-model.js) | The pure raceway / conductor model behind **Conductors on the run** (Electrical, First-Class S3, 2026-09-08): `RACEWAY_KINDS` / `RACEWAY_SIZES`, `isCableRaceway` (MC / AC / NM carry their conductors inside), `parseConductorSpec` (the trade's shorthand — `3 #12 THHN + 1 #12 G`, `2#12, 1#12 N`, `3 #1/0 XHHW`, `4 250 kcmil` → `[{ n, gauge, insul, role }]` + the segments it could not read), `formatConductorSpec`, `conductorsForLine` (a line's own override else its type's), `wireRowsFor` (feet × n per gauge; hots + neutrals one row, the ground its own "… green" row), `cableNameFor` ("MC 12/2 w/G"), `tickLayout` (hots, the longer neutral, the dashed ground; capped at 12). Loaded after line-metrics.js; exposed as `window.ConductorModel` and by bare name to canvas-draw.js (tick marks). Node-tested in [conductor-model.test.js](conductor-model.test.js). |
@@ -650,63 +650,63 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L801 - Undo/redo stacks
 - L1000 - [sync] Checkout probe, hashing & PDF cache
 - L1062 - Math & Format Helpers
-- L1580 - Coordinate Helpers
-- L1588 - PDF render bitmap cache
-- L1642 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1653 - PDF Rendering
-- L2498 - Recent bids
-- L2525 - UI Render Functions
-- L2878 - Placing selection (setActiveCounterType / setActiveLineType)
-- L2988 - Inline rename & polyline edit mode
-- L3104 - Modal primitives (showModal / hideModal)
-- L3240 - Toasts & line color picker
-- L3308 - Airboard cloud sync
-- L3353 - Supabase RPC & presence heartbeat
-- L3393 - User activity / event telemetry
-- L3452 - Supabase auth & dev auth
-- L3638 - [sync] Checkout subscription & permission refresh
-- L3648 - Modals & Handlers
-- L3716 - PDF intake (upload, test PDF, hashing)
-- L3724 - Toolbar tool buttons
-- L3885 - Tool sidebar buttons & legend overlay
-- L3971 - Add Line Type modal
-- L4053 - Line color & sidebar handlers
-- L4124 - Polyline modal & drawing
-- L4181 - Zoom bar & page navigation
-- L4207 - Export canvas JSON
-- L4232 - PDF download helpers
-- L4241 - View-link URL helpers & show-highlights/notes
-- L4273 - Custom icon upload handler
-- L4283 - Macros & custom-icon tips openers
-- L4303 - Sidebar drawer toggles
-- L4334 - Mobile actions burger menu pointer & header logo
-- L4346 - User Activity pointer (format.js + features/user-activity.js)
-- L4358 - My Settings pointer (features/my-settings.js)
-- L4383 - Project Settings pointer (features/project-settings.js)
-- L4389 - Auth & settings entry buttons
-  - L4434 - Project Settings checkout & Save Status bell
-  - L4541 - [sync] Checkout expired recovery
-  - L4597 - [sync] Turn In
-  - L4662 - Share modal pointer & copy-project openers
-  - L4693 - Settings menu actions
-  - L4705 - Auth sign-in form
-  - L4730 - Save Project modal
-  - L4741 - Checkout expired recovery modal wiring
-  - L4844 - Last-session restore prompt
-- L4856 - Canvas Event Handlers
-- L5238 - Event Binding
-- L5248 - Aim loupe (mobile press-hold precise placement)
-- L5401 - Zoom transform preview & commit
-- L5480 - Canvas mouse, wheel & touch handlers
-- L6140 - Global dropdown dismissal & keyboard hotkeys
-- L6317 - [sync] Manual save to cloud
-- L6327 - [sync] Auto-save
-- L6334 - [sync] Local backup (IndexedDB takeoff state)
-- L6343 - [sync] Visibility & timers
-- L6360 - [sync] Checkout keep-alive
-- L6374 - App feature registry
-- L6754 - View-only mode
-- L6760 - Init / boot
+- L1582 - Coordinate Helpers
+- L1590 - PDF render bitmap cache
+- L1644 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1655 - PDF Rendering
+- L2500 - Recent bids
+- L2527 - UI Render Functions
+- L2880 - Placing selection (setActiveCounterType / setActiveLineType)
+- L2990 - Inline rename & polyline edit mode
+- L3106 - Modal primitives (showModal / hideModal)
+- L3242 - Toasts & line color picker
+- L3310 - Airboard cloud sync
+- L3355 - Supabase RPC & presence heartbeat
+- L3395 - User activity / event telemetry
+- L3454 - Supabase auth & dev auth
+- L3640 - [sync] Checkout subscription & permission refresh
+- L3650 - Modals & Handlers
+- L3718 - PDF intake (upload, test PDF, hashing)
+- L3726 - Toolbar tool buttons
+- L3887 - Tool sidebar buttons & legend overlay
+- L3973 - Add Line Type modal
+- L4055 - Line color & sidebar handlers
+- L4126 - Polyline modal & drawing
+- L4183 - Zoom bar & page navigation
+- L4209 - Export canvas JSON
+- L4234 - PDF download helpers
+- L4243 - View-link URL helpers & show-highlights/notes
+- L4275 - Custom icon upload handler
+- L4285 - Macros & custom-icon tips openers
+- L4305 - Sidebar drawer toggles
+- L4336 - Mobile actions burger menu pointer & header logo
+- L4348 - User Activity pointer (format.js + features/user-activity.js)
+- L4360 - My Settings pointer (features/my-settings.js)
+- L4385 - Project Settings pointer (features/project-settings.js)
+- L4391 - Auth & settings entry buttons
+  - L4436 - Project Settings checkout & Save Status bell
+  - L4543 - [sync] Checkout expired recovery
+  - L4599 - [sync] Turn In
+  - L4664 - Share modal pointer & copy-project openers
+  - L4695 - Settings menu actions
+  - L4707 - Auth sign-in form
+  - L4732 - Save Project modal
+  - L4743 - Checkout expired recovery modal wiring
+  - L4846 - Last-session restore prompt
+- L4858 - Canvas Event Handlers
+- L5240 - Event Binding
+- L5250 - Aim loupe (mobile press-hold precise placement)
+- L5403 - Zoom transform preview & commit
+- L5482 - Canvas mouse, wheel & touch handlers
+- L6142 - Global dropdown dismissal & keyboard hotkeys
+- L6319 - [sync] Manual save to cloud
+- L6329 - [sync] Auto-save
+- L6336 - [sync] Local backup (IndexedDB takeoff state)
+- L6345 - [sync] Visibility & timers
+- L6362 - [sync] Checkout keep-alive
+- L6376 - App feature registry
+- L6756 - View-only mode
+- L6762 - Init / boot
 
 <!-- END SECTION TOC -->
 

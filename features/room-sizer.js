@@ -138,8 +138,8 @@
     getRoomVolumeTotals().forEach(t => { if (t.id) totalsById[t.id] = t; });
     list.innerHTML = rooms.map(r => {
       const t = totalsById[r.id];
-      return '<div class="room-picker-item' + (r.id === selectedRoomChoice ? ' selected' : '') + '" data-room-id="' + r.id + '">'
-        + '<span class="room-swatch" style="background:' + (r.color || '#47c88e') + '"></span>'
+      return '<div class="room-picker-item' + (r.id === selectedRoomChoice ? ' selected' : '') + '" data-room-id="' + escapeHtmlText(r.id) + '">'   // XSS-COLOR: a room's id and color ride a project; attribute text
+        + '<span class="room-swatch" style="background:' + escapeHtmlText(r.color || '#47c88e') + '"></span>'
         + '<span class="room-picker-name">' + escapeHtmlText(r.name || 'Room') + '</span>'
         + (t ? '<span class="room-picker-vol">' + fmtArea(t.areaSqFt) + ' | ' + fmtVol(t.volumeCuFt) + '</span>' : '')
         + '</div>';

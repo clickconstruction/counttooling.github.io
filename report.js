@@ -269,7 +269,7 @@
         html += '<table class="report-table"><tr><th>Type</th><th>Count</th></tr>';
         counterRows.forEach(r => {
           const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
-          html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.type) + '</span></td><td>' + r.count + '</td></tr>';
+          html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.type) + '</span></td><td>' + escapeHtml(r.count) + '</td></tr>';   // XSS-COLOR sweep: a count sums zone multipliers, which ride a project
         });
         html += '</table>';
       }
@@ -294,8 +294,8 @@
         html += '<h3 class="section-header">Line Types</h3>';
         html += '<table class="report-table"><tr><th>Type</th><th>Runs</th><th>Length</th></tr>';
         lineTypeRows.forEach(r => {
-          const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
-          html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(r.type) + '</span></td><td>' + r.runs + '</td><td>' + r.length + '</td></tr>';
+          const swatchStyle = r.color ? 'background:' + escapeHtml(r.color) + ';' : 'background:#4a9eff;';   // XSS-COLOR: a line type's color rides a project; attribute text
+          html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(r.type) + '</span></td><td>' + escapeHtml(r.runs) + '</td><td>' + escapeHtml(r.length) + '</td></tr>';
         });
         html += '</table>';
       }
@@ -341,22 +341,22 @@
         // Child counts: indented, words-only rows under their parent — separate
         // per parent (the name merge happens only in the PipeTooling export).
         const childRow = (r, parentPages) =>
-          '<tr><td style="padding-left:36px;color:#535353;">↳ ' + escapeHtml(r.name) + ' <span style="color:#999;">(' + escapeHtml(childRuleLabel(r)) + ')' + (r.excludedPxRuns ? ' *' : '') + '</span></td><td>' + r.total + '</td><td>' + parentPages.join(', ') + '</td></tr>';
+          '<tr><td style="padding-left:36px;color:#535353;">↳ ' + escapeHtml(r.name) + ' <span style="color:#999;">(' + escapeHtml(childRuleLabel(r)) + ')' + (r.excludedPxRuns ? ' *' : '') + '</span></td><td>' + escapeHtml(r.total) + '</td><td>' + escapeHtml(parentPages.join(', ')) + '</td></tr>';
         const groupChildren = childTotals.byGroup?.[gid] || {};
         let anyChildPxExcluded = false;
         (state.counters || []).forEach(c => {
           const r = counters[c.id];
           if (r) {
             const iconHtml = r.icon ? renderIconHtml(r.icon, r.color || '#e8c547') : '';
-            html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.name) + '</span></td><td>' + r.total + '</td><td>' + r.pages.join(', ') + '</td></tr>';
+            html += '<tr><td class="report-type-cell"><span class="report-type-icon">' + iconHtml + '</span><span>' + escapeHtml(r.name) + '</span></td><td>' + escapeHtml(r.total) + '</td><td>' + escapeHtml(r.pages.join(', ')) + '</td></tr>';   // XSS-COLOR sweep: a total sums zone multipliers, which ride a project
             (groupChildren.counter?.[c.id] || []).forEach(cr => { html += childRow(cr, r.pages); if (cr.excludedPxRuns) anyChildPxExcluded = true; });
           }
         });
         (state.lineTypes || []).forEach(lt => {
           const r = lines[lt.id];
           if (r) {
-            const swatchStyle = r.color ? 'background:' + r.color + ';' : 'background:#4a9eff;';
-            const row = (unit, num, pagesList) => '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + num + '</td><td>' + pagesList.join(', ') + '</td></tr>';
+            const swatchStyle = r.color ? 'background:' + escapeHtml(r.color) + ';' : 'background:#4a9eff;';   // XSS-COLOR: a line type's color rides a project; attribute text
+            const row = (unit, num, pagesList) => '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(unit + ' of ' + r.name) + '</span></td><td>' + escapeHtml(num) + '</td><td>' + escapeHtml(pagesList.join(', ')) + '</td></tr>';
             // T1-05 split rows: up to one ft row + one px row per line type —
             // px lengths are never summed under a ft label.
             if (r.lengthFt > 0) html += row('ft', r.lengthFt.toFixed(2), r.pagesFt);
@@ -398,9 +398,9 @@
         html += '<p class="report-group-totals"><strong>' + escapeHtml(p.panel === '—' ? 'No panel' : 'Panel ' + p.panel) + '</strong>' + (checkText ? ' · ' + escapeHtml(checkText) : '') + '</p>';
         html += '<table class="report-table"><tr><th>Circuit</th><th>Devices</th><th>Conduit</th><th>Homerun</th><th>Wire</th><th>Farthest device</th></tr>';
         p.circuits.forEach(c => {
-          const devices = c.devices.map(d => d.count + ' × ' + escapeHtml(d.name)).join(', ') || 'none';
+          const devices = c.devices.map(d => escapeHtml(d.count) + ' × ' + escapeHtml(d.name)).join(', ') || 'none';
           const far = c.farthestFt != null ? c.farthestFt.toFixed(0) + ' ft' + (c.farthestFrom === 'homerun' ? ' (from the homerun)' : '') : 'none';
-          html += '<tr><td>' + escapeHtml((c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group) + (c.loadAmps ? ' <span style="color:#999;">' + c.loadAmps + ' A</span>' : '') + '</td><td>' + devices + '</td><td>' + fmtFt(c.conduitFt) + '</td><td>' + fmtFt(c.homerunFt) + '</td><td>' + fmtFt(c.wireFt) + '</td><td>' + far + (c.devicesOffRuns ? ' <span style="color:#999;">(' + c.devicesOffRuns + ' not on a run)</span>' : '') + '</td></tr>';
+          html += '<tr><td>' + escapeHtml((c.circuit ? 'Ckt ' + c.circuit + ' · ' : '') + c.group) + (c.loadAmps ? ' <span style="color:#999;">' + escapeHtml(c.loadAmps) + ' A</span>' : '')   /* XSS-COLOR sweep: a circuit's load rides a project */ + '</td><td>' + devices + '</td><td>' + fmtFt(c.conduitFt) + '</td><td>' + fmtFt(c.homerunFt) + '</td><td>' + fmtFt(c.wireFt) + '</td><td>' + far + (c.devicesOffRuns ? ' <span style="color:#999;">(' + c.devicesOffRuns + ' not on a run)</span>' : '') + '</td></tr>';
         });
         html += '</table>';
       });
@@ -425,7 +425,7 @@
       html += '<table class="report-table"><tr><th>Room</th><th>Area (ft²)</th><th>Volume (ft³)</th><th>Pages</th></tr>';
       roomTotals.forEach(t => {
         const pagesStr = [...new Set(t.boxes.map(b => b.pageIdx + 1))].sort((a, b) => a - b).join(', ');
-        const swatchStyle = 'background:' + (t.color || '#47c88e') + ';';
+        const swatchStyle = 'background:' + escapeHtml(t.color || '#47c88e') + ';';   // XSS-COLOR: a room's color rides a project; attribute text
         html += '<tr><td class="report-type-cell"><span class="report-type-swatch" style="' + swatchStyle + '"></span><span>' + escapeHtml(t.name) + (t.missingScale ? ' *' : '') + '</span></td><td>' + t.areaSqFt.toFixed(1) + '</td><td>' + t.volumeCuFt.toFixed(1) + '</td><td>' + pagesStr + '</td></tr>';
       });
       html += '</table>';

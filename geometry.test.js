@@ -543,3 +543,17 @@ test('formatMountHeightIn: always inches with the mark; blanks for non-numbers',
   assert.strictEqual(g.formatMountHeightIn(null), '');
   assert.strictEqual(g.formatMountHeightIn(-1), '');
 });
+
+// XSS-COLOR sweep: a zone's multiplier rides a project, and counts SUM it, so a
+// string multiplier used to become a string count that landed in a badge or a
+// report cell. Anything that is not a finite number >= 1 reads as 1.
+test('getMultiplyZoneFor*: a multiplier that is not a finite number >= 1 reads as 1', () => {
+  const zone = (multiplier) => ({ multiplyZones: [{ x1: 0, y1: 0, x2: 10, y2: 10, multiplier }] });
+  for (const bad of ['<b data-xss="1"></b>', '3', null, undefined, 0, -2, NaN, Infinity, {}]) {
+    assert.strictEqual(g.getMultiplyZoneForPoint(zone(bad), { x: 5, y: 5 }), 1, String(bad));
+    assert.strictEqual(g.getMultiplyZoneForLine(zone(bad), { x1: 1, y1: 1, x2: 9, y2: 9 }, false), 1, String(bad));
+  }
+  assert.strictEqual(g.getMultiplyZoneForPoint(zone(4), { x: 5, y: 5 }), 4);
+  const ann = { ...zone('<b data-xss="1"></b>'), counterMarkers: { c1: [{ x: 5, y: 5 }, { x: 6, y: 6 }] } };
+  assert.deepStrictEqual(g.counterTally(ann, 'c1'), { placed: 2, withRepeats: 2 });
+});

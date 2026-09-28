@@ -12,6 +12,10 @@ const icons = require('./icons.js');
 const customIcons = require('./icons-custom.js');   // CUSTOM_ICONS (generated, split file)
 Object.assign(globalThis, customIcons);
 Object.assign(globalThis, icons);
+// The string builders escape through format.js's escapeHtml, a bare-name global in
+// the browser (XSS-COLOR); format.js reads constants by bare name, so those first.
+Object.assign(globalThis, require('./constants.js'));
+globalThis.escapeHtml = require('./format.js').escapeHtml;
 const ir = require('./icon-render.js');
 
 test('CUSTOM_ICON_META: derives center + max-dimension vb for a bundled icon', () => {
@@ -113,6 +117,38 @@ test('customIconCellsHtml: leads with the upload cell; selects by value', () => 
   assert.match(html, /viewBox="0 0 20 20"/);
   // No selectedValue -> only the upload cell precedes unselected cells.
   assert.doesNotMatch(ir.customIconCellsHtml(custom), /icon-cell selected/);
+});
+
+// XSS-COLOR: an icon path, its viewBox, a color and a set name can ride a project
+// (counters[].icon, customIconPaths), so each builder writes them as attribute or
+// text content, never markup. The hostile values are inert: a breakout would only
+// plant a data-xss attribute or a <b data-xss> element.
+const HOSTILE_PATH = 'M0 0h10v10H0z"/><b data-xss="icon"></b><path d="';
+const HOSTILE_VB = '0 0 24 24" data-xss="viewbox';
+const HOSTILE_COLOR = '#4a9eff" data-xss="color';
+const HOSTILE_SET = 'x<b data-xss="set"></b>';
+const noBreakout = (html) => {
+  assert.doesNotMatch(html, /<b\b/, 'no element injected');
+  assert.doesNotMatch(html, /" data-xss=/, 'no attribute injected');
+};
+test('XSS-COLOR: iconSvgHtml escapes the path, the color and the viewBox', () => {
+  const html = ir.iconSvgHtml(HOSTILE_PATH, HOSTILE_COLOR, HOSTILE_VB);
+  noBreakout(html);
+  assert.ok(html.includes('d="M0 0h10v10H0z&quot;/&gt;&lt;b data-xss=&quot;icon&quot;&gt;&lt;/b&gt;&lt;path d=&quot;"'));
+  assert.ok(html.includes('fill="#4a9eff&quot; data-xss=&quot;color"'));
+  assert.ok(html.includes('viewBox="0 0 24 24&quot; data-xss=&quot;viewbox"'));
+});
+test('XSS-COLOR: iconCellHtml, iconGridCellsHtml and customIconCellsHtml escape the path, viewBox, title and set heading', () => {
+  noBreakout(ir.iconCellHtml(HOSTILE_PATH, HOSTILE_VB, true, 'Name" data-xss="title'));
+  noBreakout(ir.iconGridCellsHtml([{ value: HOSTILE_PATH }], () => HOSTILE_VB));
+  const custom = [{ value: HOSTILE_PATH, viewBox: HOSTILE_VB, set: HOSTILE_SET }, { value: 'C2', viewBox: '0 0 20 20', set: 'plumbing' }];
+  const html = ir.customIconCellsHtml(custom, HOSTILE_PATH);
+  noBreakout(html);
+  assert.ok(html.includes('<div class="icon-grid-heading">X&lt;b data-xss=&quot;set&quot;&gt;&lt;/b&gt;</div>'));
+  // the selected cell is still found by its raw value
+  assert.match(html, /class="icon-cell selected" data-path="M0 0h10v10H0z&quot;/);
+  // a legitimate path and viewBox are byte-identical to before
+  assert.strictEqual(ir.iconCellHtml('M0 0h24v24H0z', '0 0 24 24', false), '<div class="icon-cell" data-path="M0 0h24v24H0z"><svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M0 0h24v24H0z"/></svg></div>');
 });
 
 // D16: the bundled HVAC set + the CFM default glyph.

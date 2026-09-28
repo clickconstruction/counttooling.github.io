@@ -570,6 +570,7 @@
     {
       id: 'riser', title: 'Chapter 5: The riser', short: 'the vertical, drawn', minutes: 8, page: 3, noun: 'chapter',
       intro: 'The plan shows a stack, an upright drain or vent pipe, as one circle. P-601 draws it standing up: the trap arms, the stack, the vent through the roof, and the vertical feet the bid carries.',
+      opener: 'The sheets open at P-601, the last sheet of the set. It has no scale yet: that is your first step.\nThe 4in PVC line type from chapter 4 is already made.\nNothing here touches your own projects.',
       seed() { scaleP101(); K().makeLineType('4in PVC', '#8a4bb0'); },
       steps: [
         { id: 'scale', title: 'A riser drawn to scale', kind: 'do',
@@ -578,7 +579,7 @@
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { K().goPage(K().P601); await T().applyScalePreset('1/4" = 1\'', 18); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: 3, hold: true,
           body: () => (proveP601().check()
-            ? proveP601().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            ? proveP601().verdict() + ': this sheet\'s scale is right too.'
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 14\'-0" string at the left, floor to roof.\n3. Click inside circle 2, at the other end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP601().check(), hint: () => proveP601().hint(), zones: () => proveP601().zones(),
           action: { label: 'Measure the 14\'-0" string', run: async () => { const k = K(); k.goPage(k.P601); if (!k.scaleIs(k.P601, 18)) await T().applyScalePreset('1/4" = 1\'', 18); const d = raw(R.prove); k.measure(d[0], d[1]); } } },
@@ -590,16 +591,21 @@
           action: { label: 'Measure it for me', run: () => { const k = K(); k.goPage(k.P601); const d = raw(R.lavArm); k.measure(d[0], d[1]); } } },
         { id: 'stack', title: 'Trace the stack', kind: 'do', cardAt: 'br', page: 3, zones: () => traceZones(RE.pvc4, raw(R.stack), K().P601),
           rules: ['plumb.trap.arm-length'],
-          body: 'Answer: four feet. IPC Table 909.1 allows six feet for a 1-1/2" arm. Any longer and the trap would siphon, sucked dry, when the water closet flushes.\nThe stack itself is pipe the plan cannot show.\n1. Click 4in PVC in the sidebar to make it active.\n2. Click [[Polyline]] (or press P).\n3. Click the base of the stack, at the building drain: the main drain under the floor.\n4. Click the vent terminal above the roof.\n5. Press Enter.\nRiser note 2 lists the limits. Bid Check\'s trap-arm row is where you sign that you read them.',
+          body: 'Answer: four feet. IPC Table 909.1 allows six feet for a 1-1/2" arm. Any longer and the trap would siphon, sucked dry, when the water closet flushes.\nRiser note 2 lists the limits. The trap-arm row under BID CHECK is where you sign that you read them.\nThe stack itself is pipe the plan cannot show.\n1. Under LINE TYPES, click 4in PVC to make it active.\n2. Click [[Polyline]] (or press P).\n3. Click the base of the stack, at the building drain: the main drain under the floor.\n4. Click the vent terminal above the roof.\n5. Click [[Finish]] under the sheet (or press Enter).',
           target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(traceZones(RE.pvc4, raw(R.stack), K().P601)),
           action: { label: 'Trace it for me', run: () => { const lt = lineType(RE.pvc4) || K().makeLineType('4in PVC', '#8a4bb0'); if (polylinesOn(RE.pvc4, K().P601).length) return; traceSheet(lt, R.stack, 'Stack', K().P601); } } },
         { id: 'why', title: 'Why the stack keeps going', kind: 'read', cardAt: 'br',
           rules: ['plumb.vent.terminal'],
           body: 'Seventeen feet of 4" pipe for one circle on the plan. The waste stack runs below the lavatory\'s connection, the vent stack above it, and a foot above the roof.\nWhy does a waste stack continue past the last fixture and out through the roof?',
-          reveal: 'Air. Water falling down a stack pushes air ahead of it and pulls air behind it. Without an open top, the pressure swings would blow or siphon every trap on the stack.\nThe stack vents through the roof, clear of air intakes (IPC 903). A foot above the roof is this job\'s number, from riser note 3. The code leaves the height to each local code. That terminal is a flashing and a roofer on the bid.\nOn a real set the riser is where the verticals, the upright pipes, come from. So do the vent header sizes (the pipe that joins the vents) and the cleanout at each stack\'s base. The plan only hints at them.',
+          reveal: 'Air. Water falling down a stack pushes air ahead of it and pulls air behind it. Without an open top, the pressure swings would blow or siphon every trap on the stack.\nThe stack vents through the roof, clear of air intakes (IPC 903). A foot above the roof is this job\'s number, from riser note 3. The code leaves the height to each local code. That terminal is a flashing, the seal around the pipe at the roof, and a roofer on the bid.\nOn a real set the riser is where the verticals, the upright pipes, come from. So do the vent header sizes (the pipe that joins the vents) and the cleanout at each stack\'s base. The plan only hints at them.',
           target: [], check: () => true },
         { id: 'co', title: 'The cleanout at the base', kind: 'do', cardAt: 'br', page: 3, zones: () => circlesOn(K().P601, RE.co, raw(R.co), 14),
-          body: 'Riser note 4: a cleanout at the base of each stack, where the upright pipe turns level and a blockage settles.\n1. If CO Cleanout is in the sidebar, click it to arm it: every click on the sheet then places one.\nIf it is not, under COUNTERS click [[+ Add]]. On the [[Create]] tab, type CO Cleanout in Name and click [[Create Counter]]: it comes armed.\n2. Click the cleanout beside the base of the stack.',
+          // the card reads the sidebar (rule 8): a reader who has the counter is not told how to make one
+          body: () => 'Riser note 4: a cleanout at the base of each stack, where the upright pipe turns level and a blockage settles.\n'
+            + (K().armedNamed(RE.co) ? 'CO Cleanout is armed: every click on the sheet places one.'
+              : counter(RE.co) ? '1. Under COUNTERS, click CO Cleanout to arm it. Every click on the sheet then places one.'
+                : '1. Under COUNTERS, click [[+ Add]].\n2. On the [[Create]] tab, type CO Cleanout in Name.\n3. Click [[Create Counter]]. It comes armed: every click on the sheet then places one.')
+            + '\n1. Click the cleanout beside the base of the stack.',
           target: ['#annCanvas', '#countersList', '#addCounter'], check: () => allDone(circlesOn(K().P601, RE.co, raw(R.co), 14)),
           action: { label: 'Count it for me', run: () => { const k = K(); k.goPage(k.P601); App.pushUndoSnapshotCurrentPage(); markMissing(pick('co'), raw(R.co), k.P601); k.dirty(); } } },
       ],
@@ -609,6 +615,7 @@
     {
       id: 'gas', title: 'Chapter 6: Gas', short: 'the gas, traced', minutes: 8, page: 0, noun: 'chapter',
       intro: 'From the gas meter to the cook line: sizes that shrink with the load, and a shutoff valve at every appliance. The valve the hood trips, and where it goes. And a hanger row the app\'s rulebook, its list of the trade rules it applies, does not have yet.',
+      opener: 'The gas is on P-101, the floor plan, and its scale is already set. Look for the dash-dot line: the legend draws gas that way.\nNothing here touches your own projects.',
       seed() { scaleP101(); },
       steps: [
         { id: 'meter', title: 'From the meter', kind: 'read', cardAt: 'tl',
@@ -617,37 +624,37 @@
           reveal: '1-1/2" from the meter into STORAGE, where 3/4" splits off to the water heater.\nThen 1-1/4" on up the east side of the kitchen and west along the cook line. Each of the four appliances gets a drop, a pipe down to it, and a shutoff valve.\nGas is sized by the load downstream and the length of the run (IFGC 402, the International Fuel Gas Code). The load is in BTU per hour: British thermal units, how fast the appliances burn gas.\nSo like water, the gas pipe shrinks as it goes.\nThe pipe is black steel, threaded (screwed together), per the general notes: BI in the trade, black iron.',
           target: [], check: () => true },
         { id: 'linetype', title: 'A black iron line type', kind: 'do',
-          body: 'BI, black iron, is the gas pipe. The main is two sizes, so it takes two line types.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. Click [[Quick]], and pick 1.5in and BI.\n3. Click [[Add Line Type]].\n4. Again for 1.25in BI.',
+          body: 'The gas main is two sizes, so it takes two line types. Both are BI.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. Click [[Quick]], and pick 1.5in and BI.\n3. Click [[Add Line Type]].\n4. Again for 1.25in BI.',
           target: ['#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', '#addLineType'],
           check: () => !!(lineType(RE.gas15) && lineType(RE.gas)),
           hint: () => (lineType(RE.gas15) && !lineType(RE.gas) ? 'Still to make: 1.25in BI' : (!lineType(RE.gas15) && lineType(RE.gas) ? 'Still to make: 1.5in BI' : '')),
           action: { label: 'Make 1.5in BI and 1.25in BI', run: () => { App.pushUndoSnapshot(); const k = K(); const lt = k.makeLineType('1.5in BI', '#b03a2e'); k.makeLineType('1.25in BI', '#e85447'); S().activeLineTypeId = lt.id; k.dirty(); } } },
         { id: 'trace', title: 'Trace the cook line', kind: 'do', cardAt: 'bl', page: 0, zones: () => gasZones(),
-          body: 'The gas main runs from the meter to the range, and steps down on the way. The labels read 1-1/2" in STORAGE and 1-1/4" in the kitchen. No reducer, the fitting that joins two sizes, is drawn, so read the change at the wall between them.\n1. Click 1.5in BI in the sidebar to make it the active line type.\n2. Click [[Polyline]] (or press P).\n3. Click the meter, then the kitchen wall where the run crosses it.\n4. Press Enter.\n5. Click 1.25in BI in the sidebar.\n6. Click the kitchen wall again, the corner where the run turns west in front of the cook line, and its end at the range.\n7. Press Enter.\nThe reducer at the wall is one more fitting on the bid.',
+          body: 'The gas main steps down on its way to the range. The labels read 1-1/2" in STORAGE and 1-1/4" in the kitchen. No reducer, the fitting that joins two sizes, is drawn, so read the change at the wall between them.\n1. Under LINE TYPES, click 1.5in BI to make it the active line type.\n2. Click [[Polyline]] (or press P).\n3. Click the meter, then the kitchen wall where the run crosses it.\n4. Click [[Finish]] under the sheet (or press Enter).\n5. Under LINE TYPES, click 1.25in BI.\n6. Click the kitchen wall again, the corner where the run turns west in front of the cook line, and its end at the range.\n7. Click [[Finish]] again (or press Enter).\nThe reducer at the wall is one more fitting on the bid.',
           target: ['#polylineBtn', '#polylineBtnSidebar', '#lineTypesList'], check: () => allDone(gasZones()),
           hint: () => (polylinesOn(RE.gas15).length && !polylinesOn(RE.gas).length && !S().drawingPolyline ? 'One more: the 1-1/4" run in 1.25in BI, from the kitchen wall to the range' : ''),
           action: { label: 'Trace it for me', run: () => { const k = K(); const big = lineType(RE.gas15) || k.makeLineType('1.5in BI', '#b03a2e'); const lt = lineType(RE.gas) || k.makeLineType('1.25in BI', '#e85447'); if (!polylinesOn(RE.gas15).length) tracePlan(big, G.gas15, 'Gas main, 1-1/2"'); if (!polylinesOn(RE.gas).length) tracePlan(lt, G.gas125, 'Gas main, 1-1/4"'); } } },
         { id: 'bends', title: 'Elbows from the bends', kind: 'do',
-          body: '1. Click the pencil beside 1.25in BI.\n2. Turn on [[Fittings from bends]].\n3. Click [[Done]].\nThe corner counts a 90, a right-angle elbow. Threaded steel elbows are priced each, so this row matters more on gas than on anything else.',
+          body: '1. Under LINE TYPES, click the pencil beside 1.25in BI.\n2. Turn on [[Fittings from bends]].\n3. Click [[Done]].\nThe corner counts a 90, a right-angle elbow. Threaded steel elbows are priced each, so this row matters more on gas than on anything else.',
           target: () => T().ladder('#bendFittingsBtn', '#counterLineTypeDetailsModal .modal-card', T().pencilOf('lineType', lineType(RE.gas)), '#lineTypesSectionTitle'),
           check: () => K().someLineType(RE.gas, (lt) => lt.bendFittings && lt.bendFittings.enabled),
           action: { label: 'Turn it on for me', run: () => enableBends(lineType(RE.gas)) } },
         { id: 'drops', title: 'Count the drops', kind: 'do', cardAt: 'bl', page: 0, zones: () => circlesOn(K().P101, RE.gasDrop, SPOTS().gasDrop, 12),
           rules: ['plumb.gas.appliance-shutoff'],
-          body: 'Each dot on the run in front of the cook line is a drop with a shutoff to one appliance. IFGC 409.5 wants a valve at every one. Most sheets run the gas behind the equipment, at the wall; this one draws it on the aisle side.\n1. Make a Gas Drop w/ Shutoff counter.\n2. Click the four dots under the range, the flat top (a griddle) and the two fryers.',
+          body: 'Each dot on the run in front of the cook line is a drop with a shutoff to one appliance. IFGC 409.5 wants a valve at every one. Most sheets run the gas behind the equipment, at the wall; this one draws it on the aisle side.\n1. Under COUNTERS, click [[+ Add]], and make a counter named Gas Drop w/ Shutoff.\n2. Click the four dots under the range, the flat top (a griddle) and the two fryers.',
           target: ['#annCanvas', '#addCounter'], check: () => allDone(circlesOn(K().P101, RE.gasDrop, SPOTS().gasDrop, 12)),
           hint: () => missing(RE.gasDrop, SPOTS().gasDrop, ['the range', 'the flat top', 'the first fryer', 'the second fryer'], 8),
           action: { label: 'Count the four for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('gasDrop'), SPOTS().gasDrop); K().dirty(); } } },
         { id: 'hood', title: 'Where does the hood\'s valve go?', kind: 'do', cardAt: 'bl',
           rules: ['plumb.gas.hood-shutoff'],
-          body: 'The dashed box over the cook line says HOOD ABOVE: the canopy that pulls smoke off the stoves. Its fire suppression system, a built-in extinguisher, must shut the gas to everything under it when it fires. That takes a valve on the gas line.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click the spot on the gas line where that valve has to sit.\n3. Type RFI: and the question: who furnishes and sets the gas shutoff valve the hood suppression system trips?\n4. Click [[Done]].\nThe sheet does not draw that valve, or say who furnishes (supplies) it. The rule is NFPA 96, the hood standard of the NFPA, the National Fire Protection Association.',
+          body: 'The dashed box over the cook line says HOOD ABOVE: the canopy that pulls smoke off the stoves. Its fire suppression system, a built-in extinguisher, must shut the gas to everything under it when it fires. That takes a valve on the gas line.\nThe sheet does not draw that valve, or say who furnishes (supplies) it.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click the spot on the gas line where that valve has to sit.\n3. Type RFI: and the question: who furnishes and sets the gas shutoff valve the hood suppression system trips?\n4. Click [[Done]].\nThe rule is NFPA 96, the hood standard of the NFPA, the National Fire Protection Association.',
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => anyRfi() && notesNear(pts(G.hoodValve)[0], 60).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
           hint: () => { const a = ann(); return a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))) ? 'Move it: the valve sits on the 1-1/4" line AHEAD of the first drop, so one valve cuts every appliance' : (a && (a.notes || []).length ? 'Start the note with RFI:' : ''); },
           action: { label: 'Flag it for me', run: () => K().addNote(pts(G.hoodValve)[0], 'RFI: Who furnishes and sets the gas shutoff valve the hood suppression system trips?', '#e85447') } },
         { id: 'hangers', title: 'A hanger row of your own', kind: 'do',
           rules: ['plumb.hanger.gas-steel'],
-          body: 'Answer: ahead of the first drop, so one valve cuts the whole line.\nThe rulebook, the app\'s list of trade rules, has a gas hanger row. Bid Check does not read it yet, so it is quiet about the gas line. Gas pipe follows the fuel gas code, not the plumbing code. IFGC Table 415.1 hangs 1-1/4" steel gas pipe every 10 ft.\n1. Click the pencil beside 1.25in BI.\n2. Under [[Child counts]], type Hanger in the name box, and leave the quantity at 1.\n3. Set the rule to per N ft, and the interval to 10 ft.\n4. Click [[+ Add]].\n5. Click [[Done]].\nA note that starts with RFI: is a flag. [[Copy RFI Flags]], under EXPORT OPTIONS, collects every one for the GC, the general contractor who runs the job. The Notes ledger in the header lists them.',
+          body: 'Answer: ahead of the first drop, so one valve cuts the whole line.\nYour note starts with RFI:, so it is a flag. [[Copy RFI Flags]], under EXPORT OPTIONS, collects every one for the GC, the general contractor who runs the job. [[Notes ledger]] in the header lists them.\nNow the hangers. The rulebook, the app\'s list of trade rules, has a gas hanger row. Bid Check does not read it yet, so it is quiet about the gas line. Gas pipe follows the fuel gas code, not the plumbing code. IFGC Table 415.1 hangs 1-1/4" steel gas pipe every 10 ft.\n1. Under LINE TYPES, click the pencil beside 1.25in BI.\n2. Under [[Child counts]], type Hanger in the name box, and leave the quantity at 1.\n3. Set the rule to per N ft, and the interval to 10 ft.\n4. Click {{+ Add|#childCountAdd}}.\n5. Click [[Done]].',
           target: () => T().ladder('#childCountsGroup', T().pencilOf('lineType', lineType(RE.gas)), '#lineTypesSectionTitle'),
           check: () => K().someLineType(RE.gas, (lt) => (lt.childCounts || []).some((ch) => ch.per === 'ft')),
           action: { label: 'Add Hanger · 1 per 10 ft', run: () => { const lt = lineType(RE.gas); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [{ name: 'Hanger', qty: 1, per: 'ft', ftInterval: 10 }]; K().dirty(); } } },
@@ -658,6 +665,7 @@
     {
       id: 'details', title: 'Chapter 7: The enlarged plan and the typical', short: 'a second sheet, a second scale', minutes: 8, page: 1, noun: 'chapter',
       intro: 'Why the restrooms are drawn twice, and a scale per sheet. A detail, a small drawing of one spot, at another scale inside it. And TYP. OF 4 made into a number.',
+      opener: 'The sheets open at P-401, the second sheet of the set.\nTwo marks are already on it, in detail 2: one hand sink and one floor drain.\nNothing here touches your own projects.',
       seed() {
         scaleP101();
         const k = K();
@@ -666,7 +674,7 @@
       },
       steps: [
         { id: 'why', title: 'Why draw the restrooms twice?', kind: 'read', cardAt: 'br',
-          body: 'P-401 draws MEN and WOMEN again, at 1/4": an enlarged plan, part of the plan drawn bigger. P-101 already shows them.\nWhat is the enlarged plan for?',
+          body: 'P-401 draws MEN and WOMEN again, at 1/4": an enlarged plan, part of the plan drawn bigger. P-101 already shows them.',
           reveal: 'Clearances, the free space around the fixtures. At 1/8" a restroom is an inch wide.\nNobody can check there that the room has its 60" circle to turn a wheelchair, or that a lavatory rim sits at 34".\nThe enlarged plan is where the accessibility dimensions live (ICC A117.1, the accessibility standard, through the building code). It is where the engineer proves the fixtures fit.\nFor the takeoff it is a second scale on the same set. It is also the easiest place to count a fixture twice: count the restrooms on one sheet, never both.\nLook closer, though: this P-401 does not match P-101. The rooms swap sides, and it draws five water closets and a urinal where P-101 draws one water closet a room.\nWhen two sheets disagree, count neither until an RFI says which one governs.',
           target: [], check: () => true },
         { id: 'scale', title: 'A scale per sheet', kind: 'do',
@@ -675,7 +683,7 @@
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { K().goPage(K().P401); await T().applyScalePreset('1/4" = 1\'', 18); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: 1, hold: true,
           body: () => (proveP401().check()
-            ? proveP401().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            ? proveP401().verdict() + ': this sheet\'s scale is right too.'
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 12\'-0" string over WOMEN.\n3. Click inside circle 2, at its right end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveP401().check(), hint: () => proveP401().hint(), zones: () => proveP401().zones(),
           action: { label: 'Measure the 12\'-0" string', run: async () => { const k = K(); k.goPage(k.P401); if (!k.scaleIs(k.P401, 18)) await T().applyScalePreset('1/4" = 1\'', 18); k.measure(k.DETAIL.prove[0], k.DETAIL.prove[1]); } } },
@@ -701,10 +709,11 @@
     {
       id: 'whole', title: 'Chapter 8: The whole sheet', short: 'the sheet, finished', minutes: 10, page: 0, noun: 'chapter',
       intro: 'Everything the course traced and counted, done in one pass. Then set beside the reference takeoff, the right answer from the sheet\'s own geometry, run by run. Then the marked-up sheet on paper.',
+      opener: 'P-101 opens with its scale set and nothing else on it. The counters and the line types are yours to make.\nThis is the longest chapter. Give it the time.\nNothing here touches your own projects.',
       seed() { scaleP101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Chapters 2 to 7 taught each piece. This is all of them on one sheet, by hand.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing.\nIt names one thing at a time, and reads ✓ Done when nothing is.\nThe whole list: every fixture under its tag, and every run by size and material. The service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas.\n[[Skip this step]] moves on with the sheet as it is. The next card compares it against the reference.\n[[Finish the takeoff for me]] lays the reference takeoff on the sheet instead, if you would rather see it done.',
+          body: 'Chapters 2 to 7 taught each piece. This is all of them on one sheet, by hand.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing.\nIt names one thing at a time, and reads ✓ Done when nothing is.\nThe whole list: every fixture under its tag, and every run by size and material. The service, the trunk, the hot supply and its return, the branches, the sanitary and grease lines, the gas.\n[[Skip this step]] moves on with the sheet as it is. The next card compares it against the reference.\n[[Finish the takeoff for me]] lays the reference takeoff, the right answer, on the sheet instead.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything },
           // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
@@ -717,11 +726,15 @@
           body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheet has no marks, and there is nothing to compare yet.\nTo see the answer, click [[Back]] and press [[Finish the takeoff for me]]. It lays the reference takeoff on the sheet, and this card then checks it run by run.\nOr read on: [[Next]] moves on with the sheet as it is.' : compareBody()),
           target: [], check: () => true },
         { id: 'legend', title: 'The legend on the sheet', kind: 'do', hold: true,
-          body: '1. In the left sidebar, click the gear beside the SUMMARY heading.\nSummary Legend sets how the legend on the sheet draws. A tally for plumbing, or a compact ruled block, the way an engineer draws one.\nIt lists every counter and every line type with its feet, so the marked-up sheet reads without the app.',
+          body: '1. In the left sidebar, click {{the gear|#summarySettingsBtn}} beside SUMMARY.\nSummary Legend sets how the legend on the sheet draws. A tally for plumbing, or a compact ruled block, the way an engineer draws one.\nIt lists every counter and every line type with its feet, so the marked-up sheet reads without the app.',
           target: ['#legendSettingsModal .modal-card', '#summarySettingsBtn'], check: () => K().modalUp('legendSettingsModal'),
           action: { label: 'Open Summary Legend', run: () => { if (App.openLegendSettingsModal) App.openLegendSettingsModal(); } } },
         { id: 'pdfs', title: 'The marked-up set', kind: 'do', hold: true,
-          body: '1. Under EXPORT OPTIONS, click [[Export PDFs]]. It shows once the sheet carries a mark: with the takeoff skipped there is nothing to export, and Next moves on.\nChoose the sheets, and set marker and line sizes for print. Let the report and the noted sheets ride along.\nThis is the set the GC reads and the foreman, the crew\'s lead on site, builds from.',
+          // the card reads the sheet (rules 6 and 8): it never sends a reader to a button that is hidden
+          body: () => (takeoffSkipped() && !K().modalUp('specificPagesModal')
+            ? 'You skipped the takeoff, so there is nothing to export yet. Export PDFs shows under EXPORT OPTIONS once the sheet carries a mark.\nThere you choose the sheets, and set marker and line sizes for print. The report and the noted sheets can ride along.'
+            : '1. Under EXPORT OPTIONS, click [[Export PDFs]].\nChoose the sheets, and set marker and line sizes for print. Let the report and the noted sheets ride along.')
+            + '\nThis is the set the GC reads and the foreman, the crew\'s lead on site, builds from.',
           // Export PDFs shows only once the sheet carries a mark; after the takeoff step's Skip there is
           // nothing to export, the button is hidden, and the step would hold a reader for good (by
           // hand, 2026-09-25). Then it passes and says why.
@@ -734,6 +747,7 @@
     {
       id: 'bid', title: 'Chapter 9: Check it, prove it, hand it off', short: 'a bid you can defend', minutes: 8, page: 0, noun: 'chapter',
       intro: 'What each Bid Check row means in the trade, and which ones the sheet already answers. Where a number came from when someone asks, and the ways out of the app.',
+      opener: 'P-101 opens with part of a takeoff on it, so the checks have something to read.\nIt has a copper branch with its hangers, three floor drains, and the sanitary line. Chapter 6\'s RFI note is on it too.\nNothing here touches your own projects.',
       seed() {
         const b = seedCopperBranch();
         b.cu.childCounts = [K().hangerRuleFor(b.cu)];
@@ -755,7 +769,7 @@
           reveal: 'All four, on paper. P-501 adds the drainage load to 51 fixture units. The 4" sewer carries 180 DFU at 1/8" per foot (IPC 710).\nThe riser dimensions the trap arms against Table 909.1. The general notes give the slope. The RPZ is the backflow answer.\nThe WH keynote says 100 GAL GAS, so it has a flue, the pipe that carries its exhaust out.\nThe rows are there because the bid is yours, not the engineer\'s. You tick each one when you have READ the answer.\nThe sheet that missed one is the change order you eat. A change order is the extra the owner pays when the drawing was wrong; one you eat, you pay yourself.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => true },
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
-          body: '1. In the left sidebar, under BID CHECK, click the row that reads Scale verified on every counted sheet. One click signs it for the whole bid.\n2. Click Fixture units checked against the building drain size.\n3. Click Trap arm lengths within the table.\nYour ticks are saved with the bid. Hand off, send the takeoff on to pricing, with a row still open and the app asks once, then remembers.',
+          body: '1. In the left sidebar, under BID CHECK, click the row that reads Scale verified on every counted sheet. One click signs it for the whole bid.\n2. Click Fixture units checked against the building drain size.\n3. Click Trap arm lengths within the table.\nYour ticks are saved with the bid. To hand off is to send the takeoff on to pricing. Hand off with a row still open, and the app asks once, then remembers.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('fixture-units') && manual('trap-arms'),
           action: { label: 'Tick the three for me', run: () => { K().tickManual('scale-verified'); K().tickManual('fixture-units'); K().tickManual('trap-arms'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
@@ -763,12 +777,13 @@
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', counter(RE.fd)), '#summarySectionTitle'), check: () => K().detailOpenFor(counter(RE.fd)), hint: () => K().detailMiss(counter(RE.fd)),
           action: { label: 'Open the breakdown', run: () => { const c = counter(RE.fd); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'ledger', title: 'Every question in one list', kind: 'do', hold: true,
-          body: '1. In the header, click [[Notes ledger]], the page icon; its badge counts the open RFI flags.\nIt lists every note, sheet by sheet. The RFI chip at its top narrows it to the flags, and a click on a row takes you to the spot.\nRead it once before the bid goes out.',
+          body: '1. In the header, click [[Notes ledger]]. Its badge counts the open RFI flags.\nIt lists every note, sheet by sheet. The RFI chip at its top narrows it to the flags, and a click on a row takes you to the spot.\nRead it once before the bid goes out.',
           target: ['#notesLedgerDrawer', '#notesLedgerBtn'], check: () => { const b = el('notesLedgerBtn'); return !!b && b.getAttribute('aria-expanded') === 'true'; },
           action: { label: 'Open it for me', run: () => { if (App.openNotesLedger) App.openNotesLedger(); else if (el('notesLedgerBtn')) el('notesLedgerBtn').click(); } } },
         { id: 'handoff', title: 'Hand it off', kind: 'read',
-          body: '1. [[Copy to /Tooling]] puts the whole takeoff on the clipboard, for the bid in PipeTooling, the pricing app.\nIt copies the fixtures and the feet, hangers and fittings under their pipe, primers under their drains. Its first line names exactly what was copied.\n2. [[Copy RFI Flags]] puts your questions beside it.\n3. [[Show Report]] is the full breakdown for the bid file.\nMore: [Reports and exports](/guides/reports-and-exports/).',
-          target: ['#forPipeTooling', '#exportOptionsSectionTitle'], check: () => true },
+          body: 'Three ways out, all in the left sidebar.\n1. [[Copy to /Tooling]] puts the whole takeoff on the clipboard, for the bid in PipeTooling, the pricing app.\nIt copies the fixtures and the feet, hangers and fittings under their pipe, primers under their drains. Its first line names exactly what was copied.\n2. [[Copy RFI Flags]] puts your questions beside it.\n3. [[Show Report]] is the full breakdown for the bid file.\nMore: [Reports and exports](/guides/reports-and-exports/).',
+          // the lowest of the three leads, so the sidebar scrolls until all three are on screen
+          target: ['#copyRfiFlags', '#forPipeTooling', '#printReport', '#exportOptionsSectionTitle'], lightAll: true, check: () => true },
       ],
       done: 'That is the course: a restaurant\'s plumbing read off the engineer\'s set, counted with the app, checked, and handed to the bid.\nWhen you are ready for a real set, click [[Upload PDF]]. The guides live under Project Settings → Help.',
     },

@@ -156,6 +156,14 @@
       const r = row('is-current', current.name || 'Untitled', 'open now');
       r.disabled = true;
       m.appendChild(r);
+      // The name is read here, so it can be changed from here: Project Settings opens with
+      // the name already a field (features/project-settings.js). Only for a bid this
+      // session may edit; a viewer, a view link and a sample plan get no row.
+      if (App.canRenameProject && App.canRenameProject()) {
+        const rn = row('bm-rename', 'Rename this bid\u2026');
+        rn.onclick = () => { closeBidMenu(); App.openProjectRename(); };
+        m.appendChild(rn);
+      }
     }
     if (others.length) {
       const head = document.createElement('div');

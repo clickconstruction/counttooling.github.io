@@ -263,8 +263,10 @@
   function getActiveAnnotations(page, pageIdxHint) { return annotationModel.getActiveAnnotations(page, pageIdxHint); }
   function getMergedAnnotationsForPage(page, onlyIds) { return annotationModel.getMergedAnnotationsForPage(page, onlyIds); }
   function ensureActiveCanvas(page) { return annotationModel.ensureActiveCanvas(page); }
-  function pageHasAnyAnnotations(p) { return annotationModel.pageHasAnyAnnotations(p); }
-  function projectHasAnyCanvasMarkup() { return annotationModel.projectHasAnyCanvasMarkup(); }
+  function pageHasAnyAnnotations(p, opts) { return annotationModel.pageHasAnyAnnotations(p, opts); }
+  function projectHasAnyCanvasMarkup(opts) { return annotationModel.projectHasAnyCanvasMarkup(opts); }
+  // One count for "how many marks are on this layer": the confirms name it (S08: the model's table).
+  function countCanvasMarks(ann, opts) { return annotationModel.countCanvasMarks(ann, opts); }
   function backupDataToProjFormat(data) { return annotationModel.backupDataToProjFormat(data); }
   function computePageBakeFrame(p) { return annotationModel.computePageBakeFrame(p); }
   function applyTakeoffBackupToState(backup) { return annotationModel.applyTakeoffBackupToState(backup); }
@@ -3149,13 +3151,6 @@
     });
   }
   buildSelectSegments();
-  // One count for "how many marks are on this layer": the confirms name it.
-  function countCanvasMarks(ann) {
-    ann = ann || {};
-    let n = 0;
-    if (ann.counterMarkers) Object.keys(ann.counterMarkers).forEach((k) => { n += (ann.counterMarkers[k] || []).length; });
-    return n + (ann.quickLines || []).length + (ann.polylines || []).length + (ann.ductRuns || []).length + (ann.roomBoxes || []).length + (ann.notes || []).length + (ann.highlights || []).length;
-  }
   function showModal(id) {
     const el = document.getElementById(id);
     el.classList.add('visible');

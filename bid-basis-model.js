@@ -112,7 +112,8 @@
   /**
    * The marks that make a sheet part of the bid basis: counters, runs, ducts,
    * rooms. Highlights and notes alone do not select a page (they ride along on
-   * pages that are selected). Mirrors pageHasAnyAnnotations minus those two.
+   * pages that are selected), and neither do zones. Its own list, not
+   * annotation-model.js's ANNOTATION_KINDS table: add a new take-off kind here too.
    */
   function pageHasBidMarks(page) {
     const canvases = (page && Array.isArray(page.canvases)) ? page.canvases : [];

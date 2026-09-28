@@ -367,3 +367,87 @@ test.describe('a canvas-only bid getting its PDF (R12)', () => {
     expect(after.rooms).toBe(0);
   });
 });
+
+// --- REAPPLY-DUCT (DECOMPOSITION_MAP S08, N12) ---
+// A signed-out HVAC takeoff whose only marks are duct runs. The re-apply check
+// used to carry its own list of what counts as a mark, and duct runs were not on
+// it, so the same PDF uploaded again came back bare. It now asks
+// annotation-model.js's one predicate, which walks makeAnnotations()'s keys.
+test.describe('a takeoff of duct runs alone comes back (REAPPLY-DUCT)', () => {
+  const ductRunsOnPage0 = (page) => page.evaluate(() => {
+    const p = window.state.pages[0];
+    return p ? (window.App.getActiveAnnotations(p).ductRuns || []).length : -1;
+  });
+  const ductRunsInBackup = (page, key) => page.evaluate(async (k) => {
+    const rec = await window.__takeoffBackupGetForTest(k, null);
+    let n = 0;
+    ((rec && rec.data && rec.data.pageCanvases) || []).forEach((cs) => (cs || []).forEach((c) => { n += ((c && c.annotations && c.annotations.ductRuns) || []).length; }));
+    return n;
+  }, key);
+
+  test('trace one duct run, close the project, upload the same PDF: the run is put back', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await bootApp(page);
+    await uploadPdf(page, 'test-page.pdf');
+    await page.evaluate(() => { window.state.pages[0].scale = { pixelsPerUnit: 12, unit: 'ft', label: '1/4" = 1 ft' }; });
+
+    // One supply run through the real tool, and nothing else on the sheet.
+    await page.locator('#ductBtn').click();
+    await expect(page.locator('#ductCreateModal')).toHaveClass(/visible/);
+    await page.locator('#ductCreateW').fill('24');
+    await page.locator('#ductCreateH').fill('12');
+    await page.locator('#ductCreateStart').click();
+    await page.waitForFunction(() => window.state.tool === window.App.TOOL.DUCT && !!window.state.drawingDuct);
+    const wrapper = page.locator('#canvasWrapper');
+    await wrapper.click({ position: { x: 150, y: 150 } });
+    await wrapper.click({ position: { x: 300, y: 150 } });
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).length === 1);
+    expect(await page.evaluate(() => {
+      const a = window.App.getActiveAnnotations(window.state.pages[0]);
+      return Object.values(a.counterMarkers || {}).flat().length + a.quickLines.length + a.polylines.length + a.roomBoxes.length + a.notes.length + a.highlights.length;
+    })).toBe(0);
+
+    // The on-device backup writes the run.
+    await expect.poll(() => ductRunsInBackup(page, 'local'), { timeout: 15000 }).toBe(1);
+
+    // Close the project (a local-only takeoff asks first).
+    const closing = page.evaluate(() => window.App.closeProject({ route: 'settings' }));
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    await page.locator('#confirmOk').click();
+    expect(await closing).toBe(true);
+    expect(await page.evaluate(() => window.state.pages.length)).toBe(0);
+    expect(await ductRunsInBackup(page, 'local')).toBe(1);   // closing keeps the backup
+
+    // The same PDF again: the run is re-applied. (Close folds the pages list, so
+    // wait on the pages themselves.)
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
+    await page.waitForFunction(() => window.state.pages.length === 1, null, { timeout: 15000 });
+    await expect.poll(() => ductRunsOnPage0(page), { timeout: 15000 }).toBe(1);
+    await expect(page.locator('#airboardToastText')).toHaveText('Restored your marks from the last session.');
+    errors.assertNoErrors();
+  });
+
+  test('a data-only backup holding one duct run is re-applied on the same PDF after a reload', async ({ page }) => {
+    await bootApp(page);
+    await page.evaluate(async () => {
+      const buf = await (await fetch('/test-page.pdf')).arrayBuffer();
+      const hash = await window.App.sha256Hex(buf);
+      const run = { id: 'r1', name: 'Duct run 1', airside: 'supply', pressureClass: '1',
+        vertices: [{ x: 100, y: 100 }, { x: 200, y: 100 }],
+        segments: [{ startVertexIdx: 0, size: { kind: 'rect', w: 24, h: 12 } }], sizeSteps: [] };
+      const data = {
+        counters: [], lineTypes: [],
+        pageCanvases: [[{ id: 'cv1', name: 'Main', annotations: { ductRuns: [run] } }]],
+        pageScales: [{ pixelsPerUnit: 12, unit: 'ft' }], pageRotations: [0],
+      };
+      await window.__takeoffBackupPutForTest('local', data, null, hash, Date.now(), 'hvac-bid', null);
+    });
+    await reloadApp(page);
+    await expect(page.locator('#lastSessionRestoreModal')).not.toHaveClass(/visible/);
+
+    await uploadPdf(page, 'test-page.pdf', { waitForPages: false });
+    await expect.poll(() => ductRunsOnPage0(page), { timeout: 15000 }).toBe(1);
+    await expect(page.locator('#airboardToastText')).toHaveText('Restored your marks from the last session.');
+  });
+});

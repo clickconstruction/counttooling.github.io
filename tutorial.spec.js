@@ -163,12 +163,14 @@ test.describe('Interactive walkthrough', () => {
   // A paragraph between two actions splits the numbered list; the second part keeps counting.
   // The size step read 1, 2, 1, 1 until 2026-09-24.
   test('a step\'s actions number straight through a paragraph between them', async ({ page }) => {
-    await page.goto('/app/?tour=plumbing');
+    // the HVAC tour's schedule card: one action, three paragraphs, a second action (the plumbing size
+    // card this test read is three short states since the card pass, each one list)
+    await page.goto('/app/?tour=hvac');
     await ready(page);
     await waitForStep(page, 'welcome');
-    await page.evaluate(() => window.App.tutorialGoTo('size'));
-    await waitForStep(page, 'size');
-    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => o.start))).toEqual([1, 3, 5]);
+    await page.evaluate(() => window.App.tutorialGoTo('schedule'));
+    await waitForStep(page, 'schedule');
+    expect(await page.evaluate(() => [...document.querySelectorAll('#tourBody ol.tour-steps')].map((o) => o.start))).toEqual([1, 2]);
   });
 
   test('the do-it-for-me path builds a real takeoff and the tour advances on real state', async ({ page }) => {
@@ -222,8 +224,9 @@ test.describe('Interactive walkthrough', () => {
     await waitForStep(page, 'linetype');
     // 6. the conduit type: one 120 V circuit, 2 #12 + 1 #12 G (EC-TOUR-WIRE, the electrical dossier's R1)
     await expect(page.locator('#tourBody')).toContainText('In Conductors, type 2 #12 THHN + 1 #12 G.');
-    await expect(page.locator('#tourBody')).toContainText('2 #12 THHN + 1 #12 G reads: two #12 wires and one ground');
     await page.evaluate(() => window.App.tutorialDoStep());
+    // what the line reads is the card's answer, once it is typed
+    await expect(page.locator('#tourBody')).toContainText('2 #12 THHN + 1 #12 G reads: two #12 wires and one ground');
     const lt = await page.evaluate(() => window.state.lineTypes.find((l) => l.raceway));
     expect(lt.conductors).toEqual([{ n: 2, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }]);
     await waitForStep(page, 'ceiling');
@@ -1062,15 +1065,16 @@ test.describe('The persona seams', () => {
   // untouched engine, 2026-09-25; `size` as #201 reworded it, `size` and `hangers` as the persona calibration's
   // C4 and C21 reworded them, `size`'s 4.5 WSFU line from DS-AGENT-NITS; all six re-taken when the tours were
   // written for anyone at all, 2026-09-27; `size`'s velocity lines from PT-TRADE-1 the same day; all but
-  // `measure` re-taken after the card review, journeys/plans/CARD-REVIEW.md, the same day): the codes
+  // `measure` re-taken after the card review, journeys/plans/CARD-REVIEW.md, the same day, and again
+  // after the card pass, 2026-09-28, journeys/plans/CARD-PASS.md): the codes
   // must not change a character the reader sees.
   const CARD_BEFORE = {
     measure: 'A dimension is a length the drawing writes out, such as 20\'-0", twenty feet. Measure one, and the scale proves itself.\n\nIn the header, click Measure (or press D).\nClick inside circle 1, at the top of the 20\'-0" dimension on the left edge.\nClick inside circle 2, at its bottom.\n\nThe circles on the sheet show where a click counts.',
-    place: 'The three water closets in the stalls of Women 108, the women\'s restroom, are circled.\n\nClick inside the first circle.\nClick inside the second.\nClick inside the third.\n\nThe count in the sidebar moves as you go. It adds up every sheet in the set, the whole stack of drawings.',
-    hangers: 'Every foot of that branch hangs from a support, a hanger, and the bid has to count them. The app can do it from the pipe.\n\nA child count is a count that rides along with the pipe.\n\nIn the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\nUnder Child counts, find Hanger · 1 per 32 in. That is the International Plumbing Code (IPC) spacing for PEX at 1 in.\nClick Add.\n\nThe app read the size off the type\'s name.\n\nFrom now on every run of this type counts its own hangers. They go into SUMMARY, the running totals, and every export, a file you send out. Each names the rule it came from. Delete a run and its hangers go with it.',
-    size: 'The battery comes off a cold main, the bigger pipe it branches from. Trace the main, clicking along it, and let the fixture units size it.\n\nIn the header, click Polyline (or press P). If 1in PEX is not lit under LINE TYPES, click it.\nClick the riser at the first lavatory, then inside the circle below it.\n\nA card at the bottom of the sheet names the sizes that keep the water under 8 fps, feet per second. Under the IPC that limit is design practice; the Uniform Plumbing Code (UPC) makes it code for copper. It reads 4.5 WSFU, not 6: the cold side of three lavatories, 1.5 each.\n\nOn that card, click Pipe size (or press S: while you trace a water pipe, S opens its sizes).\nIn the list of sizes, click 3/4″.\n\n3/4in holds too, just under the limit. A fitting, a shaped piece that joins pipe, is narrower inside than the pipe. At a margin this thin a careful bid stays at 1in. Take 3/4in here to see how S works. The run so far is kept; the next starts in 3/4in PEX.\n\nClick inside the second circle.\nClick Finish under the sheet (or press Enter).',
-    zone: 'This restroom repeats on three floors: a typical floor, drawn once. A multiply zone counts everything inside it more than once.\n\nIn the header, click More, then Multiply Zone (or press X).\nDrag a box around Women 108: start and end in the shaded band, outside the dashed line.\nType 3.\nClick Apply.\n\nEvery count and every foot inside triples in the totals. The marks on the sheet stay as they are. Count one floor, bid three.',
-    rfi: 'Something the drawing does not say: does the end stall in Women 108 clear ADA? The ADA, the Americans with Disabilities Act, sets the room a wheelchair needs.\n\nAn RFI, a request for information, is a written question to the designer.\n\nIn the header, click More, then Note (or press N).\nClick inside the circle in Women 108.\nType RFI: and then the question.\nClick Done.\n\nUnder EXPORT OPTIONS, Copy RFI Flags collects every such note across the set. It goes to the GC, the general contractor who runs the job. PipeTooling, the pricing app, picks them up as questions on the bid.',
+    place: 'The three water closets in the stalls of Women 108, the women\'s restroom, are circled.\n\nClick inside each circle.\n\nThe count in the sidebar moves as you go. It adds up every sheet in the set, the whole stack of drawings.',
+    hangers: 'Every foot of that branch hangs from a support, a hanger, and the bid has to count them. The app can do it from the pipe.\n\nA child count is a count that rides along with the pipe.\n\nIn the left sidebar, under LINE TYPES, click the pencil beside 1in PEX.\nUnder Child counts, find Hanger · 1 per 32 in. That is the International Plumbing Code (IPC) spacing for PEX at 1 in.\nClick Add. The app read the size off the type\'s name.',
+    size: 'The battery comes off a cold main, the bigger pipe it branches from. Trace the main, clicking along it, and let the fixture units size it.\n\nIn the header, click Polyline (or press P). If 1in PEX is not lit under LINE TYPES, click it.\nClick the riser at the first lavatory, then inside the circle below it.',
+    zone: 'This restroom repeats on three floors: a typical floor, drawn once. A multiply zone counts everything inside it more than once.\n\nIn the header, click More, then Multiply Zone (or press X).\nDrag a box around Women 108: start and end in the shaded band, outside the dashed line.\nType 3.\nClick Apply.',
+    rfi: 'Something the drawing does not say: does the end stall in Women 108 clear ADA? The ADA, the Americans with Disabilities Act, sets the room a wheelchair needs.\n\nAn RFI, a request for information, is a written question to the designer.\n\nIn the header, click More, then Note (or press N).\nClick inside the circle in Women 108.\nType RFI: and then the question.\nClick Done.',
   };
   // The tour_step events the engine sends, recorded in the page (there is no cloud session here).
   const recordEvents = (page) => page.evaluate(() => { window.__events = []; window.App.logUserEvent = (type, _pid, meta) => { window.__events.push({ type, meta }); }; });

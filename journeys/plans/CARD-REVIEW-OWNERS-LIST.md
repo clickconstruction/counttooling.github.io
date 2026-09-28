@@ -95,7 +95,7 @@ reviewer's recommendation (REC). Nothing on this list has been done.
 8. service/read lights the whole sheet; pick one way for every read card in the course.
 ## HVAC tour
 1. bidcheck says "the office's 442 CFM"; the screen reads 508 (517 with a hand-drawn box). Drop the number or read it live? REC: drop.
-2. room: the card's order (type, ceiling, deck) is not the dialog's. Reorder top to bottom? REC: yes.
+2. room: the card's order (type, ceiling, deck) is not the dialog's. Reorder top to bottom? REC: yes. **DONE (2026-09-28, a tester's report on the blank-sheet tour's room card).**
 3. legend has two jobs. Split? REC: yes.
 4. done opens with a recap of all ten steps. REC: cut.
 5. welcome still previews the tour in two paragraphs. REC: shorter.

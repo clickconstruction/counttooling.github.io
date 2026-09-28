@@ -32,6 +32,55 @@ ring was drawn over the left end of the Save row and the link itself was out of 
   ring is around it and above the Save row, and the click closes the sheet. Both fail on the old
   engine.
 
+## fix(tour): the Room Sizer cards name the dialog's fields, top to bottom (2026-09-28)
+
+A tester on the blank-sheet tour's Room Sizer card: "confusing as the fields are not named
+'name' and 'ceiling', also better flow if they are in order". The card said "In Name, type
+Office. In Ceiling, type 9." The dialog's fields are Ceiling height and Add new room, in that
+order, and the card lit Apply the whole time the dialog was open.
+
+- **The blank-sheet tour** (features/tour-blank.js `room`): one line per field, in the dialog's
+  order and by its label, each a pointer that lights its field: Ceiling height, then Add new
+  room, then Apply. The ring follows the reader: the first empty field, then Apply.
+- **The HVAC tour** (features/tutorial.js `room`) had the same fault, on the owner's list with
+  "reorder" recommended: it asked for Room type first, the dialog's last field. It reads Ceiling
+  height, Deck height, Room type now, and the ring goes in that order.
+- The HVAC course's room cards already named the fields in order. No check changed.
+
+Walked on screen at 1280 x 720 in both tours: every chip live, neither card scrolls, and the
+ring moved field by field to Apply as each was filled.
+
+## feat(settings): a project is renamed from Project Settings (PROJECT-RENAME, 2026-09-28)
+
+Reported by an estimator on 2026-09-28: "I am not finding where to rename a project under
+project settings". It was not there. The name was read-only text under the dialog's title, and
+its one door was the Project name field inside the Save dialog, behind Save Changes, which
+nothing on the card pointed at.
+
+- **The name line is the control.** Under the title the name is followed by **Rename** (or
+  **Name this project** while the bid is still Untitled). A click turns the name into a field in
+  place, with **Save** beside it: Enter or a click away keeps the name, Esc puts the old one
+  back and leaves the dialog open (the field stops the key before the Esc ladder sees it). No new
+  row, so the card is no taller.
+- **One writer**, `App.renameProject(name)` in features/project-settings.js: spaces folded and
+  trimmed, 120 characters at most, an empty field keeps the old name. It sets
+  `state.currentProjectName`, marks the project dirty and redraws, so the header bid chip, the
+  status bar, the recent-bids list and the export file names follow at once, and the next
+  autosave's update writes `name` to the project row. Nothing new talks to the cloud.
+- **Who is not offered it:** nothing open (no name line), a view link, a viewer who cannot check
+  out, and a sample plan. A viewer who can check out sees Rename and is told to check out first.
+- **A sample plan's name is kept for it.** A tour or lesson finds its sheets by the project's name
+  (tutorial.js `TEACHING_SETS`) and resets a project that carries one, so a project may not be
+  renamed to `sample-plan`, `sample-lessons` and the rest; the card says so.
+- **A second door:** the header bid menu lists **Rename this bid…** under the open bid
+  (`App.openProjectRename`), which opens Project Settings with the name already a field.
+- The Save dialog's name field is unchanged. The Learn cards do not teach renaming a project, so
+  no card changed; the Preparing a plan set guide says where it is.
+
+Spec: [project-rename.spec.js](project-rename.spec.js), nine tests (the rename and every place
+the name is read, the autosave's PATCH carrying the name, Enter / Esc / a click away / Save, the Untitled wording, signed out, who may not, the kept names, the bid menu's door, a
+phone). Not walked against the live cloud: this checkout has no test account configured.
+
 ## feat(learn): the card pass: the six fixes, then every card one at a time (2026-09-28)
 
 The card review left six fixes and a list for Will. He said to make the six, then to go through

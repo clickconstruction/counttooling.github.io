@@ -868,6 +868,70 @@ test.describe('Every button, on a blank sheet', () => {
     expect(await page.evaluate(() => [window.state.counters.filter((c) => c.name === 'Fixture').length, localStorage.getItem('clickcount-tour-blank-step')])).toEqual([0, null]);
   });
 
+  // The Move card passes on the view changing, and the engine changes the view itself: the Measure
+  // card zooms onto its circles, and the sheet glides back out as Move opens. A reader saw the card
+  // for under two seconds and the tour moved on with nothing clicked (wendi, 2026-09-28). A spec's
+  // browser gets the jump, not the glide (navigator.webdriver), so this test turns the glide on.
+  const toMove = async (page) => {
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await waitForStep(page, 'scale');
+    await doAndGo(page);
+    await waitForStep(page, 'measure');
+    await page.waitForTimeout(400);   // the focus on the circles starts 60 ms in
+    await page.waitForFunction(() => !window.App.tourKit.gliding(), null, { timeout: 8000 });
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    await page.click('#tourNext');   // the measure card holds on its reading
+    expect(await stepId(page)).toBe('move');
+  };
+  const dragSheet = async (page) => {
+    const at = await page.evaluate(() => { const r = document.querySelector('.canvas-wrapper').getBoundingClientRect(); return { x: r.left + r.width * 0.7, y: r.top + r.height * 0.6 }; });
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x + 60, at.y + 30, { steps: 8 });
+    await page.mouse.up();
+  };
+
+  test('the Move card waits for the reader: the tour\'s own glide back to the whole sheet is not their drag', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await page.addInitScript(() => { Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false }); });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await toMove(page);
+    // the glide is really on, and the sheet was zoomed onto the circles when it began
+    expect(await page.evaluate(() => [window.App.tourKit.gliding(), window.state.zoom > 1.5])).toEqual([true, true]);
+    // hands off, for the glide (2.6 s), the beat a done step waits (0.9 s) and a second over
+    await page.waitForTimeout(4600);
+    expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done, window.App.tourKit.gliding()])).toEqual(['move', false, false]);
+    await expect(page.locator('#tourBody')).toContainText('Drag the sheet a little');
+    // the reader's own drag is what passes it
+    await dragSheet(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+  });
+
+  test('the Move card opened a second time starts from the view it opens on, not the first visit\'s', async ({ page }) => {
+    test.setTimeout(90000);
+    // a monitor large enough that the Measure circles need no zoom: the view is the reader's throughout
+    await page.setViewportSize({ width: 2800, height: 1700 });
+    await toMove(page);
+    await page.waitForTimeout(600);
+    await dragSheet(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+    // back to Measure, then forward again: the sheet is where the drag left it
+    await page.click('#tourBack');
+    await page.click('#tourBack');
+    expect(await stepId(page)).toBe('measure');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('move');
+    await page.waitForTimeout(2200);
+    expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done])).toEqual(['move', false]);
+    await dragSheet(page);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+  });
+
   test('?tour=blank, the Learn button and the Settings link start it; over a teaching set it resets without asking', async ({ page }) => {
     await page.goto('/app/?tour=blank');
     await ready(page);

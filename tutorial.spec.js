@@ -731,6 +731,31 @@ test.describe('Every button, on a blank sheet', () => {
     await page.waitForFunction((want) => window.App.tutorialStepId() !== want, id, { timeout: 2500 }).catch(async () => { await page.click('#tourNext'); });
   };
 
+  // wendi, 2026-09-28: the dialog opened with the ring on Create Line Type, and the Name field the
+  // card asks for first was dimmed with the rest. The ring follows the card's lines: + Add, Name
+  // until it reads Pipe, then the button.
+  test('the line type card lights + Add, then Name until it reads Pipe, then Create Line Type', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const litIs = (sel) => page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const a = e.getBoundingClientRect(), b = document.getElementById('tourSpot').getBoundingClientRect(); return b.width > 0 && Math.abs(a.left - 6 - b.left) < 3 && Math.abs(a.top - 6 - b.top) < 3; }, sel);
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());   // the two blank sheets
+    await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(2);
+    await page.evaluate(() => window.App.tutorialGoTo('linetype'));
+    await waitForStep(page, 'linetype');
+    await expect.poll(() => litIs('#addLineType')).toBe(true);
+    // the card keeps off the + Add it lights (it took the corner clear of the circles, over the sidebar)
+    await expect.poll(() => page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(), a = document.getElementById('addLineType').getBoundingClientRect(); return c.left < a.right && c.right > a.left && c.top < a.bottom && c.bottom > a.top; })).toBe(false);
+    await page.click('#addLineType');
+    await expect(page.locator('#lineTypeModal')).toBeVisible();
+    await expect.poll(() => litIs('#lineTypeName')).toBe(true);
+    expect(await litIs('#lineTypeCreate')).toBe(false);
+    await page.fill('#lineTypeName', 'Pipe');
+    await expect.poll(() => litIs('#lineTypeCreate')).toBe(true);
+  });
+
   test('the do-it-for-me path presses every button on a sheet the tour made, and finishing hides only its own link', async ({ page }) => {
     await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     test.setTimeout(150000);

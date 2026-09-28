@@ -321,7 +321,8 @@
           body: 'PAGES lists the sheets. COUNTERS and LINE TYPES hold what you count and what you trace.\nSUMMARY keeps the running totals, and BID CHECK sits below it.',
           target: ['.sidebar'], check: () => true },
         { id: 'bottom', title: 'Under the sheet: the footer and the status bar', kind: 'read',
-          body: 'The {{footer|.page-zoom-row}} comes first. It {{turns the pages|.page-nav}} and {{zooms in and out|.zoom-bar}}.\nThe {{status bar|.status-bar}} is the strip below it, along the very bottom. It says {{where your work is saved|#statusMode}}, and holds [[quick keys]].\nA quick key is a number key a counter can sit on.',
+          // a tablet has no number row: there the status bar is where the work is saved, and when
+          body: () => 'The {{footer|.page-zoom-row}} comes first. It {{turns the pages|.page-nav}} and {{zooms in and out|.zoom-bar}}.\nThe {{status bar|.status-bar}} is the strip below it, along the very bottom. It says {{where your work is saved|#statusMode}}' + (K().onTouch() ? ', and when.' : ', and holds [[quick keys]].\nA quick key is a number key a counter can sit on.'),
           target: ['.page-zoom-row', '.status-bar'], lightAll: true, check: () => true },
       ],
       done: 'The sheets, the takeoff, the four verbs, and where the tools are.\nNext: [[Learn]] → Chapter 1, the E-sheets.',

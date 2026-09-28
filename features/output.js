@@ -36,6 +36,9 @@
  * too: their openers are bound at load, and App.syncOutputMenus (every output
  * row's visibility, from the bundle buttons to the copy menus' scope rows) is
  * called by app.js's updateUIInner just before App.updateBurgerMenu.
+ * BUNDLE-ONE-SHEET (2026-09-27): the sidebar Highlight / Note Pages (PDF)
+ * buttons are bound here too (App.openBundlePdf(kind)), beside the code that
+ * shows or hides them; the bundles themselves are features/pdf-bundle.js's.
  * Boundary rule: read shared deps from App.* at call time, never captured at
  * load. See ARCHITECTURE.md "Feature files / window.App registry". No build step.
  */
@@ -427,6 +430,39 @@
       closeScopeMenu(showReportMenu, showReportDropdown);
       if (mode && typeof window.printReport === 'function') window.printReport(mode);
     };
+  });
+
+  // The sidebar Highlight Pages (PDF) / Note Pages (PDF) buttons (moved from
+  // app.js, BUNDLE-ONE-SHEET 2026-09-27): build the bundle into its own A4 doc
+  // (features/pdf-bundle.js, every layer) and open it in a new tab. Their
+  // visibility is synced just below in syncOutputMenus.
+  const BUNDLE_BUTTONS = {
+    highlights: { btnId: 'bundleHighlights', label: 'Highlight Pages (PDF)', has: 'hasAnyHighlights', build: 'addHighlightsToPdf' },
+    notes: { btnId: 'bundleNotes', label: 'Note Pages (PDF)', has: 'hasAnyNotes', build: 'addNotesToPdf' },
+  };
+  async function openBundlePdf(kind) {
+    const spec = BUNDLE_BUTTONS[kind];
+    if (!spec || !App[spec.has] || !App[spec.has]()) return;
+    const jsPDFLib = window.jspdf;
+    if (!jsPDFLib || !jsPDFLib.jsPDF) { App.showToast(spec.label + ' requires jsPDF. Please refresh the page.', 4000); return; }
+    const state = App.state;
+    const btn = document.getElementById(spec.btnId);
+    const origText = btn ? btn.textContent : '';
+    if (btn) btn.textContent = 'Opening…';
+    const exportOverrides = { markerScale: state.exportSettings?.markerScale ?? 0.75, lineScale: state.exportSettings?.lineScale ?? 0.75 };
+    try {
+      const doc = await App[spec.build](null, { scale: 4, exportOverrides });
+      if (doc) window.open(doc.output('bloburl'), '_blank');
+    } catch (err) {
+      console.error(err);
+      App.showToast('Export failed: ' + (err?.message || err), 5000);
+    }
+    if (btn) btn.textContent = origText;
+  }
+  App.openBundlePdf = openBundlePdf;
+  Object.keys(BUNDLE_BUTTONS).forEach(kind => {
+    const btn = document.getElementById(BUNDLE_BUTTONS[kind].btnId);
+    if (btn) btn.onclick = () => App.openBundlePdf(kind);
   });
 
   // Which output rows show for this session: the sidebar bundle buttons, the

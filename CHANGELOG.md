@@ -13,6 +13,40 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(map): the decomposition map, read again at 65f712f (2026-09-28)
+
+The 2026-09-27 map's first eight items landed inside a day (S02 to S08: the XSS sweep, CI on
+main, specs from a worktree, the one bundle builder, the Esc stack, the tour restart, the one
+mark predicate), so the map was read again at `65f712f`, the same way: `npm run build:projectmap`
+for the skeleton, eight agents one per area, each re-resolving every file:line the old map cited
+(they had all drifted in the churned files), refuting its own findings and listing what it
+dropped. The orchestrator re-ran four things: the idb.js eviction (node, fake-indexeddb, three
+shapes), the duct system rule and the head-to-tail tap loop (node), the water tap rule's
+candidates against the plumbing tour's own geometry (node over a scratch copy), and the
+spec-copy counts. About 1.6M subagent tokens, 266 tool calls, 7 to 14 minutes in parallel.
+
+- **What changed.** Seven of 26 items landed. app.js's input sections had zero changed lines.
+  The growth is the tour engine: of features/tutorial.js's +444, about 315 is engine and 129 is
+  cards. Quick Keys grew a pure model the right way. The three areas with no commits (duct, save
+  engine, rasters) still gave two confirmed defects the old map had carried as "read": the
+  idb.js eviction and the duct system rule.
+- **The shortlist** is 28 items, T01 to T28, defects first: the undo-card flake explained (a
+  60 ms focus timer the spec reads ahead of), the duct loop and system rule (one home,
+  `ductChildLinks`), the idb re-put, a quoted chip that lost its control on ten cards (the XSS
+  sweep's ripple), then two decisions (the water tap rule, now a table of every candidate run
+  against the tour; the trade resolver), the ratchets, the pins, the dedupes and the moves.
+  Yields re-estimated at HEAD: tour-geometry.js is now about 250 pure lines, the spec migration
+  about 850, the Bid Check gate about 65.
+- **Defects** Q01 to Q24, five confirmed by running code, nine of the old map's fixed.
+- **Punch list.** The four rows that pointed into the map (DUCT-RUN-SYSTEM, WATER-TAP,
+  TRADE-DEFAULT, MAP-PERMS) point at the new anchors; DUCT-TAP-LOOP and FLAKE-START-UNDO gain
+  theirs; ICON-STORE says "replaces", which is what the code does; MEASURE-BAND is the row the
+  old map's N08 never had.
+- **Blind spots** gained four: a registry name read by string (report.js's `appRollup` and
+  `appBuild`) never enters the graph, so the skeleton called four live seams dead; dead exports
+  of pure modules are invisible; styles.css is not read; the 8-line near-duplicate floor hides
+  the one-line copies that drift fastest.
+
 ## docs: the hand-kept lists caught up to main at 79c06c1 (2026-09-28)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md and SUPABASE_SETUP.md against the code

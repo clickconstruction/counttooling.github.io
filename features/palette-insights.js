@@ -139,8 +139,8 @@
     const div = document.createElement('div');
     div.className = 'pi-row';
     const glyph = it.kind === 'counter' && it.icon
-      ? '<span class="pi-icon"><svg viewBox="' + App.iconVbFor(it.icon) + '"><path fill="' + (it.color || '#e8c547') + '" d="' + it.icon + '"/></svg></span>'
-      : '<span class="pi-swatch" style="background:' + (it.color || '#4a9eff') + ';"></span>';
+      ? '<span class="pi-icon"><svg viewBox="' + esc(App.iconVbFor(it.icon)) + '"><path fill="' + esc(it.color || '#e8c547') + '" d="' + esc(it.icon) + '"/></svg></span>'
+      : '<span class="pi-swatch" style="background:' + esc(it.color || '#4a9eff') + ';"></span>';   // XSS-COLOR sweep: icon and color come from saved projects (user_palette_usage RPC)
     const stat = it.project_count + ' project' + (it.project_count === 1 ? '' : 's') + ' · ' +
       it.placement_count + (it.kind === 'counter' ? ' placed' : ' runs');
     div.innerHTML = glyph +

@@ -13,6 +13,57 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(xss): a colour, an icon path, a viewBox or a count from a project is text on every surface (XSS-COLOR, 2026-09-27)
+
+The decomposition map's S02 / N02. MAP-XSS escaped nine surfaces and missed four: a group's
+colour in the groups list, a line's colour in the Lines list, a counter's colour, icon path and
+viewBox in the Counter chooser, and a room's colour and id in the room picker. Each goes through
+`App.escapeHtml` now (`escapeHtmlText` in room-sizer.js), the helper MAP-XSS used.
+
+Two passes had missed sites, so this one read every `innerHTML`, `outerHTML`,
+`insertAdjacentHTML` and `document.write` in app.js, report.js, the root modules and
+features/*.js, and every function that builds markup for them. It found more of the same class:
+
+- **The printed report** (report.js, also the bundled PDF's report page): the line-type and room
+  swatches wrote their colour raw, and each counter's icon went through `iconSvgHtml` raw.
+- **A project's custom icons.** A loaded or imported project's `customIconPaths` join the user's
+  own icons, and `iconVbFor` answers with their viewBox for any path they name. So a viewBox
+  was attacker text in the header and sidebar counter buttons, the counters list, the chain
+  palette, Manage Icons, the Quick Count panel, Palette Insights and every icon grid.
+- **icon-render.js now escapes the path, viewBox, colour, title and set heading itself.** It
+  uses format.js's `escapeHtml`, read by bare name at call time, so every picker grid and the
+  report are covered in one place.
+- **Zone multipliers.** Counts sum the multiplier, so a string multiplier became a string count
+  in the counters list and chooser badges and in the report. `getMultiplyZoneForPoint/Line`
+  (geometry.js) now read anything that is not a finite number ≥ 1 as 1, the rule
+  `ductZoneMultiplier` already had. The badges and report cells are escaped as well.
+- **A few more fields:**
+  - a circuit group's load in the groups list and the report;
+  - a line's drop units and its closed-area unit in the Lines list;
+  - a ghost's label in its menu;
+  - the chain palette's icon path;
+  - Palette Insights' colour and icon (read from other saved projects);
+  - the text of a load error.
+- **A string drop no longer turns a length into a string** (`lineRealWorldLength` coerces it).
+- **Tour card links.** tutorial.js's step-body escaper skipped quotes, and a lesson can put a
+  project's counter name in a body whose `[label](/path)` link is copied into `href`. It uses
+  the canonical escaper now.
+
+Validation at the source was considered and not added. There is no single intake: two
+hydrators, plus the artboard seed, Load saved artboard, Palette Insights and undo. And the app
+keeps uploaded SVG path data verbatim and takes colours from several pickers, so a strict
+grammar could rewrite or drop a legitimate saved icon or colour. The multiplier and drop
+coercions are made where the value is read, not at load, and change nothing the app itself
+writes.
+
+Pinned by choose-create-line-type.spec.js. "XSS-COLOR" drives the four surfaces and the drop
+unit with inert hostile values: an attribute that sets `data-xss`, or a `<b data-xss>`. It
+asserts no such element exists on the page and each value reads back whole as its attribute.
+Each surface's fix was reverted on its own and the test failed each time. "XSS-COLOR sweep"
+does the same for a project custom icon, a junk multiplier, a circuit load and the parsed
+printed report, and fails on main's code. icon-render.test.js and geometry.test.js pin the
+builders and the multiplier rule in node.
+
 ## fix(water): two runs that leave one point are siblings, not each other's branch (WATER-TAP, 2026-09-27)
 
 Two cold runs drawn from one point, one east and one south, each started on the other, so

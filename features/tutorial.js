@@ -834,10 +834,10 @@
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
       body: () => 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\n'
         + (isNarrow() ? '1. Tap ☰ at the top left, then [[Room Sizer]] in the list that opens.' : '1. In the header, click [[⋯]], then [[Room Sizer]] (or press V).')
-        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n4. In {{Ceiling height|#roomBoxHeight}}, type 9.\n5. In {{Deck height|#roomBoxDeck}}, type 12.\n6. Click {{Apply|#roomBoxApply}}.',
+        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. In {{Ceiling height|#roomBoxHeight}}, type 9.\n4. In {{Deck height|#roomBoxDeck}}, type 12.\n5. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n6. Click {{Apply|#roomBoxApply}}.',
       answer: 'The sheet gets one small totals tag, a label, placed off the printed name.\nIt reads the room\'s area and the air it needs.',
-      // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
-      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreMenu .hm-row[data-tool-id="roomBtn"]', '#headerMoreBtn'); },
+      // the dialog's fields top to bottom, the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : v('roomBoxType') !== 'office' ? '#roomBoxType' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreMenu .hm-row[data-tool-id="roomBtn"]', '#headerMoreBtn'); },
       page: 0,
       zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
       hint: () => {

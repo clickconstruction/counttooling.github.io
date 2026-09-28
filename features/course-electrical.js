@@ -509,43 +509,62 @@
     {
       id: 'circuits', title: 'Chapter 5: The circuit, the homerun and the drop', short: 'a circuit that checks itself', minutes: 12, page: E101, noun: 'chapter', set: ESET,
       intro: 'A group with a panel and a number is a circuit. The homerun reaches the panel, and the voltage-drop row says whether the engineer\'s #12 is enough for the farthest device.',
+      opener: 'E-101 opens with the earlier chapters\' work on it: the scale, the ceiling height, the panel, the GFCIs and the west-wall chain.',
       seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), gfciAll(), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); },
       steps: [
         { id: 'group', title: 'Make it a circuit', kind: 'do',
-          body: 'The chain on the west wall is circuit 1 on LP-1. A group with a panel and a circuit number is how the app knows a circuit.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]] if it is off.\n2. In the left sidebar, under GROUPS, click [[+ Add]]. In Name, type Dining receptacles, west wall. In Panel, type LP-1. In Circuit, type 1. Click [[Done]].\n3. Right-click a west-wall receptacle, click [[Assign to group]], pick the group and click [[Done]].\n4. Do the same for the runs between them.\nNext time, click the group first: everything placed after joins it.',
-          target: ['#groupAssignDone', '#groupModalDone', '#groupModalPanel', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn'],
+          // a tablet has no right-click: the app opens the same menu on a touch held for half a second
+          body: () => { let touch = false; try { touch = window.matchMedia('(pointer: coarse)').matches; } catch (_) { touch = false; } return 'The chain on the west wall is circuit 1 on LP-1. A group is a named set of marks and runs. Give it a panel and a circuit number, and the app reads it as a circuit.\n1. In the header, click [[Project Settings]] and turn on {{Use groups|#settingsUseGroupsBtn}} if it is off.\n2. In the left sidebar, under GROUPS, click {{+ Add|#addGroup}}. In Name, type Dining receptacles, west wall. In Panel, type LP-1. In Circuit, type 1. Click {{Done|#groupModalDone}}.\n3. ' + (touch ? 'Touch and hold a west-wall receptacle' : 'Right-click a west-wall receptacle') + ', click [[Assign to group]], pick the group and click {{Done|#groupAssignDone}}.\n4. Do the same for the runs between them.\nNext time, click the group first: everything placed after joins it.'; },
+          // the card's order: the gear until groups are on, + Add until the circuit exists, then the sheet
+          target: () => (circuit1() ? T().ladder('#groupAssignDone', '#annCanvas', '#addGroup', '#groupsSectionTitle') : T().ladder('#groupModalDone', '#groupModalPanel', '#settingsUseGroupsBtn', '#addGroup', '#groupsSectionTitle', '#settingsGearBtn', '#sidebarLogoGear')),
           check: () => { const g = circuit1(); const a = pageAnn(E101); return !!(g && a && (a.quickLines || []).some((l) => l.group === g.id)); },
           hint: () => (circuit1() ? 'The circuit exists: now put the west-wall receptacles and their runs in it' : ''),
           action: { label: 'Make LP-1 · 1 and assign the west wall', run: circuitOne } },
         { id: 'homerun', title: 'The homerun', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.hr, pts(G.homerun1), E101),
-          body: 'The arrow beside the west wall\'s receptacles says LP-1-1: this string of receptacles goes home, back to the panel, on circuit 1 of LP-1. The arrow is shorthand and does not show the path, so you trace it.\n1. Under LINE TYPES, click [[+ Add]]. In Name, type 0.75in EMT HR and click [[Create Line Type]]. HR stands for homerun.\n2. Click the pencil beside it. Set the raceway to EMT, 3/4", and Conductors to 2 #12 THHN + 1 #12 G, the same as 0.75in EMT.\n3. Turn on [[Homerun]].\n4. Under GROUPS, click the circuit, so the run you draw joins it.\n5. With the type active, click [[Polyline]], the tool that draws a run through several clicks.\n6. Trace from the top receptacle straight up to the north wall, along it to above STORAGE, and down to LP-1. Press Enter.\nThe conduit does the same: it leaves the top receptacle, goes up into the ceiling and across to the panel.',
-          target: () => T().ladder('#lineTypeHomerunBtn', '#polylineBtn', '#polylineBtnSidebar', '#lineTypeCreate', '#addLineType', T().pencilOf('lineType', lineType(RE.hr))),
+          body: 'The arrow beside the west wall\'s receptacles says LP-1-1: this string of receptacles goes home, back to the panel, on circuit 1 of LP-1. The arrow is shorthand and does not show the path, so you trace it.\n1. Under LINE TYPES, click {{+ Add|#addLineType}}. In Name, type 0.75in EMT HR and click [[Create Line Type]]. HR stands for homerun.\n2. Click the pencil beside it. Set the raceway to EMT, 3/4", and Conductors to 2 #12 THHN + 1 #12 G, the same as 0.75in EMT.\n3. Turn on {{Homerun|#lineTypeHomerunBtn}} and click {{Done|#counterLineTypeDetailsClose}}.\n4. Under GROUPS, click the circuit, so the run you draw joins it.\n5. Click [[Polyline]], the tool that draws a run through several clicks.\n6. Trace the conduit\'s path: up from the top receptacle into the ceiling, along the north wall to above STORAGE, and down to LP-1.\n7. Click [[Finish]] (or press Enter).',
+          // the card's order: + Add until the type exists, its pencil until Homerun is on, Done, the
+          // circuit under GROUPS until it is the active group, Polyline, and Finish once the path is in.
+          // The controls the card names follow whatever is lit, so the card keeps off them all.
+          target: () => {
+            const lt = lineType(RE.hr), g = circuit1(), s = S(), path = allDone(traceZones(RE.hr, pts(G.homerun1), E101));
+            const first = !lt ? ['#lineTypeCreate', '#addLineType']
+              : !lt.homerun ? ['#lineTypeHomerunBtn', T().pencilOf('lineType', lt)]
+                : K().modalUp('counterLineTypeDetailsModal') ? ['#counterLineTypeDetailsClose']
+                  : s.drawingPolyline ? [path ? '#finishPolyline' : null, '#annCanvas']
+                    : path ? ['#annCanvas']
+                      : [g && s.activeGroupId !== g.id ? '#groupsList' : null, '#polylineBtn', '#polylineBtnSidebar'];
+            return T().ladder(...first, '#addLineType', '#polylineBtn', '#polylineBtnSidebar', '#groupsSectionTitle');
+          },
           check: () => (S().lineTypes || []).some((l) => l.homerun) && allDone(traceZones(RE.hr, pts(G.homerun1), E101)),
           hint: () => { const lt = lineType(RE.hr); return lt && !lt.homerun ? 'The type exists: open its details and turn on Homerun' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeHomerun(); if (!polylinesOn(RE.hr, E101).length) tracePlan(lt, G.homerun1, 'Homerun, circuit 1', E101); const g = circuitOne(); void g; } } },
         { id: 'panelpoles', title: 'The panel knows its schedule', kind: 'do',
           // the chapter's own Panelboard came with 42 poles (TAGS), which passed this step on arrival
           onEnter: () => { const c = counter(RE.panel); if (c && c.lesson && c.poles === 42) { delete c.poles; App.updateUI(); } },
-          body: 'Bid Check can compare the circuits you draw against the panel\'s schedule once the panel counter knows how many poles, breaker positions, it has.\n1. In the sidebar, click the pencil beside the panel counter: Panelboard LP-1, or your own panel counter if the chapter used it.\n2. Panel name reads LP-1 off the plan\'s tag when the chapter made the counter; type LP-1 if it is blank. In Poles, type 42. Click [[Done]].',
+          body: () => { const sel = T().pencilOf('counter', counter(RE.panel)); return 'Bid Check can compare the circuits you draw against the panel\'s schedule once the panel counter knows how many poles, breaker positions, it has.\n1. Under COUNTERS, click ' + (sel ? '{{the pencil|' + sel + '}}' : 'the pencil') + ' beside the panel counter.\n2. In Panel name, type LP-1 if it is blank. In Poles, type 42, the count on LP-1\'s schedule. Click {{Done|#counterLineTypeDetailsClose}}.'; },
           target: () => T().ladder('#panelPoles', '#panelName', '#counterLineTypeDetailsModal .modal-card', T().pencilOf('counter', counter(RE.panel)), '#countersSection'),
           check: () => { const c = counter(RE.panel); return !!(c && c.panelName && c.poles === 42); },
           action: { label: 'Set LP-1 · 42 poles', run: () => { const c = pick('panel'); App.pushUndoSnapshot(); c.panelName = 'LP-1'; c.poles = 42; K().dirty(); } } },
         { id: 'vd', title: 'What the voltage-drop row says', kind: 'do',
           rules: ['elec.voltage-drop.branch-limit', 'elec.voltage-drop.k-constant'],
-          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nRead the row Voltage drop within 3% to the farthest device. Voltage drop is the voltage a wire loses along its length, so the far end gets less.\nThe app walked the homerun and the chain to the receptacle farthest from LP-1. It assumed 12 A on the circuit, and it warns, naming the gauge that would pass.\nThe Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note). A branch circuit runs from a panel out to its devices.\nThe rulebook chip carries the K constant it used, the number for copper\'s resistance in the formula.\nIs the engineer wrong?',
-          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!bidRow('voltage-drop') && bidRow('voltage-drop').verdict !== 'na',
-          hint: () => { const r = bidRow('voltage-drop'); return S().bidCheckCollapsed === false && r && r.verdict === 'na' ? 'Not judged yet. ' + r.detail + ' Right-click the homerun and a west-wall receptacle, Assign to group, and pick the circuit' : ''; },
+          // the row's name is a pointer once the list is open: folded, there is no row to light
+          onEnter: () => T().foldBidCheck(), hold: true, body: () => '1. In the left sidebar, click BID CHECK to expand it.\nRead the row ' + (S().bidCheckCollapsed === false ? '{{Voltage drop within 3% to the farthest device|.bid-check-row[data-row-id=voltage-drop]}}' : 'Voltage drop within 3% to the farthest device') + '. Voltage drop is the voltage a wire loses along its length, so the far end gets less.\nThe app walked the homerun and the chain to the receptacle farthest from LP-1. It assumed 12 A on the circuit, and it warns, naming the gauge that would pass.\nThe Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note). A branch circuit runs from a panel out to its devices.\nThe rulebook chip carries the K constant it used, the number for copper\'s resistance in the formula.\nIs the engineer wrong?',
+          target: ['.bid-check-row[data-row-id=voltage-drop]', '#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!bidRow('voltage-drop') && bidRow('voltage-drop').verdict !== 'na',
+          // the homerun step passes on its last circle, so its run can still be a draft here, and a draft is on no circuit
+          hint: () => { const r = bidRow('voltage-drop'); if (S().drawingPolyline) return 'The homerun is still being drawn. Click Finish under the sheet to end it'; let touch = false; try { touch = window.matchMedia('(pointer: coarse)').matches; } catch (_) { touch = false; } return S().bidCheckCollapsed === false && r && r.verdict === 'na' ? 'Not judged yet. ' + r.detail + (touch ? ' Touch and hold' : ' Right-click') + ' the homerun and a west-wall receptacle, Assign to group, and pick the circuit' : ''; },
           action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'load', title: 'The load the engineer scheduled', kind: 'do',
           rules: ['elec.voltage-drop.branch-limit'],
-          body: 'Answer: not yet. The app assumed 12 A because you did not say. E-501 schedules circuit 1 at 720 VA, which is 6 A at 120 V.\n1. Under GROUPS, click the pencil beside the circuit.\n2. In Load, type 6. Click [[Done]].\nThe row turns to a tick: at 6 A the drop is under 3% on #12.\nWhen the schedule gives a load, use it. When it does not, the default is the honest warning: the app says so rather than guess low.\nOne caution: 720 VA is the load calculation\'s figure, 180 VA for each receptacle. It is not a measured load. A long run that passes only at that figure is worth an RFI.',
-          target: ['#groupModalLoadAmps', '#groupModalDone', '#groupsSectionTitle', '#groupsList .edit-btn'],
+          body: 'Answer: not yet. The app assumed 12 A because you did not say. E-501 schedules circuit 1 at 720 VA, which is 6 A at 120 V.\n1. Under GROUPS, click the pencil beside the circuit.\n2. In Load, type 6. Click {{Done|#groupModalDone}}.\n{{The row|.bid-check-row[data-row-id=voltage-drop]}} turns to a tick: at 6 A the drop is under 3% on #12.\nWhen the schedule gives a load, use it. When it does not, the default is the honest warning: the app says so rather than guess low.\nOne caution: 720 VA is the load calculation\'s figure, 180 VA for each receptacle. It is not a measured load. A long run that passes only at that figure is worth an RFI.',
+          // the pencil until the load is in, then the row the card says has turned
+          target: () => { const g = circuit1(); return g && g.loadAmps === 6 ? T().ladder('#groupModalDone', '.bid-check-row[data-row-id=voltage-drop]', '#bidCheckSectionTitle', '#groupsList .edit-btn') : T().ladder('#groupModalLoadAmps', '#groupModalDone', '#groupsList .edit-btn', '#groupsSectionTitle'); },
           check: () => { const g = circuit1(); return !!(g && g.loadAmps === 6 && bidRow('voltage-drop') && bidRow('voltage-drop').verdict === 'ok'); },
           hint: () => { const g = circuit1(); return g && g.loadAmps && g.loadAmps !== 6 ? 'Read circuit 1 on E-501: 720 VA at 120 V' : ''; },
           action: { label: 'Set 6 A', run: () => { const g = circuitOne(); App.pushUndoSnapshot(); g.loadAmps = 6; K().dirty(); } } },
         { id: 'cross', title: 'Circuits against the schedule', kind: 'read',
-          body: 'Two more rows woke up: they have something to judge now.\nCircuits on plan match the panel schedule reads one circuit on plan against forty-two poles. It stays open until every circuit is drawn: it is the row that says you are not finished.\nEvery device on a circuit and reached by a run names the receptacles you counted in Chapter 2 that no run has reached yet.\nNeither blocks the export. Both are the app saying what it knows.',
-          target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => true },
+          body: 'Two more rows have something to judge now.\n{{Circuits on plan match the panel schedule|.bid-check-row[data-row-id=circuits-vs-panel]}} reads one circuit on plan against forty-two poles. It stays open until every circuit is drawn: it is the row that says you are not finished.\n{{Every device on a circuit and reached by a run|.bid-check-row[data-row-id=devices-on-circuits]}} names the receptacles you counted in Chapter 2 that no run has reached yet.\nNeither blocks the export. Both are the app saying what it knows.',
+          // the lower row first: the sidebar scrolls to the first one, and the other sits just above it
+          target: () => (S().bidCheckCollapsed === false ? ['.bid-check-row[data-row-id=devices-on-circuits]', '.bid-check-row[data-row-id=circuits-vs-panel]'] : ['#bidCheckSectionTitle']), lightAll: true, check: () => true },
       ],
       done: 'A circuit with its homerun, a panel that knows its schedule, and a voltage-drop warning you understood and answered.\nNext: [[Learn]] → Chapter 6, the equipment.',
     },
@@ -553,10 +572,11 @@
     {
       id: 'equipment', title: 'Chapter 6: The equipment', short: 'the hard-wired half', minutes: 8, page: E101, noun: 'chapter', set: ESET,
       intro: 'Dedicated circuits (one machine each), two poles and three. The breaker the kitchen hood trips, and the disconnect that must be in sight of the unit.',
+      opener: 'E-101 opens with the six J-boxes of Chapter 2 already counted, one at each piece of equipment.',
       seed() { scaleE101(); markMissing(pick('jbox'), pts(G.jbox), E101); },
       steps: [
         { id: 'three', title: 'Which equipment is three phase?', kind: 'do', cardAt: 'tl',
-          body: 'Six J-boxes, six circuits on the schedule. One of them takes three poles: it is three phase, fed from all three phases.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that J-box, write what it feeds, and click [[Done]].',
+          body: 'Six J-boxes, six circuits on the schedule. One of them takes three poles: it is three phase, fed from all three phases.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click that J-box, write what it feeds, and click {{Done|#noteModalDone}}.',
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.rtu)[0], 26, E101).length > 0,
           hint: () => { const a = pageAnn(E101); if (!a || !(a.notes || []).length) return ''; return pts(G.jbox).some((pt) => notesNear(pt, 26, E101).length) ? 'That one is single phase: one or two circuit numbers beside it. Look for three' : 'Put the note on the J-box itself'; },
@@ -568,7 +588,7 @@
           target: [], check: () => true },
         { id: 'hood', title: 'The breaker the hood trips', kind: 'do', cardAt: 'bl',
           rules: ['elec.hood.shunt-trip'],
-          body: 'The schedule says circuit 12 is on a shunt trip, and nothing says who wires it to the hood. Ask with an RFI.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click beside the cook line receptacles, under HOOD ABOVE.\n3. Type RFI: and the question: who furnishes the shunt-trip breaker and wires it to the hood suppression? Click [[Done]].\nWhy it matters: circuit 12 feeds the receptacles under the hood, the canopy over the cook line, the row of ranges and fryers.\nThe keynote says it is on a shunt-trip breaker, one that can be tripped from outside the panel. It is interlocked with the hood suppression, the fire system in the hood: one sets off the other.\nWhen the hood\'s system fires, that breaker opens and the appliances lose power (NFPA 96). NFPA 96 is the National Fire Protection Association\'s standard for kitchen hoods; the plumbing course met the same rule on the gas.',
+          body: 'Circuit 12 feeds the receptacles under the hood, the canopy over the cook line, the row of ranges and fryers.\nThe schedule and the keynote put it on a shunt-trip breaker, one that can be tripped from outside the panel.\nIt is interlocked with the hood suppression, the fire system in the hood: one sets off the other. When that system fires, the breaker opens and the appliances lose power (NFPA 96).\nNFPA 96 is the National Fire Protection Association\'s standard for kitchen hoods; the plumbing course met the same rule on the gas.\nNothing says who wires the breaker to the hood, so ask with an RFI.\n1. In the header, click [[⋯]], then [[Note]] (or press N).\n2. Click beside the cook line receptacles, under HOOD ABOVE.\n3. Type RFI: and the question: who furnishes the shunt-trip breaker and wires it to the hood suppression? Click {{Done|#noteModalDone}}.',
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'],
           check: () => notesNear(pts(G.hood)[0], 60, E101).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))),
           hint: () => { const a = pageAnn(E101); return a && (a.notes || []).some((n) => /^\s*RFI\s*:/i.test(String(n.text || ''))) ? 'Move it beside the cook line receptacles, under HOOD ABOVE' : ''; },
@@ -585,36 +605,54 @@
     {
       id: 'service', title: 'Chapter 7: The service and the one-line', short: 'from the street to the panel', minutes: 8, page: E601, noun: 'chapter', set: ESET,
       intro: 'The one-line from the power company to LP-1: why 200 A, why 3/0 copper, why #6 for the ground. Then the feeder traced and judged for fill.',
+      opener: 'The sheets open on E-601, the one-line. On E-101 the scale is set and panel LP-1 is counted.',
       seed() { scaleE101(); markMissing(pick('panel'), pts(G.panel), E101); },
       steps: [
         { id: 'read', title: 'Read the one-line', kind: 'read', cardAt: 'br',
           rules: ['elec.conductor.ampacity', 'elec.ground.equipment-conductor', 'elec.ground.electrode-conductor', 'elec.service.load-calculation'],
           body: 'E-601 is one line from the utility transformer, the power company\'s equipment at the street, to LP-1.\nThe service lateral is the buried wires from the utility. The meter counts what the building uses. The main disconnect shuts off the whole building.\nThe feeder is the heavy wires from the main disconnect to the panel. The ground ties the system to the earth.\nThe feeder is 4 #3/0 copper and a #6 ground in 2" conduit. #3/0, said three-aught, is thicker than any numbered size.\nWhy those sizes?',
           reveal: 'The main is 200 A, so the feeder must carry 200 A.\n#3/0 copper THHN is rated 200 A at the 75 °C column the terminals allow (NEC 310.16). The terminals are where the wire is fastened, and they limit how hot it may run.\nFour of them: three phases and a neutral.\nThe equipment ground rides with them and is sized from the breaker, #6 copper for 200 A (NEC 250.122).\nThe grounding electrode conductor to the water pipe and the rods is #4 (250.66). That wire ties the system to the earth, through metal rods driven into the ground.\nThe 200 A itself is the engineer\'s load calculation (NEC Article 220): 22 kVA connected, 62 A, and the kitchen\'s future. A kVA is a thousand VA.\nNobody sizes a restaurant service to today\'s load: kitchens add equipment, so the service is sized with room to grow.',
-          target: [], check: () => true },
+          target: ['#annCanvas'], check: () => true },
         { id: 'feeder', title: 'Trace the feeder', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.emt2, pts(G.feeder), E101),
-          body: 'On E-101 the feeder is the heavy line from the main disconnect outside the south wall up to LP-1.\n1. Under PAGES, click E-101.\n2. Under LINE TYPES, make 2in EMT.\n3. In its details, set the raceway to EMT 2" and the conductors to 4 #3/0 THHN + 1 #6 G.\n4. With it active, click [[Polyline]], click the two circled ends, and press Enter.',
-          target: () => T().ladder('#polylineBtn', '#polylineBtnSidebar', '#addLineType', '#pagesList', T().pencilOf('lineType', lineType(RE.emt2))),
+          body: 'On E-101 the feeder is the heavy line from the main disconnect outside the south wall up to LP-1.\n1. Under PAGES, click E-101.\n2. Under LINE TYPES, click {{+ Add|#addLineType}}. In Name, type 2in EMT and click [[Create Line Type]].\n3. Click the pencil beside it. Set the raceway to EMT, 2", and Conductors to 4 #3/0 THHN + 1 #6 G. Click {{Done|#counterLineTypeDetailsClose}}.\n4. With it active, click [[Polyline]], then the two circled ends. Click [[Finish]] (or press Enter).',
+          // the card's order: the sheet's row under PAGES, + Add until the type exists, its pencil until
+          // it has its conductors, then Polyline, and Finish once both ends are in
+          target: () => {
+            if (!K().onPage(E101)) return ['#pagesList'];
+            const lt = lineType(RE.emt2), path = allDone(traceZones(RE.emt2, pts(G.feeder), E101));
+            const first = !lt ? ['#lineTypeCreate', '#addLineType']
+              : !(lt.conductors || []).length ? ['#conductorsSpec', '#racewayKind', T().pencilOf('lineType', lt)]
+                : K().modalUp('counterLineTypeDetailsModal') ? ['#counterLineTypeDetailsClose']
+                  : S().drawingPolyline ? [path ? '#finishPolyline' : null, '#annCanvas']
+                    : path ? ['#annCanvas']
+                      : ['#polylineBtn', '#polylineBtnSidebar'];
+            return T().ladder(...first, '#addLineType', '#polylineBtn', '#polylineBtnSidebar');
+          },
           check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)),
           hint: () => { const lt = lineType(RE.emt2); return lt && !(lt.conductors || []).length ? 'The type exists: give it the conductors, 4 #3/0 THHN + 1 #6 G' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeFeeder(); if (!polylinesOn(RE.emt2, E101).length) tracePlan(lt, G.feeder, 'Feeder', E101); } } },
         { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => K().guide([pts(G.feeder)[0]], 14, feederRiseOk()),
           rulesExempt: 'no rulebook entry: the feeder\'s 8.5 ft of vertical is this set\'s route (E-101 keynote), not a code figure',
-          body: 'Seven feet on the plan, and the one-line calls the whole feeder 16 ft. The rest is vertical, so add it.\n1. Click [[Drop]] (or press B).\n2. In the Drop size palette, type 8.5 in its box and click [[Add]].\n3. Click the circled end at the main disconnect.\nThe main disconnect sits 5 ft up the outside wall. The feeder goes through the wall and up 5 ft into the 10 ft ceiling.\nIt runs across, then comes down 3 ft 6 in into the top of the panel. The keynote on E-101 says so.\nThat is 8 ft 6 in of vertical. Drop adds a rise or a fall at the end of a run, feet the plan cannot show.',
+          body: 'Seven feet on the plan, and the one-line calls the whole feeder 16 ft. The rest is vertical, so add it.\n1. Click [[Drop]] (or press B).\n2. In the Drop size palette, type 8.5 in its box and click {{Add|#dropCustomAdd}}.\n3. Click the circled end at the main disconnect.\nThe main disconnect sits 5 ft up the outside wall. The feeder goes through the wall and up 5 ft into the 10 ft ceiling.\nIt runs across, then comes down 3 ft 6 in into the top of the panel. The keynote on E-101 says so.\nThat is 8 ft 6 in of vertical. Drop adds a rise or a fall at the end of a run, feet the plan cannot show.',
           target: ['#dropPanel', '#dropBtn'], check: feederRiseOk,
           // T4 (2026-09-27): the card names 8.5 ft, so a 5 ft drop (the old card's) no longer passes
-          hint: () => { const d = feederDrop(); return d > 0 && !feederRiseOk() ? { code: 'wrong-value', text: 'The drop reads ' + (Math.round(d * 100) / 100) + ' ft. Type 8.5 in the Drop size palette, click Add, and click the end again' } : ''; },
+          // (the feeder step passes on its last circle, so the feeder can still be a draft here, and a draft takes no drop)
+          hint: () => { if (S().drawingPolyline) return 'The feeder is still being drawn. Click Finish under the sheet to end it'; const d = feederDrop(); return d > 0 && !feederRiseOk() ? { code: 'wrong-value', text: 'The drop reads ' + (Math.round(d * 100) / 100) + ' ft. Type 8.5 in the Drop size palette, click Add, and click the end again' } : ''; },
           action: { label: 'Add the 8.5 ft for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], FEEDER_RISE_FT, E101); } } },
         { id: 'fill', title: 'Fill on the feeder', kind: 'do',
           rules: ['elec.conduit.fill-limit'],
-          onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nConduit fill within the table limit now judges the feeder too: four 3/0 and a #6 in 2" EMT, about a third of the raceway.\nThat is under the 40% the table allows for three or more conductors (NEC Chapter 9, Table 1).\nHad the engineer written 1-1/2", the row would say so and name the size that fits.',
-          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
+          // the row's name is a pointer once the list is open: folded, there is no row to light
+          onEnter: () => T().foldBidCheck(), hold: true, body: () => '1. In the left sidebar, click BID CHECK to expand it.\n' + (S().bidCheckCollapsed === false ? '{{Conduit fill within the table limit|.bid-check-row[data-row-id=conduit-fill]}}' : 'Conduit fill within the table limit') + ' now judges the feeder too: four 3/0 and a #6 in 2" EMT, about a third of the raceway.\nThat is under the 40% the table allows for three or more conductors (NEC Chapter 9, Table 1).\nHad the engineer written 1-1/2", the row would say so and name the size that fits.',
+          target: ['.bid-check-row[data-row-id=conduit-fill]', '#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!(bidRow('conduit-fill') && bidRow('conduit-fill').verdict === 'ok'),
           action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'gear', title: 'Count the gear', kind: 'do', cardAt: 'br', page: E101, zones: () => circlesOn(E101, counter(RE.meter), [pts(G.meter)[0]], 12).concat(circlesOn(E101, counter(RE.disc), [pts(G.mdp)[0]], 12)),
-          body: 'The service is gear, the heavy electrical equipment, and the bid carries it at a price nothing else on the sheet approaches. It is the most expensive thing you count.\nA meter base is the socket the power company\'s meter plugs into. The power company brings the meter, and the bid carries the base.\n1. Make a Meter counter (Category Panel, Variant Meter) and click the meter base, the M outside the south wall.\n2. Make a Disconnect counter (Category Disconnect, Variant Disconnect) and click the MDP beside it, the main distribution panel.',
-          target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => markNear(counter(RE.meter), pts(G.meter)[0], 12, E101) && markNear(counter(RE.disc), pts(G.mdp)[0], 12, E101),
+          body: 'The service is gear, the heavy electrical equipment, and the bid carries it at a price nothing else on the sheet approaches.\nA meter base is the socket the power company\'s meter plugs into. The power company brings the meter, and the bid carries the base.\n1. Make a Meter counter (Category Panel, Variant Meter) and click the meter base, the M outside the south wall.\n2. Make a Disconnect counter (Category Disconnect, Variant Disconnect) and click the MDP beside it, the main distribution panel.',
+          // + Add while a counter is still to make (the Meter, then the Disconnect), the sheet while one is to place
+          target: () => { const m = counter(RE.meter), d = counter(RE.disc); const make = !m || (!d && markNear(m, pts(G.meter)[0], 12, E101)); return make ? T().ladder('#counterQuickCountAdd', '#addCounter', '#annCanvas', '#countersSectionTitle') : T().ladder('#counterQuickCountAdd', '#annCanvas', '#addCounter', '#countersSectionTitle'); },
+          check: () => markNear(counter(RE.meter), pts(G.meter)[0], 12, E101) && markNear(counter(RE.disc), pts(G.mdp)[0], 12, E101),
           // the two circles are 17 pt apart, so a click with the other counter armed is easy
-          hint: () => { const m = counter(RE.meter), d = counter(RE.disc); if (m && markNear(m, pts(G.mdp)[0], 12, E101)) return 'The Meter counter landed on the MDP. Press Ctrl+Z, arm the Disconnect, and click the MDP'; if (d && markNear(d, pts(G.meter)[0], 12, E101)) return 'The Disconnect landed on the meter. Press Ctrl+Z, arm the Meter, and click the M'; return ''; },
+          // (the reader's own undo: Cmd+Z on a Mac, the footer's Undo on a tablet, as lessons.js undoKey / onTouch)
+          hint: () => { const m = counter(RE.meter), d = counter(RE.disc); let undo = 'Press Ctrl+Z'; try { undo = window.matchMedia('(pointer: coarse)').matches ? 'Tap Undo in the footer' : /Mac|iPhone|iPad/.test(navigator.platform || '') ? 'Press Cmd+Z' : 'Press Ctrl+Z'; } catch (_) { undo = 'Press Ctrl+Z'; } if (m && markNear(m, pts(G.mdp)[0], 12, E101)) return 'The Meter counter landed on the MDP. ' + undo + ', arm the Disconnect, and click the MDP'; if (d && markNear(d, pts(G.meter)[0], 12, E101)) return 'The Disconnect landed on the meter. ' + undo + ', arm the Meter, and click the M'; return ''; },
           action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('meter'), pts(G.meter), E101); markMissing(pick('disc'), pts(G.mdp), E101); K().dirty(); } } },
       ],
       done: 'The service from the street to the panel, a feeder traced with its rise and judged for fill, the gear counted.\nNext: [[Learn]] → Chapter 8, the whole set.',
@@ -623,10 +661,11 @@
     {
       id: 'whole', title: 'Chapter 8: The whole set', short: 'the set, finished', minutes: 10, page: E101, noun: 'chapter', set: ESET,
       intro: 'Every device on both plans, the west-wall circuit with its homerun, the feeder: all of it in one pass. Then set beside the reference, and the report\'s circuit schedule.',
+      opener: 'The sheets open with the scale and the ceiling height set, and no marks. The takeoff is yours to make.',
       seed() { scaleE101(); K().setScale(E201, 9, '1/8" = 1\''); setCeiling(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'Now all of it, by hand: every device on both plans, the gear, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each one.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time and reads ✓ Done when nothing is.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s own finished takeoff.\n[[Finish the takeoff for me]] lays that takeoff on the sheets instead, if you would rather see it done.',
+          body: 'Now all of it, by hand: every device on both plans, the gear, the west-wall chain and its homerun, the feeder with its rise. Earlier chapters taught each one.\n1. Count and trace until the line beside [[Show me where]] reads ✓ Done. Until then it names what is missing.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s own finished takeoff.\n[[Finish the takeoff for me]] lays that takeoff on the sheets instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything },
           // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
@@ -636,17 +675,17 @@
           // PP-WHOLE-SKIP (2026-09-27): Skip on the lay step leaves the sheets as they are, and
           // nothing fills them in. With no mark there is nothing to compare and no report, so the
           // card says so and points back at the button beside Skip.
-          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets have no marks, and there is nothing to compare yet.\nTo see the answer, click [[Back]] and press [[Finish the takeoff for me]]. It lays the course\'s finished takeoff on both plans, and this card then checks it.\nOr read on: [[Next]] moves on with the sheets as they are.' : compareBody()),
-          target: [], check: () => true },
+          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets have no marks, and there is nothing to compare yet.\nTo see the answer, click [[Back]], then [[Finish the takeoff for me]]. It lays the course\'s finished takeoff on both plans, and this card then checks it.\nOr read on: [[Next]] moves on with the sheets as they are.' : compareBody()),
+          target: ['#summaryList', '#summarySectionTitle'], check: () => true },
         { id: 'report', title: 'The circuit schedule', kind: 'read',
           // [[Show Report]] shows only once the sheets carry a mark (output.js syncOutputMenus): after
           // a Skip the card says there is no report yet, and still says what the report holds.
           body: () => (takeoffSkipped()
-            ? 'You skipped the takeoff, so the sheets have no marks and there is no report yet. [[Show Report]] shows under EXPORT OPTIONS once they do.\nTo see it, click [[Back]] twice and press [[Finish the takeoff for me]].\nOr read on. Besides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule.\nIt lists each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel.\nIt is the estimator\'s copy of E-501, built from what was drawn.'
+            ? 'You skipped the takeoff, so the sheets have no marks and there is no report yet. [[Show Report]] shows under EXPORT OPTIONS once they do.\nTo see it, click [[Back]] twice, then [[Finish the takeoff for me]].\nOr read on. Besides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule.\nIt lists each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel.\nIt is the estimator\'s copy of E-501, built from what was drawn.'
             : '1. Under EXPORT OPTIONS, click [[Show Report]].\nBesides the counts and the feet by type, an electrical project\'s report carries a Circuit schedule.\nIt lists each circuit with its devices, its conduit and homerun feet, its wire by gauge, and the farthest device from the panel.\nIt is the estimator\'s copy of E-501, built from what was drawn.'),
           target: ['#printReport', '#exportOptionsSectionTitle'], check: () => true },
         { id: 'legend', title: 'The legend on the sheet', kind: 'do', hold: true,
-          body: '1. In the left sidebar, click the gear beside the SUMMARY heading.\nA legend is the key on a sheet that says what each symbol means. On an electrical project the app draws it as a compact ruled block, the way an E-sheet draws its own.\nIt has a mount-height column and the panel in its footer.',
+          body: '1. In the left sidebar, click {{the gear|#summarySettingsBtn}} beside SUMMARY.\nA legend is the key on a sheet that says what each symbol means. On an electrical project the app draws it as a compact ruled block, the way an E-sheet draws its own.\nIt has a mount-height column and the panel in its footer.',
           target: ['#legendSettingsModal .modal-card', '#summarySettingsBtn'], check: () => K().modalUp('legendSettingsModal'),
           action: { label: 'Open Summary Legend', run: () => { if (App.openLegendSettingsModal) App.openLegendSettingsModal(); } } },
       ],
@@ -656,27 +695,30 @@
     {
       id: 'bid', title: 'Chapter 9: Check it, prove it, hand it off', short: 'a bid you can defend', minutes: 8, page: E101, noun: 'chapter', set: ESET,
       intro: 'What the electrical rows of Bid Check mean, and which the set already answers. Then where a number came from, and the hand-off to the electrical bid.',
+      opener: 'E-101 opens with circuit 1 finished: its chain, its homerun and its 6 A load. The shunt-trip RFI from Chapter 6 is on it too.',
       seed() { scaleE101(); setCeiling(); markMissing(pick('gfci'), gfciAll(), E101); chainWestWall(); markMissing(pick('panel'), pts(G.panel), E101); const g = circuitOne(); g.loadAmps = 6; if (!polylinesOn(RE.hr, E101).length) tracePlan(makeHomerun(), G.homerun1, 'Homerun, circuit 1', E101); circuitOne(); flagShuntTrip(); },
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
           onEnter: () => T().foldBidCheck(), hold: true, body: '1. In the left sidebar, click BID CHECK to expand it.\nFour rows marked AUTO the app judges from your runs: conduit fill, voltage drop, circuits against the panel schedule, every device on a circuit.\nThe rest are yours, the manual rows: you tick each one when you have checked it.',
-          target: ['#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: () => K().openBidCheck() } },
+          target: () => (S().bidCheckCollapsed === false ? ['#bidCheckSection'] : ['#bidCheckSectionTitle']), check: () => S().bidCheckCollapsed === false, action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'rows', title: 'What the manual rows mean', kind: 'read',
           rules: ['elec.emt.bends'],
           body: 'The manual rows read: Fire alarm devices at rated corridors (fire-resistant halls) and doors. Lighting controls meet the energy code. Equipment connections coordinated with HVAC (heating and air) and plumbing. Temporary power and lighting included. Pull points within 360° of bends on every run.\nWhich of them did this set already answer?',
-          reveal: 'Two on paper. The occupancy sensors on E-201 are the energy code row. The J-boxes at the dishwasher, the pump, the fan, the heater and RTU-1 are the coordination row: equipment the plumbing and mechanical (HVAC) sets own.\nFire alarm is not on this set at all, which is itself an answer: an RFI, or an exclusion in the bid. An exclusion says the price leaves it out.\nTemporary power, what the builders run on during construction, is never on a drawing. Pull points are yours: a pull point is a box the wire is pulled through. A run with more than 360° of bends between boxes needs one (NEC 358.26), and the plan cannot show the bends the electrician will make.\nYou tick each one when you have READ the answer.',
+          reveal: 'Two on paper. The occupancy sensors on E-201 are the energy code row. The J-boxes at the dishwasher, the pump, the fan, the heater and RTU-1 are the coordination row: equipment the plumbing and mechanical (HVAC) sets own.\nFire alarm is not on this set at all, which is itself an answer: an RFI, or an exclusion in the bid. An exclusion says the price leaves it out.\nTemporary power, what the builders run on during construction, is never on a drawing. Pull points are yours: a pull point is a box the wire is pulled through. A run with more than 360° of bends between boxes needs one (NEC 358.26), and the plan cannot show the bends the electrician will make.',
           target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => true },
         { id: 'tick', title: 'Sign what you have read', kind: 'do',
-          body: '1. In the left sidebar, under BID CHECK, click the row that reads Scale verified on every counted sheet. One click signs it for the whole bid.\n2. Click Lighting controls meet the energy code.\n3. Click Equipment connections coordinated with HVAC and plumbing.',
-          target: ['#bidCheckSection', '#bidCheckSectionTitle'], check: () => manual('scale-verified') && manual('lighting-controls') && manual('equipment-connections'),
+          body: '1. In the left sidebar, under BID CHECK, click {{Scale verified on every counted sheet|.bid-check-row[data-row-id=scale-verified]}}. One click signs it for the whole bid.\n2. Click {{Lighting controls meet the energy code|.bid-check-row[data-row-id=lighting-controls]}}.\n3. Click {{Equipment connections|.bid-check-row[data-row-id=equipment-connections]}} coordinated with HVAC and plumbing.',
+          // the lowest row first: the sidebar scrolls to the first one, and the others sit just above it
+          target: () => (S().bidCheckCollapsed === false ? ['.bid-check-row[data-row-id=equipment-connections]', '.bid-check-row[data-row-id=lighting-controls]', '.bid-check-row[data-row-id=scale-verified]'] : ['#bidCheckSectionTitle']), lightAll: true, check: () => manual('scale-verified') && manual('lighting-controls') && manual('equipment-connections'),
           action: { label: 'Tick the three for me', run: () => { K().tickManual('scale-verified'); K().tickManual('lighting-controls'); K().tickManual('equipment-connections'); } } },
         { id: 'proof', title: 'Where did that number come from?', kind: 'do', hold: true,
-          body: '1. In the left sidebar, under SUMMARY, click the GFCI total.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits.\nThis is what you open when the GC questions the number and asks where it came from.',
+          body: () => { const sel = T().summaryRowOf('counter', counter(RE.gfci)); return '1. In the left sidebar, under SUMMARY, click ' + (sel ? '{{the GFCI total|' + sel + '}}' : 'the GFCI total') + '.\nThe breakdown shows the count sheet by sheet with a thumbnail of where every mark sits.\nThis is what you open when the GC questions the number and asks where it came from.'; },
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', counter(RE.gfci)), '#summarySectionTitle'), check: () => K().detailOpenFor(counter(RE.gfci)), hint: () => K().detailMiss(counter(RE.gfci)),
           action: { label: 'Open the breakdown', run: () => { const c = counter(RE.gfci); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'handoff', title: 'Hand it off', kind: 'read',
-          body: '1. [[Open in TakeoffTooling]] hands the devices, runs, verticals, wire and cable to the electrical pricing app.\n2. [[Copy RFI Flags]] puts the shunt-trip question beside it.\n3. [[Export PDFs]] makes the marked-up set.\nIn the pricing app each device explodes into its parts: box, ring, plate and connectors. Every row picks up labor from your book, your company\'s hours for each item.\nMore: [Doing an electrical takeoff](/guides/electrical-takeoff/).',
-          target: ['#forTakeoffTooling', '#exportOptionsSectionTitle'], check: () => true },
+          body: '[[Open in TakeoffTooling]] hands the devices, runs, verticals, wire and cable to the electrical pricing app.\n[[Copy RFI Flags]] puts the shunt-trip question beside it.\n[[Export PDFs]] makes the marked-up set.\nIn the pricing app each device explodes into its parts: box, ring, plate and connectors. Every row picks up labor from your book, your company\'s hours for each item.\nMore: [Doing an electrical takeoff](/guides/electrical-takeoff/).',
+          // the lowest button first: the sidebar scrolls to the first one, and the others sit above it
+          target: ['#copyRfiFlags', '#forTakeoffTooling', '#specificPages', '#exportOptionsSectionTitle'], lightAll: true, check: () => true },
       ],
       done: 'That is the course: a restaurant\'s power read off the engineer\'s set, counted with the app, checked against the tables, and handed to the bid.\nWhen you are ready for a real set, click [[Upload PDF]].',
     },

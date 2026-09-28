@@ -13,6 +13,8 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## revert(water): the sibling guard on water runs, which broke the plumbing tour (WATER-TAP, 2026-09-27)
+
 ## fix(model): one mark-presence predicate; a duct-only takeoff comes back (REAPPLY-DUCT, 2026-09-27)
 
 A signed-out HVAC takeoff whose only marks were duct runs was not put back when the same PDF was
@@ -38,28 +40,80 @@ data-only backup after a reload. Both came back with no runs.
 
 ## fix(water): two runs that leave one point are siblings, not each other's branch (WATER-TAP, 2026-09-27)
 
-Two cold runs drawn from one point, one east and one south, each started on the other, so
-`waterChildLinks` made each the other's child: a two-run cycle. `waterDownstreamByRun` then gave
-each run both runs' fixture units, and the S moment and the Water Sizing schedule sized each pipe
-for twice its load. The duct copy of the tap rule got its guard the same day (DS-DINING-ATTACH,
-`ductTapParentOf`); the water copy did not (DECOMPOSITION_MAP N01, S01).
+#262 gave `waterChildLinks` the guard duct's tap rule has: two runs that leave one point are
+siblings, neither the other's branch. It fixed the double count it was written for and broke the
+plumbing tour on main: four cases of tutorial.spec.js failed, in CI and on the next pull request.
 
-- **The guard, twinned.** `waterChildLinks` skips a candidate parent whose own first vertex sits
-  within snap of the child's first vertex. Two runs leaving one point are both roots and each
-  carries only its own fixtures. A branch tapped mid-run, or a run carrying on from another's
-  end, still links. Hot and cold never link.
-- **No loop survives.** Past the guard, runs drawn head to tail round a loop (three runs round a
-  square, or two runs over one stretch in opposite directions) still pointed at each other, so
-  every run in the loop carried the whole loop. A link that would close a cycle is now dropped
-  (the first run in list order keeps its parent), so the links are always a forest. The two
-  walkers (`waterDownstreamByRun`, `waterDraftRemainingLoad`) already kept a visited set, so
-  they never hung; they now never see a cycle either.
-- **Pins.** Four node cases in [water-model.test.js](water-model.test.js): the repro (no links,
-  each run its own load, a trace off the same point does not take the other run's fixtures), a
-  mid-run tap and an end-on run still link, hot and cold never link, and the loops; and one case
-  in [water-schedule.spec.js](water-schedule.spec.js): two runs off one riser read 1.5 and 10
-  WSFU in the Water Sizing schedule, not 11.5 each. The duct
-  twin, `ductChildLinks`, has the sibling guard but no loop breaker; it is not changed here.
+- **Why.** The tour's size step traces the cold main from the riser at the first lavatory, the
+  point the chained lavatory branch also starts at, and the card reads the branch's 4.5 WSFU on the
+  main. Under the old rule the two runs were each other's child, and the main, which has no
+  fixtures of its own, carried the branch's load. With the guard they are siblings, the main
+  carries nothing, no size is suggested, and the step cannot be done.
+- **What it shows.** The double count and the tour's reading come from the same link. Duct knows
+  which end is upstream because a run starts at its unit; water has no source, so for two runs off
+  one point the model cannot tell a feeder from a sibling. That is a decision before it is a fix.
+- **The miss.** The fix was merged on the water specs and the node tests. tutorial.spec.js, which
+  drives water sizing through the tour, was not run. WATER-TAP is open again and says so.
+
+## chore(ci): main's CI finishes, e2e runs four ways, and specs run from a worktree (CI-MAIN, WORKTREE-SPECS, 2026-09-27)
+
+On 2026-09-27 twenty CI runs on main were cancelled in a row, and 23 hand-written Playwright configs
+were written so specs could run from a `.claude/worktrees/` copy. Both punch rows touch
+`playwright.config.js`, so they landed together. [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) S03, S04.
+
+- **Main is never cancelled.** `cancel-in-progress` was `true`, and every push to main shares one
+  concurrency group, so each merge cancelled the run before it. It is now
+  `${{ github.event_name == 'pull_request' }}`: a pull request's superseded run is still cancelled,
+  main's run in progress finishes.
+- **e2e in four shards.** A `--shard=N/4` matrix, `fail-fast: false`, one runner each with two
+  workers, each shard with its own `config.local.js` stub, browser install and artifact name
+  (`playwright-error-contexts-shard-N`). It was one job of 42 to 49 minutes. Shards split by FILE
+  (`fullyParallel` is false), so the floor is the longest file, `tutorial.spec.js` at about 558 s,
+  then `lessons.spec.js` at about 293 s; making those two parallel inside is a follow-up. Locally
+  `--list` puts 251, 240, 242 and 241 of the 974 tests in the four shards; the workflow itself is
+  unverified until its own first run.
+- **One retry on CI** (was two): a failing 180 s course chapter ran three times.
+- **Specs from a worktree.** `testIgnore: ['**/.claude/**']` matched a worktree's own path, so it
+  found no specs. It is now a RegExp anchored to the config's own directory: the primary checkout
+  still skips every sibling worktree, and a worktree finds its own specs. The port comes from
+  `PW_PORT`, else 3456, else (inside `.claude/worktrees/`) a stable port hashed from the path, 3500
+  to 3999, and a worktree never reuses a server already on its port. `BASE_URL` still wins.
+  `playwright-config.test.js` (Node) compiles the config as if it lived in a primary checkout, a
+  worktree and a path full of RegExp characters, and pins all of this and the retry count. From
+  this PR's own worktree, plain `npx playwright test pdf-upload.spec.js` found and passed its 16
+  tests; a copy of the config anchored to the primary checkout listed that checkout's 120 spec
+  files and none of the 60 worktrees under its `.claude/`.
+- **Deleted** `playwright.session.config.js` and `playwright.worktree.config.js`, committed by accident
+  and headed "Temporary (untracked)". AGENTS.md gains "Specs from a worktree"; four plan-file lines
+  that named the deleted config now say plain `npx playwright test`.
+
+## fix(pdf-bundle): one bundle builder; notes and highlights pages on a one-sheet export (BUNDLE-ONE-SHEET, 2026-09-27)
+
+Map item S05 (defects N03 and N10). Three defects in the notes and highlights bundles, all read in
+code first. Each was pinned in [pdf-bundle.spec.js](pdf-bundle.spec.js) and seen to fail before
+the fix.
+
+- **One sheet, report off: the summary printed over the sheet.** The builders guessed whether
+  they had a fresh document from `getNumberOfPages() > 1`, so an Export PDFs run with exactly one
+  sheet drew the "Notes Summary" / "Highlights Summary" table on the sheet image. Both builders
+  now take `doc = null` and make their own A4 page; a document they are given always gets a new
+  page first. Each returns its doc.
+- **A note or highlight on a layer that is not active opened a blank page.** The sidebar
+  Highlight / Note Pages (PDF) buttons show when any layer has an item, but the bundles read the
+  active layer only. The bundles now collect from **every layer**, to agree with the buttons and
+  with the Summary (which has counted every layer since MAP-SUMMARY-LAYERS). Each crop is cut from
+  its own layer's raster, so the item is in the picture.
+- **The Highlights Summary ran off the page** past about 36 sheets. The one summary table,
+  `addBundleSummary`, breaks onto a new A4 page for both kinds.
+- **One builder.** [features/pdf-bundle.js](features/pdf-bundle.js) gains
+  `collectBundleItems(kind, pageFilter)`, `cropSheetJpeg(sheetCanvas, rect, scale)` and
+  `addBundleSummary(doc, title, countLabel, rows)`. Layouts are unchanged: notes fold under the
+  summary on A4 pages, and each highlight gets a page sized to its crop.
+- **The buttons left app.js.** The twin click handlers are gone from [app.js](app.js);
+  [features/output.js](features/output.js) binds both buttons beside the code that shows them, to
+  the new `App.openBundlePdf(kind)`. The toast text is unchanged.
+
+---
 
 ## docs(map): the decomposition map, read again at 3eb45a9 (2026-09-27)
 

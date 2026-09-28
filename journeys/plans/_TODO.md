@@ -25,8 +25,8 @@
    [../duct-takeoff.md](../duct-takeoff.md) for reproductions, and AGENTS.md.
    Re-grep every file anchor — the codebase moves daily.
 3. **Tests are the deliverable, not an afterthought:** a `*.spec.js` per unit
-   (Playwright; from a `.claude/worktrees/*` checkout use
-   `--config=playwright.worktree.config.js`), node tests for any pure logic,
+   (Playwright; from a `.claude/worktrees/*` checkout plain
+   `npx playwright test` works, see AGENTS.md "Specs from a worktree"), node tests for any pure logic,
    deliberate updates to any byte-pinned copy specs.
 4. **Gates before merge:** `npm run test:unit`, the unit's targeted specs,
    `npm run check` (every step green; regenerate toc/filemap/guides/sw with
@@ -388,8 +388,8 @@ was very likely the same estimator hitting the same button.
       the targeted set (`close-project save-project save-status restore-last-session
       load-project load-project-delete upload-then-save user-activity
       turn-in-self-release` — 25/25 at hand-off), the full suite before merge (from a
-      `.claude/worktrees/*` checkout: `--config=playwright.worktree.config.js`, own server
-      + `BASE_URL`; the test account needs `config.local.js` with dev-auth).
+      `.claude/worktrees/*` checkout: plain `npx playwright test`, which picks its own server
+      port; the test account needs `config.local.js` with dev-auth).
 - [ ] Live walk after deploy (dev account on counttooling.com): Save & Open the sample,
       `[Turn In]`, expect ONLY "Project turned in." and `[Check out to Edit]`; then have
       a second browser signed in as the same account turn it in and expect the notice

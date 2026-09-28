@@ -174,7 +174,7 @@ Close the inversion the investigation turned up.
   `npm run build:sw`. Never hand-edit `CACHE_VERSION` / `PRECACHE_SHA256`.
 - `npm run test:unit`, the stage's targeted specs, then `npm run check` (ten steps),
   then one full Playwright run to a real exit code, detached.
-- From this worktree: `--config=playwright.worktree.config.js`, and the gitignored
+- From this worktree: plain `npx playwright test` (WORKTREE-SPECS, 2026-09-27), and the gitignored
   `config.local.js` stub must exist.
 - No native `alert`/`confirm`/`prompt`. The stale-bid case is `App.showToast`.
 - Copy style: no em dashes in user-facing strings.

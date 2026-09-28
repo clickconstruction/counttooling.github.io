@@ -158,7 +158,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
   });
 
   // LEARN-START (2026-09-27): lesson 0, and the one card a device that has finished nothing sees.
-  test('Start here: a fresh device\'s empty canvas offers only it; its one click reads red outside, names a click with nothing armed, ticks inside; finishing brings the links back', async ({ page }) => {
+  test('Start here: a fresh device\'s empty canvas offers only it; its undo card wants the mistake, the undo and the mark that counts; finishing brings the links back', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
     await boot(page, '/app/', errors);
@@ -203,25 +203,31 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     expect(spots.bottom.t).toBeGreaterThan(spots.sidebar.t + spots.sidebar.h / 2);   // the footer, under the sheet
     // the lesson armed Title block for its one click
     expect(await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Title block'); return !!c && window.state.activeCounterType === c.id && window.state.tool === window.App.TOOL.COUNTER; })).toBe(true);
-    await expect(page.locator('#tourStatus')).toHaveText('Waiting for you…');
+    // the undo card: a mistake, its undo, then the mark that counts; the line under the steps says which comes next
+    await expect(page.locator('#tourTitle')).toHaveText('Make a mistake, then undo it');
+    await expect(page.locator('#tourStatus')).toHaveText('Click outside the circle first');
     const circle = async () => { await page.waitForFunction(() => window.App.tutorialZoneScreen().length === 1); return (await page.evaluate(() => window.App.tutorialZoneScreen()))[0]; };
     let z = await circle();
-    // 1. outside the circle: a mark lands, the line turns red and says why
+    // 1. outside the circle: the mistake. Guidance, not a miss: it is what the card asked for
     await page.mouse.click(z.cx, z.cy - z.r - 60);
-    await expect(page.locator('#tourStatus')).toHaveClass(/tour-status-miss/);
-    await expect(page.locator('#tourStatus')).toContainText('outside the circle');
+    await expect(page.locator('#tourStatus')).toContainText('That is the mistake');
+    await expect(page.locator('#tourStatus')).not.toHaveClass(/tour-status-miss/);
+    await expect(page.locator('#tourNext')).not.toHaveClass(/tour-next-ready/);
+    // 2. undo it: the line repeats how many undos are left
     await page.keyboard.press('ControlOrMeta+z');
-    await expect(page.locator('#tourStatus')).toHaveText('Waiting for you…');
-    // 2. inside it with the counter put down (M): nothing placed, and the line names it
+    await expect(page.locator('#tourStatus')).toContainText(/Undone, \d+ undos? left\. Now click inside the circle/);
+    // a click inside with the counter put down (M) places nothing, and the line says why, in red
     await page.keyboard.press('m');
     z = await circle();
     await page.mouse.click(z.cx, z.cy);
-    await expect(page.locator('#tourStatus')).toContainText('not armed');
-    // 3. armed again from COUNTERS, inside the circle: ✓ Done, held for Next
+    await expect(page.locator('#tourStatus')).toContainText('The counter is put down');
+    await expect(page.locator('#tourStatus')).toHaveClass(/tour-status-miss/);
+    // 3. picked up again from COUNTERS, inside the circle: ✓ Done, beside Back and Next, held for Next
     await page.click('#countersList .sidebar-item:has-text("Title block")');
     z = await circle();
     await page.mouse.click(z.cx, z.cy);
     await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    await expect(page.locator('.tour-card-nav #tourStatus')).toHaveCount(1);
     await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
     await page.waitForTimeout(600);
     expect(await stepId(page)).toBe('try');

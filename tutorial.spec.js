@@ -906,7 +906,7 @@ test.describe('Every button, on a blank sheet', () => {
     // hands off, for the glide (2.6 s), the beat a done step waits (0.9 s) and a second over
     await page.waitForTimeout(4600);
     expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done, window.App.tourKit.gliding()])).toEqual(['move', false, false]);
-    await expect(page.locator('#tourBody')).toContainText('Drag the sheet a little');
+    await expect(page.locator('#tourBody')).toContainText('slide it a little');
     // the reader's own drag is what passes it
     await dragSheet(page);
     await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });

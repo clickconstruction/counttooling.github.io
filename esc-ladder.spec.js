@@ -214,6 +214,93 @@ test.describe('Tier-3 B1 — Escape ladder additions', () => {
     expect(errors).toEqual([]);
   });
 
+  // ESC-STACK (DECOMPOSITION_MAP S06, defects N04 + N05): painted order is opened order, and
+  // Esc closes the painted top. Before the fix the ladder walked its rungs in LIST order once
+  // the top overlay had a rung, so Esc over the colour picker closed the parent underneath,
+  // and the details dialog's Custom Icons tips opened BEHIND it (same z, earlier in the DOM).
+  // The overlay that paints at the centre of `id`'s card.
+  const paintedAt = (page, id) => page.evaluate((i) => {
+    const r = document.querySelector('#' + i + ' .modal-card').getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    const ov = hit && hit.closest('.modal-overlay');
+    return ov ? ov.id : null;
+  }, id);
+
+  for (const sw of [
+    { name: 'Quick Count swatch over the Counter dialog', parent: 'counterModal', swatch: '#counterQuickCountSwatch',
+      open: () => { document.getElementById('addCounter').click(); window.App.showCounterTab('quickcount'); } },
+    { name: 'Quick tab swatch over the Choose Line Type dialog', parent: 'chooseLineTypeModal', swatch: '#quickLineSwatch',
+      open: () => { window.App.showChooseLineTypeModal(); window.App.showLineTypeTab('quick'); } },
+    { name: 'details swatch over the details dialog', parent: 'counterLineTypeDetailsModal', swatch: '#counterLineTypeDetailsSwatch',
+      open: () => { document.querySelector('#countersList .edit-btn').dispatchEvent(new MouseEvent('click', { bubbles: true })); } },
+  ]) {
+    test(`ESC-STACK: ${sw.name}: Esc closes the colour picker, the parent stays (N04)`, async ({ page }) => {
+      await page.evaluate(sw.open);
+      await expect(page.locator('#' + sw.parent)).toHaveClass(/visible/);
+      await page.locator(sw.swatch).click();
+      await expect(page.locator('#lineColorModal')).toHaveClass(/visible/);
+      expect(await paintedAt(page, 'lineColorModal')).toBe('lineColorModal');
+
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#lineColorModal')).not.toHaveClass(/visible/);
+      expect(await visible(page, sw.parent)).toBe(true);
+      expect(await page.evaluate(() => window.state.pendingLineColorApply)).toBeNull();
+
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#' + sw.parent)).not.toHaveClass(/visible/);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test('ESC-STACK: the details dialog\'s Custom Icons tips open ON TOP, and Esc closes the tips (N05)', async ({ page }) => {
+    await page.evaluate(() => {
+      document.querySelector('#countersList .edit-btn').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await expect(page.locator('#counterLineTypeDetailsModal')).toHaveClass(/visible/);
+    await page.locator('#counterLineTypeDetailsIconGroup > summary').click();   // the Icon section starts folded
+    await page.locator('#counterLineTypeDetailsCustomIconsLabel').click();
+    await expect(page.locator('#customIconTipsModal')).toHaveClass(/visible/);
+    // Painted on top: the point at the centre of the tips card belongs to the tips dialog.
+    expect(await paintedAt(page, 'customIconTipsModal')).toBe('customIconTipsModal');
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#customIconTipsModal')).not.toHaveClass(/visible/);
+    expect(await visible(page, 'counterLineTypeDetailsModal')).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#counterLineTypeDetailsModal')).not.toHaveClass(/visible/);
+    expect(errors).toEqual([]);
+  });
+
+  test('ESC-STACK: a raised dialog gives back its authored z; the confirm stays above a stack', async ({ page }) => {
+    // Save Status is authored at z 210 (inline). Opened over the picker (260) it is raised above
+    // it, and hiding it restores the 210 it was written with.
+    await page.evaluate(() => {
+      document.getElementById('addCounter').click();
+      window.App.showCounterTab('quickcount');
+      document.getElementById('counterQuickCountSwatch').click();
+      window.App.showModal('saveStatusModal');
+    });
+    expect(await paintedAt(page, 'saveStatusModal')).toBe('saveStatusModal');
+    // The confirm, opened over all three, paints above them all; Esc is its Cancel.
+    const answer = page.evaluate(() => window.App.confirmDialog({ body: 'Sure?' }));
+    await expect(page.locator('#confirmModal')).toHaveClass(/visible/);
+    expect(await paintedAt(page, 'confirmModal')).toBe('confirmModal');
+    await page.keyboard.press('Escape');
+    expect(await answer).toBe(false);
+    expect(await visible(page, 'saveStatusModal')).toBe(true);
+    // One press per dialog, top first.
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#saveStatusModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => document.getElementById('saveStatusModal').style.zIndex)).toBe('210');
+    expect(await visible(page, 'lineColorModal')).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#lineColorModal')).not.toHaveClass(/visible/);
+    expect(await visible(page, 'counterModal')).toBe(true);
+    // A dialog opened alone carries no inline z.
+    expect(await page.evaluate(() => document.getElementById('lineColorModal').style.zIndex)).toBe('');
+    expect(errors).toEqual([]);
+  });
+
   test('Esc dismisses the mark #contextMenu only — the modal beneath never sees the press (J9)', async ({ page }) => {
     await page.evaluate(() => {
       document.getElementById('addCounter').click(); // counterModal beneath

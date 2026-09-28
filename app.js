@@ -3156,15 +3156,45 @@
     if (ann.counterMarkers) Object.keys(ann.counterMarkers).forEach((k) => { n += (ann.counterMarkers[k] || []).length; });
     return n + (ann.quickLines || []).length + (ann.polylines || []).length + (ann.ductRuns || []).length + (ann.roomBoxes || []).length + (ann.notes || []).length + (ann.highlights || []).length;
   }
+  // ESC-STACK (DECOMPOSITION_MAP S06): painted order is opened order. A dialog opened
+  // while another overlay is up gets an inline z-index one above the highest visible
+  // one, so a second dialog never opens BEHIND the first (the Custom Icons tips under
+  // the details dialog: same z, earlier in the DOM), and features/esc-ladder.js can
+  // close the painted top. The z it was authored with (Save Status 210, checkout
+  // recovery 220, the confirm 340, all inline) is kept in data-stack-z and given back
+  // when it hides. The confirm is never counted, so a dialog opened under a pending
+  // confirm stays under it; opened itself, it goes above everything.
+  // Only .modal-overlay takes part: the toasts, tour card, palettes and menus keep
+  // their own fixed z (the contract in styles.css above #toastRegion).
+  const overlayZ = (el) => parseInt(getComputedStyle(el).zIndex, 10) || 0;
+  function restoreOverlayZ(el) {
+    if (!el || el.dataset.stackZ === undefined) return;
+    el.style.zIndex = el.dataset.stackZ;
+    delete el.dataset.stackZ;
+  }
+  function raiseOverlay(el) {
+    if (!el.classList.contains('modal-overlay')) return;
+    restoreOverlayZ(el);   // a z left by a close that bypassed hideModal
+    let top = -Infinity;
+    document.querySelectorAll('.modal-overlay.visible').forEach((o) => {
+      if (o === el || o.id === 'confirmModal') return;
+      top = Math.max(top, overlayZ(o));
+    });
+    if (top === -Infinity || overlayZ(el) > top) return;
+    el.dataset.stackZ = el.style.zIndex;
+    el.style.zIndex = String(top + 1);
+  }
   function showModal(id) {
     const el = document.getElementById(id);
+    // Re-showing a dialog that is already up (a refresh) is not opening it: no raise.
+    if (!el.classList.contains('visible')) raiseOverlay(el);
     el.classList.add('visible');
     syncModalControls(el);
     requestAnimationFrame(() => syncModalControls(el));
   }
   // Every dismissible dialog's × (data-modal-close) dismisses the way Esc does:
-  // features/esc-ladder.js closes ITS overlay with the same rung or Cancel Esc
-  // would use (pending state, parked drafts); a dialog with neither just hides.
+  // features/esc-ladder.js closes ITS overlay with the same Cancel Esc would
+  // use (pending state, parked drafts); a dialog without one just hides.
   // MAP-ESC: this used to re-dispatch a synthetic Escape through the whole
   // ladder, so a rung-less dialog's × unwound the tool under it first (D04).
   document.addEventListener('click', (e) => {
@@ -3227,7 +3257,7 @@
     // when it finishes, and the bid chip's direct load has no host modal to
     // hide. Tolerate it rather than making every such caller invent one.
     const modalEl = id ? document.getElementById(id) : null;
-    if (modalEl) modalEl.classList.remove('visible');
+    if (modalEl) { modalEl.classList.remove('visible'); restoreOverlayZ(modalEl); }
     // A "Project from Last Session" offer that arrived while this modal was
     // up gets its turn now (features/restore-last-session.js; no-op otherwise).
     if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
@@ -6305,7 +6335,7 @@
       }
     }
     // The Escape ladder is a table in features/esc-ladder.js (MAP-ESC, R10): the confirm,
-    // the grid origin pick, the topmost dialog (its rung, its Cancel, or a plain hide),
+    // the grid origin pick, the topmost dialog (its own Cancel or a plain hide),
     // a header popover, then the armed tool one step per press, then back to Move.
     // Called synchronously here so the listener order is unchanged.
     if (e.key === 'Escape') { if (App.handleEscape) App.handleEscape(e); }
@@ -6543,7 +6573,7 @@
   App.openDeleteZoneForRect = openDeleteZoneForRect;       // D19 spec seam: the Delete Area preview builder
   App.confirmDialog = confirmDialog;   // B20 (X8): the one confirm — features await it instead of confirm()
   App.resolveConfirm = resolveConfirm; // the confirm's Esc rung (features/esc-ladder.js)
-  App.clearAuthGate = clearAuthGate;   // MAP-ESC: the authModal Esc rung (features/esc-ladder.js)
+  App.clearAuthGate = clearAuthGate;   // MAP-ESC: the authModal Esc closer (features/esc-ladder.js)
   App.planRoomLabels = (ann, pageIdx) => canvasDraw.planRoomLabels(ann, pageIdx);   // D24 spec seam
   App.setProjectTrade = setProjectTrade;
   App.tradeMountHeightFor = tradeMountHeightFor;

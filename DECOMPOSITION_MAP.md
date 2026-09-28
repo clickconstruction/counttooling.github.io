@@ -86,6 +86,8 @@ A colour or an icon path from a shared or imported project is concatenated raw i
 
 `features/esc-ladder.js:222-227` walks `MODAL_RUNGS` in list order when the top overlay has a rung, so with the Line colour picker open over its parent, Esc closes the parent and leaves the picker up. `showModal` (app.js:3159) gives a second dialog no z above the first, so the Custom Icons tips dialog opens behind the details dialog (both z 200). Read, not run. **Recipe:** `showModal` raises a new overlay's inline z above the highest visible one and `hideModal` restores it, so painted order is opened order; `handleEscape` then dismisses the top, and the 36 plain-hide rungs go. **Pin:** two new cases in esc-ladder.spec.js.
 
+**Landed** 2026-09-27 (ESC-STACK): both defects reproduced in esc-ladder.spec.js before the fix, then built to the recipe; the rungs that did more than hide folded into `CLOSERS`, and the Modal Gallery's live open goes through `showModal`.
+
 ### S07. A tour that starts stops the one running
 
 `features/tutorial.js:1735-1755` `startTutorial` never stops a running tour, so the replaced tour's `onStop` never runs. The doors are reachable mid-tour (the overlay is `pointer-events:none`). A lesson's device settings (Snap, the sidebar filter) stay changed until the next load, and the blank tour's palette sweep is skipped. **Fix:** `if (active) stopTutorial(false)` at the top. **Pin:** mid-lesson with Snap changed, start a tour from Learn, check Snap is back.
@@ -175,8 +177,8 @@ Confirmed means reproduced by running code. Read means read in code at `3eb45a9`
 | N01 | bug | confirmed | `water-model.js:396` | Two water runs leaving one point each get both loads (S01). |
 | N02 | bug | read | `features/sidebar-lists.js:268`, `lines-list.js:121`, `counter.js:85`, `room-sizer.js:142` | A colour or icon value is written into the page unescaped (S02). |
 | N03 | bug | read | `features/pdf-bundle.js:292, 393` | Export PDFs with one sheet prints the notes or highlights summary over the sheet (S05). |
-| N04 | bug | read | `features/esc-ladder.js:223` | Esc closes the dialog under the colour picker, not the picker (S06). |
-| N05 | bug | read | `app.js:4341` | The Custom Icons tips dialog opens behind the details dialog (S06). |
+| N04 | bug | confirmed | `features/esc-ladder.js:223` | Esc closes the dialog under the colour picker, not the picker (S06). Reproduced and fixed 2026-09-27 (ESC-STACK). |
+| N05 | bug | confirmed | `app.js:4341` | The Custom Icons tips dialog opens behind the details dialog (S06). Reproduced and fixed 2026-09-27 (ESC-STACK). |
 | N06 | bug | read | `.github/workflows/ci.yml:15` | Every push to main cancels main's run in progress (S03). |
 | N07 | bug | read | `features/duct-tool.js:411` | The toast names an assignment no surface can make (S09). |
 | N08 | bug, cosmetic | read | `app.js:5757` | Desktop Measure's band does not follow the mouse (S15). |

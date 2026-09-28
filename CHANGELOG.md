@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(esc): Esc closes the dialog on top, and a dialog opened over another paints over it (ESC-STACK, 2026-09-27)
+
+The decomposition map's S06, with its defects N04 and N05, both read in code and not run until
+now. Both reproduced in esc-ladder.spec.js before the fix:
+
+- **N04.** With the colour picker open over its parent (the Counter dialog through the Quick Count
+  swatch, Choose Line Type through its Quick tab swatch, the details dialog through its swatch),
+  Esc closed the parent underneath and left the picker up. `handleEscape` found the top overlay,
+  saw that it had a rung, and then walked `MODAL_RUNGS` in list order, where the parent came
+  first.
+- **N05.** The details dialog's "Custom Icons" label opened the tips dialog BEHIND it: both sat
+  at z-index 200 and the tips come earlier in the page. `elementFromPoint` at the centre of the
+  tips card found the details dialog.
+
+The fix makes painted order the order dialogs were opened in. `showModal` gives an overlay opened
+while another is up an inline z-index one above the highest visible overlay's, keeping the z it
+was authored with (Save Status 210, the checkout recovery 220, the confirm 340, all inline) in
+`data-stack-z`, and `hideModal` gives it back. A dialog already up is not raised again when it is
+re-shown. The confirm is never counted, so it stays above everything. Only `.modal-overlay` takes
+part: the toasts, the tour card and its overlay, the Chain, Drop and Highlights palettes and the
+context menus keep their fixed z. The Modal Gallery's live open now goes through `showModal`, the
+one place a dialog was shown by adding `visible` by hand.
+
+`handleEscape` then dismisses the topmost overlay through its own closer. `MODAL_RUNGS` is gone:
+its 36 plain-hide rows went (a plain hide is the default), and the 19 whose close does more than
+hide (Save Status's Done, the restore offer's dismiss, the Scale dialog, the counter dialogs'
+Cancels, the picker dropping its pending apply, the note, zone and room boxes, Line Properties,
+auth, copy, prepare PDF, the view-link email, the layer details) joined the six in `CLOSERS`.
+
+Pinned by five new cases in esc-ladder.spec.js: each of the three swatches, Esc closes the picker
+and the parent stays; the tips paint on top of the details dialog and close first; and a dialog
+raised over the picker gives back its authored z while a confirm opened over the stack paints
+above it and takes the first Esc. esc-ladder.spec.js, esc-dialogs.spec.js, the modal and dialog
+specs, mobile-touch, tutorial and lessons pass.
+
 ## docs(map): the decomposition map, read again at 3eb45a9 (2026-09-27)
 
 The September 25 map's ranked list was empty: all 25 items had landed, and about 45 pull requests

@@ -405,9 +405,11 @@
   `.modal-card-header` (title, optional `.modal-card-sub`, and a × carrying `data-modal-close`,
   which app.js dismisses the way Esc does, through features/esc-ladder.js; never give a × its
   own `onclick`). Esc closes the topmost visible overlay and never unwinds the tool under it: a
-  dialog that holds pending state gets a row there (`MODAL_RUNGS`, in stacking order, or a
-  `CLOSERS` entry naming its Cancel), anything else just hides, and a blocking overlay carries
-  `data-esc="none"` so Esc does nothing (MAP-ESC). Action buttons in `.actions` carry a role class
+  dialog that holds pending state gets a `CLOSERS` entry there naming its Cancel, anything else
+  just hides, and a blocking overlay carries `data-esc="none"` so Esc does nothing (MAP-ESC).
+  Open every dialog through `showModal`, never by adding `visible` yourself: it raises a dialog
+  opened over another above it and `hideModal` gives back its authored z, so the painted top is
+  the last one opened and is the one Esc closes (ESC-STACK). Action buttons in `.actions` carry a role class
   (`ghost` / `primary` / `danger` / `danger-ghost` / `link`), never rely on first/last position;
   a destructive button sits left with `margin-right:auto`. Sliders are plain
   `input[type=range]` under a `label.range-label` (value in `.range-val`), colour pickers are

@@ -252,7 +252,9 @@
     overlay.classList.add('mg-live-overlay');
     document.body.classList.add('mg-live');
     document.getElementById('modalGalleryLiveId').textContent = '#' + overlay.id;
-    overlay.classList.add('visible');
+    // Through showModal like every other opener (ESC-STACK): a dialog is never shown
+    // by adding `visible` by hand, so paint order stays open order everywhere.
+    if (App.showModal) App.showModal(overlay.id); else overlay.classList.add('visible');
   }
   function exitLive() {
     if (!liveOverlay) return;

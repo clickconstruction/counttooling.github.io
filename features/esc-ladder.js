@@ -4,12 +4,11 @@
  * One press of Esc closes ONE thing, the thing on top, and stops there:
  *   1. the confirm dialog (it sits above everything; Esc is its Cancel), then the grid
  *      origin pick (it hid its settings dialog; Esc gives it back);
- *   2. the topmost visible `.modal-overlay`. When it has a rung in MODAL_RUNGS the rungs
- *      are walked in their order (the order of the old app.js if/else, which encodes the
- *      stacking: an inner dialog is checked before the one it opens over) and the first
- *      visible one closes. When it has none, it is dismissed on its own: a CLOSERS entry
- *      (its Cancel, for a dialog that holds pending state) or a plain hide. An overlay
- *      marked `data-esc="none"` (the blocking Turn In progress) swallows the key;
+ *   2. the topmost visible `.modal-overlay`, the one opened last: app.js's showModal
+ *      raises a dialog opened over another above it, so painted order is opened order
+ *      (ESC-STACK, DECOMPOSITION_MAP S06). It closes through its CLOSERS entry (its own
+ *      Cancel or Close, for a dialog that holds pending state) or a plain hide. An
+ *      overlay marked `data-esc="none"` (the blocking Turn In progress) swallows the key;
  *   3. an open header popover (the bid menu, the ⋯ tool menu, the zoom rail);
  *   4. the armed tool, one step per press (TOOL_RUNGS): a pending start, then a palette,
  *      then the tool itself, through the MAP-RESETS helpers (App.clearToolStarts,
@@ -23,108 +22,67 @@
  * Esc in the capture phase and stop it, so this ladder never sees those presses.
  *
  * A dialog's × (`data-modal-close`) dismisses its OWN overlay the way Esc does
- * (App.dismissOverlay, called by app.js's click handler): the same rung or closer, never
+ * (App.dismissOverlay, called by app.js's click handler): the same closer or hide, never
  * the tool under it. It used to re-dispatch a synthetic Escape through the whole ladder.
  *
  * Registers: App.handleEscape(e) (app.js's keydown calls it synchronously, so listener
  * order is unchanged), App.dismissOverlay(el).
  * Reads at call time: App.state, TOOL, SCALE_MODES, showModal, hideModal, updateUI,
  * renderAnnotations, resolveConfirm, clearAuthGate, clearToolStarts, resetToMove,
- * exitEditMode, and each feature's own close (the rungs name them).
- * Spec: esc-ladder.spec.js (the rungs), esc-dialogs.spec.js (the fallback and the ×).
+ * exitEditMode, and each feature's own close (the closers name them).
+ * Spec: esc-ladder.spec.js (the closers and the stacking), esc-dialogs.spec.js (the plain
+ * hide and the ×).
  */
 (function () {
   const App = (window.App = window.App || {});
   const $ = (id) => document.getElementById(id);
   const isVisible = (id) => { const el = $(id); return !!(el && el.classList.contains('visible')); };
   const click = (id) => { const el = $(id); if (el) el.click(); };
-  const hide = (id) => () => App.hideModal(id);
 
-  // The modal rungs, in the old ladder's order. `close` runs when `modal` is visible.
-  const MODAL_RUNGS = [
+  // How Esc (and a dialog's ×) closes an overlay whose close is more than a plain hide:
+  // its own Cancel or Close, so the pending state it holds is dropped or the reset its
+  // hide hook misses fires. Every other overlay just hides (App.hideModal runs the
+  // per-dialog hide hooks). ESC-STACK: this used to be two tables, MODAL_RUNGS walked in
+  // list order whenever the top overlay had a row, which closed the parent under the
+  // colour picker; now showModal paints dialogs in the order they opened, so the ladder
+  // closes the painted top and needs no order, and the 36 plain-hide rows went.
+  const CLOSERS = {
     // z-index 210, above every standard overlay. Routed through its Close button so
     // the 5s re-render tick timer is cleared (features/save-status.js; Tier-3 B1 / J12).
     // The Done button, not the ×: the × is data-modal-close and would come back here.
-    { modal: 'saveStatusModal', close: () => click('saveStatusModalDone') },
+    saveStatusModal: () => click('saveStatusModalDone'),
     // T1-01 clobber guard: NOT a bare hide. The dismiss helper clears pendingRestore
     // (takeoff backups resume) while consuming nothing, so the Keep/Discard offer
     // returns next boot (features/restore-last-session.js).
-    { modal: 'lastSessionRestoreModal', close: () => { if (App.dismissLastSessionRestorePrompt) App.dismissLastSessionRestorePrompt(); } },
-    // Icon tips open ON TOP of counterModal / the details dialog, so they precede both.
-    { modal: 'customIconTipsModal', close: hide('customIconTipsModal') },
-    { modal: 'chooseLineTypeModal', close: hide('chooseLineTypeModal') },
-    { modal: 'scaleModal', close: () => {
+    lastSessionRestoreModal: () => { if (App.dismissLastSessionRestorePrompt) App.dismissLastSessionRestorePrompt(); },
+    scaleModal: () => {
       const s = App.state;
       if (s.tool === App.TOOL.SCALE) { s.tool = App.TOOL.NONE; s.scaleMode = App.SCALE_MODES.NONE; App.clearToolStarts(); }
       App.resetScaleModalZoneMode();
       if (App.resetScaleCheckMode) App.resetScaleCheckMode();
       App.hideModal('scaleModal');
       App.updateUI();
-    } },
-    { modal: 'counterModal', close: hide('counterModal') },
-    // The five counter dialogs (Tier-3 B1 / J4). The delete-confirm opens ON TOP of the
-    // details dialog, and "+ Add group" stacks groupModal OVER groupAssignModal, so each
-    // inner surface is checked first. Routed through their own Cancel/Close so the
+    },
+    // The counter dialogs (Tier-3 B1 / J4), through their own Cancel/Close so the
     // pending-state resets fire (features/item-details.js, features/groups.js).
-    { modal: 'deleteCounterLineTypeConfirmModal', close: () => click('deleteCounterLineTypeCancel') },
-    { modal: 'counterLineTypeDetailsModal', close: () => click('counterLineTypeDetailsClose') },
-    { modal: 'groupModal', close: () => click('groupModalCancel') },
-    { modal: 'groupAssignModal', close: () => click('groupAssignCancel') },
-    { modal: 'counterSettingsModal', close: hide('counterSettingsModal') },
-    { modal: 'lineColorModal', close: () => { App.state.pendingLineColorApply = null; App.hideModal('lineColorModal'); } },
-    { modal: 'gridSettingsModal', close: hide('gridSettingsModal') },
-    { modal: 'specificPagesModal', close: hide('specificPagesModal') },
-    { modal: 'toolingScaleCheckModal', close: hide('toolingScaleCheckModal') },
-    { modal: 'noteModal', close: () => { const s = App.state; App.hideModal('noteModal'); s.pendingNote = null; s.editingNote = null; s.pendingNoteColor = null; } },
-    { modal: 'multiplyZoneModal', close: () => { const s = App.state; App.hideModal('multiplyZoneModal'); s.pendingMultiplyZone = null; s.pendingMultiplyZoneEdit = null; } },
-    { modal: 'roomBoxModal', close: () => { const s = App.state; App.hideModal('roomBoxModal'); s.pendingRoomBox = null; s.pendingRoomBoxEdit = null; } },
-    { modal: 'roomEditModal', close: hide('roomEditModal') },
-    { modal: 'multiplyZoneSettingsModal', close: hide('multiplyZoneSettingsModal') },
-    { modal: 'scaleZoneSettingsModal', close: hide('scaleZoneSettingsModal') },
-    { modal: 'legendSettingsModal', close: hide('legendSettingsModal') },   // Tier-3 B1 / J8
-    { modal: 'ductScheduleModal', close: hide('ductScheduleModal') },       // DUCT D5
-    { modal: 'markerCfmModal', close: () => { if (App.cancelMarkerCfm) App.cancelMarkerCfm(); else App.hideModal('markerCfmModal'); } },   // DUCT D15
-    { modal: 'linePropertiesModal', close: () => App.closeLinePropertiesModal() },
-    // Keyboard Map opens ON TOP of Macros: one Esc closes the board, the list stays.
-    { modal: 'keyboardMapModal', close: hide('keyboardMapModal') },
-    { modal: 'quickKeysModal', close: hide('quickKeysModal') },
-    { modal: 'macrosModal', close: hide('macrosModal') },
-    { modal: 'pageSettingsModal', close: hide('pageSettingsModal') },
-    { modal: 'clearPageConfirmModal', close: hide('clearPageConfirmModal') },
-    { modal: 'deletePageConfirmModal', close: () => { App.hideModal('deletePageConfirmModal'); App.state.pendingDeletePage = null; } },
-    { modal: 'settingsModal', close: hide('settingsModal') },
-    // Palette Insights opens OVER My Settings, so it is checked first (Tier-3 B1 / J16).
-    { modal: 'paletteInsightsModal', close: hide('paletteInsightsModal') },
-    { modal: 'mySettingsModal', close: hide('mySettingsModal') },
-    { modal: 'authModal', close: () => { if (App.clearAuthGate) App.clearAuthGate(); App.hideModal('authModal'); } },
-    { modal: 'adminPanelModal', close: hide('adminPanelModal') },
-    { modal: 'manageUserModal', close: hide('manageUserModal') },
-    { modal: 'allUsersModal', close: hide('allUsersModal') },
-    { modal: 'userActivityModal', close: hide('userActivityModal') },
-    { modal: 'manageProjectsModal', close: hide('manageProjectsModal') },
-    { modal: 'manageIconsModal', close: hide('manageIconsModal') },
-    { modal: 'canvasRepairModal', close: hide('canvasRepairModal') },
-    { modal: 'saveProjectModal', close: hide('saveProjectModal') },
-    { modal: 'copyProjectModal', close: () => { if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget(); App.hideModal('copyProjectModal'); } },
-    { modal: 'loadProjectModal', close: hide('loadProjectModal') },
-    { modal: 'shareProjectModal', close: hide('shareProjectModal') },
-    { modal: 'loadAnnotationsModal', close: hide('loadAnnotationsModal') },
-    { modal: 'preparePdfModal', close: () => { if (typeof window.closePreparePdfModal === 'function') window.closePreparePdfModal(); } },
-    { modal: 'summaryCountDetailModal', close: hide('summaryCountDetailModal') },
-    { modal: 'viewLinkEmailModal', close: () => { if (App.cancelViewLinkEmailPrompt) App.cancelViewLinkEmailPrompt(); App.hideModal('viewLinkEmailModal'); } },
-    { modal: 'addCanvasModal', close: hide('addCanvasModal') },
-    { modal: 'deleteCanvasConfirmModal', close: hide('deleteCanvasConfirmModal') },
-    { modal: 'forceTurnInNoticeModal', close: hide('forceTurnInNoticeModal') },
-    // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
-    { modal: 'canvasDetailsModal', close: () => click('canvasDetailsClose') },
-    { modal: 'ductCreateModal', close: hide('ductCreateModal') },
-  ];
-  const RUNG_BY_ID = new Map(MODAL_RUNGS.map((r) => [r.modal, r]));
-
-  // Rung-less overlays whose Esc must do more than hide: their own Cancel, so the
-  // pending state they hold is dropped. Everything else rung-less is a plain hide.
-  const CLOSERS = {
+    deleteCounterLineTypeConfirmModal: () => click('deleteCounterLineTypeCancel'),
+    counterLineTypeDetailsModal: () => click('counterLineTypeDetailsClose'),
+    groupModal: () => click('groupModalCancel'),
+    groupAssignModal: () => click('groupAssignCancel'),
+    lineColorModal: () => { App.state.pendingLineColorApply = null; App.hideModal('lineColorModal'); },
+    noteModal: () => { const s = App.state; App.hideModal('noteModal'); s.pendingNote = null; s.editingNote = null; s.pendingNoteColor = null; },
+    multiplyZoneModal: () => { const s = App.state; App.hideModal('multiplyZoneModal'); s.pendingMultiplyZone = null; s.pendingMultiplyZoneEdit = null; },
+    roomBoxModal: () => { const s = App.state; App.hideModal('roomBoxModal'); s.pendingRoomBox = null; s.pendingRoomBoxEdit = null; },
+    markerCfmModal: () => { if (App.cancelMarkerCfm) App.cancelMarkerCfm(); else App.hideModal('markerCfmModal'); },   // DUCT D15
     markerWsfuModal: () => { if (App.cancelMarkerWsfu) App.cancelMarkerWsfu(); else App.hideModal('markerWsfuModal'); },   // D12
+    linePropertiesModal: () => App.closeLinePropertiesModal(),
+    deletePageConfirmModal: () => { App.hideModal('deletePageConfirmModal'); App.state.pendingDeletePage = null; },
+    authModal: () => { if (App.clearAuthGate) App.clearAuthGate(); App.hideModal('authModal'); },
+    copyProjectModal: () => { if (App.clearCopyProjectModalTarget) App.clearCopyProjectModalTarget(); App.hideModal('copyProjectModal'); },
+    preparePdfModal: () => { if (typeof window.closePreparePdfModal === 'function') window.closePreparePdfModal(); },
+    viewLinkEmailModal: () => { if (App.cancelViewLinkEmailPrompt) App.cancelViewLinkEmailPrompt(); App.hideModal('viewLinkEmailModal'); },
+    // Same commit-name-then-close path as the Done button (features/canvas-layers.js).
+    canvasDetailsModal: () => click('canvasDetailsClose'),
     highlightNameModal: () => click('highlightNameCancel'),
     schedulePaletteModal: () => { if (App.cancelSchedulePalette) App.cancelSchedulePalette(); else App.hideModal('schedulePaletteModal'); },   // drops the pending proposal
     saveBeforeLoadModal: () => click('saveBeforeLoadCancel'),       // disabled while the save runs: then nothing
@@ -148,9 +106,7 @@
   function dismissOverlay(el) {
     if (!el) return false;
     if (el.dataset.esc === 'none') return true;   // blocking: swallow, close nothing
-    const rung = RUNG_BY_ID.get(el.id);
-    if (rung) rung.close();
-    else if (CLOSERS[el.id]) CLOSERS[el.id]();
+    if (CLOSERS[el.id]) CLOSERS[el.id]();
     else App.hideModal(el.id);
     return true;
   }
@@ -219,12 +175,11 @@
     // B20: the confirm dialog sits above everything; Esc is its Cancel.
     if (isVisible('confirmModal')) { App.resolveConfirm(false); return; }
     if (s.gridOriginPickMode) { App.cancelGridOriginPick && App.cancelGridOriginPick(); return; }   // features/grid.js
+    // ESC-STACK: showModal paints dialogs in the order they opened, so the overlay on
+    // top is the last one opened (the colour picker over its parent, the icon tips over
+    // the details dialog) and it is the one that closes.
     const top = topmostOverlay();
-    if (top) {
-      if (!RUNG_BY_ID.has(top.id)) { dismissOverlay(top); return; }
-      const rung = MODAL_RUNGS.find((r) => isVisible(r.modal));
-      if (rung) { rung.close(); return; }
-    }
+    if (top) { dismissOverlay(top); return; }
     const pop = POPOVER_RUNGS.find((p) => p.open());
     if (pop) { pop.close(); return; }
     const T = App.TOOL;

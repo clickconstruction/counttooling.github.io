@@ -365,7 +365,7 @@
     {
       id: 'sheet', title: 'Chapter 1: Read the M-sheets', short: 'the set, read', minutes: 8, page: M101, noun: 'chapter', set: MSET,
       intro: 'The air that goes in, comes back and goes out, all on one plan. The equipment on the roof, and the schedules that say how much air each room gets. Then a scale you prove.',
-      opener: 'The three sheets open bare, with no scale and no marks, the way a set arrives.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
+      opener: 'The three sheets open bare, with no scale and nothing counted, the way a set arrives.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { /* the scale is the chapter's */ },
       steps: [
         { id: 'what', title: 'What is on an M-sheet?', kind: 'read', cardAt: 'br',

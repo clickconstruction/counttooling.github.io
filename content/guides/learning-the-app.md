@@ -338,7 +338,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 
 ## Start with your trade: the five-minute tours
 
-Each tour is one small takeoff from scale to hand-off, fourteen steps on the design-build sample plan.
+Each tour is one small takeoff from scale to hand-off, on the design-build sample plan.
 
 - [Plumbing tour](/app/?tour=plumbing): prove the scale, count a restroom, chain a lav battery with its riser, hangers from the rulebook, a typical floor, an RFI, the proof, the hand-off. Read along in [Doing a plumbing takeoff](/guides/plumbing-takeoff/).
 - [Electrical tour](/app/?tour=electrical): devices with mount heights, conduit with its conductors, chained runs with the vertical, a circuit, Bid Check. Read along in [Doing an electrical takeoff](/guides/electrical-takeoff/).

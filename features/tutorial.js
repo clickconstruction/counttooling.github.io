@@ -186,6 +186,21 @@
   const allDone = (zs) => zs.length > 0 && zs.every((z) => z.done);
   // The onEnter of a step that says "click BID CHECK to expand it": folded, so the click is the reader's.
   function foldBidCheck() { state().bidCheckCollapsed = true; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); }
+  // The rows a Bid Check card reads out, lit and on screen: the section sits at the foot of the
+  // sidebar, and opened it showed its first row while the card talked about two further down
+  // (the card review, fix 1). Once per visit to the step the section's title goes to the top of the
+  // sidebar; the lit area is the box around the named rows.
+  let bidRowsShownFor = null;
+  function bidCheckRows(stepId, ids) {
+    if (state().bidCheckCollapsed !== false) { bidRowsShownFor = null; return ['#bidCheckSectionTitle', '#bidCheckList']; }
+    if (bidRowsShownFor !== stepId) {
+      bidRowsShownFor = stepId;
+      const first = document.querySelector('#bidCheckList [data-row-id="' + ids[0] + '"]');
+      const title = document.getElementById('bidCheckSectionTitle');
+      try { (first ? title : null) && title.scrollIntoView({ block: 'start' }); } catch (_) { /* older engines */ }
+    }
+    return ids.map((id) => '#bidCheckList [data-row-id="' + id + '"]').concat(['#bidCheckSectionTitle']);
+  }
   const stepZones = (step) => { try { return (step && step.zones && step.zones()) || []; } catch (_) { return []; } };
   // Only the targets a reader clicks or drags count toward "N of M done"; a span is a guide.
   const countedZones = (zs) => zs.filter((z) => z.kind !== 'span');
@@ -711,10 +726,23 @@
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
     },
     {
+      // The plumbing tour ended with two Bid Check warnings it never mentioned, and the first the reader
+      // heard of them was "Export anyway" at the hand-off (the card review, fix 1; Will's go, 2026-09-28).
+      // Both are the tour's own doing, and both are what Bid Check is for: the card reads them.
+      id: 'bidcheck', title: 'Bid Check, what a bid must answer before it goes out', kind: 'do',
+      onEnter: foldBidCheck, hold: true,
+      body: () => (state().bidCheckCollapsed !== false
+        ? '1. In the left sidebar, click BID CHECK to open it.'
+        : 'It has caught two things, and both are real.\n{{Every water run sized|#bidCheckList [data-row-id="water-runs-sized"]}}: the ×3 zone tripled the fixtures on the branch. The 1in pipe now runs too fast, and the row names the fix, 1-1/4in.\n{{Every fixture served|#bidCheckList [data-row-id="water-fixtures-served"]}}: a lavatory wants hot water too, and this tour drew only the cold.\nOn a real bid you fix both before it goes out. Here, read them and move on.'),
+      target: () => bidCheckRows('plumbing', ['water-runs-sized', 'water-fixtures-served']), lightAll: true,
+      check: () => state().bidCheckCollapsed === false,
+      action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
+    },
+    {
       id: 'handoff', title: 'Hand it off', kind: 'read',
       // four buttons to read about, not four things to do: plain lines, and all four lit. The lowest
       // comes first in the ladder, so the sidebar scrolls until the whole group is on screen.
-      body: 'EXPORT OPTIONS in the left sidebar sends the takeoff on.\n{{Copy to /Tooling|#forPipeTooling}} puts the whole takeoff on the clipboard, ready to paste into the bid. The clipboard holds a copy until you paste it.\n{{Copy RFI Flags|#copyRfiFlags}} puts the questions beside it.\n{{Copy Summary|#copySummaryText}} is for an email.\n{{Export PDFs|#specificPages}} is for a marked-up plan the GC can read.\nThe takeoff copy carries the counts, the feet with the riser inside, and the hangers under their pipe.',
+      body: 'EXPORT OPTIONS in the left sidebar sends the takeoff on.\n{{Copy to /Tooling|#forPipeTooling}} puts the whole takeoff on the clipboard, ready to paste into the bid. The clipboard holds a copy until you paste it. With Bid Check rows still open it asks first: [[Export anyway]] goes ahead.\n{{Copy RFI Flags|#copyRfiFlags}} puts the questions beside it.\n{{Copy Summary|#copySummaryText}} is for an email.\n{{Export PDFs|#specificPages}} is for a marked-up plan the GC can read.\nThe takeoff copy carries the counts, the feet with the riser inside, and the hangers under their pipe.',
       target: ['#copyRfiFlags', '#copySummaryText', '#forPipeTooling', '#specificPages'],
       get lightAll() { return !isNarrow(); },   // under 769 px the buttons are in the closed drawer: there the light is the ☰ that opens it
       check: () => true,
@@ -722,7 +750,7 @@
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
       // Upload PDF is off the screen while a plan is open: the way to a real plan is Close project first
-      body: () => 'Scale, prove it, count, chain, riser, hangers, cold water sized at S, ×3, proof, hand off.\nGroups, sets of marks the app subtotals together, can total one restroom at a time when a set gets busy.\nYour work here is saved on this device like any takeoff.\nFor a real plan, close this one first. '
+      body: () => 'Scale, prove it, count, chain, riser, hangers, cold water sized at S, ×3, proof, Bid Check, hand off.\nGroups, sets of marks the app subtotals together, can total one restroom at a time when a set gets busy.\nYour work here is saved on this device like any takeoff.\nFor a real plan, close this one first. '
         + (isNarrow() ? 'Tap the ☰ at the top right, [[More actions]], then {{Close project|' + P_SEL.closeProject + '}}.' : 'In the header, click the gear, [[Project Settings]], then {{Close project|' + P_SEL.closeProject + '}}.')
         + ' Upload PDF comes back in the header, and opens your file.\nGuides for every tool live under [[Project Settings]], in {{Help|' + P_SEL.help + '}}.',
       target: ['#settingsGearBtn', '#headerBurger'],

@@ -347,7 +347,7 @@ test.describe('Interactive walkthrough', () => {
     expect(await page.locator('#canvasEmptyHintTour').isVisible()).toBe(true);
     await page.click('#canvasEmptyHintTourPlumbing');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['plumbing', 'welcome']);
-    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 17');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 18');
     // the sample plan is a true ANSI B sheet — no sheet-size warning can greet the scale step
 
     // 1. the sample plan → the project is stamped plumbing (not remembered as the device default)
@@ -465,10 +465,22 @@ test.describe('Interactive walkthrough', () => {
     expect(await stepId(page)).toBe('proof');
     await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
     await page.click('#tourNext');
-    expect(await stepId(page)).toBe('handoff');
-    // entering Hand it off closes the proof dialog it would otherwise sit under, so the
-    // export button is lit (2026-09-21: the step was dark behind the open breakdown)
+    // Bid Check, folded on entry: the card asks for the one click, then reads the two rows the
+    // tour's own takeoff warns on, with both lit and on screen (the card review, fix 1)
+    expect(await stepId(page)).toBe('bidcheck');
     await expect(page.locator('#summaryCountDetailModal')).not.toHaveClass(/visible/);
+    expect(await page.evaluate(() => window.state.bidCheckCollapsed)).toBe(true);
+    expect(await page.locator('#tourBody').innerText()).toContain('click BID CHECK to open it');
+    await page.evaluate(() => window.App.tutorialDoStep());
+    await expect(page.locator('#tourBody')).toContainText('this tour drew only the cold');
+    for (const id of ['water-runs-sized', 'water-fixtures-served']) {
+      await expect(page.locator('#bidCheckList [data-row-id="' + id + '"]')).toHaveClass(/warn/);
+      await page.waitForFunction((rid) => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.querySelector('#bidCheckList [data-row-id="' + rid + '"]').getBoundingClientRect(); return b.top >= 0 && b.bottom <= window.innerHeight && s.top <= b.top + 1 && s.bottom >= b.bottom - 1; }, id, { timeout: 4000 });
+    }
+    await page.waitForTimeout(1500);
+    expect(await stepId(page)).toBe('bidcheck');   // it holds: the rows are the lesson
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('handoff');
     await page.waitForFunction(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.getElementById('forPipeTooling').getBoundingClientRect(); return s.width > 0 && s.left <= b.left && s.top <= b.top && s.right >= b.right && s.bottom >= b.bottom; }, null, { timeout: 4000 });   // the card lights all four export buttons now: the lit area holds this one
     // 13 + 14: reading, then Finish sets ONLY the plumbing key; the electrical link stays
     expect(await page.locator('#tourNext').textContent()).toBe('Next');

@@ -460,7 +460,7 @@
           check: () => { const c = counter(RE.fd); return !!(c && (c.childCounts || []).some((ch) => /primer/i.test(ch.name || ''))); },
           action: { label: 'Add Trap primer · 1 per count', run: () => { const c = pick('fd'); if ((c.childCounts || []).some((ch) => /primer/i.test(ch.name || ''))) return; App.pushUndoSnapshot(); c.childCounts = (c.childCounts || []).concat([{ name: 'Trap primer', qty: 1, per: 'count' }]); K().dirty(); } } },
         { id: 'keys', title: 'Put the counters on the number row', kind: 'do', keys: true,
-          body: 'Quick keys put a counter on a number key, so pressing 1 arms it.\n1. In the {{status bar|.status-bar}} at the bottom right, click [[quick keys]].\n2. Beside key 1, choose FD-1.\n3. Beside key 2, choose HS-1.\n4. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
+          body: 'Quick keys put a counter on a number key, so pressing 1 arms it.\n1. In the {{status bar|.status-bar}} at the bottom right, click [[quick keys]].\n2. Click key 1 at the top, then click FD-1 in the list.\n3. Click key 2, then click HS-1.\n4. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
           // engine closed the dialog under a reader who had not reached key 2 (by hand, 2026-09-25)

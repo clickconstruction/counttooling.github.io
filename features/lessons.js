@@ -515,10 +515,12 @@
     {
       id: 'plans', title: 'Sheets: find, turn and name them', short: 'a plan set under control', minutes: 2, page: P101, trimByHand: true,
       intro: 'A bid set, the drawings a job is priced from, runs to many sheets: some scanned sideways, most badly named. Two minutes on getting around one.',
+      // the open card's own numbered step (openStep, trimByHand) says to keep all four and click Open
+      opener: 'These are four sample sheets of a small restaurant. Nothing you do on them touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); mark(P101, makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'), [FD.kitchen1, FD.kitchen2]); p501Label = S().pages[P501].label; },
       steps: [
         { id: 'jump', title: 'Go to a sheet', kind: 'do',
-          body: '1. In the left sidebar, the column of lists on the left, under PAGES, click the third sheet, P-501.\nThe number badge beside each sheet tells you two things at a glance. It is outlined once the sheet has a scale: how many feet of building one inch of paper stands for. It is filled once the sheet carries marks, the clicks you counted on it.\nThe left and right arrow keys step through the set.',
+          body: '1. In the left sidebar, the column of lists on the left, under PAGES, click the third sheet, P-501.\nThe {{number badge|#pagesList .page-num-badge-wrap}} beside each sheet tells you two things. It is outlined once the sheet has a scale: how many feet of building one inch of paper stands for. It is filled once the sheet carries marks, the clicks you counted on it.\nThe {{arrows under the sheet|.page-nav}} step through the set (or press the left and right arrow keys).',
           target: ['#pagesList', '#pagesSectionTitle'], check: () => onPage(P501),
           action: { label: 'Go to P-501', run: () => goPage(P501) } },
         { id: 'rotate', title: 'Turn a sideways sheet', kind: 'do',
@@ -527,7 +529,8 @@
           hint: () => (((S().pages[P501] || {}).rotation || 0) ? 'Keep turning until the title reads left to right' : ''),
           action: { label: 'Turn it for me', run: () => { goPage(P501); if (((S().pages[P501] || {}).rotation || 0) !== 90) el('rotatePage').click(); } } },
         { id: 'rename', title: 'Name a sheet', kind: 'do',
-          body: 'A sheet names itself from its title block, the box in the corner with its name, number and scale. That is how this one became "P-501".\n1. Under PAGES, click the number badge beside P-501.\n2. Type a name you would search for, such as P-501 Fixture Schedule.\n3. Press Enter.\nWhen a scan has no title block the app can read, name the sheet yourself. Reports and exports use this name.',
+          // a tablet has no Enter key off the screen, and the engine drops a step that starts "Press" there
+          body: () => 'A sheet names itself from its title block, the box in the corner with its name, number and scale. That is how this one became "P-501".\n1. Under PAGES, click the number badge beside P-501.\n2. Type a name you would search for, such as P-501 Fixture Schedule.\n3. ' + (onTouch() ? 'Tap Enter on the keyboard.' : 'Press Enter.') + '\nWhen a scan has no title block the app can read, name the sheet yourself. Reports and exports use this name.',
           target: ['#pagesList .sidebar-item.active .page-num-badge-wrap', '#pagesList'], check: () => { const p = S().pages[P501]; return !!p && !!p.label && p.label !== p501Label; },
           action: { label: 'Name it for me', run: () => { const p = S().pages[P501]; App.pushUndoSnapshot(); p.label = 'P-501 Fixture Schedule'; dirty(); } } },
         { id: 'marked', title: 'Jump to the sheets that matter', kind: 'do',
@@ -535,8 +538,9 @@
           target: ['#prevMarkedPage'], check: () => onPage(P101),
           action: { label: 'Jump for me', run: () => el('prevMarkedPage').click() } },
         { id: 'prepare', title: 'Before a real set opens', kind: 'read',
-          body: '[[Upload PDF]] brings in a set, and takes several files at once. A PDF with three sheets or more opens in Trim your set, the dialog you saw at the start. Signed in, every new set opens there.\nThere, tap the sheets you do not need. Or click [[Keep none]] and tap the ones you do.\nOpen a sheet there to turn it, then click [[Open]].\nUpload again later and the new sheets join the end of the set.\nThe whole walk: [Preparing a plan set](/guides/preparing-a-plan-set/).',
-          target: ['#uploadPdf', '#uploadPdfSidebar'], check: () => true },
+          // Upload PDF leaves the screen once a set is open, so the card lights the door that is there: Project Settings
+          body: 'On the empty screen, [[Upload PDF]] brings in a set, and takes several files at once. A PDF with three sheets or more opens in Trim your set, the dialog you saw at the start. Signed in, every new set opens there.\nThere, click the sheets you do not need. Or click [[Keep none]] and click the ones you do.\nOpen a sheet there to turn it, then click [[Open]].\nWith a set open, [[Project Settings]] has Add pages. The new sheets join the end of the set.\nThe whole walk: [Preparing a plan set](/guides/preparing-a-plan-set/).',
+          target: ['#uploadPdf', '#uploadPdfSidebar', '#settingsGearBtn', '#sidebarLogoGear'], check: () => true },
       ],
       done: 'Find a sheet, turn it, name it, jump between the ones with marks.\nNext: [[Learn]] → Scale, because nothing measured is right until the scale is.',
     },
@@ -544,16 +548,19 @@
     {
       id: 'scale', title: 'Scale: set it, prove it, and zones', short: 'a scale you can trust', minutes: 3, page: P401,
       intro: 'The scale is how many feet of building one inch of paper stands for. This sheet has two: the plan at 1/4", and a detail, one corner drawn again larger, at 1/2".',
+      opener: 'This lesson runs on P-401, the enlarged plans of the sample restaurant. Nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); },
       steps: [
         { id: 'set', title: 'Each sheet has its own scale', kind: 'do',
-          body: 'This sheet, P-401, is drawn at 1/4" = 1\'-0": a quarter inch on paper is a foot of building. It has no scale in the app yet, so its badge under PAGES is not outlined.\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].\nP-101 is already set at 1/8". Each sheet keeps its own scale, and every length the app reports hangs off it.',
-          target: ['#setScale', '#setScaleSidebar'], check: () => scaleIs(P401, 18),
+          body: 'This sheet, P-401, is drawn at 1/4" = 1\'-0": a quarter inch on paper is a foot of building. It has no scale in the app yet, so its badge under PAGES is not outlined.\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].\nP-101 is already set at 1/8". Every length the app reports on a sheet hangs off that sheet\'s scale.',
+          // in the dialog: the 1/4" preset once the list is up, the tab until then
+          target: () => { const i = Array.from(document.querySelectorAll('#scalePresetsList button')).findIndex((b) => b.textContent.trim() === '1/4" = 1\''); return (i < 0 ? [] : ['#scalePresetsList button:nth-of-type(' + (i + 1) + ')']).concat(['#scaleModalTabs .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar']); },
+          check: () => scaleIs(P401, 18),
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { goPage(P401); await K().applyScalePreset('1/4" = 1\'', 18); } } },
         { id: 'prove', cardAt: 'bl', title: 'Prove it', kind: 'do',
           hold: true,   // the reading is the lesson: the card shows it and waits for Next
           body: () => (proveP401().check()
-            ? proveP401().verdict() + ': this sheet\'s scale is right.\n1. Click [[Next]].\nDo this on every sheet you measure on. A PDF printed down, shrunk onto smaller paper, looks right and measures short. The title block will not tell you.'
+            ? proveP401().verdict() + ': this sheet\'s scale is right.\nDo this on every sheet you measure on. A PDF printed down, shrunk onto smaller paper, looks right and measures short. The title block will not tell you.'
             : 'A dimension is a length the designer wrote on the sheet. Only a dimension can prove the scale.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 12\'-0" dimension over WOMEN, the women\'s restroom.\n3. Click inside circle 2, at its right end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], page: P401, zones: () => proveP401().zones(), check: () => proveP401().check(), hint: () => proveP401().hint(),
           action: { label: 'Measure the 12\'-0" string', run: async () => { goPage(P401); if (!scaleIs(P401, 18)) await K().applyScalePreset('1/4" = 1\'', 18); measure(DETAIL.prove[0], DETAIL.prove[1]); } } },
@@ -574,7 +581,7 @@
           hint: () => { if (S().lastMeasure && S().lastMeasure === zoneEntryMeasure) return ''; const h = proveZoneP401().hint(); const v = K().measuredFeet(); return h && h.code === 'wrong-scale' && v != null && Math.abs(v - 8) < 0.5 ? 'That read ' + String(S().lastMeasure.text || '').replace(/^Distance:\s*/, '') + ', the sheet\'s 1/4", so the zone missed it. Click Back and box detail 2 at 1/2"' : h; },
           action: { label: 'Measure the 4\'-0" string', run: () => { goPage(P401); measure(DETAIL.proveZone[0], DETAIL.proveZone[1]); } } },
         { id: 'more', title: 'When the title block gives no scale', kind: 'read',
-          body: 'When the title block gives no scale, the Set Scale dialog can work one out. Click the two ends of a dimension and type its length.\nIt also warns when a sheet\'s size says the PDF was printed down, shrunk onto smaller paper.\nBoth walks: [Setting the scale](/guides/setting-the-scale/) and [Is your scale lying to you?](/guides/verifying-your-scale/).',
+          body: 'In [[Set Scale]], click the two ends of a dimension and type its length. The app works the scale out.\nThe dialog also warns when a sheet\'s size says the PDF was printed down, shrunk onto smaller paper.\nBoth walks: [Setting the scale](/guides/setting-the-scale/) and [Is your scale lying to you?](/guides/verifying-your-scale/).',
           target: ['#setScale', '#setScaleSidebar'], check: () => true },
       ],
       done: 'A scale per sheet, a proof on every one, and a zone where the drawing changes scale.\nNext: [[Learn]] → Counting.',
@@ -583,33 +590,37 @@
     {
       id: 'counting', title: 'Counting: counters and the number row', short: 'counting at speed', minutes: 3, page: P101,
       intro: 'A takeoff is the count and the feet a price is built on, and counting is most of it. Make a counter, click the fixtures (the sinks, toilets and drains), then put it on a number key.',
+      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); },
       steps: [
         { id: 'counter', title: 'Make a Floor Drain counter', kind: 'do',
-          body: 'A counter is a named tally: each click on the sheet adds one mark to it.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab.\n3. In Name, type Floor Drain.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nThe counter is now armed, ready: every click on the sheet places a Floor Drain, a drain set in the floor.\nThe [[Quick]] tab builds a name from Size, Type and Material. Use it when you want every bid, every job you price, to spell a name the same way.',
+          // + Add, Create and Quick are names several controls share: each is pointed at by its own selector
+          body: 'A counter is a named tally: each click on the sheet adds one mark to it. A floor drain is a drain set in the floor.\n1. In the left sidebar, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the {{Create|#counterModal .counter-tab[data-tab="create"]}} tab.\n3. In Name, type Floor Drain.\n4. Pick a symbol and a colour.\n5. Click [[Create Counter]].\nA new counter is armed, ready to count, as soon as it is made.\nThe {{Quick|#counterModal .counter-tab[data-tab="quickcount"]}} tab builds a name from Size, Type and Material. Use it when you want every bid, every job you price, to spell a name the same way.',
           target: () => K().counterFormTargets(FD_RE), check: () => !!madeCounterNamed(/floor\s*drain|^fd\b/i),
           action: { label: 'Create it for me', run: () => { const c = makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'); App.pushUndoSnapshot(); arm(c); dirty(); } } },
         { id: 'place', title: 'Count the kitchen', kind: 'do',
-          body: 'The kitchen has three floor drains along the work aisle, and the lesson has circled them.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts. One click is one mark, and one more in the count.\nThe number beside the counter in the sidebar moves as you go. It is the total for the whole set of sheets, not just this one.',
+          body: () => 'The kitchen has three floor drains along the work aisle, and the lesson has circled them.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts.\nThe {{number beside the counter|#countersList [data-counter-id="' + idOf(counterNamed(FD_RE)) + '"] .badge}} in the sidebar moves as you go. It is the total for the whole set of sheets, not just this one.',
           target: ['#annCanvas'], page: P101, zones: () => circlesFor(P101, counterNamed(FD_RE), KITCHEN_FDS, 16),
           check: () => K().allDone(circlesFor(P101, counterNamed(FD_RE), KITCHEN_FDS, 16)),
           hint: () => strayHint(P101, counterNamed(FD_RE), KITCHEN_FDS.concat([FD.dish]), 16),
           action: { label: 'Count three for me', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i) || makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'); App.pushUndoSnapshotCurrentPage(); mark(P101, c, KITCHEN_FDS.slice(Math.min(3, marksOf(c)))); arm(c); dirty(); } } },
         { id: 'bind', title: 'Put it on the number row', kind: 'do',
           // the name the reader's own counter took: a palette that already had a "Floor Drain" made this one "Floor Drain 2" (by hand, 2026-09-25)
-          body: () => 'The number row is the keys 1 to 0 above the letters. Each one can hold a counter.\n1. In the status bar, the strip along the bottom, click [[quick keys]] at the right.\n2. Beside key 1, choose ' + ((counterNamed(FD_RE) || {}).name || 'Floor Drain') + '.\n3. Close the dialog.\nQuick Keys are saved with the project. They also ride your Artboard, so they come to the next bid. The Artboard is the counters and line types (kinds of pipe) you keep for every job.',
+          body: () => 'The number row is the keys 1 to 0 above the letters. Each one can hold a counter.\n1. In the status bar, the strip along the bottom, click [[quick keys]] at the right.\n2. Beside key 1, choose ' + ((counterNamed(FD_RE) || {}).name || 'Floor Drain') + '.\n3. Click {{Done|#quickKeysDone}}.\nQuick Keys are saved with the project. They also ride your Artboard, so they come to the next bid. The Artboard is the counters and line types (kinds of pipe) you keep for every job.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           check: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); },
           hint: () => { const c = counterNamed(FD_RE); if (!c) return ''; const other = Object.values(S().numberKeyBindings || {}).map((b) => b && b.kind === 'counter' && b.id !== c.id && (S().counters || []).find((x) => x.id === b.id)).find((x) => x && FD_RE.test(x.name || '')); return other ? 'That key holds ' + other.name + '. Choose ' + c.name + ', the counter you just made' : ''; },
           action: { label: 'Bind 1 to Floor Drain', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); if (!c) return; if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: c.id }; dirty(); } } },
         { id: 'usekey', title: 'Count from the keyboard', kind: 'do',
-          body: '1. Press M (Move). Move places nothing, so clicks stop placing floor drains.\n2. Press 1: Floor Drain is armed again, ready to count.\n3. Click inside the circle on the floor drain in the dish room, below the kitchen.\nOn a real sheet that is the whole rhythm: 1, click, click, 2, click, click.',
+          // the key and the name are the reader's own: the last card passes on any key, and a palette with a "Floor Drain" made this one "Floor Drain 2"
+          body: () => { const c = counterNamed(FD_RE), b = S().numberKeyBindings || {}; const key = Object.keys(b).find((k) => b[k] && c && b[k].id === c.id) || '1'; return '1. Press M for [[Move]]. Move places nothing, so clicks stop placing floor drains.\n2. Press ' + key + ': ' + ((c || {}).name || 'Floor Drain') + ' is armed again.\n3. Click inside the circle on the floor drain in the dish room, below the kitchen.\nOn a real sheet that is the whole rhythm: 1, click, click, 2, click, click.'; },
           target: ['#annCanvas'], page: P101, zones: () => circlesFor(P101, counterNamed(FD_RE), [FD.dish], 16),
           check: () => K().allDone(circlesFor(P101, counterNamed(FD_RE), [FD.dish], 16)),
           action: { label: 'Press 1 and count it', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); if (!c) return; if (App.triggerQuickKey) App.triggerQuickKey(1); App.pushUndoSnapshotCurrentPage(); mark(P101, c, [FD.dish]); dirty(); } } },
         { id: 'settings', title: 'How the marks look', kind: 'read',
-          body: 'Right-click the [[Counter]] button in the header, the bar across the top, for Counter Settings. On a tablet, tap the gear beside COUNTERS in the sidebar instead.\nCounter Settings sets how marks look: their size, the ring around them, and the running number beside each one.\nMake them small on a crowded sheet and large on a tablet.\nMore: [Counting with counters](/guides/counting-with-counters/), [Custom icons](/guides/custom-icons/) and [Quick creators](/guides/quick-creators/).',
-          target: ['#counterBtn', '#counterBtnSidebar'], check: () => true },
+          // one door, the reader's own: a tablet has no right-click
+          body: () => (onTouch() ? 'Tap the {{gear|#countersSettingsBtn}} beside COUNTERS in the sidebar for Counter Settings.' : 'Right-click [[Counter]] in the header, the bar across the top, for Counter Settings.') + '\nIt sets the size of the marks, the ring around them, and the running number beside each one.\nMake them small on a crowded sheet and large on a tablet.\nMore: [Counting with counters](/guides/counting-with-counters/), [Custom icons](/guides/custom-icons/) and [Quick creators](/guides/quick-creators/).',
+          target: () => (onTouch() ? ['#countersSettingsBtn'] : ['#counterBtn', '#counterBtnSidebar']), check: () => true },
       ],
       done: 'A counter, a count, and a number key.\nNext: [[Learn]] → Measuring.',
     },
@@ -617,25 +628,28 @@
     {
       id: 'measuring', title: 'Measuring: runs, bends and drops', short: 'a measured run', minutes: 3, page: P101,
       intro: 'Trace the gas main, the pipe that brings gas to the kitchen, and let it count its own elbow, the fitting where a pipe turns. Then add the riser, the upright pipe a plan never shows.',
+      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); const lt = makeLineType('Gas Pipe', '#e85447'); S().activeLineTypeId = lt.id; },
       steps: [
         { id: 'snap', title: 'Keep runs square', kind: 'do',
-          body: '1. In the header, the bar across the top, click [[Snap to 45° angles]] (or press J) so it is lit.\nEach piece you trace, clicking along the pipe, now locks to straight across, straight up and down, or 45°. Those are the angles pipe really takes.\nTurn Snap off for the rare run, a stretch of pipe, that does not.',
-          target: ['#lineTypeSnapToHVHeaderBtn'], check: () => !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical),
+          // the header shows Snap only while a line tool is on: the card arms one first, and the light follows
+          body: 'Snap locks each piece you trace, clicking along the pipe, to straight across, straight up and down, or 45°. Those are the angles pipe really takes.\n1. In the header, the bar across the top, click [[Polyline]] (or press P). A polyline is a line with corners.\n2. Snap shows in the header while a line tool is on. Click [[Snap to 45° angles]] so it is lit (or press J).\nTurn Snap off for the rare run, a stretch of pipe, that does not.',
+          target: ['#lineTypeSnapToHVHeaderBtn', '#polylineBtn', '#polylineBtnSidebar'], check: () => !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical),
           action: { label: 'Turn it on', run: () => { if (!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical)) el('lineTypeSnapToHVHeaderBtn').click(); } } },
         { id: 'trace', cardAt: 'bl', title: 'Trace the gas main', kind: 'do',
-          body: 'The lesson made you a line type, Gas Pipe: one kind of pipe that the app measures. On a bid a line type names its size and material too. The gas main, the pipe the others branch from, is the dash-dot line from the meter (GM), where the gas comes in.\n1. In the header, click [[Polyline]] (or press P). A polyline is a line with corners.\n2. Click inside circle 1, at the meter.\n3. Click inside circle 2, the corner where the run turns.\n4. Click inside circle 3, the end of the run at the range, the stove.\n5. Press Enter.\nThe main runs up the east side of the kitchen and turns west along the cook line, the row of stoves. The plan prints two sizes along it, and a real bid traces each size as its own line type. A [[Quick Line]] does the same for one straight piece.',
+          // Enter on a keyboard: this card sits at the bottom left, over the footer's Finish. A tablet has only Finish
+          body: () => 'The lesson made you a line type, {{Gas Pipe|#lineTypesList [data-line-type-id="' + idOf(lineTypeNamed(/gas/i)) + '"]}}: one kind of pipe that the app measures. On a bid a line type names its size and material too. The gas main, the pipe the others branch from, is the dash-dot line from the meter (GM), where the gas comes in.\n1. In the header, click [[Polyline]] (or press P).\n2. Click inside circle 1, at the meter.\n3. Click inside circle 2, the corner where the run turns.\n4. Click inside circle 3, the end of the run at the range, the stove.\n5. ' + (onTouch() ? 'Tap [[Finish]] under the sheet. Drag this card aside if it covers it.' : 'Press Enter.') + '\nThe main runs up the east side of the kitchen and turns west along the cook line, the row of stoves. The plan prints two sizes along it, and a real bid traces each size as its own line type. A [[Quick Line]] does the same for one straight piece.',
           target: ['#polylineBtn', '#polylineBtnSidebar'],
           page: P101,
           zones: () => K().pathZones(GAS_MAIN, 15, gasPaths(true)),
           check: () => K().allDone(K().pathZones(GAS_MAIN, 15, gasPaths(false))),
           action: { label: 'Trace it for me', run: () => { const lt = lineTypeNamed(/gas/i); const a = pageAnn(P101); if (!lt || (a && (a.polylines || []).length)) return; goPage(P101); S().drawingPolyline = { id: App.uid(), name: 'Gas main', color: lt.color, points: GAS_MAIN.map((pt) => ({ x: pt.x, y: pt.y })), closed: false, lineTypeId: lt.id, group: null }; App.settlePolylineDraft(); } } },
         { id: 'bends', title: 'Let the run count its elbows', kind: 'do',
-          body: 'A fitting is a part that joins pipe, such as the elbow at a turn.\n1. In the left sidebar, under LINE TYPES, click the pencil beside Gas Pipe.\n2. Turn on [[Fittings from bends]].\n3. Click [[Done]].\nEach bend now counts the elbow nearer its angle, a 45 or a 90. A small chip at the corner shows what the count will say.\nSometimes a line only jogs around text on the sheet. Right-click that corner while editing the run and choose No fitting here.',
+          body: 'A fitting is a part that joins pipe, such as the elbow at a turn.\n1. In the left sidebar, under LINE TYPES, click the pencil beside Gas Pipe.\n2. Turn on {{Fittings from bends|#bendFittingsBtn}}.\n3. Click {{Done|#counterLineTypeDetailsClose}}.\nEach bend now counts the elbow nearer its angle, a 45 or a 90. A small chip at the corner shows what the count will say.\nSometimes a line only jogs around text on the sheet. Right-click that corner while editing the run and choose No fitting here.',
           target: () => K().ladder('#bendFittingsBtn', '#counterLineTypeDetailsModal .modal-card', K().pencilOf('lineType', lineTypeNamed(/gas/i)), '#lineTypesSectionTitle'),
           check: () => someLineType(/gas/i, (lt) => lt.bendFittings && lt.bendFittings.enabled),
           action: { label: 'Turn it on for me', run: () => { const lt = lineTypeNamed(/gas/i); if (!lt) return; App.pushUndoSnapshot(); const fm = window.FittingModel; lt.bendFittings = Object.assign(fm && fm.normalizeBendFittings ? fm.normalizeBendFittings(lt) : { bend45: { name: lt.name + ' 45° elbow', qty: 1 }, bend90: { name: lt.name + ' 90° elbow', qty: 1 }, drop: { name: lt.name + ' 90° elbow', qty: 1 } }, { enabled: true }); dirty(); } } },
-        { id: 'drop', cardAt: 'bl', title: 'Add the riser', kind: 'do',
+        { id: 'drop', cardAt: 'bl', title: 'Add the riser, the upright pipe', kind: 'do',
           body: 'The main comes up 4 ft out of the ground at the meter. A drop adds a rise like that, or a fall, at the end of a run.\n1. In the header, click [[Drop]] (or press B).\n2. In the palette, the small panel that opens, choose or type 4 ft.\n3. Click the end of the run inside the circle, at the meter.\nThose 4 ft join the run\'s feet. With Fittings from bends on, the drop counts a 90 too. Click the same end again to clear it.',
           target: ['#dropPanel', '#dropBtn'],
           page: P101,
@@ -643,7 +657,7 @@
           check: () => meterDrop(),
           action: { label: 'Add a 4 ft riser for me', run: () => { goPage(P101); dropAt(GAS_MAIN[0], 4); } } },
         { id: 'read', title: 'Read the run', kind: 'read',
-          body: '1. In the left sidebar, look at SUMMARY, the running totals.\nThe run reads its length on the plan plus the 4 ft riser, the upright piece. Under it are the elbows it counted for itself.\nNone of those are marks, so they can never drift from the pipe. Move a corner and they follow.\nMore: [Measuring runs](/guides/measuring-runs-lines-and-polylines/).',
+          body: '1. In the left sidebar, look at SUMMARY, the running totals.\nThe run reads its length on the plan plus the 4 ft riser. Under it are the elbows it counted for itself.\nNone of those are marks, so they can never drift from the pipe. Move a corner and they follow.\nMore: [Measuring runs](/guides/measuring-runs-lines-and-polylines/).',
           target: ['#summaryList', '#summarySectionTitle'], check: () => true },
       ],
       done: 'A traced run with its riser and its own elbows.\nNext: [[Learn]] → Chain and child counts: fixtures and their pipe in one pass, and parts that count themselves.',
@@ -652,22 +666,23 @@
     {
       id: 'chain', title: 'Chain, and parts that count themselves', short: 'fixtures and pipe in one pass', minutes: 3, page: P101,
       intro: 'Chain counts the fixtures on a branch, a small pipe feeding a row of sinks, and draws the pipe in the same clicks. The hangers, the straps that hold a pipe up, then count themselves by rule.',
+      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); makeCounter('Lavatory', 'Mounted Sink', '#e8c547'); makeLineType('1/2in PEX', '#47c88e'); },
       steps: [
         { id: 'chain', title: 'Chain the top wall', kind: 'do',
-          body: 'The lesson made a Lavatory counter (a lavatory is a bathroom sink) and a 1/2in PEX line type (PEX is plastic water pipe). Both lavatories and the mop sink hang off the cold water run on the top wall.\n1. In the header, the bar across the top, click [[Chain]] (or press T).\n2. In the Chain panel, choose Lavatory and 1/2in PEX.\n3. Click inside circle 1, the lavatory in MEN, the men\'s restroom.\n4. Click inside circle 2, the one in WOMEN.\n5. Click inside circle 3, the mop sink, a low sink for a mop bucket.\n6. Press Enter to end the run.\nEvery click places the fixture and draws the branch back to the last one.',
+          body: 'Chain places a fixture and draws its branch, the small pipe that feeds it, in the same click.\nThe lesson made a Lavatory counter (a lavatory is a bathroom sink) and a 1/2in PEX line type (PEX is plastic water pipe). Both lavatories and the mop sink hang off the cold water run on the top wall.\n1. In the header, the bar across the top, click [[Chain]] (or press T).\n2. In the Chain panel, choose Lavatory and 1/2in PEX.\n3. Click inside circle 1, the lavatory in MEN, the men\'s restroom.\n4. Click inside circle 2, the one in WOMEN.\n5. Click inside circle 3, the mop sink, a low sink for a mop bucket.\n6. Press Enter to end the run.\nEach branch is drawn back to the fixture before it.',
           target: ['#chainPanel', '#chainBtn'], page: P101, zones: () => K().markZones(P101, countersMatching(/lavatory/i), [LAVS[0], LAVS[1], MOP], 14),
           check: () => { const a = pageAnn(P101); return !!a && (a.quickLines || []).length >= 2 && K().allDone(K().markZones(P101, countersMatching(/lavatory/i), [LAVS[0], LAVS[1], MOP], 14)); },
           action: { label: 'Chain the three for me', run: () => { goPage(P101); const a = pageAnn(P101); if (a && (a.quickLines || []).length >= 2) return; K().chainPoints(makeCounter('Lavatory', 'Mounted Sink', '#e8c547').id, makeLineType('1/2in PEX', '#47c88e').id, [LAVS[0], LAVS[1], MOP]); } } },
         { id: 'hangers', title: 'Hangers from the rule', kind: 'do',
           rules: ['plumb.hanger.pex'],
-          body: 'A child count is a part that counts itself off something else, such as a hanger, a strap that holds pipe up, every few feet.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1/2in PEX.\n2. Find [[Child counts]]. The app offers the hanger spacing for that pipe, read off its name.\n3. Click [[Add]].\n4. Click [[Done]].\nEvery run of this type now counts its hangers into the Summary, the running totals, and every file you export. Delete a run and its hangers go with it.',
+          body: 'A child count is a part that counts itself off something else, such as a hanger, a strap that holds pipe up, every few feet.\n1. In the left sidebar, under LINE TYPES, click the pencil beside 1/2in PEX.\n2. Find {{Child counts|#childCountsGroup}}. The app offers the hanger spacing for that pipe, read off its name.\n3. Click {{Add|#childCountsSuggest button}}.\n4. Click {{Done|#counterLineTypeDetailsClose}}.\nEvery run of this type now counts its hangers into SUMMARY, the running totals, and every file you export. Delete a run and its hangers go with it.',
           target: () => K().ladder('#childCountsSuggest', '#childCountsGroup', K().pencilOf('lineType', usedLineType(/pex/i)), '#lineTypesSectionTitle'),
           check: () => ((usedLineType(/pex/i) || {}).childCounts || []).length > 0,
           action: { label: 'Add the hanger rule', run: () => { const lt = usedLineType(/pex/i); if (!lt || (lt.childCounts || []).length) return; App.pushUndoSnapshot(); lt.childCounts = [hangerRuleFor(lt)]; dirty(); } } },
         { id: 'rule', title: 'Where the number came from', kind: 'read',
           rules: ['plumb.hanger.pex'],
-          body: '1. In the left sidebar, look at SUMMARY. Under 1/2in PEX, the Hanger row carries a § chip.\nThe chip names the rule the spacing came from. Click it to open the rule in the public [rulebook](/rules/), the trade rules the app applies.\nThe rules come from the plumbing code, the law for how pipe goes in. Project Settings picks the code edition your jurisdiction, your town or county, is on.\nYour own child counts work the same way. On a line type, a row counts once per run, or once every so many feet. On a counter, a row counts once per mark: a carrier, the frame a wall-hung toilet hangs on, under every water closet (toilet).',
+          body: '1. In the left sidebar, look at SUMMARY. Under 1/2in PEX, the Hanger row carries a {{§ chip|#summaryList .rule-chip}}.\nThe chip names the rule the spacing came from. Click it in the sidebar to open the rule in the public [rulebook](/rules/), the trade rules the app applies.\nThe rules come from the plumbing code, the law for how pipe goes in. [[Project Settings]] picks the code edition your jurisdiction, your town or county, is on.\nYour own child counts work the same way. On a line type, a row counts once per run, or once every so many feet. On a counter, a row counts once per mark: a carrier, the frame a wall-hung toilet hangs on, under every water closet (toilet).',
           target: ['#summaryList', '#summarySectionTitle'], check: () => true },
       ],
       done: 'Three clicks for three fixtures and their pipe, and hangers nobody counted.\nNext: [[Learn]] → Repeats.',
@@ -676,6 +691,7 @@
     {
       id: 'repeats', title: 'Repeats: count one, bid four', short: 'a typical, multiplied', minutes: 2, page: P401,
       intro: 'Detail 2 on this sheet says TYP. OF 4: typical of four, the same room built four times. Count it once and let a zone, a box on the sheet, do the multiplying.',
+      opener: 'This lesson runs on P-401, the enlarged plans of the sample restaurant. Nothing you do on it touches your projects.',
       seed() {
         setScale(P101, 9, '1/8" = 1\''); setScale(P401, 18, '1/4" = 1\'');
         const a = App.ensureActiveCanvas(S().pages[P401]).annotations;
@@ -686,8 +702,9 @@
       },
       steps: [
         { id: 'zone', cardAt: 'bl', title: 'Wrap the typical', kind: 'do',
-          body: 'Detail 2 is one corner of the plan drawn again, larger. The lesson counted it once: one hand sink, for washing hands only, and one floor drain.\n1. In the header, the bar across the top, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around detail 2: start and end in the shaded band, outside the dashed line.\n3. In Enter multiplier, type 4.\n4. Click [[Apply]].\nA multiply zone is a box whose marks count that many times over.',
-          target: ['#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
+          // the card says why the number is 4: the open card no longer carries the intro that did
+          body: 'Detail 2 is one corner of the plan drawn again, larger. Its title says TYP. OF 4: typical of four, the same room built four times. The lesson counted it once: one hand sink, for washing hands only, and one floor drain.\n1. In the header, the bar across the top, click [[⋯]], then [[Multiply Zone]] (or press X).\n2. Drag a box around detail 2: start and end in the shaded band, outside the dashed line.\n3. In Enter multiplier, type 4.\n4. Click {{Apply|#multiplyZoneApply}}.\nA multiply zone is a box whose marks count that many times over.',
+          target: ['#multiplyZoneMultiplier', '#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'],
           page: P401,
           // TYP. OF 4 is four: a zone left at the dialog's default 2 passed, and the next card's "reads 4" read 2 (by hand, 2026-09-25)
           zones: () => [K().boxZone(rectsOf(P401, 'multiplyZones', (z) => z.multiplier === 4), DETAIL_INNER, DETAIL_OUTER, 'Drag your box around detail 2, anywhere in here')],
@@ -704,6 +721,7 @@
     {
       id: 'organize', title: 'Organizing a busy sheet', short: 'a sheet you can still read', minutes: 3, page: P101,
       intro: 'Ten drains, three sinks and two water closets (toilets), and this is a small job. Groups, the sidebar filter, layers and Hide marks keep a big one readable.',
+      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant, already counted. Nothing you do on it touches your projects.',
       seed() {
         setScale(P101, 9, '1/8" = 1\'');
         mark(P101, makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'), Object.keys(FD).map((k) => FD[k]));
@@ -713,25 +731,26 @@
       },
       steps: [
         { id: 'groupson', title: 'Turn on Groups', kind: 'do',
-          body: 'A group is a named bundle of marks, such as everything in the kitchen, with its own subtotal.\n1. In the header, the bar across the top, click the gear ([[Project Settings]]).\n2. Turn on [[Use groups]].\n3. Close the dialog.\nA GROUPS section joins the sidebar. Projects that never use groups never see it.',
+          body: 'A group is a named bundle of marks, such as everything in the kitchen, with its own subtotal.\n1. In the header, the bar across the top, click [[Project Settings]], the gear.\n2. Turn on {{Use groups|#settingsUseGroupsBtn}}. The dialog closes by itself.\nA Groups section joins the sidebar. Projects that never use groups never see it.',
           target: ['#settingsUseGroupsBtn', '#settingsGearBtn', '#sidebarLogoGear'], check: () => !!S().groupsEnabled || (S().groups || []).length > 0,   // the app's own gate: a project with groups has them on, and the switch is locked
           action: { label: 'Turn Groups on', run: () => { if (App.turnOnGroups) App.turnOnGroups(); else S().groupsEnabled = true; App.updateUI(); } } },
         { id: 'group', title: 'Make a Kitchen group', kind: 'do',
-          body: '1. In the left sidebar, under GROUPS, click [[+ Add]].\n2. In Name, type Kitchen.\n3. Click [[Done]].',
+          body: '1. In the left sidebar, under GROUPS, click {{+ Add|#addGroup}}.\n2. In Name, type Kitchen.\n3. Click {{Done|#groupModalDone}}.',
           target: ['#groupModalDone', '#addGroup', '#groupsSectionTitle'], check: () => (S().groups || []).some((g) => /kitchen/i.test(g.name || '')),
           action: { label: 'Make it for me', run: async () => { if ((S().groups || []).some((g) => /kitchen/i.test(g.name || ''))) return; if (!S().groupsEnabled && App.turnOnGroups) App.turnOnGroups(); App.openGroupModal(null); await wait(60); el('groupModalName').value = 'Kitchen'; el('groupModalDone').click(); await wait(80); } } },
         { id: 'assign', title: 'Put the kitchen drains in it', kind: 'do',
-          body: 'The three floor drains along the kitchen\'s work aisle are circled.\n1. Right-click the mark inside a circle.\n2. Click [[Assign to group]].\n3. Click Kitchen, then [[Done]].\n4. Do the same in the other two circles.\nThe group\'s row in the sidebar adds up what it holds. Tip: click a group first, and everything you place after that joins it.',
+          // a tablet opens a mark's menu by a long press ("Touch": the engine drops a step that starts "Press" there)
+          body: () => 'The three floor drains along the kitchen\'s work aisle are circled.\n1. ' + (onTouch() ? 'Touch and hold' : 'Right-click') + ' the mark inside a circle.\n2. Click [[Assign to group]].\n3. Click Kitchen, then {{Done|#groupAssignDone}}.\n4. Do the same in the other two circles.\nThe group\'s row in the sidebar adds up what it holds. Tip: click a group first, and everything you place after that joins it.',
           target: ['#groupAssignDone', '#annCanvas'], page: P101,
           zones: () => { const g = kitchenGroup(); return K().markZones(P101, null, KITCHEN_FDS, 16, (m) => !!g && m.group === g.id); },
           check: () => { const g = kitchenGroup(); return !!g && K().allDone(K().markZones(P101, null, KITCHEN_FDS, 16, (m) => m.group === g.id)); },
           action: { label: 'Assign the three for me', run: () => { const g = (S().groups || []).find((x) => /kitchen/i.test(x.name || '')); const c = counterNamed(/floor\s*drain/i); const a = pageAnn(P101); if (!g || !c || !a) return; App.pushUndoSnapshotCurrentPage(); (a.counterMarkers[c.id] || []).forEach((m) => { if (KITCHEN_FDS.some((k) => near(m, k, 4))) m.group = g.id; }); dirty(); } } },
         { id: 'filter', title: 'Show only what this sheet uses', kind: 'do',
-          body: 'The lesson added a Urinal counter that nothing on this sheet uses. On a real bid, a job you are pricing, the COUNTERS list holds sixty.\n1. In the left sidebar, beside the COUNTERS search box, click the funnel once.\nThe list drops to the counters with marks on this sheet. Click again for the ones used anywhere in the project. Click once more for every counter in the project.\nWhen you leave, the lesson puts it back the way you had it.',
+          body: 'The lesson added a Urinal counter that nothing on this sheet uses. On a real bid, a job you are pricing, the COUNTERS list holds sixty.\n1. In the left sidebar, beside the COUNTERS search box, click {{the funnel|#counterShowOnlyOnPageInlineBtn}} once.\nThe list drops to the counters with marks on this sheet. Click again for the ones used anywhere in the project. Click once more for every counter in the project.\nWhen you leave, the lesson puts it back the way you had it.',
           target: ['#counterShowOnlyOnPageInlineBtn', '#countersSection'], check: () => (App.getCounterListFilterScope ? App.getCounterListFilterScope() === 'page' : false),
           action: { label: 'Filter to this page', run: () => { App.setCounterListFilterScope('page'); App.updateUI(); } } },
         { id: 'layer', title: 'An alternate on its own layer', kind: 'do',
-          body: 'A layer is a clear sheet laid over the plan, with its own marks. The sidebar totals count every layer. Use one for an alternate (a priced option), an addendum (a later change), or drains kept apart from water.\n1. In the footer, the bar under the sheet, click [[Layers]] beside the layer name.\n2. Click [[+ Add layer]].\n3. Click [[New empty layer]].\n4. In Name, type a name, such as Alternate 1.\n5. Click [[Create]].\nThe up and down arrow keys switch layers. The button beside Layers shows every layer at once.',
+          body: 'A layer is a clear sheet laid over the plan, with its own marks. The sidebar totals count every layer. Use one for an alternate (a priced option), an addendum (a later change), or drains kept apart from water.\n1. In the footer, the bar under the sheet, click [[Layers]] beside the layer name.\n2. Click [[+ Add layer]].\n3. Click [[New empty layer]].\n4. In Name, type a name, such as Alternate 1.\n5. Click {{Create|#addCanvasModalCreate}}.\nPick a layer under [[Layers]] to switch to it (or press the up and down arrow keys). The {{button beside it|#showAllCanvasesBtn}} shows every layer at once.',
           target: ['#addCanvasModalCreate', '#canvasMenuAdd', '#canvasLayersBtn'], check: () => ((S().pages[P101] || {}).canvases || []).length >= 2,
           action: { label: 'Add the layer for me', run: async () => { if (((S().pages[P101] || {}).canvases || []).length >= 2) return; goPage(P101); el('addCanvasBtn').click(); await wait(80); if (el('addCanvasModalNew')) el('addCanvasModalNew').click(); if (el('addCanvasModalName')) el('addCanvasModalName').value = 'Alternate 1'; if (el('addCanvasModalCreate')) el('addCanvasModalCreate').click(); await wait(80); } } },
         { id: 'hide', title: 'Read the bare drawing', kind: 'do',

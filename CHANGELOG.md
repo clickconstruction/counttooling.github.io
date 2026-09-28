@@ -62,6 +62,34 @@ were written so specs could run from a `.claude/worktrees/` copy. Both punch row
   and headed "Temporary (untracked)". AGENTS.md gains "Specs from a worktree"; four plan-file lines
   that named the deleted config now say plain `npx playwright test`.
 
+## fix(pdf-bundle): one bundle builder; notes and highlights pages on a one-sheet export (BUNDLE-ONE-SHEET, 2026-09-27)
+
+Map item S05 (defects N03 and N10). Three defects in the notes and highlights bundles, all read in
+code first. Each was pinned in [pdf-bundle.spec.js](pdf-bundle.spec.js) and seen to fail before
+the fix.
+
+- **One sheet, report off: the summary printed over the sheet.** The builders guessed whether
+  they had a fresh document from `getNumberOfPages() > 1`, so an Export PDFs run with exactly one
+  sheet drew the "Notes Summary" / "Highlights Summary" table on the sheet image. Both builders
+  now take `doc = null` and make their own A4 page; a document they are given always gets a new
+  page first. Each returns its doc.
+- **A note or highlight on a layer that is not active opened a blank page.** The sidebar
+  Highlight / Note Pages (PDF) buttons show when any layer has an item, but the bundles read the
+  active layer only. The bundles now collect from **every layer**, to agree with the buttons and
+  with the Summary (which has counted every layer since MAP-SUMMARY-LAYERS). Each crop is cut from
+  its own layer's raster, so the item is in the picture.
+- **The Highlights Summary ran off the page** past about 36 sheets. The one summary table,
+  `addBundleSummary`, breaks onto a new A4 page for both kinds.
+- **One builder.** [features/pdf-bundle.js](features/pdf-bundle.js) gains
+  `collectBundleItems(kind, pageFilter)`, `cropSheetJpeg(sheetCanvas, rect, scale)` and
+  `addBundleSummary(doc, title, countLabel, rows)`. Layouts are unchanged: notes fold under the
+  summary on A4 pages, and each highlight gets a page sized to its crop.
+- **The buttons left app.js.** The twin click handlers are gone from [app.js](app.js);
+  [features/output.js](features/output.js) binds both buttons beside the code that shows them, to
+  the new `App.openBundlePdf(kind)`. The toast text is unchanged.
+
+---
+
 ## docs(map): the decomposition map, read again at 3eb45a9 (2026-09-27)
 
 The September 25 map's ranked list was empty: all 25 items had landed, and about 45 pull requests

@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(map): the decomposition map, read again at 3eb45a9 (2026-09-27)
+
+The September 25 map's ranked list was empty: all 25 items had landed, and about 45 pull requests
+had merged since. Eight agents, one per area, re-read the code against the measured skeleton
+(`npm run build:projectmap`) and answered what is still open, what is new, and what to leave
+alone. [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) is rewritten from their reports.
+
+- **The refactors held.** `updateUIInner` is 314 lines (it was 592), the keydown handler 141,
+  `app.js` 7,079 (it was 8,588). Nothing needs an emergency split.
+- **A new ranked list, S01 to S26.** Defects first; then CI that finishes and specs that run from
+  a worktree; then the pins; then the moves. The largest moves are the duct air layer (about
+  1,180 lines), the trade tours out of the tour engine (about 770) and Learn's machinery out of
+  lessons.js (about 390). The gesture core in app.js is still not ready, and the map says what it
+  waits on.
+- **Twenty-six defects**, two reproduced by running code and the rest read. Eight bugs have punch
+  rows: WATER-TAP, XSS-COLOR, BUNDLE-ONE-SHEET, ESC-STACK, TOUR-RESTART, REAPPLY-DUCT, CI-MAIN,
+  WORKTREE-SPECS. One new decision, TRADE-DEFAULT. DUCT-RUN-SYSTEM and MAP-PERMS gain what the
+  agents found about them.
+- No separate skeptic pass this time: each agent was told to refute its own findings. The map
+  says which defects were run and which were only read.
+
 ## chore(visuals): the three films, the guide pictures and the spotlight frames, re-shot (2026-09-27)
 
 A day of changes left every generated picture behind the app: the sheet legend's typeface, the

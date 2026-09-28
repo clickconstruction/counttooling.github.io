@@ -583,8 +583,10 @@
     },
     {
       id: 'room', title: 'Header: Room Sizer', kind: 'do',
-      body: () => 'Room Sizer boxes a room and works out its size.\n1. ' + tool('[[Room Sizer]]', 'roomBtn', 'V') + '\n2. Drag a box inside the shaded boundary.\n3. In Name, type Office. In Ceiling, type 9.\n4. Click {{Apply|#roomBoxApply}}.\nThe room\'s area and volume land under ROOMS in the sidebar and in the legend, the key drawn on the sheet. An HVAC (heating and cooling) bid reads the room\'s air from here.',
-      target: ladderOf('roomBtn', ['#roomBoxApply']), page: 0,
+      body: () => 'Room Sizer boxes a room and works out its size.\n1. ' + tool('[[Room Sizer]]', 'roomBtn', 'V') + '\n2. Drag a box inside the shaded boundary.\n3. In {{Ceiling height|#roomBoxHeight}}, type 9.\n4. In {{Add new room|#roomBoxNewRoomName}}, type Office.\n5. Click {{Apply|#roomBoxApply}}.\nThe room\'s area and volume land under ROOMS in the sidebar and in the legend, the key drawn on the sheet. An HVAC (heating and cooling) bid reads the room\'s air from here.',
+      // the dialog's fields top to bottom, each by its own label, then Apply (the card said Name and Ceiling, in that order; a tester, 2026-09-28)
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); return ladderOf('roomBtn', [!v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxNewRoomName') ? '#roomBoxNewRoomName' : null, '#roomBoxApply'].filter(Boolean)); },
+      page: 0,
       zones: () => [K().boxZone(rects('roomBoxes'), ROOM_IN, ROOM_OUT, 'Drag your room anywhere in here')],
       check: () => K().boxZone(rects('roomBoxes'), ROOM_IN, ROOM_OUT).done && (S().rooms || []).length > 0,
       hint: () => K().boxMiss(rects('roomBoxes'), ROOM_IN, ROOM_OUT),

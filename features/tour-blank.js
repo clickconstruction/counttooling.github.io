@@ -459,6 +459,10 @@
     },
     {
       id: 'move', title: 'Header: Move', kind: 'do',
+      // Held for Next once the drag passes it: the lines after the steps (the wheel, Esc) were gone
+      // 0.9 s after the drag, unread (TOUR-MOVE-HOLD, 2026-09-28). The rest of this tour's cards keep
+      // their tips under the steps and move on by themselves: an answer on each is thirty clicks.
+      hold: true,
       body: () => 'Move is the resting tool, the one that is on when no other is. It drags the sheet, and it drags a mark, a thing you placed on the sheet, that sits in the wrong place.\n' + (touch()
         ? '1. In the header, tap [[Move]].\n2. Drag the sheet a little with one finger.\nTwo fingers pinch to zoom.'
         : '1. In the header, click [[Move]] (or press M).\n2. Drag the sheet a little: hold the mouse button down and slide.\nThe mouse wheel zooms where the pointer is. The Esc key, at the top left of the keyboard, brings you back here from any tool.'),

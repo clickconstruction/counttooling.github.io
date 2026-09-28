@@ -13,31 +13,6 @@ expired recovery UX" work occupies that slot).
 
 ---
 
-## fix(water): two runs that leave one point are siblings, not each other's branch (WATER-TAP, 2026-09-27)
-
-Two cold runs drawn from one point, one east and one south, each started on the other, so
-`waterChildLinks` made each the other's child: a two-run cycle. `waterDownstreamByRun` then gave
-each run both runs' fixture units, and the S moment and the Water Sizing schedule sized each pipe
-for twice its load. The duct copy of the tap rule got its guard the same day (DS-DINING-ATTACH,
-`ductTapParentOf`); the water copy did not (DECOMPOSITION_MAP N01, S01).
-
-- **The guard, twinned.** `waterChildLinks` skips a candidate parent whose own first vertex sits
-  within snap of the child's first vertex. Two runs leaving one point are both roots and each
-  carries only its own fixtures. A branch tapped mid-run, or a run carrying on from another's
-  end, still links. Hot and cold never link.
-- **No loop survives.** Past the guard, runs drawn head to tail round a loop (three runs round a
-  square, or two runs over one stretch in opposite directions) still pointed at each other, so
-  every run in the loop carried the whole loop. A link that would close a cycle is now dropped
-  (the first run in list order keeps its parent), so the links are always a forest. The two
-  walkers (`waterDownstreamByRun`, `waterDraftRemainingLoad`) already kept a visited set, so
-  they never hung; they now never see a cycle either.
-- **Pins.** Four node cases in [water-model.test.js](water-model.test.js): the repro (no links,
-  each run its own load, a trace off the same point does not take the other run's fixtures), a
-  mid-run tap and an end-on run still link, hot and cold never link, and the loops; and one case
-  in [water-schedule.spec.js](water-schedule.spec.js): two runs off one riser read 1.5 and 10
-  WSFU in the Water Sizing schedule, not 11.5 each. The duct
-  twin, `ductChildLinks`, has the sibling guard but no loop breaker; it is not changed here.
-
 ## docs(map): the decomposition map, read again at 3eb45a9 (2026-09-27)
 
 The September 25 map's ranked list was empty: all 25 items had landed, and about 45 pull requests

@@ -683,8 +683,8 @@
   const HVAC_STEPS = [
     {
       id: 'welcome', title: 'A five-minute HVAC takeoff', kind: 'do',
-      body: 'A takeoff is the count and the feet a price is built on. HVAC is heating, ventilation and air conditioning: here, the ducts that carry the air.\n1. Click [[Open the sample plan]] below.\nThe sample plan is a practice drawing of an office. No engineer, the designer who does the sums, sized its ducts, so you and the app do: that is design-build.\nYou will set the scale, how many feet an inch of paper stands for, and prove it. Then you will box a room. You will place diffusers, the vents air blows out of, each with its CFM: cubic feet of air per minute.\nThe app sizes the main duct, the big one from the unit, and counts the fittings, the bends and joints, and the pounds of metal. Then you sign off and hand it to the bid, the price you send.\nNothing here touches your projects.',
-      target: ['#uploadPdf', '#uploadPdfSidebar'],
+      body: 'A takeoff is the count and the feet a price is built on. HVAC is heating, ventilation and air conditioning: here, the ducts that carry the air.\nThe sample plan is a practice drawing of an office. No engineer, the designer who does the sums, sized its ducts, so you and the app do: that is design-build.\nYou will box a room and place diffusers, the vents air blows out of. Each carries its CFM: cubic feet of air per minute.\nThe app sizes the main duct, the big one from the unit, and counts the fittings, the bends and joints, and the pounds of metal. Then you sign off and hand it to the bid, the price you send.\nNothing here touches your projects.',
+      target: [],   // the card's own button is all it asks for: nothing on the screen behind it is lit
       // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
       check: () => { const ok = samplePlanOpen(); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
       handsOff: true,   // fetching the sample is the app's job: this step's button does it
@@ -694,9 +694,11 @@
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\n1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. The name is already filled in, read off the plan\'s own text. Set Room type to Office.\n4. In Ceiling, type 9.\n5. In Deck height, type 12.\n6. Click [[Apply]].\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\nThe sheet gets one small totals tag, a label, placed off the printed name.',
+      body: () => 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\n'
+        + (isNarrow() ? '1. Tap ☰ at the top left, then [[Room Sizer]] in the list that opens.' : '1. In the header, click [[⋯]], then [[Room Sizer]] (or press V).')
+        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n4. In {{Ceiling height|#roomBoxHeight}}, type 9.\n5. In {{Deck height|#roomBoxDeck}}, type 12.\n6. Click {{Apply|#roomBoxApply}}.\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\nThe sheet gets one small totals tag, a label, placed off the printed name.',
       // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
-      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreBtn'); },
+      target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreMenu .hm-row[data-tool-id="roomBtn"]', '#headerMoreBtn'); },
       page: 0,
       zones: () => [boxZone(officeBoxes(), OFFICE_INNER, grow(OPEN_OFFICE, 20), 'Drag the room box here, wall to wall')],
       hint: () => {
@@ -704,7 +706,7 @@
         const r = hRoom(); if (!r || !officeBoxes().length) return '';
         const ds = App.getDuctSettings ? App.getDuctSettings() : null;
         if (r.roomType !== 'office') return { code: 'wrong-value', text: 'Room type reads ' + (r.roomType || 'none') + '. Click the room\'s tag and set Room type to Office' };
-        if (!officeHeights().ceiling) return { code: 'wrong-value', text: 'The ceiling reads ' + officeHeights().read + ' ft. Click the room\'s tag and type 9 in Ceiling' };
+        if (!officeHeights().ceiling) return { code: 'wrong-value', text: 'The ceiling reads ' + officeHeights().read + ' ft. Click the room\'s tag and set Ceiling height to 9' };
         if (ds && ds.deckHeightFt > 0 && Math.abs(ds.deckHeightFt - 12) >= 0.05) return { code: 'wrong-value', text: 'Deck height reads ' + ds.deckHeightFt + ' ft. The plan\'s deck is 12' };
         return '';
       },
@@ -715,7 +717,7 @@
     },
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
-      body: 'A counter is a named tally: each click on the sheet with it adds one mark. This one also carries each diffuser\'s air.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Create]] tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In Name, type Supply Diffuser.\n4. In CFM, type 150. The chip, the small label beside the field, shows the symbol it will take.\n5. Click [[Create Counter]].\nThe left sidebar is the column of lists down the left side of the screen. A supply diffuser blows air into the room from the ceiling. The counter tool arms itself: it is armed, switched on and ready to mark.',
+      body: 'A counter is a named tally: each click on the sheet with it adds one mark. This one also carries each diffuser\'s air.\nThe left sidebar is the column of lists down the left side of the screen.\n1. In the left sidebar, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the {{Create|#counterModal .counter-tab[data-tab="create"]}} tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In {{Name|#counterName}}, type Supply Diffuser.\n4. In {{CFM|#counterCfm}}, type 150. The chip, the small label beside the field, shows the symbol it will take.\n5. Click [[Create Counter]].\nA supply diffuser blows air into the room from the ceiling. The counter tool arms itself: it is armed, switched on and ready to mark.',
       target: () => counterFormTargets(/diffuser/i, ['#counterCfm']),
       // 150, the number the place, duct and Bid Check cards all do their arithmetic with (PERSONA-PASS prober)
       check: () => { const c = (state().counters || []).find((x) => x.id === tourCounterId && x.cfm === 150) || (state().counters || []).filter((x) => /diffuser/i.test(x.name || '') && x.cfm === 150 && (isFresh(x) || markCount(x.id) > 0)).pop(); if (c) tourCounterId = c.id; return !!c; },
@@ -724,32 +726,35 @@
     },
     {
       id: 'place', title: 'Place four diffusers', kind: 'do',
-      body: 'The counter tool is armed. Four circles sit in OPEN OFFICE 105: two where the main will run, two deeper in the room.\n1. Click inside each of the four circles.\nEach mark carries its 150 CFM. The Rooms row in the sidebar now weighs the air the room needs against the air served.',
+      body: 'Four circles sit in OPEN OFFICE 105: two where the main will run, two deeper in the room.\n1. Click inside each of the four circles.\nEach mark carries its 150 CFM. In the sidebar, ROOMS now weighs the air the room needs against the air served.',
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = hCounter(); return markZones(0, c ? c.id : '-', DIFFUSER_SPOTS, 14); },
       check: () => cfmDevices().length >= 4 && (placedOnce || (placedOnce = allDone(markZones(0, (hCounter() || {}).id || '-', DIFFUSER_SPOTS, 14)))),
-      hint: () => { const c = hCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, DIFFUSER_SPOTS, 14)) : 0; return n && !placedOnce ? 'A mark outside the circles does not count. Press Ctrl+Z to undo it, then click inside a circle' : ''; },
+      hint: () => { const c = hCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, DIFFUSER_SPOTS, 14)) : 0; return n && !placedOnce ? 'A mark outside the circles does not count. ' + (isTouch() ? 'Tap Undo in the footer' : 'Press ' + (/Mac|iPhone|iPad/.test(navigator.platform || '') ? 'Cmd+Z' : 'Ctrl+Z')) + ' to undo it, then click inside a circle' : ''; },
       action: { label: 'Place four for me', run: placeFourDiffusers },
     },
     {
       id: 'system', title: 'Name the system', kind: 'do',
-      body: 'RTU-1 is a rooftop unit: the box on the roof that heats, cools and pushes the air. A group with an equipment tag, the unit\'s name, is a system.\n1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type RTU-1.\n4. In Equipment tag, type RTU-1.\n5. In Capacity, type 2000, the air it can move in CFM.\n6. Click [[Done]].\nA group is a set of marks the app subtotals together. RTU-1 is now selected, lit in the sidebar, so the main you trace next, clicking along it, belongs to it. Clicking it again would unselect it.\nThe header will weigh the air the system is drawn to deliver against its capacity.',
-      target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },   // Groups are off on the sample plan (by hand, 2026-09-25)
+      body: 'RTU-1 is a rooftop unit: the box on the roof that heats, cools and pushes the air. A group is a set of marks the app subtotals together. A group with an equipment tag, the unit\'s name, is a system.\n1. Click [[Project Settings]], the gear in the header, and turn on {{Use groups|#settingsUseGroupsBtn}}.\n2. Click {{×|#settingsModalClose}} to close Project Settings.\n3. In the left sidebar, under GROUPS, click {{+ Add|#addGroup}}.\n4. In {{Name|#groupModalName}}, type RTU-1.\n5. In {{Equipment tag|#groupModalEquipTag}}, type RTU-1.\n6. In {{Capacity|#groupModalCapacityCfm}}, type 2000, the air it can move in CFM.\n7. Click {{Done|#groupModalDone}}.\nThat selects RTU-1, so the main you trace next, clicking along it, belongs to it. Clicking RTU-1 again would unselect it.\nIts row under GROUPS will weigh the air the system is drawn to deliver against its capacity.',
+      target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', state().groupsEnabled ? '#settingsModalClose' : '#settingsUseGroupsBtn', '#settingsGearBtn'); },   // Groups are off on the sample plan (by hand, 2026-09-25)
       check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
       action: { label: 'Make RTU-1 for me', run: makeSystem },
     },
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
       rules: ['hvac.duct.schedule-factors'],
-      body: 'The main is the trunk duct the diffusers hang off. Trace it, and let the app size it.\n1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12 and click [[Start Tracing]].\n3. Click inside the first circle, then the second, working across the office.\n4. Press S: the Duct size box opens. Under SUGGESTED, click the rectangular size.\n5. Click inside the third circle.\n6. Press Enter.\n24×12 is the duct\'s width by height, in inches. The hint at the bottom of the sheet reads the air still to serve further along.\nIt suggests a size at 0.08″ per 100′, the friction rate: how much push the air may lose. The round size beside it is the same air in round duct.\nThe elbows (bends) and the transition (a size change) count themselves.',
-      target: ['#ductSizePopover', '#ductCreateStart', '#ductBtn', '#headerMoreBtn'], page: 0,
+      body: 'The main is the trunk duct the diffusers hang off. Trace it, and let the app size it.\n1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12, the duct\'s width by height in inches, and click [[Start Tracing]].\n3. Click inside the first circle, then the second.\n4. Under the sheet, click {{Size…|#ductSizeStepBtn}} (or press S).\n5. In the Duct size box, under SUGGESTED, click the rectangular size.\n6. Click inside the third circle.\n7. Under the sheet, click [[Finish Duct Run]] (or press Enter).\nThe {{hint at the bottom of the sheet|#ductHintCard}} reads the air still to serve further along. It suggests a size at 0.08″ per 100′, the friction rate: how much push the air may lose. The round size beside it is the same air in round duct.\nThe elbows (bends) and the transition (a size change) count themselves.',
+      // the light follows the card's order: Size… once two circles are in, Finish Duct Run once all three are (the card stays off both)
+      target: () => { const d = state().drawingDuct; const hit = d ? pathZones(MAIN_VERTICES, 16, mainPaths()).filter((z) => z.done).length : 0; const under = hit >= 3 ? '#finishDuctRunBtn' : hit === 2 && (d.segments || []).length < 2 ? '#ductSizeStepBtn' : null; return ladder('#ductSizePopover', '#ductCreateStart', under, '#ductBtn', '#headerMoreBtn'); }, page: 0,
       zones: () => pathZones(MAIN_VERTICES, 16, mainPaths()),
       check: () => ductRuns().some((r) => (r.segments || []).length >= 2) && allDone(pathZones(MAIN_VERTICES, 16, ductRuns().map((r) => r.vertices || []))),
       action: { label: 'Trace and size it for me', run: traceMain },
     },
     {
       id: 'attach', title: 'Hang the strays', kind: 'do',
-      body: 'Two diffusers sit within 8″ of the main and draw a leader, a dashed line, to it: attached, their air served. The two that draw nothing are strays.\n1. Right-click a bare diffuser: click it with the right mouse button.\n2. Click [[Attach to nearest run]].\n3. Do the same for the other one.\nEach moves onto the main and its leader appears.',
+      body: () => 'Two diffusers sit within 8″ of the main and draw a leader, a dashed line, to it: attached, their air served. The two that draw nothing are strays.\n'
+        + (isTouch() ? '1. Hold a finger on a stray, one of the two in the circles, until its menu opens.' : '1. Right-click a stray, one of the two in the circles: click it with the right mouse button.')
+        + '\n2. Click [[Attach to nearest run]].\n3. Do the same for the other one.\nEach moves onto the main and its leader appears.',
       target: ['#ctxAttachToRun', '#annCanvas'], page: 0,
       zones: () => unattachedDevices().map((d) => ({ kind: 'circle', x: d.x, y: d.y, r: 14, done: false })),
       check: () => cfmDevices().length >= 4 && unattachedDevices().length === 0,
@@ -760,15 +765,15 @@
       id: 'schedule', title: 'Pounds, not feet', kind: 'read',
       rules: ['hvac.duct.gauge-schedule', 'hvac.duct.sheet-weight', 'hvac.duct.schedule-factors'],
       body: 'Sheet-metal duct is priced by the pound, so the app weighs it.\n1. In the left sidebar, under DUCT, click [[Schedule]].\nIt lists straight duct by size, with its gauge and lb/ft from the SMACNA table. Gauge is the metal\'s thickness, and lb/ft is pounds per foot. SMACNA is the sheet-metal trade\'s book of standards.\nBelow come the fittings you did not have to count, and seam & waste on its own line: metal lost to joints and offcuts.\nLast is the number a sheet-metal bid is built on: Bid weight.\n2. Click [[Copy Schedule]] to put it on the clipboard, where a copy waits to be pasted.',
-      target: ['#ductScheduleBtn', '#ductSectionTitle'],
+      target: ['#ductScheduleModal .modal-card', '#ductScheduleBtn', '#ductSectionTitle'],
       check: () => true,
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
       rules: ['hvac.room.airflow-defaults'],
-      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out. The manual rows are yours to tick.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words Curb & power coordinated to tick it.\nThe curb is the frame the RTU sits on, up on the roof. Who sets it and runs the unit\'s power is yours to settle. You settle it with the GC, the general contractor, and the electrician.\nThe app judged the rooms, the flex and the scale for you. Flex is the bendable duct to each diffuser.\nFour 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room.',
+      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out. The manual rows are yours to tick.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words {{Curb & power coordinated|#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"]}} to tick it.\nThe curb is the frame the RTU sits on, up on the roof. Who sets it and runs the unit\'s power is yours to settle. You settle it with the GC, the general contractor, and the electrician.\nThe app judged the rooms, the flex and the scale for you. Flex is the bendable duct to each diffuser.\nFour 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room.',
       // the row the card names, not the first manual row (Fire dampers): at 1280 x 720 Curb & power sat below the fold (PERSONA-PASS)
-      target: ['#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"] label', '#bidCheckSection label', '#bidCheckSectionTitle'],
+      target: ['#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"]', '#bidCheckSection label', '#bidCheckSectionTitle'],
       // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,
       // and the step waited for a tick nobody could give it (by hand, 2026-09-25)
       check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-curb-power']),
@@ -776,19 +781,19 @@
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'Copy to /Tooling hands the takeoff to the pricing app.\n1. Under EXPORT OPTIONS, click [[Copy to /Tooling]].\n2. Click [[Everything]].\nThe first line names exactly what was copied: the project, the scope (which work) and the layers (the sheets of marks). The Duct block at the end carries the pounds.\nWith a Bid Check row still open, the app asks first. [[Export anyway]] remembers your answer until something changes.',
-      target: ['#forPipeTooling', '#exportOptionsSectionTitle'],
+      body: '1. Under EXPORT OPTIONS, click {{Copy to /Tooling|#forPipeTooling}}. It hands the takeoff to /Tooling, the pricing app.\nBid Check rows are still open, so the app asks first.\n2. Click {{Export anyway|#bidGateExportAnyway}}. The app remembers your answer until something changes.\nThe first line of the copy names exactly what was copied: the project, the scope (which work) and the layers (the sheets of marks). The Duct block at the end carries the pounds.\nOn a set of more than one sheet, a menu asks first how much to copy. Everything is the whole set.',
+      target: ['#bidGateExportAnyway', '#forPipeTooling', '#exportOptionsSectionTitle'],
       check: () => true,
     },
     {
       id: 'legend', title: 'What the sheet says now', kind: 'read',
-      body: 'Look at the sheet. The main is painted at its real width under the line, and a size chip rides each piece. The room wears its totals tag.\nThe legend, the key drawn on the sheet, lists duct by size and the room\'s air.\n1. Click the gear beside the SUMMARY heading, over the running totals, to open [[Summary Legend]].\nIt gained its duct rows the moment the first run existed. Show duct true width turns the wide band off when you want bare lines.',
-      target: ['#summarySettingsBtn', '#legendBtn'],
+      body: 'Look at the sheet. The main is painted at its real width under the line, and a size chip rides each piece. The room wears its totals tag.\nThe legend, the key drawn on the sheet, lists duct by size and the room\'s air.\n1. Click {{the gear|#summarySettingsBtn}} beside the SUMMARY heading, over the running totals. Summary Legend opens.\nIt gained its duct rows the moment the first run existed. {{Show duct true width|#legendShowDuctGhostRow}} turns the wide band off when you want bare lines.',
+      target: ['#legendShowDuctGhostRow', '#summarySettingsBtn', '#legendBtn'],
       check: () => true,
     },
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
-      body: 'Scale, prove it, room, diffusers, system, main sized at S, strays hung, pounds, sign-off, hand-off.\nYour work here is saved on this device like any takeoff. When you are ready for a real M-sheet, a mechanical (HVAC) drawing, click [[Upload PDF]] in the header. The two guides, HVAC takeoff and Duct takeoff by the pound, live under Help → Guides.',
+      body: 'Scale, prove it, room, diffusers, system, main sized at S, strays hung, pounds, sign-off, hand-off.\nYour work here is saved on this device like any takeoff.\nFor a real M-sheet, a mechanical (HVAC) drawing, close this plan first. Click [[Project Settings]], the gear in the header, then {{Close project|#settingsCloseProject}} at the bottom of that dialog. Upload PDF is then in the header.\nMore: [Doing an HVAC takeoff](/guides/hvac-takeoff/) and [Duct takeoff by the pound](/guides/duct-takeoff-by-the-pound/).',
       target: [],
       check: () => true,
     },

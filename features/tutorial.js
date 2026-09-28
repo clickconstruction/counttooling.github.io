@@ -201,11 +201,11 @@
     if (state().bidCheckCollapsed !== false) { bidRowsShownFor = null; return ['#bidCheckSectionTitle', '#bidCheckList']; }
     if (bidRowsShownFor !== stepId) {
       bidRowsShownFor = stepId;
-      const first = document.querySelector('#bidCheckList [data-row-id="' + ids[0] + '"]');
       const title = document.getElementById('bidCheckSectionTitle');
-      try { (first ? title : null) && title.scrollIntoView({ block: 'start' }); } catch (_) { /* older engines */ }
+      try { title && title.scrollIntoView({ block: 'start' }); } catch (_) { /* older engines */ }
     }
-    return ids.map((id) => '#bidCheckList [data-row-id="' + id + '"]').concat(['#bidCheckSectionTitle']);
+    // no rows named: the whole list
+    return (ids && ids.length ? ids.map((id) => '#bidCheckList [data-row-id="' + id + '"]') : ['#bidCheckList']).concat(['#bidCheckSectionTitle']);
   }
   const stepZones = (step) => { try { return (step && step.zones && step.zones()) || []; } catch (_) { return []; } };
   // Only the targets a reader clicks or drags count toward "N of M done"; a span is a guide.
@@ -1937,7 +1937,17 @@
     focusOnZones(Object.assign({}, step, { focus: true }));
     [el('tourZones'), el('tourSpot')].forEach((n) => { if (!n) return; n.classList.remove('is-pulsing'); void n.getBoundingClientRect(); n.classList.add('is-pulsing'); });
   }
-  function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
+  // An answer step stays done for the rest of the visit once its check has passed: the answer explains
+  // a dialog or a list the reader is then free to close, a stop they are free to click, and the card
+  // must not fall back to the task with Next gone dark (the card pass, Working faster).
+  let answered = false;
+  function safeCheck(step) {
+    let ok;
+    try { ok = !!step.check(); } catch (_) { ok = false; }
+    if (!step.answer || step !== STEPS[stepIdx]) return ok;
+    if (ok) answered = true;
+    return answered;
+  }
   // A hint is a string, or { code, text } when it names why the step is not done yet: not-armed,
   // outside-zone, wrong-page, wrong-scale, wrong-item, wrong-value, dialog-closed, not-yet, other
   // (PERSONA-PLAN item 3, 2026-09-25). The card shows the text either way; the code rides the
@@ -1994,7 +2004,7 @@
     stepIdx = next;
     doneAt = 0;
     lastSheetClick = null;
-    revealed = false;
+    revealed = false; answered = false;
     hintsLogged = new Set(); statusCode = null;
     App.onTourStepChanged && App.onTourStepChanged();   // a glossary entry open on the last card closes (features/learn-taps.js)
     closeStrayDialogs(STEPS[stepIdx]);
@@ -2070,7 +2080,7 @@
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = stepsFor(TOURS[tourId]);
     active = true;
-    stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; answered = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     hintsLogged = new Set(); statusCode = null; litEl = null;
     standingIds = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
     standingSnap = {}; (s.lineTypes || []).forEach((l) => { standingSnap[l.id] = { waterSide: l.waterSide, childCounts: (l.childCounts || []).slice() }; });
@@ -2209,7 +2219,7 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, bidCheckRows, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
     lastSheetClick: () => lastSheetClick };   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff

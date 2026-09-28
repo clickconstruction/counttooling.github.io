@@ -572,6 +572,11 @@ test.describe('Learn: on-sheet targets', () => {
     }
     expect(await stepId(page)).toBe('trace');           // a trace in progress ticks circles but is not a run yet
     await page.keyboard.press('Enter');
+    // the run is in: the card tells what it is and waits for Next (the card pass: a doing card's closing
+    // text is its answer, shown once the step is done)
+    await expect(page.locator('#tourBody')).toContainText('The main runs up the east side of the kitchen', { timeout: 8000 });
+    await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+    await page.click('#tourNext');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'bends', null, { timeout: 8000 });
     expect(errors).toEqual([]);
   });

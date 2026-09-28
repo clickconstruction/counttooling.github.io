@@ -932,9 +932,16 @@ test.describe('Every button, on a blank sheet', () => {
     await page.waitForTimeout(4600);
     expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done, window.App.tourKit.gliding()])).toEqual(['move', false, false]);
     await expect(page.locator('#tourBody')).toContainText('slide it a little');
-    // the reader's own drag is what passes it
+    // the reader's own drag is what passes it, and the card then waits for Next, so the lines
+    // after the steps (the wheel, Esc) are still there to read (TOUR-MOVE-HOLD)
     await dragSheet(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    await page.waitForTimeout(2000);
+    expect(await stepId(page)).toBe('move');
+    await expect(page.locator('#tourBody')).toContainText('Press Esc');
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('counter');
   });
 
   test('the Move card opened a second time starts from the view it opens on, not the first visit\'s', async ({ page }) => {
@@ -944,7 +951,9 @@ test.describe('Every button, on a blank sheet', () => {
     await toMove(page);
     await page.waitForTimeout(600);
     await dragSheet(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    await page.click('#tourNext');
+    expect(await stepId(page)).toBe('counter');
     // back to Measure, then forward again: the sheet is where the drag left it
     await page.click('#tourBack');
     await page.click('#tourBack');
@@ -954,7 +963,8 @@ test.describe('Every button, on a blank sheet', () => {
     await page.waitForTimeout(2200);
     expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done])).toEqual(['move', false]);
     await dragSheet(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 4000 });
+    await expect(page.locator('#tourNext')).toBeEnabled();
+    expect(await page.evaluate(() => [window.App.tutorialStepId(), window.App.tutorialStepInfo().done])).toEqual(['move', true]);
   });
 
   test('?tour=blank, the Learn button and the Settings link start it; over a teaching set it resets without asking', async ({ page }) => {

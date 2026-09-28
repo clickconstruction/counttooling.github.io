@@ -14,6 +14,25 @@ expired recovery UX" work occupies that slot).
 ---
 
 
+## fix(tour): the blank-sheet tour's Move card says what Move does, in plain words (2026-09-28)
+
+Reported by an estimator on 2026-09-28: the card's language was confusing. It opened on a name
+for the tool nobody uses ("the resting tool, the one that is on when no other is"), put a gloss
+inside a clause inside a sentence ("it drags a mark, a thing you placed on the sheet, that sits
+in the wrong place"), and ended "brings you back here from any tool", where "here" was the tool,
+not the card or the place on the sheet.
+
+- **What it does comes first.** "Move slides the sheet, so you can look at another part of it."
+  Then the two steps, then one fact a line: the wheel zooms, Esc puts any tool down and gives
+  Move back, Move also slides a mark. "Resting tool" is gone from the card and from the Learn
+  guide's word list (the **Move** entry).
+- **The tablet card** got the same opening and the same last line, and "Put one finger on the
+  sheet and slide it a little" for "Drag the sheet a little with one finger".
+- Wording only: the step's check, target and do-it-for-me action are unchanged. The card is
+  413 px tall on a laptop (363 px on a tablet) and does not scroll. `mark` is still glossed on
+  this card, so scripts/score-courses.js's `FIRST_USE` table is unchanged.
+
+
 ## feat(settings): a project is renamed from Project Settings (PROJECT-RENAME, 2026-09-28)
 
 Reported by an estimator on 2026-09-28: "I am not finding where to rename a project under

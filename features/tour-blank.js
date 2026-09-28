@@ -459,9 +459,9 @@
     },
     {
       id: 'move', title: 'Header: Move', kind: 'do',
-      body: () => 'Move is the resting tool, the one that is on when no other is. It drags the sheet, and it drags a mark, a thing you placed on the sheet, that sits in the wrong place.\n' + (touch()
-        ? '1. In the header, tap [[Move]].\n2. Drag the sheet a little with one finger.\nTwo fingers pinch to zoom.'
-        : '1. In the header, click [[Move]] (or press M).\n2. Drag the sheet a little: hold the mouse button down and slide.\nThe mouse wheel zooms where the pointer is. The Esc key, at the top left of the keyboard, brings you back here from any tool.'),
+      body: () => 'Move slides the sheet, so you can look at another part of it.\n' + (touch()
+        ? '1. In the header, tap [[Move]].\n2. Put one finger on the sheet and slide it a little.\nTo zoom, pinch with two fingers.\nMove also slides a mark, a thing you placed on the sheet.'
+        : '1. In the header, click [[Move]] (or press M).\n2. Hold the mouse button down on the sheet and slide it a little.\nTo zoom, roll the mouse wheel.\nPress Esc, the key at the top left of the keyboard, to put any tool down. That gives you Move back.\nMove also slides a mark, a thing you placed on the sheet.'),
       target: ['#moveBtn', '#moveBtnSidebar'],
       check: () => { const s = S(); const p = s.pan || { x: 0, y: 0 }; if (!moveBase) { moveBase = { x: p.x, y: p.y, zoom: s.zoom }; return false; } const moved = Math.hypot(p.x - moveBase.x, p.y - moveBase.y) > 8 || Math.abs((s.zoom || 0) - (moveBase.zoom || 0)) > 0.01; return s.tool === App.TOOL.NONE && moved; },
       progress: () => (S().tool !== App.TOOL.NONE ? '' : 'Now drag the sheet'),

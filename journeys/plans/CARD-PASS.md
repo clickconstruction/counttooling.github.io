@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the six fixes are done. The pass starts at lesson `start`, card `(open)`.
+**Now:** the lessons. `start` and `plans` are done; `scale` is next, card `(open)`.
 
 ### The six fixes, before the pass
 
@@ -55,10 +55,22 @@ ticked chapter is done. The line under "Now" names the card in hand.
 
 ### The pass
 
+Engine changes the pass has made so far, which every later card gets for free:
+- On a touch screen "Click" reads "Tap", in the card and in its status line (`tapText`).
+- The sheet is lit only as far as it shows (the ring no longer draws lines across the sidebar).
+- A hands-off step's button can step aside (`action.show`): Sheets' opening card is two states.
+- Tools for the pass, in the session scratchpad: `cardshots.js <lesson:id | tour id> <outdir> [tablet] [only ids]`
+  walks an entry and prints each card with its chips, lit box and card box, and saves a screenshot;
+  `testat.sh <log> <specs>` runs specs against HEAD in a second worktree (`card-pass-test`), so the
+  tree being edited is never the tree under test.
+
+Found on the way, fixed: the page badge was described the wrong way round in three cards (a yellow
+NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
+
 ## The lessons (Start here, then the thirteen)  (features/lessons.js)
 
-- [ ] **start** (8): (open), header, sidebar, bottom, try, paths, words, (done)
-- [ ] **plans** (7): (open), jump, rotate, rename, marked, prepare, (done)
+- [x] **start** (8): (open), header, sidebar, bottom, try, paths, words, (done)
+- [x] **plans** (7): (open), jump, rotate, rename, marked, prepare, (done)
 - [ ] **scale** (7): (open), set, prove, zone, provezone, more, (done)
 - [ ] **counting** (7): (open), counter, place, bind, usekey, settings, (done)
 - [ ] **measuring** (7): (open), snap, trace, bends, drop, read, (done)

@@ -723,7 +723,7 @@
           reveal: 'Clearances, the free space around the fixtures. At 1/8" a restroom is an inch wide.\nNobody can check there that the room has its 60" circle to turn a wheelchair, or that a lavatory rim sits at 34".\nThe enlarged plan is where the accessibility dimensions live (ICC A117.1, the accessibility standard, through the building code). It is where the engineer proves the fixtures fit.\nFor the takeoff it is a second scale on the same set. It is also the easiest place to count a fixture twice: count the restrooms on one sheet, never both.\nLook closer, though: this P-401 does not match P-101. The rooms swap sides, and it draws five water closets and a urinal where P-101 draws one water closet a room.\nWhen two sheets disagree, count neither until an RFI says which one governs.',
           target: [], check: () => true },
         { id: 'scale', title: 'A scale per sheet', kind: 'do',
-          body: 'P-101 is at 1/8". This sheet is drawn at 1/4" and has no scale yet: its badge under PAGES is not outlined.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].',
+          body: 'P-101 is at 1/8". This sheet is drawn at 1/4" and has no scale yet: its number under PAGES is not yellow.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(K().P401, 18),
           action: { label: 'Use 1/4" = 1\'-0"', run: async () => { K().goPage(K().P401); await T().applyScalePreset('1/4" = 1\'', 18); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: 1, hold: true,

@@ -1406,8 +1406,12 @@
   // are gone and the header strip scrolls. (< 768 left every tour telling an iPad "in the left sidebar".)
   const isTouch = () => { try { return window.matchMedia('(pointer: coarse)').matches || isNarrow(); } catch (_) { return false; } };
   const isNarrow = () => { try { return window.matchMedia('(max-width: 768px)').matches; } catch (_) { return window.innerWidth <= 768; } };
+  const tapText = (t) => String(t).split(/(\[\[.+?\]\]|\{\{[^{}]+\}\})/).map((part, i) => (i % 2 ? part : part.replace(/(^|[^-\w])(C|c)lick(s|ed|ing)?\b(?!-)/g, (m, pre, c, end) => pre + (c === 'C' ? 'T' : 't') + (end === 'ed' ? 'apped' : end === 'ing' ? 'apping' : 'ap' + (end || ''))))).join('');
   const forTouch = (body) => {
     let b = String(body).replace(/\s*\((?:or )?press [^)]*\)/gi, '').replace(/^\d+\.\s+Press [^\n]*\n?/gim, '');
+    // a finger taps: "Click" reads "Tap" (never inside a control's name or a pointer's selector, and
+    // a right-click or a double-click keeps its own wording, which its card settles)
+    b = tapText(b);
     if (isNarrow() && /left sidebar/i.test(b)) b = b.replace(/[Ii]n the left sidebar/, (m) => (m[0] === 'I' ? 'In the sidebar (tap ☰ at the top left to open it)' : 'in the sidebar (tap ☰ at the top left to open it)'));
     return b;
   };
@@ -1453,7 +1457,8 @@
     const ready = step.kind === 'read' || done;
     const zones = stepZones(step);
     const show = el('tourShow');
-    if (step.handsOff && !done) { show.style.display = ''; show.textContent = step.action.label; }
+    if (step.handsOff && !done && !(step.action.show && !step.action.show())) { show.style.display = ''; show.textContent = step.action.label; }
+    else if (step.handsOff && !done) show.style.display = 'none';   // its button is pressed and the app's own dialog has the next click
     else if (step.kind === 'do' && !done) { show.style.display = ''; show.textContent = 'Show me where'; }
     else show.style.display = 'none';
     const alt = el('tourAlt');
@@ -1472,7 +1477,8 @@
     const progress = counted.length > 1 ? counted.filter((z) => z.done).length + ' of ' + counted.length + ' done' : '';
     const miss = step.kind === 'do' && !done ? hintOf(step) : { text: '', code: null };
     const pageLine = wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '';
-    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
+    const statusLine = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
+    el('tourStatus').textContent = isTouch() ? tapText(statusLine) : statusLine;
     el('tourStatus').classList.toggle('tour-status-miss', !!miss.text);
     // A finished step has no Show me where, so its ✓ Done would sit on a row of its own above Back and
     // Next: it joins their row instead, at the left, and the emptied row goes (Will, 2026-09-27).
@@ -1528,8 +1534,17 @@
       const pad = 6;
       spot.style.display = '';
       spot.classList.toggle('has-zones', !modalOpen && stepZones(step).length > 0 && (step.page == null || state().currentPage === step.page));
-      spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
-      spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
+      // The sheet is lit as far as it shows: zoomed in, its box runs on under the sidebar and the
+      // header, and the ring's edges drew lines across them (the card pass, Start here's undo card).
+      let lit = r;
+      const wrap = el('canvasWrapper');
+      if (wrap && wrap.contains(target)) {
+        const w = wrap.getBoundingClientRect();
+        const x1 = Math.max(r.left, w.left + pad), y1 = Math.max(r.top, w.top + pad), x2 = Math.min(r.right, w.right - pad), y2 = Math.min(r.bottom, w.bottom - pad);
+        if (x2 > x1 && y2 > y1) lit = { left: x1, top: y1, right: x2, bottom: y2, width: x2 - x1, height: y2 - y1 };
+      }
+      spot.style.left = (lit.left - pad) + 'px'; spot.style.top = (lit.top - pad) + 'px';
+      spot.style.width = (lit.width + pad * 2) + 'px'; spot.style.height = (lit.height + pad * 2) + 'px';
       // The lit area glows as the light lands on it, then fades to the resting ring: a highlighter's
       // stroke, so the eye finds the area before it reads the card (Will, 2026-09-27). A large area
       // (the sheet itself) takes the halo without the wash. styles.css: .tour-spot.is-arriving.

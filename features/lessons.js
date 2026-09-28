@@ -438,16 +438,23 @@
   // promise. The intro is also the row's subtitle in Learn, so a reader who came from the menu has
   // just read it: a lesson that gives an `opener` gets a card that is the opener and the one action,
   // nothing repeated (Start here does; Will, 2026-09-27).
+  const trimUp = () => { const m = el('preparePdfModal'); return !!m && m.classList.contains('visible'); };
   const openStep = (lesson) => ({
     id: 'sheets', title: lesson.openerTitle || lesson.title, kind: 'do', titleAlign: lesson.openerTitle ? 'center' : undefined,
     // an opener card has one button and nothing else to do, so it does not say "click it" (Will, 2026-09-27)
-    body: (lesson.opener || lesson.intro) + (lesson.opener ? '' : '\n1. Click [[Open the lesson sheets]] below.') + (lesson.trimByHand ? '\n2. Trim your set opens, as it does for any PDF, a drawing file, with three sheets or more. It is where a 120-sheet set, the whole stack of drawings, becomes the 9 you are bidding. Keep all ' + (setOf(lesson).word || 'four') + ' and click [[Open]].\nSigned in, click Open, not Save & open, so the sample stays out of your saved projects.' : '') + (lesson.opener ? '' : '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.'),
+    // A lesson that goes through Trim your set by hand (Sheets) is a card in two states: the opener and
+    // its button, then, with the dialog up, what the dialog is and the one click it wants. Until the card
+    // pass the second state was written ahead of time, as a lone numbered paragraph about a dialog not
+    // yet on screen, and the card's own button stayed up over it. Save & open exists only signed in.
+    body: () => (lesson.trimByHand && trimUp()
+      ? 'This is Trim your set. It opens for any PDF, a drawing file, with three sheets or more.\nIt is where a 120-sheet set, the whole stack of drawings, becomes the 9 you are bidding.\n1. Keep all ' + (setOf(lesson).word || 'four') + ', and click [[Open]].' + (S().supabaseSession ? '\nClick Open, not Save & open, so the sample stays out of your saved projects.' : '')
+      : (lesson.opener || lesson.intro) + (lesson.opener ? '' : '\n1. Click [[Open the lesson sheets]] below.') + (lesson.opener ? '' : '\nThe ' + (lesson.noun || 'lesson') + ' brings its own ' + (setOf(lesson).word || 'four') + ' sample sheets and whatever it takes for granted, already on them. Nothing here touches your projects.')),
     // Trim your set's Open when it is up, else nothing: lighting the header's Upload PDF sent a reader to
     // a file picker with no lesson PDF in it, the card's own button being the door (PERSONA-PASS)
     target: ['#preparePdfDone'],
     check: () => { seedIfReady(lesson); return isSetOpen(lesson) && seededFor === lesson.id; },
     handsOff: true,   // fetching the sample sheets is the app's job: this step's button does it
-    action: { label: 'Open the lesson sheets', run: () => openSheetsFor(lesson) },
+    action: { label: 'Open the lesson sheets', run: () => openSheetsFor(lesson), show: () => !trimUp() },   // pressed, it goes: the dialog is the next click
   });
   const doneStep = (lesson, body) => ({ id: 'done', title: 'That is ' + lesson.short, kind: 'read', body, target: [], check: () => true });
 
@@ -471,10 +478,12 @@
       seed() { makeTbCounter(); },
       steps: [
         { id: 'header', title: 'The header, the bar across the top', kind: 'read',
-          body: 'It holds the tools, such as [[Set Scale]], [[Counter]] and [[Measure]].\nThe tools that do not fit sit behind [[⋯]].\nMost tools have a one-key shortcut. Click [[shortcuts]], at the bottom right of the screen, to see every key.',
+          // the last line is the one place the cards say their names can be clicked: every card after relies on it
+          body: () => 'It holds the tools, such as [[Set Scale]], [[Counter]] and [[Measure]].\nThe tools that do not fit sit behind [[⋯]].' + (onTouch() ? '' : '\nMost tools have a one-key shortcut. Click [[shortcuts]], at the bottom right of the screen, to see every key.') + '\nClick a name on any card, and the app lights up the real one.',
           target: ['.header'], check: () => true },
         { id: 'sidebar', title: 'The sidebar, the lists down the left', kind: 'read',
-          body: 'PAGES lists the sheets. COUNTERS are the things you count, one named tally each. LINE TYPES are the kinds of pipe you measure, by size and material.\nSUMMARY keeps the running totals. A bid is your price for a job, and BID CHECK lists what a bid must answer before it goes out.\nEXPORT OPTIONS makes the files you send out.',
+          // in the order the sidebar has them; the last three sit under the fold of a laptop screen
+          body: 'PAGES lists the sheets. COUNTERS are the things you count, one named tally each. LINE TYPES are the kinds of pipe you measure, by size and material.\nFurther down: a bid is your price for a job, and BID CHECK lists what a bid must answer before it goes out.\nSUMMARY keeps the running totals, and EXPORT OPTIONS makes the files you send out.',
           target: ['.sidebar'], check: () => true },
         { id: 'bottom', title: 'Under the sheet: the footer and the status bar', kind: 'read',
           body: 'The {{footer|.page-zoom-row}} comes first. It {{turns the pages|.page-nav}} and {{zooms in and out|.zoom-bar}}.\nThe {{status bar|.status-bar}} is the strip below it, along the very bottom. It says {{where your work is saved|#statusMode}}, and when.',
@@ -484,8 +493,9 @@
         // what it has seen since the card opened.
         { id: 'try', title: 'Make a mistake, then undo it', kind: 'do', hold: true,   // the ✓ waits for Next
           body: () => 'Every click on the sheet now places a mark.\n1. Click outside the orange circle. That mark is your mistake.\n2. ' + (onTouch() ? 'Tap [[Undo]] in the footer to undo it.' : 'Press ' + undoKey() + ' to undo it, or click [[Undo]] in the footer.') + '\n3. Click inside the circle.\nThe app keeps your last 50 moves, and each undo says how many are left.',
-          // the Title block row is named too, so the card keeps off it: the not-armed line sends the reader there
-          target: () => ['#annCanvas', '#countersList [data-counter-id="' + idOf(tbCounter()) + '"]'], page: P101,
+          // the Title block row is named too, so the card keeps off it: the not-armed line sends the reader there.
+          // And the footer's Undo, which step 2 asks for: the card sat on it at 1280 x 720 (the card pass)
+          target: () => ['#annCanvas', '#countersList [data-counter-id="' + idOf(tbCounter()) + '"]', '#undoBtn'], page: P101,
           onEnter: () => { tryLatch = { stray: false, undone: false }; const c = tbCounter(); if (c) arm(c); },
           zones: () => circlesFor(P101, tbCounter(), [TB], 26),
           check: () => { const t = tryState(); return t.inside && !t.strayNow && tryLatch.stray && tryLatch.undone; },
@@ -506,7 +516,7 @@
           body: 'Three ways on from here, all under [[Learn]].\nA tour: five minutes, one small takeoff in your trade, start to finish.\nThe thirteen lessons: two or three minutes each, one part of the app at a time.\nA course: about ninety minutes that teach the trade itself, off an engineer\'s drawings.\nLearn is on the empty screen, and under Project Settings, the gear in the header: open Help, then lessons.\nWhen this lesson ends, Learn opens with the tours at the top.',
           target: ['#settingsGearBtn', '#sidebarLogoGear'], check: () => true },
         { id: 'words', title: 'The words', kind: 'read',
-          body: 'A card says what a word means the first time it uses it.\nForgot one? Type it in the box at the top of [[Learn]], and its meaning comes up.\nThe whole list is Words the cards use, in the guide [Learn CountTooling by doing](/guides/learning-the-app/).\nThe guides are always under Project Settings, then Help.',
+          body: 'A card says what a word means the first time it uses it.\nOn a later card the word wears a dotted underline. Click it, and its meaning opens under the card\'s text.\nForgot one? Type it in the box at the top of [[Learn]], and its meaning comes up.\nThe whole list is Words the cards use, in the guide [Learn CountTooling by doing](/guides/learning-the-app/).',
           target: [], check: () => true },
       ],
       done: 'What this is, where things are, and how to undo a mistake.\nNext: [[Learn]] → a tour, a lesson or a course.',
@@ -520,7 +530,7 @@
       seed() { setScale(P101, 9, '1/8" = 1\''); mark(P101, makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'), [FD.kitchen1, FD.kitchen2]); p501Label = S().pages[P501].label; },
       steps: [
         { id: 'jump', title: 'Go to a sheet', kind: 'do',
-          body: '1. In the left sidebar, the column of lists on the left, under PAGES, click the third sheet, P-501.\nThe {{number badge|#pagesList .page-num-badge-wrap}} beside each sheet tells you two things. It is outlined once the sheet has a scale: how many feet of building one inch of paper stands for. It is filled once the sheet carries marks, the clicks you counted on it.\nThe {{arrows under the sheet|.page-nav}} step through the set (or press the left and right arrow keys).',
+          body: '1. In the left sidebar, the column of lists on the left, under PAGES, click the third sheet, P-501.\nThe {{arrows under the sheet|.page-nav}} step through the set, one sheet at a time (or press the left and right arrow keys).',
           target: ['#pagesList', '#pagesSectionTitle'], check: () => onPage(P501),
           action: { label: 'Go to P-501', run: () => goPage(P501) } },
         { id: 'rotate', title: 'Turn a sideways sheet', kind: 'do',
@@ -530,16 +540,18 @@
           action: { label: 'Turn it for me', run: () => { goPage(P501); if (((S().pages[P501] || {}).rotation || 0) !== 90) el('rotatePage').click(); } } },
         { id: 'rename', title: 'Name a sheet', kind: 'do',
           // a tablet has no Enter key off the screen, and the engine drops a step that starts "Press" there
-          body: () => 'A sheet names itself from its title block, the box in the corner with its name, number and scale. That is how this one became "P-501".\n1. Under PAGES, click the number badge beside P-501.\n2. Type a name you would search for, such as P-501 Fixture Schedule.\n3. ' + (onTouch() ? 'Tap Enter on the keyboard.' : 'Press Enter.') + '\nWhen a scan has no title block the app can read, name the sheet yourself. Reports and exports use this name.',
+          body: () => 'A sheet names itself from its title block, the box in the corner with its name, number and scale. That is how this one became "P-501 · Schedules".\n1. Under PAGES, click the number badge beside P-501.\n2. Type a name you would search for, such as P-501 Fixture Schedule.\n3. ' + (onTouch() ? 'Tap Enter on the keyboard.' : 'Press Enter.') + '\nWhen a scan has no title block the app can read, name the sheet yourself. Reports and exports use this name.',
           target: ['#pagesList .sidebar-item.active .page-num-badge-wrap', '#pagesList'], check: () => { const p = S().pages[P501]; return !!p && !!p.label && p.label !== p501Label; },
           action: { label: 'Name it for me', run: () => { const p = S().pages[P501]; App.pushUndoSnapshot(); p.label = 'P-501 Fixture Schedule'; dirty(); } } },
         { id: 'marked', title: 'Jump to the sheets that matter', kind: 'do',
-          body: 'On a sixty-sheet set only a few carry your marks. This lesson put two floor drains, drains set in the floor, on P-101.\n1. In the footer, click [[Previous marked page]] (or press Shift and the left arrow).\nIt skips every sheet with nothing on it.',
-          target: ['#prevMarkedPage'], check: () => onPage(P101),
+          // the badge is read here, where one wears the outline to look at (it was explained on the first card, two cards
+          // before it mattered, and the wrong way round: styles.css, a yellow number for a scale, a yellow outline for marks)
+          body: 'On a sixty-sheet set only a few carry your marks, the clicks you counted. This lesson put two floor drains, drains set in the floor, on P-101.\nUnder PAGES, the {{number badge|#pagesList .page-num-badge-wrap}} of a sheet with marks wears a yellow outline. Only P-101\'s does.\n1. In the footer, click [[Previous marked page]] (or press Shift and the left arrow).\nIt skips every sheet with nothing on it.',
+          target: ['#prevMarkedPage', '#pagesList'], check: () => onPage(P101),
           action: { label: 'Jump for me', run: () => el('prevMarkedPage').click() } },
         { id: 'prepare', title: 'Before a real set opens', kind: 'read',
           // Upload PDF leaves the screen once a set is open, so the card lights the door that is there: Project Settings
-          body: 'On the empty screen, [[Upload PDF]] brings in a set, and takes several files at once. A PDF with three sheets or more opens in Trim your set, the dialog you saw at the start. Signed in, every new set opens there.\nThere, click the sheets you do not need. Or click [[Keep none]] and click the ones you do.\nOpen a sheet there to turn it, then click [[Open]].\nWith a set open, [[Project Settings]] has Add pages. The new sheets join the end of the set.\nThe whole walk: [Preparing a plan set](/guides/preparing-a-plan-set/).',
+          body: 'On the empty screen, [[Upload PDF]] brings in a set, and takes several files at once.\nThree sheets or more open in Trim your set, the dialog you saw at the start. There, click the sheets you do not need. Or click Keep none, then the ones you do.\nWith a set open, [[Project Settings]] has Add pages. The new sheets join the end of the set.\nThe whole walk: [Preparing a plan set](/guides/preparing-a-plan-set/).',
           target: ['#uploadPdf', '#uploadPdfSidebar', '#settingsGearBtn', '#sidebarLogoGear'], check: () => true },
       ],
       done: 'Find a sheet, turn it, name it, jump between the ones with marks.\nNext: [[Learn]] → Scale, because nothing measured is right until the scale is.',
@@ -552,7 +564,7 @@
       seed() { setScale(P101, 9, '1/8" = 1\''); },
       steps: [
         { id: 'set', title: 'Each sheet has its own scale', kind: 'do',
-          body: 'This sheet, P-401, is drawn at 1/4" = 1\'-0": a quarter inch on paper is a foot of building. It has no scale in the app yet, so its badge under PAGES is not outlined.\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].\nP-101 is already set at 1/8". Every length the app reports on a sheet hangs off that sheet\'s scale.',
+          body: 'This sheet, P-401, is drawn at 1/4" = 1\'-0": a quarter inch on paper is a foot of building. It has no scale in the app yet, so its number under PAGES is not yellow.\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/4" = 1\']].\nP-101 is already set at 1/8". Every length the app reports on a sheet hangs off that sheet\'s scale.',
           // in the dialog: the 1/4" preset once the list is up, the tab until then
           target: () => { const i = Array.from(document.querySelectorAll('#scalePresetsList button')).findIndex((b) => b.textContent.trim() === '1/4" = 1\''); return (i < 0 ? [] : ['#scalePresetsList button:nth-of-type(' + (i + 1) + ')']).concat(['#scaleModalTabs .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar']); },
           check: () => scaleIs(P401, 18),

@@ -976,6 +976,98 @@ test('pageHasAnyAnnotations counts a page with only duct runs as marked', () => 
   assert.ok(m.pageHasAnyAnnotations(page));
 });
 
+// --- S08: one mark-presence predicate (REAPPLY-DUCT) -----------------------------
+// Every key makeAnnotations() returns is classified in ANNOTATION_KINDS. A new
+// annotation kind added to makeAnnotations() without a row there fails HERE, by name.
+{
+  const { ANNOTATION_KINDS, countAnnotationMarks, annotationHasMarks } = require('./annotation-model.js');
+  const ROLES = ['mark', 'placement', 'derived'];
+  const SHAPES = ['list', 'byId', 'one'];
+  const OPTIONS = ['zones', 'ghosts', 'fittings'];
+  // One item of each shape, so every kind can be tried alone.
+  const sampleFor = (shape) => (shape === 'byId' ? { c1: [{ x: 1, y: 1 }] } : shape === 'one' ? { x: 1, y: 1, w: 10, h: 10 } : [{ x: 1, y: 1 }]);
+  const alone = (key) => { const m = createAnnotationModel(makeCtx({}).ctx); const a = m.makeAnnotations(); a[key] = sampleFor(ANNOTATION_KINDS[key].shape); return a; };
+
+  test('S08: every makeAnnotations() key is classified as a mark, a placement or derived', () => {
+    const m = createAnnotationModel(makeCtx({}).ctx);
+    for (const key of Object.keys(m.makeAnnotations())) {
+      const kind = ANNOTATION_KINDS[key];
+      assert.ok(kind, 'annotation kind "' + key + '" is not classified in annotation-model.js ANNOTATION_KINDS: say whether it is a mark, a placement or derived');
+      assert.ok(ROLES.includes(kind.role), '"' + key + '" has role ' + kind.role + ', not one of ' + ROLES.join(' / '));
+      assert.ok(SHAPES.includes(kind.shape), '"' + key + '" has shape ' + kind.shape + ', not one of ' + SHAPES.join(' / '));
+      if (kind.option) assert.ok(OPTIONS.includes(kind.option), '"' + key + '" has option ' + kind.option + ', not one of ' + OPTIONS.join(' / '));
+    }
+    for (const key of Object.keys(ANNOTATION_KINDS)) {
+      assert.ok(key in m.makeAnnotations(), 'ANNOTATION_KINDS classifies "' + key + '", which makeAnnotations() no longer returns');
+    }
+  });
+
+  test('S08: each kind alone decides "has marks" by its role, and an option flips only its own kinds', () => {
+    for (const key of Object.keys(ANNOTATION_KINDS)) {
+      const kind = ANNOTATION_KINDS[key];
+      const ann = alone(key);
+      assert.strictEqual(annotationHasMarks(ann), kind.role === 'mark', key + ' alone, default options');
+      if (kind.option) {
+        assert.strictEqual(annotationHasMarks(ann, { [kind.option]: true }), true, key + ' alone, ' + kind.option + ': true');
+        assert.strictEqual(annotationHasMarks(ann, { [kind.option]: false }), false, key + ' alone, ' + kind.option + ': false');
+      }
+      OPTIONS.filter((o) => o !== kind.option).forEach((o) => {
+        assert.strictEqual(annotationHasMarks(ann, { [o]: true }), kind.role === 'mark', key + ' alone is not moved by ' + o);
+      });
+    }
+    // The legend's placement never counts, whatever the options.
+    assert.strictEqual(annotationHasMarks(alone('legend'), { zones: true, ghosts: true, fittings: true }), false);
+  });
+
+  test('S08: the default is marks and zones; ghosts and fittings only when asked', () => {
+    const on = Object.keys(ANNOTATION_KINDS).filter((k) => annotationHasMarks(alone(k))).sort();
+    assert.deepStrictEqual(on, ['counterMarkers', 'ductRuns', 'highlights', 'multiplyZones', 'notes', 'polylines', 'quickLines', 'roomBoxes', 'scaleZones']);
+    assert.strictEqual(ANNOTATION_KINDS.ghosts.option, 'ghosts');
+    assert.strictEqual(ANNOTATION_KINDS.ductFittings.role, 'derived');
+  });
+
+  test('S08: countCanvasMarks counts each marker, run, zone and box once; empty counter lists count nothing', () => {
+    const m = createAnnotationModel(makeCtx({}).ctx);
+    const ann = m.makeAnnotations();
+    ann.counterMarkers = { a: [{}, {}], b: [], c: [{}] };
+    ann.quickLines.push({}); ann.polylines.push({}, {}); ann.ductRuns.push({});
+    ann.roomBoxes.push({}); ann.notes.push({}); ann.highlights.push({});
+    ann.multiplyZones.push({}); ann.scaleZones.push({});
+    ann.ghosts.push({}); ann.ductFittings.push({}, {}); ann.legend = { x: 0, y: 0 };
+    assert.strictEqual(m.countCanvasMarks(ann), 3 + 1 + 2 + 1 + 1 + 1 + 1 + 2);
+    assert.strictEqual(m.countCanvasMarks(ann, { zones: false }), 3 + 1 + 2 + 1 + 1 + 1 + 1);
+    assert.strictEqual(m.countCanvasMarks(ann, { ghosts: true, fittings: true }), 12 + 1 + 2);
+    assert.strictEqual(countAnnotationMarks(null), 0);
+    assert.strictEqual(m.countCanvasMarks(undefined), 0);
+    // A counter whose last marker was deleted leaves an empty list: nothing is on the page.
+    const emptied = m.makeAnnotations(); emptied.counterMarkers = { a: [] };
+    assert.strictEqual(m.pageHasAnyAnnotations({ canvases: [{ annotations: emptied }] }), false);
+  });
+
+  test('S08: pageHasAnyAnnotations and projectHasAnyCanvasMarkup take the same options', () => {
+    const state = { pages: [] };
+    const m = createAnnotationModel(makeCtx(state).ctx);
+    const zoneOnly = m.makeAnnotations(); zoneOnly.scaleZones.push({});
+    const ghostOnly = m.makeAnnotations(); ghostOnly.ghosts.push({});
+    state.pages = [{ canvases: [{ annotations: ghostOnly }] }, { canvases: [{ annotations: zoneOnly }] }];
+    assert.strictEqual(m.pageHasAnyAnnotations(state.pages[1]), true);
+    assert.strictEqual(m.pageHasAnyAnnotations(state.pages[1], { zones: false }), false);
+    assert.strictEqual(m.pageHasAnyAnnotations(state.pages[0]), false);
+    assert.strictEqual(m.pageHasAnyAnnotations(state.pages[0], { ghosts: true }), true);
+    assert.strictEqual(m.projectHasAnyCanvasMarkup(), true);
+    assert.strictEqual(m.projectHasAnyCanvasMarkup({ zones: false }), false);
+    assert.strictEqual(m.projectHasAnyCanvasMarkup({ zones: false, ghosts: true }), true);
+    // A canvas with no annotations object is empty, not an error.
+    assert.strictEqual(m.pageHasAnyAnnotations({ canvases: [{}] }), false);
+  });
+
+  test('REAPPLY-DUCT: a backup layer holding only duct runs has marks', () => {
+    const m = createAnnotationModel(makeCtx({}).ctx);
+    const canvases = [{ id: 'cv1', name: 'Main', annotations: { ductRuns: [{ id: 'r1' }] } }];
+    assert.strictEqual(m.pageHasAnyAnnotations({ canvases }, { ghosts: true }), true);
+  });
+}
+
 test('rotateAnnotations rotates duct run vertices and free fitting positions; indices untouched', () => {
   const state = { pages: [] };
   const m = createAnnotationModel(makeCtx(state).ctx);

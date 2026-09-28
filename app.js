@@ -263,8 +263,10 @@
   function getActiveAnnotations(page, pageIdxHint) { return annotationModel.getActiveAnnotations(page, pageIdxHint); }
   function getMergedAnnotationsForPage(page, onlyIds) { return annotationModel.getMergedAnnotationsForPage(page, onlyIds); }
   function ensureActiveCanvas(page) { return annotationModel.ensureActiveCanvas(page); }
-  function pageHasAnyAnnotations(p) { return annotationModel.pageHasAnyAnnotations(p); }
-  function projectHasAnyCanvasMarkup() { return annotationModel.projectHasAnyCanvasMarkup(); }
+  function pageHasAnyAnnotations(p, opts) { return annotationModel.pageHasAnyAnnotations(p, opts); }
+  function projectHasAnyCanvasMarkup(opts) { return annotationModel.projectHasAnyCanvasMarkup(opts); }
+  // One count for "how many marks are on this layer": the confirms name it (S08: the model's table).
+  function countCanvasMarks(ann, opts) { return annotationModel.countCanvasMarks(ann, opts); }
   function backupDataToProjFormat(data) { return annotationModel.backupDataToProjFormat(data); }
   function computePageBakeFrame(p) { return annotationModel.computePageBakeFrame(p); }
   function applyTakeoffBackupToState(backup) { return annotationModel.applyTakeoffBackupToState(backup); }
@@ -3149,13 +3151,6 @@
     });
   }
   buildSelectSegments();
-  // One count for "how many marks are on this layer": the confirms name it.
-  function countCanvasMarks(ann) {
-    ann = ann || {};
-    let n = 0;
-    if (ann.counterMarkers) Object.keys(ann.counterMarkers).forEach((k) => { n += (ann.counterMarkers[k] || []).length; });
-    return n + (ann.quickLines || []).length + (ann.polylines || []).length + (ann.ductRuns || []).length + (ann.roomBoxes || []).length + (ann.notes || []).length + (ann.highlights || []).length;
-  }
   function showModal(id) {
     const el = document.getElementById(id);
     el.classList.add('visible');
@@ -4271,50 +4266,10 @@
   // prefetched export view-link cache) moved to features/output.js; the Share
   // modal's revoke clears that cache via App.onViewLinkRevoked().
 
-  document.getElementById('bundleHighlights').onclick = async () => {
-    if (!App.hasAnyHighlights()) return;
-    const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { showToast('Highlight Pages (PDF) requires jsPDF. Please refresh the page.', 4000); return; }
-    const btn = document.getElementById('bundleHighlights');
-    const origText = btn.textContent;
-    btn.textContent = 'Opening…';
-    const EXPORT_SCALE = 4;
-    const exportOverrides = { markerScale: state.exportSettings.markerScale ?? 0.75, lineScale: state.exportSettings.lineScale ?? 0.75 };
-    try {
-      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-      await App.addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
-      const blobUrl = doc.output('bloburl');
-      window.open(blobUrl, '_blank');
-    } catch (err) {
-      console.error(err);
-      showToast('Export failed: ' + (err.message || err), 5000);
-    }
-    btn.textContent = origText;
-  };
-
-  document.getElementById('bundleNotes').onclick = async () => {
-    if (!App.hasAnyNotes()) return;
-    const jsPDFLib = window.jspdf;
-    if (!jsPDFLib || !jsPDFLib.jsPDF) { showToast('Note Pages (PDF) requires jsPDF. Please refresh the page.', 4000); return; }
-    const btn = document.getElementById('bundleNotes');
-    const origText = btn.textContent;
-    btn.textContent = 'Opening…';
-    const EXPORT_SCALE = 4;
-    const exportOverrides = { markerScale: state.exportSettings.markerScale ?? 0.75, lineScale: state.exportSettings.lineScale ?? 0.75 };
-    try {
-      const doc = new jsPDFLib.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
-      await App.addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides });
-      const blobUrl = doc.output('bloburl');
-      window.open(blobUrl, '_blank');
-    } catch (err) {
-      console.error(err);
-      showToast('Export failed: ' + (err.message || err), 5000);
-    }
-    btn.textContent = origText;
-  };
-
   // PDF bundling helpers (addReportPagesToPdf / addNotesToPdf / addHighlightsToPdf
-  // / hasAnyHighlights / hasAnyNotes) moved to features/pdf-bundle.js.
+  // / hasAnyHighlights / hasAnyNotes) moved to features/pdf-bundle.js; the
+  // sidebar Highlight / Note Pages (PDF) buttons are bound in features/output.js
+  // (App.openBundlePdf, BUNDLE-ONE-SHEET).
   // SECTION: Custom icon upload handler
   // The #customIconUploadInput handler + parseUploadedSvg live in
   // features/custom-icon-upload.js (split #37).

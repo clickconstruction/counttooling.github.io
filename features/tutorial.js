@@ -22,6 +22,9 @@
  * (answer: a doing step that asks with its task. Once the check passes, the card shows the answer
  * in place of the task and waits for Next, as `hold` does. The answer used to open the NEXT card,
  * which then did two jobs: the last answer and its own task; the card review, fix 4)
+ * (keys: a card about the keyboard, the number row and its quick keys. A tablet or a phone has no
+ * keys, so there the tour leaves the card out: its steps are counted and walked without it; the
+ * card review, fix 5)
  * (rules: the rulebook ids, from rules/rules.json, whose values the step teaches, and
  * rulesExempt: why a step that cites a code section names none, usually a section the
  * rulebook has no entry for yet. Neither changes the tour; scripts/check-lesson-rules.js, in
@@ -2037,6 +2040,8 @@
     setSearchWords(snap);
     if (App.updateUI) App.updateUI();
   }
+  // The steps a tour walks on THIS device: a `keys` card is left out where there are no keys.
+  const stepsFor = (def) => { const all = (def && def.steps) || []; return isTouch() ? all.filter((st) => !st.keys) : all; };
   function startTutorial(id) {
     const s = state();
     if (s.currentProjectId) { App.showToast('Close the cloud project first: the tour runs on the sample plan'); return false; }
@@ -2047,7 +2052,7 @@
     // its "left" event is logged. The same tour again starts over from its first step.
     if (active) stopTutorial(false, { switching: true });
     tourId = TOURS[id] ? id : 'electrical';
-    STEPS = TOURS[tourId].steps;
+    STEPS = stepsFor(TOURS[tourId]);
     active = true;
     stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     hintsLogged = new Set(); statusCode = null; litEl = null;
@@ -2252,6 +2257,7 @@
         if (st.page != null) m.page = st.page;
         ['hint', 'progress', 'action', 'handsOff', 'hold'].forEach((k) => { if (st[k]) m[k] = true; });
         if (st.answer) m.hold = true;
+        if (st.keys) m.keys = true;
         if (Array.isArray(st.rules) && st.rules.length) m.rules = st.rules.slice();
         if (st.rulesExempt) m.rulesExempt = String(st.rulesExempt);
         return m;
@@ -2299,7 +2305,7 @@
   App.tutorialIds = () => Object.keys(TOURS);
   App.tutorialManifest = manifestOf;
   // Each step's card text alone, body then reveal, in step order: what features/learn-taps.js reads a run of cards from.
-  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? (def.steps || []).map((st) => stepText(st.body) + (st.answer ? '\n' + stepText(st.answer) : '') + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
+  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? stepsFor(def).map((st) => stepText(st.body) + (st.answer ? '\n' + stepText(st.answer) : '') + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
   App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake

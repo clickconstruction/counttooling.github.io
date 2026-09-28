@@ -772,3 +772,35 @@ test('Check: the proof step wants the breakdown the card names', async ({ page }
   await page.waitForFunction(() => window.App.tutorialStepInfo().done === true, null, { timeout: 5000 });
   expect(errors).toEqual([]);
 });
+
+// A tablet has no number row: the cards that teach it (`keys: true`) are left out there, and the
+// lesson is counted and walked without them (the card review, fix 5).
+test.describe('Counting on a tablet', () => {
+  test.use({ viewport: { width: 1024, height: 768 }, hasTouch: true });
+  test('the number-key cards are left out, the count of steps says so, and the recap drops the key', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = [];
+    await page.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (/pointer:\s*coarse/.test(q) ? Object.assign({}, { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }) : mm(q)); });
+    await boot(page, '/app/', errors);
+    expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 5');
+    const { walked, skipped } = await walk(page);
+    expect(skipped).toEqual([]);
+    expect(walked).toEqual(['sheets', 'counter', 'place', 'settings', 'done']);
+    // the manifest still lists them, flagged, for the harness
+    const keys = await page.evaluate(() => window.App.tutorialManifest('lesson:counting').steps.filter((s) => s.keys).map((s) => s.id));
+    expect(keys).toEqual(['bind', 'usekey']);
+    expect(errors).toEqual([]);
+  });
+  test('the recap names no number key', async ({ page }) => {
+    const errors = [];
+    await page.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (/pointer:\s*coarse/.test(q) ? Object.assign({}, { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }) : mm(q)); });
+    await boot(page, '/app/', errors);
+    expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets');
+    await page.evaluate(() => window.App.tutorialGoTo('done'));
+    await expect(page.locator('#tourBody')).toContainText('A counter and a count.');
+    await expect(page.locator('#tourBody')).not.toContainText('number key');
+  });
+});

@@ -449,13 +449,14 @@
           hint: () => (marks(RE.fs) ? 'One more: ' + (markNear(RE.fs, SPOTS().fs[0], 8) ? 'by the dishwasher in the dish pit' : 'below the prep sink on the hall wall') : ''),
           action: { label: 'Click both for me', run: () => { K().goPage(K().P101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('fs'), SPOTS().fs); K().dirty(); } } },
         { id: 'primers', title: 'What the FD keynote costs', kind: 'do',
+          answer: 'Ten primers now ride the ten marks, and go if a mark goes.',
           rules: ['plumb.trap.seal'],
           body: 'Now the FD keynote: FLOOR DRAIN W/ TRAP PRIMER, TYP. TYP., typical, means every one, and none of the ten primers is drawn.\n1. In the sidebar, click the pencil beside FD-1.\n2. Under [[Child counts]], add a row: Trap primer, 1 per count. A child count rides along with every mark.\n3. Click {{Done|#counterLineTypeDetailsClose}}.\nA trap is the U-bend under a drain that holds water, so sewer gas stays down. A drain that sees no water for months dries out. The primer drips water into it from a cold line (IPC 1002.4). One primer valve with a small manifold, a pipe that splits one feed into several, can serve several drains. Then the bid carries fewer valves and more small tubing.',
           target: () => T().ladder('#childCountsGroup', T().pencilOf('counter', counter(RE.fd)), '#countersSection'),
           check: () => { const c = counter(RE.fd); return !!(c && (c.childCounts || []).some((ch) => /primer/i.test(ch.name || ''))); },
           action: { label: 'Add Trap primer · 1 per count', run: () => { const c = pick('fd'); if ((c.childCounts || []).some((ch) => /primer/i.test(ch.name || ''))) return; App.pushUndoSnapshot(); c.childCounts = (c.childCounts || []).concat([{ name: 'Trap primer', qty: 1, per: 'count' }]); K().dirty(); } } },
-        { id: 'keys', title: 'Put the counters on the number row', kind: 'do',
-          body: 'Ten primers now ride the ten marks, and go if a mark goes. Quick keys put a counter on a number key, so pressing 1 arms it.\n1. In the {{status bar|.status-bar}} at the bottom right, click [[quick keys]].\n2. Beside key 1, choose FD-1.\n3. Beside key 2, choose HS-1.\n4. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
+        { id: 'keys', title: 'Put the counters on the number row', kind: 'do', keys: true,
+          body: 'Quick keys put a counter on a number key, so pressing 1 arms it.\n1. In the {{status bar|.status-bar}} at the bottom right, click [[quick keys]].\n2. Beside key 1, choose FD-1.\n3. Beside key 2, choose HS-1.\n4. Close the dialog.\nOn a real sheet the rhythm is 1, click, click, 2, click, click, and the hand never leaves the plan.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
           // engine closed the dialog under a reader who had not reached key 2 (by hand, 2026-09-25)

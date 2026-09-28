@@ -420,7 +420,7 @@
           target: ['#annCanvas', '#counterQuickCountAdd', '#addCounter'], check: () => allDone(circlesOn(E101, counter(RE.jbox), pts(G.jbox))),
           hint: () => (counter(RE.jbox) ? missing(counter(RE.jbox), pts(G.jbox), JBOX_LABELS, 10, E101) : ''),
           action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('jbox'), pts(G.jbox), E101); K().dirty(); } } },
-        { id: 'keys', title: 'Put the counters on the number row', kind: 'do',
+        { id: 'keys', title: 'Put the counters on the number row', kind: 'do', keys: true,
           body: '1. In the {{status bar|.status-bar}}, at the bottom right, click [[quick keys]].\n2. Beside key 1, choose Duplex.\n3. Beside key 2, choose GFCI.\n4. Close the dialog.\nA quick key picks a counter from the number row: press 1 and the next click on the sheet places a Duplex.\nOn a real E-sheet the rhythm is 1, click, click, 2, click, and the hand never leaves the plan: no trips back to the sidebar.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the

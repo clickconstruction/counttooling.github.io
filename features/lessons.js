@@ -604,14 +604,14 @@
           check: () => K().allDone(circlesFor(P101, counterNamed(FD_RE), KITCHEN_FDS, 16)),
           hint: () => strayHint(P101, counterNamed(FD_RE), KITCHEN_FDS.concat([FD.dish]), 16),
           action: { label: 'Count three for me', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i) || makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'); App.pushUndoSnapshotCurrentPage(); mark(P101, c, KITCHEN_FDS.slice(Math.min(3, marksOf(c)))); arm(c); dirty(); } } },
-        { id: 'bind', title: 'Put it on the number row', kind: 'do',
+        { id: 'bind', title: 'Put it on the number row', kind: 'do', keys: true,
           // the name the reader's own counter took: a palette that already had a "Floor Drain" made this one "Floor Drain 2" (by hand, 2026-09-25)
           body: () => 'The number row is the keys 1 to 0 above the letters. Each one can hold a counter.\n1. In the status bar, the strip along the bottom, click [[quick keys]] at the right.\n2. Beside key 1, choose ' + ((counterNamed(FD_RE) || {}).name || 'Floor Drain') + '.\n3. Click {{Done|#quickKeysDone}}.\nQuick Keys are saved with the project. They also ride your Artboard, so they come to the next bid. The Artboard is the counters and line types (kinds of pipe) you keep for every job.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           check: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); return !!c && Object.values(S().numberKeyBindings || {}).some((b) => b && b.id === c.id); },
           hint: () => { const c = counterNamed(FD_RE); if (!c) return ''; const other = Object.values(S().numberKeyBindings || {}).map((b) => b && b.kind === 'counter' && b.id !== c.id && (S().counters || []).find((x) => x.id === b.id)).find((x) => x && FD_RE.test(x.name || '')); return other ? 'That key holds ' + other.name + '. Choose ' + c.name + ', the counter you just made' : ''; },
           action: { label: 'Bind 1 to Floor Drain', run: () => { const c = counterNamed(/floor\s*drain|^fd\b/i); if (!c) return; if (!S().numberKeyBindings) S().numberKeyBindings = {}; S().numberKeyBindings[1] = { kind: 'counter', id: c.id }; dirty(); } } },
-        { id: 'usekey', title: 'Count from the keyboard', kind: 'do',
+        { id: 'usekey', title: 'Count from the keyboard', kind: 'do', keys: true,
           // the key and the name are the reader's own: the last card passes on any key, and a palette with a "Floor Drain" made this one "Floor Drain 2"
           body: () => { const c = counterNamed(FD_RE), b = S().numberKeyBindings || {}; const key = Object.keys(b).find((k) => b[k] && c && b[k].id === c.id) || '1'; return '1. Press M for [[Move]]. Move places nothing, so clicks stop placing floor drains.\n2. Press ' + key + ': ' + ((c || {}).name || 'Floor Drain') + ' is armed again.\n3. Click inside the circle on the floor drain in the dish room, below the kitchen.\nOn a real sheet that is the whole rhythm: 1, click, click, 2, click, click.'; },
           target: ['#annCanvas'], page: P101, zones: () => circlesFor(P101, counterNamed(FD_RE), [FD.dish], 16),
@@ -622,7 +622,8 @@
           body: () => (onTouch() ? 'Tap the {{gear|#countersSettingsBtn}} beside COUNTERS in the sidebar for Counter Settings.' : 'Right-click [[Counter]] in the header, the bar across the top, for Counter Settings.') + '\nIt sets the size of the marks, the ring around them, and the running number beside each one.\nMake them small on a crowded sheet and large on a tablet.\nMore: [Counting with counters](/guides/counting-with-counters/), [Custom icons](/guides/custom-icons/) and [Quick creators](/guides/quick-creators/).',
           target: () => (onTouch() ? ['#countersSettingsBtn'] : ['#counterBtn', '#counterBtnSidebar']), check: () => true },
       ],
-      done: 'A counter, a count, and a number key.\nNext: [[Learn]] → Measuring.',
+      // a tablet walked no number-key cards
+      done: () => (onTouch() ? 'A counter and a count.' : 'A counter, a count, and a number key.') + '\nNext: [[Learn]] → Measuring.',
     },
     // 4 ---------------------------------------------------------------------------------
     {

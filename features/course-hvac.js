@@ -505,17 +505,20 @@
     {
       id: 'main', title: 'Chapter 5: The main, sized down the hall', short: 'the main, traced', minutes: 12, page: M101, noun: 'chapter', set: MSET,
       intro: 'Trace the supply main, the big trunk duct, from the roof to the far end of the dining room. The Duct tool reads the engineer\'s printed sizes, and you learn why the duct shrinks as it goes.',
+      opener: 'The sheets open with chapters 1 to 4 already done: the scale set, three rooms boxed, the diffusers counted and RTU-1 made a system.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); },
       steps: [
         { id: 'arm', title: 'Arm the Duct tool', kind: 'do',
-          body: 'Every size on this plan is printed beside its run, and the app reads them. 24x12 means 24 inches wide by 12 deep.\n1. Point at the 24x12 printed at the RTU-1 drop, where the duct comes down from the roof at the kitchen\'s east wall. Press U (or click [[Duct]] in the header).\nPressed over a printed size, the dialog fills that size in and says so under it. From the header it starts at 24x12 anyway.\n2. Set Insulation to Wrap, insulation around the outside of the duct. (Liner, the other kind, lines the inside.)\n3. Click [[Start Tracing]].',
-          target: ['#ductCreateStart', '#ductCreateLiner', '#ductBtn', '#headerMoreBtn'],
+          body: 'Every size on this plan is printed beside its run, and the app reads them. 24x12 means 24 inches wide by 12 deep.\n1. In the header, click [[Duct]] (or press U).\n2. Check the size reads 24x12, and set it if not. The dialog fills in the printed size nearest the pointer, and says so under it.\n3. Set Insulation to Wrap, insulation around the outside of the duct. (Liner, the other kind, lines the inside.)\n4. Click [[Start Tracing]].',
+          // the ring in the card's order (card review, 2026-09-27): the size while it is not 24x12, Insulation
+          // until it reads Wrap, then Start Tracing. It sat on Start Tracing over Insulation: None.
+          target: () => { const form = ductFormLadder({ shape: 'rect', w: 24, h: 12 }); const liner = el('ductCreateLiner'); return (form.length === 1 && liner && liner.value !== 'wrap' ? ['#ductCreateLiner'] : []).concat(form, ['#ductBtn', '#headerMoreBtn']); },
           // Wrap too, the card's line 2: Insulation left at None passed (PERSONA-PASS prober)
           check: () => { const d = S().drawingDuct; return !!(d && d.segments && d.segments[0] && sizeKey(d.segments[0].size) === '24x12' && d.linerType === 'wrap') || mainDone(); },
           hint: () => { const d = S().drawingDuct; return d && d.segments && d.segments[0] && sizeKey(d.segments[0].size) === '24x12' && d.linerType !== 'wrap' ? { code: 'wrong-value', text: 'Insulation reads ' + (d.linerType || 'None') + '. Press Escape, open Duct again and set Insulation to Wrap, the plan\'s 2" wrap' } : ''; },
           action: { label: 'Arm it at 24x12 for me', run: async () => { K().goPage(M101); if (mainDone() || S().drawingDuct) return; if (el('ductBtn')) el('ductBtn').click(); await wait(100); if (App.setDuctCreateSize) App.setDuctCreateSize(RS(24, 12)); if (el('ductCreateLiner')) el('ductCreateLiner').value = 'wrap'; if (el('ductCreateStart')) el('ductCreateStart').click(); await wait(50); if (S().drawingDuct) { S().drawingDuct.linerType = 'wrap'; S().drawingDuct.linerThicknessIn = 2; } } } },
         { id: 'trace', title: 'Trace the main, stepping down where the plan does', kind: 'do', cardAt: 'bl', page: M101, zones: () => traceZones(pts(G.main), M101),
-          body: '1. Click the RTU-1 drop at the kitchen\'s east wall, then the corner in the hall.\n2. Follow the hall west. At the dining room wall the duct narrows: the plan draws a line across it and prints 20x12 beside it. The chip under the cursor, a small label, still reads 24x12. The hint at the bottom of the sheet reads Plan says 20x12 here, S to pick it.\n3. Click that line, where the size changes, and press S: the Duct size box opens. (S sets the scale only when no run is being drawn.) Under FROM THE PLAN, click 20x12.\n4. Do the same at 16x10 and at 12x10, then click the far end and press Enter.\nEach step down is a transition, a fitting that changes the duct from one size to another. A fitting is any shaped piece of duct that is not straight, and the app counts each one.',
+          body: '1. Click the RTU-1 drop, where the duct comes down from the roof at the kitchen\'s east wall. Then click the corner in the hall.\n2. Follow the hall west. At the dining room wall the duct narrows: the plan draws a line across it and prints 20x12 beside it. The chip under the cursor, a small label, still reads 24x12. The hint at the bottom of the sheet reads Plan says 20x12 here, S to pick it.\n3. Click that line, where the size changes, and press S: the Duct size box opens. (S sets the scale only when no run is being drawn.) Under FROM THE PLAN, click 20x12.\n4. Do the same at 16x10 and at 12x10, then click the far end and press Enter.\nEach step down is a transition, a fitting that changes the duct from one size to another. A fitting is any shaped piece of duct that is not straight, and the app counts each one.',
           target: ['#ductSizePopover', '#annCanvas'], check: mainDone,
           hint: () => {
             const d = S().drawingDuct;
@@ -524,7 +527,7 @@
             // ductRuns() is the LIVE annotations array: read its last entry, never pop it (a
             // .pop() here deleted the reader's committed run on every hint read, 2026-09-27).
             const done = !mainDone() && ductRuns(M101).slice(-1)[0];
-            return done ? 'That run went in as ' + runSizes(done).join(', ') + '. Press Ctrl+Z and trace it again, pressing S at 20x12, 16x10 and 12x10' : '';
+            return done ? 'That run went in as ' + runSizes(done).join(', ') + '. Click Undo in the footer and trace it again, pressing S at 20x12, 16x10 and 12x10' : '';
           },
           action: { label: 'Trace it for me', run: () => { if (mainDone()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); traceMain(); K().dirty(); } } },
         { id: 'why', title: 'Why the main shrinks', kind: 'read', cardAt: 'bl',
@@ -533,9 +536,9 @@
           reveal: 'Air leaves the main at every tap, so the far end carries a fraction of the flow. A duct sized for 3,000 CFM that carries 600 is sheet metal nobody needed: metal bought and hung for nothing.\nThe engineer sizes each stretch for the air still in it. The app\'s ductulator, its duct-sizing calculator, does the same sum live while you trace. It sizes at a friction rate of 0.08" per 100 ft: how fast the duct uses up the fan\'s push. It keeps the air under 1,200 fpm, so it stays quiet.\nThis engineer sized the main tighter. The 16x10 and the 12x10 run at about twice that friction rate. So the Duct size box\'s SUGGESTED row reads bigger than FROM THE PLAN, the plan\'s own size. The drawing is what you bid, and chapter 6 checks the fan can still push it.\nOn the bid each step is a transition fitting, and the pounds fall with the size. The Duct Schedule weighs 24x12 at 24 gauge and 12x10 at 26. Gauge is the metal\'s thickness: the higher the number, the thinner the sheet.',
           target: [], check: () => true },
         { id: 'kitchen', title: 'The kitchen branch', kind: 'do', cardAt: 'br', page: M101, zones: () => traceZones(pts(G.kitchen), M101),
-          body: '1. Click [[Duct]] again. The size fills from the printed size nearest your last click: check it reads 16x10, and set it if not.\n2. Click [[Start Tracing]].\n3. Click the tap at the main, the corner at the kitchen\'s south wall, and the far end. Press Enter.\nThis 16x10 branch taps the main at the kitchen wall. It runs down the west wall and across to the four kitchen diffusers. The tap counts itself, with a volume damper (VD): a blade in the duct that sets how much air goes down the branch.',
+          body: '1. Click [[Duct]] again. Check the size reads 16x10, and set it if not.\n2. Click [[Start Tracing]].\n3. Click the tap at the main, the corner at the kitchen\'s south wall, and the far end. Press Enter.\nThis branch feeds the four kitchen diffusers. Its tap counts itself, with a volume damper (VD): a blade in the duct that sets how much air goes down the branch.',
           target: () => ductFormLadder({ shape: 'rect', w: 16, h: 10 }).concat(['#ductBtn', '#annCanvas']), check: () => !!runWith(['16x10']),   // the dialog fills the size nearest the last click (12x10 after the main): the ring asks for 16x10
-          hint: () => { if (runWith(['16x10']) || S().drawingDuct) return ''; const other = ductRuns(M101).filter((r) => !mainDone() || runSizes(r).join(' ') !== MAIN_SIZES.join(' ')).pop(); return other ? 'That branch went in at ' + runSizes(other).join(', ') + '. Press Ctrl+Z and start it again at 16x10' : ''; },
+          hint: () => { if (runWith(['16x10']) || S().drawingDuct) return ''; const other = ductRuns(M101).filter((r) => !mainDone() || runSizes(r).join(' ') !== MAIN_SIZES.join(' ')).pop(); return other ? 'That branch went in at ' + runSizes(other).join(', ') + '. Click Undo in the footer and start it again at 16x10' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['16x10'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' }); K().dirty(); } } },
         { id: 'attach', title: 'Hang the diffusers on the runs', kind: 'do', cardAt: 'bl',
           body: 'A diffuser that hangs on no run is a stray, and a stray counts toward no system.\n1. Right-click a dining diffuser.\n2. Click [[Attach to nearest run]].\n3. Do the same for the rest: the dining, the hall, the kitchen, and the two easy to miss, the dish pit\'s and the storage room\'s.\nThe dining diffusers sit five or six feet off the main, on flex, the soft round hose from a duct to a diffuser. Each one you attach moves onto its run and draws its leader. Its flex drop, five feet by default, joins the schedule.',
@@ -553,6 +556,7 @@
     {
       id: 'plenum', title: 'Chapter 6: The plenum, and the pressure', short: 'the two physics rows', minutes: 9, page: M601, noun: 'chapter', set: MSET,
       intro: 'A section, the building sliced and seen from the side, drawn to scale. Measure the plenum and the wrapped main on it. Then Bid Check judges whether the duct fits, and whether the unit can push air to the far diffuser.',
+      opener: 'The sheets open with RTU-1\'s main and the kitchen branch traced, and the diffusers hung on them. The work starts on M-601, the third sheet.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); },
       steps: [
         { id: 'scale', title: 'A section at 1/2"', kind: 'do',
@@ -561,7 +565,7 @@
           action: { label: 'Use 1/2" = 1\'-0"', run: async () => { K().goPage(M601); await T().applyScalePreset('1/2" = 1\'', 36); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: M601, hold: true,
           body: () => (proveM601().check()
-            ? proveM601().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            ? proveM601().verdict() + ': this sheet\'s scale is right too.'
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 12\'-0" string, floor to deck.\n3. Click inside circle 2, at the other end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM601().check(), hint: () => proveM601().hint(), zones: () => proveM601().zones(),
           action: { label: 'Measure it for me', run: async () => { K().goPage(M601); if (!K().scaleIs(M601, 36)) await T().applyScalePreset('1/2" = 1\'', 36); const d = raw(SECTION.prove); K().measure(d[0], d[1]); } } },
@@ -572,7 +576,7 @@
           hint: () => (S().lastMeasure && S().lastMeasure === depthEntryMeasure ? '' : depthM601().hint()),
           action: { label: 'Measure it for me', run: () => { K().goPage(M601); const d = raw(SECTION.depth); K().measure(d[0], d[1]); } } },
         { id: 'fits', title: 'Let the app say it fits', kind: 'do',
-          onEnter: () => T().foldBidCheck(), hold: true, body: 'Answer: 1\'-4", twelve inches of duct and two of wrap each side. The section says it fits under the 3\'-0" plenum.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.\nThe app can say it fits too. Chapter 2 gave every room a ceiling and a deck, and chapter 5 gave the main its wrap.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: 'Answer: 1\'-4", twelve inches of duct and two of wrap each side. The section says it fits under the 3\'-0" plenum.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.\nThe row can judge because chapter 2 gave every room a ceiling and a deck, and chapter 5 gave the main its wrap.',
           target: () => (K().onPage(M101) ? ['#bidCheckSectionTitle'] : ['#pagesList']),   // the card's first line is M-101 (by hand, 2026-09-25)
           check: () => { const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
           hint: () => { if (!K().onPage(M101)) return T().pagesFoldedHint('M-101'); const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },
@@ -592,11 +596,12 @@
       // T2 (settled 2026-09-27): the hood, restroom and make-up fans are their own systems, so
       // RTU-1 is let go after the seed: a run traced here joins the active group, and none of
       // this chapter's air is RTU-1's (it read 4,575 of 3,000 with RTU-1 still active).
+      opener: 'The sheets open with RTU-1\'s supply traced and the exhaust grilles counted.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('EG-2'), pts(G.EG2), M101); S().activeGroupId = null; },
       steps: [
         { id: 'grease', title: 'Which duct must not be galvanized?', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.grease), M101),
           rules: ['hvac.duct.gauge-schedule', 'hvac.duct.grease-duct'],
-          body: 'One duct on this plan must not be galvanized, steel coated in zinc like the rest. The legend draws it darker.\n1. Click [[Duct]] (or press U).\n2. Set Round, 18, and Airside [[Exhaust]], the kind of air it carries. Set Material to Welded black steel.\n3. Click [[Start Tracing]].\n4. Click the hood collar, where the duct leaves the hood, then the elbow, then the curb where it rises to EF-1. Press Enter.\nEvery other supply and return duct is galvanized sheet, at the gauge the SMACNA table gives its size. Black steel is plain steel with no coating.',
+          body: 'Galvanized is steel coated in zinc, like the rest of the duct here. The legend draws this one darker.\n1. Click [[Duct]] (or press U).\n2. Set the shape to Round, the size to 18, and Airside to [[Exhaust]], the kind of air it carries. Set Material to Welded black steel.\n3. Click [[Start Tracing]].\n4. Click the hood collar, where the duct leaves the hood, then the elbow, then the curb where it rises to EF-1. Press Enter.\nEvery other supply and return duct is galvanized sheet, at the gauge the SMACNA table gives its size. Black steel is plain steel with no coating.',
           target: () => ductFormLadder({ shape: 'round', d: 18, airside: 'exhaust', material: 'black-steel' }).concat(['#ductBtn', '#annCanvas']), check: () => !!greaseRun(),
           hint: () => { const r = runWith(['18"ø']); if (r) return r.material === 'black-steel' ? '' : 'The run is there, but galvanized: right-click it and set its Material to Black steel'; const bs = ductRuns(M101).find((x) => x.material === 'black-steel'); return bs ? 'Black steel, but the hood duct is 18 inch round: check the size' : ''; },
           action: { label: 'Trace it for me', run: () => { if (greaseRun()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust', noSystem: true }); K().dirty(); } } },
@@ -618,13 +623,14 @@
           reveal: 'Nothing goes inside a grease duct that could catch grease, or close while the fire burns. So NFPA 96 forbids dampers in it of any kind. Where a grease duct passes a rated wall, it gets a listed enclosure or wrap for the rating instead. That is the wrap the keynote already calls for.\nA fire damper in the supply is a UL 555 frame with a curtain and a fusible link. UL, Underwriters Laboratories, is the lab that tests it. The fusible link melts in a fire and lets the curtain drop shut. An access door sits beside it so the link can be replaced, and a sleeve, a steel collar, carries it through the wall.\nThere are two on this plan, at the two penetrations, the places a duct goes through the wall. The main\'s sits above the kitchen door, because the header, the beam over the door, is part of the rated wall. Bid Check\'s Fire dampers row is now a count you can defend, one you can show your work for; chapter 9 ticks it.',
           target: [], check: () => true },
         { id: 'restroom', title: 'Trace the restroom exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.exhaust), M101),
-          body: 'The two EG-1 grilles in the restrooms and the mop room\'s EG-2 run to EF-2, the restroom exhaust fan, on 8" round duct.\n1. Click [[Duct]] (or press U).\n2. Set the shape to round, the size to 8, and Airside to [[Exhaust]].\n3. Click [[Start Tracing]].\n4. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
+          body: 'The two EG-1 grilles in the restrooms and the mop room\'s EG-2 run to EF-2, the restroom exhaust fan, on 8" round duct.\n1. Click [[Duct]] (or press U).\n2. Set the shape to Round, the size to 8, and Airside to [[Exhaust]].\n3. Click [[Start Tracing]].\n4. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
           target: () => ductFormLadder({ shape: 'round', d: 8, airside: 'exhaust' }).concat(['#ductBtn', '#annCanvas']), check: () => { const r = runWith(['8"ø']); return !!(r && r.airside === 'exhaust'); },
           hint: () => { const r = runWith(['8"ø']); return r && r.airside !== 'exhaust' ? 'The run is there but marked supply: right-click it and set its airside to Exhaust' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['8"ø'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust', noSystem: true }); K().dirty(); } } },
         { id: 'makeup', title: 'The make-up air', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.makeup), M101).concat(runWith(['20x16']) ? circlesOn(M101, byTag('MA-1'), pts(G.MA1), 12) : []),   // line 2 is on the sheet too: its circle (by hand, 2026-09-25)
-          body: 'Now the make-up air, outside air brought in to replace what the hood throws out.\n1. Click [[Duct]] again: 20x16, supply, then [[Start Tracing]].\n2. Click the MAU-1 drop at the east wall, then the register MA-1. Press Enter.\n3. Arm MA-1 and click the register.\nMAU-1 on the roof drops in at the east wall. A 20x16 rectangular duct carries its air west across the kitchen to MA-1.',
-          target: () => ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList']), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
+          body: '1. Click [[Duct]] again. Set the shape to Rect, the size to 20x16, and Airside to [[Supply]].\n2. Click [[Start Tracing]].\n3. Click the MAU-1 drop at the east wall, then the register MA-1. Press Enter.\n4. Arm MA-1 and click the register.\nMake-up air is outside air brought in to replace what the hood throws out. MAU-1 on the roof drops in at the east wall. A 20x16 rectangular duct carries its air west across the kitchen to MA-1.',
+          // the run traced, the ring moves to line 4: MA-1 under COUNTERS until it is armed, then the sheet (it stayed on Duct; card review, 2026-09-27)
+          target: () => (runWith(['20x16']) ? (K().armedNamed(/MA-1/i) ? ['#annCanvas'] : ['#countersList', '#annCanvas']) : ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList'])), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
           action: { label: 'Trace and count it for me', run: () => { K().goPage(M101); if (!runWith(['20x16'])) { if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air', noSystem: true }); } App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('MA-1'), pts(G.MA1), M101); K().dirty(); } } },
         { id: 'interlock', title: 'Why make-up air', kind: 'read',
           rules: ['hvac.exhaust.hood-makeup-air'],
@@ -638,10 +644,11 @@
     {
       id: 'whole', title: 'Chapter 8: The whole set', short: 'the set, finished', minutes: 10, page: M101, noun: 'chapter', set: MSET,
       intro: 'Every room, diffuser and run, and the system with its unit, done in one pass. Then set beside the reference by size, and the Duct Schedule copied for the bid.',
+      opener: 'The sheets open with the scale set on M-101 and nothing else. This chapter is the whole takeoff, start to finish.\nNothing here touches your projects.',
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time, and reads ✓ Done when nothing is.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\nA new run joins the group lit under GROUPS. Before the exhausts and the make-up duct, click RTU-1\'s row there to let it go: those fans are not RTU-1\'s.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
+          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] reads ✓ Done. Until then it names what is missing, one thing at a time.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\nOnce RTU-1 is a system, a new run joins the group lit under GROUPS. Before the exhausts and the make-up duct, click RTU-1\'s row there to let it go: those fans are not RTU-1\'s.\nThe next card compares your sheets against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything },
           // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
@@ -651,7 +658,7 @@
           // PP-WHOLE-SKIP (2026-09-27): Skip on the lay step leaves the sheets as they are, and
           // nothing fills them in. With nothing on the sheets there is nothing to compare, so the
           // card says so and points back at the button beside Skip, not a list of 0.0 ft and 0 lb.
-          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets are empty: no rooms, no diffusers, no duct. There is nothing to compare yet.\nTo see the answer key, click [[Back]] and press [[Finish the takeoff for me]]. It lays the whole takeoff on the sheets, and this card then checks it size by size.\nOr read on: [[Next]] moves on with the sheets as they are.' : compareBody()),
+          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets are empty: no rooms, no diffusers, no duct. There is nothing to compare yet.\nTo see the answer key, click [[Back]] and press [[Finish the takeoff for me]]. It lays the whole takeoff on the sheets, and this card then checks it size by size.' : compareBody()),
           target: [], check: () => true },
         { id: 'copy', title: 'The schedule, copied', kind: 'do', hold: true,
           body: '1. Under DUCT, click [[Schedule]].\n[[Copy Schedule]] at its foot copies it as text, ready to paste into the bid. It carries the straight duct by size and gauge, the fittings, and the flex drops by system. It also carries the wrap in square feet, seam and waste, and the bid weight.',
@@ -666,6 +673,7 @@
     {
       id: 'bid', title: 'Chapter 9: Check it, sign it, hand it off', short: 'a bid you can defend', minutes: 8, page: M101, noun: 'chapter', set: MSET,
       intro: 'What each duct row of Bid Check means in the trade, and which ones the set already answers. Then the hand-off, the takeoff passed on to be priced, with the pounds in it.',
+      opener: 'The sheets open with the rooms, the diffusers, RTU-1\'s supply and the two fire dampers already on them.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickUnit(RE.fd, 'Fire Damper', 'Fire Damper', '#e85447'), pts(G.fd), M101); },   // the rows reveal cites the two fire dampers chapter 7 counted
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
@@ -685,8 +693,9 @@
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', byTag('SD-1')), '#summarySectionTitle'), check: () => K().detailOpenFor(byTag('SD-1')), hint: () => K().detailMiss(byTag('SD-1')),
           action: { label: 'Open the breakdown', run: () => { const c = byTag('SD-1'); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'handoff', title: 'Hand it off', kind: 'read',
-          body: '1. Under EXPORT OPTIONS, [[Copy to /Tooling]] copies the whole takeoff for /Tooling, the pricing app. Its Duct block at the end carries the pounds. If a Bid Check row is still open, it asks first; [[Export anyway]] remembers your answer until something changes.\n2. [[Copy RFI Flags]] beside it copies every note that starts with RFI:, for the GC. This set has none yet. The make-up air interlock with the hood is the first you would write.\n3. [[Export PDFs]] makes the marked-up set.\nMore: [Doing an HVAC takeoff](/guides/hvac-takeoff/) and [Duct takeoff by the pound](/guides/duct-takeoff-by-the-pound/).',
-          target: ['#forPipeTooling', '#exportOptionsSectionTitle'], check: () => true },
+          // read, not done: three buttons said, none asked for, so the lines carry no numbers; all three are lit (card review, 2026-09-27)
+          body: 'Three buttons under EXPORT OPTIONS send the work out.\n{{Copy to /Tooling|#forPipeTooling}} copies the whole takeoff for /Tooling, the pricing app. Its Duct block at the end carries the pounds. If a Bid Check row is still open, it asks first; [[Export anyway]] remembers your answer until something changes.\n[[Copy RFI Flags]] copies every note that starts with RFI:, for the GC. This set has none yet. The make-up air interlock with the hood is the first you would write.\n{{Export PDFs|#specificPages}} makes the marked-up set.\nMore: [Doing an HVAC takeoff](/guides/hvac-takeoff/) and [Duct takeoff by the pound](/guides/duct-takeoff-by-the-pound/).',
+          target: ['#copyRfiFlags', '#forPipeTooling', '#specificPages', '#exportOptionsSectionTitle'], lightAll: true, check: () => true },
       ],
       done: 'That is the course: a restaurant\'s air read off the engineer\'s set, counted and weighed with the app, checked, and handed to the bid.\nWhen you are ready for a real set, click [[Upload PDF]].',
     },

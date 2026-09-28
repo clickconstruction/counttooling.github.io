@@ -1180,8 +1180,6 @@
   function controlFor(label) {
     const want = String(label || '').trim();
     if (!want) return null;
-    const had = chipControls.get(want);
-    if (had && had.isConnected) return had;
     const named = (n) => [n.getAttribute('aria-label'), n.getAttribute('title')].filter(Boolean).map((x) => x.trim());
     const fits = (n) => named(n).some((x) => x === want || x.startsWith(want + ' (') || x.startsWith(want + ':')) || (n.textContent || '').trim() === want;
     let hits = [];
@@ -1189,11 +1187,27 @@
     if (!hits.length) {
       try { hits = Array.from(document.querySelectorAll('button, [role="button"], .settings-menu-link, .status-bar span[id], .status-bar a')).filter((n) => !n.closest('.tour-ui') && fits(n)); } catch (_) { hits = []; }
     }
-    // the one on screen first, and among those the one the step itself lights
-    const best = hits.find((n) => n === litEl) || hits.find((n) => shown(n)) || hits[0] || null;
-    if (best) chipControls.set(want, best);
+    // Several controls share a name ("+ Add" beside COUNTERS and beside LINE TYPES; a dialog's Done).
+    // The one the step lights; else one in the dialog that is up; else one in the same section or
+    // dialog as what the step lights; else the first on screen (found by the card review, 2026-09-27:
+    // the gas card's + Add lit the COUNTERS one).
+    const up = hits.filter((n) => shown(n));
+    const modal = document.querySelector('.modal-overlay.visible');
+    const home = litEl && litEl.closest ? litEl.closest('.sidebar-section, .modal-card, .header, .page-zoom-row, .status-bar') : null;
+    const best = hits.find((n) => n === litEl)
+      || (modal && up.find((n) => modal.contains(n)))
+      || (home && up.find((n) => home.contains(n)))
+      || up[0] || hits[0] || null;
     return best;
   }
+  // On screen, or a header tool folded behind More, or (on a phone) a sidebar control behind ☰.
+  const foldedInto = (node) => {
+    if (!node || !node.closest) return null;
+    if (node.closest('.header')) return [el('headerMoreBtn')].find((n) => n && shown(n)) || null;
+    if (node.closest('.sidebar')) return [el('hamburger')].find((n) => n && shown(n)) || null;
+    return null;
+  };
+  const reachable = (node) => shown(node) || !!foldedInto(node);
   function chipIcon(node) {
     const svg = node && node.querySelector && node.querySelector('svg');
     if (!svg) return '';
@@ -1207,6 +1221,9 @@
     let node = null;
     try { node = controlFor(unescapeText(label)); } catch (_) { node = null; }
     if (!node) return '<span class="tour-ui">' + (CHIP_NAME[unescapeText(label).trim()] || label) + '</span>';
+    // a control that is not on screen yet (a dialog's button, before the dialog is up) wears its icon
+    // but takes no click: there is nothing to light, and the More button is not where it lives
+    if (!reachable(node)) return '<span class="tour-ui">' + chipIcon(node) + (CHIP_NAME[unescapeText(label).trim()] || label) + '</span>';
     const shownAs = CHIP_NAME[unescapeText(label).trim()] || label;
     return '<span class="tour-ui tour-ui-live" role="button" tabindex="0" data-ui="' + label.replace(/"/g, '&quot;') + '">' + chipIcon(node) + shownAs + '</span>';
   };
@@ -1216,7 +1233,7 @@
     if (!overlay || !node) return;
     // a control folded away is reached through the button that opens it
     let at = node;
-    if (!shown(at)) at = [el('headerMoreBtn'), el('hamburger')].find((n) => n && shown(n)) || null;
+    if (!shown(at)) at = foldedInto(at);
     if (!at) return;
     try { at.scrollIntoView({ block: 'nearest', inline: 'nearest' }); } catch (_) { /* older engines */ }
     const r = at.getBoundingClientRect();
@@ -1834,6 +1851,7 @@
   }
   function goTo(i) {
     endGlide();
+    chipControls.clear();
     dragPos = null; nudgedFor = -1; panelNudged = new Set();
     const cardEl = el('tourCard'); if (cardEl) cardEl.scrollTop = 0;   // a long card scrolled to its foot opens the next one at its title
     const next = Math.max(0, Math.min(STEPS.length - 1, i));

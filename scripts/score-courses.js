@@ -267,9 +267,9 @@ const FIRST_USE = {
     // Start here, the uncounted opener (LEARN-START): the screen's parts and the words its one click needs
     'takeoff': 'start', 'header': 'start', 'sidebar': 'start', 'counter': 'start', 'line type': 'start',
     'summary': 'start', 'bid': 'start', 'bid check': 'start', 'export': 'start', 'footer': 'start',
-    'status bar': 'start', 'mark': 'start',
+    'status bar': 'start', 'mark': 'start', 'fixture': 'start',   // the open card: "every fixture (like sinks and drains)"
     'scale': 'plans', 'fixture schedule': 'plans', 'title block': 'plans',
-    'schedule': 'plans', 'fixture': 'plans',
+    'schedule': 'plans',
     'dimension': 'scale', 'detail': 'scale', 'scale zone': 'scale', 'zone': 'scale',
     'armed': 'counting', 'quick key': 'counting', 'number row': 'counting',
     'Artboard': 'counting',
@@ -408,6 +408,13 @@ function parseCourse(src, file) {
     if (isChapter(n)) {
       const m = propsOf(n);
       const ch = { id: strOf(m.get('id').value), title: strOf(m.get('title').value), line: n.loc.start.line, cards: cardsUnder(m.get('steps').value) };
+      // the open card's own text (`opener`, and its title `openerTitle`) is a card too, read FIRST:
+      // it is what the reader meets before the chapter's steps (the card review, 2026-09-27)
+      if (m.has('opener')) {
+        const pieces = (m.has('openerTitle') ? textPieces(m.get('openerTitle').value).map((p) => ({ ...p, key: 'title' })) : [])
+          .concat(textPieces(m.get('opener').value).map((p) => ({ ...p, key: 'body' })));
+        ch.cards.unshift({ id: '(open)', line: m.get('opener').loc.start.line, pieces });
+      }
       if (m.has('done')) {
         const pieces = textPieces(m.get('done').value).map((p) => ({ ...p, key: 'done' }));
         ch.cards.push({ id: '(done)', line: m.get('done').loc.start.line, pieces });

@@ -13,6 +13,39 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs: the hand-kept lists caught up to main at 79c06c1 (2026-09-28)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md and SUPABASE_SETUP.md against the code
+after the 67 PRs since #216 (the map refresh, the card pass, the tester dossiers, the Learn
+work, the R-series splits). Every PR had kept its own entry and its Files-table row, so what
+had drifted was the lists nobody owns: the ones `npm run check` does not generate.
+
+- **AGENTS.md.** The pure-module load order named 19 of the 33 scripts before app.js, in an
+  order the shell left behind (constants.js loads after the draw seams now); it is the tag
+  order, every file named once, one clause each. `HOTKEYS` and `nextRecentColors` were still
+  "in constants.js" in three places (split out to hotkeys.js and recent-colors.js on
+  2026-07-30). The G (Ghost) key was missing from the hotkey list. app.js was "~8.6k lines"
+  in three places (7,066 today). The unit-test list named 14 of the 44 files; it now says
+  how the files are laid out and names only the ones with a dependency or a contract. The
+  Edge Function list lacked `import-takeoff`. Seven device keys the code writes were not in
+  Persisted settings (`clickcount-course-done`, `clickcount-tour-blank-step`,
+  `clickcount-tour-done-blank`, `clickcount-save-error`, `clickcount-signout-broadcast`,
+  `showScaleRefLine`, the legacy `takeoff-state`). The doc map gains TAKEOFF_IMPORT.md,
+  JOURNEY-MAP.md, `journeys/plans/` and the four product-copy files, so an agent knows
+  which are instructions and which are not.
+- **ARCHITECTURE.md.** The same two line-count and two constants.js pointers.
+- **RECONSTITUTE.md** (last touched 2026-07-17). The annotation shape gained `roomBoxes`,
+  `ghosts`, `ductRuns` and `ductFittings` and now points at annotation-model.js, where
+  `makeAnnotations` lives; a page carries `bakeFrame`; the tool enum's six newer tools are
+  named; the app is three trades, not "plumbing/construction"; the palette's optional trade
+  fields are named as a rule with the list left in AGENTS.md.
+- **The Macros marker** in app/index.html and scripts/build-macros.js said "edit HOTKEYS in
+  constants.js"; it says hotkeys.js. `npm run build:sw` restamped for the shell change.
+- **SUPABASE_SETUP.md** deploy list gains `import-takeoff`.
+- Not touched: DECOMPOSITION_MAP.md (read at 3eb45a9; S01 to S08 already carry their
+  landed notes and nothing from S09 on has landed), PUNCHLIST.md (every row checked against
+  the code, all still open).
+
 ## fix(tour): the ring follows the Create Line Type form, and the card keeps off the + Add it lights (2026-09-28)
 
 wendi, on the blank-sheet tour's line type card: "have not named the line or picked a color but

@@ -7,14 +7,19 @@ of features built on top of this core lives in [ARCHITECTURE.md](ARCHITECTURE.md
 [CHANGELOG.md](CHANGELOG.md).
 
 Everything below was reverse-engineered from and verified against the current code
-in [app.js](app.js) and [report.js](report.js).
+in [app.js](app.js), [annotation-model.js](annotation-model.js) and
+[report.js](report.js) (last checked 2026-09-28).
 
 ## What ClickCount is
 
-A browser-based PDF takeoff tool for plumbing/construction estimating. The user
-loads a PDF plan, sets a drawing scale, then places **counters** (point symbols)
-and draws **lines** (runs) on top of the PDF. The app tallies counts and
-real-world line lengths and produces reports/exports.
+A browser-based PDF takeoff tool for plumbing, electrical and HVAC estimating. The
+user loads a PDF plan, sets a drawing scale, then places **counters** (point
+symbols) and draws **lines** (runs) on top of the PDF. The app tallies counts and
+real-world line lengths and produces reports/exports. A project names its
+**trade** (`state.trade`, null = never chosen = plumbing behavior), which picks the
+Quick creator's vocabulary and the trade-specific derived layers (wire and cable,
+fixture units, duct air) that ARCHITECTURE.md catalogs; the core below is the
+same for all three.
 
 ## Tech model
 
@@ -30,7 +35,11 @@ real-world line lengths and produces reports/exports.
   [geometry.js](geometry.js) is a classic script loaded before the main script
   that defines pure math/geometry/parse primitives (`ptDist`,
   `polylineDistance`, `pointInRect`, zone locators, `parseFraction`, etc.) with
-  no `state` dependency; [app.js](app.js) is the main IIFE (the bulk of the app
+  no `state` dependency; a family of further pure modules loads in the same
+  slot (the `*-model.js` trade models, the draw and raster seams,
+  [constants.js](constants.js), [annotation-model.js](annotation-model.js),
+  [save-engine.js](save-engine.js): the load order is in AGENTS.md); then
+  [app.js](app.js) is the main IIFE (the bulk of the app
   logic), followed by the `features/*.js` splits, then [report.js](report.js),
   which reads globals exposed on `window`. (Full file map:
   [ARCHITECTURE.md](ARCHITECTURE.md).)
@@ -55,6 +64,8 @@ state.pages[]            // one entry per PDF page
     label,               // page title
     scale,               // null until set; { pixelsPerUnit, unit } when set
     rotation,            // 0 | 90 | 180 | 270
+    bakeFrame,           // { w, h, intrinsic }: the viewport the marks were baked
+                         // against, so a later load can detect an orientation change
     canvases: [          // one or more overlay "layers" per page
       { id, name, annotations }
     ]
@@ -63,19 +74,27 @@ state.pages[]            // one entry per PDF page
 
 ### Annotations
 
-`makeAnnotations()` defines the shape of every canvas's `annotations`:
+`makeAnnotations()` ([annotation-model.js](annotation-model.js)) defines the shape
+of every canvas's `annotations`:
 
 ```js
 { counterMarkers: {}, polylines: [], quickLines: [], highlights: [],
-  notes: [], multiplyZones: [], scaleZones: [], legend: null }
+  notes: [], multiplyZones: [], scaleZones: [], roomBoxes: [], ghosts: [],
+  ductRuns: [], ductFittings: [], legend: null }
 ```
 
 - **counterMarkers** — map of `typeId -> [{ x, y, id, group }]`. Keyed by the
   counter type's id.
 - **quickLines** — `[{ x1, y1, x2, y2, color, id, lineTypeId, group, startDrop?, endDrop? }]`.
 - **polylines** — `[{ points: [{x,y}...], closed, color, id, lineTypeId, group, startDrop?, endDrop? }]`.
-- **highlights**, **notes**, **multiplyZones**, **scaleZones**, **legend** — see
-  ARCHITECTURE.md (features beyond the base spec).
+- **highlights**, **notes**, **multiplyZones**, **scaleZones**, **roomBoxes**
+  (Room Sizer boxes, each referencing a `state.rooms[]` id), **ghosts** (a typical
+  copied as a reference overlay), **ductRuns** / **ductFittings** (the duct
+  takeoff), **legend** — see ARCHITECTURE.md (features beyond the base spec).
+  The one list of which kinds count as "a mark" is annotation-model.js's
+  mark-presence predicate; a new kind is added there, to `makeAnnotations()`,
+  and to save/load + export/import, and annotation-model.test.js fails by name
+  on a kind no list classifies.
 
 ### Counters and line types
 
@@ -84,6 +103,11 @@ These are the reusable "palette" the user places onto pages:
 - `state.counters[]` — `{ id, name, icon, color }`. `icon` is an SVG path string.
 - `state.lineTypes[]` — `{ id, name, color, curveStyle }` where
   `curveStyle` is `'straight'` (default) or `'arc'`.
+- Both carry optional trade fields on the same object, never a new one (a
+  counter's `mountHeightIn` / `wsfu` / `tag`, a line type's `raceway` /
+  `conductors` / `waterSide` / `bendFittings`, either's `childCounts[]`); the
+  palette serializes wholesale, so they ride save/load, export/import and the
+  Artboard for free. The list is in AGENTS.md "Conventions".
 
 A counter type's placed instances are the markers under
 `counterMarkers[counter.id]`. A line's `lineTypeId` references the line type it
@@ -126,8 +150,11 @@ The active tool is `state.tool`, an enum from `const TOOL`:
 | `POLYLINE` | Draw a multi-vertex run |
 | `EDIT_POLY` | Edit polyline vertices |
 
-(`MEASURE`, `HIGHLIGHT`, `NOTE`, `MULTIPLY_ZONE`, `SCALE_ZONE`, `DELETE_ZONE` are
-extensions documented in ARCHITECTURE.md.)
+(`MEASURE`, `HIGHLIGHT`, `NOTE`, `MULTIPLY_ZONE`, `DELETE_ZONE`, `SCALE_ZONE`,
+`ROOM` (Room Sizer), `CHAIN` (counter + connecting line per click), `GHOST`,
+`DROP`, `DUCT` and `SCHEDULE` (drag a box over a fixture schedule) are extensions
+documented in ARCHITECTURE.md; the enum is `TOOL` in [constants.js](constants.js),
+the keys that arm them are `HOTKEYS` in [hotkeys.js](hotkeys.js).)
 
 ## Rendering pipeline
 

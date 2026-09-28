@@ -60,7 +60,8 @@ ticked chapter is done. The line under "Now" names the card in hand.
   steps on purpose: with 37 cards, an answer on each would add thirty clicks of Next.
 - The three courses were then walked as a tablet, chapter by chapter, for keyboard and mouse wording:
   two cards were found and fixed (the electrical Chapter 0 status bar card, the HVAC main's trace).
-  The lessons' and tours' tablet walks were spot checks (Start here, Sheets, Counting, Measuring, Speed).
+  Every lesson and the three trade tours were walked as a tablet the same way: one more card fixed
+  (Notes: a note is edited from its menu on touch, not by a double-click).
 - The owner's list ([CARD-REVIEW-OWNERS-LIST.md](CARD-REVIEW-OWNERS-LIST.md)) still holds what needs Will:
   a number, a citation, a trade fact, what a step checks. The pass settled these rows of it:
   the Set Scale tab step, the "how cards work" cards, the three-areas-on-one-card cards, the

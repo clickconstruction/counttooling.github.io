@@ -846,7 +846,8 @@
       steps: [
         { id: 'note', title: 'Leave a note', kind: 'do',
           body: '1. In the header, the bar across the top, click [[⋯]], then [[Note]] (or press N).\n2. Click inside the circle in the kitchen.\n3. Type what you want to remember, such as Verify hood gas connection size, and click [[Done]].',
-          answer: 'The note is on the sheet.\nDrag a note to move it, drag its corner to resize it, double-click to edit it.',
+          // a finger's way to the note's Edit is its menu (a long press): double-click is the mouse's
+          answer: () => 'The note is on the sheet.\n' + (onTouch() ? 'Drag a note to move it, and drag its corner to resize it. Touch and hold it, then tap Edit, to change its words.' : 'Drag a note to move it, drag its corner to resize it, double-click to edit it.'),
           target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: P101, zones: () => guide([NOTE_SPOT], 40, noteAt(NOTE_SPOT, 40)),
           check: () => noteAt(NOTE_SPOT, 40),
           hint: () => { const a = pageAnn(P101); return a && (a.notes || []).length && !noteAt(NOTE_SPOT, 40) ? 'That note is outside the circle. Drag it into the circle' : ''; },

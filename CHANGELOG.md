@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## revert(water): the sibling guard on water runs, which broke the plumbing tour (WATER-TAP, 2026-09-27)
+
+#262 gave `waterChildLinks` the guard duct's tap rule has: two runs that leave one point are
+siblings, neither the other's branch. It fixed the double count it was written for and broke the
+plumbing tour on main: four cases of tutorial.spec.js failed, in CI and on the next pull request.
+
+- **Why.** The tour's size step traces the cold main from the riser at the first lavatory, the
+  point the chained lavatory branch also starts at, and the card reads the branch's 4.5 WSFU on the
+  main. Under the old rule the two runs were each other's child, and the main, which has no
+  fixtures of its own, carried the branch's load. With the guard they are siblings, the main
+  carries nothing, no size is suggested, and the step cannot be done.
+- **What it shows.** The double count and the tour's reading come from the same link. Duct knows
+  which end is upstream because a run starts at its unit; water has no source, so for two runs off
+  one point the model cannot tell a feeder from a sibling. That is a decision before it is a fix.
+- **The miss.** The fix was merged on the water specs and the node tests. tutorial.spec.js, which
+  drives water sizing through the tour, was not run. WATER-TAP is open again and says so.
+
 ## docs(map): the decomposition map, read again at 3eb45a9 (2026-09-27)
 
 The September 25 map's ranked list was empty: all 25 items had landed, and about 45 pull requests

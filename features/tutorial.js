@@ -1188,7 +1188,7 @@
     // a button's own words, without a badge it carries ("Export PDFs" + "7 unchecked")
     const ownText = (n) => Array.from(n.childNodes).filter((c) => c.nodeType === 3).map((c) => c.textContent).join(' ').replace(/\s+/g, ' ').trim();
     const named = (n) => [n.getAttribute('aria-label'), n.getAttribute('title')].filter(Boolean).map((x) => x.trim());
-    const fits = (n) => named(n).some((x) => x === want || x.startsWith(want + ' (') || x.startsWith(want + ':')) || (n.textContent || '').trim() === want || ownText(n) === want;
+    const fits = (n) => named(n).some((x) => x === want || x.startsWith(want + ' (') || x.startsWith(want + ':')) || (n.textContent || '').trim() === want || ownText(n) === want || ownText(n).startsWith(want + ' (');   // "Copy Summary (Email/Text)" answers to Copy Summary
     let hits = [];
     if (CHIP_SELECTOR[want]) { const n = document.querySelector(CHIP_SELECTOR[want]); if (n) hits = [n]; }
     if (!hits.length) {

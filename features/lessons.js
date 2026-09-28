@@ -1180,6 +1180,7 @@
     dirty, goPage, setScale, makeCounter, makeLineType, mark, markMissing, dropAt, measure, hangerRuleFor, addNote, openStep, doneStep, guide, memoProof,
     openBidCheck, tickManual,
     courseDone, markCourseDone,   // a course's progress, read and ticked through here
+    onTouch, undoKey,   // a card that differs for a reader with no keys, or by machine (the card review)
     rememberDevice,   // the blank tour's door: rememberDevice({ searches: false })
     restoreDevice,
   };

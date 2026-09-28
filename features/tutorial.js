@@ -1174,14 +1174,17 @@
   // wears that control's own icon beside the name, and a click on the chip lights the control the way
   // the light lands on a step's area. A label with no control on screen stays a plain chip.
   // The More button is a glyph: prose writes it [[⋯]], and the chip shows its dots and its name, More.
-  const CHIP_SELECTOR = { '\u22ef': '#headerMoreBtn' };
+  // The card's own buttons are named on cards too: Next is the card's, never the footer's next page.
+  const CHIP_SELECTOR = { '\u22ef': '#headerMoreBtn', 'Next': '#tourNext', 'Back': '#tourBack', 'Show me where': '#tourShow', 'Skip this step': '#tourSkip' };
   const CHIP_NAME = { '\u22ef': 'More' };
   const chipControls = new Map();
   function controlFor(label) {
     const want = String(label || '').trim();
     if (!want) return null;
+    // a button's own words, without a badge it carries ("Export PDFs" + "7 unchecked")
+    const ownText = (n) => Array.from(n.childNodes).filter((c) => c.nodeType === 3).map((c) => c.textContent).join(' ').replace(/\s+/g, ' ').trim();
     const named = (n) => [n.getAttribute('aria-label'), n.getAttribute('title')].filter(Boolean).map((x) => x.trim());
-    const fits = (n) => named(n).some((x) => x === want || x.startsWith(want + ' (') || x.startsWith(want + ':')) || (n.textContent || '').trim() === want;
+    const fits = (n) => named(n).some((x) => x === want || x.startsWith(want + ' (') || x.startsWith(want + ':')) || (n.textContent || '').trim() === want || ownText(n) === want;
     let hits = [];
     if (CHIP_SELECTOR[want]) { const n = document.querySelector(CHIP_SELECTOR[want]); if (n) hits = [n]; }
     if (!hits.length) {
@@ -1264,6 +1267,8 @@
   const sectionsOf = (text) => String(text).replace(SECTION_RE, (m, before, name, at, whole) => {
     const prev = whole.slice(0, at + before.length), next = whole.slice(at + m.length);
     if (/[A-Z]{2,}[\s,]*$/.test(prev) || /^[\s,]*[A-Z]{2,}/.test(next)) return m;
+    const heading = el(SECTIONS[name]);
+    if (!heading || !reachable(heading)) return m;
     return before + '<span class="tour-section" role="button" tabindex="0" data-section="' + SECTIONS[name] + '">' + name + '</span>';
   });
   // A pointer: {{turns the pages|.page-nav}} is a chip whose words are the card's own and whose click

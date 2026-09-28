@@ -80,17 +80,14 @@ test.describe('Learn: tap a word on a card', () => {
     await page.waitForFunction(() => !!window.App.learnWordGroups());
     await page.waitForTimeout(600);
     expect(await words(page)).toEqual([]);
-    // Measuring's opening card is where the lessons first say elbow (its intro glosses it):
-    // not underlined there, underlined on the bends card after it
-    await page.goto('/app/?lesson=measuring');
-    await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
+    // Measuring's bends card is where the lessons first say elbow (it glosses it): not underlined
+    // there, underlined on the read card after it
+    await openLesson(page, 'measuring', 'bends');
     await page.waitForFunction(() => !!window.App.learnWordGroups());
     await page.waitForTimeout(600);
     expect(await page.locator('#tourBody').textContent()).toMatch(/elbow/i);
     expect((await words(page)).map((w) => w[0])).not.toContain('Elbow');
-    await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 30000 });
-    await page.evaluate(() => window.App.tutorialGoTo('bends'));
+    await page.evaluate(() => window.App.tutorialGoTo('read'));
     await page.waitForFunction(() => [...document.querySelectorAll('#tourBody .tour-word')].some((w) => w.getAttribute('data-word') === 'Elbow'), null, { timeout: 10000 });
     // an everyday word is left alone everywhere
     expect((await words(page)).map((w) => w[0].toLowerCase())).not.toContain('run');

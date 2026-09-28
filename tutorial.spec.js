@@ -456,7 +456,7 @@ test.describe('Interactive walkthrough', () => {
     // entering Hand it off closes the proof dialog it would otherwise sit under, so the
     // export button is lit (2026-09-21: the step was dark behind the open breakdown)
     await expect(page.locator('#summaryCountDetailModal')).not.toHaveClass(/visible/);
-    await page.waitForFunction(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.getElementById('forPipeTooling').getBoundingClientRect(); return s.width > 0 && Math.abs(s.left - (b.left - 6)) < 3 && Math.abs(s.top - (b.top - 6)) < 3; }, null, { timeout: 4000 });
+    await page.waitForFunction(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.getElementById('forPipeTooling').getBoundingClientRect(); return s.width > 0 && s.left <= b.left && s.top <= b.top && s.right >= b.right && s.bottom >= b.bottom; }, null, { timeout: 4000 });   // the card lights all four export buttons now: the lit area holds this one
     // 13 + 14: reading, then Finish sets ONLY the plumbing key; the electrical link stays
     expect(await page.locator('#tourNext').textContent()).toBe('Next');
     await page.click('#tourNext');

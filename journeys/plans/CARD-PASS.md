@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the six fixes (not started).
+**Now:** the six fixes; 6 is done, 2 is next.
 
 ### The six fixes, before the pass
 
@@ -51,7 +51,7 @@ ticked chapter is done. The line under "Now" names the card in hand.
 - [ ] 3. Each course's Chapter 0 follows Start here: one card per screen area, and no "how cards work" card.
 - [ ] 4. A card that opens with the last question's answer does two jobs: the answer shows on the question's own card.
 - [ ] 5. Cards about number keys have no tablet version: skipped on touch.
-- [ ] 6. The HVAC tour quotes 442 CFM where the screen reads 508: the number goes.
+- [x] 6. The HVAC tour quotes 442 CFM where the screen reads 508: the number goes. DONE: the card says the four diffusers give 600 CFM, more than the office needs (the room's own figure depends on the box the reader drags, so the card no longer quotes it).
 
 ### The pass
 

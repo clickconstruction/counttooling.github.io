@@ -30,6 +30,53 @@ the row's exact symptom.
   changed. FLAKE-WATER-FIELD stays open: reading its path found nothing deferred, so it waits
   for a trace from a failing run.
 
+## fix(measure): the dashed band follows the mouse after the first click (MEASURE-BAND, 2026-09-28)
+
+Punch row MEASURE-BAND, the 2026-09-27 map's N08. On a desktop, Measure drew its dashed band from
+the first point to `state.mousePos` but the mousemove handler's re-render gate (app.js, "Canvas
+mouse, wheel & touch handlers") listed every drawing tool except Measure, so nothing repainted
+between the first click and the second: the band appeared only once the measure was done. The
+mobile loupe never had the fault (its aim path re-renders itself).
+
+- **Fix**: one branch in the gate, `TOOL.MEASURE` with a first point and no second, so the band
+  and the moving crosshair follow the mouse the way every other rubber band does. Map item T16's
+  tool-input table derives this branch when it lands.
+- **Pinned** by measure-band.spec.js: after one click and a mouse move, the middle third of the
+  segment on `#annCanvas` carries the band's yellow; run against main's app.js first, it read
+  zero yellow pixels there.
+
+## fix(duct): a ring of duct has a root, and a branch belongs to its tree's system on every surface (DUCT-TAP-LOOP, DUCT-RUN-SYSTEM, 2026-09-28)
+
+Map item T02, two confirmed defects with one home, `ductChildLinks` in duct-model.js. Both new
+duct-model.test.js cases were run against the previous file first and every assertion was wrong
+there; nothing outside the model changed.
+
+- **The loop (DUCT-TAP-LOOP).** Two runs drawn head to tail, each starting on the other (a ring of
+  duct, or a main and a return traced back to its start), were each the other's child: the system
+  had no root, so RTU-1 read 0 designed CFM, its Static path was null and the fittings walk laid two
+  taps. The DS-DINING-ATTACH guard covered only runs that LEAVE one point. `breakTapLoops` now walks
+  up from every run and, on a loop of any length, drops the link of the run nearest the equipment
+  (`opts.equipmentPos`, the anchor the accumulation already orients by), else of the run drawn
+  first; that run is the root. Every walker reads these links, and `inferAutoDuctFittings` now lays
+  its taps from them too instead of asking the per-run rule, so one tap where there were two. A
+  plain continuation (B starts on A's end, A's start off B) was never a loop and is unchanged. One
+  edge, by design: the fittings reconcile has no unit position, so a ring whose unit sits at the
+  second-drawn run's start breaks by draw order there and by the unit elsewhere.
+- **The system rule (DUCT-RUN-SYSTEM's code half).** Designed CFM and the static path keyed a tree
+  by its ROOT's system; flex, the device system and the draft's scope read each run's own. A branch
+  traced with no group lit off an RTU main counted in RTU's designed air while its flex drop filed
+  under "No system" on the Duct Schedule and its device read no system. One rule now,
+  `ductRunSystems(runs, opts)` (a Map) and `ductRunSystemId(runId, runs, opts)`: a run's system is
+  its tree's root's, else its own, else null. `tallyFlexDrops`, `ductDeviceSystemId` and
+  `ductDraftRemainingCfm`'s scope read it (the draft's network includes the draft, so a branch off
+  the main being traced is in the main's scope). A branch with its own system under a root that has
+  none keeps its own.
+- **Not in this change.** The product half of DUCT-RUN-SYSTEM (how a run's system is set after the
+  fact; the first-run toast still names an assignment no surface can make) stays on the punch list.
+  The water model has the same loop and waits on the water tap decision (map T05).
+- **Checked.** duct-model.test.js 138 of 138; the sixteen duct specs and course-hvac.spec.js, 135
+  of 135; the HVAC tour and the duct lesson in tutorial.spec.js and lessons.spec.js. `npm run check`.
+
 ## docs(map): the decomposition map, read again at 65f712f (2026-09-28)
 
 The 2026-09-27 map's first eight items landed inside a day (S02 to S08: the XSS sweep, CI on

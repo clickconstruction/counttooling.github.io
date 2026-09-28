@@ -267,9 +267,9 @@ test.describe('Interactive walkthrough', () => {
     await page.goto('/app/?tour=1');
     await ready(page);
     await page.waitForFunction(() => window.App.tutorialStepId() === 'welcome', null, { timeout: 5000 });
-    // the spotlight sits on the Upload button
-    const spot = await page.evaluate(() => { const r = document.getElementById('tourSpot').getBoundingClientRect(); const b = document.getElementById('uploadPdf').getBoundingClientRect(); return Math.abs(r.left + 6 - b.left) < 2 && Math.abs(r.top + 6 - b.top) < 2; });
-    expect(spot).toBe(true);
+    // the welcome lights nothing: the card's own button is the door, and Upload PDF, lit, led to a file picker with no sample plan in it
+    expect(await page.evaluate(() => getComputedStyle(document.getElementById('tourSpot')).display)).toBe('none');
+    await expect(page.locator('#tourShow')).toHaveText('Open the sample plan');
     // a real upload (the sample plan through the same input) satisfies step 1
     await page.locator('#pdfInput').setInputFiles(require('path').join(__dirname, 'samples', 'sample-plan.pdf'));
     await waitForStep(page, 'scale');

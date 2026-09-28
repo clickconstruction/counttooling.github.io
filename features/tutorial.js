@@ -299,8 +299,9 @@
   const ELECTRICAL_STEPS = [
     {
       id: 'welcome', title: 'A five-minute electrical takeoff', kind: 'do',
-      body: 'A takeoff is the count and the feet a price is built on. This tour does a small one on a sample plan, a practice drawing of an office.\n1. Click [[Open the sample plan]] below.\nYou will set the scale, how many feet an inch of paper stands for, and prove it. Then you will count wall outlets. You will draw the conduit to them, the pipe the wires run in. Then you read the wire and the checks.\nNothing here touches your projects.',
-      target: ['#uploadPdf', '#uploadPdfSidebar'],
+      body: 'A takeoff is the count and the feet a price is built on. This tour does a small one on a sample plan, a practice drawing of an office.\nFirst you tell the app how big the drawing is, and prove it. Then you count wall outlets. You draw the conduit to them, the pipe the wires run in. Last, you read the wire and the checks.\nNothing here touches your projects.',
+      // nothing lit: the card's own button is the door. Upload PDF, lit, sent the reader to a file picker with no sample plan in it
+      target: [],
       check: () => samplePlanOpen(),   // the sample plan, never whatever else is open (MAP-TOUR-SHEET)
       handsOff: true,   // fetching the sample is the app's job: this step's button does it
       action: { label: 'Open the sample plan', run: openSamplePlan },
@@ -309,15 +310,15 @@
     PROVE_STEP,
     {
       id: 'trade', title: 'Tell the app this is electrical', kind: 'do',
-      body: 'A counter is a named tally: each click on the sheet with it adds one mark. First, tell the app the trade, the kind of work.\n1. In the left sidebar, under COUNTERS, click [[+ Add]].\n2. Click the [[Quick]] tab.\n3. Set Trade to [[Electrical]].\nThe left sidebar is the column of lists down the left side of the screen.\nThe pickers become Category, Variant and Rating. The symbols become the ones on an E-sheet, the electrical drawings.\nEvery device, anything wired such as an outlet or a switch, gets a mount height: how high on the wall it sits.\nA plumbing bid, the price a plumber sends, never sees any of this.',
+      body: 'The trade is the kind of work. You set it where you make a counter. A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, the column of lists down the left, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the [[Quick]] tab.\n3. Set Trade to [[Electrical]].\nThe pickers become Category, Variant and Rating. The symbols become the ones on an E-sheet, the electrical drawings.\nEvery device, anything wired such as an outlet or a switch, gets a mount height: how high on the wall it sits.\nA plumbing bid, the price a plumber sends, never sees any of this.',
       target: ['#counterQuickCountTradeSegment [data-trade="electrical"]', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => state().trade === 'electrical',
       action: { label: 'Switch to Electrical', run: () => App.setProjectTrade('electrical', { remember: false, route: 'tour' }) },
     },
     {
-      id: 'counter', title: 'Add a duplex receptacle', kind: 'do',
+      id: 'counter', title: 'Add a duplex receptacle, a wall outlet with two plugs', kind: 'do',
       rules: ['elec.mount-height.defaults'],
-      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nA receptacle is a wall outlet you plug into. A duplex has two plugs.\nIt arrives with the receptacle symbol and a mount height of 18", measured up from the floor. In a moment Chain, the tool that counts and draws in one click, turns that number into vertical conduit: the pipe down the wall.',
+      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", measured up from the floor. Later the app turns that height into the conduit down the wall.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       // a duplex, the one the card names: a Single Pole variant mounts at 48" and the next cards' 9.5 ft read 7 (PERSONA-PASS prober)
       check: () => { const c = (state().counters || []).find((x) => isDuplex(x) && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
@@ -326,16 +327,16 @@
     },
     {
       id: 'place', title: 'Count three receptacles', kind: 'do',
-      body: 'The counter tool is armed: switched on, ready to mark. Three circles sit on the north wall of Open Office 105, the top wall of that room.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\nAnywhere in a circle counts. Each click is one tally, one more on the count. The count in the sidebar moves as you go.',
+      body: 'The counter tool is armed: switched on, ready to mark. Three circles sit on the north wall of Open Office 105, the top wall of that room.\n1. Click inside each circle.\nAnywhere in a circle counts. The {{count in the sidebar|#countersList}} moves as you go.',
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = eCounter(); return markZones(0, c ? c.id : '-', RECEPTACLE_SPOTS, 15); },
       check: () => { const c = eCounter(); return allDone(markZones(0, (c || {}).id || '-', RECEPTACLE_SPOTS, 15)) && !(c && strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15))); },
-      hint: () => { const c = eCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15)) : 0; return n ? { code: 'outside-zone', text: 'A mark outside the circles still counts in the tally. Press Ctrl+Z to undo it, then click inside a circle' } : ''; },
+      hint: () => { const c = eCounter(); const n = c ? strayMarks(0, c.id, markZones(0, c.id, RECEPTACLE_SPOTS.concat(CHAIN_SPOTS), 15)) : 0; return n ? { code: 'outside-zone', text: 'A mark outside the circles still counts in the tally. ' + (isTouch() ? 'Tap Undo, under the sheet' : 'Press ' + (/Mac|iPhone|iPad/.test(navigator.platform || '') ? 'Cmd+Z' : 'Ctrl+Z') + ' to undo it') + ', then click inside a circle' } : ''; },
       action: { label: 'Place three for me', run: placeThreeReceptacles },
     },
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
-      body: 'A line type is one kind of run: a length of pipe you trace on the sheet. The app measures its feet.\n1. In the left sidebar, under LINE TYPES, click [[+ Add]].\n2. In Name, type 3/4" EMT, and add it.\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 3 #12 THHN + 1 #12 G.\nEMT is thin steel conduit. A raceway is any pipe the wires ride in, and conductors are the wires.\n3 #12 THHN + 1 #12 G reads: three #12 wires and one ground, the safety wire. #12 is the gauge, the wire\'s size. THHN is everyday building wire.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
+      body: 'A line type is one kind of run: a length of pipe you trace on the sheet. The app measures its feet.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. In Name, type 3/4" EMT, and click [[Create Line Type]].\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 3 #12 THHN + 1 #12 G.\nEMT is thin steel conduit. A raceway is any pipe the wires ride in, and conductors are the wires.\n3 #12 THHN + 1 #12 G reads: three #12 wires and one ground, the safety wire. #12 is the gauge, the wire\'s size. THHN is everyday building wire.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
       // the card's five lines in order: Name and Create in the + Add dialog, the new type's pencil, then
       // the raceway and the conductors in its details (the ring named another dialog's fields and lit
       // nothing; by hand, 2026-09-25)
@@ -359,7 +360,7 @@
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
       rules: ['elec.vertical.make-up', 'elec.mount-height.defaults'],
-      body: 'Conduit runs in the ceiling, then drops down the wall to each outlet. The app works out that drop for you.\n1. In the header, click the gear ([[Project Settings]]).\n2. In Ceiling height, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the Chain tool adds ceiling − mount + make-up to every run it draws.\nMake-up is the app\'s 1 ft allowance for the bend and the box entry. The box is the metal box the outlet sits in. Make-up is set beside Ceiling height.\nSo each receptacle gets 10 − 1.5 + 1 = 9.5 ft that nobody has to type.',
+      body: 'Conduit runs in the ceiling, then drops down the wall to each outlet. The app works out that drop for you.\n1. In the header, click the gear ([[Project Settings]]).\n2. In {{Ceiling height|#settingsCeilingHeight}}, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the next tool adds ceiling − mount + make-up to every run it draws.\n{{Make-up|#settingsMakeUp}} is the app\'s 1 ft allowance for the bend and the box entry. The box is the metal box the outlet sits in. It is set beside Ceiling height.\nSo each receptacle gets 10 − 1.5 + 1 = 9.5 ft that nobody has to type.',
       target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
       // the sample plan's 10'-0": any ceiling passed and carried wrong drops through the chain (PERSONA-PASS prober)
       check: () => Math.abs((state().ceilingHeightFt || 0) - 10) < 0.05,
@@ -368,7 +369,7 @@
     },
     {
       id: 'chain', title: 'Chain a run', kind: 'do',
-      body: 'Chain counts a device and draws the conduit to it, in one click.\n1. In the header, click [[Chain]] (or press T).\n2. In the Chain panel, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall, the bottom wall of the room.\n4. Click inside the second, then the third.\nEvery click places the device and draws the run back to the one before. It also writes the vertical drop, the conduit down the wall.\nThe footer, the bar under the sheet, tells you the drop before you click.',
+      body: 'Chain counts a device and draws the conduit to it, in one click.\n1. In the header, click [[Chain]] (or press T).\n2. In the {{Chain panel|#chainPanel}}, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall, the bottom wall of the room.\n4. Click inside the second, then the third.\nEach run goes back to the device before it. The click also writes the vertical drop, the conduit down the wall.\nThe {{status bar|.status-bar}}, the strip along the very bottom, tells you the drop before you click.',
       target: ['#chainPanel', '#chainBtn'], page: 0,
       // any receptacle counter: the reader's own "Duplex Receptacle", left by an earlier tour, sits first in
       // the Chain panel under the same name (by hand, 2026-09-25)
@@ -378,7 +379,7 @@
     },
     {
       id: 'circuit', title: 'Make it a circuit', kind: 'do',
-      body: 'A circuit is the set of devices one breaker feeds. A breaker is a switch in the panel, the metal box that hands out the building\'s power.\n1. If GROUPS is not in the left sidebar, click the gear ([[Project Settings]]) and turn on [[Use groups]].\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type a name.\n4. In Panel, type LP-1, the panel\'s name.\n5. In Circuit, type 7, the breaker\'s number.\n6. Click [[Done]].\nA group is a set of marks the app subtotals together. A group with a panel tag is a circuit.\nThe report gets a circuit schedule, a table of the circuits. The checks know which devices belong together.',
+      body: 'A circuit is the set of devices one breaker feeds. A breaker is a switch in the panel, the metal box that hands out the building\'s power.\nIn the app, a circuit is a group with a panel tag. A group is a set of marks the app subtotals together.\n1. If the left sidebar has no list of groups, click the gear ([[Project Settings]]) and turn on {{Use groups|#settingsUseGroupsBtn}}.\n2. Under GROUPS, click {{+ Add|#addGroup}}.\n3. In Name, type a name.\n4. In Panel, type LP-1, the panel\'s name.\n5. In Circuit, type 7, the breaker\'s number.\n6. Click {{Done|#groupModalDone}}.\nThe report gets a circuit schedule, a table of the circuits. The checks know which devices belong together.',
       // Groups are off on the sample plan: the section, and its + Add, only show once they are on (by hand, 2026-09-25)
       target: () => { const empty = ['#groupModalName', '#groupModalPanel', '#groupModalCircuit'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },
       check: () => (state().groups || []).some((g) => g.panel),
@@ -386,28 +387,31 @@
     },
     {
       id: 'summary', title: 'Read what the drawing knows', kind: 'read',
-      body: 'In the left sidebar, SUMMARY is the running totals. It sits above EXPORT OPTIONS, where the files you send out are made, with its list already open. A click on its heading folds the list. The gear beside it opens the settings for the legend, the key drawn on the sheet.\nIt lists the receptacles and the 3/4" EMT feet, the verticals inside them.\nBelow come the derived rows, worked out from the runs: #12 THHN by the foot. The green, the ground wire, has its own row.\nWire is never a mark, so it can never drift from the runs.',
-      target: ['#summaryList', '#summaryCollapseIcon'],
+      body: 'SUMMARY, in the left sidebar, is the running totals.\nIt lists the receptacles and the 3/4" EMT feet, the verticals inside them.\nBelow come the derived rows, worked out from the runs: #12 THHN by the foot. The green, the ground wire, has its own row.\nWire is never a mark, so it can never drift from the runs.\nA click on the heading folds the list. {{The gear beside it|#summarySettingsBtn}} opens the settings for the legend, the key drawn on the sheet.',
+      target: ['#summaryList', '#summarySectionTitle', '#summarySettingsBtn', '#summaryCollapseIcon'], lightAll: true,
       check: () => true,
     },
     {
-      id: 'bidcheck', title: 'Bid Check', kind: 'do',
+      id: 'bidcheck', title: 'Bid Check, what a bid must answer before it goes out', kind: 'do',
       rules: ['elec.conduit.fill-limit'],
-      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out.\n1. In the left sidebar, click BID CHECK to expand it.\nConduit fill is already judged: 3/4" EMT at 10%. Fill is how much of the pipe the wires take up.\nIt has also caught something. The receptacles you counted first were never wired, so they read as not reached by a run.\nVoltage drop is the power lost along a long wire. It is judged to the farthest device once a run is flagged as the homerun, the run back to the panel.\nThe panel cross-check wakes up once the panel is on the plan.\nBelow them are the calls only you can tick. It never blocks an export, a file you send out; it tells you what is open.',
-      target: ['#bidCheckSectionTitle'],
+      onEnter: foldBidCheck, hold: true,
+      body: () => (state().bidCheckCollapsed !== false
+        ? '1. In the left sidebar, click BID CHECK to open it.'
+        : 'Conduit fill is already judged: 3/4" EMT at 10%. Fill is how much of the pipe the wires take up.\nIt has also caught something. The receptacles you counted first were never wired, so they read as not reached by a run.\nVoltage drop is the power lost along a long wire. It is judged to the farthest device once a run is flagged as the homerun, the run back to the panel.\nThe panel cross-check wakes up once the panel is on the plan.\nBelow them are the calls only you can tick. Bid Check never blocks an export, a file you send out; it tells you what is open.'),
+      target: ['#bidCheckSectionTitle', '#bidCheckList'], lightAll: true,
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
     },
     {
       id: 'handoff', title: 'Hand it off', kind: 'read',
-      body: 'EXPORT OPTIONS in the left sidebar sends the takeoff on:\n1. [[Show Report]] for the full breakdown.\n2. [[Copy Summary]] for an email.\n3. [[Open in TakeoffTooling]] to price it.\nTakeoffTooling is the pricing app. There each device splits into its parts: the box, the ring and the cover plate.\nEvery row picks up labor, the hours to put it in, from your own price book.\nCountTooling stops at what the drawing knows.',
-      target: ['#exportOptionsSectionTitle'],
+      body: 'EXPORT OPTIONS, in the left sidebar, sends the takeoff on.\n[[Show Report]] is the full breakdown.\n{{Copy Summary|#copySummaryText}} is for an email.\n[[Open in TakeoffTooling]] prices it.\nTakeoffTooling is the pricing app. There each device splits into its parts: the box, the ring and the cover plate.\nEvery row picks up labor, the hours to put it in, from your own price book.\nCountTooling stops at what the drawing knows.',
+      target: ['#copySummaryText', '#exportOptionsSectionTitle', '#printReport', '#forTakeoffTooling'], lightAll: true,
       check: () => true,
     },
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
-      body: 'Scale, prove it, count, chain, check, hand off.\nYour work here is saved on this device like any takeoff. When you are ready for a real plan, click [[Upload PDF]] in the header and open its file. Guides for every tool live under Help → Guides.',
-      target: [],
+      body: 'Scale, prove it, count, chain, check, hand off.\nYour work here is saved on this device like any takeoff.\nFor a real plan, click the gear ([[Project Settings]]), then Close project. The header then shows Upload PDF: click it and open your file.\nGuides for every tool are in Project Settings too, under Help.',
+      target: ['#settingsGearBtn', '#sidebarLogoGear'],
       check: () => true,
     },
   ];

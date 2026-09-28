@@ -316,7 +316,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 - **The line beside Show me where.** Every card ends with one line that says what the step is still waiting for, one thing at a time. It turns red when your last try missed and says why, and reads **✓ Done** when the step is done. It is not the status bar at the bottom of the window, which shows the file, the save and the quick keys.
 - **Line type.** A named kind of run, by size and material, such as 1.5in Copper or 0.75in EMT. The app measures its feet.
 - **Mark.** One thing you placed on the sheet: a count, a run, a note.
-- **Move.** The resting tool, on when no other is. It drags the sheet, and a mark in the wrong place.
+- **Move.** The tool that slides the sheet, and slides a mark to a new spot. It is the tool you have when no other tool is on.
 - **Multiply zone.** A box whose counts are multiplied, for a typical drawn once and built many times.
 - **Note.** Words you pin to a spot on the sheet. A note that starts with RFI: is a flag.
 - **Number row.** The keys 1 to 0 above the letters. Each can hold a counter as a quick key.

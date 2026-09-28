@@ -244,7 +244,7 @@ const FIRST_USE = {
     'header': 'welcome', 'footer': 'welcome', 'sidebar': 'welcome', 'trade': 'welcome',
     'scale': 'scale', 'title block': 'scale', 'dimension': 'scale',
     'move': 'move',
-    'mark': 'move', 'counter': 'counter', 'palette': 'counter', 'armed': 'counter',
+    'mark': 'move', 'counter': 'counter', 'palette': 'counter', 'armed': 'count',
     'quick key': 'quickkeys', 'status bar': 'quickkeys', 'number row': 'quickkeys', 'gear': 'quickkeys',
     'run': 'linetype', 'line type': 'linetype', 'trace': 'linetype', 'footage': 'linetype',
     'snap': 'snap', 'polyline': 'polyline', 'fitting': 'polyline', 'chain': 'chain',

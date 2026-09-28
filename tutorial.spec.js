@@ -953,6 +953,35 @@ test.describe('Every button, on a blank sheet', () => {
     await waitForStep(page, 'scale');
     expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, document.querySelectorAll('.modal-overlay.visible').length])).toEqual([2, 'blank-sheet', 0]);
   });
+  // Wendi, 2026-09-28: "this button doesn't exist where highlighted, have to scroll down". Project
+  // Settings' Save row sticks to the dialog's foot and lay over Close project, so the ring was
+  // drawn on Save. The dialog scrolls until the control the card names is the thing on top.
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1707, height: 916 }]) {
+    test('the close step lights Close project where it shows, clear of the Save row (' + viewport.width + ' x ' + viewport.height + ')', async ({ page }) => {
+      test.setTimeout(90000);
+      await page.setViewportSize(viewport);
+      await page.goto('/app/?tour=blank');
+      await ready(page);
+      await waitForStep(page, 'welcome');
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await waitForStep(page, 'scale');
+      await page.evaluate(() => window.App.tutorialGoTo('close'));
+      await waitForStep(page, 'close');
+      await page.click('#settingsGearBtn');
+      const lit = () => page.evaluate(() => {
+        const t = document.getElementById('settingsCloseProject'), r = t.getBoundingClientRect();
+        const top = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        const s = document.getElementById('tourSpot').getBoundingClientRect();
+        const save = document.querySelector('#settingsModal .settings-actions').getBoundingClientRect();
+        return { onTop: top === t, ringed: s.left <= r.left && s.top <= r.top && s.right >= r.right && s.bottom >= r.bottom && s.height < r.height + 20, clearOfSave: s.bottom <= save.top };
+      });
+      await expect.poll(lit, { timeout: 8000 }).toEqual({ onTop: true, ringed: true, clearOfSave: true });
+      // and it is the real button: the click asks, the answer closes the sheet
+      await page.click('#settingsCloseProject');
+      await page.click('#confirmOk');
+      await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(0);
+    });
+  }
   // A tablet in portrait (768 × 1024, touch): the app's own breakpoint, where the sidebar is a
   // drawer, the status-bar links are gone, the header strip scrolls and several controls live
   // under the ☰. Every step still has a door, the door is lit on screen, and the walk completes.

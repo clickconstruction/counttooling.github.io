@@ -65,11 +65,15 @@ test.describe('Quick Keys', () => {
     // Open through the real status-bar entry.
     await page.locator('#statusBarQuickKeys').click();
     await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
-    expect(await page.locator('#quickKeysList .quick-key-row').count()).toBe(10);
+    expect(await page.locator('#quickKeysStrip .quick-key-cap').count()).toBe(10);
 
-    // Bind slot 1 -> counter, slot 2 -> line type, through the real select handler.
-    await page.selectOption('.quick-key-select[data-slot="1"]', 'counter:c1');
-    await page.selectOption('.quick-key-select[data-slot="2"]', 'lineType:lt1');
+    // Key 1 is armed on an empty layout. A click on a row puts it on the armed
+    // key, and the next empty key arms itself: two clicks fill keys 1 and 2.
+    await expect(page.locator('.quick-key-cap.is-armed')).toHaveAttribute('data-slot', '1');
+    await page.locator('.quick-key-item[data-value="counter:c1"]').click();
+    await expect(page.locator('.quick-key-cap.is-armed')).toHaveAttribute('data-slot', '2');
+    await page.locator('.quick-key-item[data-value="lineType:lt1"]').click();
+    await expect(page.locator('.quick-key-cap.is-armed')).toHaveAttribute('data-slot', '3');
     expect(await page.evaluate(() => window.state.numberKeyBindings)).toEqual({
       1: { kind: 'counter', id: 'c1' },
       2: { kind: 'lineType', id: 'lt1' },
@@ -145,16 +149,19 @@ test.describe('Quick Keys', () => {
     // showToast() drives #airboardToastModal / #airboardToastText (app.js).
     await expect(page.locator('#airboardToastText')).toContainText(/deleted/i, { timeout: 3000 });
 
-    // The row shows it as stale rather than blank, and the id is retained so
+    // The key shows it as stale rather than empty, and the id is retained so
     // re-creating the counter revives the slot.
     await page.evaluate(() => window.App.openQuickKeysModal());
-    await expect(page.locator('.quick-key-row[data-slot="3"] .quick-key-stale')).toBeVisible();
+    await expect(page.locator('.quick-key-cap[data-slot="3"]')).toHaveClass(/is-stale/);
+    await page.locator('.quick-key-cap[data-slot="3"]').click();
+    await expect(page.locator('#quickKeysNow .quick-key-stale')).toBeVisible();
     expect(await page.evaluate(() => window.state.numberKeyBindings['3'].id)).toBe('gone');
   });
 
   test('clearing a slot removes the binding', async ({ page }) => {
     await page.evaluate(() => { window.state.numberKeyBindings = { 5: { kind: 'counter', id: 'c1' } }; });
     await page.evaluate(() => window.App.openQuickKeysModal());
+    await page.locator('.quick-key-cap[data-slot="5"]').click();
     await page.locator('.quick-key-clear[data-slot="5"]').click();
     expect(await page.evaluate(() => window.state.numberKeyBindings['5'])).toBeUndefined();
 
@@ -212,8 +219,10 @@ test.describe('Quick Keys', () => {
 
     // Unbinding through the modal refreshes the sidebar live.
     await page.evaluate(() => window.App.openQuickKeysModal());
-    await page.selectOption('.quick-key-select[data-slot="1"]', '');
-    expect(await page.evaluate(() => document.querySelectorAll('.quick-key-slot-badge').length)).toBe(1);
+    await page.locator('.quick-key-cap[data-slot="1"]').click();
+    await page.locator('.quick-key-clear[data-slot="1"]').click();
+    // (the sidebar's badges: the dialog's own list wears them too)
+    expect(await page.evaluate(() => document.querySelectorAll('.sidebar-item .quick-key-slot-badge').length)).toBe(1);
   });
 
   test('artboard carry: seed rules, project replace-or-keep, import keeps a seeded layout', async ({ page }) => {
@@ -296,7 +305,9 @@ test.describe('Quick Keys', () => {
     await page.locator('#settingsQuickKeys').click();
     await expect(page.locator('#settingsModal')).not.toHaveClass(/visible/);
     await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
-    expect(await page.locator('#quickKeysList .quick-key-row').count()).toBe(10);
+    expect(await page.locator('#quickKeysStrip .quick-key-cap').count()).toBe(10);
+    // On a phone the card itself never scrolls: Done is on screen, the list scrolls alone.
+    await expect(page.locator('#quickKeysDone')).toBeInViewport();
   });
 
   test('the Keyboard Map lights bound digits with their names', async ({ page }) => {
@@ -322,49 +333,113 @@ test.describe('Quick Keys', () => {
     expect(board.seven).toBe('kb-key');
   });
 
-  test('search filters every slot dropdown; bound selections survive the filter', async ({ page }) => {
+  test('one list, searched: ranked, typed loosely, and Enter fills key after key', async ({ page }) => {
     const errors = [];
     page.on('console', (m) => {
       if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text());
     });
     page.on('pageerror', (e) => errors.push(e.message));
 
-    // Bind slot 1 to a counter that will NOT match the filter.
-    await page.evaluate(() => { window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' } }; });
+    await page.evaluate(() => {
+      window.state.counters = [
+        { id: 'c1', name: 'Floor Drain', icon: '', color: '#e8c547' },
+        { id: 'c2', name: 'Cleanout', icon: '', color: '#4a9eff' },
+        { id: 's1', name: 'SK-1', icon: 'M0 0h24v24H0z', color: '#4a9eff' },
+        { id: 's2', name: 'SK-2', icon: 'M0 0h24v24H0z', color: '#4a9eff' },
+        { id: 'g1', name: 'Gate Valve', icon: '', color: '#e8a347' },
+        { id: 'g2', name: 'Gate Valve', icon: '', color: '#e85447' },
+      ];
+      window.state.numberKeyBindings = { 1: { kind: 'counter', id: 'c1' } };
+    });
     await page.locator('#statusBarQuickKeys').click();
     await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
-    await expect(page.locator('#quickKeysSearch')).toBeVisible();
+    const values = () => page.evaluate(() => [...document.querySelectorAll('#quickKeysResults .quick-key-item')].map((r) => r.dataset.value));
+    const lit = () => page.evaluate(() => document.querySelector('#quickKeysResults .quick-key-item.is-lit')?.dataset.value || null);
 
-    const optionValues = (slot) => page.evaluate((s) =>
-      [...document.querySelector(`.quick-key-select[data-slot="${s}"]`).options].map(o => o.value), slot);
-
-    // Unfiltered: none + 2 counters + 1 line type everywhere.
-    expect(await optionValues('3')).toEqual(['', 'counter:c1', 'counter:c2', 'lineType:lt1']);
-
-    // Filter "waste": unbound slots keep only the matching line type…
-    await page.locator('#quickKeysSearch').fill('waste');
-    expect(await optionValues('3')).toEqual(['', 'lineType:lt1']);
-    // …but slot 1's bound (non-matching) counter stays listed and selected.
-    expect(await optionValues('1')).toEqual(['', 'counter:c1', 'lineType:lt1']);
-    expect(await page.evaluate(() => document.querySelector('.quick-key-select[data-slot="1"]').value)).toBe('counter:c1');
-
-    // Binding through the filtered list works, and typing kept focus (the
-    // input lives outside the re-rendered list).
+    // Opened: the whole palette, counters then line types; key 2 armed (1 is held);
+    // the caret in the search; the lit row is the first one not yet on a key.
+    expect(await values()).toEqual(['counter:c1', 'counter:c2', 'counter:s1', 'counter:s2', 'counter:g1', 'counter:g2', 'lineType:lt1']);
+    await expect(page.locator('.quick-key-cap.is-armed')).toHaveAttribute('data-slot', '2');
     expect(await page.evaluate(() => document.activeElement?.id)).toBe('quickKeysSearch');
-    await page.selectOption('.quick-key-select[data-slot="3"]', 'lineType:lt1');
-    expect(await page.evaluate(() => window.state.numberKeyBindings['3'])).toEqual({ kind: 'lineType', id: 'lt1' });
+    expect(await lit()).toBe('counter:c2');
+    // The row already on a key says which.
+    await expect(page.locator('.quick-key-item[data-value="counter:c1"] .quick-key-slot-badge')).toHaveText('1');
 
-    // Clearing the search restores the full lists; reopening resets the filter.
+    // Typed without the hyphen, in lower case.
+    await page.locator('#quickKeysSearch').fill('sk1');
+    expect(await values()).toEqual(['counter:s1']);
+    // A word that starts a later word of the name still finds it.
+    await page.locator('#quickKeysSearch').fill('waste');
+    expect(await values()).toEqual(['lineType:lt1']);
+    // Two items with one name are two rows.
+    await page.locator('#quickKeysSearch').fill('gate');
+    expect(await values()).toEqual(['counter:g1', 'counter:g2']);
+    // Nothing matches: the list says so, and Enter changes nothing.
+    await page.locator('#quickKeysSearch').fill('zzz');
+    await expect(page.locator('#quickKeysResults .quick-key-none')).toBeVisible();
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => Object.keys(window.state.numberKeyBindings))).toEqual(['1']);
+
+    // "sk", Enter, Enter: SK-1 on key 2, SK-2 on key 3, the word kept and typing kept focus.
+    await page.locator('#quickKeysSearch').fill('sk');
+    await page.keyboard.press('Enter');
+    expect(await lit()).toBe('counter:s2');
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => window.state.numberKeyBindings)).toEqual({
+      1: { kind: 'counter', id: 'c1' },
+      2: { kind: 'counter', id: 's1' },
+      3: { kind: 'counter', id: 's2' },
+    });
+    expect(await page.evaluate(() => document.getElementById('quickKeysSearch').value)).toBe('sk');
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('quickKeysSearch');
+    await expect(page.locator('.quick-key-cap.is-armed')).toHaveAttribute('data-slot', '4');
+
+    // Arrow keys move the lit row; Enter takes it.
     await page.locator('#quickKeysSearch').fill('');
-    expect(await optionValues('3')).toEqual(['', 'counter:c1', 'counter:c2', 'lineType:lt1']);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowUp');
+    expect(await lit()).toBe('counter:c2');
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => window.state.numberKeyBindings['4'])).toEqual({ kind: 'counter', id: 'c2' });
+
+    // An item sits on one key: picking Floor Drain (on 1) for key 7 moves it.
+    await page.locator('.quick-key-cap[data-slot="7"]').click();
+    await page.locator('.quick-key-item[data-value="counter:c1"]').click();
+    expect(await page.evaluate(() => window.state.numberKeyBindings['7'])).toEqual({ kind: 'counter', id: 'c1' });
+    expect(await page.evaluate(() => window.state.numberKeyBindings['1'])).toBeUndefined();
+    // Key 1 is the next empty key to the right of 7, wrapping past 0.
+    await expect(page.locator('.quick-key-cap.is-armed')).toHaveAttribute('data-slot', '8');
+
+    // Reopening starts with an empty search.
     await page.locator('#quickKeysSearch').fill('drain');
     await page.locator('#quickKeysDone').click();
     await page.locator('#statusBarQuickKeys').click();
     await page.waitForSelector('#quickKeysModal.visible', { timeout: 5000 });
     expect(await page.evaluate(() => document.getElementById('quickKeysSearch').value)).toBe('');
-    expect(await optionValues('5')).toEqual(['', 'counter:c1', 'counter:c2', 'lineType:lt1']);
+    expect((await values()).length).toBe(7);
 
     expect(errors).toEqual([]);
+  });
+
+  test('the list puts what the project has placed first, with the sidebar\'s own numbers', async ({ page }) => {
+    await page.setInputFiles('#pdfInput', path.join(__dirname, 'test-2pages.pdf'));
+    await page.waitForFunction(() => (window.state.pages || []).length === 2, null, { timeout: 30000 });
+    await page.evaluate(() => { document.querySelectorAll('.modal-overlay.visible').forEach((m) => window.App.hideModal(m.id)); });
+    await seedPalette(page);
+    await page.evaluate(() => {
+      const ann = window.state.pages[1].canvases[0].annotations;
+      ann.counterMarkers = { c2: [{ x: 100, y: 100, id: 'm1', group: null }, { x: 140, y: 100, id: 'm2', group: null }] };
+      window.App.updateUI();
+      window.App.openQuickKeysModal();
+    });
+    // Cleanout is second in the palette and the only one placed: it leads, with its total.
+    const rows = await page.evaluate(() => [...document.querySelectorAll('#quickKeysResults .quick-key-item')]
+      .map((r) => ({ value: r.dataset.value, used: r.querySelector('.quick-key-used').textContent })));
+    expect(rows).toEqual([
+      { value: 'counter:c2', used: '2' },
+      { value: 'counter:c1', used: '' },
+      { value: 'lineType:lt1', used: '' },
+    ]);
   });
 
   // MAP-QUICKKEYS: the shared hydrator (restore-last-session.js when the cloud copy

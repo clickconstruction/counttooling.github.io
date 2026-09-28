@@ -29,8 +29,8 @@
 (function() {
   const App = (window.App = window.App || {});
 
-  // Physical left-to-right order of the number row, which is also the row order
-  // in the modal. '0' is last because that is where it sits on a keyboard.
+  // Physical left-to-right order of the number row, which is also the order of
+  // the dialog's key strip. '0' is last because that is where it sits on a keyboard.
   const SLOTS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
 
   function getBindings() {
@@ -151,83 +151,185 @@
     return out;
   }
 
-  // filter (optional, lowercased): name-substring filter from #quickKeysSearch.
-  // A slot's currently-bound item always stays in its list even when it doesn't
-  // match, so an active filter can't blank out (or silently rebind) a selection.
-  function optionsHtml(selected, filter) {
+  /*
+   * THE DIALOG: one armed key, one list (2026-09-28; the pure half is
+   * quick-keys-model.js). It was ten native dropdowns under a search box that
+   * filtered them unseen. Now the strip shows the ten keys, one of them armed;
+   * the list under the search shows every counter and line type with its
+   * symbol, its colour, what the project has placed and the key it is on. A
+   * pick lands on the armed key and the next empty key arms, so the search
+   * word is kept: "sk", Enter, Enter, Enter fills three keys.
+   *
+   * An item sits on ONE key: picking one that is already on another key moves it.
+   */
+  let armedSlot = '1';
+  let litIndex = 0;
+  let shown = [];          // the ranked rows on screen, [{ kind, id, name, used, item, usedText }]
+  let palette = [];        // the same rows in palette order, built once per open
+
+  const M = () => window.QuickKeysModel;
+  const valueOf = (row) => row.kind + ':' + row.id;
+
+  // What the project has placed, read once when the dialog opens (the sheets do
+  // not change under it). The numbers are the sidebar's: a counter's total with
+  // repeats, a line type's runs and length.
+  function buildPalette() {
     const state = App.state;
+    const pages = state.pages || [];
+    const counters = (state.counters || []).map((c) => {
+      let used = 0;
+      pages.forEach((p) => { used += App.counterTally(App.getMergedAnnotationsForPage(p), c.id).withRepeats; });
+      return { kind: 'counter', id: c.id, name: c.name || '(unnamed)', used, item: c, usedText: used ? String(used) : '' };
+    });
+    const lineTypes = (state.lineTypes || []).map((lt) => {
+      let runs = 0, lenFt = 0, lenPx = 0;
+      pages.forEach((p, pi) => {
+        const ann = App.getMergedAnnotationsForPage(p);
+        const add = (item, isPoly) => {
+          runs++;
+          const s = App.getLineLengthSplitForTotals(item, pi, isPoly, ann);
+          lenFt += s.feet; lenPx += s.px;
+        };
+        (ann?.quickLines || []).filter((q) => q.lineTypeId === lt.id).forEach((q) => add(q, false));
+        (ann?.polylines || []).filter((poly) => poly.lineTypeId === lt.id).forEach((poly) => add(poly, true));
+      });
+      return { kind: 'lineType', id: lt.id, name: lt.name || '(unnamed)', used: runs, item: lt, usedText: runs ? App.formatFeetPx(lenFt, lenPx) : '' };
+    });
+    palette = counters.concat(lineTypes);
+  }
+
+  function symbolHtml(row) {
     const esc = App.escapeHtml;
-    const keep = (kind, item) => {
-      if (!filter) return true;
-      if (kind + ':' + item.id === selected) return true;
-      return (item.name || '').toLowerCase().includes(filter);
-    };
-    const opt = (kind, item) => {
-      const value = kind + ':' + item.id;
-      const sel = value === selected ? ' selected' : '';
-      return `<option value="${esc(value)}"${sel}>${esc(item.name || '(unnamed)')}</option>`;
-    };
-    const counters = (state.counters || []).filter((c) => keep('counter', c)).map((c) => opt('counter', c)).join('');
-    const lineTypes = (state.lineTypes || []).filter((lt) => keep('lineType', lt)).map((lt) => opt('lineType', lt)).join('');
-    return `<option value=""${selected ? '' : ' selected'}>none</option>`
-      + (counters ? `<optgroup label="Counters">${counters}</optgroup>` : '')
-      + (lineTypes ? `<optgroup label="Line Types">${lineTypes}</optgroup>` : '');
+    const color = row.item.color || '#e8c547';
+    if (row.kind === 'lineType') return `<span class="quick-key-line" style="background:${esc(color)}"></span>`;
+    if (!row.item.icon) return `<span class="quick-key-swatch" style="background:${esc(color)}"></span>`;
+    return `<svg class="quick-key-icon" viewBox="${esc(App.iconVbFor(row.item.icon))}" width="18" height="18" aria-hidden="true"><path fill="${esc(color)}" d="${esc(row.item.icon)}"/></svg>`;
+  }
+
+  function renderStrip() {
+    const stripEl = document.getElementById('quickKeysStrip');
+    if (!stripEl) return;
+    const esc = App.escapeHtml;
+    stripEl.innerHTML = M().QUICK_KEY_SLOTS.map((slot) => {
+      const r = resolveSlot(slot);
+      const stale = !!(r && !r.item);
+      const name = r && r.item ? (r.item.name || '(unnamed)') : '';
+      const cls = 'quick-key-cap' + (slot === armedSlot ? ' is-armed' : '') + (r ? ' is-bound' : '') + (stale ? ' is-stale' : '');
+      // What the key holds, small: a counter's own symbol in its colour, else a colour bar.
+      const color = (r && r.item && r.item.color) || '#e8c547';
+      const bar = r && r.item && r.kind === 'counter' && r.item.icon
+        ? `<svg class="quick-key-cap-icon" viewBox="${esc(App.iconVbFor(r.item.icon))}" width="14" height="14" aria-hidden="true"><path fill="${esc(color)}" d="${esc(r.item.icon)}"/></svg>`
+        : r && r.item
+          ? `<span class="quick-key-cap-bar" style="background:${esc(color)}"></span>`
+          : '<span class="quick-key-cap-bar"></span>';
+      const label = 'Key ' + slot + (stale ? ', holds a deleted item' : name ? ', holds ' + name : ', empty');
+      return `<button type="button" class="${cls}" data-slot="${esc(slot)}" aria-pressed="${slot === armedSlot ? 'true' : 'false'}" aria-label="${esc(label)}" title="${esc(name || (stale ? 'Deleted item' : 'Empty'))}"><span class="quick-key-cap-digit">${esc(slot)}</span>${bar}</button>`;
+    }).join('');
+  }
+
+  function renderNow() {
+    const nowEl = document.getElementById('quickKeysNow');
+    if (!nowEl) return;
+    const esc = App.escapeHtml;
+    const r = resolveSlot(armedSlot);
+    const clear = `<button type="button" class="quick-key-clear" data-slot="${esc(armedSlot)}">Clear key ${esc(armedSlot)}</button>`;
+    if (!r) {
+      nowEl.innerHTML = `<span class="quick-key-now-text">Key ${esc(armedSlot)} is empty. Pick what goes on it.</span>`;
+    } else if (!r.item) {
+      nowEl.innerHTML = `<span class="quick-key-now-text">Key ${esc(armedSlot)} held an item that was <span class="quick-key-stale">deleted</span>. Pick another, or clear it.</span>${clear}`;
+    } else {
+      const row = palette.find((x) => x.kind === r.kind && x.id === r.id) || { kind: r.kind, id: r.id, item: r.item };
+      nowEl.innerHTML = `<span class="quick-key-now-text">Key ${esc(armedSlot)} holds</span>${symbolHtml(row)}<span class="quick-key-now-name">${esc(r.item.name || '(unnamed)')}</span>${clear}`;
+    }
+  }
+
+  function renderResults() {
+    const listEl = document.getElementById('quickKeysResults');
+    if (!listEl) return;
+    const esc = App.escapeHtml;
+    const query = (document.getElementById('quickKeysSearch')?.value || '').trim();
+    if (!shown.length) {
+      listEl.innerHTML = '<div class="empty-state quick-key-none">No counter or line type has that name.</div>';
+      return;
+    }
+    if (litIndex >= shown.length) litIndex = shown.length - 1;
+    let lastKind = '';
+    listEl.innerHTML = shown.map((row, i) => {
+      let head = '';
+      if (!query && row.kind !== lastKind) {
+        lastKind = row.kind;
+        head = `<div class="quick-key-group">${row.kind === 'counter' ? 'Counters' : 'Line types'}</div>`;
+      }
+      const slot = M().quickKeySlotOf(getBindings(), row.kind, row.id);
+      const badge = slot ? `<span class="quick-key-slot-badge" title="On key ${esc(slot)}">${esc(slot)}</span>` : '';
+      const kind = query ? `<span class="quick-key-kind">${row.kind === 'counter' ? 'counter' : 'line type'}</span>` : '';
+      const cls = 'quick-key-item' + (i === litIndex ? ' is-lit' : '') + (slot ? ' is-bound' : '');
+      return `${head}<div class="${cls}" role="option" aria-selected="${i === litIndex ? 'true' : 'false'}" data-index="${i}" data-value="${esc(valueOf(row))}">${symbolHtml(row)}<span class="quick-key-item-name">${esc(row.name)}</span>${badge}${kind}<span class="quick-key-used">${esc(row.usedText)}</span></div>`;
+    }).join('');
+    const lit = listEl.querySelector('.quick-key-item.is-lit');
+    if (lit && lit.scrollIntoView) lit.scrollIntoView({ block: 'nearest' });
+  }
+
+  function rank() {
+    const query = document.getElementById('quickKeysSearch')?.value || '';
+    shown = M().rankQuickKeyItems(palette, query);
+    litIndex = M().firstUnboundQuickKeyIndex(shown, getBindings());
   }
 
   function renderQuickKeysList() {
-    const listEl = document.getElementById('quickKeysList');
-    if (!listEl) return;
     const state = App.state;
-    const esc = App.escapeHtml;
     const empty = !(state.counters || []).length && !(state.lineTypes || []).length;
     const emptyEl = document.getElementById('quickKeysEmpty');
     if (emptyEl) emptyEl.style.display = empty ? 'block' : 'none';
+    const bodyEl = document.getElementById('quickKeysBody');
+    if (bodyEl) bodyEl.style.display = empty ? 'none' : '';
+    renderStrip();
+    renderNow();
+    renderResults();
+  }
+
+  function bindingsChanged() {
+    App.markProjectDirty();
+    refreshSidebarBadges();
+    App.renderKeyboardMapInline && App.renderKeyboardMapInline();
+  }
+
+  function armSlot(slot) {
+    if (M().QUICK_KEY_SLOTS.indexOf(slot) < 0) return;
+    armedSlot = slot;
+    renderStrip();
+    renderNow();
+  }
+
+  function clearSlot(slot) {
+    if (!getBindings()[slot]) return;
+    delete getBindings()[slot];
+    litIndex = M().firstUnboundQuickKeyIndex(shown, getBindings());
+    bindingsChanged();
+    renderQuickKeysList();
+  }
+
+  // Put a row on the armed key, then arm the next empty key.
+  function putOnArmedKey(index) {
+    const row = shown[index];
+    if (!row) return;
+    const bindings = getBindings();
+    const was = M().quickKeySlotOf(bindings, row.kind, row.id);
+    if (was && was !== armedSlot) delete bindings[was];
+    bindings[armedSlot] = { kind: row.kind, id: row.id };
+    armedSlot = M().nextOpenQuickKeySlot(bindings, armedSlot);
+    litIndex = M().firstUnboundQuickKeyIndex(shown, bindings);
+    bindingsChanged();
+    renderQuickKeysList();
+    // A typed word is kept for the next key, selected so the next word replaces it.
     const searchEl = document.getElementById('quickKeysSearch');
-    if (searchEl) searchEl.style.display = empty ? 'none' : '';
-    const filter = (searchEl?.value || '').trim().toLowerCase();
+    if (searchEl && document.activeElement === searchEl) searchEl.select();
+  }
 
-    listEl.innerHTML = SLOTS.map((slot) => {
-      const r = resolveSlot(slot);
-      const selected = r ? r.kind + ':' + r.id : '';
-      const stale = !!(r && !r.item);
-      const color = (r && r.item && r.item.color) || null;
-      const swatch = color
-        ? `<span class="quick-key-swatch" style="background:${esc(color)}"></span>`
-        : '<span class="quick-key-swatch is-empty"></span>';
-      const staleNote = stale ? '<span class="quick-key-stale" title="The bound item no longer exists">deleted</span>' : '';
-      return `<div class="quick-key-row" data-slot="${esc(slot)}">
-          <span class="quick-key-cap">${esc(slot)}</span>
-          ${swatch}
-          <select class="quick-key-select" data-slot="${esc(slot)}" aria-label="Quick Key ${esc(slot)}">${optionsHtml(selected, filter)}</select>
-          ${staleNote}
-          <button type="button" class="quick-key-clear" data-slot="${esc(slot)}" aria-label="Clear Quick Key ${esc(slot)}"${r ? '' : ' disabled'}>×</button>
-        </div>`;
-    }).join('');
-
-    listEl.querySelectorAll('.quick-key-select').forEach((sel) => {
-      sel.onchange = () => {
-        const slot = sel.dataset.slot;
-        const raw = sel.value;
-        if (!raw) delete getBindings()[slot];
-        else {
-          const [kind, id] = raw.split(':');
-          getBindings()[slot] = { kind, id };
-        }
-        App.markProjectDirty();
-        renderQuickKeysList();
-        refreshSidebarBadges();
-        App.renderKeyboardMapInline && App.renderKeyboardMapInline();
-      };
-    });
-    listEl.querySelectorAll('.quick-key-clear').forEach((btn) => {
-      btn.onclick = () => {
-        delete getBindings()[btn.dataset.slot];
-        App.markProjectDirty();
-        renderQuickKeysList();
-        refreshSidebarBadges();
-        App.renderKeyboardMapInline && App.renderKeyboardMapInline();
-      };
-    });
+  function moveLit(by) {
+    if (!shown.length) return;
+    litIndex = Math.max(0, Math.min(shown.length - 1, litIndex + by));
+    renderResults();
   }
 
   function openQuickKeysModal() {
@@ -235,8 +337,16 @@
     // palette is worse than retyping two letters.
     const searchEl = document.getElementById('quickKeysSearch');
     if (searchEl) searchEl.value = '';
+    buildPalette();
+    armedSlot = M().firstOpenQuickKeySlot(getBindings());
+    rank();
     renderQuickKeysList();
+    const listEl = document.getElementById('quickKeysResults');
+    if (listEl) listEl.scrollTop = 0;
     App.showModal('quickKeysModal');
+    // A mouse gets the caret in the search; a finger does not, or the on-screen
+    // keyboard would cover the list it came to read.
+    if (searchEl && window.matchMedia && window.matchMedia('(pointer: fine)').matches) searchEl.focus();
   }
 
   const opener = document.getElementById('statusBarQuickKeys');
@@ -247,10 +357,52 @@
   // settingsMacros handler in app.js: close settings, open ours.
   const settingsOpener = document.getElementById('settingsQuickKeys');
   if (settingsOpener) settingsOpener.onclick = () => { App.hideModal('settingsModal'); openQuickKeysModal(); };
+
+  // One listener per container, bound once: the rows are rebuilt on every render.
+  const stripEl = document.getElementById('quickKeysStrip');
+  if (stripEl) {
+    stripEl.onclick = (e) => {
+      const cap = e.target.closest('.quick-key-cap');
+      if (cap) armSlot(cap.dataset.slot);
+    };
+    stripEl.onkeydown = (e) => {
+      const cap = e.target.closest('.quick-key-cap');
+      if (!cap) return;
+      const slots = M().QUICK_KEY_SLOTS;
+      const at = slots.indexOf(cap.dataset.slot);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const next = slots[(at + (e.key === 'ArrowRight' ? 1 : slots.length - 1)) % slots.length];
+        armSlot(next);
+        stripEl.querySelector('.quick-key-cap[data-slot="' + next + '"]')?.focus();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        armSlot(cap.dataset.slot);
+        clearSlot(cap.dataset.slot);
+        stripEl.querySelector('.quick-key-cap[data-slot="' + cap.dataset.slot + '"]')?.focus();
+      }
+    };
+  }
+  const nowEl = document.getElementById('quickKeysNow');
+  if (nowEl) nowEl.onclick = (e) => {
+    const btn = e.target.closest('.quick-key-clear');
+    if (btn) clearSlot(btn.dataset.slot);
+  };
+  const resultsEl = document.getElementById('quickKeysResults');
+  if (resultsEl) resultsEl.onclick = (e) => {
+    const row = e.target.closest('.quick-key-item');
+    if (row) putOnArmedKey(Number(row.dataset.index));
+  };
   const searchInput = document.getElementById('quickKeysSearch');
-  // The input sits outside #quickKeysList, so the re-render never rebuilds it
-  // (typing keeps focus); each keystroke just refilters the ten dropdowns.
-  if (searchInput) searchInput.oninput = () => renderQuickKeysList();
+  if (searchInput) {
+    // The input sits outside the rebuilt containers, so typing keeps focus.
+    searchInput.oninput = () => { rank(); renderResults(); };
+    searchInput.onkeydown = (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); moveLit(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); moveLit(-1); }
+      else if (e.key === 'Enter') { e.preventDefault(); putOnArmedKey(litIndex); }
+    };
+  }
   const doneBtn = document.getElementById('quickKeysDone');
   if (doneBtn) doneBtn.onclick = () => App.hideModal('quickKeysModal');
 

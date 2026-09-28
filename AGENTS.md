@@ -184,6 +184,8 @@
     pure Bid Check rule table — NEC fill / voltage-drop arithmetic, the manual
     rows; `window.BidCheckModel`), [tag-model.js](tag-model.js) (the pure text-layer
     reading model — tag tokens, nearest tag, schedule rows; `window.TagModel`),
+    [quick-keys-model.js](quick-keys-model.js) (the pure core of the Quick Keys
+    dialog: the armed key, loose name matching, the list's order; `window.QuickKeysModel`),
     [status-hint-model.js](status-hint-model.js) (the pure status-bar tool hint:
     `toolHintFor` returns `{ text, keyed }` with the live readouts passed in, shown
     signed in and signed out; `window.StatusHintModel`), [canvas-legend.js](canvas-legend.js)

@@ -61,6 +61,7 @@
   <script src="/recent-colors.js"></script>
   <script src="/recent-drops.js"></script>
   <script src="/recent-bids.js"></script>
+  <script src="/quick-keys-model.js"></script>
   <script src="/idb.js"></script>
   <script src="/format.js"></script>
   <script src="/save-utils.js"></script>
@@ -1774,21 +1775,27 @@
       </div>
     </div>
   </div>
-  <!-- Quick Keys: rows are BUILT by features/quick-keys.js from the project's
-       counters + line types. Bindings live in state.numberKeyBindings. -->
+  <!-- Quick Keys: the key strip and the list are BUILT by features/quick-keys.js
+       from the project's counters + line types (order and armed key:
+       quick-keys-model.js). Bindings live in state.numberKeyBindings. -->
   <div class="modal-overlay" id="quickKeysModal">
     <div class="modal-card quick-keys-card">
       <div class="modal-card-header">
         <h2>Quick Keys</h2>
         <button type="button" class="modal-close-btn" id="quickKeysModalClose" data-modal-close aria-label="Close">×</button>
       </div>
-      <p class="quick-keys-hint">Bind a counter or line type to a number key. Press the key while marking up to switch to it; press it again to deselect.</p>
+      <p class="quick-keys-hint">Pick a key, then pick what goes on it. On a sheet, press the key to arm it and press it again to let go.</p>
       <p class="quick-keys-empty" id="quickKeysEmpty" style="display:none;">This project has no counters or line types yet. Add some first, then come back to bind them.</p>
-      <!-- Filters every slot's dropdown live; lives OUTSIDE #quickKeysList so
-           re-renders never steal its focus (features/quick-keys.js). -->
-      <input type="search" id="quickKeysSearch" class="sidebar-search-input quick-keys-search" placeholder="Search counters &amp; line types…" autocomplete="off" style="display:none;" aria-label="Search counters and line types">
-      <div class="quick-keys-list" id="quickKeysList"></div>
+      <div class="quick-keys-body" id="quickKeysBody">
+        <div class="quick-keys-strip" id="quickKeysStrip" role="group" aria-label="Number keys"></div>
+        <div class="quick-keys-now" id="quickKeysNow" aria-live="polite"></div>
+        <!-- Lives OUTSIDE the rebuilt containers so a re-render never steals
+             its focus (features/quick-keys.js). -->
+        <input type="search" id="quickKeysSearch" class="sidebar-search-input quick-keys-search" placeholder="Search counters and line types" autocomplete="off" aria-label="Search counters and line types" aria-controls="quickKeysResults">
+        <div class="quick-keys-results" id="quickKeysResults" role="listbox" aria-label="Counters and line types"></div>
+      </div>
       <div class="actions">
+        <span class="quick-keys-foot">↑ ↓ move · Enter puts it on the key</span>
         <button id="quickKeysDone">Done</button>
       </div>
     </div>

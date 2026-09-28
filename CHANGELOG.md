@@ -74,6 +74,48 @@ order, and the card lit Apply the whole time the dialog was open.
 Walked on screen at 1280 x 720 in both tours: every chip live, neither card scrolls, and the
 ring moved field by field to Apply as each was filled.
 
+## feat(quick-keys): one armed key and one searched list, in place of ten dropdowns (QUICK-KEYS-PICK, 2026-09-28)
+
+Reported by the owner on 2026-09-28 with a screenshot of the blank-sheet tour's quick keys card:
+"this sucks". The dialog was ten rows, each a native dropdown of the whole palette in palette
+order, under a search box that filtered the ten dropdowns unseen: typing changed nothing on
+screen. The list had no colour, no symbol and no count, showed two counters named "Gate Valve" as
+the same row twice, and did not say what was already on a key. Ten keys were ten trips through it.
+
+Two mockups were drawn before the build. The first kept the ten rows and gave each its own
+searchable list; it was set aside because ten keys were still thirty actions, the search word was
+thrown away after each key, and a list dropped from row 9 ran off a laptop screen.
+
+- **One armed key, one list.** The strip at the top is the number row, one key lit. Under the
+  search is every counter and line type. A click on a row, or Enter, puts it on the lit key and
+  the next empty key lights (wrapping past 0; with all ten held it stays put). The dialog opens on
+  the first empty key. A click on a key lights it; on a key, ← → move and Delete clears.
+- **The search word is kept**, selected so the next word replaces it, and the lit row moves to the
+  first match not yet on a key: "sk", Enter, Enter, Enter puts SK-1, SK-2 and SK-3 on three keys.
+- **Loose matching, ranked.** Every typed word must be in the name, read without case, spaces or
+  hyphens ("wc1" finds WC-1, "valve ball" finds Ball Valve 1). A name that starts with what was
+  typed comes first, then a name with a word that starts with it, then the rest; ties go to the
+  more used item, then to palette order.
+- **Rows that can be told apart.** The counter's own symbol in its colour (a colour bar for a line
+  type), the sidebar's own number (a counter's total with repeats, a line type's footage), and
+  the badge of the key it is on. With no search the items the project has placed come first, most
+  used on top; the rest keep palette order. A held key wears its counter's symbol.
+- **An item sits on one key.** Picking one that is already on another key moves it. (Two keys on
+  one item was legal and pointless.)
+- **The card never scrolls.** The list takes the height that is left and scrolls alone, so Done
+  is on screen on a phone, where the strip wraps to two rows of five. A finger does not get the
+  caret on open, so the on-screen keyboard does not cover the list.
+- The order, the matching and the armed key are a pure module, **quick-keys-model.js**
+  (`window.QuickKeysModel`), with quick-keys-model.test.js (14 cases).
+- **The cards that teach it** say what is now on screen: "Click key 1 at the top, then click FD-1
+  in the list" (the blank-sheet tour, the Counting lesson, the plumbing and electrical courses).
+  They name the key to click because a signed-in reader's Artboard may already hold key 1, and
+  then another key is the one lit. Their checks read the bindings and did not change.
+- Specs: quick-keys.spec.js drives the rows and the keys (the dropdown test became the list test,
+  plus placed-first order and the phone card); lessons.spec.js picks rows, and its wrong-pick case
+  now ends with the reader's counter on key 2 and the next card saying "Press 2".
+- The guide (working-faster-with-the-keyboard) describes the new dialog; its picture is re-shot.
+
 ## fix(tour): the Move card waits for the reader's own drag (TOUR-MOVE-GLIDE, 2026-09-28)
 
 Reported by wendi on 2026-09-28, on the blank-sheet tour's card 4 of 37, Header: Move: it

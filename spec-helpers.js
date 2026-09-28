@@ -122,4 +122,21 @@ async function pastStartHere(page) {
   });
 }
 
-module.exports = { PDFS, BENIGN_ERRORS, collectConsoleErrors, waitForBoot, bootApp, reloadApp, uploadPdf, pastStartHere };
+
+// Wait for a tour, lesson or chapter step. A doing step that carries an `answer` holds on it once it
+// is done (the card pass, 2026-09-28): the card reads the result and waits for Next. A reader clicks
+// Next; so does this, once the card has stood done for longer than the engine's own 900 ms beat.
+async function stepTo(page, id, timeout = 8000) {
+  await page.waitForFunction((want) => {
+    const A = window.App;
+    if (A.tutorialStepId() === want) return true;
+    const n = document.getElementById('tourNext'), i = A.tutorialStepInfo && A.tutorialStepInfo();
+    if (i && i.kind === 'do' && i.done && n && !n.disabled) {
+      if (window.__heldId !== i.id) { window.__heldId = i.id; window.__heldAt = Date.now(); }
+      else if (Date.now() - window.__heldAt > 1400) { window.__heldId = null; n.click(); }
+    } else window.__heldId = null;
+    return false;
+  }, id, { timeout, polling: 100 });
+}
+
+module.exports = { PDFS, BENIGN_ERRORS, collectConsoleErrors, waitForBoot, bootApp, reloadApp, uploadPdf, pastStartHere, stepTo };

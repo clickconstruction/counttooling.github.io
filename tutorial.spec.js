@@ -26,7 +26,7 @@
  */
 const { test, expect } = require('@playwright/test');
 const { DEVICES } = require('./scripts/persona-devices.js');
-const { pastStartHere } = require('./spec-helpers');
+const { pastStartHere, stepTo } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 // "The app is ready" is the app's own signal, not a quiet network: every fresh context
@@ -35,7 +35,7 @@ const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 // errors and the one hard failure on PR #161's run were exactly that wait).
 const ready = (page) => page.waitForFunction(() => window.App && window.App.bootSettled === true && typeof window.App.startTutorial === 'function', null, { timeout: 30000 });
 async function waitForStep(page, id) {
-  await page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 8000 });
+  await stepTo(page, id, 8000);
 }
 // Do the current step for the reader, then move on: a doing step advances a beat after its
 // check; a held one (the scale proof shows its reading and waits) needs Next.
@@ -110,7 +110,7 @@ test.describe('Interactive walkthrough', () => {
     // a lesson opens its sheets, and the reader leaves it for the Learn menu
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
     await page.click('#tourShow');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await stepTo(page, 'counter', 30000);
     await page.click('#tourLeave');
     expect(await page.evaluate(() => [window.state.currentProjectName, window.state.pages.length])).toEqual(['sample-lessons', 4]);
     await page.evaluate(() => window.App.openLearnMenu());
@@ -120,7 +120,7 @@ test.describe('Interactive walkthrough', () => {
     await page.waitForTimeout(1500);
     expect(await stepId(page)).toBe('welcome');
     await page.click('#tourShow');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'scale', null, { timeout: 30000 });
+    await stepTo(page, 'scale', 30000);
     // a teaching set is reset without asking, and the sample plan is the open project
     await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => [window.state.currentProjectName, window.state.pages.length, window.state.trade, window.App.projectHasAnyCanvasMarkup()])).toEqual(['sample-plan', 1, 'plumbing', false]);
@@ -156,7 +156,7 @@ test.describe('Interactive walkthrough', () => {
     // agreeing closes it and opens the sample plan
     await page.click('#tourShow');
     await page.click('#confirmOk');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'scale', null, { timeout: 30000 });
+    await stepTo(page, 'scale', 30000);
     expect(await page.evaluate(() => [window.state.currentProjectName, window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual(['sample-plan', 1, ['My Counter']]);
   });
 
@@ -279,7 +279,7 @@ test.describe('Interactive walkthrough', () => {
   test('?tour=1 starts it; a real click satisfies a step; Back and leaving behave; a cloud project refuses', async ({ page }) => {
     await page.goto('/app/?tour=1');
     await ready(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'welcome', null, { timeout: 5000 });
+    await stepTo(page, 'welcome', 5000);
     // the welcome lights nothing: the card's own button is the door, and Upload PDF, lit, led to a file picker with no sample plan in it
     expect(await page.evaluate(() => getComputedStyle(document.getElementById('tourSpot')).display)).toBe('none');
     await expect(page.locator('#tourShow')).toHaveText('Open the sample plan');
@@ -592,7 +592,7 @@ test.describe('Interactive walkthrough', () => {
   test('?tour=plumbing opens the plumbing tour; the Settings link opens it; finishing electrical hides only its link', async ({ page }) => {
     await page.goto('/app/?tour=plumbing');
     await ready(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'welcome', null, { timeout: 5000 });
+    await stepTo(page, 'welcome', 5000);
     expect(await page.evaluate(() => window.App.tutorialId())).toBe('plumbing');
     await page.click('#tourLeave');
     // Settings → plumbing tour
@@ -973,7 +973,7 @@ test.describe('The tours, by hand on a returning estimator\'s device', () => {
     await page.selectOption('#quickLineSize', '1in');
     await page.selectOption('#quickLineMaterial', 'PEX');
     await page.click('#quickLineAdd');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'chain', null, { timeout: 8000 });
+    await stepTo(page, 'chain', 8000);
     // a zone left at the dialog's 2 is named; ×3 passes
     await page.evaluate(() => window.App.tutorialGoTo('zone'));
     await page.waitForTimeout(800);
@@ -991,7 +991,7 @@ test.describe('The tours, by hand on a returning estimator\'s device', () => {
     await page.waitForTimeout(400);
     await box();
     await page.keyboard.type('3'); await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'rfi', null, { timeout: 8000 });
+    await stepTo(page, 'rfi', 8000);
     await page.evaluate(() => window.App.stopTutorial());
     expect(await page.evaluate(() => [window.state.counterSearch, window.state.lineTypeSearch, localStorage.getItem('clickcount-tour-searches-before')])).toEqual(['FD', 'PEX', null]);
     expect(errors).toEqual([]);

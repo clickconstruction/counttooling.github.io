@@ -12,6 +12,7 @@
  * Settings, ?learn=1, ?lesson=<id>), and the Start here card a fresh device's empty canvas shows.
  */
 const { test, expect } = require('@playwright/test');
+const { stepTo } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 async function boot(page, url, errors) {
@@ -96,7 +97,7 @@ test.describe('Learn: the lessons', () => {
       test.setTimeout(120000);
       const errors = [];
       await boot(page, '/app/?lesson=' + id, errors);
-      await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+      await stepTo(page, 'sheets', 10000);
       expect(await page.evaluate(() => window.App.tutorialId())).toBe('lesson:' + id);
       if (id === 'plans') {
         // the Sheets lesson leaves Trim your set to the reader: the spotlight follows into it
@@ -104,7 +105,7 @@ test.describe('Learn: the lessons', () => {
         await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 15000 });
         await page.waitForFunction(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(), b = document.getElementById('preparePdfDone').getBoundingClientRect(); return s.width > 0 && Math.abs(s.left - (b.left - 6)) < 3; }, null, { timeout: 5000 });
         await page.click('#preparePdfDone');
-        await page.waitForFunction(() => window.App.tutorialStepId() === 'jump', null, { timeout: 15000 });
+        await stepTo(page, 'jump', 15000);
       }
       const { walked, skipped } = await walk(page);
       expect(skipped).toEqual([]);
@@ -187,7 +188,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await expect(page.locator('#tourShow')).toHaveText('Open the lesson sheets');
     expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 8');
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'header', null, { timeout: 30000 });
+    await stepTo(page, 'header', 30000);
     // where things are: Next moves the light, one part of the screen per card
     const lit = () => page.evaluate(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(); return { l: Math.round(s.left), t: Math.round(s.top), w: Math.round(s.width), h: Math.round(s.height) }; });
     const spots = {};
@@ -197,7 +198,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
       spots[id] = await lit();
       await page.click('#tourNext');
     }
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'try');
+    await stepTo(page, 'try');
     expect(spots.header.t).toBeLessThan(20);                                   // the header, across the top
     expect(spots.sidebar.h).toBeGreaterThan(spots.sidebar.w);                  // the sidebar, down the left
     expect(spots.bottom.t).toBeGreaterThan(spots.sidebar.t + spots.sidebar.h / 2);   // the footer, under the sheet
@@ -290,12 +291,12 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // agreeing opens the lesson sheets; the reader's palette rides along untouched
     await page.click('#tourShow');
     await page.click('#confirmOk');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await stepTo(page, 'counter', 30000);
     expect(await page.evaluate(() => [window.state.pages.length, window.state.counters.map((c) => c.name)])).toEqual([4, ['My Counter']]);
     // the search is cleared with the set open, so the lesson's counter shows in the list; the lesson gives it back when it stops
     expect(await page.evaluate(() => [window.state.counterSearch, localStorage.getItem('counterSearch'), document.getElementById('counterSearchInput').value])).toEqual(['', null, '']);
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await stepTo(page, 'place', 8000);
     await expect(page.locator('#countersList')).toContainText('Floor Drain');
     await page.click('#tourLeave');
     await page.waitForTimeout(300);
@@ -303,7 +304,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the next lesson: no question over lesson sheets, the last lesson's counter swept, theirs kept
     expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
     await page.click('#tourShow');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'note', null, { timeout: 30000 });
+    await stepTo(page, 'note', 30000);
     await expect(page.locator('#confirmModal')).not.toHaveClass(/visible/);
     expect(await page.evaluate(() => [window.state.counters.map((c) => c.name), window.App.projectHasAnyCanvasMarkup()])).toEqual([['My Counter'], false]);
     expect(errors).toEqual([]);
@@ -322,9 +323,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // 1. the lesson's own Floor Drain and the reader's own + Add, then the reader's own plan
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
     await page.click('#tourShow');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await stepTo(page, 'counter', 30000);
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await stepTo(page, 'place', 8000);
     await handMade(1);
     expect((await palette())[0]).toEqual(['My Counter', 'Floor Drain', 'HB Hose Bibb 1']);
     await page.click('#tourLeave');
@@ -345,7 +346,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
     await page.click('#tourShow');
     await page.click('#confirmOk');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'note', null, { timeout: 30000 });
+    await stepTo(page, 'note', 30000);
     await handMade(2);
     await page.click('#tourLeave');
     await page.evaluate(() => { const s = window.state; const ic = window.App.getOrderedIcons()[0].value; s.currentProjectName = 'Real Bid'; s.counters = [{ id: 'mine', name: 'My Counter', icon: ic, color: '#fff' }, { id: 'cloud-1', name: 'Cloud WC', icon: ic, color: '#4a9eff' }]; s.lineTypes = [{ id: 'cloud-2', name: '2in PVC', color: '#8a4bb0', curveStyle: 'straight' }]; window.App.updateUI(); });
@@ -364,9 +365,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // 1. a lesson still running: the question, and Cancel keeps the lesson and its sheets
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
     await page.click('#tourShow');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'counter', null, { timeout: 30000 });
+    await stepTo(page, 'counter', 30000);
     await page.evaluate(() => window.App.tutorialDoStep());   // the lesson's Floor Drain
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await stepTo(page, 'place', 8000);
     await page.locator('#pdfInput').setInputFiles('test-page.pdf');
     await expect(page.locator('#confirmModal')).toHaveClass(/visible/, { timeout: 5000 });
     await expect(page.locator('#confirmTitle')).toHaveText('Leave the lesson?');
@@ -384,7 +385,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.evaluate(() => { const s = window.state; s.pages.length = 0; s.currentProjectName = ''; window.App.updateUI(); });
     expect(await page.evaluate(() => window.App.startLesson('notes'))).toBe(true);
     await page.click('#tourShow');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'note', null, { timeout: 30000 });
+    await stepTo(page, 'note', 30000);
     await page.click('#tourLeave');
     await page.locator('#pdfInput').setInputFiles('test-page.pdf');
     await page.waitForFunction(() => window.state.currentProjectName === 'test-page', null, { timeout: 15000 });
@@ -397,9 +398,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     test.setTimeout(90000);
     const errors = [];
     await boot(page, '/app/?lesson=repeats', errors);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+    await stepTo(page, 'sheets', 10000);
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'zone', null, { timeout: 30000 });
+    await stepTo(page, 'zone', 30000);
     const rects = () => page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(), s = document.getElementById('tourSpot').getBoundingClientRect(); return { c: { l: c.left, t: c.top, r: c.right, b: c.bottom }, s: { l: s.left + 6, t: s.top + 6, r: s.right - 6, b: s.bottom - 6 }, vw: window.innerWidth, vh: window.innerHeight }; });
     await page.waitForTimeout(500);
     let r = await rects();
@@ -426,38 +427,38 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
       await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
       await page.evaluate(() => window.App.tutorialDoStep());
       if (id === 'plans') { await expect(page.locator('#preparePdfModal')).toHaveClass(/visible/, { timeout: 15000 }); await page.click('#preparePdfDone'); }
-      await page.waitForFunction((want) => window.App.tutorialStepId() === want, first, { timeout: 30000 });
+      await stepTo(page, first, 30000);
     };
     page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
     page.on('pageerror', (e) => errors.push(e.message));
     // Sheets → rename: the number badge, a name, Enter
     await open('plans', 'jump');
     await page.click('#pagesList .sidebar-item[data-page-idx="2"] .name');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'rotate');
+    await stepTo(page, 'rotate');
     await page.click('#rotatePage');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'rename', null, { timeout: 8000 });
+    await stepTo(page, 'rename', 8000);
     await page.click('#pagesList .sidebar-item.active .page-num-badge-editable');
     await page.keyboard.press('ControlOrMeta+a');
     await page.keyboard.type('P-501 Fixture Schedule');
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'marked', null, { timeout: 8000 });
+    await stepTo(page, 'marked', 8000);
     expect(await page.evaluate(() => window.state.pages[2].label)).toBe('P-501 Fixture Schedule');
     // Counting → the Quick Keys dialog's own dropdown
     await open('counting', 'counter');
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'place');
+    await stepTo(page, 'place');
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'bind', null, { timeout: 8000 });
+    await stepTo(page, 'bind', 8000);
     await page.click('#statusBarQuickKeys');
     await expect(page.locator('#quickKeysModal')).toHaveClass(/visible/);
     await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain' });
     await page.click('#quickKeysDone');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'usekey', null, { timeout: 8000 });
+    await stepTo(page, 'usekey', 8000);
     // Organizing → one click on the funnel
     await open('organize', 'groupson');
     await page.evaluate(() => window.App.tutorialGoTo('filter'));
     await page.click('#counterShowOnlyOnPageInlineBtn');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'layer', null, { timeout: 8000 });
+    await stepTo(page, 'layer', 8000);
     await expect(page.locator('#countersList')).not.toContainText('Urinal');
     // Fixing → right-click the stray mark, Delete
     await open('fixing', 'undo');
@@ -469,7 +470,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.mouse.click(pt.x, pt.y, { button: 'right' });
     await expect(page.locator('#ctxDelete')).toBeVisible();
     await page.click('#ctxDelete');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'details', null, { timeout: 8000 });
+    await stepTo(page, 'details', 8000);
     expect(errors).toEqual([]);
   });
 });
@@ -480,7 +481,7 @@ test.describe('Learn: on-sheet targets', () => {
     await page.goto('/app/?lesson=' + id);
     await page.waitForFunction(() => window.App && window.App.tutorialStepId && window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
     await page.click('#tourShow');
-    await page.waitForFunction((want) => window.App.tutorialStepId() === want, first, { timeout: 30000 });
+    await stepTo(page, first, 30000);
   };
   const settle = (page) => page.waitForTimeout(700);   // the focus zoom and its raster
 
@@ -490,7 +491,7 @@ test.describe('Learn: on-sheet targets', () => {
     page.on('pageerror', (e) => errors.push(e.message));
     await openLesson(page, 'counting', 'counter');
     await page.evaluate(() => window.App.tutorialDoStep());   // (spec seam) the counter exists and is armed
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await stepTo(page, 'place', 8000);
     await settle(page);
     // the card: no button does the step, Next is off, Skip is there
     await expect(page.locator('#tourAction')).toHaveCount(0);
@@ -520,7 +521,7 @@ test.describe('Learn: on-sheet targets', () => {
       await page.waitForTimeout(250);
       expect((await zones(page))[i].done).toBe(true);
     }
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'bind', null, { timeout: 8000 });
+    await stepTo(page, 'bind', 8000);
     expect(errors).toEqual([]);
   });
 
@@ -550,7 +551,7 @@ test.describe('Learn: on-sheet targets', () => {
     // 2. around the whole detail, corners anywhere in the boundary
     z = (await zones(page))[0];
     await dragBox({ x: (z.outer.x1 + z.inner.x1) / 2, y: (z.outer.y1 + z.inner.y1) / 2 }, { x: (z.outer.x2 + z.inner.x2) / 2, y: (z.outer.y2 + z.inner.y2) / 2 }, 4);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'read', null, { timeout: 8000 });
+    await stepTo(page, 'read', 8000);
     expect(await page.evaluate(() => window.getPipeToolingSummary())).toContain('Hand Sink\t4');
     expect(errors).toEqual([]);
   });
@@ -561,7 +562,7 @@ test.describe('Learn: on-sheet targets', () => {
     page.on('pageerror', (e) => errors.push(e.message));
     await openLesson(page, 'measuring', 'snap');
     await page.click('#tourSkip');                      // snap off: the clicks below land where they are aimed
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'trace');
+    await stepTo(page, 'trace');
     await settle(page);
     await page.keyboard.press('p');
     for (let i = 0; i < 3; i++) {
@@ -577,7 +578,7 @@ test.describe('Learn: on-sheet targets', () => {
     await expect(page.locator('#tourBody')).toContainText('The main runs up the east side of the kitchen', { timeout: 8000 });
     await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
     await page.click('#tourNext');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'bends', null, { timeout: 8000 });
+    await stepTo(page, 'bends', 8000);
     expect(errors).toEqual([]);
   });
 });
@@ -603,9 +604,9 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
       A.updateUI();
       A.startLesson(pal.id);
     }, Object.assign({ id }, palette));
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+    await stepTo(page, 'sheets', 10000);
     await page.click('#tourShow');
-    await page.waitForFunction((want) => window.App.tutorialStepId() === want, first, { timeout: 30000 });
+    await stepTo(page, first, 30000);
     await page.waitForTimeout(700);
   }
 
@@ -626,17 +627,17 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
     // the lit button shows: its centre is the button, not the panel's scroll edge
     expect(await page.evaluate(() => { const e = document.getElementById('counterCreate'), r = e.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); return !!hit && e.contains(hit); })).toBe(true);
     await page.click('#counterCreate');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'place', null, { timeout: 8000 });
+    await stepTo(page, 'place', 8000);
     expect(await page.evaluate(() => window.state.counters[window.state.counters.length - 1].name)).toBe('Floor Drain 2');
     await page.evaluate(() => window.App.tutorialDoStep());   // (spec seam) the three circles, walked by hand in "Learn: on-sheet targets"
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'bind', null, { timeout: 8000 });
+    await stepTo(page, 'bind', 8000);
     await expect(page.locator('#tourBody')).toContainText('choose Floor Drain 2');
     await page.click('#statusBarQuickKeys');
     await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain' });
     await expect(page.locator('#tourStatus')).toContainText('That key holds Floor Drain. Choose Floor Drain 2', { timeout: 3000 });
     await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain 2' });
     await page.click('#quickKeysDone');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'usekey', null, { timeout: 8000 });
+    await stepTo(page, 'usekey', 8000);
     // M puts the counter down; 1 arms it again (it deselected the counter the key was already on)
     await page.mouse.move(700, 400);
     await page.keyboard.press('m');
@@ -659,26 +660,26 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
     await page.locator('#chainPanel .chain-row', { hasText: '1/2in PEX' }).first().locator('.chain-row-name').click();
     for (const z of await zones(page)) { await page.mouse.click(z.cx + 2, z.cy - 2); await page.waitForTimeout(250); }
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'hangers', null, { timeout: 8000 });
+    await stepTo(page, 'hangers', 8000);
     expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers['st-Lavatory'] || []).length)).toBe(3);
     await page.waitForTimeout(700);
     expect(await lit(page, '#lineTypesList [data-line-type-id="st-12inPEX"] .edit-btn')).toBe(true);   // the PEX the runs are on, not the lesson's twin or the list's first
     await page.click('#lineTypesList [data-line-type-id="st-12inPEX"] .edit-btn');
     await page.locator('#childCountsSuggest button', { hasText: 'Add' }).first().click();
     await page.click('#counterLineTypeDetailsClose');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'rule', null, { timeout: 8000 });
+    await stepTo(page, 'rule', 8000);
     await expect(page.locator('#summaryList')).toContainText('Hanger');
     // Check the bid: the standing "4in PVC old" has no run on this bid, so it holds nothing open
     await openWithPalette(page, 'check', 'open', { lineTypes: ['4in PVC old'] });
     await page.click('#bidCheckSectionTitle');
     await expect(page.locator('#tourNext')).toBeEnabled({ timeout: 5000 });
     await page.click('#tourNext');   // the step holds on the open section for Next
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'fix', null, { timeout: 8000 });
+    await stepTo(page, 'fix', 8000);
     await page.evaluate(() => window.App.tutorialDoStep());   // (spec seam) the hanger rule, added by hand above
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'tick', null, { timeout: 8000 });
+    await stepTo(page, 'tick', 8000);
     expect(await page.evaluate(() => window.App.getBidCheck().auto.find((r) => r.id === 'hangers').verdict)).toBe('ok');
     await page.getByText('Scale verified on every counted sheet').first().click();
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'proof', null, { timeout: 8000 });
+    await stepTo(page, 'proof', 8000);
     await page.waitForTimeout(700);
     const fd = await page.evaluate(() => window.state.counters.find((c) => c.lesson && c.name === 'Floor Drain').id);
     expect(await lit(page, '#summaryList .summary-item-clickable[data-type="counter"][data-id="' + fd + '"]')).toBe(true);   // the total the card names, not the first
@@ -707,18 +708,18 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
     await drag();
     await page.keyboard.type('4');
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'read', null, { timeout: 8000 });
+    await stepTo(page, 'read', 8000);
     // Organizing: Groups on from Settings opens the GROUPS section, and + Add puts the caret in Name
     await openWithPalette(page, 'organize', 'groupson', {});
     await page.click('#settingsGearBtn');
     await page.click('#settingsUseGroupsBtn');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'group', null, { timeout: 8000 });
+    await stepTo(page, 'group', 8000);
     await expect(page.locator('#addGroup')).toBeVisible();
     await page.click('#addGroup');
     await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'groupModalName', null, { timeout: 3000 });
     await page.keyboard.type('Kitchen');
     await page.click('#groupModalDone');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'assign', null, { timeout: 8000 });
+    await stepTo(page, 'assign', 8000);
     // Notes: the note lands on Done, which the card now names and lights
     await openWithPalette(page, 'notes', 'note', {});
     const spot = (await zones(page))[0];
@@ -730,7 +731,7 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
     await page.waitForTimeout(500);
     expect(await lit(page, '#noteModalDone')).toBe(true);
     await page.click('#noteModalDone');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'rfi', null, { timeout: 8000 });
+    await stepTo(page, 'rfi', 8000);
     // Working faster: the status bar's shortcuts opens Keyboard Shortcuts, and that is the step
     await openWithPalette(page, 'speed', 'map', {});
     await page.click('#statusBarMacros');
@@ -760,7 +761,7 @@ test('Check: the proof step wants the breakdown the card names', async ({ page }
   test.setTimeout(120000);
   const errors = [];
   await boot(page, '/app/?lesson=check', errors);
-  await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+  await stepTo(page, 'sheets', 10000);
   for (let i = 0; i < 12 && await stepId(page) !== 'proof'; i++) {
     const id = await stepId(page);
     await page.evaluate(() => window.App.tutorialDoStep());
@@ -788,7 +789,7 @@ test.describe('Counting on a tablet', () => {
     await page.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (/pointer:\s*coarse/.test(q) ? Object.assign({}, { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }) : mm(q)); });
     await boot(page, '/app/', errors);
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets');
+    await stepTo(page, 'sheets');
     expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 5');
     const { walked, skipped } = await walk(page);
     expect(skipped).toEqual([]);
@@ -803,7 +804,7 @@ test.describe('Counting on a tablet', () => {
     await page.addInitScript(() => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (/pointer:\s*coarse/.test(q) ? Object.assign({}, { matches: true, media: q, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }) : mm(q)); });
     await boot(page, '/app/', errors);
     expect(await page.evaluate(() => window.App.startLesson('counting'))).toBe(true);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets');
+    await stepTo(page, 'sheets');
     await page.evaluate(() => window.App.tutorialGoTo('done'));
     await expect(page.locator('#tourBody')).toContainText('A counter and a count.');
     await expect(page.locator('#tourBody')).not.toContainText('number key');

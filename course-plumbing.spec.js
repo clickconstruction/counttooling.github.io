@@ -14,7 +14,7 @@
  * to the Learn menu at the course with the next chapter lit; the doors; the reveal itself.
  */
 const { test, expect } = require('@playwright/test');
-const { pastStartHere } = require('./spec-helpers');
+const { pastStartHere, stepTo } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 async function boot(page, url, errors) {
@@ -50,7 +50,7 @@ const ann = (page, i) => page.evaluate((idx) => { const a = window.App.getActive
 const summary = (page) => page.evaluate(() => window.getPipeToolingSummary());
 const countOf = (page, re) => page.evaluate((src) => { const c = window.state.counters.find((x) => new RegExp(src, 'i').test(x.name)); if (!c) return -1; let n = 0; window.state.pages.forEach((p) => (p.canvases || []).forEach((cv) => { n += (((cv.annotations || {}).counterMarkers || {})[c.id] || []).length; })); return n; }, re);
 const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), id);
-const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
+const openSheets = async (page) => { await stepTo(page, 'sheets', 10000); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
 const EXPECT = {
   // the uncounted opener (COURSE-LANGUAGE option C): five reading cards, nothing laid on the sheet
@@ -171,7 +171,7 @@ async function answeredThenNext(page, next) {
   await expect(page.locator('#tourBody')).toContainText('Answer:', { timeout: 5000 });
   await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
   await page.click('#tourNext');
-  await page.waitForFunction((want) => window.App.tutorialStepId() === want, next, { timeout: 5000 });
+  await stepTo(page, next, 5000);
 }
 test.describe('The plumbing course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
@@ -179,7 +179,7 @@ test.describe('The plumbing course: the chapters', () => {
       test.setTimeout(180000);
       const errors = [];
       await boot(page, '/app/?chapter=plumbing:' + id, errors);
-      await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+      await stepTo(page, 'sheets', 10000);
       expect(await page.evaluate(() => window.App.tutorialId())).toBe('course:plumbing:' + id);
       const { walked, revealed, skipped } = await walk(page);
       expect(skipped).toEqual([]);
@@ -265,7 +265,7 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     await openSheets(page);
     await expect(page.locator('#tourStatus')).toHaveText(/Not yet traced: the 2 inch service/);
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare', null, { timeout: 25000 });
+    await stepTo(page, 'compare', 25000);
     const text = await page.locator('#tourBody').innerText();
     expect(text).toContain('1.5in Copper CW: 99.2 ft, yours 99.2 ft ✓');
     expect(text).toContain('4in PVC: 66.3 ft, yours 66.3 ft ✓');
@@ -316,7 +316,7 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     await page.locator('#quickKeysModal select').nth(1).selectOption(await val('^HS-1'));
     await expect(page.locator('#tourStatus')).toHaveText(/Close the dialog/);
     await page.click('#quickKeysDone');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'done', null, { timeout: 5000 });
+    await stepTo(page, 'done', 5000);
     expect(errors).toEqual([]);
   });
 
@@ -365,7 +365,7 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     expect(zs.length).toBe(2);
     for (const z of zs) { await page.mouse.click(z.x, z.y); await page.waitForTimeout(150); }
     await page.keyboard.press('Enter');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'why', null, { timeout: 5000 });
+    await stepTo(page, 'why', 5000);
     expect(errors).toEqual([]);
   });
 
@@ -373,7 +373,7 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     test.setTimeout(150000);
     const errors = [];
     await startOnDevice(page, 'whole', errors);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await stepTo(page, 'lay');
     await page.click('#tourSkip');
     await seam(page, 'pdfs');
     await page.waitForTimeout(500);
@@ -389,21 +389,21 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     test.setTimeout(150000);
     const errors = [];
     await startOnDevice(page, 'whole', errors);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await stepTo(page, 'lay');
     await expect(page.locator('#tourAlt')).toBeVisible();
     await expect(page.locator('#tourAlt')).toHaveText('Finish the takeoff for me');
     await page.click('#tourSkip');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await stepTo(page, 'compare');
     await expect(page.locator('#tourBody')).toContainText('You skipped the takeoff');
     await expect(page.locator('#tourBody')).toContainText('Finish the takeoff for me');
     await expect(page.locator('#tourBody')).not.toContainText('short:');
     await page.click('#tourBack');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await stepTo(page, 'lay');
     await page.click('#tourAlt');
     await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done === true || window.App.tutorialStepId() === 'compare', null, { timeout: 15000 });
     await expect(page.locator('#tourAlt')).toBeHidden();
     if (await stepId(page) === 'lay') await page.click('#tourNext');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await stepTo(page, 'compare');
     await expect(page.locator('#tourBody')).toContainText('Every count matches');
     await expect(page.locator('#tourBody')).not.toContainText('You skipped');
     expect(errors).toEqual([]);
@@ -417,10 +417,10 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     const errors = [];
     await startOnDevice(page, 'whole', errors);
     await page.setViewportSize({ width: 1280, height: 720 });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await stepTo(page, 'lay');
     await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'My mark', icon: window.App.getOrderedIcons()[0].value, color: '#e8c547', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(300, 300)]); k.dirty(); });
     await page.click('#tourSkip');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await stepTo(page, 'compare');
     await page.waitForTimeout(500);
     await expect(page.locator('#tourBody')).toContainText('short:');
     const box = await page.evaluate(() => { const card = document.getElementById('tourCard'); const c = card.getBoundingClientRect(); const n = document.getElementById('tourNext').getBoundingClientRect(); return { top: c.top, bottom: c.bottom, nextTop: n.top, nextBottom: n.bottom, vh: window.innerHeight, tall: card.scrollHeight }; });
@@ -430,7 +430,7 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     expect(box.nextTop).toBeGreaterThanOrEqual(box.top);
     expect(box.nextBottom).toBeLessThanOrEqual(box.bottom);
     await page.click('#tourNext');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'legend', null, { timeout: 5000 });
+    await stepTo(page, 'legend', 5000);
     expect(errors).toEqual([]);
   });
 
@@ -484,7 +484,7 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     const errors = [];
     await boot(page, '/app/?chapter=plumbing:sheet', errors);
     await openSheets(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'what', null, { timeout: 5000 });
+    await stepTo(page, 'what', 5000);
     await expect(page.locator('#tourReveal')).toHaveText('Show the engineer\'s answer');
     await expect(page.locator('#tourNext')).toBeEnabled();
     await expect(page.locator('.tour-reveal')).toHaveCount(0);
@@ -499,9 +499,9 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     expect(at.left).toBeLessThan(40);
     expect(at.top).toBeLessThan(80);
     await page.click('#tourNext');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'scale');
+    await stepTo(page, 'scale');
     await page.click('#tourBack');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'what');
+    await stepTo(page, 'what');
     await expect(page.locator('.tour-reveal')).toHaveCount(0);   // asked again
     await expect(page.locator('#tourReveal')).toHaveText('Show the engineer\'s answer');
     expect(errors).toEqual([]);

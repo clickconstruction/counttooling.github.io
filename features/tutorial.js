@@ -22,6 +22,8 @@
  * (answer: a doing step that asks with its task. Once the check passes, the card shows the answer
  * in place of the task and waits for Next, as `hold` does. The answer used to open the NEXT card,
  * which then did two jobs: the last answer and its own task; the card review, fix 4)
+ * (answerWaits: with `answer`, for a step whose last line closes a dialog, Click Done: the check
+ * passes a click before that, and the answer waits until the dialog is closed)
  * (keys: a card about the keyboard, the number row and its quick keys. A tablet or a phone has no
  * keys, so there the tour leaves the card out: its steps are counted and walked without it; the
  * card review, fix 5)
@@ -1478,7 +1480,7 @@
     const progress = counted.length > 1 ? counted.filter((z) => z.done).length + ' of ' + counted.length + ' done' : '';
     const miss = step.kind === 'do' && !done ? hintOf(step) : { text: '', code: null };
     const pageLine = wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '';
-    const statusLine = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
+    const statusLine = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || (closing ? 'That is in. Now close the dialog' : '') || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
     el('tourStatus').textContent = isTouch() ? tapText(statusLine) : statusLine;
     el('tourStatus').classList.toggle('tour-status-miss', !!miss.text);
     // A finished step has no Show me where, so its ✓ Done would sit on a row of its own above Back and
@@ -1945,9 +1947,13 @@
     let ok;
     try { ok = !!step.check(); } catch (_) { ok = false; }
     if (!step.answer || step !== STEPS[stepIdx]) return ok;
-    if (ok) answered = true;
+    // `answerWaits`: the step's last line closes a dialog (Click Done), and its check passes a click
+    // before that. The answer waits for the dialog to close, so the line is still there to follow.
+    closing = !!(ok && !answered && step.answerWaits && document.querySelector('.modal-overlay.visible'));
+    if (ok && !closing) answered = true;
     return answered;
   }
+  let closing = false;   // an answerWaits step has passed its check and its dialog is still up
   // A hint is a string, or { code, text } when it names why the step is not done yet: not-armed,
   // outside-zone, wrong-page, wrong-scale, wrong-item, wrong-value, dialog-closed, not-yet, other
   // (PERSONA-PLAN item 3, 2026-09-25). The card shows the text either way; the code rides the

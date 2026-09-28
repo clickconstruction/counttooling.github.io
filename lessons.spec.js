@@ -91,6 +91,10 @@ const EXPECT = {
   cloud: async () => {},
 };
 
+// The view (zoom and pan) has stood still for 700 ms: the engine moves the sheet onto a step's
+// circles a beat after the step opens, so a click aimed from a point read before the move misses.
+const viewStill = (page) => page.waitForFunction(() => { const s = window.state, k = s.zoom + ':' + s.pan.x + ':' + s.pan.y; const w = window; if (w.__viewKey !== k) { w.__viewKey = k; w.__viewAt = Date.now(); return false; } return Date.now() - w.__viewAt > 700; }, null, { timeout: 15000, polling: 100 });
+
 test.describe('Learn: the lessons', () => {
   for (const id of Object.keys(EXPECT)) {
     test('lesson "' + id + '": do-it-for-me walks every step on real state, ticks it, and hands back to the menu', async ({ page }) => {
@@ -207,7 +211,11 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the undo card: a mistake, its undo, then the mark that counts; the line under the steps says which comes next
     await expect(page.locator('#tourTitle')).toHaveText('Make a mistake, then undo it');
     await expect(page.locator('#tourStatus')).toHaveText('Click outside the circle first');
-    const circle = async () => { await page.waitForFunction(() => window.App.tutorialZoneScreen().length === 1); return (await page.evaluate(() => window.App.tutorialZoneScreen()))[0]; };
+    // FLAKE-START-UNDO: the engine focuses the sheet onto the circle on a 60 ms timer after the step
+    // opens (a jump under Playwright, still 60 ms late), so a circle read at step entry and clicked
+    // straight away could land at a stale point, place no mark, and leave the line on "Click
+    // outside the circle first". The circle is read once the view has stood still.
+    const circle = async () => { await page.waitForFunction(() => window.App.tutorialZoneScreen().length === 1); await viewStill(page); return (await page.evaluate(() => window.App.tutorialZoneScreen()))[0]; };
     let z = await circle();
     // 1. outside the circle: the mistake. Guidance, not a miss: it is what the card asked for
     await page.mouse.click(z.cx, z.cy - z.r - 60);
@@ -465,7 +473,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.evaluate(() => window.App.tutorialGoTo('context'));
     // the sheet moves to the circled mark a beat after the step opens: the click is aimed once the view
     // has stood still (on CI the point was read before the move and the right-click missed the mark)
-    await page.waitForFunction(() => { const s = window.state, k = s.zoom + ':' + s.pan.x + ':' + s.pan.y; const w = window; if (w.__viewKey !== k) { w.__viewKey = k; w.__viewAt = Date.now(); return false; } return Date.now() - w.__viewAt > 700; }, null, { timeout: 15000, polling: 100 });
+    await viewStill(page);
     const pt = await page.evaluate(() => { const c = window.App.toCanvas({ x: 60 + 0.75 * 345, y: 70 + 0.75 * 330 }); const r = document.getElementById('annCanvas').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; return { x: r.left + c.x / dpr, y: r.top + c.y / dpr }; });
     await page.mouse.click(pt.x, pt.y, { button: 'right' });
     await expect(page.locator('#ctxDelete')).toBeVisible();

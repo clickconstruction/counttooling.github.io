@@ -677,3 +677,9 @@ Counts: 22 entries (15 confirm, 4 judgment, 3 side questions). APPLIED 17 in ful
 a part left open (the hood's 10.4 sub-numbers; the manifold footnote's limits), LEFT OPEN 1 (the
 CPVC bores), and 2 side questions decided here but left open for the course dossier's files (the
 pot sink's line, whose rule row did land; the slope card). ALREADY DONE: none (the rule's own 909.1 was already right; the cards and the note were not).
+
+### Looked up later the same day
+
+- **Table 604.5's footnote:** 50 ft and 35 psi, read in the IPC 2021 as Colorado adopts it. The dossier was right; the 60 ft and 40 psi remembered against it were wrong. APPLIED
+- **CPVC bores:** the average bore, 0.469 / 0.695 / 0.901 / 1.105 / 1.309 / 1.716 in. Outside diameters and minimum walls read in Charlotte Pipe's FlowGuard Gold submittal, the wall tolerance in a secondary table of D2846. APPLIED in the rule and in water-model.js.
+- **NFPA 96 10.4 sub-numbers:** quoted alike in more secondary sources, still unread in the standard. LEFT OPEN

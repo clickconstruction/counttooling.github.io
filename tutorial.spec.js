@@ -220,10 +220,12 @@ test.describe('Interactive walkthrough', () => {
     // 5. three marks — one by a real click through the counter tool, the rest by the action
     await page.evaluate(() => window.App.tutorialDoStep());
     await waitForStep(page, 'linetype');
-    // 6. the conduit type
+    // 6. the conduit type: one 120 V circuit, 2 #12 + 1 #12 G (EC-TOUR-WIRE, the electrical dossier's R1)
+    await expect(page.locator('#tourBody')).toContainText('In Conductors, type 2 #12 THHN + 1 #12 G.');
+    await expect(page.locator('#tourBody')).toContainText('2 #12 THHN + 1 #12 G reads: two #12 wires and one ground');
     await page.evaluate(() => window.App.tutorialDoStep());
     const lt = await page.evaluate(() => window.state.lineTypes.find((l) => l.raceway));
-    expect(lt.conductors.length).toBe(2);
+    expect(lt.conductors).toEqual([{ n: 2, gauge: '#12', insul: 'THHN', role: 'hot' }, { n: 1, gauge: '#12', insul: 'THHN', role: 'ground' }]);
     await waitForStep(page, 'ceiling');
     // 7. ceiling
     await page.evaluate(() => window.App.tutorialDoStep());
@@ -245,9 +247,13 @@ test.describe('Interactive walkthrough', () => {
     // 11. bid check arrives folded (the reader opens it: 2026-09-24, it stayed open and the step
     // passed untouched), opens, and the card holds on what it says until Next
     expect(await page.evaluate(() => window.state.bidCheckCollapsed)).toBe(true);
+    // the card's fill figure is the one the app computes for 2 #12 + G in 3/4" EMT
+    await expect(page.locator('#tourBody')).toContainText('Conduit fill is already judged: 3/4" EMT at 7.5%.');
     await doAndGo(page);
     await waitForStep(page, 'handoff');
     expect(await page.locator('#bidCheckList').isVisible()).toBe(true);
+    const fill = await page.evaluate(() => window.App.getBidCheck().auto.find((r) => r.id === 'conduit-fill'));
+    expect([fill.verdict, fill.detail]).toEqual(['ok', '3/4" EMT · 2 #12 THHN + 1 #12 THHN G · 7.5% ✓']);
     // 12 + 13: reading, then Finish marks it done and the link goes away
     await page.click('#tourNext');
     expect(await stepId(page)).toBe('done');
@@ -259,6 +265,10 @@ test.describe('Interactive walkthrough', () => {
     // the takeoff is real: the summary carries wire rows and the schedule has the circuit
     const payload = await page.evaluate(() => window.getTakeoffToolingPayload());
     expect(payload.items.some((i) => i.derived === 'wire' && i.description === '#12 THHN')).toBe(true);
+    // two #12 a foot beside the one ground: the wire row is twice the green row
+    const wire = ['#12 THHN', '#12 THHN green'].map((d) => payload.items.filter((i) => i.derived === 'wire' && i.description === d).reduce((t, i) => t + (i.quantity || 0), 0));
+    expect(wire[1]).toBeGreaterThan(0);
+    expect(wire[0]).toBeCloseTo(2 * wire[1], 1);
     expect(payload.circuits[0].panel).toBe('LP-1');
     expect(errors).toEqual([]);
   });
@@ -1408,10 +1418,15 @@ test.describe('The tours hold a wrong value (PERSONA-PASS prober)', () => {
     await waitForStep(page, 'chain');
   });
 
-  test('electrical: a 1/2" raceway holds the line type, and an 11 ft ceiling holds the ceiling', async ({ page }) => {
+  test('electrical: 3 #12 + G or a 1/2" raceway holds the line type, and an 11 ft ceiling holds the ceiling', async ({ page }) => {
     test.setTimeout(120000);
     await walkTo(page, 'electrical', 'linetype');
-    await page.evaluate(() => { const c = window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors; window.App.tourKit.pushLineType({ id: window.App.uid(), name: '1/2" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '1/2"' }, conductors: c }); });
+    // three #12 and a ground is not the card's one circuit (EC-TOUR-WIRE): it holds, and the hint names the spec
+    await page.evaluate(() => { const c = window.ConductorModel.parseConductorSpec('3 #12 THHN + 1 #12 G').conductors; window.App.tourKit.pushLineType({ id: 'three-hots', name: '3/4" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '3/4"' }, conductors: c }); });
+    await heldOn(page, 'linetype');
+    await expect(page.locator('#tourStatus')).toContainText('type 2 #12 THHN + 1 #12 G');
+    await page.evaluate(() => { window.state.lineTypes = window.state.lineTypes.filter((l) => l.id !== 'three-hots'); window.App.updateUI(); });
+    await page.evaluate(() => { const c = window.ConductorModel.parseConductorSpec('2 #12 THHN + 1 #12 G').conductors; window.App.tourKit.pushLineType({ id: window.App.uid(), name: '1/2" EMT', color: '#8a4bb0', curveStyle: 'straight', raceway: { kind: 'EMT', size: '1/2"' }, conductors: c }); });
     await heldOn(page, 'linetype');
     await expect(page.locator('#tourStatus')).toContainText('3/4"');
     await doAndGo(page);

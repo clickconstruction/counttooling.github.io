@@ -49,10 +49,10 @@ test('the parser finds chapters, cards, reveals, the chapter done and function b
   assert.deepStrictEqual(chapters.map((c) => c.id), ['before', 'sheet']);
   assert.deepStrictEqual(chapters[1].cards.map((c) => c.id), ['what', 'prove', 'compare', '(done)']);
   const what = chapters[1].cards[0];
-  assert.deepStrictEqual(what.pieces.map((p) => p.key), ['body', 'reveal']);
+  assert.deepStrictEqual(what.pieces.map((p) => p.key), ['title', 'body', 'reveal']);   // the title is card text too
   // a conditional's branches are separate pieces; a generated body has no literal text
-  assert.deepStrictEqual(chapters[1].cards[1].pieces.map((p) => p.text.trim()), ['… : the scale is right.', 'Measure the string.']);
-  assert.deepStrictEqual(chapters[1].cards[2].pieces, []);
+  assert.deepStrictEqual(chapters[1].cards[1].pieces.filter((p) => p.key !== 'title').map((p) => p.text.trim()), ['… : the scale is right.', 'Measure the string.']);
+  assert.deepStrictEqual(chapters[1].cards[2].pieces.filter((p) => p.key !== 'title'), []);   // a generated body has no literal text; its title still reads
   assert.strictEqual(chapters[1].cards[3].pieces[0].text, 'The sheet, read.');
   // a tour's `const X_STEPS = [...]` is one chapter
   const tour = parseCourse("const PLUMBING_STEPS = [{ id: 'a', title: 'A', body: 'One.' }, { id: 'b', title: 'B', body: 'Two.' }];", 't.js');
@@ -70,7 +70,7 @@ test('a shared step constant is read in place, and an entry can cut chapters and
     [['PLUMBING_STEPS', 'welcome,scale,counter'], ['HVAC_STEPS', 'welcome,scale']]);
   const tour = chaptersFor({ file: 't.js', chapters: ['PLUMBING_STEPS'], unit: 'card' }, src);
   assert.deepStrictEqual(tour.map((c) => c.id), ['welcome', 'scale', 'counter']);
-  assert.strictEqual(tour[1].cards[0].pieces[0].text, 'The scale sets the takeoff.');
+  assert.strictEqual(tour[1].cards[0].pieces.find((p) => p.key === 'body').text, 'The scale sets the takeoff.');
   // read card by card, a word on a card before the one that glosses it is early
   const res = checkCourse({ course: 'tour', file: 't.js', chapters: tour, table: { takeoff: 'scale' }, glossary });
   assert.deepStrictEqual(res.problems.filter((p) => p.kind === 'c').map((p) => p.msg), ['t.js:3 welcome/welcome: uses "takeoff" before chapter "scale" glosses it']);

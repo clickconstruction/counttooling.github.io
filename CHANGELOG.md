@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tour): the Room Sizer cards name the dialog's fields, top to bottom (2026-09-28)
+
+A tester on the blank-sheet tour's Room Sizer card: "confusing as the fields are not named
+'name' and 'ceiling', also better flow if they are in order". The card said "In Name, type
+Office. In Ceiling, type 9." The dialog's fields are Ceiling height and Add new room, in that
+order, and the card lit Apply the whole time the dialog was open.
+
+- **The blank-sheet tour** (features/tour-blank.js `room`): one line per field, in the dialog's
+  order and by its label, each a pointer that lights its field: Ceiling height, then Add new
+  room, then Apply. The ring follows the reader: the first empty field, then Apply.
+- **The HVAC tour** (features/tutorial.js `room`) had the same fault, on the owner's list with
+  "reorder" recommended: it asked for Room type first, the dialog's last field. It reads Ceiling
+  height, Deck height, Room type now, and the ring goes in that order.
+- The HVAC course's room cards already named the fields in order. No check changed.
+
+Walked on screen at 1280 x 720 in both tours: every chip live, neither card scrolls, and the
+ring moved field by field to Apply as each was filled.
 
 ## feat(settings): a project is renamed from Project Settings (PROJECT-RENAME, 2026-09-28)
 

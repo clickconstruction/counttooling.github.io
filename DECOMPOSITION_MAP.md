@@ -94,7 +94,7 @@ A colour or an icon path from a shared or imported project is concatenated raw i
 
 ### S08. One mark-presence predicate
 
-Three hand lists of what counts as a mark have drifted: `annotation-model.js:286-291`, `app.js:3153-3158`, `features/pdf-intake.js:283-291`. The last lacks `ductRuns`, so a signed-out HVAC backup holding only duct runs is never re-applied when the same PDF is uploaded again (D30). **Pin:** an annotation-model.test.js case that walks `makeAnnotations()` keys and fails on a kind no list classifies.
+Three hand lists of what counts as a mark have drifted: `annotation-model.js:286-291`, `app.js:3153-3158`, `features/pdf-intake.js:283-291`. The last lacks `ductRuns`, so a signed-out HVAC backup holding only duct runs is never re-applied when the same PDF is uploaded again (D30). **Pin:** an annotation-model.test.js case that walks `makeAnnotations()` keys and fails on a kind no list classifies. **Built 2026-09-27 (REAPPLY-DUCT):** `ANNOTATION_KINDS` in annotation-model.js is the one table; see the CHANGELOG. `bid-basis-model.js pageHasBidMarks` and `features/export-pdfs.js countPageMarks` still keep their own take-off-only list.
 
 ### S09. One duct system rule, then a way to set a run's system
 

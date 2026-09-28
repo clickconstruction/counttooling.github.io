@@ -56,6 +56,31 @@ lines, none of them done.
 
 ## revert(water): the sibling guard on water runs, which broke the plumbing tour (WATER-TAP, 2026-09-27)
 
+## fix(model): one mark-presence predicate; a duct-only takeoff comes back (REAPPLY-DUCT, 2026-09-27)
+
+A signed-out HVAC takeoff whose only marks were duct runs was not put back when the same PDF was
+uploaded again: the re-apply check in features/pdf-intake.js kept its own list of what counts as
+a mark, and duct runs were not on it (DECOMPOSITION_MAP S08, defect N12). Reproduced first in
+pdf-upload.spec.js, both ways: trace one run, Close project, upload the PDF again; and a
+data-only backup after a reload. Both came back with no runs.
+
+- **One table.** annotation-model.js `ANNOTATION_KINDS` classifies every key `makeAnnotations()`
+  returns once: a `mark` (it counts), a `placement` (the legend box, a ghost Typical) or
+  `derived` (duct fittings, rebuilt from their runs). `countAnnotationMarks(ann, opts)` reads it,
+  with `{ zones, ghosts, fittings }` for the callers that differ. `pageHasAnyAnnotations`,
+  `projectHasAnyCanvasMarkup` and `countCanvasMarks` (moved out of app.js, still
+  `App.countCanvasMarks`) all use it.
+- **What each caller counts now.** The re-apply counts marks, zones and ghosts, on both sides:
+  the backup it might put back, and the pages it must not overwrite. The pages badge, the hide
+  unmarked sheets filter, Shift+arrow sheet jumps and every `projectHasAnyCanvasMarkup` gate are
+  unchanged, except that a counter whose last marker was deleted no longer marks its sheet. The
+  Clear Page confirm and the layer details dialog now count multiply and scale zones among the
+  marks, since Clear Page removes them too.
+- **The pin.** annotation-model.test.js walks `makeAnnotations()`'s keys and fails by name on
+  one the table does not classify, so the next annotation kind is caught the day it is added.
+
+## fix(water): two runs that leave one point are siblings, not each other's branch (WATER-TAP, 2026-09-27)
+
 #262 gave `waterChildLinks` the guard duct's tap rule has: two runs that leave one point are
 siblings, neither the other's branch. It fixed the double count it was written for and broke the
 plumbing tour on main: four cases of tutorial.spec.js failed, in CI and on the next pull request.

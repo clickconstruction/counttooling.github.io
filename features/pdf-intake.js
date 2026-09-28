@@ -270,25 +270,23 @@
   // marks are still on the device. When the SAME PDF is re-uploaded
   // (hash-verified; marks never land on an unverified PDF), re-apply them.
   // Checked keys: the boot key-aside record first, then 'local'.
+  // What counts on both sides of the re-apply: every mark and zone, and a ghost
+  // Typical too (work the restore would put back, or overwrite).
+  const REAPPLY_MARK_OPTS = { ghosts: true };
   async function maybeReapplyLocalBackupMarks(uploadHash) {
     if (!uploadHash) return;
     if (App.state.supabaseSession?.user) return;               // signed-in keeps the cloud hash-match flow
     if (App.state.pendingCanvasLoad || App.state.currentProjectId) return;
-    if (App.projectHasAnyCanvasMarkup()) return;               // never clobber marks already on the pages
+    if (App.projectHasAnyCanvasMarkup(REAPPLY_MARK_OPTS)) return;   // never clobber marks already on the pages
     if (App.isTutorialActive && App.isTutorialActive()) return; // a tour opens the sample plan CLEAN: the last tour's backup hash-matches it and would land its marks in this one
     for (const key of [TAKEOFF_BACKUP_HELD_ID, 'local']) {
       let candidate = null;
       try { candidate = await App.takeoffBackupGet(key, null); } catch (_) { candidate = null; }
       if (!candidate || !candidate.data) continue;
+      // S08 / REAPPLY-DUCT: the model's one predicate (its own list here forgot
+      // duct runs). A ghost counts: the question is "is there work to put back".
       const hasMarks = Array.isArray(candidate.data.pageCanvases) && candidate.data.pageCanvases.some((canvases) =>
-        (canvases || []).some((c) => {
-          const ann = (c && c.annotations) || {};
-          return Object.values(ann.counterMarkers || {}).some((arr) => arr && arr.length)
-            || (ann.quickLines || []).length || (ann.polylines || []).length
-            || (ann.highlights || []).length || (ann.notes || []).length
-            || (ann.multiplyZones || []).length || (ann.scaleZones || []).length
-            || (ann.roomBoxes || []).length;
-        }));
+        App.pageHasAnyAnnotations({ canvases: Array.isArray(canvases) ? canvases : [] }, REAPPLY_MARK_OPTS));
       if (!hasMarks) continue;
       // Hash-verified same PDF only: use the stamped pdfHash, or hash the
       // stored blob when the stamp is missing. No hash -> no apply.

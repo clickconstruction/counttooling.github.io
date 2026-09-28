@@ -66,17 +66,25 @@ Defects first, then what makes later moves cheap, then the moves. Yield is lines
 
 `water-model.js` `waterChildLinks` (396-410). Two same-side water runs that leave one point each have their first vertex on the other, so each becomes the other's child, and `waterDownstreamByRun` gives each run both loads. Reproduced in node at `3eb45a9`: two cold runs from (0,0) return two links, a cycle, where `ductChildLinks` returns none. The duct twin got its guard on 2026-09-27 (DS-DINING-ATTACH, `ductTapParentOf`, duct-model.js:1247); the water copy did not. **Effect:** pipe sized for twice the fixture units. **Fix:** skip a candidate parent whose own first vertex sits within snap of the child's. **Pin:** a node case in water-model.test.js, then water-size.spec.js and water-schedule.spec.js.
 
+**Open** (WATER-TAP). A first fix landed as #262 and was reverted the same day by #269: it broke four plumbing tour tests, because the tour traces the main from the riser the branch also starts at. It needs a decision on how water tells upstream from a sibling.
+
 ### S02. Escape colour and icon values on four surfaces
 
 A colour or an icon path from a shared or imported project is concatenated raw into an attribute inside `innerHTML`: `features/sidebar-lists.js:268` (`g.color`), `features/lines-list.js:121` (a line's colour), `features/counter.js:85` (`c.color` and `c.icon` in the Counter chooser), `features/room-sizer.js:142` (`r.color`, `r.id`). Read in code, not executed. MAP-XSS (2026-09-26) fixed nine surfaces and these four are not among them; its spec draws no lines and opens no chooser. **Fix:** the escape MAP-XSS used, on each. **Pin:** extend the MAP-XSS spec to these four.
+
+**Landed 2026-09-28 (XSS-COLOR, #268).** The four surfaces and a wider sweep (icon builders, report cells, zone multiplier, drop units) now escape project values; each fix was reverted alone to prove its test. Left open: ICON-STORE on the punch list.
 
 ### S03. CI reaches a verdict on main
 
 `.github/workflows/ci.yml:15-16`: `cancel-in-progress: true` also cancels pushes to main, and every push to main shares one group. On 2026-09-27, twenty main runs in a row were cancelled; the e2e job takes 42 to 49 minutes on two workers. **Recipe:** `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`; give e2e a four-way `--shard` matrix with `fail-fast: false` and a per-shard artifact name; set CI `retries: 1` (at 2, a failing 180 s course chapter runs three times). The repo is public, so each shard is its own runner: expect 12 to 15 minutes, with `tutorial.spec.js` (558 s) as the floor. Must not break: the separate `check` job, `regen-baselines.yml`, the `config.local.js` stub step in every shard. Rejected: a pull-request smoke set (a hand-kept list that drifts).
 
+**Landed 2026-09-27 (#263).** Pushes to main no longer cancel the run in progress; e2e runs in four shards, about 14 minutes. Seen on 2026-09-28: three merges to main inside an hour each reached a verdict.
+
 ### S04. Specs run from a worktree
 
 `playwright.config.js:17` `testIgnore: ['**/.claude/**']` matches a worktree's own absolute path, so specs cannot run inside `.claude/worktrees/` without a hand-written config; 23 were written on 2026-09-27. **Recipe:** anchor the ignore to the config's own directory with a RegExp (`new RegExp('^' + escapeRe(path.join(__dirname, '.claude') + path.sep))`; a glob cannot do it, Playwright prefixes `**/`), and read the port from `PW_PORT` into `baseURL` and the web server. Delete `playwright.session.config.js` and `playwright.worktree.config.js`, which were committed by accident (c36f435) and are headed "Temporary (untracked)".
+
+**Landed 2026-09-27 (#263).** `npx playwright test` runs from a worktree on its own hashed port; the two scratch configs are gone.
 
 ### S05. One bundle builder, and the bundle buttons leave app.js
 
@@ -94,9 +102,13 @@ A colour or an icon path from a shared or imported project is concatenated raw i
 
 `features/tutorial.js:1735-1755` `startTutorial` never stops a running tour, so the replaced tour's `onStop` never runs. The doors are reachable mid-tour (the overlay is `pointer-events:none`). A lesson's device settings (Snap, the sidebar filter) stay changed until the next load, and the blank tour's palette sweep is skipped. **Fix:** `if (active) stopTutorial(false)` at the top. **Pin:** mid-lesson with Snap changed, start a tour from Learn, check Snap is back.
 
+**Landed 2026-09-28 (TOUR-RESTART, #267).** Pinned by tour-restart.spec.js.
+
 ### S08. One mark-presence predicate
 
 Three hand lists of what counts as a mark have drifted: `annotation-model.js:286-291`, `app.js:3153-3158`, `features/pdf-intake.js:283-291`. The last lacks `ductRuns`, so a signed-out HVAC backup holding only duct runs is never re-applied when the same PDF is uploaded again (D30). **Pin:** an annotation-model.test.js case that walks `makeAnnotations()` keys and fails on a kind no list classifies. **Built 2026-09-27 (REAPPLY-DUCT):** `ANNOTATION_KINDS` in annotation-model.js is the one table; see the CHANGELOG. `bid-basis-model.js pageHasBidMarks` and `features/export-pdfs.js countPageMarks` still keep their own take-off-only list.
+
+**Landed 2026-09-28 (REAPPLY-DUCT, #265).** One predicate in annotation-model.js; a duct-only backup is re-applied.
 
 ### S09. One duct system rule, then a way to set a run's system
 
@@ -176,18 +188,18 @@ Confirmed means reproduced by running code. Read means read in code at `3eb45a9`
 
 | # | Severity | Check | Where | Defect |
 |---:|---|---|---|---|
-| N01 | bug | confirmed | `water-model.js:396` | Two water runs leaving one point each get both loads (S01). |
-| N02 | bug | read | `features/sidebar-lists.js:268`, `lines-list.js:121`, `counter.js:85`, `room-sizer.js:142` | A colour or icon value is written into the page unescaped (S02). |
+| N01 | bug | confirmed, open | `water-model.js:396` | Two water runs leaving one point each get both loads (S01). A first fix was reverted (#269). |
+| N02 | bug | read, fixed | `features/sidebar-lists.js:268`, `lines-list.js:121`, `counter.js:85`, `room-sizer.js:142` | A colour or icon value is written into the page unescaped (S02). |
 | N03 | bug | confirmed, fixed | `features/pdf-bundle.js:292, 393` | Export PDFs with one sheet prints the notes or highlights summary over the sheet (S05). |
-| N04 | bug | confirmed | `features/esc-ladder.js:223` | Esc closes the dialog under the colour picker, not the picker (S06). Reproduced and fixed 2026-09-27 (ESC-STACK). |
-| N05 | bug | confirmed | `app.js:4341` | The Custom Icons tips dialog opens behind the details dialog (S06). Reproduced and fixed 2026-09-27 (ESC-STACK). |
-| N06 | bug | read | `.github/workflows/ci.yml:15` | Every push to main cancels main's run in progress (S03). |
+| N04 | bug | confirmed, fixed | `features/esc-ladder.js:223` | Esc closes the dialog under the colour picker, not the picker (S06). |
+| N05 | bug | confirmed, fixed | `app.js:4341` | The Custom Icons tips dialog opens behind the details dialog (S06). |
+| N06 | bug | read, fixed | `.github/workflows/ci.yml:15` | Every push to main cancels main's run in progress (S03). |
 | N07 | bug | read | `features/duct-tool.js:411` | The toast names an assignment no surface can make (S09). |
 | N08 | bug, cosmetic | read | `app.js:5757` | Desktop Measure's band does not follow the mouse (S15). |
 | N09 | latent | confirmed | `duct-model.js:1655` vs `1547`, `1409` | Two rules for which system a run belongs to (S09). |
 | N10 | latent | confirmed, fixed | `features/pdf-bundle.js:272, 381` | Bundles read the active layer only; items elsewhere open a blank page (S05). |
-| N11 | latent | read | `features/tutorial.js:1735` | Starting a tour never stops the one running (S07). |
-| N12 | latent | read | `features/pdf-intake.js:283` | D30: a backup holding only duct runs is never re-applied (S08). |
+| N11 | latent | read, fixed | `features/tutorial.js:1735` | Starting a tour never stops the one running (S07). |
+| N12 | latent | read, fixed | `features/pdf-intake.js:283` | D30: a backup holding only duct runs is never re-applied (S08). |
 | N13 | latent | read | `features/turn-in.js:83` | The manual Check Out has no timeout (S17). |
 | N14 | latent | read | `features/bid-check.js:150` | A project with no trade gets an inconsistent Bid Check (S10). |
 | N15 | latent | read | `features/choose-create-line-type.js:63`, `counter.js:88`, `quick-modals.js:403`, `tag-reader.js:287` | Feature-file arms skip `clearToolStarts`; a stale crosshair draws (S18). |

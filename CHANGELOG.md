@@ -30,6 +30,38 @@ plumbing tour on main: four cases of tutorial.spec.js failed, in CI and on the n
 - **The miss.** The fix was merged on the water specs and the node tests. tutorial.spec.js, which
   drives water sizing through the tour, was not run. WATER-TAP is open again and says so.
 
+## chore(ci): main's CI finishes, e2e runs four ways, and specs run from a worktree (CI-MAIN, WORKTREE-SPECS, 2026-09-27)
+
+On 2026-09-27 twenty CI runs on main were cancelled in a row, and 23 hand-written Playwright configs
+were written so specs could run from a `.claude/worktrees/` copy. Both punch rows touch
+`playwright.config.js`, so they landed together. [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) S03, S04.
+
+- **Main is never cancelled.** `cancel-in-progress` was `true`, and every push to main shares one
+  concurrency group, so each merge cancelled the run before it. It is now
+  `${{ github.event_name == 'pull_request' }}`: a pull request's superseded run is still cancelled,
+  main's run in progress finishes.
+- **e2e in four shards.** A `--shard=N/4` matrix, `fail-fast: false`, one runner each with two
+  workers, each shard with its own `config.local.js` stub, browser install and artifact name
+  (`playwright-error-contexts-shard-N`). It was one job of 42 to 49 minutes. Shards split by FILE
+  (`fullyParallel` is false), so the floor is the longest file, `tutorial.spec.js` at about 558 s,
+  then `lessons.spec.js` at about 293 s; making those two parallel inside is a follow-up. Locally
+  `--list` puts 251, 240, 242 and 241 of the 974 tests in the four shards; the workflow itself is
+  unverified until its own first run.
+- **One retry on CI** (was two): a failing 180 s course chapter ran three times.
+- **Specs from a worktree.** `testIgnore: ['**/.claude/**']` matched a worktree's own path, so it
+  found no specs. It is now a RegExp anchored to the config's own directory: the primary checkout
+  still skips every sibling worktree, and a worktree finds its own specs. The port comes from
+  `PW_PORT`, else 3456, else (inside `.claude/worktrees/`) a stable port hashed from the path, 3500
+  to 3999, and a worktree never reuses a server already on its port. `BASE_URL` still wins.
+  `playwright-config.test.js` (Node) compiles the config as if it lived in a primary checkout, a
+  worktree and a path full of RegExp characters, and pins all of this and the retry count. From
+  this PR's own worktree, plain `npx playwright test pdf-upload.spec.js` found and passed its 16
+  tests; a copy of the config anchored to the primary checkout listed that checkout's 120 spec
+  files and none of the 60 worktrees under its `.claude/`.
+- **Deleted** `playwright.session.config.js` and `playwright.worktree.config.js`, committed by accident
+  and headed "Temporary (untracked)". AGENTS.md gains "Specs from a worktree"; four plan-file lines
+  that named the deleted config now say plain `npx playwright test`.
+
 ## fix(pdf-bundle): one bundle builder; notes and highlights pages on a one-sheet export (BUNDLE-ONE-SHEET, 2026-09-27)
 
 Map item S05 (defects N03 and N10). Three defects in the notes and highlights bundles, all read in

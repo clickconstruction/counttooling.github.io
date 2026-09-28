@@ -821,11 +821,13 @@ function inferAutoDuctFittings(runs, opts) {
     }
   });
   // taps: child's first vertex on a parent's polyline → tap ON THE PARENT
-  // (ductTapParentOf: the one rule, shared with ductChildLinks' network).
-  list.forEach(child => {
+  // (ductChildLinks: the one rule the network walks, loop breaker included, so
+  // a ring of duct lays one tap where it laid two before DUCT-TAP-LOOP).
+  const byId = new Map(list.map(r => [r.id, r]));
+  ductChildLinks(list, { snapDist: tapSnap, equipmentPos: opts?.equipmentPos }).forEach(l => {
+    const child = byId.get(l.childId), parent = byId.get(l.parentId);
+    if (!child || !parent) return;
     const start = child.vertices[0];
-    const parent = ductTapParentOf(child, list, tapSnap)?.parent;
-    if (!parent) return;
     out.push({
       runId: parent.id, position: { x: start.x, y: start.y }, origin: 'tap',
       type: 'tap', size: child.segments[0].size, auto: true,
@@ -1219,6 +1221,15 @@ function ductClipSegmentToBox(a, b, box) {
  * whose FIRST vertex lands within snap of another run's polyline is that
  * parent's child. Returns [{ childId, parentId, s }] — s = arclength along
  * the PARENT of the tap point. Nearest parent wins.
+ *
+ * DUCT-TAP-LOOP (2026-09-28): runs drawn head to tail (each starting on the
+ * other, so a ring of duct) were each the other's child; the system had no
+ * root, designed CFM read 0, the static path was null and the fittings walk
+ * laid two taps. A loop in the links is broken at the run nearest the
+ * equipment (opts.equipmentPos, the same anchor the accumulation orients
+ * by), else at the run drawn first: that run becomes the root and its link
+ * is dropped. Every walker (designed CFM, the static path, the draft, the
+ * fittings) reads THESE links, so the fix lands once.
  */
 function ductChildLinks(runs, opts) {
   const snap = opts?.snapDist > 0 ? opts.snapDist : DUCT_TAP_SNAP_PDF;
@@ -1228,7 +1239,43 @@ function ductChildLinks(runs, opts) {
     const best = ductTapParentOf(child, list, snap);
     if (best) out.push({ childId: child.id, parentId: best.parent.id, s: best.s });
   });
-  return out;
+  return breakTapLoops(out, list, opts?.equipmentPos);
+}
+
+// The loop breaker behind ductChildLinks: walk up from every run; a run met
+// twice on one walk closes a loop, whose members lose the link of the one
+// nearest equipmentPos (ties and no equipment: the earliest in `list`).
+function breakTapLoops(links, list, equipmentPos) {
+  if (links.length < 2) return links;
+  const parentOf = new Map(links.map(l => [l.childId, l.parentId]));
+  const order = new Map(list.map((r, i) => [r.id, i]));
+  const startOf = new Map(list.map(r => [r.id, r.vertices[0]]));
+  const dropped = new Set();
+  const toEquip = (id) => {
+    const v = startOf.get(id);
+    return (equipmentPos && v) ? Math.hypot(equipmentPos.x - v.x, equipmentPos.y - v.y) : Infinity;
+  };
+  list.forEach(r => {
+    const seen = [];
+    let id = r.id;
+    while (parentOf.has(id)) {
+      const at = seen.indexOf(id);
+      if (at >= 0) {
+        const loop = seen.slice(at);
+        const root = loop.reduce((a, b) => {
+          const da = toEquip(a), db = toEquip(b);
+          if (da !== db) return da < db ? a : b;
+          return order.get(a) <= order.get(b) ? a : b;
+        });
+        dropped.add(root);
+        parentOf.delete(root);
+        break;
+      }
+      seen.push(id);
+      id = parentOf.get(id);
+    }
+  });
+  return dropped.size ? links.filter(l => !dropped.has(l.childId)) : links;
 }
 
 /**
@@ -1259,15 +1306,42 @@ function ductTapParentOf(child, list, snap) {
 }
 
 /**
+ * THE ONE SYSTEM RULE (DUCT-RUN-SYSTEM's code half, 2026-09-28): a run's
+ * system is its ROOT's systemGroupId, else its own, else null — a child
+ * inherits its tree's system through the tap (DUCT-PLAN §2). Designed CFM and
+ * the static path always keyed trees by the root; flex, the device system and
+ * the draft's scope read each run's own, so a branch traced with no group lit
+ * off an RTU main counted in RTU's designed air while its flex filed under
+ * "No system". Returns Map runId → system for one links pass (opts as
+ * ductChildLinks: snapDist, equipmentPos).
+ */
+function ductRunSystems(runs, opts) {
+  const list = (runs || []).filter(r => r && (r.vertices?.length || 0) >= 2);
+  const parentOf = new Map(ductChildLinks(list, opts).map(l => [l.childId, l.parentId]));
+  const byId = new Map(list.map(r => [r.id, r]));
+  const out = new Map();
+  list.forEach(run => {
+    const seen = new Set([run.id]);
+    let id = run.id;
+    while (parentOf.has(id) && !seen.has(parentOf.get(id))) { id = parentOf.get(id); seen.add(id); }
+    out.set(run.id, byId.get(id)?.systemGroupId || run.systemGroupId || null);
+  });
+  return out;
+}
+
+/** One run's system under the rule above (null for a run the list lacks). */
+function ductRunSystemId(runId, runs, opts) {
+  return ductRunSystems(runs, opts).get(runId) ?? null;
+}
+
+/**
  * A device's system, derived from attachment (DUCT-PLAN §2): the nearest-run-
- * within-snap's systemGroupId; else the device's own groupId; else null.
+ * within-snap's system under ductRunSystems (its tree's root, else its own);
+ * else the device's own groupId; else null.
  */
 function ductDeviceSystemId(device, runs, opts) {
   const { attached } = attachDuctDevices([device], runs, opts);
-  if (attached.length) {
-    const run = (runs || []).find(r => r && r.id === attached[0].runId);
-    return run?.systemGroupId || null;
-  }
+  if (attached.length) return ductRunSystemId(attached[0].runId, runs, opts);
   return device?.groupId || null;
 }
 
@@ -1488,15 +1562,18 @@ function ductDraftRemainingCfm(opts) {
     return !!where && where !== 'served' && ahead(where.s);
   };
 
+  // Each run's system under the one rule (its tree's root, else its own), the
+  // draft included, so a branch off the main being traced is in the main's scope.
+  const sysOf = ductRunSystems(all, o);
   let totalCfm = 0, aheadCfm = 0;
   attached.forEach(a => {
     const run = runById.get(a.runId);
-    const devSys = run.id === DRAFT ? sys : (run.systemGroupId || null);
+    const devSys = run.id === DRAFT ? sys : (sysOf.get(run.id) ?? null);
     if (devSys !== sys) return;   // another system's device — out of scope
     totalCfm += a.device.cfm;
     if (run.id === DRAFT ? ahead(a.s) : runAhead(run.id)) aheadCfm += a.device.cfm;
   });
-  const sameSystem = committed.filter(r => (r.systemGroupId || null) === sys);
+  const sameSystem = committed.filter(r => (sysOf.get(r.id) ?? null) === sys);
   unattached.forEach(d => {
     const devSys = d.groupId || null;
     if (devSys !== null && devSys !== sys) return;   // assigned elsewhere
@@ -1540,7 +1617,8 @@ const DUCT_FLEX_DEFAULTS = { dropFt: 5, maxFlexFt: 6 };
  * only when ATTACHED (the D6 nearest-run-within-snap rule — flex hangs off
  * duct, not off thin air); its drop length is its own flexDropFt when > 0,
  * else opts.defaultDropFt (default DUCT_FLEX_DEFAULTS.dropFt), and its system
- * is the attached run's systemGroupId (null = no system). opts.maxFlexFt
+ * is the attached run's system under ductRunSystems (its tree's root, else its
+ * own; null = no system). opts.maxFlexFt
  * (default DUCT_FLEX_DEFAULTS.maxFlexFt) sets the per-drop warning cap.
  * Returns [{ systemGroupId, count, totalFt, overCount }].
  */
@@ -1549,10 +1627,10 @@ function tallyFlexDrops(devices, runs, opts) {
   const defaultDropFt = o.defaultDropFt > 0 ? o.defaultDropFt : DUCT_FLEX_DEFAULTS.dropFt;
   const maxFlexFt = o.maxFlexFt > 0 ? o.maxFlexFt : DUCT_FLEX_DEFAULTS.maxFlexFt;
   const { attached } = attachDuctDevices(devices, runs, o);
-  const runById = new Map((runs || []).filter(r => r && r.id).map(r => [r.id, r]));
+  const sysOf = ductRunSystems(runs, o);   // the one system rule: a branch files under its tree's system
   const bySys = new Map();
   attached.forEach(a => {
-    const sys = runById.get(a.runId)?.systemGroupId || null;
+    const sys = sysOf.get(a.runId) ?? null;
     const key = sys || '';
     const dropFt = a.device.flexDropFt > 0 ? a.device.flexDropFt : defaultDropFt;
     const row = bySys.get(key) || { systemGroupId: sys, count: 0, totalFt: 0, overCount: 0 };
@@ -2598,6 +2676,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ductRepeatFactorForRun, ductRepeatFactorForPoint, ductRepeatStraightItems, ductRepeatOf,
     // design-build accumulation (D6)
     ductMarkerCfm, ductNearestOnPolyline, ductPolylineLength, attachDuctDevices, ductChildLinks,
+    ductRunSystems, ductRunSystemId,
     ductDeviceSystemId, ductEquipmentEndIsStart, ductDownstreamCfm, ductDraftRemainingCfm,
     // room names from the plan (D24)
     parseRoomNameCallout, ROOM_NAME_STOPWORDS,

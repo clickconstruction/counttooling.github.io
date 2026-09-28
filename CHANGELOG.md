@@ -13,6 +13,72 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(duct): a ring of duct has a root, and a branch belongs to its tree's system on every surface (DUCT-TAP-LOOP, DUCT-RUN-SYSTEM, 2026-09-28)
+
+Map item T02, two confirmed defects with one home, `ductChildLinks` in duct-model.js. Both new
+duct-model.test.js cases were run against the previous file first and every assertion was wrong
+there; nothing outside the model changed.
+
+- **The loop (DUCT-TAP-LOOP).** Two runs drawn head to tail, each starting on the other (a ring of
+  duct, or a main and a return traced back to its start), were each the other's child: the system
+  had no root, so RTU-1 read 0 designed CFM, its Static path was null and the fittings walk laid two
+  taps. The DS-DINING-ATTACH guard covered only runs that LEAVE one point. `breakTapLoops` now walks
+  up from every run and, on a loop of any length, drops the link of the run nearest the equipment
+  (`opts.equipmentPos`, the anchor the accumulation already orients by), else of the run drawn
+  first; that run is the root. Every walker reads these links, and `inferAutoDuctFittings` now lays
+  its taps from them too instead of asking the per-run rule, so one tap where there were two. A
+  plain continuation (B starts on A's end, A's start off B) was never a loop and is unchanged. One
+  edge, by design: the fittings reconcile has no unit position, so a ring whose unit sits at the
+  second-drawn run's start breaks by draw order there and by the unit elsewhere.
+- **The system rule (DUCT-RUN-SYSTEM's code half).** Designed CFM and the static path keyed a tree
+  by its ROOT's system; flex, the device system and the draft's scope read each run's own. A branch
+  traced with no group lit off an RTU main counted in RTU's designed air while its flex drop filed
+  under "No system" on the Duct Schedule and its device read no system. One rule now,
+  `ductRunSystems(runs, opts)` (a Map) and `ductRunSystemId(runId, runs, opts)`: a run's system is
+  its tree's root's, else its own, else null. `tallyFlexDrops`, `ductDeviceSystemId` and
+  `ductDraftRemainingCfm`'s scope read it (the draft's network includes the draft, so a branch off
+  the main being traced is in the main's scope). A branch with its own system under a root that has
+  none keeps its own.
+- **Not in this change.** The product half of DUCT-RUN-SYSTEM (how a run's system is set after the
+  fact; the first-run toast still names an assignment no surface can make) stays on the punch list.
+  The water model has the same loop and waits on the water tap decision (map T05).
+- **Checked.** duct-model.test.js 138 of 138; the sixteen duct specs and course-hvac.spec.js, 135
+  of 135; the HVAC tour and the duct lesson in tutorial.spec.js and lessons.spec.js. `npm run check`.
+
+## docs(map): the decomposition map, read again at 65f712f (2026-09-28)
+
+The 2026-09-27 map's first eight items landed inside a day (S02 to S08: the XSS sweep, CI on
+main, specs from a worktree, the one bundle builder, the Esc stack, the tour restart, the one
+mark predicate), so the map was read again at `65f712f`, the same way: `npm run build:projectmap`
+for the skeleton, eight agents one per area, each re-resolving every file:line the old map cited
+(they had all drifted in the churned files), refuting its own findings and listing what it
+dropped. The orchestrator re-ran four things: the idb.js eviction (node, fake-indexeddb, three
+shapes), the duct system rule and the head-to-tail tap loop (node), the water tap rule's
+candidates against the plumbing tour's own geometry (node over a scratch copy), and the
+spec-copy counts. About 1.6M subagent tokens, 266 tool calls, 7 to 14 minutes in parallel.
+
+- **What changed.** Seven of 26 items landed. app.js's input sections had zero changed lines.
+  The growth is the tour engine: of features/tutorial.js's +444, about 315 is engine and 129 is
+  cards. Quick Keys grew a pure model the right way. The three areas with no commits (duct, save
+  engine, rasters) still gave two confirmed defects the old map had carried as "read": the
+  idb.js eviction and the duct system rule.
+- **The shortlist** is 28 items, T01 to T28, defects first: the undo-card flake explained (a
+  60 ms focus timer the spec reads ahead of), the duct loop and system rule (one home,
+  `ductChildLinks`), the idb re-put, a quoted chip that lost its control on ten cards (the XSS
+  sweep's ripple), then two decisions (the water tap rule, now a table of every candidate run
+  against the tour; the trade resolver), the ratchets, the pins, the dedupes and the moves.
+  Yields re-estimated at HEAD: tour-geometry.js is now about 250 pure lines, the spec migration
+  about 850, the Bid Check gate about 65.
+- **Defects** Q01 to Q24, five confirmed by running code, nine of the old map's fixed.
+- **Punch list.** The four rows that pointed into the map (DUCT-RUN-SYSTEM, WATER-TAP,
+  TRADE-DEFAULT, MAP-PERMS) point at the new anchors; DUCT-TAP-LOOP and FLAKE-START-UNDO gain
+  theirs; ICON-STORE says "replaces", which is what the code does; MEASURE-BAND is the row the
+  old map's N08 never had.
+- **Blind spots** gained four: a registry name read by string (report.js's `appRollup` and
+  `appBuild`) never enters the graph, so the skeleton called four live seams dead; dead exports
+  of pure modules are invisible; styles.css is not read; the 8-line near-duplicate floor hides
+  the one-line copies that drift fastest.
+
 ## docs: the hand-kept lists caught up to main at 79c06c1 (2026-09-28)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md and SUPABASE_SETUP.md against the code

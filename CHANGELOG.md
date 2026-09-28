@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(measure): the dashed band follows the mouse after the first click (MEASURE-BAND, 2026-09-28)
+
+Punch row MEASURE-BAND, the 2026-09-27 map's N08. On a desktop, Measure drew its dashed band from
+the first point to `state.mousePos` but the mousemove handler's re-render gate (app.js, "Canvas
+mouse, wheel & touch handlers") listed every drawing tool except Measure, so nothing repainted
+between the first click and the second: the band appeared only once the measure was done. The
+mobile loupe never had the fault (its aim path re-renders itself).
+
+- **Fix**: one branch in the gate, `TOOL.MEASURE` with a first point and no second, so the band
+  and the moving crosshair follow the mouse the way every other rubber band does. Map item T16's
+  tool-input table derives this branch when it lands.
+- **Pinned** by measure-band.spec.js: after one click and a mouse move, the middle third of the
+  segment on `#annCanvas` carries the band's yellow; run against main's app.js first, it read
+  zero yellow pixels there.
+
 ## docs(map): the decomposition map, read again at 65f712f (2026-09-28)
 
 The 2026-09-27 map's first eight items landed inside a day (S02 to S08: the XSS sweep, CI on

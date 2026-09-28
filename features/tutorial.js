@@ -1171,7 +1171,10 @@
                              // reader may scroll away freely
   // Step bodies name controls the way they look on screen: [[+ Add]] renders as a
   // button-shaped chip (.tour-ui). Everything else is escaped text.
-  const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // XSS-COLOR sweep: the canonical escaper, quotes included. A step body can carry a
+  // project's counter name (lessons.js), and chipsOf copies a [label](/path) path into
+  // href="…", so a quote must never survive into it.
+  const escapeText = (s) => App.escapeHtml(String(s));
   // [Guide name](/guides/slug/) is a link that opens beside the app (site paths only).
   const chipsOf = (t) => escapeText(t).replace(/\[\[(.+?)\]\]/g, '<span class="tour-ui">$1</span>').replace(/\[([^[\]]+)\]\((\/[^)\s]*)\)/g, '<a class="tour-link" href="$2" target="_blank" rel="noopener">$1</a>');
   // LEARN-TAPS: the plain text between the chips and the links goes through the card's word
@@ -1735,6 +1738,12 @@
   function startTutorial(id) {
     const s = state();
     if (s.currentProjectId) { App.showToast('Close the cloud project first: the tour runs on the sample plan'); return false; }
+    // TOUR-RESTART (S07, N11): a tour, lesson or chapter started while another runs (the overlay
+    // takes no pointer events, so Learn, Project Settings and the links stay reachable) stops the
+    // running one first, as left, not finished, so its clean-up runs: a lesson's Snap and sidebar
+    // filter go back, a tour's search words are typed back, the blank tour sweeps its palette, and
+    // its "left" event is logged. The same tour again starts over from its first step.
+    if (active) stopTutorial(false, { switching: true });
     tourId = TOURS[id] ? id : 'electrical';
     STEPS = TOURS[tourId].steps;
     active = true;
@@ -1753,7 +1762,9 @@
     render();
     return true;
   }
-  function stopTutorial(finished) {
+  // `switching`: the stop inside startTutorial. The next tour starts at once, so a deferred
+  // "Project from Last Session" offer keeps waiting for the stop that really ends teaching.
+  function stopTutorial(finished, { switching = false } = {}) {
     active = false;
     App.onTourStepChanged && App.onTourStepChanged();
     if (timer) { clearInterval(timer); timer = null; }
@@ -1766,7 +1777,7 @@
     syncEntryPoints();
     // A "Project from Last Session" offer that arrived mid-tour waited for
     // this moment (features/restore-last-session.js; no-op otherwise).
-    if (App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
+    if (!switching && App.retryDeferredRestorePrompt) App.retryDeferredRestorePrompt();
     if (!String(tourId).includes(':')) restoreSearchesAfterTour();
     const def = TOURS[tourId];
     if (def && def.onStop) { try { def.onStop(!!finished); } catch (_) { /* a lesson's own bookkeeping never breaks the stop */ } }
@@ -1979,7 +1990,7 @@
   App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake
-  App.stopTutorial = stopTutorial;
+  App.stopTutorial = (finished) => stopTutorial(finished);
   App.isTutorialActive = () => active;
   App.isTutorialPending = () => pending;
   App.onTutorialTick = () => { if (active) render(); };

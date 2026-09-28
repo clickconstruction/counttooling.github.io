@@ -300,14 +300,27 @@
   [scripts/score-courses.js](scripts/score-courses.js)) — fourteen steps. Fast, no browser/cloud. Add new check steps to the `STEPS` table in
   scripts/check.js. [.github/workflows/ci.yml](.github/workflows/ci.yml)
   runs it on every push/PR (Node 20), plus an **e2e job** running the Playwright
-  suite (chromium, own `npx serve` via the config's webServer; render-pixels is
-  CI-ignored — darwin-rasterized baselines — and cloud-gated specs self-skip
-  without dev-auth secrets; a stub `config.local.js` prevents the localhost-only
-  include from 404ing). **Fresh clones/worktrees need that same stub locally**
+  suite split four ways by file (`--shard=N/4`, one runner each, `fail-fast: false`,
+  one retry; chromium, own `npx serve` via the config's webServer; render-pixels
+  runs against the committed `*-chromium-linux.png` baselines, and cloud-gated specs
+  self-skip without dev-auth secrets; a stub `config.local.js` prevents the
+  localhost-only include from 404ing). A push to main never cancels main's run in
+  progress; a pull request's superseded run is cancelled. **Fresh clones/worktrees
+  need that same stub locally**
   — `config.local.js` is gitignored so a new worktree doesn't inherit it, and
   without one the localhost-only include 404s, tripping every spec's
   no-console-errors assertion (~150 failures):
   `echo '// stub' > config.local.js` before running specs.
+- **Specs from a worktree**: inside `.claude/worktrees/<name>/`, plain
+  `npx playwright test <spec>` works with no extra config (after the stub above,
+  and `ln -s <primary>/node_modules node_modules` if it has none).
+  [playwright.config.js](playwright.config.js) ignores only its OWN directory's
+  `.claude/` (a RegExp anchored to the config's path), so the primary checkout
+  still skips every sibling worktree and a worktree still finds its own specs.
+  The port comes from `PW_PORT`, else 3456 in the primary checkout, else a
+  stable port hashed from the worktree's path (3500 to 3999); a worktree never
+  reuses a server already on its port, so it never tests another tree (a busy
+  port fails loudly: set `PW_PORT`). `BASE_URL` still overrides the URL.
 - **Linting**: `npm run lint` (ESLint v9 flat config, [eslint.config.js](eslint.config.js))
   covers all the `.js` — the browser modules (`geometry.js`, `constants.js`,
   `idb.js`, `format.js`, `icons.js`, `icon-render.js`, `line-metrics.js`,

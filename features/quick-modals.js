@@ -145,7 +145,7 @@
     const color = getCounterQuickCountEffectiveColor(path);
     const iconEl = document.getElementById('counterQuickCountIcon');
     if (iconEl) {
-      iconEl.innerHTML = path ? '<svg viewBox="' + App.iconVbFor(path) + '" width="20" height="20"><path fill="' + color + '" d="' + path + '"/></svg>' : '';
+      iconEl.innerHTML = path ? '<svg viewBox="' + App.escapeHtml(App.iconVbFor(path)) + '" width="20" height="20"><path fill="' + App.escapeHtml(color) + '" d="' + App.escapeHtml(path) + '"/></svg>' : '';   // XSS-COLOR sweep: a custom icon can ride a project
     }
     const swatchEl = document.getElementById('counterQuickCountSwatch');
     if (swatchEl) {
@@ -192,7 +192,7 @@
     const path = iconForType(type);
     const iconExists = path && (App.getOrderedIcons().some(ic => ic.value === path) || App.getEffectiveCustomIcons().some(ic => ic.value === path));
     if (path && iconExists) {
-      box.innerHTML = '<svg viewBox="' + App.iconVbFor(path) + '"><path fill="var(--accent)" d="' + path + '"/></svg>';
+      box.innerHTML = '<svg viewBox="' + App.escapeHtml(App.iconVbFor(path)) + '"><path fill="var(--accent)" d="' + App.escapeHtml(path) + '"/></svg>';   // XSS-COLOR sweep
       box.classList.add('has-icon');
       box.title = 'Click to use selected icon for ' + type;
     } else {

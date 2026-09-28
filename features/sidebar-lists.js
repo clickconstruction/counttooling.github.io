@@ -83,7 +83,7 @@
         const t = App.counterTally(App.getMergedAnnotationsForPage(p), c.id);
         placed += t.placed; withRepeats += t.withRepeats;
       });
-      const badgeTitle = withRepeats !== placed ? ' title="' + placed + ' placed · ' + withRepeats + ' with repeats"' : '';
+      const badgeTitle = withRepeats !== placed ? ' title="' + esc(placed + ' placed · ' + withRepeats + ' with repeats') + '"' : '';
       // D8 neck-size prefill (MINIMAL surface — a hover title, no new UI): a
       // CFM counter whose name carries no explicit size gets the D1-table
       // suggestion ("150 CFM → 8"Ø neck") on its name span.
@@ -95,7 +95,7 @@
         App.getCounterWsfuOverrideText ? App.getCounterWsfuOverrideText(c) : null,
       ].filter(Boolean).join(' ');
       const neckTitle = neckText ? ' title="' + esc(neckText) + '"' : '';
-      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + App.iconVbFor(c.icon) + '" width="20" height="20"><path fill="' + esc(c.color) + '" d="' + esc(c.icon) + '"/></svg></span><span class="name"' + neckTitle + '>' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + withRepeats + '</span>' + (showEdit ? '<span class="swatch" style="background:' + esc(c.color) + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');
+      div.innerHTML = '<span class="counter-drag-handle icon-svg" title="Drag to reorder"><svg viewBox="' + esc(App.iconVbFor(c.icon)) + '" width="20" height="20"><path fill="' + esc(c.color) + '" d="' + esc(c.icon) + '"/></svg></span><span class="name"' + neckTitle + '>' + esc(c.name || 'Counter') + '</span>' + quickKeyBadgeHtml('counter', c.id) + '<span class="badge"' + badgeTitle + '>' + esc(withRepeats) + '</span>' + (showEdit ? '<span class="swatch" style="background:' + esc(c.color) + '"></span><span class="edit-btn" title="Edit">✎</span>' : '');   // XSS-COLOR sweep: the viewBox (a project's custom icons) and the repeat count (zone multipliers) ride a project
       if (showEdit) {
         div.dataset.counterId = c.id;
         const handle = div.querySelector('.counter-drag-handle');
@@ -232,7 +232,7 @@
       let sysHtml = '';
       // S4: a circuit group shows its panel/number tag ("LP-1/7") like a system tag.
       const ctag = (window.CircuitModel && window.CircuitModel.circuitTag(g)) || '';
-      if (ctag) sysHtml += '<span class="group-system-tag">' + esc(ctag) + (g.loadAmps ? ' · ' + g.loadAmps + ' A' : '') + '</span>';
+      if (ctag) sysHtml += '<span class="group-system-tag">' + esc(ctag) + (g.loadAmps ? ' · ' + esc(g.loadAmps) + ' A' : '') + '</span>';   // XSS-COLOR sweep: a group's load rides a project
       if (g.equipmentTag) {
         sysHtml = '<span class="group-system-tag">' + esc(g.equipmentTag)
           + (g.capacityCfm ? ' · ' + Number(g.capacityCfm).toLocaleString() + ' CFM' : '') + '</span>'
@@ -265,7 +265,7 @@
           sysHtml += '<span class="group-capacity-line' + (over ? ' over' : '') + '">' + parts.join(' · ') + '</span>';
         }
       }
-      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + (g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';
+      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + esc(g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';   // XSS-COLOR: a group's color rides a project, so it is attribute text
       if (showEdit) {
         div.onclick = (e) => {
           if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) {

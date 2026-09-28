@@ -187,8 +187,9 @@ module.exports = [
   // Constants-only globals — NOT their own exports (no-redeclare).
   browserModule(['idb.js', 'format.js'], constantsGlobals),
   // icon-render.js: loaded after icons.js; reads the icon-data globals
-  // (CUSTOM_ICONS / VB_384_512_PATHS / FA_PATHS) by bare name.
-  browserModule(['icon-render.js'], iconsGlobals),
+  // (CUSTOM_ICONS / VB_384_512_PATHS / FA_PATHS) by bare name, and format.js's
+  // escapeHtml at call time (XSS-COLOR: its string builders escape their values).
+  browserModule(['icon-render.js'], { ...iconsGlobals, escapeHtml: 'readonly' }),
   // line-metrics.js: loaded after geometry.js; reads the geometry helpers
   // (ptDist / polylineDistance / bezier / zone locators) by bare name.
   browserModule(['line-metrics.js'], geometryGlobals),

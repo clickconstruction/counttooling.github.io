@@ -906,6 +906,7 @@
     App.registerTour(tourId(lesson.id), {
       steps: [openStep(lesson)].concat(lesson.steps, [doneStep(lesson, lesson.done)]),
       doneKey: null,
+      onStart: beginTeaching,
       onStop(finished) {
         restoreDevice();
         if (!finished) return;
@@ -958,12 +959,14 @@
     App.updateUI();
   }
   // A lesson or a chapter starting: the per-run flags cleared and the reader's device remembered.
+  // It is the tour's onStart, so it runs INSIDE startTutorial, after the engine has stopped any
+  // tour still running (TOUR-RESTART): that stop's restoreDevice puts the reader's settings back
+  // and drops its snapshot first, so this one is the reader's again, never the last lesson's.
   function beginTeaching() { sawMarksHidden = false; extraSeen = false; seededFor = null; openingFor = null; rememberDevice(); }
   function startLesson(id) {
     const lesson = LESSONS.find((l) => l.id === id);
     if (!lesson) return false;
     if (App.hideModal) App.hideModal('learnModal');
-    beginTeaching();
     return App.startTutorial(tourId(id));
   }
   // One Learn list, the lessons' or a course's: a row per item, ticked when done, the suggested one
@@ -1030,6 +1033,7 @@
       App.registerTour(tourOf(chapter.id), {
         steps: [openStep(chapter)].concat(chapter.steps, [doneStep(chapter, chapter.done)]),
         doneKey: null,
+        onStart: beginTeaching,
         onStop(finished) {
           restoreDevice();
           if (!finished) return;
@@ -1041,8 +1045,7 @@
     function start(ch) {
       if (!chapters.some((c) => c.id === ch)) return false;
       if (App.hideModal) App.hideModal('learnModal');
-      beginTeaching();
-      return App.startTutorial(tourOf(ch));
+      return App.startTutorial(tourOf(ch));   // the chapter's onStart remembers the device, after any running tour stops
     }
     function render(nextId) {
       const done = courseDone();

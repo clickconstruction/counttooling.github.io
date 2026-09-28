@@ -125,7 +125,7 @@
         label +
       '</div>';
     menu.innerHTML =
-      '<div class="canvas-menu-heading">' + (g.label || 'Typical') + ' · ' + describeCounts(c) + '</div>' +
+      '<div class="canvas-menu-heading">' + App.escapeHtml(g.label || 'Typical') + ' · ' + describeCounts(c) + '</div>' +   // XSS-COLOR sweep: a ghost's label rides a project
       row('stamp', 'Stamp as real marks') +
       '<div class="canvas-menu-sep"></div>' +
       row('toggleCounters', 'Show counts', g.showCounters !== false) +

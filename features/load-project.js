@@ -508,7 +508,7 @@
             state.pdfBufferSize = 0;
           }
         } catch (e) {
-          ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>');
+          ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + esc(e.message || 'Unknown error') + '</p>');   // XSS-COLOR sweep: an error can quote project data
           return;
         }
       } else if (await devicePdfIfOnlyCopy(proj, idbBackup)) {
@@ -516,7 +516,7 @@
           await openOnDevicePdf(proj, d, await devicePdfIfOnlyCopy(proj, idbBackup), useIdbBackup, idbBackup);
           devicePdfOpened = true;
         } catch (e) {
-          ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + (e.message || 'Unknown error') + '</p>');
+          ui.showError('<p style="color:var(--red);">Failed to load PDF: ' + esc(e.message || 'Unknown error') + '</p>');   // XSS-COLOR sweep: an error can quote project data
           return;
         }
       } else {
@@ -731,7 +731,7 @@
         await renderLoadProjectListRows(lp);
       } catch (e) {
         console.error('[Load Project]', e);
-        listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects: ' + (e?.message || 'Unknown error') + '</p>';
+        listEl.innerHTML = '<p style="color:var(--red);">Failed to load projects: ' + esc(e?.message || 'Unknown error') + '</p>';
         showModal('loadProjectModal');
         showToast('Failed to load projects: ' + (e?.message || 'Unknown error'));
       }

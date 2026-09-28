@@ -7,7 +7,12 @@
  * name) and BEFORE app.js. These top-level declarations live in the shared
  * global lexical scope.
  *
- * Boundary rule: this module depends ONLY on icons.js globals + its arguments.
+ * Boundary rule: this module depends ONLY on icons.js globals + its arguments,
+ * plus format.js's escapeHtml, resolved by bare name at CALL time (format.js
+ * loads after this file but before anything calls a builder; the unit test
+ * puts it on globalThis). XSS-COLOR: an icon path, its viewBox, a color and a
+ * set name can ride a project (counters[].icon, customIconPaths), so every
+ * string builder below writes them as attribute text through that one escaper.
  * The runtime user-icon cache (customIconsCache / getEffectiveCustomIcons) and
  * the published window.renderIconHtml API stay in app.js as same-named thin
  * wrappers that supply the live effective-icons list and resolved viewBox to
@@ -57,7 +62,7 @@
 
   // Build a 24x24 SVG markup string for an icon path, given its resolved viewBox.
   function iconSvgHtml(iconValue, color, viewBoxString) {
-    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + viewBoxString + '" width="24" height="24"><path fill="' + (color || '#e8c547') + '" d="' + iconValue + '"/></svg>';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + escapeHtml(viewBoxString) + '" width="24" height="24"><path fill="' + escapeHtml(color || '#e8c547') + '" d="' + escapeHtml(iconValue) + '"/></svg>';
   }
 
   // Icon-picker grid cells: the single source for the cell markup that was
@@ -68,8 +73,9 @@
   // `title` (optional, D18) names the cell on hover — the bundled sets pass
   // the icon's display name so a grid of trade symbols is not a guessing game.
   function iconCellHtml(pathValue, viewBox, selected, title) {
-    const titleAttr = title ? ' title="' + String(title).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;') + '"' : '';
-    return '<div class="icon-cell' + (selected ? ' selected' : '') + '" data-path="' + pathValue + '"' + titleAttr + '><svg viewBox="' + viewBox + '" width="24" height="24"><path fill="currentColor" d="' + pathValue + '"/></svg></div>';
+    const titleAttr = title ? ' title="' + escapeHtml(title) + '"' : '';
+    const path = escapeHtml(pathValue);
+    return '<div class="icon-cell' + (selected ? ' selected' : '') + '" data-path="' + path + '"' + titleAttr + '><svg viewBox="' + escapeHtml(viewBox) + '" width="24" height="24"><path fill="currentColor" d="' + path + '"/></svg></div>';
   }
   // Built-in grid: vbFor(value) resolves the viewBox (the caller injects the
   // cache-coupled App.iconVbFor); isSelected(ic, i) marks the selected cell.
@@ -96,7 +102,7 @@
     return order.map((k, i) => {
       const label = k === 'uploaded' ? 'Uploaded' : (ICON_SET_LABELS[k] || (k.charAt(0).toUpperCase() + k.slice(1)));
       const list = effectiveCustom.filter((ic) => (ic.set || 'uploaded') === k);
-      return '<div class="icon-grid-heading">' + label + '</div>' + (i === 0 ? ICON_UPLOAD_CELL_HTML : '') + cells(list);
+      return '<div class="icon-grid-heading">' + escapeHtml(label) + '</div>' + (i === 0 ? ICON_UPLOAD_CELL_HTML : '') + cells(list);
     }).join('');
   }
   // D16: the glyph a CFM-carrying counter defaults to when the estimator never

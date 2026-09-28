@@ -256,6 +256,68 @@ test('rung 4: branch links, the load beyond the tip of a trace, the downstream p
   assert.deepStrictEqual(d, { main: { side: 'cold', wsfu: 13.5, fixtures: 3, flushValve: true }, br: { side: 'cold', wsfu: 2, fixtures: 1, flushValve: false }, other: { side: 'cold', wsfu: 3, fixtures: 1, flushValve: false } });
 });
 
+test('waterChildLinks: two runs leaving one point are siblings, each carrying only its own fixtures (WATER-TAP)', () => {
+  // the repro: two cold runs leave (0,0), one east, one south; each starts on the other,
+  // so the bare tap rule made each the other's child and sized each for both loads
+  const east = { id: 'east', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }] };
+  const south = { id: 'south', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 0, y: 100 }] };
+  assert.deepStrictEqual(w.waterChildLinks([east, south]), []);
+  // a first vertex a few points off the other's still counts as the same point (within snap)
+  const south2 = { id: 'south2', side: 'cold', vertices: [{ x: 3, y: 2 }, { x: 3, y: 100 }] };
+  assert.deepStrictEqual(w.waterChildLinks([east, south2]), []);
+  const fx = (id, x, y, cold, hot) => ({ id, x, y, loads: { cold, hot: hot || 0 }, flushValve: false });
+  const fixtures = [fx('e1', 80, 5, 1.5), fx('s1', 5, 80, 2), fx('s2', 5, 60, 3)];
+  assert.deepStrictEqual(w.waterDownstreamByRun(fixtures, [east, south]), {
+    east: { side: 'cold', wsfu: 1.5, fixtures: 1, flushValve: false },
+    south: { side: 'cold', wsfu: 5, fixtures: 2, flushValve: false },
+  });
+  // a trace leaving the same point as a committed run does not take that run's fixtures
+  const r = w.waterDraftRemainingLoad({ runs: [south], draft: { side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 50, y: 0 }] }, fixtures });
+  assert.deepStrictEqual(r, { wsfu: 1.5, served: 0, fixtures: 1, flushValve: false });
+});
+
+test('waterChildLinks: a branch tapped mid-run still links; a sibling pair can still carry one', () => {
+  const east = { id: 'east', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 300, y: 0 }] };
+  const south = { id: 'south', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 0, y: 300 }] };
+  const tee = { id: 'tee', side: 'cold', vertices: [{ x: 150, y: 4 }, { x: 150, y: 120 }] };   // tapped off the east run's middle
+  const tail = { id: 'tail', side: 'cold', vertices: [{ x: 300, y: 0 }, { x: 400, y: 0 }] };   // carries on from the east run's end
+  const links = w.waterChildLinks([east, south, tee, tail]);
+  assert.deepStrictEqual(links.map((l) => [l.childId, l.parentId, l.s]), [['tee', 'east', 150], ['tail', 'east', 300]]);
+  const fx = (id, x, y, cold) => ({ id, x, y, loads: { cold, hot: 0 }, flushValve: false });
+  const d = w.waterDownstreamByRun([fx('a', 50, 5, 1), fx('b', 150, 100, 2), fx('c', 380, 5, 4), fx('d', 5, 200, 8)], [east, south, tee, tail]);
+  assert.deepStrictEqual([d.east.wsfu, d.tee.wsfu, d.tail.wsfu, d.south.wsfu], [7, 2, 4, 8]);
+});
+
+test('waterChildLinks: hot and cold never link, off one point or mid-run', () => {
+  const cold = { id: 'cold', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 300, y: 0 }] };
+  const hotSame = { id: 'hotSame', side: 'hot', vertices: [{ x: 0, y: 0 }, { x: 0, y: 200 }] };
+  const hotMid = { id: 'hotMid', side: 'hot', vertices: [{ x: 150, y: 2 }, { x: 150, y: 200 }] };
+  const coldOffHot = { id: 'coldOffHot', side: 'cold', vertices: [{ x: 150, y: 100 }, { x: 250, y: 100 }] };
+  assert.deepStrictEqual(w.waterChildLinks([cold, hotSame, hotMid, coldOffHot]), []);
+  const fx = (id, x, y, c, h) => ({ id, x, y, loads: { cold: c, hot: h }, flushValve: false });
+  const d = w.waterDownstreamByRun([fx('lav', 100, 3, 1.5, 1.5), fx('sink', 150, 150, 0, 3)], [cold, hotSame, hotMid, coldOffHot]);
+  // no hot load reaches the cold run through a link, and no cold load a hot run
+  // (the lav's hot side has no hot run within snap, so it is attached to none)
+  assert.deepStrictEqual([d.cold.wsfu, d.hotSame.wsfu, d.hotMid.wsfu, d.coldOffHot.wsfu], [1.5, 0, 3, 0]);
+});
+
+test('waterChildLinks: runs drawn head to tail round a loop never form a cycle (WATER-TAP)', () => {
+  // three runs round a square, each starting on the one before's end: past the sibling guard the
+  // tap rule would still make A the child of C, B of A and C of B. The link that closes the loop is dropped.
+  const A = { id: 'A', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }] };
+  const B = { id: 'B', side: 'cold', vertices: [{ x: 100, y: 0 }, { x: 100, y: 100 }] };
+  const C = { id: 'C', side: 'cold', vertices: [{ x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }] };
+  const links = w.waterChildLinks([A, B, C]);
+  assert.deepStrictEqual(links.map((l) => [l.childId, l.parentId]), [['A', 'C'], ['B', 'A']]);
+  const fx = (id, x, y, cold) => ({ id, x, y, loads: { cold, hot: 0 }, flushValve: false });
+  const d = w.waterDownstreamByRun([fx('a', 50, 3, 1), fx('b', 97, 50, 2), fx('c', 50, 97, 4)], [A, B, C]);
+  assert.deepStrictEqual([d.C.wsfu, d.A.wsfu, d.B.wsfu], [7, 3, 2]);
+  // two runs over one stretch in opposite directions: one parent, not two
+  const P = { id: 'P', side: 'cold', vertices: [{ x: 0, y: 0 }, { x: 100, y: 0 }] };
+  const Q = { id: 'Q', side: 'cold', vertices: [{ x: 100, y: 0 }, { x: 0, y: 0 }] };
+  assert.strictEqual(w.waterChildLinks([P, Q]).length, 1);
+});
+
 test('rung 4: the suggestion, the ladder, and a name with its size swapped', () => {
   // 12 WSFU at flush tanks → 16 gpm; cold at 8 fps wants 1 in PEX (0.862 in: 8.8 fps? no, 1 in reads 8.8 → 1-1/4 in)
   const s = w.waterDraftSuggestion({ wsfu: 12, material: 'pex', side: 'cold', currentSizeIn: 0.75 });

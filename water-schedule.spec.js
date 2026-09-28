@@ -175,4 +175,33 @@ test.describe('Water Sizing schedule (rung 5)', () => {
     expect(report).toEqual(modal);
     expect(errors).toEqual([]);
   });
+
+  // WATER-TAP (2026-09-27): two cold runs that leave one point each started on the other, so the
+  // tap rule made each the other's branch and each row carried both loads. They are siblings now.
+  test('two runs leaving one point each carry only their own fixtures', async ({ page }) => {
+    const errors = [];
+    page.on('console', (m) => { if (m.type() === 'error' && !(m.location()?.url || '').includes('config.local.js')) errors.push(m.text()); });
+    page.on('pageerror', (e) => errors.push(e.message));
+    await load(page);
+    await page.evaluate(() => {
+      const s = window.state;
+      s.lineTypes.push({ id: 'lt-cold', name: '3/4in PEX cold', color: '#4a9eff', curveStyle: 'straight', waterSide: 'cold' });
+      s.counters.push({ id: 'c-lav', name: 'Lavatory', icon: 'M0 0h10v10H0z', color: '#47c88e', wsfu: 2 });
+      s.counters.push({ id: 'c-wc', name: 'WC flush valve', icon: 'M0 0h10v10H0z', color: '#a47fff', wsfu: 10 });
+      const ann = s.pages[0].canvases[0].annotations;
+      // both leave the riser at (100, 200): one east, one south
+      ann.quickLines.push({ id: 'q-east', name: 'East', lineTypeId: 'lt-cold', color: '#4a9eff', x1: 100, y1: 200, x2: 400, y2: 200 });
+      ann.polylines.push({ id: 'p-south', name: 'South', lineTypeId: 'lt-cold', color: '#4a9eff', closed: false, points: [{ x: 100, y: 200 }, { x: 100, y: 500 }] });
+      ann.counterMarkers['c-lav'] = [{ x: 300, y: 205 }];
+      ann.counterMarkers['c-wc'] = [{ x: 105, y: 400 }];
+      window.App.updateUI();
+    });
+    const s = await page.evaluate(() => window.App.computeWaterSchedule({}));
+    const byId = Object.fromEntries(s.rows.map((r) => [r.runId, r]));
+    expect([byId['q-east'].wsfu, byId['q-east'].fixtures]).toEqual([1.5, 1]);
+    expect([byId['p-south'].wsfu, byId['p-south'].fixtures]).toEqual([10, 1]);
+    expect(byId['q-east'].column).toBe('flush-tank');   // the WC's flush valve is not on the east run
+    expect(s.totals.cold.wsfu).toBe(11.5);
+    expect(errors).toEqual([]);
+  });
 });

@@ -422,7 +422,7 @@
           hint: () => (counter(RE.jbox) ? missing(counter(RE.jbox), pts(G.jbox), JBOX_LABELS, 10, E101) : ''),
           action: { label: 'Count them for me', run: () => { K().goPage(E101); App.pushUndoSnapshotCurrentPage(); markMissing(pick('jbox'), pts(G.jbox), E101); K().dirty(); } } },
         { id: 'keys', title: 'Put the counters on the number row', kind: 'do', keys: true,
-          body: 'A quick key picks a counter from the number row: press 1 and the next click on the sheet places a Duplex.\n1. In the {{status bar|.status-bar}}, at the bottom right, click [[quick keys]].\n2. Beside key 1, choose Duplex.\n3. Beside key 2, choose GFCI.\n4. Close the dialog.',
+          body: 'A quick key picks a counter from the number row: press 1 and the next click on the sheet places a Duplex.\n1. In the {{status bar|.status-bar}}, at the bottom right, click [[quick keys]].\n2. Click key 1 at the top, then click Duplex in the list.\n3. Click key 2, then click GFCI.\n4. Close the dialog.',
           answer: 'On a real E-sheet the rhythm is 1, click, click, 2, click, and the hand never leaves the plan: no trips back to the sidebar.',
           target: ['#quickKeysModal .modal-card', '#statusBarQuickKeys'],
           // both keys, and the dialog closed, as the card says: on key 1 alone the step advanced and the
@@ -550,7 +550,7 @@
           // The controls the card names follow whatever is lit, so the card keeps off them all.
           target: () => {
             const lt = lineType(RE.hr), g = circuit1(), s = S(), path = allDone(traceZones(RE.hr, pts(G.homerun1), E101));
-            const first = !lt ? ['#lineTypeCreate', '#addLineType']
+            const first = !lt ? T().lineTypeFormTargets(RE.hr)
               : !lt.homerun ? ['#lineTypeHomerunBtn', T().pencilOf('lineType', lt)]
                 : K().modalUp('counterLineTypeDetailsModal') ? ['#counterLineTypeDetailsClose']
                   : s.drawingPolyline ? [path ? '#finishPolyline' : null, '#annCanvas']
@@ -656,7 +656,7 @@
           target: () => {
             if (!K().onPage(E101)) return ['#pagesList'];
             const lt = lineType(RE.emt2), path = allDone(traceZones(RE.emt2, pts(G.feeder), E101));
-            const first = !lt ? ['#lineTypeCreate', '#addLineType']
+            const first = !lt ? T().lineTypeFormTargets(RE.emt2)
               : !(lt.conductors || []).length ? ['#conductorsSpec', '#racewayKind', T().pencilOf('lineType', lt)]
                 : K().modalUp('counterLineTypeDetailsModal') ? ['#counterLineTypeDetailsClose']
                   : S().drawingPolyline ? [path ? '#finishPolyline' : null, '#annCanvas']

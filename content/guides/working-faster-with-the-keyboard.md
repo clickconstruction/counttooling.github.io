@@ -49,13 +49,19 @@ you're placing. **Quick Keys** puts your own counters and line types on the
 number row.
 
 1. Click **quick keys** [[keys]] in the status bar (next to shortcuts).
-2. For each number `1`–`0`, pick a counter or line type from this project. On a
-   big palette, type in the **search box** at the top; every dropdown filters
-   to matching names as you type (already-bound items always stay put).
-3. Done. Press `1` while marking up and you're placing that counter; press `2`
+2. One key in the strip at the top is lit. Click a counter or line type in the
+   list and it goes on that key, and the next empty key lights. Click any key
+   to light it instead. The list shows each item's symbol, its colour, how
+   much of it the project has placed (those come first) and the key it is
+   already on.
+3. On a big palette, type in the **search box**. It reads names loosely, so
+   `wc1` finds WC-1, and it keeps your word after a pick: type `sk`, then
+   press Enter three times to put SK-1, SK-2 and SK-3 on three keys. The
+   arrow keys move up and down the list.
+4. Done. Press `1` while marking up and you're placing that counter; press `2`
    and you're drawing that line type. Press the same key again to deselect.
 
-![The Quick Keys dialog: each number key gets a counter or line type from the project, here 1 is bound to Water Closet and 2 to the waste line.](/guides/img/quick-keys.png)
+![The Quick Keys dialog: a strip of ten keys over one searchable list of the project's counters and line types, here 1 holds Water Closet and 2 the waste line.](/guides/img/quick-keys.png)
 
 Bound items wear their digit as a small badge in the sidebar, so you don't have
 to memorize the layout, and bound keys light up on the keyboard map with their

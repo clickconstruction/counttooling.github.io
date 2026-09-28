@@ -731,6 +731,31 @@ test.describe('Every button, on a blank sheet', () => {
     await page.waitForFunction((want) => window.App.tutorialStepId() !== want, id, { timeout: 2500 }).catch(async () => { await page.click('#tourNext'); });
   };
 
+  // wendi, 2026-09-28: the dialog opened with the ring on Create Line Type, and the Name field the
+  // card asks for first was dimmed with the rest. The ring follows the card's lines: + Add, Name
+  // until it reads Pipe, then the button.
+  test('the line type card lights + Add, then Name until it reads Pipe, then Create Line Type', async ({ page }) => {
+    test.setTimeout(90000);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const litIs = (sel) => page.evaluate((s) => { const e = document.querySelector(s); if (!e) return false; const a = e.getBoundingClientRect(), b = document.getElementById('tourSpot').getBoundingClientRect(); return b.width > 0 && Math.abs(a.left - 6 - b.left) < 3 && Math.abs(a.top - 6 - b.top) < 3; }, sel);
+    await page.goto('/app/?tour=blank');
+    await ready(page);
+    await waitForStep(page, 'welcome');
+    await page.evaluate(() => window.App.tutorialDoStep());   // the two blank sheets
+    await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(2);
+    await page.evaluate(() => window.App.tutorialGoTo('linetype'));
+    await waitForStep(page, 'linetype');
+    await expect.poll(() => litIs('#addLineType')).toBe(true);
+    // the card keeps off the + Add it lights (it took the corner clear of the circles, over the sidebar)
+    await expect.poll(() => page.evaluate(() => { const c = document.getElementById('tourCard').getBoundingClientRect(), a = document.getElementById('addLineType').getBoundingClientRect(); return c.left < a.right && c.right > a.left && c.top < a.bottom && c.bottom > a.top; })).toBe(false);
+    await page.click('#addLineType');
+    await expect(page.locator('#lineTypeModal')).toBeVisible();
+    await expect.poll(() => litIs('#lineTypeName')).toBe(true);
+    expect(await litIs('#lineTypeCreate')).toBe(false);
+    await page.fill('#lineTypeName', 'Pipe');
+    await expect.poll(() => litIs('#lineTypeCreate')).toBe(true);
+  });
+
   test('the do-it-for-me path presses every button on a sheet the tour made, and finishing hides only its own link', async ({ page }) => {
     await pastStartHere(page);   // a returning device: the line of tour links, not the fresh device's Start here card
     test.setTimeout(150000);
@@ -963,6 +988,35 @@ test.describe('Every button, on a blank sheet', () => {
     await waitForStep(page, 'scale');
     expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, document.querySelectorAll('.modal-overlay.visible').length])).toEqual([2, 'blank-sheet', 0]);
   });
+  // Wendi, 2026-09-28: "this button doesn't exist where highlighted, have to scroll down". Project
+  // Settings' Save row sticks to the dialog's foot and lay over Close project, so the ring was
+  // drawn on Save. The dialog scrolls until the control the card names is the thing on top.
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 1707, height: 916 }]) {
+    test('the close step lights Close project where it shows, clear of the Save row (' + viewport.width + ' x ' + viewport.height + ')', async ({ page }) => {
+      test.setTimeout(90000);
+      await page.setViewportSize(viewport);
+      await page.goto('/app/?tour=blank');
+      await ready(page);
+      await waitForStep(page, 'welcome');
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await waitForStep(page, 'scale');
+      await page.evaluate(() => window.App.tutorialGoTo('close'));
+      await waitForStep(page, 'close');
+      await page.click('#settingsGearBtn');
+      const lit = () => page.evaluate(() => {
+        const t = document.getElementById('settingsCloseProject'), r = t.getBoundingClientRect();
+        const top = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+        const s = document.getElementById('tourSpot').getBoundingClientRect();
+        const save = document.querySelector('#settingsModal .settings-actions').getBoundingClientRect();
+        return { onTop: top === t, ringed: s.left <= r.left && s.top <= r.top && s.right >= r.right && s.bottom >= r.bottom && s.height < r.height + 20, clearOfSave: s.bottom <= save.top };
+      });
+      await expect.poll(lit, { timeout: 8000 }).toEqual({ onTop: true, ringed: true, clearOfSave: true });
+      // and it is the real button: the click asks, the answer closes the sheet
+      await page.click('#settingsCloseProject');
+      await page.click('#confirmOk');
+      await expect.poll(() => page.evaluate(() => window.state.pages.length)).toBe(0);
+    });
+  }
   // A tablet in portrait (768 × 1024, touch): the app's own breakpoint, where the sidebar is a
   // drawer, the status-bar links are gone, the header strip scrolls and several controls live
   // under the ☰. Every step still has a door, the door is lit on screen, and the walk completes.

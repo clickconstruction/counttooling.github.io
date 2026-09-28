@@ -13,6 +13,49 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tour): the ring follows the Create Line Type form, and the card keeps off the + Add it lights (2026-09-28)
+
+wendi, on the blank-sheet tour's line type card: "have not named the line or picked a color but
+create line type is already highlighted, making the rest greyed out. confusing". Two faults on one
+card.
+
+- **The ring was a step ahead.** The card's target was the Create Line Type button from the moment
+  the dialog opened, so the Name field its second line asks for was dimmed with the rest. The
+  tourKit has `lineTypeFormTargets(nameRe)`, the twin of `counterFormTargets`: Name until it reads
+  what the card says to type, then the button, and + Add while the form is not up. Four cards used
+  the fixed target and now use it: the blank tour's `linetype` (Pipe), the plumbing course's hot
+  water return (HWR), the electrical course's `homerun` (HR) and `feeder` (2in EMT). The electrical
+  tour's line type card already walked its form this way.
+- **The card sat on the button it lit.** A step with circles on the sheet takes the first corner
+  clear of them, and the lit control was only weighed against that corner when the step named
+  OTHER controls on screen. With + Add the only one, the card took the bottom-left corner, over
+  the sidebar and over + Add (1280 x 720, in a plain walk and after a jump). features/tutorial.js
+  now weighs the lit control whenever the circles picked the corner; the card takes the corner
+  that covers no control and the sheet pans its circles clear, as it already did elsewhere.
+
+Pinned by tutorial.spec.js "the line type card lights + Add, then Name until it reads Pipe, then
+Create Line Type", at 1280 x 720. The colour row stays dimmed while Name is lit, as the symbol and
+colour do on the counter cards: picking one is optional, and the ring names the one thing that
+moves the step on.
+## fix(tour): a card lights a control where it shows, never under a dialog's Save row (2026-09-28)
+
+Wendi, on the blank-sheet tour's close step: "this button doesn't exist where highlighted, have to
+scroll down which is confusing". The card says to click Close project in Project Settings. The
+ring was drawn over the left end of the Save row and the link itself was out of sight under it.
+
+- **Cause.** Project Settings' Save row sticks to the foot of the dialog (`.settings-actions`,
+  `position: sticky`). The engine's `seen()` asked only whether the control's centre was inside
+  the scrolling box, which it was, so nothing scrolled. When it did scroll, it asked for the
+  nearest edge, which is the edge the Save row covers.
+- **Fix** (features/tutorial.js). `seen()` also asks what is on top at the control's centre
+  (`underStickyRow`): a sticky row that does not hold the control means it does not show. And a
+  scroll to the nearest edge that leaves the control unseen is followed by one to the middle of
+  the panel. This is the engine, so every tour, lesson and course card gets it.
+- **Pinned** by tutorial.spec.js, "the close step lights Close project where it shows, clear of
+  the Save row", at 1280 x 720 and at Wendi's 1707 x 916: the link is the element on top, the
+  ring is around it and above the Save row, and the click closes the sheet. Both fail on the old
+  engine.
+
 ## fix(tour): the Room Sizer cards name the dialog's fields, top to bottom (2026-09-28)
 
 A tester on the blank-sheet tour's Room Sizer card: "confusing as the fields are not named
@@ -46,6 +89,48 @@ drag shows ✓ Done and lights Next, and the reader moves on.
   electrical course's `circuits/load` are rows on the owner's list (CARD-REVIEW-OWNERS-LIST.md).
 - **Pinned** by the TOUR-MOVE-GLIDE tests in tutorial.spec.js, which now want the card still on
   Move two seconds after the drag, done, with the Esc line on it, until Next is clicked.
+
+## feat(quick-keys): one armed key and one searched list, in place of ten dropdowns (QUICK-KEYS-PICK, 2026-09-28)
+
+Reported by the owner on 2026-09-28 with a screenshot of the blank-sheet tour's quick keys card:
+"this sucks". The dialog was ten rows, each a native dropdown of the whole palette in palette
+order, under a search box that filtered the ten dropdowns unseen: typing changed nothing on
+screen. The list had no colour, no symbol and no count, showed two counters named "Gate Valve" as
+the same row twice, and did not say what was already on a key. Ten keys were ten trips through it.
+
+Two mockups were drawn before the build. The first kept the ten rows and gave each its own
+searchable list; it was set aside because ten keys were still thirty actions, the search word was
+thrown away after each key, and a list dropped from row 9 ran off a laptop screen.
+
+- **One armed key, one list.** The strip at the top is the number row, one key lit. Under the
+  search is every counter and line type. A click on a row, or Enter, puts it on the lit key and
+  the next empty key lights (wrapping past 0; with all ten held it stays put). The dialog opens on
+  the first empty key. A click on a key lights it; on a key, ← → move and Delete clears.
+- **The search word is kept**, selected so the next word replaces it, and the lit row moves to the
+  first match not yet on a key: "sk", Enter, Enter, Enter puts SK-1, SK-2 and SK-3 on three keys.
+- **Loose matching, ranked.** Every typed word must be in the name, read without case, spaces or
+  hyphens ("wc1" finds WC-1, "valve ball" finds Ball Valve 1). A name that starts with what was
+  typed comes first, then a name with a word that starts with it, then the rest; ties go to the
+  more used item, then to palette order.
+- **Rows that can be told apart.** The counter's own symbol in its colour (a colour bar for a line
+  type), the sidebar's own number (a counter's total with repeats, a line type's footage), and
+  the badge of the key it is on. With no search the items the project has placed come first, most
+  used on top; the rest keep palette order. A held key wears its counter's symbol.
+- **An item sits on one key.** Picking one that is already on another key moves it. (Two keys on
+  one item was legal and pointless.)
+- **The card never scrolls.** The list takes the height that is left and scrolls alone, so Done
+  is on screen on a phone, where the strip wraps to two rows of five. A finger does not get the
+  caret on open, so the on-screen keyboard does not cover the list.
+- The order, the matching and the armed key are a pure module, **quick-keys-model.js**
+  (`window.QuickKeysModel`), with quick-keys-model.test.js (14 cases).
+- **The cards that teach it** say what is now on screen: "Click key 1 at the top, then click FD-1
+  in the list" (the blank-sheet tour, the Counting lesson, the plumbing and electrical courses).
+  They name the key to click because a signed-in reader's Artboard may already hold key 1, and
+  then another key is the one lit. Their checks read the bindings and did not change.
+- Specs: quick-keys.spec.js drives the rows and the keys (the dropdown test became the list test,
+  plus placed-first order and the phone card); lessons.spec.js picks rows, and its wrong-pick case
+  now ends with the reader's counter on key 2 and the next card saying "Press 2".
+- The guide (working-faster-with-the-keyboard) describes the new dialog; its picture is re-shot.
 
 ## fix(tour): the Move card waits for the reader's own drag (TOUR-MOVE-GLIDE, 2026-09-28)
 

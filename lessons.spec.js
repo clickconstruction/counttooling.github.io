@@ -443,7 +443,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await page.keyboard.press('Enter');
     await stepTo(page, 'marked', 8000);
     expect(await page.evaluate(() => window.state.pages[2].label)).toBe('P-501 Fixture Schedule');
-    // Counting → the Quick Keys dialog's own dropdown
+    // Counting → the Quick Keys dialog's own list
     await open('counting', 'counter');
     await page.evaluate(() => window.App.tutorialDoStep());
     await stepTo(page, 'place');
@@ -451,7 +451,7 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     await stepTo(page, 'bind', 8000);
     await page.click('#statusBarQuickKeys');
     await expect(page.locator('#quickKeysModal')).toHaveClass(/visible/);
-    await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain' });
+    await page.locator('#quickKeysResults .quick-key-item-name', { hasText: /^Floor Drain$/ }).click();
     await page.click('#quickKeysDone');
     await stepTo(page, 'usekey', 8000);
     // Organizing → one click on the funnel
@@ -631,19 +631,21 @@ test.describe('Learn: a returning estimator walks the lessons by hand', () => {
     expect(await page.evaluate(() => window.state.counters[window.state.counters.length - 1].name)).toBe('Floor Drain 2');
     await page.evaluate(() => window.App.tutorialDoStep());   // (spec seam) the three circles, walked by hand in "Learn: on-sheet targets"
     await stepTo(page, 'bind', 8000);
-    await expect(page.locator('#tourBody')).toContainText('choose Floor Drain 2');
+    await expect(page.locator('#tourBody')).toContainText('click Floor Drain 2');
     await page.click('#statusBarQuickKeys');
-    await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain' });
-    await expect(page.locator('#tourStatus')).toContainText('That key holds Floor Drain. Choose Floor Drain 2', { timeout: 3000 });
-    await page.selectOption('#quickKeysList .quick-key-select[data-slot="1"]', { label: 'Floor Drain 2' });
+    await page.locator('#quickKeysResults .quick-key-item-name', { hasText: /^Floor Drain$/ }).click();
+    await expect(page.locator('#tourStatus')).toContainText('That key holds Floor Drain. Click Floor Drain 2', { timeout: 3000 });
+    await page.locator('#quickKeysResults .quick-key-item-name', { hasText: /^Floor Drain 2$/ }).click();
     await page.click('#quickKeysDone');
     await stepTo(page, 'usekey', 8000);
-    // M puts the counter down; 1 arms it again (it deselected the counter the key was already on)
+    // the wrong pick took key 1 and the next empty key lit, so the reader's own counter is on key 2: the card says so
+    await expect(page.locator('#tourBody')).toContainText('Press 2: Floor Drain 2');
+    // M puts the counter down; 2 arms it again (it deselected the counter the key was already on)
     await page.mouse.move(700, 400);
     await page.keyboard.press('m');
-    await page.keyboard.press('1');
+    await page.keyboard.press('2');
     expect(await page.evaluate(() => [window.state.tool === window.App.TOOL.COUNTER, (window.state.counters.find((c) => c.id === window.state.activeCounterType) || {}).name])).toEqual([true, 'Floor Drain 2']);
-    await page.keyboard.press('1');   // a second press on the ARMED counter still puts it down
+    await page.keyboard.press('2');   // a second press on the ARMED counter still puts it down
     expect(await page.evaluate(() => window.state.activeCounterType)).toBe(null);
     expect(errors).toEqual([]);
   });

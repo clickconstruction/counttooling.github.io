@@ -8,7 +8,7 @@
  *
  * Static, no browser: the step files are parsed with espree (eslint's parser) and every
  * ObjectExpression carrying id + title + body is a step. Its text is the string literals,
- * template quasis and `+` concatenations in body / reveal / hint / progress (a function
+ * template quasis and `+` concatenations in body / answer / reveal / hint / progress (a function
  * contributes the strings inside it). A step may carry
  *   rules: ['plumb.hanger.pex', ...]   the rulebook ids (rules/rules.json) it teaches
  *   rulesExempt: '<why>'               it states a code section or number that is not a
@@ -51,7 +51,7 @@ const SOURCES = [
   'features/tutorial.js', 'features/tour-blank.js', 'features/lessons.js',
   'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js',
 ];
-const TEXT_KEYS = ['body', 'reveal', 'hint', 'progress'];
+const TEXT_KEYS = ['body', 'answer', 'reveal', 'hint', 'progress'];
 
 // ===== parsing the step files ============================================================
 function keyName(p) {

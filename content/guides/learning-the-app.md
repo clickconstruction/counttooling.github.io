@@ -1,7 +1,7 @@
 ---
 title: Learn CountTooling by doing
 description: Five-minute tours for plumbing, electrical and HVAC, a tour that presses every button once on a blank sheet, thirteen short hands-on lessons that cover every tool in CountTooling, and three courses that teach the trade off an engineer's set, all on sample sheets the app opens for you.
-updated: 2026-09-27
+updated: 2026-09-28
 order: 1.2
 icon: keys
 category: Getting started
@@ -22,6 +22,7 @@ Open the app with nothing loaded and click **lesson** on the empty canvas, or op
 - A card beside the screen says what to do, one action per line, naming each control the way it looks on screen, and lights the control it means.
 - When the work is on the sheet, the lesson **draws where**: a circle on each thing to click, and for a box to drag, a shaded band with a dashed line inside it. Anywhere in a circle counts; a box counts when it starts and ends in the band, outside the dashed line, so it wraps everything the line holds. A click outside a circle ticks nothing but still lands a mark on the sheet, so the card tells you to undo it.
 - Every step **checks what you actually did**. The Scale lesson does not move on until the 12'-0" dimension really measures 12'-0".
+- When a step is done, the card tells you what you just made: the result takes the place of the steps, and the card waits for **Next**. A question you answer with a click shows its answer the same way.
 - Nothing does a step for you: **Next** lights only once you have really done it. **Show me where** pulses the circle, the boundary or the button you are looking for, and a quiet **Skip this step** is there if a step is not for you.
 - **Back** goes back, the card drags out of the way by its top edge, and the × leaves whenever you like. A finished lesson is ticked on your device, and the menu lights the next one.
 
@@ -338,7 +339,7 @@ Every word a course card stops to explain, in one list. A card says what a word 
 
 ## Start with your trade: the five-minute tours
 
-Each tour is one small takeoff from scale to hand-off, fourteen steps on the design-build sample plan.
+Each tour is one small takeoff from scale to hand-off, on the design-build sample plan.
 
 - [Plumbing tour](/app/?tour=plumbing): prove the scale, count a restroom, chain a lav battery with its riser, hangers from the rulebook, a typical floor, an RFI, the proof, the hand-off. Read along in [Doing a plumbing takeoff](/guides/plumbing-takeoff/).
 - [Electrical tour](/app/?tour=electrical): devices with mount heights, conduit with its conductors, chained runs with the vertical, a circuit, Bid Check. Read along in [Doing an electrical takeoff](/guides/electrical-takeoff/).

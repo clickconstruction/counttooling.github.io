@@ -440,7 +440,7 @@
     },
     {
       id: 'scale', title: 'Header: Set Scale', kind: 'do',
-      body: 'The scale says how many feet of building one inch of paper stands for. Here the title block, the box at the bottom right, says 1/8" = 1\'-0": an eighth of an inch is one foot.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].\nEvery length the app reports hangs off the scale.\nWhen a title block gives none, the [[Select two points]] tab takes two clicks on a dimension: a length the drawing writes out.',
+      body: 'The scale says how many feet of building one inch of paper stands for. Here the title block, the box at the bottom right, says 1/8" = 1\'-0": an eighth of an inch is one foot.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click [[1/8" = 1\']].\nEvery length the app reports hangs off the scale.\nWhen a title block gives none, the [[Select two points]] tab takes two clicks on a dimension: a length the drawing writes out.',
       target: ['#scalePresetsList', '#scaleModalTabs .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar'],
       check: () => scaleIs(PPU),
       action: { label: 'Use 1/8" = 1\'-0"', run: ACT.scale },
@@ -574,7 +574,7 @@
     },
     {
       id: 'scalezone', title: 'Header: Scale Zone', kind: 'do',
-      body: () => 'A detail is a close-up drawn at another scale on the same sheet. A scale zone gives that part its own scale.\n1. ' + tool('[[Scale Zone]]', 'scaleZoneBtn') + '\n2. Drag a box inside the shaded boundary.\n3. In the dialog, click the [[Architectural & Engineering]] tab and choose [[1/4" = 1\']].\nInside the box every measurement is at 1/4"; the rest of the sheet stays at 1/8".',
+      body: () => 'A detail is a close-up drawn at another scale on the same sheet. A scale zone gives that part its own scale.\n1. ' + tool('[[Scale Zone]]', 'scaleZoneBtn') + '\n2. Drag a box inside the shaded boundary.\n3. In the dialog, choose [[1/4" = 1\']].\nInside the box every measurement is at 1/4"; the rest of the sheet stays at 1/8".',
       target: ladderOf('scaleZoneBtn', ['#scalePresetsList', '#scaleModalTabs .counter-tab[data-tab="presets"]']), page: 0,
       zones: () => [K().boxZone(rects('scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 18) < 0.1), SZ_IN, SZ_OUT, 'Drag your scale zone anywhere in here')],
       check: () => K().boxZone(rects('scaleZones', (z) => z.scale && Math.abs(z.scale.pixelsPerUnit - 18) < 0.1), SZ_IN, SZ_OUT).done,

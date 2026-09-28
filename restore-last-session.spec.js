@@ -19,7 +19,7 @@
  * (`window.__releaseBoot`) to reproduce the slow-runner shape deterministically.
  */
 const { test, expect } = require('@playwright/test');
-const { bootApp, collectConsoleErrors, reloadApp, uploadPdf, waitForBoot } = require('./spec-helpers');
+const { bootApp, collectConsoleErrors, reloadApp, uploadPdf, waitForBoot, stepTo } = require('./spec-helpers');
 
 test.describe('Last-session restore (features/restore-last-session.js)', () => {
   test('registry contract, prompt, discard, local keep restore', async ({ page }) => {
@@ -396,7 +396,8 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
     // The tour goes on — "do it for me" through the real steps to a real mark
     // on the sample plan (each step auto-advances a beat after its check).
-    const waitForStep = (id) => page.waitForFunction((want) => window.App.tutorialStepId() === want, id, { timeout: 15000 });
+    // a doing card that holds on its answer is moved on with Next, the way a reader does (spec-helpers stepTo)
+    const waitForStep = (id) => stepTo(page, id, 15000);
     await page.evaluate(() => window.App.tutorialDoStep());   // welcome → opens the sample plan
     await page.waitForSelector('#pagesList .sidebar-item', { timeout: 15000 });
     await waitForStep('scale');

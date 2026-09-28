@@ -19,6 +19,14 @@
  * sheet; the answer waits behind the action button, "Show the engineer's answer" or the
  * step's own revealLabel, and Next is lit throughout. The plumbing course's teaching mode,
  * journeys/plans/PLUMBING-COURSE.md)
+ * (answer: a doing step that asks with its task. Once the check passes, the card shows the answer
+ * in place of the task and waits for Next, as `hold` does. The answer used to open the NEXT card,
+ * which then did two jobs: the last answer and its own task; the card review, fix 4)
+ * (answerWaits: with `answer`, for a step whose last line closes a dialog, Click Done: the check
+ * passes a click before that, and the answer waits until the dialog is closed)
+ * (keys: a card about the keyboard, the number row and its quick keys. A tablet or a phone has no
+ * keys, so there the tour leaves the card out: its steps are counted and walked without it; the
+ * card review, fix 5)
  * (rules: the rulebook ids, from rules/rules.json, whose values the step teaches, and
  * rulesExempt: why a step that cites a code section names none, usually a section the
  * rulebook has no entry for yet. Neither changes the tour; scripts/check-lesson-rules.js, in
@@ -94,6 +102,7 @@
   let doneAt = 0;          // when the current step's check first passed (auto-advance after a beat)
   let heldByBack = false;  // the step was re-entered with Back: never auto-advance, Next lights up
   let revealed = false;    // a reveal step's answer is showing (reset on every step change)
+  let cardWidth = 360;     // 470 for a long card, 560 for a very long one (render)
   let tourCounterId = null;
   let tourLineTypeId = null;
   let tourSecondCounterId = null;
@@ -186,6 +195,21 @@
   const allDone = (zs) => zs.length > 0 && zs.every((z) => z.done);
   // The onEnter of a step that says "click BID CHECK to expand it": folded, so the click is the reader's.
   function foldBidCheck() { state().bidCheckCollapsed = true; if (App.renderBidCheck) App.renderBidCheck(); App.updateUI(); }
+  // The rows a Bid Check card reads out, lit and on screen: the section sits at the foot of the
+  // sidebar, and opened it showed its first row while the card talked about two further down
+  // (the card review, fix 1). Once per visit to the step the section's title goes to the top of the
+  // sidebar; the lit area is the box around the named rows.
+  let bidRowsShownFor = null;
+  function bidCheckRows(stepId, ids) {
+    if (state().bidCheckCollapsed !== false) { bidRowsShownFor = null; return ['#bidCheckSectionTitle', '#bidCheckList']; }
+    if (bidRowsShownFor !== stepId) {
+      bidRowsShownFor = stepId;
+      const title = document.getElementById('bidCheckSectionTitle');
+      try { title && title.scrollIntoView({ block: 'start' }); } catch (_) { /* older engines */ }
+    }
+    // no rows named: the whole list
+    return (ids && ids.length ? ids.map((id) => '#bidCheckList [data-row-id="' + id + '"]') : ['#bidCheckList']).concat(['#bidCheckSectionTitle']);
+  }
   const stepZones = (step) => { try { return (step && step.zones && step.zones()) || []; } catch (_) { return []; } };
   // Only the targets a reader clicks or drags count toward "N of M done"; a span is a guide.
   const countedZones = (zs) => zs.filter((z) => z.kind !== 'span');
@@ -255,10 +279,11 @@
   // until then (card review, 2026-09-27: a chip for a control in a closed dialog lit the More button).
   const firstShowing = (...sels) => sels.map((sel, i) => (i ? 'body' + sels.slice(0, i).map((b) => ':not(:has(' + b + '))').join('') + ' ' : '') + sel).join(', ');
   const SHOWN = ':not([style*="display:none"]):not([style*="display: none"])';   // a panel the app hides with an inline display
-  const SCALE_TAB = firstShowing('#scaleModal.visible .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar');
   const SCALE_STEP = {
     id: 'scale', title: 'Set the scale', kind: 'do',
-    body: () => 'The scale says how many feet of building one inch of paper stands for. Every length the app reports starts here.\nThe title block, the box at the bottom right of a sheet, gives the scale. The sample plan\'s says 1/8".\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click the {{Architectural & Engineering|' + SCALE_TAB + '}} tab.\n3. Click [[1/8" = 1\']]. That is an eighth of an inch on paper for one foot of building.\nOn a real sheet, look in the title block first.',
+    // the dialog opens on its Architectural & Engineering tab for a sheet with no scale (features/scale.js
+    // preloadFromCurrentScale), so no step asks for the tab; the ladder still lights it for a reader who left it
+    body: () => 'The scale says how many feet of building one inch of paper stands for. Every length the app reports starts here.\nThe title block, the box at the bottom right of a sheet, gives the scale. The sample plan\'s says 1/8".\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click [[1/8" = 1\']]. That is an eighth of an inch on paper for one foot of building.',
     target: ['#scalePresetsList', '#scaleModalTabs .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar', '[title="Set Scale"]'],
     check: () => !!(App.getPageScale && App.getPageScale(state().currentPage)),
     action: { label: 'Use 1/8" = 1\'-0"', run: applyEighthScale },
@@ -320,7 +345,8 @@
     PROVE_STEP,
     {
       id: 'trade', title: 'Tell the app this is electrical', kind: 'do',
-      body: 'The trade is the kind of work. You set it where you make a counter. A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, the column of lists down the left, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the [[Quick]] tab.\n3. Set Trade to [[Electrical]].\nThe pickers become Category, Variant and Rating. The symbols become the ones on an E-sheet, the electrical drawings.\nEvery device, anything wired such as an outlet or a switch, gets a mount height: how high on the wall it sits.\nA plumbing bid, the price a plumber sends, never sees any of this.',
+      body: 'The trade is the kind of work. You set it where you make a counter. A counter is a named tally: each click on the sheet with it adds one mark.\n1. In the left sidebar, the column of lists down the left, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the [[Quick]] tab.\n3. Set Trade to [[Electrical]].',
+      answer: 'The pickers became Category, Variant and Rating. The symbols became the ones on an E-sheet, the electrical drawings.\nEvery device, anything wired such as an outlet or a switch, gets a mount height: how high on the wall it sits.\nA plumbing bid, the price a plumber sends, never sees any of this.',
       target: ['#counterQuickCountTradeSegment [data-trade="electrical"]', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       check: () => state().trade === 'electrical',
       action: { label: 'Switch to Electrical', run: () => App.setProjectTrade('electrical', { remember: false, route: 'tour' }) },
@@ -328,7 +354,8 @@
     {
       id: 'counter', title: 'Add a duplex receptacle, a wall outlet with two plugs', kind: 'do',
       rules: ['elec.mount-height.defaults'],
-      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].\nIt arrives with the receptacle symbol and a mount height of 18", measured up from the floor. Later the app turns that height into the conduit down the wall.',
+      body: '1. On the [[Quick]] tab, set Category to Receptacle.\n2. Set Variant to Duplex.\n3. Click [[Add Counter]].',
+      answer: 'It arrived with the receptacle symbol and a mount height of 18", measured up from the floor.\nLater the app turns that height into the conduit down the wall.',
       target: ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
       // a duplex, the one the card names: a Single Pole variant mounts at 48" and the next cards' 9.5 ft read 7 (PERSONA-PASS prober)
       check: () => { const c = (state().counters || []).find((x) => isDuplex(x) && typeof x.mountHeightIn === 'number' && (isFresh(x) || markCount(x.id) > 0)); if (c) tourCounterId = c.id; return !!c; },
@@ -346,7 +373,9 @@
     },
     {
       id: 'linetype', title: 'Make a conduit line type', kind: 'do',
-      body: 'A line type is one kind of run: a length of pipe you trace on the sheet. The app measures its feet.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. In Name, type 3/4" EMT, and click [[Create Line Type]].\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 2 #12 THHN + 1 #12 G.\nEMT is thin steel conduit. A raceway is any pipe the wires ride in, and conductors are the wires.\n2 #12 THHN + 1 #12 G reads: two #12 wires and one ground, the safety wire. #12 is the gauge, the wire\'s size. One #12 is the live wire, the other the neutral, the one the current returns on. THHN is everyday building wire.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
+      body: 'A line type is one kind of run: a length of pipe you trace on the sheet. The app measures its feet.\nEMT is thin steel conduit. A raceway is any pipe the wires ride in, and conductors are the wires.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. In Name, type 3/4" EMT, and click [[Create Line Type]].\n3. Click the pencil beside it to open its details.\n4. Set the raceway: EMT, 3/4".\n5. In Conductors, type 2 #12 THHN + 1 #12 G.',
+      // the words the steps use are glossed ahead of them; what the conductors line reads, once it is typed
+      answer: '2 #12 THHN + 1 #12 G reads: two #12 wires and one ground, the safety wire. #12 is the gauge, the wire\'s size. One #12 is the live wire, the other the neutral, the one the current returns on. THHN is everyday building wire.\nFrom now on every run of this type tallies conduit AND wire by gauge.',
       // the card's five lines in order: Name and Create in the + Add dialog, the new type's pencil, then
       // the raceway and the conductors in its details (the ring named another dialog's fields and lit
       // nothing; by hand, 2026-09-25)
@@ -370,7 +399,9 @@
     {
       id: 'ceiling', title: 'Set the ceiling height', kind: 'do',
       rules: ['elec.vertical.make-up', 'elec.mount-height.defaults'],
-      body: 'Conduit runs in the ceiling, then drops down the wall to each outlet. The app works out that drop for you.\n1. In the header, click the gear ([[Project Settings]]).\n2. In {{Ceiling height|#settingsCeilingHeight}}, type 10\'-0".\n3. Close the dialog.\nWith a mount height on the counter, the next tool adds ceiling − mount + make-up to every run it draws.\n{{Make-up|#settingsMakeUp}} is the app\'s 1 ft allowance for the bend and the box entry. The box is the metal box the outlet sits in. It is set beside Ceiling height.\nSo each receptacle gets 10 − 1.5 + 1 = 9.5 ft that nobody has to type.',
+      body: 'Conduit runs in the ceiling, then drops down the wall to each outlet. The app works out that drop for you.\n1. In the header, click the gear ([[Project Settings]]).\n2. In {{Ceiling height|#settingsCeilingHeight}}, type 10\'-0".\n3. Close the dialog.',
+      // told while the dialog is still up, with Make-up beside the height to look at; Next closes it
+      answer: 'With a mount height on the counter, the next tool adds ceiling − mount + make-up to every run it draws.\n{{Make-up|#settingsMakeUp}} is the app\'s 1 ft allowance for the bend and the box entry. The box is the metal box the outlet sits in. It is set beside Ceiling height.\nSo each receptacle gets 10 − 1.5 + 1 = 9.5 ft that nobody has to type.',
       target: ['#settingsCeilingHeight', '#settingsGearBtn', '#sidebarLogoGear'],
       // the sample plan's 10'-0": any ceiling passed and carried wrong drops through the chain (PERSONA-PASS prober)
       check: () => Math.abs((state().ceilingHeightFt || 0) - 10) < 0.05,
@@ -379,7 +410,8 @@
     },
     {
       id: 'chain', title: 'Chain a run', kind: 'do',
-      body: 'Chain counts a device and draws the conduit to it, in one click.\n1. In the header, click [[Chain]] (or press T).\n2. In the {{Chain panel|#chainPanel}}, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall, the bottom wall of the room.\n4. Click inside the second, then the third.\nEach run goes back to the device before it. The click also writes the vertical drop, the conduit down the wall.\nThe {{status bar|.status-bar}}, the strip along the very bottom, tells you the drop before you click.',
+      body: 'Chain counts a device and draws the conduit to it, in one click.\n1. In the header, click [[Chain]] (or press T).\n2. In the {{Chain panel|#chainPanel}}, choose the receptacle and 3/4" EMT.\n3. Click inside the first circle on the south wall, the bottom wall of the room.\n4. Click inside the second, then the third.\nThe {{status bar|.status-bar}}, the strip along the very bottom, tells you the drop before you click.',
+      answer: 'Each run goes back to the device before it.\nEvery click also wrote the vertical drop, the conduit down the wall.',
       target: ['#chainPanel', '#chainBtn'], page: 0,
       // any receptacle counter: the reader's own "Duplex Receptacle", left by an earlier tour, sits first in
       // the Chain panel under the same name (by hand, 2026-09-25)
@@ -389,7 +421,9 @@
     },
     {
       id: 'circuit', title: 'Make it a circuit', kind: 'do',
-      body: 'A circuit is the set of devices one breaker feeds. A breaker is a switch in the panel, the metal box that hands out the building\'s power.\nIn the app, a circuit is a group with a panel tag. A group is a set of marks the app subtotals together.\n1. If the left sidebar has no list of groups, click the gear ([[Project Settings]]) and turn on {{Use groups|#settingsUseGroupsBtn}}.\n2. Under GROUPS, click {{+ Add|#addGroup}}.\n3. In Name, type a name.\n4. In Panel, type LP-1, the panel\'s name.\n5. In Circuit, type 7, the breaker\'s number.\n6. Click {{Done|#groupModalDone}}.\nThe report gets a circuit schedule, a table of the circuits. The checks know which devices belong together.',
+      body: 'A circuit is the set of devices one breaker feeds. A breaker is a switch in the panel, the metal box that hands out the building\'s power.\nIn the app, a circuit is a group with a panel tag. A group is a set of marks the app subtotals together.\n1. If the left sidebar has no list of groups, click the gear ([[Project Settings]]) and turn on {{Use groups|#settingsUseGroupsBtn}}.\n2. Under GROUPS, click {{+ Add|#addGroup}}.\n3. In Name, type a name.\n4. In Panel, type LP-1, the panel\'s name.\n5. In Circuit, type 7, the breaker\'s number.\n6. Click {{Done|#groupModalDone}}.',
+      answerWaits: true,
+      answer: 'The report gets a circuit schedule, a table of the circuits.\nThe checks know which devices belong together.',
       // Groups are off on the sample plan: the section, and its + Add, only show once they are on (by hand, 2026-09-25)
       target: () => { const empty = ['#groupModalName', '#groupModalPanel', '#groupModalCircuit'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', '#settingsUseGroupsBtn', '#settingsGearBtn'); },
       check: () => (state().groups || []).some((g) => g.panel),
@@ -408,7 +442,7 @@
       body: () => (state().bidCheckCollapsed !== false
         ? '1. In the left sidebar, click BID CHECK to open it.'
         : 'Conduit fill is already judged: 3/4" EMT at 7.5%. Fill is how much of the pipe the wires take up.\nIt has also caught something. The receptacles you counted first were never wired, so they read as not reached by a run.\nVoltage drop is the power lost along a long wire. It is judged to the farthest device once a run is flagged as the homerun, the run back to the panel.\nThe panel cross-check wakes up once the panel is on the plan.\nBelow them are the calls only you can tick. Bid Check never blocks an export, a file you send out; it tells you what is open.'),
-      target: ['#bidCheckSectionTitle', '#bidCheckList'], lightAll: true,
+      target: () => bidCheckRows('electrical', ['conduit-fill', 'voltage-drop', 'circuits-vs-panel', 'devices-on-circuits']), lightAll: true,
       check: () => state().bidCheckCollapsed === false,
       action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
     },
@@ -584,14 +618,14 @@
       // the sidebar is glossed where it is first named; on a phone it is a drawer, so that reader is told how to open it
       body: () => 'A water closet is the trade\'s word for a toilet. A counter is a named tally: each click on the sheet with it adds one mark.\n'
         + (isNarrow() ? '1. The sidebar is the column of lists behind ☰: tap ☰ at the top left. Under COUNTERS, tap {{+ Add|#addCounter}}.' : '1. In the left sidebar, the column of lists down the left side of the screen, find COUNTERS and click {{+ Add|#addCounter}}.')
-        + '\n2. Click the {{Create|' + P_SEL.create + '}} tab.\n3. In {{Name|' + P_SEL.name + '}}, type Water Closet, unless it reads that already.\nUnder {{Icon|' + P_SEL.icon + '}} the toilet lights as you type the name. The app ships the trade\'s icons, so the mark reads like the drawing. Another symbol is a search away, in the {{Search icon box|' + P_SEL.iconSearch + '}}.\n4. Pick a colour.\n5. Click {{Create Counter|' + P_SEL.createCounter + '}}.\nThe counter tool arms itself: it is armed, switched on and ready to mark.',
+        + '\n2. Click the {{Create|' + P_SEL.create + '}} tab.\n3. In {{Name|' + P_SEL.name + '}}, type Water Closet, unless it reads that already. Under {{Icon|' + P_SEL.icon + '}} the toilet lights as you type.\n4. Pick a colour.\n5. Click {{Create Counter|' + P_SEL.createCounter + '}}.\nThe counter tool arms itself: it is armed, switched on and ready to mark.\nAnother symbol is a search away, in the {{Search icon box|' + P_SEL.iconSearch + '}}.',
       target: () => counterFormTargets(/water closet|toilet|\bwc\b/i),
       check: () => { const c = pCounter(); if (c) tourCounterId = c.id; return !!c; },
       action: { label: 'Create it for me', run: addWaterCloset },
     },
     {
       id: 'place', title: 'Count the water closets', kind: 'do',
-      body: () => 'The three water closets in the stalls of Women 108, the women\'s restroom, are circled.\n1. Click inside the first circle.\n2. Click inside the second.\n3. Click inside the third.\n{{The count in the sidebar|' + counterRowSel(pCounter()) + '}} moves as you go. It adds up every sheet in the set, the whole stack of drawings.',
+      body: () => 'The three water closets in the stalls of Women 108, the women\'s restroom, are circled.\n1. Click inside each circle.\n{{The count in the sidebar|' + counterRowSel(pCounter()) + '}} moves as you go. It adds up every sheet in the set, the whole stack of drawings.',
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = pCounter(); return markZones(0, c ? c.id : '-', WC_SPOTS, 13); },
       check: () => { const c = pCounter(); return allDone(markZones(0, (c || {}).id || '-', WC_SPOTS, 13)) && !(c && strayMarks(0, c.id, markZones(0, c.id, WC_SPOTS, 13))); },
@@ -601,7 +635,8 @@
     {
       id: 'linetype', title: 'A line type in two clicks', kind: 'do',
       // a word is glossed where it is first used, not after the steps that use it
-      body: () => 'A line type is one kind of pipe, by size and material; the app measures its feet.\nNext is the cold-water branch to the lavatories, the bathroom sinks. A branch is a smaller pipe off a bigger one.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. At the top of the dialog, click {{Quick|' + P_SEL.quick + '}} (Size, material and colour in one row).\n3. Pick {{1in|' + P_SEL.size + '}}, then {{PEX|' + P_SEL.material + '}}. PEX is plastic water pipe that bends.\n4. Click {{Add Line Type|' + P_SEL.addLineType + '}}.\nThe name assembles itself, "1in PEX", so every bid spells it the same way. The line tool arms itself.',
+      body: () => 'A line type is one kind of pipe, by size and material; the app measures its feet.\nNext is the cold-water branch to the lavatories, the bathroom sinks. A branch is a smaller pipe off a bigger one.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. At the top of the dialog, click {{Quick|' + P_SEL.quick + '}} (Size, material and colour in one row).\n3. Pick {{1in|' + P_SEL.size + '}}, then {{PEX|' + P_SEL.material + '}}. PEX is plastic water pipe that bends.\n4. Click {{Add Line Type|' + P_SEL.addLineType + '}}.',
+      answer: 'The name assembled itself, "1in PEX", so every bid spells it the same way.\nThe line tool armed itself.',
       // the pickers the card names, in its order, then Add (the ring sat on Add over a 0.5in Size; by hand, 2026-09-25)
       target: () => { const sz = el('quickLineSize'), mat = el('quickLineMaterial'); const pickNext = sz && sz.value !== '1in' ? '#quickLineSize' : (mat && mat.value !== 'PEX' ? '#quickLineMaterial' : null); return ladder(pickNext, '#quickLineAdd', '#chooseLineTypeModal .line-type-tab[data-tab="quick"]', '#lineTypeQuickLink', '#addLineType'); },
       // 1in PEX, the branch every later card names: a 2in or a Copper type passed and the hanger and
@@ -612,7 +647,8 @@
     },
     {
       id: 'chain', title: 'Chain the lav battery', kind: 'do',
-      body: () => 'The three lavatories on the north wall of Women 108 are a lav battery: sinks in a row on one 1in PEX branch. Count them the other way, with Chain.\n1. In the header, click [[Chain]] (or press T).\n2. In the {{Chain panel|' + P_SEL.chain + '}} that opens at the top left, choose {{1in PEX|' + P_SEL.chainLineTypes + '}}.\n3. Choose a {{Lavatory counter|' + P_SEL.chainCounters + '}}. None yet? Click {{+ New counter|' + P_SEL.chainNewCounter + '}} there and name it Lavatory.\n4. Click inside the circle on the first lavatory.\n5. Click inside the second, then the third.\nA fixture is anything that uses water. Every click places one AND draws the branch back to the last one: three clicks instead of nine.',
+      body: () => 'The three lavatories on the north wall of Women 108 are a lav battery: sinks in a row on one 1in PEX branch. Count them the other way, with Chain.\n1. In the header, click [[Chain]] (or press T).\n2. In the {{Chain panel|' + P_SEL.chain + '}} that opens at the top left, choose {{1in PEX|' + P_SEL.chainLineTypes + '}}.\n3. Choose a {{Lavatory counter|' + P_SEL.chainCounters + '}}. None yet? Click {{+ New counter|' + P_SEL.chainNewCounter + '}} there and name it Lavatory.\n4. Click inside the circle on the first lavatory.\n5. Click inside the second, then the third.',
+      answer: 'A fixture is anything that uses water. Every click placed one AND drew the branch back to the last one.\nThree clicks instead of nine.',
       // + New counter opens Create: Name until it reads Lavatory, then Create Counter (the ring sat on
       // Create Counter over a prefilled Water Fountain)
       target: () => ladder(...(document.querySelector('#counterModal.visible') ? counterFormTargets(/lav|sink/i).slice(0, 2) : []), '#counterQuickCountAdd', '#chainPanel', '#chainBtn'), page: 0,
@@ -622,7 +658,8 @@
     },
     {
       id: 'drop', title: 'Add the riser', kind: 'do',
-      body: () => 'The branch comes up from below the slab, the concrete floor. That upright piece is the riser.\n1. In the header, click [[Drop]] (or press B).\n2. In the {{Drop size palette|' + P_SEL.drop + '}}, the small panel that opens at the top left, click 3 ft. When 3 ft is not listed, type 3 in {{its box|' + P_SEL.dropBox + '}} and click {{Add|' + P_SEL.dropAdd + '}}.\n3. Click the end of the run, the pipe you just chained, inside the circle at the first lavatory. Every line end wears a ring while Drop is on.\nThe riser\'s 3 ft joins the footage, the run\'s total feet. Plan view, the drawing seen from above, never shows it; the bid needs it.\nClicking the same end again clears it.',
+      body: () => 'The branch comes up from below the slab, the concrete floor. That upright piece is the riser.\n1. In the header, click [[Drop]] (or press B).\n2. In the {{Drop size palette|' + P_SEL.drop + '}}, the small panel that opens at the top left, click 3 ft. When 3 ft is not listed, type 3 in {{its box|' + P_SEL.dropBox + '}} and click {{Add|' + P_SEL.dropAdd + '}}.\n3. Click the end of the run, the pipe you just chained, inside the circle at the first lavatory. Every line end wears a ring while Drop is on.',
+      answer: 'The riser\'s 3 ft joins the footage, the run\'s total feet. Plan view, the drawing seen from above, never shows it; the bid needs it.\nClicking the same end again would clear it.',
       target: ['#dropPanel', '#dropBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: LAV_SPOTS[0].x, y: LAV_SPOTS[0].y, r: 14, done: dropAt(LAV_SPOTS[0], 14) }],
       check: () => dropAt(LAV_SPOTS[0], 14),
@@ -632,7 +669,8 @@
     {
       id: 'hangers', title: 'Hangers count themselves', kind: 'do',
       rules: ['plumb.hanger.pex'],
-      body: () => 'Every foot of that branch hangs from a support, a hanger, and the bid has to count them. The app can do it from the pipe.\nA child count is a count that rides along with the pipe.\n1. In the left sidebar, under LINE TYPES, click {{the pencil|' + pencilSel('lineType', pLineType()) + '}} beside 1in PEX.\n2. Under {{Child counts|' + P_SEL.childCounts(pencilSel('lineType', pLineType())) + '}}, find Hanger · 1 per 32 in. That is the International Plumbing Code (IPC) spacing for PEX at 1 in.\n3. Click {{Add|' + P_SEL.hangerAdd(pencilSel('lineType', pLineType())) + '}}.\nThe app read the size off the type\'s name.\nFrom now on every run of this type counts its own hangers. They go into SUMMARY, the running totals, and every export, a file you send out. Each names the rule it came from. Delete a run and its hangers go with it.',
+      body: () => 'Every foot of that branch hangs from a support, a hanger, and the bid has to count them. The app can do it from the pipe.\nA child count is a count that rides along with the pipe.\n1. In the left sidebar, under LINE TYPES, click {{the pencil|' + pencilSel('lineType', pLineType()) + '}} beside 1in PEX.\n2. Under {{Child counts|' + P_SEL.childCounts(pencilSel('lineType', pLineType())) + '}}, find Hanger · 1 per 32 in. That is the International Plumbing Code (IPC) spacing for PEX at 1 in.\n3. Click {{Add|' + P_SEL.hangerAdd(pencilSel('lineType', pLineType())) + '}}. The app read the size off the type\'s name.',
+      answer: 'From now on every run of this type counts its own hangers. They go into SUMMARY, the running totals, and every export, a file you send out.\nEach names the rule it came from. Delete a run and its hangers go with it.',
       target: () => ladder('#childCountsSuggest', '#childCountsGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       // the branch's own type: any palette type with a child count passed it (by hand, 2026-09-25)
       check: () => { const lt = pLineType(); return !!lt && (lt.childCounts || []).length > 0; },
@@ -641,7 +679,8 @@
     },
     {
       id: 'waterside', title: 'Give the pipe its water', kind: 'do',
-      body: () => 'The branch carries cold water. Once the pipe says so, the app can size it, pick how wide it must be, from the fixtures on it.\n1. In the left sidebar, under LINE TYPES, click {{the pencil|' + pencilSel('lineType', pLineType()) + '}} beside 1in PEX.\n2. Under {{Water|' + P_SEL.water(pencilSel('lineType', pLineType())) + '}}, click {{Cold|' + P_SEL.cold(pencilSel('lineType', pLineType())) + '}}.\nEvery run of the type is now a cold-water run. The three lavatories chained on it tie to it with a leader, a dashed line from each sink to the pipe.',
+      body: () => 'The branch carries cold water. Once the pipe says so, the app can size it, pick how wide it must be, from the fixtures on it.\n1. In the left sidebar, under LINE TYPES, click {{the pencil|' + pencilSel('lineType', pLineType()) + '}} beside 1in PEX.\n2. Under {{Water|' + P_SEL.water(pencilSel('lineType', pLineType())) + '}}, click {{Cold|' + P_SEL.cold(pencilSel('lineType', pLineType())) + '}}.',
+      answer: 'Every run of the type is now a cold-water run.\nThe three lavatories chained on it tie to it with a leader, a dashed line from each sink to the pipe.',
       target: () => ladder('#counterLineTypeDetailsWaterGroup', pencilOf('lineType', pLineType()), '#lineTypesSectionTitle'),
       check: () => { const lt = pLineType(); return !!(lt && lt.waterSide === 'cold'); },
       hint: () => twinHint((lt) => lt.waterSide === 'cold'),
@@ -650,7 +689,10 @@
     {
       id: 'wsfu', title: 'Fixture units on the lavatory', kind: 'do',
       rules: ['plumb.wsfu.fixtures'],
-      body: () => 'A fixture unit is the plumbing code\'s number for how much water a fixture draws. WSFU, water supply fixture units, come from the IPC table.\n1. Under COUNTERS, click {{the pencil|' + pencilSel('counter', pLav()) + '}} beside the lavatory counter.\n2. In {{Fixture units|' + P_SEL.wsfu(pencilSel('counter', pLav())) + '}}, type 2.\n3. Click {{Done|' + P_SEL.detailsDone(pencilSel('counter', pLav())) + '}}.\nThe app reads 2 WSFU for a public lavatory off that table. It shows that under the box, which stays empty until you type.\nThe 2 is hot and cold together. The table gives the lavatory 1.5 on each side, so the cold pipe carries 1.5 of it per lavatory.\n{{The chip|' + P_SEL.wsfuChip(pencilSel('counter', pLav())) + '}}, the small label under the box, names the table row it read. The table has two columns: public (a restaurant, an office) and private (a house, a hotel room).\nA click on the word public in the chip moves this one counter to the private column.',
+      body: () => 'A fixture unit is the plumbing code\'s number for how much water a fixture draws. WSFU, water supply fixture units, come from the IPC table.\n1. Under COUNTERS, click {{the pencil|' + pencilSel('counter', pLav()) + '}} beside the lavatory counter.\n2. Under {{Fixture units|' + P_SEL.wsfu(pencilSel('counter', pLav())) + '}}, {{the chip|' + P_SEL.wsfuChip(pencilSel('counter', pLav())) + '}}, a small label, shows what the table gives a public lavatory: 2. Type 2 in the box.\n3. Click {{Done|' + P_SEL.detailsDone(pencilSel('counter', pLav())) + '}}.',
+      // told once the dialog is closed (the step passes as the 2 is typed): what the 2 is, and the other column
+      answerWaits: true,
+      answer: 'The 2 is hot and cold together. The table gives the lavatory 1.5 on each side, so the cold pipe carries 1.5 of it per lavatory.\nThe table has two columns: public (a restaurant, an office) and private (a house, a hotel room).\nIn that dialog, a click on the word public in the chip moves this one counter to the private column.',
       target: () => ladder('#counterLineTypeDetailsWsfuGroup', pencilOf('counter', pLav()), '#countersSectionTitle'),
       check: () => { const c = pLav(); return !!(c && c.wsfu > 0); },
       action: { label: 'Read the table for me', run: giveLavFixtureUnits },
@@ -661,9 +703,17 @@
       // The sizes open from the card's Pipe size button as well as S, and the run ends at Finish as well
       // as Enter: a tablet has neither key, and the touch card lost its only instruction, "Press S and
       // click 3/4″" (persona calibration C4, 2026-09-25). Below 769 px Polyline sits in the sidebar drawer.
-      body: () => 'The battery comes off a cold main, the bigger pipe it branches from. Trace the main, clicking along it, and let the fixture units size it.\n'
-        + (isNarrow() ? '1. Tap ☰ at the top left, then [[Polyline]] among the sidebar\'s tools.' : '1. In the header, click ' + (behindMore('polylineBtn') ? '[[⋯]], then ' : '') + '[[Polyline]] (or press P).')
-        + ' If 1in PEX is not lit under LINE TYPES, click it.\n2. Click the riser at the first lavatory, then inside the circle below it.\nA {{card at the bottom of the sheet|' + P_SEL.waterCard + '}} names the sizes that keep the water under 8 fps, feet per second. Under the IPC that limit is design practice; the Uniform Plumbing Code (UPC) makes it code for copper. It reads 4.5 WSFU, not 6: the cold side of three lavatories, 1.5 each.\n3. On that card, click {{Pipe size|' + P_SEL.pipeSize + '}} (or press S: while you trace a water pipe, S opens its sizes).\n4. In the {{list of sizes|' + P_SEL.sizes + '}}, click 3/4″.\n3/4in holds too, just under the limit. A fitting, a shaped piece that joins pipe, is narrower inside than the pipe. At a margin this thin a careful bid stays at 1in. Take 3/4in here to see how S works. The run so far is kept; the next starts in 3/4in PEX.\n5. Click inside the second circle.\n6. Click {{Finish|' + P_SEL.finish + '}} under the sheet (or press Enter).',
+      // One card in three states, each as long as what the reader is doing (the card pass: it was 696 px of
+      // a 720 px window and scrolled). Tracing: the two clicks that start the main. The water card up:
+      // what it says, and the size. Two sizes: why 3/4in, the last circle, Finish.
+      body: () => {
+        const d = state().drawingPolyline, sized = coldSizes().size >= 2;
+        if (sized) return '3/4in holds too, just under the limit. A fitting, a shaped piece that joins pipe, is narrower inside than the pipe. At a margin this thin a careful bid stays at 1in. Take 3/4in here to see how S works.\nThe run so far is kept; the next starts in 3/4in PEX.\n1. Click inside the second circle.\n2. Click {{Finish|' + P_SEL.finish + '}} under the sheet (or press Enter).';
+        if (d && (d.points || []).length >= 2) return 'A {{card at the bottom of the sheet|' + P_SEL.waterCard + '}} names the sizes that keep the water under 8 fps, feet per second. Under the IPC that limit is design practice; the Uniform Plumbing Code (UPC) makes it code for copper.\nIt reads 4.5 WSFU, not 6: the cold side of three lavatories, 1.5 each.\n1. On that card, click {{Pipe size|' + P_SEL.pipeSize + '}} (or press S: while you trace a water pipe, S opens its sizes).\n2. In the {{list of sizes|' + P_SEL.sizes + '}}, click 3/4″.';
+        return 'The battery comes off a cold main, the bigger pipe it branches from. Trace the main, clicking along it, and let the fixture units size it.\n'
+          + (isNarrow() ? '1. Tap ☰ at the top left, then [[Polyline]] among the sidebar\'s tools.' : '1. In the header, click ' + (behindMore('polylineBtn') ? '[[⋯]], then ' : '') + '[[Polyline]] (or press P).')
+          + ' If 1in PEX is not lit under LINE TYPES, click it.\n2. Click the riser at the first lavatory, then inside the circle below it.';
+      },
       // the card's order: the size list while it is open, Pipe size on the water card; once the main is two
       // sizes, no control until the second circle is in (the circle is the target), then Finish. The step
       // is done only when the run is FINISHED: it used to pass on the second circle with the 3/4in run still
@@ -683,7 +733,8 @@
     {
       id: 'zone', title: 'A typical floor', kind: 'do',
       // the More button is there on a wide screen only: under 769 px the tool is on the strip itself
-      body: () => 'This restroom repeats on three floors: a typical floor, drawn once. A multiply zone counts everything inside it more than once.\n1. In the header, click ' + (behindMore('multiplyZoneBtn') ? '[[⋯]], then ' : '') + '[[Multiply Zone]] (or press X).\n2. Drag a box around Women 108: start and end in the shaded band, outside the dashed line.\n3. Type 3.\n4. Click {{Apply|' + P_SEL.apply + '}}.\nEvery count and every foot inside triples in the totals. The marks on the sheet stay as they are. Count one floor, bid three.',
+      body: () => 'This restroom repeats on three floors: a typical floor, drawn once. A multiply zone counts everything inside it more than once.\n1. In the header, click ' + (behindMore('multiplyZoneBtn') ? '[[⋯]], then ' : '') + '[[Multiply Zone]] (or press X).\n2. Drag a box around Women 108: start and end in the shaded band, outside the dashed line.\n3. Type 3.\n4. Click {{Apply|' + P_SEL.apply + '}}.',
+      answer: 'Every count and every foot inside triples in the totals. The marks on the sheet stay as they are.\nCount one floor, bid three.',
       target: () => ladder(String((el('multiplyZoneMultiplier') || {}).value) === '3' ? null : '#multiplyZoneMultiplier', '#multiplyZoneApply', '#multiplyZoneBtn', '#multiplyZoneBtnSidebar', '#headerMoreBtn'), page: 0,
       zones: () => [boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26), 'Drag your box around Women 108, anywhere in here')],
       check: () => boxZone(typicalZones(), WOMEN_INNER, grow(WOMEN_ROOM, 26)).done,
@@ -692,7 +743,8 @@
     },
     {
       id: 'rfi', title: 'Flag a question', kind: 'do',
-      body: () => 'Something the drawing does not say: does the end stall in Women 108 clear ADA? The ADA, the Americans with Disabilities Act, sets the room a wheelchair needs.\nAn RFI, a request for information, is a written question to the designer.\n1. In the header, click ' + (behindMore('noteBtn') ? '[[⋯]], then ' : '') + '[[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question.\n4. Click {{Done|' + P_SEL.noteDone + '}}.\nUnder EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set. It goes to the GC, the general contractor who runs the job. PipeTooling, the pricing app, picks them up as questions on the bid.',
+      body: () => 'Something the drawing does not say: does the end stall in Women 108 clear ADA? The ADA, the Americans with Disabilities Act, sets the room a wheelchair needs.\nAn RFI, a request for information, is a written question to the designer.\n1. In the header, click ' + (behindMore('noteBtn') ? '[[⋯]], then ' : '') + '[[Note]] (or press N).\n2. Click inside the circle in Women 108.\n3. Type RFI: and then the question.\n4. Click {{Done|' + P_SEL.noteDone + '}}.',
+      answer: 'Under EXPORT OPTIONS, [[Copy RFI Flags]] collects every such note across the set.\nIt goes to the GC, the general contractor who runs the job. PipeTooling, the pricing app, picks them up as questions on the bid.',
       target: ['#noteModalDone', '#noteBtn', '#noteBtnSidebar', '#headerMoreBtn'], page: 0,
       zones: () => [{ kind: 'circle', x: RFI_SPOT.x, y: RFI_SPOT.y, r: 42, done: rfiAt(RFI_SPOT, 42) }],
       check: () => rfiAt(RFI_SPOT, 42),
@@ -701,7 +753,8 @@
     },
     {
       id: 'proof', title: 'Prove the number', kind: 'do',
-      body: () => 'Every total in SUMMARY can show where it came from.\n1. In the SUMMARY list, click {{the Water Closet row|' + (summaryRowOf('counter', pCounter()) || '#summaryList') + '}}.\nThe breakdown shows the count per sheet, with a small picture of where every mark sits. The zone\'s ×3 is already applied.\nOpen it when someone asks where the number came from.\n{{The gear|#summarySettingsBtn}} beside the heading is something else. It opens the settings for the legend, the key drawn on the sheet.',
+      body: () => 'Every total in SUMMARY can show where it came from.\n1. In the SUMMARY list, click {{the Water Closet row|' + (summaryRowOf('counter', pCounter()) || '#summaryList') + '}}.\n{{The gear|#summarySettingsBtn}} beside the heading is something else. It opens the settings for the legend, the key drawn on the sheet.',
+      answer: 'The breakdown shows the count per sheet, with a small picture of where every mark sits. The zone\'s ×3 is already applied.\nOpen it when someone asks where the number came from.',
       // a folded list lights its heading, which folds and opens it like every sidebar title (HEADING-CLICK);
       // the gear beside it opens the Summary Legend (C23)
       target: () => ladder('#legendSettingsModal.visible [data-modal-close]', summaryRowOf('counter', pCounter()), state().summaryListCollapsed ? '#summarySectionTitle' : null, '#summaryList'),
@@ -711,10 +764,23 @@
       action: { label: 'Open the Water Closet breakdown', run: () => { const c = pCounter(); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } },
     },
     {
+      // The plumbing tour ended with two Bid Check warnings it never mentioned, and the first the reader
+      // heard of them was "Export anyway" at the hand-off (the card review, fix 1; Will's go, 2026-09-28).
+      // Both are the tour's own doing, and both are what Bid Check is for: the card reads them.
+      id: 'bidcheck', title: 'Bid Check, what a bid must answer before it goes out', kind: 'do',
+      onEnter: foldBidCheck, hold: true,
+      body: () => (state().bidCheckCollapsed !== false
+        ? '1. In the left sidebar, click BID CHECK to open it.'
+        : 'It has caught two things, and both are real.\n{{Every water run sized|#bidCheckList [data-row-id="water-runs-sized"]}}: the ×3 zone tripled the fixtures on the branch. The 1in pipe now runs too fast, and the row names the fix, 1-1/4in.\n{{Every fixture served|#bidCheckList [data-row-id="water-fixtures-served"]}}: a lavatory wants hot water too, and this tour drew only the cold.\nOn a real bid you fix both before it goes out. Here, read them and move on.'),
+      target: () => bidCheckRows('plumbing', ['water-runs-sized', 'water-fixtures-served']), lightAll: true,
+      check: () => state().bidCheckCollapsed === false,
+      action: { label: 'Open it', run: () => { state().bidCheckCollapsed = false; App.renderBidCheck && App.renderBidCheck(); } },
+    },
+    {
       id: 'handoff', title: 'Hand it off', kind: 'read',
       // four buttons to read about, not four things to do: plain lines, and all four lit. The lowest
       // comes first in the ladder, so the sidebar scrolls until the whole group is on screen.
-      body: 'EXPORT OPTIONS in the left sidebar sends the takeoff on.\n{{Copy to /Tooling|#forPipeTooling}} puts the whole takeoff on the clipboard, ready to paste into the bid. The clipboard holds a copy until you paste it.\n{{Copy RFI Flags|#copyRfiFlags}} puts the questions beside it.\n{{Copy Summary|#copySummaryText}} is for an email.\n{{Export PDFs|#specificPages}} is for a marked-up plan the GC can read.\nThe takeoff copy carries the counts, the feet with the riser inside, and the hangers under their pipe.',
+      body: 'EXPORT OPTIONS in the left sidebar sends the takeoff on.\n{{Copy to /Tooling|#forPipeTooling}} puts the whole takeoff on the clipboard, ready to paste into the bid. The clipboard holds a copy until you paste it. With Bid Check rows still open it asks first: [[Export anyway]] goes ahead.\n{{Copy RFI Flags|#copyRfiFlags}} puts the questions beside it.\n{{Copy Summary|#copySummaryText}} is for an email.\n{{Export PDFs|#specificPages}} is for a marked-up plan the GC can read.\nThe takeoff copy carries the counts, the feet with the riser inside, and the hangers under their pipe.',
       target: ['#copyRfiFlags', '#copySummaryText', '#forPipeTooling', '#specificPages'],
       get lightAll() { return !isNarrow(); },   // under 769 px the buttons are in the closed drawer: there the light is the ☰ that opens it
       check: () => true,
@@ -722,7 +788,7 @@
     {
       id: 'done', title: 'That is the whole loop', kind: 'read',
       // Upload PDF is off the screen while a plan is open: the way to a real plan is Close project first
-      body: () => 'Scale, prove it, count, chain, riser, hangers, cold water sized at S, ×3, proof, hand off.\nGroups, sets of marks the app subtotals together, can total one restroom at a time when a set gets busy.\nYour work here is saved on this device like any takeoff.\nFor a real plan, close this one first. '
+      body: () => 'Scale, prove it, count, chain, riser, hangers, cold water sized at S, ×3, proof, Bid Check, hand off.\nGroups, sets of marks the app subtotals together, can total one restroom at a time when a set gets busy.\nYour work here is saved on this device like any takeoff.\nFor a real plan, close this one first. '
         + (isNarrow() ? 'Tap the ☰ at the top right, [[More actions]], then {{Close project|' + P_SEL.closeProject + '}}.' : 'In the header, click the gear, [[Project Settings]], then {{Close project|' + P_SEL.closeProject + '}}.')
         + ' Upload PDF comes back in the header, and opens your file.\nGuides for every tool live under [[Project Settings]], in {{Help|' + P_SEL.help + '}}.',
       target: ['#settingsGearBtn', '#headerBurger'],
@@ -755,7 +821,7 @@
   const HVAC_STEPS = [
     {
       id: 'welcome', title: 'A five-minute HVAC takeoff', kind: 'do',
-      body: 'A takeoff is the count and the feet a price is built on. HVAC is heating, ventilation and air conditioning: here, the ducts that carry the air.\nThe sample plan is a practice drawing of an office. No engineer, the designer who does the sums, sized its ducts, so you and the app do: that is design-build.\nYou will box a room and place diffusers, the vents air blows out of. Each carries its CFM: cubic feet of air per minute.\nThe app sizes the main duct, the big one from the unit, and counts the fittings, the bends and joints, and the pounds of metal. Then you sign off and hand it to the bid, the price you send.\nNothing here touches your projects.',
+      body: 'A takeoff is the count and the feet a price is built on. HVAC is heating, ventilation and air conditioning: here, the ducts that carry the air.\nThe sample plan is a practice drawing of an office. No engineer, the designer who does the sums, sized its ducts, so you and the app do: that is design-build.\nYou will box a room and place diffusers, the vents air blows out of. Each carries its CFM: cubic feet of air per minute.\nThe app sizes the main duct, the big one from the unit, and weighs the metal. Then you hand it to the bid, the price you send.\nNothing here touches your projects.',
       target: [],   // the card's own button is all it asks for: nothing on the screen behind it is lit
       // Stamped HVAC (never remembered as the device default) the moment the plan is open — the trade unfolds the air fields and seeds the toolbar.
       check: () => { const ok = samplePlanOpen(); if (ok && state().trade !== 'hvac' && App.setProjectTrade) App.setProjectTrade('hvac', { remember: false, route: 'tour' }); return ok; },
@@ -766,9 +832,10 @@
     PROVE_STEP,
     {
       id: 'room', title: 'Box a room the plan already names', kind: 'do',
-      body: () => 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\n'
+      body: () => 'The air a room needs comes from its size. Room Sizer boxes a room and reads its area.\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\n'
         + (isNarrow() ? '1. Tap ☰ at the top left, then [[Room Sizer]] in the list that opens.' : '1. In the header, click [[⋯]], then [[Room Sizer]] (or press V).')
-        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n4. In {{Ceiling height|#roomBoxHeight}}, type 9.\n5. In {{Deck height|#roomBoxDeck}}, type 12.\n6. Click {{Apply|#roomBoxApply}}.\nThe deck is the underside of the roof. The duct runs in the space between it and the ceiling.\nThe sheet gets one small totals tag, a label, placed off the printed name.',
+        + '\n2. Drag a box around OPEN OFFICE 105, wall to wall: start and end in the shaded band, outside the dashed line.\n3. Leave the name as it is. In {{Room type|#roomBoxType}}, choose Office.\n4. In {{Ceiling height|#roomBoxHeight}}, type 9.\n5. In {{Deck height|#roomBoxDeck}}, type 12.\n6. Click {{Apply|#roomBoxApply}}.',
+      answer: 'The sheet gets one small totals tag, a label, placed off the printed name.\nIt reads the room\'s area and the air it needs.',
       // the dialog's fields in the card's order, then Apply (it lit Apply over an unset type and heights; by hand, 2026-09-25)
       target: () => { const v = (id) => String((el(id) || {}).value || '').trim(); const next = v('roomBoxType') !== 'office' ? '#roomBoxType' : !v('roomBoxHeight') ? '#roomBoxHeight' : !v('roomBoxDeck') ? '#roomBoxDeck' : null; return ladder(next, '#roomBoxApply', '#roomBtn', '#roomBtnSidebar', '#headerMoreMenu .hm-row[data-tool-id="roomBtn"]', '#headerMoreBtn'); },
       page: 0,
@@ -789,7 +856,7 @@
     },
     {
       id: 'counter', title: 'A diffuser with a CFM', kind: 'do',
-      body: 'A counter is a named tally: each click on the sheet with it adds one mark. This one also carries each diffuser\'s air.\nThe left sidebar is the column of lists down the left side of the screen.\n1. In the left sidebar, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the {{Create|#counterModal .counter-tab[data-tab="create"]}} tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In {{Name|#counterName}}, type Supply Diffuser.\n4. In {{CFM|#counterCfm}}, type 150. The chip, the small label beside the field, shows the symbol it will take.\n5. Click [[Create Counter]].\nA supply diffuser blows air into the room from the ceiling. The counter tool arms itself: it is armed, switched on and ready to mark.',
+      body: 'A counter is a named tally: each click on the sheet with it adds one mark. This one also carries each diffuser\'s air. A supply diffuser blows air into the room from the ceiling.\n1. In the left sidebar, the column of lists down the left side of the screen, under COUNTERS, click {{+ Add|#addCounter}}.\n2. Click the {{Create|#counterModal .counter-tab[data-tab="create"]}} tab. On an HVAC project its air & mounting fields are already unfolded.\n3. In {{Name|#counterName}}, type Supply Diffuser.\n4. In {{CFM|#counterCfm}}, type 150. The chip, the small label beside the field, shows the symbol it will take.\n5. Click [[Create Counter]].\nThe counter tool arms itself: it is armed, switched on and ready to mark.',
       target: () => counterFormTargets(/diffuser/i, ['#counterCfm']),
       // 150, the number the place, duct and Bid Check cards all do their arithmetic with (PERSONA-PASS prober)
       check: () => { const c = (state().counters || []).find((x) => x.id === tourCounterId && x.cfm === 150) || (state().counters || []).filter((x) => /diffuser/i.test(x.name || '') && x.cfm === 150 && (isFresh(x) || markCount(x.id) > 0)).pop(); if (c) tourCounterId = c.id; return !!c; },
@@ -798,7 +865,8 @@
     },
     {
       id: 'place', title: 'Place four diffusers', kind: 'do',
-      body: 'Four circles sit in OPEN OFFICE 105: two where the main will run, two deeper in the room.\n1. Click inside each of the four circles.\nEach mark carries its 150 CFM. In the sidebar, ROOMS now weighs the air the room needs against the air served.',
+      body: 'Four circles sit in OPEN OFFICE 105: two where the main will run, two deeper in the room.\n1. Click inside each of the four circles.',
+      answer: 'Each mark carries its 150 CFM.\nIn the sidebar, ROOMS now weighs the air the room needs against the air served.',
       target: ['#annCanvas'], page: 0,
       zones: () => { const c = hCounter(); return markZones(0, c ? c.id : '-', DIFFUSER_SPOTS, 14); },
       check: () => cfmDevices().length >= 4 && (placedOnce || (placedOnce = allDone(markZones(0, (hCounter() || {}).id || '-', DIFFUSER_SPOTS, 14)))),
@@ -807,7 +875,9 @@
     },
     {
       id: 'system', title: 'Name the system', kind: 'do',
-      body: 'RTU-1 is a rooftop unit: the box on the roof that heats, cools and pushes the air. A group is a set of marks the app subtotals together. A group with an equipment tag, the unit\'s name, is a system.\n1. Click [[Project Settings]], the gear in the header, and turn on {{Use groups|#settingsUseGroupsBtn}}.\n2. Click {{×|#settingsModalClose}} to close Project Settings.\n3. In the left sidebar, under GROUPS, click {{+ Add|#addGroup}}.\n4. In {{Name|#groupModalName}}, type RTU-1.\n5. In {{Equipment tag|#groupModalEquipTag}}, type RTU-1.\n6. In {{Capacity|#groupModalCapacityCfm}}, type 2000, the air it can move in CFM.\n7. Click {{Done|#groupModalDone}}.\nThat selects RTU-1, so the main you trace next, clicking along it, belongs to it. Clicking RTU-1 again would unselect it.\nIts row under GROUPS will weigh the air the system is drawn to deliver against its capacity.',
+      body: 'RTU-1 is a rooftop unit: the box on the roof that heats, cools and pushes the air. A group is a set of marks the app subtotals together. A group with an equipment tag, the unit\'s name, is a system.\n1. Click [[Project Settings]], the gear in the header, and turn on {{Use groups|#settingsUseGroupsBtn}}.\n2. Click {{×|#settingsModalClose}} to close Project Settings.\n3. In the left sidebar, under GROUPS, click {{+ Add|#addGroup}}.\n4. In {{Name|#groupModalName}}, type RTU-1.\n5. In {{Equipment tag|#groupModalEquipTag}}, type RTU-1.\n6. In {{Capacity|#groupModalCapacityCfm}}, type 2000, the air it can move in CFM.\n7. Click {{Done|#groupModalDone}}.',
+      answerWaits: true,
+      answer: 'That selected RTU-1, so the main you trace next, clicking along it, belongs to it. Clicking RTU-1 again would unselect it.\nIts row under GROUPS will weigh the air the system is drawn to deliver against its capacity.',
       target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return ladder(empty, '#groupModalDone', '#addGroup', state().groupsEnabled ? '#settingsModalClose' : '#settingsUseGroupsBtn', '#settingsGearBtn'); },   // Groups are off on the sample plan (by hand, 2026-09-25)
       check: () => (state().groups || []).some((g) => g.capacityCfm > 0),
       action: { label: 'Make RTU-1 for me', run: makeSystem },
@@ -815,7 +885,14 @@
     {
       id: 'duct', title: 'Trace the main', kind: 'do',
       rules: ['hvac.duct.schedule-factors'],
-      body: 'The main is the trunk duct the diffusers hang off. Trace it, and let the app size it.\n1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12, the duct\'s width by height in inches, and click [[Start Tracing]].\n3. Click inside the first circle, then the second.\n4. Under the sheet, click {{Size…|#ductSizeStepBtn}} (or press S).\n5. In the Duct size box, under SUGGESTED, click the rectangular size.\n6. Click inside the third circle.\n7. Under the sheet, click [[Finish Duct Run]] (or press Enter).\nThe {{hint at the bottom of the sheet|#ductHintCard}} reads the air still to serve further along. It suggests a size at 0.08″ per 100′, the friction rate: how much push the air may lose. The round size beside it is the same air in round duct.\nThe elbows (bends) and the transition (a size change) count themselves.',
+      // One card in three states, as the plumbing tour's size card is (the card pass): the start of the
+      // trace, the hint and the size once two circles are in, the last circle and Finish once it is sized.
+      body: () => {
+        const d = state().drawingDuct; const hit = d ? pathZones(MAIN_VERTICES, 16, mainPaths()).filter((z) => z.done).length : 0;
+        if (d && (d.segments || []).length >= 2) return 'The next piece starts in the new size. The elbows (bends) and the transition (a size change) count themselves.\n1. Click inside the third circle.\n2. Under the sheet, click [[Finish Duct Run]] (or press Enter).';
+        if (d && hit >= 2) return 'The {{hint at the bottom of the sheet|#ductHintCard}} reads the air still to serve further along. It suggests a size at 0.08″ per 100′, the friction rate: how much push the air may lose. The round size beside it is the same air in round duct.\n1. Under the sheet, click {{Size…|#ductSizeStepBtn}} (or press S).\n2. In the Duct size box, under SUGGESTED, click the rectangular size.';
+        return 'The main is the trunk duct the diffusers hang off. Trace it, and let the app size it.\n1. In the header, click [[Duct]] (or press U).\n2. Leave the size at 24×12, the duct\'s width by height in inches, and click [[Start Tracing]].\n3. Click inside the first circle, then the second.';
+      },
       // the light follows the card's order: Size… once two circles are in, Finish Duct Run once all three are (the card stays off both)
       target: () => { const d = state().drawingDuct; const hit = d ? pathZones(MAIN_VERTICES, 16, mainPaths()).filter((z) => z.done).length : 0; const under = hit >= 3 ? '#finishDuctRunBtn' : hit === 2 && (d.segments || []).length < 2 ? '#ductSizeStepBtn' : null; return ladder('#ductSizePopover', '#ductCreateStart', under, '#ductBtn', '#headerMoreBtn'); }, page: 0,
       zones: () => pathZones(MAIN_VERTICES, 16, mainPaths()),
@@ -826,7 +903,7 @@
       id: 'attach', title: 'Hang the strays', kind: 'do',
       body: () => 'Two diffusers sit within 8″ of the main and draw a leader, a dashed line, to it: attached, their air served. The two that draw nothing are strays.\n'
         + (isTouch() ? '1. Hold a finger on a stray, one of the two in the circles, until its menu opens.' : '1. Right-click a stray, one of the two in the circles: click it with the right mouse button.')
-        + '\n2. Click [[Attach to nearest run]].\n3. Do the same for the other one.\nEach moves onto the main and its leader appears.',
+        + '\n2. Click [[Attach to nearest run]]. The diffuser moves onto the main, and its leader appears.\n3. Do the same for the other one.',
       target: ['#ctxAttachToRun', '#annCanvas'], page: 0,
       zones: () => unattachedDevices().map((d) => ({ kind: 'circle', x: d.x, y: d.y, r: 14, done: false })),
       check: () => cfmDevices().length >= 4 && unattachedDevices().length === 0,
@@ -836,16 +913,18 @@
     {
       id: 'schedule', title: 'Pounds, not feet', kind: 'read',
       rules: ['hvac.duct.gauge-schedule', 'hvac.duct.sheet-weight', 'hvac.duct.schedule-factors'],
-      body: 'Sheet-metal duct is priced by the pound, so the app weighs it.\n1. In the left sidebar, under DUCT, click [[Schedule]].\nIt lists straight duct by size, with its gauge and lb/ft from the SMACNA table. Gauge is the metal\'s thickness, and lb/ft is pounds per foot. SMACNA is the sheet-metal trade\'s book of standards.\nBelow come the fittings you did not have to count, and seam & waste on its own line: metal lost to joints and offcuts.\nLast is the number a sheet-metal bid is built on: Bid weight.\n2. Click [[Copy Schedule]] to put it on the clipboard, where a copy waits to be pasted.',
+      body: 'Sheet-metal duct is priced by the pound, so the app weighs it.\n1. In the left sidebar, under DUCT, click [[Schedule]].\nIt lists straight duct by size, with its gauge and lb/ft from the SMACNA table. Gauge is the metal\'s thickness, and lb/ft is pounds per foot. SMACNA is the sheet-metal trade\'s book of standards.\nBelow come the fittings, the bends and joints, which you did not have to count. Seam & waste has its own line: metal lost to joints and offcuts.\nLast is the number a sheet-metal bid is built on: Bid weight.\n2. Click [[Copy Schedule]] to put it on the clipboard, where a copy waits to be pasted.',
       target: ['#ductScheduleModal .modal-card', '#ductScheduleBtn', '#ductSectionTitle'],
       check: () => true,
     },
     {
       id: 'bidcheck', title: 'Sign off', kind: 'do',
       rules: ['hvac.room.airflow-defaults'],
-      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out. The manual rows are yours to tick.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words {{Curb & power coordinated|#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"]}} to tick it.\nThe curb is the frame the RTU sits on, up on the roof. Who sets it and runs the unit\'s power is yours to settle. You settle it with the GC, the general contractor, and the electrician.\nThe app judged the rooms, the flex and the scale for you. Flex is the bendable duct to each diffuser.\nFour 150-CFM diffusers serve the office\'s 442 CFM, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room.',
+      onEnter: foldBidCheck, hold: true, body: 'Bid Check is the list of what a bid must answer before it goes out. The manual rows are yours to tick.\nThe curb is the frame the RTU sits on, up on the roof. Who sets it and runs the unit\'s power is yours to settle. You settle it with the GC, the general contractor, and the electrician.\n1. In the left sidebar, click BID CHECK to expand it.\n2. Click the words {{Curb & power coordinated|#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"]}} to tick it.',
+      answer: 'The app judged the rooms, the flex and the scale for you. Flex is the bendable duct to each diffuser.\nFour 150-CFM diffusers give 600 CFM, more than the office needs, so that row reads ✓. Fits the roof judged itself too, from the deck height you gave the room.',
       // the row the card names, not the first manual row (Fire dampers): at 1280 x 720 Curb & power sat below the fold (PERSONA-PASS)
-      target: ['#bidCheckSection .bid-check-row[data-row-id="duct-curb-power"]', '#bidCheckSection label', '#bidCheckSectionTitle'],
+      // open, the list is brought up the sidebar: the row to tick sat under the fold
+      target: () => (state().bidCheckCollapsed !== false ? ['#bidCheckSectionTitle'] : bidCheckRows('hvac', ['duct-curb-power'])),
       // a row that stays manual: the room step's deck height makes Fits the roof an AUTO row with no box,
       // and the step waited for a tick nobody could give it (by hand, 2026-09-25)
       check: () => !!(state().bidCheck && state().bidCheck.manual && state().bidCheck.manual['duct-curb-power']),
@@ -1372,8 +1451,12 @@
   // are gone and the header strip scrolls. (< 768 left every tour telling an iPad "in the left sidebar".)
   const isTouch = () => { try { return window.matchMedia('(pointer: coarse)').matches || isNarrow(); } catch (_) { return false; } };
   const isNarrow = () => { try { return window.matchMedia('(max-width: 768px)').matches; } catch (_) { return window.innerWidth <= 768; } };
+  const tapText = (t) => String(t).split(/(\[\[.+?\]\]|\{\{[^{}]+\}\})/).map((part, i) => (i % 2 ? part : part.replace(/(^|[^-\w])(C|c)lick(s|ed|ing)?\b(?!-)/g, (m, pre, c, end) => pre + (c === 'C' ? 'T' : 't') + (end === 'ed' ? 'apped' : end === 'ing' ? 'apping' : 'ap' + (end || ''))))).join('');
   const forTouch = (body) => {
     let b = String(body).replace(/\s*\((?:or )?press [^)]*\)/gi, '').replace(/^\d+\.\s+Press [^\n]*\n?/gim, '');
+    // a finger taps: "Click" reads "Tap" (never inside a control's name or a pointer's selector, and
+    // a right-click or a double-click keeps its own wording, which its card settles)
+    b = tapText(b);
     if (isNarrow() && /left sidebar/i.test(b)) b = b.replace(/[Ii]n the left sidebar/, (m) => (m[0] === 'I' ? 'In the sidebar (tap ☰ at the top left to open it)' : 'in the sidebar (tap ☰ at the top left to open it)'));
     return b;
   };
@@ -1404,11 +1487,17 @@
     const text = (b) => (typeof b === 'function' ? b() : b);
     let words = null;
     try { words = App.cardWordTaps ? App.cardWordTaps(tourId, stepIdx) : null; } catch (_) { words = null; }
-    const html = bodyHtml(text(step.body), words) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal), words) + '</div>' : '');
+    const html = bodyHtml(text(step.answer && step.kind === 'do' && done ? step.answer : step.body), words) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal), words) + '</div>' : '');
     // written only when it changed: a word under the reader's finger, or holding the keyboard's
     // focus, is not replaced by the next tick
     const bodyEl = el('tourBody');
     if (bodyEl.__last !== html) { bodyEl.innerHTML = html; bodyEl.__last = html; }
+    // A long card is a wider card: an engineer's answer of a thousand characters stood 696 px tall in a
+    // 720 px window and scrolled (the card pass). By length, not by height, so the width never flickers.
+    const chars = isNarrow() ? 0 : (bodyEl.textContent || '').length;
+    el('tourCard').classList.toggle('tour-card-wide', chars > 700);
+    el('tourCard').classList.toggle('tour-card-wider', chars > 1200);
+    cardWidth = chars > 1200 ? 560 : chars > 700 ? 470 : 360;
     // The card never does the step for the reader. "Show me where" pulses the circle,
     // the boundary or the lit control; Next works only once the step is really done
     // (a reading step is done by reading); a quiet Skip keeps anyone from being stuck.
@@ -1419,7 +1508,8 @@
     const ready = step.kind === 'read' || done;
     const zones = stepZones(step);
     const show = el('tourShow');
-    if (step.handsOff && !done) { show.style.display = ''; show.textContent = step.action.label; }
+    if (step.handsOff && !done && !(step.action.show && !step.action.show())) { show.style.display = ''; show.textContent = step.action.label; }
+    else if (step.handsOff && !done) show.style.display = 'none';   // its button is pressed and the app's own dialog has the next click
     else if (step.kind === 'do' && !done) { show.style.display = ''; show.textContent = 'Show me where'; }
     else show.style.display = 'none';
     const alt = el('tourAlt');
@@ -1438,7 +1528,8 @@
     const progress = counted.length > 1 ? counted.filter((z) => z.done).length + ' of ' + counted.length + ' done' : '';
     const miss = step.kind === 'do' && !done ? hintOf(step) : { text: '', code: null };
     const pageLine = wrongPage ? 'The marks for this step are on sheet ' + (step.page + 1) : '';
-    el('tourStatus').textContent = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
+    const statusLine = step.kind === 'do' ? (done ? '✓ Done' : (miss.text || (closing ? 'That is in. Now close the dialog' : '') || pageLine || (step.progress && safeProgress(step)) || progress || 'Waiting for you…')) : '';
+    el('tourStatus').textContent = isTouch() ? tapText(statusLine) : statusLine;
     el('tourStatus').classList.toggle('tour-status-miss', !!miss.text);
     // A finished step has no Show me where, so its ✓ Done would sit on a row of its own above Back and
     // Next: it joins their row instead, at the left, and the emptied row goes (Will, 2026-09-27).
@@ -1494,8 +1585,17 @@
       const pad = 6;
       spot.style.display = '';
       spot.classList.toggle('has-zones', !modalOpen && stepZones(step).length > 0 && (step.page == null || state().currentPage === step.page));
-      spot.style.left = (r.left - pad) + 'px'; spot.style.top = (r.top - pad) + 'px';
-      spot.style.width = (r.width + pad * 2) + 'px'; spot.style.height = (r.height + pad * 2) + 'px';
+      // The sheet is lit as far as it shows: zoomed in, its box runs on under the sidebar and the
+      // header, and the ring's edges drew lines across them (the card pass, Start here's undo card).
+      let lit = r;
+      const wrap = el('canvasWrapper');
+      if (wrap && wrap.contains(target)) {
+        const w = wrap.getBoundingClientRect();
+        const x1 = Math.max(r.left, w.left + pad), y1 = Math.max(r.top, w.top + pad), x2 = Math.min(r.right, w.right - pad), y2 = Math.min(r.bottom, w.bottom - pad);
+        if (x2 > x1 && y2 > y1) lit = { left: x1, top: y1, right: x2, bottom: y2, width: x2 - x1, height: y2 - y1 };
+      }
+      spot.style.left = (lit.left - pad) + 'px'; spot.style.top = (lit.top - pad) + 'px';
+      spot.style.width = (lit.width + pad * 2) + 'px'; spot.style.height = (lit.height + pad * 2) + 'px';
       // The lit area glows as the light lands on it, then fades to the resting ring: a highlighter's
       // stroke, so the eye finds the area before it reads the card (Will, 2026-09-27). A large area
       // (the sheet itself) takes the halo without the wash. styles.css: .tour-spot.is-arriving.
@@ -1510,7 +1610,7 @@
       // corner of a big dialog), the viewport corner farthest from the control, which
       // cannot cover it unless the control is most of the screen (found 2026-09-21: the
       // card sat on Trim your set's Open button, the one thing the step asked for).
-      const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220;
+      const cw = Math.min(cardWidth, window.innerWidth - 24), ch = card.offsetHeight || 220;
       const vw = window.innerWidth, vh = window.innerHeight, gap = 16, edge = 12;
       const clampX = (x) => Math.max(edge, Math.min(x, vw - cw - edge)), clampY = (y) => Math.max(edge, Math.min(y, vh - ch - edge));
       const spots = [
@@ -1587,7 +1687,7 @@
       spot.style.display = 'none';
       // No control to point at (a step about the sheet itself): the corner the step asks
       // for with cardAt, or where the reader dragged it, keeps the card off the drawing.
-      const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220, edge = 12;
+      const cw = Math.min(cardWidth, window.innerWidth - 24), ch = card.offsetHeight || 220, edge = 12;
       let corner = step.cardAt ? { left: step.cardAt[1] === 'l' ? edge : window.innerWidth - cw - edge, top: step.cardAt[0] === 't' ? 56 : window.innerHeight - ch - 40 } : null;
       // With nothing to point at but targets on the sheet, the card still keeps off them (it sat
       // on the quick-key circle on a tablet, where the status-bar link it would light is gone).
@@ -1606,7 +1706,7 @@
     }
     // auto-advance a beat after a doing-step completes — never on a step the
     // reader came Back to (its work is already there; Next is lit instead)
-    if (step.kind === 'do' && done && !heldByBack && !step.hold && stepIdx < STEPS.length - 1) {
+    if (step.kind === 'do' && done && !heldByBack && !step.hold && !step.answer && stepIdx < STEPS.length - 1) {
       if (!doneAt) doneAt = Date.now();
       else if (Date.now() - doneAt > 900) goTo(stepIdx + 1);
     } else doneAt = 0;
@@ -1887,7 +1987,21 @@
     focusOnZones(Object.assign({}, step, { focus: true }));
     [el('tourZones'), el('tourSpot')].forEach((n) => { if (!n) return; n.classList.remove('is-pulsing'); void n.getBoundingClientRect(); n.classList.add('is-pulsing'); });
   }
-  function safeCheck(step) { try { return !!step.check(); } catch (_) { return false; } }
+  // An answer step stays done for the rest of the visit once its check has passed: the answer explains
+  // a dialog or a list the reader is then free to close, a stop they are free to click, and the card
+  // must not fall back to the task with Next gone dark (the card pass, Working faster).
+  let answered = false;
+  function safeCheck(step) {
+    let ok;
+    try { ok = !!step.check(); } catch (_) { ok = false; }
+    if (!step.answer || step !== STEPS[stepIdx]) return ok;
+    // `answerWaits`: the step's last line closes a dialog (Click Done), and its check passes a click
+    // before that. The answer waits for the dialog to close, so the line is still there to follow.
+    closing = !!(ok && !answered && step.answerWaits && document.querySelector('.modal-overlay.visible'));
+    if (ok && !closing) answered = true;
+    return answered;
+  }
+  let closing = false;   // an answerWaits step has passed its check and its dialog is still up
   // A hint is a string, or { code, text } when it names why the step is not done yet: not-armed,
   // outside-zone, wrong-page, wrong-scale, wrong-item, wrong-value, dialog-closed, not-yet, other
   // (PERSONA-PLAN item 3, 2026-09-25). The card shows the text either way; the code rides the
@@ -1944,7 +2058,7 @@
     stepIdx = next;
     doneAt = 0;
     lastSheetClick = null;
-    revealed = false;
+    revealed = false; answered = false;
     hintsLogged = new Set(); statusCode = null;
     App.onTourStepChanged && App.onTourStepChanged();   // a glossary entry open on the last card closes (features/learn-taps.js)
     closeStrayDialogs(STEPS[stepIdx]);
@@ -2006,6 +2120,8 @@
     setSearchWords(snap);
     if (App.updateUI) App.updateUI();
   }
+  // The steps a tour walks on THIS device: a `keys` card is left out where there are no keys.
+  const stepsFor = (def) => { const all = (def && def.steps) || []; return isTouch() ? all.filter((st) => !st.keys) : all; };
   function startTutorial(id) {
     const s = state();
     if (s.currentProjectId) { App.showToast('Close the cloud project first: the tour runs on the sample plan'); return false; }
@@ -2016,9 +2132,9 @@
     // its "left" event is logged. The same tour again starts over from its first step.
     if (active) stopTutorial(false, { switching: true });
     tourId = TOURS[id] ? id : 'electrical';
-    STEPS = TOURS[tourId].steps;
+    STEPS = stepsFor(TOURS[tourId]);
     active = true;
-    stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
+    stepIdx = 0; doneAt = 0; heldByBack = false; revealed = false; answered = false; dragPos = null; placedOnce = false; tourCounterId = null; tourLineTypeId = null; tourSecondCounterId = null;
     hintsLogged = new Set(); statusCode = null; litEl = null;
     standingIds = new Set((s.counters || []).map((c) => c.id).concat((s.lineTypes || []).map((l) => l.id)));
     standingSnap = {}; (s.lineTypes || []).forEach((l) => { standingSnap[l.id] = { waterSide: l.waterSide, childCounts: (l.childCounts || []).slice() }; });
@@ -2157,7 +2273,7 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, bidCheckRows, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
     lastSheetClick: () => lastSheetClick };   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff
@@ -2215,10 +2331,13 @@
       steps: (def.steps || []).map((st, i) => {
         const m = { i, id: st.id, kind: st.kind, title: st.title, body: stepText(st.body) };
         if (st.reveal) m.reveal = stepText(st.reveal);
+        if (st.answer) m.answer = stepText(st.answer);
         m.targets = targetLabels(st);
         m.zones = countedZones(stepZones(st)).length;
         if (st.page != null) m.page = st.page;
         ['hint', 'progress', 'action', 'handsOff', 'hold'].forEach((k) => { if (st[k]) m[k] = true; });
+        if (st.answer) m.hold = true;
+        if (st.keys) m.keys = true;
         if (Array.isArray(st.rules) && st.rules.length) m.rules = st.rules.slice();
         if (st.rulesExempt) m.rulesExempt = String(st.rulesExempt);
         return m;
@@ -2266,7 +2385,7 @@
   App.tutorialIds = () => Object.keys(TOURS);
   App.tutorialManifest = manifestOf;
   // Each step's card text alone, body then reveal, in step order: what features/learn-taps.js reads a run of cards from.
-  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? (def.steps || []).map((st) => stepText(st.body) + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
+  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? stepsFor(def).map((st) => stepText(st.body) + (st.answer ? '\n' + stepText(st.answer) : '') + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
   App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake

@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * The HVAC course (features/course-hvac.js): nine chapters, after an uncounted chapter 0
- * (id before, five read cards for a reader who has never seen a drawing), on the tour engine, on the
+ * (id before, six read cards for a reader who has never seen a drawing), on the tour engine, on the
  * mechanical set (samples/sample-hvac.pdf), the third trade course. Plan:
  * journeys/plans/HVAC-COURSE.md.
  *
@@ -13,7 +13,7 @@
  * and the compare card with the bid weight; a finished chapter ticks and hands back; the doors.
  */
 const { test, expect } = require('@playwright/test');
-const { pastStartHere } = require('./spec-helpers');
+const { pastStartHere, stepTo } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 async function boot(page, url, errors) {
@@ -47,10 +47,10 @@ const ductRow = (page, id) => page.evaluate((k) => { const bc = window.App.getDu
 const schedule = (page) => page.evaluate(() => { const s = window.App.computeDuctSchedule(); return { rows: s.straightRows.map((r) => [String(r.sizeKey), Math.round(r.lengthFt * 100) / 100, r.gauge, Math.round(r.lbPerFt * 100) / 100, r.material || null]), fittings: s.fittingRows.map((r) => [r.type, r.count, r.material || null]), lb: Math.round(s.bidWeightLb), grease: s.grease ? { cleanouts: s.grease.cleanouts.total, atBends: s.grease.cleanouts.atBends, wrapSqFt: Math.round(s.grease.wrapSqFt * 10) / 10 } : null }; });
 const runs = (page) => page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).map((r) => ({ airside: r.airside, liner: r.linerType, material: r.material || null, sizes: r.segments.map((s) => (s.size.kind === 'round' ? s.size.d + '"ø' : s.size.w + 'x' + s.size.h)) })));
 const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), id);
-const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
+const openSheets = async (page) => { await stepTo(page, 'sheets', 10000); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
 const EXPECT = {
-  // chapter 0 reads and makes nothing: five read cards, no zones, the sheets open
+  // chapter 0 reads and makes nothing: six read cards, no zones, the sheets open
   before: async (page) => {
     expect(await page.evaluate(() => [window.state.trade, window.state.currentPage])).toEqual(['hvac', 0]);
     expect(await page.evaluate(() => (window.state.counters || []).filter((c) => c.lesson).length)).toBe(0);
@@ -150,20 +150,28 @@ const EXPECT = {
 };
 const REVEALS = { before: [], sheet: ['what', 'balance'], rooms: ['why', 'deck'], diffusers: ['neck'], system: ['designed'], main: ['why'], plenum: ['static'], exhaust: ['why', 'nodamper', 'interlock'], whole: [], bid: ['rows'] };
 
+// A doing step that asks a question holds on its own answer once the click is right (the card
+// review, fix 4): the card reads "Answer: …" in place of the task, and Next moves on.
+async function answeredThenNext(page, next) {
+  await expect(page.locator('#tourBody')).toContainText('Answer:', { timeout: 5000 });
+  await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+  await page.click('#tourNext');
+  await stepTo(page, next, 5000);
+}
 test.describe('The HVAC course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
     test('chapter "' + id + '": reveals its answers, does every step on real state, ticks it, and hands back to the course', async ({ page }) => {
       test.setTimeout(180000);
       const errors = [];
       await boot(page, '/app/?chapter=hvac:' + id, errors);
-      await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+      await stepTo(page, 'sheets', 10000);
       expect(await page.evaluate(() => window.App.tutorialId())).toBe('course:hvac:' + id);
       const { walked, revealed, skipped } = await walk(page);
       expect(skipped).toEqual([]);
       expect(walked[0]).toBe('sheets');
       expect(walked[walked.length - 1]).toBe('done');
       expect(revealed).toEqual(REVEALS[id]);
-      if (id === 'before') expect(walked).toEqual(['sheets', 'set', 'estimator', 'verbs', 'screen', 'cards', 'done']);   // read cards only, each passed with Next
+      if (id === 'before') expect(walked).toEqual(['sheets', 'set', 'estimator', 'verbs', 'header', 'sidebar', 'bottom', 'done']);   // read cards only, each passed with Next
       expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.state.trade])).toEqual([3, 'sample-hvac', 'hvac']);
       await EXPECT[id](page);
       expect(await page.evaluate((k) => !!window.App.courseDone()['hvac:' + k], id)).toBe(true);
@@ -188,7 +196,7 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/EF-1 pulls 2,400 CFM out of the hood/);
     await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => x.name === 'RTU-1'); k.mark(0, c, [k.P(998, 328)]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule', null, { timeout: 5000 });
+    await answeredThenNext(page, 'schedule');
     expect(errors).toEqual([]);
   });
 
@@ -202,13 +210,13 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/galvanized: right-click it and set its Material to Black steel/);
     await page.evaluate(() => { const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.ductRuns[a.ductRuns.length - 1].material = 'black-steel'; window.App.lessonKit.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'why', null, { timeout: 5000 });
+    await stepTo(page, 'why', 5000);
     await gotoStep(page, 'dampers');
     await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'Fire Damper', icon: window.App.getOrderedIcons()[0].value, color: '#e85447', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(904, 470)]); k.dirty(); });
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/That wall is not rated/);
     await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => x.name === 'Fire Damper'); const a = window.App.ensureActiveCanvas(window.state.pages[0]).annotations; a.counterMarkers[c.id] = []; k.mark(0, c, [k.P(572, 296), k.P(904, 296)]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'nodamper', null, { timeout: 5000 });
+    await stepTo(page, 'nodamper', 5000);
     expect(errors).toEqual([]);
   });
 
@@ -302,7 +310,7 @@ test.describe('The HVAC course, by hand', () => {
     await page.waitForTimeout(600);
     await expect(page.locator('#tourStatus')).not.toContainText('armed');
     await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'RTU-1', icon: window.App.getOrderedIcons()[0].value, color: '#2e86de', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(998, 328)]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule', null, { timeout: 5000 });
+    await answeredThenNext(page, 'schedule');
     await page.evaluate(() => { if (!document.getElementById('pagesSection').classList.contains('collapsed')) document.getElementById('pagesCollapseIcon').click(); });
     await page.waitForTimeout(600);
     await expect(page.locator('#tourStatus')).toContainText('PAGES is folded');
@@ -465,14 +473,14 @@ test.describe('The HVAC course: the whole set, skipped', () => {
     const errors = [];
     await boot(page, '/app/?chapter=hvac:whole', errors);
     await openSheets(page);
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await stepTo(page, 'lay');
     await expect(page.locator('#tourAlt')).toHaveText('Finish the takeoff for me');
     await page.click('#tourSkip');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'compare');
+    await stepTo(page, 'compare');
     await expect(page.locator('#tourBody')).toContainText('You skipped the takeoff');
     await expect(page.locator('#tourBody')).not.toContainText('Bid weight');
     await page.click('#tourBack');
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'lay');
+    await stepTo(page, 'lay');
     await expect(page.locator('#tourAlt')).toBeVisible();
     expect(errors).toEqual([]);
   });

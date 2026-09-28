@@ -87,7 +87,7 @@ const FIRST_USE = {
     'mop sink': 'fixtures', 'hand sink': 'sheet', 'cook line': 'fixtures', 'range': 'fixtures',
     '3-compartment sink': 'fixtures', 'dish pit': 'fixtures', 'FDA Food Code': 'fixtures', 'floor sink': 'fixtures',
     'indirect waste': 'fixtures', 'air gap': 'fixtures', 'typical': 'fixtures', 'trap': 'fixtures',
-    'trap primer': 'fixtures', 'child count': 'fixtures', 'quick key': 'fixtures', 'status bar': 'fixtures',
+    'trap primer': 'fixtures', 'child count': 'fixtures', 'quick key': 'fixtures', 'status bar': 'before',
     // Chapter 3, water
     'main': 'water', 'service': 'water', 'RPZ': 'water', 'backflow preventer': 'water', 'siphon': 'water',
     'trunk': 'water', 'hanger': 'water', 'general notes': 'water', 'water heater': 'water', 'HWR': 'water',
@@ -225,7 +225,7 @@ const FIRST_USE = {
   },
   'tour-hvac': {
     'takeoff': 'welcome', 'HVAC': 'welcome', 'ventilation': 'welcome', 'duct': 'welcome', 'engineer': 'welcome',
-    'design-build': 'welcome', 'diffuser': 'welcome', 'CFM': 'welcome', 'main': 'welcome', 'fitting': 'welcome',
+    'design-build': 'welcome', 'diffuser': 'welcome', 'CFM': 'welcome', 'main': 'welcome', 'fitting': 'schedule',
     'bid': 'welcome',
     'scale': 'scale', 'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
     'room sizer': 'room', 'deck': 'room', 'deck height': 'room', 'tag': 'room',
@@ -358,7 +358,7 @@ function propsOf(n) {
   return m;
 }
 const strOf = (n) => (isStr(n) ? n.value : flat(n).trim());
-const CARD_KEYS = ['title', 'body', 'reveal'];   // the title is card text too: it can carry the gloss, so the body need not repeat it (2026-09-27)
+const CARD_KEYS = ['title', 'body', 'answer', 'reveal'];   // the title is card text too: it can carry the gloss, so the body need not repeat it (2026-09-27)
 
 // The chapters of one file, in order: { id, title, line, cards: [{ id, line, pieces }] }.
 // A piece is { key, text, line }. A step array's element that names a constant object

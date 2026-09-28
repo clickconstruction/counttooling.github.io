@@ -12,7 +12,7 @@
  * logged; a tour started again from the top logs its "left" and starts over.
  */
 const { test, expect } = require('@playwright/test');
-const { bootApp, collectConsoleErrors } = require('./spec-helpers');
+const { bootApp, collectConsoleErrors, stepTo } = require('./spec-helpers');
 
 const snapOn = (page) => page.evaluate(() => !!(window.state.lineTypeSettings && window.state.lineTypeSettings.snapToHorizontalVertical));
 const scope = (page) => page.evaluate(() => window.App.getCounterListFilterScope());
@@ -23,7 +23,7 @@ const tourEvents = (page) => page.evaluate(() => window.__events.filter((e) => e
 // Start a lesson the way a Learn row does, open its sheets, and land on `stepId`.
 async function lessonAt(page, id, stepId) {
   await page.evaluate((l) => window.App.startLesson(l), id);
-  await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+  await stepTo(page, 'sheets', 10000);
   await page.evaluate(() => window.App.tutorialDoStep());
   await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 30000 });
   await page.evaluate((s) => window.App.tutorialGoTo(s), stepId);
@@ -79,9 +79,9 @@ test.describe('TOUR-RESTART: a tour that starts stops the one running', () => {
     expect(await scope(page)).toBe('project');   // Organizing's stop put the reader's filter back
     expect(await tourEvents(page)).toEqual(['lesson:organize:start', 'lesson:organize:left', 'lesson:measuring:start']);
     // Measuring took its own snapshot of the reader's device: Snap on, then leave
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 });
+    await stepTo(page, 'sheets', 10000);
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'snap', null, { timeout: 30000 });
+    await stepTo(page, 'snap', 30000);
     await page.evaluate(() => window.App.tutorialDoStep());
     expect(await snapOn(page)).toBe(true);
     await page.click('#tourLeave');

@@ -13,30 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
-## fix(water): two runs that leave one point are siblings, not each other's branch (WATER-TAP, 2026-09-27)
+## revert(water): the sibling guard on water runs, which broke the plumbing tour (WATER-TAP, 2026-09-27)
 
-Two cold runs drawn from one point, one east and one south, each started on the other, so
-`waterChildLinks` made each the other's child: a two-run cycle. `waterDownstreamByRun` then gave
-each run both runs' fixture units, and the S moment and the Water Sizing schedule sized each pipe
-for twice its load. The duct copy of the tap rule got its guard the same day (DS-DINING-ATTACH,
-`ductTapParentOf`); the water copy did not (DECOMPOSITION_MAP N01, S01).
+#262 gave `waterChildLinks` the guard duct's tap rule has: two runs that leave one point are
+siblings, neither the other's branch. It fixed the double count it was written for and broke the
+plumbing tour on main: four cases of tutorial.spec.js failed, in CI and on the next pull request.
 
-- **The guard, twinned.** `waterChildLinks` skips a candidate parent whose own first vertex sits
-  within snap of the child's first vertex. Two runs leaving one point are both roots and each
-  carries only its own fixtures. A branch tapped mid-run, or a run carrying on from another's
-  end, still links. Hot and cold never link.
-- **No loop survives.** Past the guard, runs drawn head to tail round a loop (three runs round a
-  square, or two runs over one stretch in opposite directions) still pointed at each other, so
-  every run in the loop carried the whole loop. A link that would close a cycle is now dropped
-  (the first run in list order keeps its parent), so the links are always a forest. The two
-  walkers (`waterDownstreamByRun`, `waterDraftRemainingLoad`) already kept a visited set, so
-  they never hung; they now never see a cycle either.
-- **Pins.** Four node cases in [water-model.test.js](water-model.test.js): the repro (no links,
-  each run its own load, a trace off the same point does not take the other run's fixtures), a
-  mid-run tap and an end-on run still link, hot and cold never link, and the loops; and one case
-  in [water-schedule.spec.js](water-schedule.spec.js): two runs off one riser read 1.5 and 10
-  WSFU in the Water Sizing schedule, not 11.5 each. The duct
-  twin, `ductChildLinks`, has the sibling guard but no loop breaker; it is not changed here.
+- **Why.** The tour's size step traces the cold main from the riser at the first lavatory, the
+  point the chained lavatory branch also starts at, and the card reads the branch's 4.5 WSFU on the
+  main. Under the old rule the two runs were each other's child, and the main, which has no
+  fixtures of its own, carried the branch's load. With the guard they are siblings, the main
+  carries nothing, no size is suggested, and the step cannot be done.
+- **What it shows.** The double count and the tour's reading come from the same link. Duct knows
+  which end is upstream because a run starts at its unit; water has no source, so for two runs off
+  one point the model cannot tell a feeder from a sibling. That is a decision before it is a fix.
+- **The miss.** The fix was merged on the water specs and the node tests. tutorial.spec.js, which
+  drives water sizing through the tour, was not run. WATER-TAP is open again and says so.
 
 ## chore(ci): main's CI finishes, e2e runs four ways, and specs run from a worktree (CI-MAIN, WORKTREE-SPECS, 2026-09-27)
 

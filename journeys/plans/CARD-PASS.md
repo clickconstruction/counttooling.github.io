@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** every entry has had its pass but the blank-sheet tour, which is next, card `welcome`. After it: a second reading of the three courses' question cards on a tablet (`cardshots.js <chapter> <outdir> tablet`), which the first pass walked on a laptop only.
+**Now:** the first pass is complete: every entry below is ticked. What is left is listed under "Still to do".
 
 ### The six fixes, before the pass
 
@@ -52,6 +52,21 @@ ticked chapter is done. The line under "Now" names the card in hand.
 - [x] 4. A card that opens with the last question's answer does two jobs: the answer shows on the question's own card. DONE: a step's new `answer` field (features/tutorial.js). Once the reader's click is right the card shows the answer in place of the task and waits for Next. 23 answers moved back to their question cards across the three courses, with the explanation that trailed them and their rule ids; the voltage-drop card asks a thinking question, so its answer waits behind a Show the answer button. The language check and the rules check read `answer` too.
 - [x] 5. Cards about number keys have no tablet version: skipped on touch. DONE: a step's new `keys: true` flag (features/tutorial.js). On a tablet or a phone the tour leaves those cards out and counts its steps without them: counting `bind` and `usekey`, and `keys` in the plumbing and electrical courses. The blank-sheet tour keeps its card, which already has a touch version. The counting recap drops "a number key" on touch.
 - [x] 6. The HVAC tour quotes 442 CFM where the screen reads 508: the number goes. DONE: the card says the four diffusers give 600 CFM, more than the office needs (the room's own figure depends on the box the reader drags, so the card no longer quotes it).
+
+### Still to do
+
+- The blank-sheet tour was walked, not rewritten: no card is over 551 px, nothing scrolls, every chip
+  that can be lit is lit, and it was already written for touch. Its closing tips were left under the
+  steps on purpose: with 37 cards, an answer on each would add thirty clicks of Next.
+- A tablet reading of the three courses. The first pass walked them on a laptop (1280 x 720) and
+  fixed the keyboard-only lines it found; `cardshots.js course:<trade>:<chapter> <outdir> tablet`
+  walks one on a tablet.
+- The owner's list ([CARD-REVIEW-OWNERS-LIST.md](CARD-REVIEW-OWNERS-LIST.md)) still holds what needs Will:
+  a number, a citation, a trade fact, what a step checks. The pass settled these rows of it:
+  the Set Scale tab step, the "how cards work" cards, the three-areas-on-one-card cards, the
+  answer-on-the-next-card pattern, the plumbing tour's Bid Check, the scrolling cards, number keys
+  on touch, "Press Enter" on touch, the badge wording, plans/rename's name, and the Trim step.
+- Guide screenshots and the landing films show the old cards (`npm run build:screenshots`).
 
 ### The pass
 
@@ -167,43 +182,43 @@ NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 
 ## The blank-sheet tour  (features/tour-blank.js)
 
-- [ ] **welcome** (1): welcome
-- [ ] **scale** (1): scale
-- [ ] **measure** (1): measure
-- [ ] **move** (1): move
-- [ ] **counter** (1): counter
-- [ ] **count** (1): count
-- [ ] **quickkeys** (1): quickkeys
-- [ ] **linetype** (1): linetype
-- [ ] **snap** (1): snap
-- [ ] **polyline** (1): polyline
-- [ ] **chain** (1): chain
-- [ ] **drop** (1): drop
-- [ ] **duct** (1): duct
-- [ ] **highlight** (1): highlight
-- [ ] **multiply** (1): multiply
-- [ ] **scalezone** (1): scalezone
-- [ ] **room** (1): room
-- [ ] **ghost** (1): ghost
-- [ ] **deletearea** (1): deletearea
-- [ ] **note** (1): note
-- [ ] **toggles** (1): toggles
-- [ ] **undo** (1): undo
-- [ ] **layers** (1): layers
-- [ ] **pages** (1): pages
-- [ ] **zoom** (1): zoom
-- [ ] **sidebar** (1): sidebar
-- [ ] **groups** (1): groups
-- [ ] **summary** (1): summary
-- [ ] **bidcheck** (1): bidcheck
-- [ ] **settings** (1): settings
-- [ ] **savestatus** (1): savestatus
-- [ ] **exportmenu** (1): exportmenu
-- [ ] **share** (1): share
-- [ ] **exports** (1): exports
-- [ ] **clearpage** (1): clearpage
-- [ ] **close** (1): close
-- [ ] **done** (1): done
+- [x] **welcome** (1): welcome
+- [x] **scale** (1): scale
+- [x] **measure** (1): measure
+- [x] **move** (1): move
+- [x] **counter** (1): counter
+- [x] **count** (1): count
+- [x] **quickkeys** (1): quickkeys
+- [x] **linetype** (1): linetype
+- [x] **snap** (1): snap
+- [x] **polyline** (1): polyline
+- [x] **chain** (1): chain
+- [x] **drop** (1): drop
+- [x] **duct** (1): duct
+- [x] **highlight** (1): highlight
+- [x] **multiply** (1): multiply
+- [x] **scalezone** (1): scalezone
+- [x] **room** (1): room
+- [x] **ghost** (1): ghost
+- [x] **deletearea** (1): deletearea
+- [x] **note** (1): note
+- [x] **toggles** (1): toggles
+- [x] **undo** (1): undo
+- [x] **layers** (1): layers
+- [x] **pages** (1): pages
+- [x] **zoom** (1): zoom
+- [x] **sidebar** (1): sidebar
+- [x] **groups** (1): groups
+- [x] **summary** (1): summary
+- [x] **bidcheck** (1): bidcheck
+- [x] **settings** (1): settings
+- [x] **savestatus** (1): savestatus
+- [x] **exportmenu** (1): exportmenu
+- [x] **share** (1): share
+- [x] **exports** (1): exports
+- [x] **clearpage** (1): clearpage
+- [x] **close** (1): close
+- [x] **done** (1): done
 
 ## The plumbing course  (features/course-plumbing.js)
 

@@ -485,10 +485,11 @@ test.describe('The plumbing course: the doors and the reveal', () => {
     await expect(page.locator('.tour-reveal')).toHaveCount(1);
     expect(await page.locator('.tour-reveal').innerText()).toContain('P is the discipline');
     await expect(page.locator('#tourReveal')).toBeHidden();
-    // the card sits in the corner the step asked for (bottom right), off the sheet
-    const at = await page.evaluate(() => { const r = document.getElementById('tourCard').getBoundingClientRect(); return { right: window.innerWidth - r.right, bottom: window.innerHeight - r.bottom }; });
-    expect(at.right).toBeLessThan(40);
-    expect(at.bottom).toBeLessThan(60);
+    // the card sits in the corner the step asked for: top left, clear of the title block and the
+    // legend the card sends the reader to (bottom right sat on the title block; card review, 2026-09-27)
+    const at = await page.evaluate(() => { const r = document.getElementById('tourCard').getBoundingClientRect(); return { left: r.left, top: r.top }; });
+    expect(at.left).toBeLessThan(40);
+    expect(at.top).toBeLessThan(80);
     await page.click('#tourNext');
     await page.waitForFunction(() => window.App.tutorialStepId() === 'scale');
     await page.click('#tourBack');

@@ -58,9 +58,9 @@ ticked chapter is done. The line under "Now" names the card in hand.
 - The blank-sheet tour was walked, not rewritten: no card is over 551 px, nothing scrolls, every chip
   that can be lit is lit, and it was already written for touch. Its closing tips were left under the
   steps on purpose: with 37 cards, an answer on each would add thirty clicks of Next.
-- A tablet reading of the three courses. The first pass walked them on a laptop (1280 x 720) and
-  fixed the keyboard-only lines it found; `cardshots.js course:<trade>:<chapter> <outdir> tablet`
-  walks one on a tablet.
+- The three courses were then walked as a tablet, chapter by chapter, for keyboard and mouse wording:
+  two cards were found and fixed (the electrical Chapter 0 status bar card, the HVAC main's trace).
+  The lessons' and tours' tablet walks were spot checks (Start here, Sheets, Counting, Measuring, Speed).
 - The owner's list ([CARD-REVIEW-OWNERS-LIST.md](CARD-REVIEW-OWNERS-LIST.md)) still holds what needs Will:
   a number, a citation, a trade fact, what a step checks. The pass settled these rows of it:
   the Set Scale tab step, the "how cards work" cards, the three-areas-on-one-card cards, the
@@ -74,11 +74,10 @@ Engine changes the pass has made so far, which every later card gets for free:
 - On a touch screen "Click" reads "Tap", in the card and in its status line (`tapText`).
 - The sheet is lit only as far as it shows (the ring no longer draws lines across the sidebar).
 - A hands-off step's button can step aside (`action.show`): Sheets' opening card is two states.
-- Tools for the pass, in the session scratchpad: `cardshots.js <lesson:id | tour id> <outdir> [tablet] [only ids]`
-  walks an entry and prints each card with its chips, lit box and card box, and saves a screenshot;
-  `testat.sh <log> <specs>` runs specs against HEAD in a second worktree (`card-pass-test`), so the
-  tree being edited is never the tree under test.
-
+- The tool for the pass: `node scripts/card-walk.js <lesson:id | tour id | course:<trade>:<chapter>> <outdir> [tablet] [only ids]`
+  walks an entry against a served checkout and prints each card with its chips, lit box and card box,
+  and saves a screenshot. Run the specs from a second worktree checked out at the commit under test,
+  so the tree being edited is never the tree under test.
 - No Set Scale card asks for the Architectural & Engineering tab any more: the dialog opens on it
   for a sheet with no scale (nine cards, every tour and course).
 - A doing card whose text ran on after its steps now gives that text as its `answer`, once the step

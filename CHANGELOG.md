@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the card pass: the six fixes, then every card one at a time (2026-09-28)
+
+The card review left six fixes and a list for Will. He said to make the six, then to go through
+every card alone and ask of each whether it is the best we can do. The hand-off, with what was
+done and what is left, is [CARD-PASS.md](journeys/plans/CARD-PASS.md).
+
+- **The six.** The plumbing tour has a Bid Check card that reads its two warnings (the ×3 zone
+  made the 1in branch too small; the tour drew no hot water). The electrical course's homerun and
+  feeder steps want the run finished. Each course's Chapter 0 walks the screen one area per card,
+  and its "how cards work" card is gone. A question card shows its own answer. Number-key cards
+  are left out on a tablet. The HVAC tour no longer quotes a CFM the screen contradicts.
+- **A card says what you made, once you have made it.** A step's `answer` takes the place of its
+  task when the check passes, and the card waits for Next. Text that used to run on under the
+  steps is the answer now, so a card is as long as the work in hand; text a reader needs to do
+  the step (a gloss, how to read a row, why 8.5 ft) comes ahead of the steps. With `answerWaits`
+  the answer waits for the step's dialog to close. An answered step stays done for the visit.
+- **Long cards.** The plumbing tour's size card and the HVAC tour's duct card are three states
+  each. A card past 700 characters is 470 px wide, past 1,200, 560 px. The electrical course's
+  one-line card is two cards. Nothing scrolls at 1280 x 720.
+- **Touch.** "Click" reads "Tap" in a card and its status line. A trace ends at Finish, a duct
+  run at Finish Duct Run, a size opens from Size…; the key is the aside. A long press is named
+  where a right-click was. Working faster sends a tablet to the gear beside a list.
+- **What the card names is on screen.** Bid Check cards scroll their rows up the sidebar and light
+  them. The sheet's ring is clipped to the sheet. The undo card keeps off Undo, the trace card
+  off Finish, the layer card off the show-all button. Sheets' opening card is two states, and its
+  own button goes once the Trim dialog is up.
+- **Wrong, and fixed.** Three cards had the page badge backwards (a yellow number is a scale, a
+  yellow outline is marks). No Set Scale card asks for the tab the dialog already opens on.
+  Start here's sidebar card follows the sidebar's order.
+- **For whoever goes on.** `node scripts/card-walk.js` walks any entry and prints each card with
+  its chips, lit box and size; specs wait for a step with `stepTo(page, id)` (spec-helpers.js).
+
 ## feat(learn): the card review: ten rules, every card held to them, and the engine they needed (2026-09-27)
 
 Will walked lesson 0 card by card and found the same kinds of fault on each. The rules he was

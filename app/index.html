@@ -2420,7 +2420,18 @@
       <div class="modal-card-header settings-card-header">
         <div class="settings-title-block">
           <h2 id="settingsTitle">Project Settings</h2>
-          <div class="settings-subtitle" id="settingsSubtitle" style="display:none;"></div>
+          <!-- The name line is the rename control (reported 2026-09-28: "I am not finding where
+               to rename a project"): the name, then Rename, which turns the name into a field
+               in place. Enter or a click away keeps it, Esc puts the old name back.
+               features/project-settings.js owns it. -->
+          <div class="settings-name-line" id="settingsNameLine" style="display:none;">
+            <div class="settings-subtitle" id="settingsSubtitle" style="display:none;"></div>
+            <button type="button" class="settings-menu-link settings-rename-link" id="settingsRenameProject" style="display:none;" title="Rename this project">Rename</button>
+            <div class="settings-rename-edit" id="settingsRenameEdit" hidden>
+              <input type="text" class="settings-rename-input" id="settingsRenameInput" maxlength="120" autocomplete="off" spellcheck="false" placeholder="Project name" aria-label="Project name" title="Enter keeps the name, Esc puts the old one back">
+              <button type="button" class="settings-menu-link settings-rename-link" id="settingsRenameSave">Save</button>
+            </div>
+          </div>
         </div>
         <button type="button" class="modal-close-btn" id="settingsModalClose" data-modal-close aria-label="Close">×</button>
       </div>

@@ -296,6 +296,30 @@ test.describe('The electrical course: a question is answered with a click', () =
     expect(errors).toEqual([]);
   });
 
+  // The card review, fix 2 (2026-09-28): both steps passed on the last circle with the run still a draft, and
+  // the card after each was stuck until the reader pressed Enter.
+  for (const [chapter, step] of [['circuits', 'homerun'], ['service', 'feeder']]) {
+    test('the ' + step + ' step holds while the run is still being drawn, says to finish it, and passes once it is finished', async ({ page }) => {
+      test.setTimeout(120000);
+      const errors = [];
+      await boot(page, '/app/?chapter=electrical:' + chapter, errors);
+      await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 15000 });
+      await page.evaluate(() => window.App.tutorialDoStep());
+      await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 30000 });
+      await page.evaluate((id) => window.App.tutorialGoTo(id), step);
+      await page.evaluate(() => window.App.tutorialDoStep());   // the type, and the run traced and finished
+      await page.waitForFunction(() => window.App.tutorialStepInfo().done, null, { timeout: 15000 });
+      // the same run, put back as a draft through every circle: not done, and the line says what is left
+      await page.evaluate(() => { const s = window.state; const a = window.App.getActiveAnnotations(s.pages[s.currentPage]); const run = a.polylines.pop(); s.drawingPolyline = run; window.App.updateUI(); });
+      await page.waitForFunction(() => !window.App.tutorialStepInfo().done);
+      await expect(page.locator('#tourStatus')).toContainText('The path is in. Click Finish under the sheet');
+      await expect(page.locator('#tourNext')).not.toHaveClass(/tour-next-ready/);
+      await page.evaluate(() => window.App.settlePolylineDraft());
+      await page.waitForFunction(() => window.App.tutorialStepInfo().done, null, { timeout: 8000 });
+      expect(errors).toEqual([]);
+    });
+  }
+
   test('the rise wants the 8.5 ft of vertical the card names: a 5 ft drop holds and says what it reads (T4, 2026-09-27)', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];

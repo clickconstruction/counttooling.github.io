@@ -535,7 +535,11 @@
                       : [g && s.activeGroupId !== g.id ? '#groupsList' : null, '#polylineBtn', '#polylineBtnSidebar'];
             return T().ladder(...first, '#addLineType', '#polylineBtn', '#polylineBtnSidebar', '#groupsSectionTitle');
           },
-          check: () => (S().lineTypes || []).some((l) => l.homerun) && allDone(traceZones(RE.hr, pts(G.homerun1), E101)),
+          // The run has to be FINISHED, not only drawn through the circles: the step passed on the last
+          // circle with the run still a draft, moved on, and left the next card stuck until the reader
+          // pressed Enter (the card review, 2026-09-27; Will's go, 2026-09-28). The circles still tick live.
+          check: () => (S().lineTypes || []).some((l) => l.homerun) && allDone(traceZones(RE.hr, pts(G.homerun1), E101)) && !S().drawingPolyline,
+          progress: () => (S().drawingPolyline && allDone(traceZones(RE.hr, pts(G.homerun1), E101)) ? 'The path is in. Click Finish under the sheet to end the run' : ''),
           hint: () => { const lt = lineType(RE.hr); return lt && !lt.homerun ? 'The type exists: open its details and turn on Homerun' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeHomerun(); if (!polylinesOn(RE.hr, E101).length) tracePlan(lt, G.homerun1, 'Homerun, circuit 1', E101); const g = circuitOne(); void g; } } },
         { id: 'panelpoles', title: 'The panel knows its schedule', kind: 'do',
@@ -551,7 +555,7 @@
           onEnter: () => T().foldBidCheck(), hold: true, body: () => '1. In the left sidebar, click BID CHECK to expand it.\nRead the row ' + (S().bidCheckCollapsed === false ? '{{Voltage drop within 3% to the farthest device|.bid-check-row[data-row-id=voltage-drop]}}' : 'Voltage drop within 3% to the farthest device') + '. Voltage drop is the voltage a wire loses along its length, so the far end gets less.\nThe app walked the homerun and the chain to the receptacle farthest from LP-1. It assumed 12 A on the circuit, and it warns, naming the gauge that would pass.\nThe Code recommends no more than 3% on a branch circuit (NEC 210.19, informational note). A branch circuit runs from a panel out to its devices.\nThe rulebook chip carries the K constant it used, the number for copper\'s resistance in the formula.\nIs the engineer wrong?',
           target: ['.bid-check-row[data-row-id=voltage-drop]', '#bidCheckSectionTitle'], check: () => S().bidCheckCollapsed === false && !!bidRow('voltage-drop') && bidRow('voltage-drop').verdict !== 'na',
           // the homerun step passes on its last circle, so its run can still be a draft here, and a draft is on no circuit
-          hint: () => { const r = bidRow('voltage-drop'); if (S().drawingPolyline) return 'The homerun is still being drawn. Click Finish under the sheet to end it'; let touch = false; try { touch = window.matchMedia('(pointer: coarse)').matches; } catch (_) { touch = false; } return S().bidCheckCollapsed === false && r && r.verdict === 'na' ? 'Not judged yet. ' + r.detail + (touch ? ' Touch and hold' : ' Right-click') + ' the homerun and a west-wall receptacle, Assign to group, and pick the circuit' : ''; },
+          hint: () => { const r = bidRow('voltage-drop'); let touch = false; try { touch = window.matchMedia('(pointer: coarse)').matches; } catch (_) { touch = false; } return S().bidCheckCollapsed === false && r && r.verdict === 'na' ? 'Not judged yet. ' + r.detail + (touch ? ' Touch and hold' : ' Right-click') + ' the homerun and a west-wall receptacle, Assign to group, and pick the circuit' : ''; },
           action: { label: 'Open it', run: () => K().openBidCheck() } },
         { id: 'load', title: 'The load the engineer scheduled', kind: 'do',
           rules: ['elec.voltage-drop.branch-limit'],
@@ -628,7 +632,9 @@
                       : ['#polylineBtn', '#polylineBtnSidebar'];
             return T().ladder(...first, '#addLineType', '#polylineBtn', '#polylineBtnSidebar');
           },
-          check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)),
+          // finished, not only drawn (as the homerun step): the rise step after it takes no drop on a draft
+          check: () => K().someLineType(RE.emt2, (lt) => (lt.conductors || []).length >= 2) && allDone(traceZones(RE.emt2, pts(G.feeder), E101)) && !S().drawingPolyline,
+          progress: () => (S().drawingPolyline && allDone(traceZones(RE.emt2, pts(G.feeder), E101)) ? 'The path is in. Click Finish under the sheet to end the run' : ''),
           hint: () => { const lt = lineType(RE.emt2); return lt && !(lt.conductors || []).length ? 'The type exists: give it the conductors, 4 #3/0 THHN + 1 #6 G' : ''; },
           action: { label: 'Trace it for me', run: () => { const lt = makeFeeder(); if (!polylinesOn(RE.emt2, E101).length) tracePlan(lt, G.feeder, 'Feeder', E101); } } },
         { id: 'rise', title: 'The rise', kind: 'do', cardAt: 'br', page: E101, zones: () => K().guide([pts(G.feeder)[0]], 14, feederRiseOk()),
@@ -637,7 +643,7 @@
           target: ['#dropPanel', '#dropBtn'], check: feederRiseOk,
           // T4 (2026-09-27): the card names 8.5 ft, so a 5 ft drop (the old card's) no longer passes
           // (the feeder step passes on its last circle, so the feeder can still be a draft here, and a draft takes no drop)
-          hint: () => { if (S().drawingPolyline) return 'The feeder is still being drawn. Click Finish under the sheet to end it'; const d = feederDrop(); return d > 0 && !feederRiseOk() ? { code: 'wrong-value', text: 'The drop reads ' + (Math.round(d * 100) / 100) + ' ft. Type 8.5 in the Drop size palette, click Add, and click the end again' } : ''; },
+          hint: () => { const d = feederDrop(); return d > 0 && !feederRiseOk() ? { code: 'wrong-value', text: 'The drop reads ' + (Math.round(d * 100) / 100) + ' ft. Type 8.5 in the Drop size palette, click Add, and click the end again' } : ''; },
           action: { label: 'Add the 8.5 ft for me', run: () => { K().goPage(E101); if (!polylinesOn(RE.emt2, E101).length) tracePlan(makeFeeder(), G.feeder, 'Feeder', E101); K().dropAt(pts(G.feeder)[0], FEEDER_RISE_FT, E101); } } },
         { id: 'fill', title: 'Fill on the feeder', kind: 'do',
           rules: ['elec.conduit.fill-limit'],

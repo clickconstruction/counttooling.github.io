@@ -42,12 +42,12 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the six fixes; 6 is done, 2 is next.
+**Now:** the six fixes; 6 and 2 are done, 1 is next.
 
 ### The six fixes, before the pass
 
 - [ ] 1. The plumbing tour ends with two Bid Check warnings it never mentions: a Bid Check card, and a takeoff that passes.
-- [ ] 2. The electrical course's homerun and feeder steps pass while the run is still a draft: require the run finished.
+- [x] 2. The electrical course's homerun and feeder steps pass while the run is still a draft: require the run finished. DONE: both checks want no live draft; the circles still tick as the reader goes, and the card's line says "The path is in. Click Finish under the sheet to end the run".
 - [ ] 3. Each course's Chapter 0 follows Start here: one card per screen area, and no "how cards work" card.
 - [ ] 4. A card that opens with the last question's answer does two jobs: the answer shows on the question's own card.
 - [ ] 5. Cards about number keys have no tablet version: skipped on touch.

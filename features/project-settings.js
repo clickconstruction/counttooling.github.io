@@ -31,7 +31,11 @@
    * so a row it sets is never reset by the .supabase-only pass behind it. A
    * boot-time updateUI before this file loads skips it; the next one heals.
    *
-   * Registered: App.syncProjectSettingsRows, App.syncProjectSettingsChrome,
+   * The name line under the title is the rename control (renameProject is the one
+   * writer; App.openProjectRename is the bid chip menu's door to it).
+   *
+   * Registered: App.renameProject, App.openProjectRename, App.canRenameProject,
+   * App.syncProjectSettingsRows, App.syncProjectSettingsChrome,
    * App.groupsUiVisible, App.turnOnGroups and App.closeProject (bid-check.js,
    * duct-tool.js, the courses, lessons.js, tutorial.js, tour-blank.js,
    * turn-in.js and output.js read these names, and the specs drive them).
@@ -179,17 +183,113 @@
     if (toggle) toggle.setAttribute('aria-expanded', String(open));
     if (links) links.hidden = !open;
   }
-  function openProjectSettings() {
+  // Rename (reported 2026-09-28: "I am not finding where to rename a project under project
+  // settings"). The name had one door, the name field inside the Save dialog, which nothing
+  // on this card pointed at. Now the name line is the control: the name, then Rename, which
+  // turns the name into a field in place. The new name rides the next save like any other
+  // edit (the autosave's update writes `name`), so nothing here talks to the cloud.
+  const PROJECT_NAME_MAX = 120;
+  const projectOpen = () => !!(App.state.pages.length || App.state.currentProjectId);
+  // A sample set is found by its name (tutorial.js TEACHING_SETS): a tour or lesson resets
+  // a project that carries one, so a set keeps its name and no project may take one.
+  const isSampleName = (name) => !!(App.tourKit && App.tourKit.isTeachingSet && App.tourKit.isTeachingSet(name));
+  // null = Rename is not offered; 'checkout' = offered, and the click says to check out first.
+  function renameOffer() {
     const state = App.state;
-    setSettingsHelpOpen(false);
-    // The title stays "Project Settings"; the project name is the subtitle line under it
-    // (a long bid-set name used to wrap the title onto two lines).
-    const subEl = document.getElementById('settingsSubtitle');
-    if (subEl) {
-      const open = state.pages.length || state.currentProjectId;
-      subEl.textContent = open ? (state.currentProjectName || 'Untitled') : '';
-      subEl.style.display = open ? '' : 'none';
+    if (!projectOpen() || state.loadedViaViewLink || isSampleName(state.currentProjectName)) return null;
+    if (state.isViewer) return state.canCheckOut ? 'checkout' : null;
+    return 'rename';
+  }
+  // The one writer. Returns { ok, name } or { ok: false, reason }.
+  function renameProject(raw, opts) {
+    const state = App.state;
+    const name = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim().slice(0, PROJECT_NAME_MAX).trim();
+    if (renameOffer() !== 'rename') return { ok: false, reason: 'locked' };
+    if (!name) return { ok: false, reason: 'empty' };
+    if (isSampleName(name)) {
+      App.showToast('That name belongs to a sample plan. Pick another.', 4000);
+      return { ok: false, reason: 'reserved' };
     }
+    const before = state.currentProjectName || 'Untitled';
+    if (name === before) return { ok: true, name, changed: false };
+    state.currentProjectName = name;
+    App.markProjectDirty();
+    App.updateUI();
+    syncNameLine();
+    if (!(opts && opts.quiet)) App.showToast('Renamed to \u201c' + name + '\u201d.', 3000);
+    return { ok: true, name, changed: true };
+  }
+  const nameEls = () => ({
+    line: document.getElementById('settingsNameLine'),
+    sub: document.getElementById('settingsSubtitle'),
+    link: document.getElementById('settingsRenameProject'),
+    edit: document.getElementById('settingsRenameEdit'),
+    input: document.getElementById('settingsRenameInput'),
+  });
+  // The title stays "Project Settings"; the project name is the subtitle line under it
+  // (a long bid-set name used to wrap the title onto two lines).
+  function syncNameLine() {
+    const { line, sub, link, edit } = nameEls();
+    if (!sub) return;
+    const open = projectOpen();
+    const name = App.state.currentProjectName || 'Untitled';
+    if (edit) edit.hidden = true;
+    sub.textContent = open ? name : '';
+    sub.title = open ? name : '';
+    sub.style.display = open ? '' : 'none';
+    if (line) line.style.display = open ? '' : 'none';
+    if (link) {
+      const offer = renameOffer();
+      link.style.display = offer ? '' : 'none';
+      // A bid nobody named yet is asked for its name; one that has a name is renamed.
+      link.textContent = (App.state.currentProjectName || 'Untitled') === 'Untitled' ? 'Name this project' : 'Rename';
+    }
+  }
+  function startProjectRename() {
+    const { sub, link, edit, input } = nameEls();
+    if (!sub || !edit || !input) return;
+    const offer = renameOffer();
+    if (offer === 'checkout') { App.showToast('Check out the project to rename it.', 4000); return; }
+    if (offer !== 'rename') return;
+    const current = App.state.currentProjectName || 'Untitled';
+    input.value = current === 'Untitled' ? '' : current;
+    sub.style.display = 'none';
+    if (link) link.style.display = 'none';
+    edit.hidden = false;
+    input.focus();
+    input.select();
+  }
+  function endProjectRename(keep) {
+    const { edit, input } = nameEls();
+    if (!edit || !input || edit.hidden) return;
+    const value = input.value;
+    edit.hidden = true;   // first: the blur this causes must find the edit already over
+    if (keep) renameProject(value);
+    syncNameLine();
+  }
+  bindClick('settingsRenameProject', startProjectRename);
+  // Save: the field's blur has kept the name by the time this click lands; the
+  // handler is for a press that reaches the button with the field never focused.
+  bindClick('settingsRenameSave', () => endProjectRename(true));
+  (function bindRenameInput() {
+    const input = document.getElementById('settingsRenameInput');
+    if (!input) return;
+    input.addEventListener('blur', () => endProjectRename(true));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); endProjectRename(true); }
+      // Esc ends the edit and stops there: the ladder (features/esc-ladder.js) would close the dialog.
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); endProjectRename(false); }
+    });
+  })();
+  // The second door (the header bid chip's menu): Project Settings, with the name already a field.
+  function openProjectRename() {
+    openProjectSettings();
+    startProjectRename();
+  }
+
+  function openProjectSettings() {
+    setSettingsHelpOpen(false);
+    syncNameLine();
     document.body.classList.remove('sidebar-open');
     // Declared inside app.js's SUPABASE_ENABLED block (it hides the section itself when off).
     if (App.SUPABASE_ENABLED && App.updateSettingsCheckoutSection) App.updateSettingsCheckoutSection();
@@ -333,4 +433,7 @@
   App.groupsUiVisible = groupsUiVisible;
   App.turnOnGroups = turnOnGroups;   // D17: the duct surfaces' "Turn on groups" link
   App.closeProject = closeProject;
+  App.renameProject = renameProject;
+  App.openProjectRename = openProjectRename;
+  App.canRenameProject = () => renameOffer() === 'rename';
 })();

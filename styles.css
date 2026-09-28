@@ -846,6 +846,13 @@
     .settings-card-header { align-items: flex-start; }
     .settings-title-block { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
     .settings-subtitle { font-size: 0.85rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* The name line: the name, then Rename; the field takes the line while the name is edited. */
+    .settings-name-line { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 30px; margin-top: 2px; }
+    .settings-name-line .settings-subtitle { min-width: 0; flex: 0 1 auto; }
+    #settingsModal .settings-rename-link { flex: 0 0 auto; padding: 4px 2px; line-height: 1.2; white-space: nowrap; }
+    .settings-rename-edit { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+    .settings-rename-edit[hidden] { display: none; }
+    .modal-card input.settings-rename-input { flex: 1; min-width: 0; width: auto; padding: 5px 8px; font-size: 0.85rem; font-family: inherit; line-height: 1.2; border-radius: 6px; }
     .settings-status-strip { display: flex; align-items: center; gap: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; min-height: 40px; }
     .settings-status-dot { width: 8px; height: 8px; flex-shrink: 0; }
     .settings-checkout-status { margin: 0; flex: 1; min-width: 0; font-size: 0.8rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -943,6 +950,9 @@
       .settings-project-row-stack .settings-project-row-control .make-up-label { flex: 1; }
       .modal-card .settings-code-cell select { min-height: 44px; }
       #settingsModal .settings-project-row-stack .settings-project-row-control input[type="text"] { width: 100%; }
+      /* 16px keeps iOS from zooming the page when the field takes focus. */
+      #settingsModal .settings-rename-link { padding: 10px 6px; }
+      .modal-card input.settings-rename-input { font-size: 16px; min-height: 40px; }
     }
     @media (max-width: 480px) {
       /* Three mono editions do not fit across a phone; one labelled select per line. */

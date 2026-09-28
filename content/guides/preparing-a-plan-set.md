@@ -1,7 +1,7 @@
 ---
 title: Preparing a plan set
 description: Get a bid set ready to count: upload PDFs, trim to just your sheets, rotate and rename pages, and add addendum sheets without losing work.
-updated: 2026-09-27
+updated: 2026-09-28
 order: 1.5
 icon: move
 category: Getting started
@@ -25,6 +25,7 @@ When a fresh PDF comes in, the **Trim your set** dialog lets you shape the set b
 - **Zoom into a sheet**: the magnifier on a kept tile opens the full-size view of that sheet, where **Rotate** [[rotate]] and per-sheet renaming live; **‹ All sheets** returns to the grid with your changes reflected. (You can also rotate any page later with `R`; your marks rotate with the page.)
 - **Rotate** [[rotate]]: in the zoomed sheet view, turn a sideways-scanned sheet 90° at a time so it reads correctly.
 - **Rename pages**: the name field at the top renames the project or, in the zoomed sheet view, the sheet you're on ("P-201 Underground" instead of "Page 47"). You can rename later from the Pages list too: double-click the sheet's name, or click its number badge.
+- **Rename the project later**: open **Project Settings** (the gear in the header). The project's name sits under the title with **Rename** beside it: click it, type the new name, and press Enter. The bid menu at the top left has the same door, **Rename this bid…**. The new name is saved with your next save, and a project somebody else has checked out is renamed after you check it out.
 - **Open**: commit the trimmed set and start counting. Signed in, **Save & open** beside it does the same and also saves the set to your cloud projects in one click. **Download Trimmed PDF** saves the cut-down set as its own file if you want it outside the app.
 
 ## Add pages later (addenda)

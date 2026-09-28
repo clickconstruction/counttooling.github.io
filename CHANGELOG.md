@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tour): the ring follows the Create Line Type form, and the card keeps off the + Add it lights (2026-09-28)
+
+wendi, on the blank-sheet tour's line type card: "have not named the line or picked a color but
+create line type is already highlighted, making the rest greyed out. confusing". Two faults on one
+card.
+
+- **The ring was a step ahead.** The card's target was the Create Line Type button from the moment
+  the dialog opened, so the Name field its second line asks for was dimmed with the rest. The
+  tourKit has `lineTypeFormTargets(nameRe)`, the twin of `counterFormTargets`: Name until it reads
+  what the card says to type, then the button, and + Add while the form is not up. Four cards used
+  the fixed target and now use it: the blank tour's `linetype` (Pipe), the plumbing course's hot
+  water return (HWR), the electrical course's `homerun` (HR) and `feeder` (2in EMT). The electrical
+  tour's line type card already walked its form this way.
+- **The card sat on the button it lit.** A step with circles on the sheet takes the first corner
+  clear of them, and the lit control was only weighed against that corner when the step named
+  OTHER controls on screen. With + Add the only one, the card took the bottom-left corner, over
+  the sidebar and over + Add (1280 x 720, in a plain walk and after a jump). features/tutorial.js
+  now weighs the lit control whenever the circles picked the corner; the card takes the corner
+  that covers no control and the sheet pans its circles clear, as it already did elsewhere.
+
+Pinned by tutorial.spec.js "the line type card lights + Add, then Name until it reads Pipe, then
+Create Line Type", at 1280 x 720. The colour row stays dimmed while Name is lit, as the symbol and
+colour do on the counter cards: picking one is optional, and the ring names the one thing that
+moves the step on.
+
 ## feat(learn): the card pass: the six fixes, then every card one at a time (2026-09-28)
 
 The card review left six fixes and a list for Will. He said to make the six, then to go through

@@ -550,7 +550,7 @@
           // The controls the card names follow whatever is lit, so the card keeps off them all.
           target: () => {
             const lt = lineType(RE.hr), g = circuit1(), s = S(), path = allDone(traceZones(RE.hr, pts(G.homerun1), E101));
-            const first = !lt ? ['#lineTypeCreate', '#addLineType']
+            const first = !lt ? T().lineTypeFormTargets(RE.hr)
               : !lt.homerun ? ['#lineTypeHomerunBtn', T().pencilOf('lineType', lt)]
                 : K().modalUp('counterLineTypeDetailsModal') ? ['#counterLineTypeDetailsClose']
                   : s.drawingPolyline ? [path ? '#finishPolyline' : null, '#annCanvas']
@@ -656,7 +656,7 @@
           target: () => {
             if (!K().onPage(E101)) return ['#pagesList'];
             const lt = lineType(RE.emt2), path = allDone(traceZones(RE.emt2, pts(G.feeder), E101));
-            const first = !lt ? ['#lineTypeCreate', '#addLineType']
+            const first = !lt ? T().lineTypeFormTargets(RE.emt2)
               : !(lt.conductors || []).length ? ['#conductorsSpec', '#racewayKind', T().pencilOf('lineType', lt)]
                 : K().modalUp('counterLineTypeDetailsModal') ? ['#counterLineTypeDetailsClose']
                   : S().drawingPolyline ? [path ? '#finishPolyline' : null, '#annCanvas']

@@ -1645,9 +1645,13 @@
       // never looked at the rest: found by hand 2026-09-24, the GFCI step points at the
       // sheet, its first line says click COUNTERS + Add, and the top-left card sat on
       // that button. The first corner clear of every box wins; none clear, it stays.
+      // The lit control counts with them even when it is the only one on screen: a corner picked
+      // for the circles never looked at it, and the blank tour's line type card sat on the + Add
+      // it lit (1280 x 720, 2026-09-28).
       const ctl = otherControlBoxes(step, target, openModal);
-      if (ctl.length) {
-        const controls = ctl.concat(r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }]);
+      const pointedBox = r.width * r.height > vw * vh * 0.4 ? [] : [{ x1: r.left, y1: r.top, x2: r.right, y2: r.bottom }];
+      if (ctl.length || (zs.length && pointedBox.length)) {
+        const controls = ctl.concat(pointedBox);
         const hits = (c, boxes) => boxes.filter((b) => c.left < b.x2 + 12 && c.left + cw > b.x1 - 12 && c.top < b.y2 + 12 && c.top + ch > b.y1 - 12).length;
         if (hits(place, controls) || hits(place, zs)) {
           // The corner covering the fewest named controls, then the fewest sheet targets: a
@@ -1809,6 +1813,14 @@
     const todo = (n && nameRe.test(n.value || '') ? [] : ['#counterName'])
       .concat((fields || []).filter((sel) => { const f = document.querySelector(sel); return !!f && !String(f.value || '').trim(); }));
     return todo.slice(0, 1).concat(['#counterCreate', '#counterModal .counter-tab[data-tab="create"]', '#addCounter']);
+  }
+  // The Create Line Type form's ladder, the counter form's twin: Name until it reads what the card
+  // says to type, then Create Line Type; + Add when the form is not up yet. The ring sat on the
+  // button from the moment the dialog opened, and the Name field the card asks for first was
+  // dimmed with the rest (wendi, 2026-09-28).
+  function lineTypeFormTargets(nameRe) {
+    const n = document.getElementById('lineTypeName');
+    return (n && nameRe.test(n.value || '') ? [] : ['#lineTypeName']).concat(['#lineTypeCreate', '#addLineType']);
   }
   // A step's target ladder: an array of selectors, or a function returning one when what to
   // light depends on the form. The create-a-counter steps light Name until a name is typed, then
@@ -2273,7 +2285,7 @@
   // What a step needs to read the app and to do a thing for the reader, shared with
   // features/lessons.js so a lesson's "Do it for me" goes through the same doors.
   App.tourKit = { markCount, measuredFeet, openPlanFile, TEACHING_SETS, isTeachingSet, leaveForTeachingSet, applyScalePreset, pushCounter, placeMarkers, pushLineType, chainPoints, firstIcon, customIcon,
-    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, bidCheckRows, allDone, grow, norm, inCircle, markersOf, counterFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
+    markZones, strayMarks, boxZone, boxMiss, pathZones, measureProof, foldBidCheck, bidCheckRows, allDone, grow, norm, inCircle, markersOf, counterFormTargets, lineTypeFormTargets, pencilOf, ladder, summaryRowOf, pagesFoldedHint,
     lastSheetClick: () => lastSheetClick };   // the last click on the sheet, with the tool armed as it landed (lesson 0's not-armed miss)
   // SPEC AND SCREENSHOT SEAM, never a control: performs the current step the way the old
   // "Do it for me" did, through the same App.* doors, so a spec can build a real takeoff

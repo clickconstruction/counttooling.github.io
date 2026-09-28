@@ -498,7 +498,7 @@
     {
       id: 'linetype', title: 'Header: Quick Line', kind: 'do',
       body: () => 'A run is a length of pipe, wire or duct (air pipe) you trace. A line type is one kind of run: it is to a run what a counter is to a mark.\n1. In the left sidebar, under LINE TYPES, click {{+ Add|#addLineType}}.\n2. In Name, type Pipe. Pick a colour.\n3. Click [[Create Line Type]].\n4. The line tool arms itself. ' + press() + ' the centre of one circle, then the other.\nA run\'s footage, its length in feet, is measured between your two clicks. So these circles are tight: aim, or zoom in first.\nThe run should read about ' + ftText(LINE_FT) + ' beside Pipe in the sidebar.\n[[Quick Line]] in the header (or press L) arms the tool again after you use another.',
-      target: () => (lineType() ? ['#quickLine', '#annCanvas'] : ['#lineTypeCreate', '#addLineType']), page: 0,
+      target: () => (lineType() ? ['#quickLine', '#annCanvas'] : K().lineTypeFormTargets(/pipe/i)), page: 0,   // Name, then the button, as the card's lines run
       zones: () => LINE.map((p) => ({ kind: 'circle', x: p.x, y: p.y, r: LINE_R, done: lineClose() })),
       check: () => !!lineType() && lineClose(),
       hint: () => { const l = lineRun(); if (!l || lineClose()) return ''; return 'That run reads ' + ftText(lineFeet(l)) + ', not ' + ftText(LINE_FT) + '. ' + undoIt() + ' and land closer to the centres'; },

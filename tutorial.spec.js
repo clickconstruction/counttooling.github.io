@@ -900,7 +900,7 @@ test.describe('Every button, on a blank sheet', () => {
       expect(seen.note.lit).toEqual({ onScreen: true, under: 'noteBtn' });
       expect(seen.note.body).toContain('More actions');   // the ledger's tablet door is the ☰
       expect(seen.quickkeys.body).toContain('Beside Quick keys, tap Edit');
-      expect(seen.snap.body).toContain('Line Type Settings opens');
+      expect(seen.snap.body).toContain('Line Type Settings, the gear beside LINE TYPES');
       expect(seen.drop.body).toContain('More actions');
       expect(seen.layers.body).toContain('+ Add layer');
       expect(seen.zoom.body).toContain('Pinch');

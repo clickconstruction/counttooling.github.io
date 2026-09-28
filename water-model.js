@@ -393,19 +393,37 @@ function waterServedByRun(fixtures, runs, opts) {
 // Branch links: a run whose FIRST vertex lands within snap of another run of
 // the SAME side is that parent's child (a branch tapped off a main). Returns
 // [{ childId, parentId, s }], s = arclength along the parent. Nearest wins.
+//
+// WATER-TAP (2026-09-27), duct-model's ductTapParentOf guard twinned: two runs
+// that LEAVE ONE POINT are siblings, both roots. Each first vertex lies on the
+// other run, so the bare rule made each the other's child and each run carried
+// both loads. A candidate parent whose own first vertex sits within snap of
+// the child's is skipped. Runs drawn head to tail round a loop can still point
+// at each other, so a link that would close a cycle is dropped (the first run
+// in list order to reach it keeps its parent): the links are always a forest,
+// and no run's load is counted on its own upstream.
 function waterChildLinks(runs, opts) {
   const snap = opts && opts.snapDist > 0 ? opts.snapDist : WATER_ATTACH_SNAP_PDF;
   const list = (runs || []).filter((r) => r && (r.vertices ? r.vertices.length : 0) >= 2);
   const out = [];
+  const parentOf = new Map();
   list.forEach((child) => {
     const start = child.vertices[0];
     let best = null;
     list.forEach((parent) => {
       if (parent === child || parent.id === child.id || parent.side !== child.side) return;
+      const p0 = parent.vertices[0];
+      if (Math.hypot(p0.x - start.x, p0.y - start.y) <= snap) return;   // siblings off one point
       const hit = waterNearestOnPolyline(start, parent.vertices);
       if (hit.dist <= snap && (!best || hit.dist < best.dist)) best = { childId: child.id, parentId: parent.id, s: hit.s, dist: hit.dist };
     });
-    if (best) out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
+    if (!best) return;
+    // a loop: the parent already hangs (at any depth) off this child
+    for (let up = best.parentId, guard = 0; up != null && guard <= list.length; up = parentOf.get(up), guard++) {
+      if (up === child.id) return;
+    }
+    parentOf.set(child.id, best.parentId);
+    out.push({ childId: best.childId, parentId: best.parentId, s: best.s });
   });
   return out;
 }

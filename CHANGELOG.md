@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## test(lessons): the undo card's click waits for the sheet to stand still (FLAKE-START-UNDO, 2026-09-28)
+
+Punch row FLAKE-START-UNDO, explained by the 2026-09-28 map (T01) and closed here. The tour
+engine focuses the sheet onto a step's circles on a 60 ms timer after the step opens
+(features/tutorial.js `focusOnZones`; a jump under Playwright, still 60 ms late). The spec's
+`circle()` read the circle's screen point as soon as one existed, which is true at step entry,
+and clicked 60 px above it. When the timer fired between the read and the click, the click
+landed at a stale point, placed no mark, and the line stayed on "Click outside the circle first",
+the row's exact symptom.
+
+- **Fix**: one helper in lessons.spec.js, `viewStill(page)` (the view's zoom and pan unchanged
+  for 700 ms), read by `circle()` before it returns and by the Fixing lesson's right-click
+  site, which already had the same wait inline.
+- **Run**: the Start-here test 20 of 20 at 4 workers, the row's own reproduction. No app code
+  changed. FLAKE-WATER-FIELD stays open: reading its path found nothing deferred, so it waits
+  for a trace from a failing run.
+
 ## fix(measure): the dashed band follows the mouse after the first click (MEASURE-BAND, 2026-09-28)
 
 Punch row MEASURE-BAND, the 2026-09-27 map's N08. On a desktop, Measure drew its dashed band from

@@ -47,7 +47,7 @@
       row.className = 'manage-icon-row';
       row.dataset.iconPath = ic.value;
       const currentName = state.iconNames && state.iconNames[ic.value] !== undefined ? state.iconNames[ic.value] : ic.name;
-      row.innerHTML = '<span class="icon-svg"><svg viewBox="' + App.iconVbFor(ic.value) + '" width="24" height="24"><path fill="var(--accent)" d="' + ic.value + '"/></svg></span><input type="text" value="' + esc(currentName) + '" placeholder="' + esc(ic.name || 'Icon') + '"><div class="icon-move-btns"><button type="button" title="Move up" data-action="up">↑</button><button type="button" title="Move down" data-action="down">↓</button><button type="button" title="Send to top" data-action="top">⏫</button><button type="button" title="Send to bottom" data-action="bottom">⏬</button></div>';
+      row.innerHTML = '<span class="icon-svg"><svg viewBox="' + esc(App.iconVbFor(ic.value)) + '" width="24" height="24"><path fill="var(--accent)" d="' + esc(ic.value) + '"/></svg></span><input type="text" value="' + esc(currentName) + '" placeholder="' + esc(ic.name || 'Icon') + '"><div class="icon-move-btns"><button type="button" title="Move up" data-action="up">↑</button><button type="button" title="Move down" data-action="down">↓</button><button type="button" title="Send to top" data-action="top">⏫</button><button type="button" title="Send to bottom" data-action="bottom">⏬</button></div>';
       listEl.appendChild(row);
       row.querySelectorAll('.icon-move-btns button').forEach(btn => {
         btn.onclick = () => {

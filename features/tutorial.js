@@ -1276,7 +1276,10 @@
                              // reader may scroll away freely
   // Step bodies name controls the way they look on screen: [[+ Add]] renders as a
   // button-shaped chip (.tour-ui). Everything else is escaped text.
-  const escapeText = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // XSS-COLOR sweep: the canonical escaper, quotes included. A step body can carry a
+  // project's counter name (lessons.js), and chipsOf copies a [label](/path) path into
+  // href="…", so a quote must never survive into it.
+  const escapeText = (s) => App.escapeHtml(String(s));
   // [Guide name](/guides/slug/) is a link that opens beside the app (site paths only).
   // A chip knows its control (Will, 2026-09-27): where [[Set Scale]] names a control on screen, the chip
   // wears that control's own icon beside the name, and a click on the chip lights the control the way

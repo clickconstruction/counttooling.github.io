@@ -163,6 +163,7 @@ supabase functions deploy get-view-project
 supabase functions deploy set-view-scale
 supabase functions deploy twin-login
 supabase functions deploy manage-user
+supabase functions deploy import-takeoff   # the agent takeoff door, TAKEOFF_IMPORT.md
 ```
 
 (Or run `./deploy-admin-functions.sh`, which deploys the admin functions with `--no-verify-jwt`.)

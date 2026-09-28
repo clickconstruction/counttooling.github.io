@@ -21,6 +21,17 @@
   to answer "what is still open?"; write to it per "Recording a to-do" below.
 - [SUPABASE_SETUP.md](SUPABASE_SETUP.md) — cloud setup, migrations, Edge Functions.
 - [CUSTOM_ICONS.md](CUSTOM_ICONS.md) — bundled vs user-uploaded icons.
+- [TAKEOFF_IMPORT.md](TAKEOFF_IMPORT.md) — the `takeoff.json` contract behind the
+  `import-takeoff` Edge Function (the agent door for a headless takeoff).
+- [JOURNEY-MAP.md](JOURNEY-MAP.md) — the UX counterpart of the decomposition map:
+  every route through the app, in tiers. Priority lives here, not in the punch list.
+- `journeys/plans/` — one plan file per piece of work (`WATER-PLAN.md`,
+  `LANDING-REFRESH.md`, the tester dossiers, `_TODO.md` for the save/sync review,
+  `_NEXT.md`): the detail a PUNCHLIST row points at.
+- Product copy, not agent instructions: [FEATURES.md](FEATURES.md) (one line per
+  feature), [FEATURE-CATALOG.md](FEATURE-CATALOG.md) (the same with the problem each
+  solves), [VALUE-NARRATIVES.md](VALUE-NARRATIVES.md) (demo scripts), and
+  [GUIDES-PLAN.md](GUIDES-PLAN.md) (the Help articles still to write).
 
 ## Tech constraints
 
@@ -162,51 +173,73 @@
     `*.test.js` can `require()` it under `node --test`. Where a helper needs
     `state`-derived values, the pure function takes them as arguments and
     app.js keeps a same-named thin wrapper that resolves and delegates (so
-    call sites and the report.js `window.*` contract never changed):
+    call sites and the report.js `window.*` contract never changed). In the
+    shell's tag order (the live list is `grep '<script src' app/index.html`;
+    one row each in the ARCHITECTURE.md Files table):
     [icons.js](icons.js) (bundled icon data: `*_PATH` consts,
     `VB_384_512_PATHS`, `FA_PATHS`, `RING_PATH`, `ICONS`),
     [icons-custom.js](icons-custom.js) (the GENERATED `CUSTOM_ICONS` array —
     `npm run build:icons` overwrites it wholesale; loads right after icons.js),
+    [icon-render.js](icon-render.js) (icon geometry/render-rule helpers),
     [geometry.js](geometry.js) (pure math/geometry/parse primitives),
-    [constants.js](constants.js) (pure constant literals — `TOOL`,
-    `SCALE_MODES`, `COLORS`, `SCALE_PRESETS`, timing/threshold blocks, IDB
-    store names — plus `nextRecentColors`; env reads and icon-derived consts
-    stay in app.js), [idb.js](idb.js) (IndexedDB storage layer; loads after
-    constants.js), [format.js](format.js) (User Activity date/text
-    formatters; after constants.js), [icon-render.js](icon-render.js) (icon
-    geometry/render-rule helpers; after icons.js),
-    [line-metrics.js](line-metrics.js) (line length/scale math; after
-    geometry.js), [conductor-model.js](conductor-model.js) (the pure raceway /
-    conductor model — spec parsing, wire and cable rows, tick layout; after
-    line-metrics.js; exposed as `window.ConductorModel`), [circuit-model.js](circuit-model.js)
+    [line-metrics.js](line-metrics.js) (line length/scale math), then the
+    trade models, each exposed as a `window.*Model` namespace:
+    [conductor-model.js](conductor-model.js) (the pure raceway /
+    conductor model — spec parsing, wire and cable rows, tick layout;
+    `window.ConductorModel`), [circuit-model.js](circuit-model.js)
     (the pure circuit model — tag, run graph, farthest device, panel
     cross-check; `window.CircuitModel`), [bid-check-model.js](bid-check-model.js) (the
     pure Bid Check rule table — NEC fill / voltage-drop arithmetic, the manual
     rows; `window.BidCheckModel`), [tag-model.js](tag-model.js) (the pure text-layer
     reading model — tag tokens, nearest tag, schedule rows; `window.TagModel`),
-    [quick-keys-model.js](quick-keys-model.js) (the pure core of the Quick Keys
-    dialog: the armed key, loose name matching, the list's order; `window.QuickKeysModel`),
-    [status-hint-model.js](status-hint-model.js) (the pure status-bar tool hint:
+    [sheet-title-model.js](sheet-title-model.js) (a sheet's number and title read
+    off its title block), [support-model.js](support-model.js) (hanger spacing and
+    supports per run), [water-model.js](water-model.js) (the water-sizing tables and
+    the fixture-unit walk, WATER-PLAN), [fitting-model.js](fitting-model.js)
+    (fittings from a run's bends), [duct-model.js](duct-model.js) (the duct
+    run/size/fitting model, gauge and weight tables, the air layer),
+    [bid-basis-model.js](bid-basis-model.js) (the Bid basis handoff's parser and
+    filename), [status-hint-model.js](status-hint-model.js) (the pure status-bar tool hint:
     `toolHintFor` returns `{ text, keyed }` with the live readouts passed in, shown
-    signed in and signed out; `window.StatusHintModel`), [canvas-legend.js](canvas-legend.js)
+    signed in and signed out; `window.StatusHintModel`); then the draw and raster
+    seams: [canvas-legend.js](canvas-legend.js)
     (the sheet legend and the grid overlay, `createCanvasLegend(deps)`; split out of
     canvas-draw.js in R24, loads right before it and is composed by it, so its keys
     ride `canvasDraw.*`), [canvas-draw.js](canvas-draw.js) (the unified annotation
     draw core — `createCanvasDraw(deps)` + `drawAnnotationsCore(ctx, ann, env)`;
     both `renderAnnotations` and `renderAnnotationsToContext` are thin
-    env-builders over it, so a new mark kind is drawn once; after geometry.js +
-    icons.js; guarded by the [render-pixels.spec.js](render-pixels.spec.js)
+    env-builders over it, so a new mark kind is drawn once;
+    guarded by the [render-pixels.spec.js](render-pixels.spec.js)
     pixel baselines), [render-service.js](render-service.js) (the raster
     seam — every pdf.js raster flows through `createRenderService(deps)`;
     main-thread or the [render-worker.js](render-worker.js) render worker,
     chosen automatically with lazy doc adoption + session fallback; the
     worker file is NOT a script tag — it's `new Worker('/render-worker.js')`,
-    but IS precached), [save-utils.js](save-utils.js) (pure save/sync helpers),
-    [save-engine.js](save-engine.js) (the save/sync engine module —
+    but IS precached); then the literals and the small behavior cores split out
+    of them: [constants.js](constants.js) (pure constant literals — `TOOL`,
+    `SCALE_MODES`, `COLORS`, `SCALE_PRESETS`, timing/threshold blocks, IDB
+    store names, the display-settings defaults; env reads and icon-derived consts
+    stay in app.js), [zoom-ladder.js](zoom-ladder.js) (the zoom rungs),
+    [hotkeys.js](hotkeys.js) (the `HOTKEYS` table, a build input: see Hotkeys below),
+    [recent-colors.js](recent-colors.js) / [recent-drops.js](recent-drops.js) /
+    [recent-bids.js](recent-bids.js) (the three newest-first recent lists,
+    `nextRecentColors` / `nextRecentDrops` / `nextRecentBids`),
+    [quick-keys-model.js](quick-keys-model.js) (the pure core of the Quick Keys
+    dialog: the armed key, loose name matching, the list's order; `window.QuickKeysModel`);
+    then storage and save: [idb.js](idb.js) (IndexedDB storage layer),
+    [format.js](format.js) (User Activity date/text formatters),
+    [save-utils.js](save-utils.js) (pure save/sync helpers),
+    [annotation-model.js](annotation-model.js) (`makeAnnotations`, the canvas
+    accessors, the mark-presence predicate, the project-field lists and the two
+    hydrators every intake calls, R12), [undo-stack.js](undo-stack.js) (the undo/redo
+    command history, a controller whose ctx carries the three UI hooks undo and redo
+    invoke), [save-engine.js](save-engine.js) (the save/sync engine module —
     `createSaveEngine(ctx)`; app.js instantiates it with live-value
-    accessors and keeps same-named wrappers; staged extraction, Stage 1:
-    global force reload + checkout keep-alive).
-  - [app.js](app.js) — the main IIFE (~8.6k lines), the bulk of the app
+    accessors and keeps same-named wrappers), and
+    [pdf-tile-cache.js](pdf-tile-cache.js) (the raster-cache substrate: the
+    page-bitmap LRU, the downsample pyramid, the persisted zoom rungs and the idle
+    prefetcher and warm-up walk behind the raster seam).
+  - [app.js](app.js) — the main IIFE (~7.1k lines), the bulk of the app
     logic. Resolves the sibling modules' values by bare name, publishes the
     shared surface onto the `window.App` registry near its tail
     (`// SECTION: App feature registry`), and exposes its own helpers to
@@ -242,18 +275,14 @@
   pure helpers; keep both guards when editing the IIFE's tail.
 - jsPDF for Export PDF; html2canvas for report-to-PDF.
 - **Tests**: `npm test` runs the Playwright end-to-end specs; `npm run test:unit`
-  runs the Node unit tests ([geometry.test.js](geometry.test.js),
-  [constants.test.js](constants.test.js), [report.test.js](report.test.js),
-  [save-utils.test.js](save-utils.test.js), [idb.test.js](idb.test.js),
-  [format.test.js](format.test.js), [icon-render.test.js](icon-render.test.js),
-  [line-metrics.test.js](line-metrics.test.js),
-  [canvas-draw.test.js](canvas-draw.test.js), [canvas-legend.test.js](canvas-legend.test.js),
-  [render-service.test.js](render-service.test.js),
-  [save-engine.test.js](save-engine.test.js),
-  [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js),
+  runs every root `*.test.js` under `node --test` (44 files: one beside each pure
+  module, one per generator and check script, and the contract tests such as
   [teaching-labels.test.js](teaching-labels.test.js) (every `[[control]]` a tour or lesson names exists in
-  the shell, and no guide uses a label in its `RETIRED` list: rename a control, add the old name there)) via
-  `node --test`. All are dependency-free except [idb.test.js](idb.test.js),
+  the shell, and no guide uses a label in its `RETIRED` list: rename a control, add the old name there),
+  [log-user-event-allowlist.test.js](log-user-event-allowlist.test.js),
+  [guides.test.js](guides.test.js), [rules.test.js](rules.test.js) and
+  [playwright-config.test.js](playwright-config.test.js); each has a row in the
+  ARCHITECTURE.md Files table). All are dependency-free except [idb.test.js](idb.test.js),
   which uses the `fake-indexeddb` devDependency, and
   [annotation-model.test.js](annotation-model.test.js), whose round-trip case reads the
   payload builders' key lists with `espree` (eslint's parser, the same as
@@ -281,7 +310,7 @@
   `App.*` read names something nothing registers; see
   [scripts/build-projectmap.js](scripts/build-projectmap.js))
   + `build:macros --check` (the Macros table rows in app/index.html are
-  generated from `HOTKEYS` in constants.js — edit the table there, then run
+  generated from `HOTKEYS` in hotkeys.js — edit the table there, then run
   `npm run build:macros` AND `npm run build:sw`)
   + `build:guides --check` + `build:rules --check`
   + `build:icons --check` (D18: [icons-custom.js](icons-custom.js) must match
@@ -377,7 +406,10 @@
   `profiles.is_digital_twin` required; see PipeTooling's `docs/DIGITAL_TWINS_PLAN.md`),
   `manage-user` (the CT↔PT user bridge — PipeTooling is the system of record for
   people and commands account provisioning/flagging/retirement here over
-  `X-Bridge-Secret` / `CT_MANAGE_USER_SECRET`; server→server only, never a browser);
+  `X-Bridge-Secret` / `CT_MANAGE_USER_SECRET`; server→server only, never a browser),
+  `import-takeoff` (the agent door for a headless takeoff: an agent POSTs a
+  `takeoff.json` and the marks land as a normal, twin-owned project; contract in
+  [TAKEOFF_IMPORT.md](TAKEOFF_IMPORT.md), scorer in takeoff-eval.js);
   `admin-reassign-projects` +
   `admin-delete-user` share the `_shared/reassignProjects.ts` ownership-move
   engine). Config via `config.js` (see
@@ -396,7 +428,7 @@
 
 1. Read [RECONSTITUTE.md](RECONSTITUTE.md) for the core model, then
    [ARCHITECTURE.md](ARCHITECTURE.md) for the code map and feature catalog.
-2. **Do not trust line numbers** — [app.js](app.js) is ~8.6k lines. Navigate
+2. **Do not trust line numbers** — [app.js](app.js) is ~7.1k lines. Navigate
    by `// SECTION:` markers (`rg "^\s*// SECTION:" app.js`) and the grep-pattern
    table in ARCHITECTURE.md.
 3. Prefer targeted reads (with offset/limit) over loading the whole file.
@@ -499,7 +531,7 @@
 
 ### `window.App` registry (splitting app.js)
 
-`app.js` is one ~8.6k-line IIFE, so feature code that moves to a separate
+`app.js` is one ~7.1k-line IIFE, so feature code that moves to a separate
 `<script>` cannot see its closure-locals by bare name. The `window.App` registry
 is the bridge for incremental splits (full contract + extraction recipe in
 [ARCHITECTURE.md](ARCHITECTURE.md) "Feature files / `window.App` registry").
@@ -588,14 +620,24 @@ picker and the Create Counter / Create Line Type pickers), `iconNames`,
 `paletteInsightsMinProjects` (the Palette Insights min-projects threshold),
 `loadProjectFiltersExpanded`, `loadProjectAdvanced` (admin-only; shows the Load
 Project rows' "Who has access" block), `plumbingModifiers` (includes `iconByType`; since S1 also `profiles[trade]` — the electrical / HVAC Quick profiles, each `sizes`/`types`/`materials`/`iconByType`/`mountByType`/`defaultColor` — and `defaultTrade`, the device's default for new projects; the whole blob rides `user_airboard.plumbing_modifiers`),
-`lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` / `clickcount-tour-done-plumbing` / `clickcount-tour-done-hvac` (the electrical / plumbing / HVAC walkthrough was finished on this device — hides that tour's empty-canvas link; the whole offer goes when all three are set),
+`lineModifiers`, `specificPagesIncludeReport`, `clickcount-tour-done` / `clickcount-tour-done-plumbing` / `clickcount-tour-done-hvac` / `clickcount-tour-done-blank` (the electrical / plumbing / HVAC / blank-sheet walkthrough was finished on this device — hides that tour's empty-canvas link),
+`clickcount-tour-blank-step` (the blank-sheet tour's current step, written by the engine's onStep hook and cleared on Finish, so the next start can offer "Pick up at step N"; features/tour-blank.js),
 `clickcount-lessons-done` (Learn: `{ <lessonId>: ISO }`, the lessons finished on this device; features/lessons.js),
+`clickcount-course-done` (the ONE progress map every course shares, `{ '<trade>:<chapterId>': ISO }`; kept in features/lessons.js beside the lessons' so `App.courseDone` answers whichever course loaded, R16),
 `clickcount-lesson-device-before` (the reader's sidebar filter, Snap and search words as a lesson found them; written when a lesson starts, removed when it stops, and put back on the next load when a reload or a closed tab skipped the stop; features/lessons.js. The blank tour takes the same snapshot without the search words, `lessonKit.rememberDevice({ searches: false })`, since a tour's words ride `clickcount-tour-searches-before`),
 `clickcount-tour-searches-before` (the same for a TOUR's sidebar search words: cleared while the five-minute or blank tour runs, typed back when it stops or on the next load; features/tutorial.js),
 `clickcount-lesson-palette` (LEARN-LEAK: `{ standing, made }`, the palette ids that stood when a lesson's, course's or tour's sheets opened and the ones made while they were open; the made ones are removed when the reader leaves the sheets, even after a reload mid-lesson; features/lessons.js),
 `clickcount-last-project`,
 `clickcount-last-global-reload`, `clickcount-debug-save` (Save Status Verbose
-mode), `clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,
+mode), `clickcount-save-error` (the last failed manual save's `{ msg, details, hint, code }`,
+written by save-engine.js for support; wiped by the sign-out key list),
+`clickcount-signout-broadcast` (a timestamp written on sign-out so other tabs' `storage`
+listeners sign out too; the BroadcastChannel `clickcount-auth` carries the same message),
+`takeoff-state` (LEGACY: the pre-IndexedDB localStorage takeoff backup; read once at boot,
+migrated into the IndexedDB backup and removed, skipped when it belongs to another user),
+`showScaleRefLine` (the Set Scale dialog's "show reference line" toggle, a device view
+preference like hide-marks, never project data; features/scale.js),
+`clickcount-ff-<name>` (feature flags — per device, set by `?ff=<name>`,
 NOT wiped by the sign-out key list; see Conventions), `chainPanelPos` (the dragged Chain palette position, per device;
 ignored when it no longer fits the viewport), `dropPanelPos` (same, for the
 Drop tool palette), `highlightPanelPos` (same, for the Highlights bookmarks
@@ -751,8 +793,9 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
 
 ### Hotkeys
 
-**Single source: `HOTKEYS` in constants.js** — the keydown handler executes it
-and `npm run build:macros` renders the Macros table from it (Keyboard Map
+**Single source: `HOTKEYS` in [hotkeys.js](hotkeys.js)** (split out of constants.js
+2026-07-30: a build input with presentation payload, not a tuning literal) — the keydown
+handler executes it and `npm run build:macros` renders the Macros table from it (Keyboard Map
 derives from that table). Add/change a hotkey THERE, never in the table markup.
 
 Tool enum note: `TOOL.SCHEDULE` (S6, the schedule-box rect tool) has no hotkey — it
@@ -764,7 +807,8 @@ S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
 mid-trace S steps the duct size instead of Set Scale; a polyline of a water-sided line type does the same with the water size popover, WATER-PLAN rung 4, features/water-size.js), T (Chain — counter +
 connecting line per click), B (Drop — one
 click per line end adds the palette's rise/fall), D (Measure),
-H (Highlight), X (Multiply Zone), V (Room Sizer), N
+H (Highlight), X (Multiply Zone), V (Room Sizer), G (Ghost — copy a typical as a
+reference overlay), N
 (Note), R (Rotate page); Shift+Q open Quick tab (Counter or Choose Line Type modal); arrows: Left/Right page nav
 (Shift = marked-page jump), Up/Down canvas layers; Ctrl+Z / Ctrl+Shift+Z
 undo/redo; Ctrl+R refresh. Ignored when focus is in an input/textarea/contenteditable.
@@ -782,7 +826,7 @@ undo/redo; Ctrl+R refresh. Ignored when focus is in an input/textarea/contentedi
   Selection is value-based: the chosen color lives on
   the presets row's `dataset.selectedColor`. Recents commit only on Create, via
   `pushRecentColor(color)` (shared list `state.recentLineColors`, custom-only,
-  localStorage-persisted; `nextRecentColors` is the pure core in constants.js).
+  localStorage-persisted; `nextRecentColors` is the pure core in recent-colors.js).
 - **Toggle switches**: `.toggle-switch` + `.toggle-switch-knob` — used for Show
   group colors, Counter Settings (Show ring, Solid ring), Save Project Include PDF,
   Export PDFs (Bundle highlights/notes, Include report).

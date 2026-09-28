@@ -548,7 +548,7 @@
     {
       id: 'scale', title: 'Scale: set it, prove it, and zones', short: 'a scale you can trust', minutes: 3, page: P401,
       intro: 'The scale is how many feet of building one inch of paper stands for. This sheet has two: the plan at 1/4", and a detail, one corner drawn again larger, at 1/2".',
-      opener: 'This lesson runs on P-401, the enlarged plans of the sample restaurant. Nothing you do on it touches your projects.',
+      opener: 'This lesson uses P-401, the enlarged plans of the sample restaurant. Nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); },
       steps: [
         { id: 'set', title: 'Each sheet has its own scale', kind: 'do',
@@ -590,7 +590,7 @@
     {
       id: 'counting', title: 'Counting: counters and the number row', short: 'counting at speed', minutes: 3, page: P101,
       intro: 'A takeoff is the count and the feet a price is built on, and counting is most of it. Make a counter, click the fixtures (the sinks, toilets and drains), then put it on a number key.',
-      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
+      opener: 'This lesson uses P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); },
       steps: [
         { id: 'counter', title: 'Make a Floor Drain counter', kind: 'do',
@@ -628,7 +628,7 @@
     {
       id: 'measuring', title: 'Measuring: runs, bends and drops', short: 'a measured run', minutes: 3, page: P101,
       intro: 'Trace the gas main, the pipe that brings gas to the kitchen, and let it count its own elbow, the fitting where a pipe turns. Then add the riser, the upright pipe a plan never shows.',
-      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
+      opener: 'This lesson uses P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); const lt = makeLineType('Gas Pipe', '#e85447'); S().activeLineTypeId = lt.id; },
       steps: [
         { id: 'snap', title: 'Keep runs square', kind: 'do',
@@ -666,7 +666,7 @@
     {
       id: 'chain', title: 'Chain, and parts that count themselves', short: 'fixtures and pipe in one pass', minutes: 3, page: P101,
       intro: 'Chain counts the fixtures on a branch, a small pipe feeding a row of sinks, and draws the pipe in the same clicks. The hangers, the straps that hold a pipe up, then count themselves by rule.',
-      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
+      opener: 'This lesson uses P-101, the plumbing plan of the sample restaurant. Its scale is already set, and nothing you do on it touches your projects.',
       seed() { setScale(P101, 9, '1/8" = 1\''); makeCounter('Lavatory', 'Mounted Sink', '#e8c547'); makeLineType('1/2in PEX', '#47c88e'); },
       steps: [
         { id: 'chain', title: 'Chain the top wall', kind: 'do',
@@ -691,7 +691,7 @@
     {
       id: 'repeats', title: 'Repeats: count one, bid four', short: 'a typical, multiplied', minutes: 2, page: P401,
       intro: 'Detail 2 on this sheet says TYP. OF 4: typical of four, the same room built four times. Count it once and let a zone, a box on the sheet, do the multiplying.',
-      opener: 'This lesson runs on P-401, the enlarged plans of the sample restaurant. Nothing you do on it touches your projects.',
+      opener: 'This lesson uses P-401, the enlarged plans of the sample restaurant. Nothing you do on it touches your projects.',
       seed() {
         setScale(P101, 9, '1/8" = 1\''); setScale(P401, 18, '1/4" = 1\'');
         const a = App.ensureActiveCanvas(S().pages[P401]).annotations;
@@ -721,7 +721,7 @@
     {
       id: 'organize', title: 'Organizing a busy sheet', short: 'a sheet you can still read', minutes: 3, page: P101,
       intro: 'Ten drains, three sinks and two water closets (toilets), and this is a small job. Groups, the sidebar filter, layers and Hide marks keep a big one readable.',
-      opener: 'This lesson runs on P-101, the plumbing plan of the sample restaurant, already counted. Nothing you do on it touches your projects.',
+      opener: 'This lesson uses P-101, the plumbing plan of the sample restaurant, already counted. Nothing you do on it touches your projects.',
       seed() {
         setScale(P101, 9, '1/8" = 1\'');
         mark(P101, makeCounter('Floor Drain', 'Floor Drain', '#4a9eff'), Object.keys(FD).map((k) => FD[k]));

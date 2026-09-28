@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * The HVAC course (features/course-hvac.js): nine chapters, after an uncounted chapter 0
- * (id before, five read cards for a reader who has never seen a drawing), on the tour engine, on the
+ * (id before, six read cards for a reader who has never seen a drawing), on the tour engine, on the
  * mechanical set (samples/sample-hvac.pdf), the third trade course. Plan:
  * journeys/plans/HVAC-COURSE.md.
  *
@@ -50,7 +50,7 @@ const gotoStep = (page, id) => page.evaluate((s) => window.App.tutorialGoTo(s), 
 const openSheets = async (page) => { await page.waitForFunction(() => window.App.tutorialStepId() === 'sheets', null, { timeout: 10000 }); await page.click('#tourShow'); await page.waitForFunction(() => window.App.tutorialStepId() !== 'sheets', null, { timeout: 25000 }); };
 
 const EXPECT = {
-  // chapter 0 reads and makes nothing: five read cards, no zones, the sheets open
+  // chapter 0 reads and makes nothing: six read cards, no zones, the sheets open
   before: async (page) => {
     expect(await page.evaluate(() => [window.state.trade, window.state.currentPage])).toEqual(['hvac', 0]);
     expect(await page.evaluate(() => (window.state.counters || []).filter((c) => c.lesson).length)).toBe(0);
@@ -163,7 +163,7 @@ test.describe('The HVAC course: the chapters', () => {
       expect(walked[0]).toBe('sheets');
       expect(walked[walked.length - 1]).toBe('done');
       expect(revealed).toEqual(REVEALS[id]);
-      if (id === 'before') expect(walked).toEqual(['sheets', 'set', 'estimator', 'verbs', 'screen', 'cards', 'done']);   // read cards only, each passed with Next
+      if (id === 'before') expect(walked).toEqual(['sheets', 'set', 'estimator', 'verbs', 'header', 'sidebar', 'bottom', 'done']);   // read cards only, each passed with Next
       expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName, window.state.trade])).toEqual([3, 'sample-hvac', 'hvac']);
       await EXPECT[id](page);
       expect(await page.evaluate((k) => !!window.App.courseDone()['hvac:' + k], id)).toBe(true);

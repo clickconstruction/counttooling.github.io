@@ -56,7 +56,7 @@ const EXPECT = {
   // the uncounted opener (COURSE-LANGUAGE option C): five reading cards, nothing laid on the sheet
   before: async (page) => {
     const m = await page.evaluate(() => window.App.tutorialManifest('course:plumbing:before'));
-    expect(m.steps.map((s) => s.id)).toEqual(['sheets', 'set', 'estimator', 'verbs', 'screen', 'cards', 'done']);
+    expect(m.steps.map((s) => s.id)).toEqual(['sheets', 'set', 'estimator', 'verbs', 'header', 'sidebar', 'bottom', 'done']);
     expect(m.steps.slice(1).every((s) => s.kind === 'read' && s.zones === 0)).toBe(true);
     const a = await ann(page, 0);
     expect(Object.values(a.counterMarkers || {}).flat().length).toBe(0);

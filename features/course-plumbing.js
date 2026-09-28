@@ -325,7 +325,7 @@
     // chapters take for granted. Its title carries no "Chapter N:", so it stays outside the count.
     {
       id: 'before', title: 'Chapter 0: Before you count', short: 'the ground the course stands on', minutes: 4, page: 0, noun: 'chapter',
-      intro: 'For anyone who has never seen a construction drawing. What the sheets are, what an estimator does with them, and how the app and its cards work.',
+      intro: 'For anyone who has never seen a construction drawing. What the sheets are, what an estimator does with them, and where the app keeps its tools.',
       opener: 'These cards are for reading: nothing here asks for a click on the sheet.\nThe four sheets that open are a sample, a small restaurant. Nothing here touches your own projects.',
       seed() { /* nothing: this chapter only reads */ },
       steps: [
@@ -338,15 +338,21 @@
         { id: 'verbs', title: 'Count, trace, chain, check', kind: 'read',
           body: 'The app counts and measures as you click. Four verbs carry the course.\nCount: arm a counter, a named tally such as WC-1 Water Closet (a water closet is a toilet). Armed, every click on the sheet leaves one mark.\nTrace: click along a pipe, corner by corner, in a line type such as 1.5in Copper. A line type is one kind of pipe, by size and material; the app measures its feet.\nChain: one click places a fixture and draws the pipe back to the last one.\nCheck: BID CHECK, a list in the sidebar, asks what a bid must answer before it goes out.\nThe feet mean nothing until the sheet has a scale: how many feet of building one inch of paper stands for.',
           target: [], check: () => true },
-        { id: 'screen', title: 'Where things are', kind: 'read', cardAt: 'tr',   // top right, over the sheet: the card is about the sidebar, the header and the footer
-          // a tablet has no keys: the engine takes "(or press D)" out of a card, so the line that quotes it goes too
-          body: () => 'The {{left sidebar|.sidebar}} holds your lists. PAGES is the sheets. COUNTERS and LINE TYPES are what you count and what you trace.\nSUMMARY is the running totals. BID CHECK and EXPORT OPTIONS sit below it.\nThe {{header|.header}} across the top holds the tools, such as [[Set Scale]] and [[Measure]]. The ones not shown sit behind [[⋯]].\nThe {{footer|.page-zoom-row}} under the sheet {{turns the pages|.page-nav}} and switches {{layers|#canvasLayersBtn}}: clear sheets laid over the plan, each with its own marks.' + ((window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 768px)').matches) ? '' : '\nMost tools have a one-key shortcut. The cards give it in brackets, such as (or press D).'),
-          target: ['.sidebar', '.header', '.page-zoom-row'], lightAll: true, check: () => true },
-        { id: 'cards', title: 'How a card works', kind: 'read',
-          body: 'Each card asks for one thing. A doing card lists its steps, one action per numbered line.\nEvery doing card ends with a line beside [[Show me where]]. It reads Waiting for you…, then what is still missing, then ✓ Done.\n[[Next]] lights up once the step is done.\n[[Show me where]] points at the control, or at the circle on the sheet where your click counts.\nA question card hides its answer behind [[Show the engineer\'s answer]]. Try to answer first.\nStuck? [[Skip this step]] moves on. Nothing here touches your own projects.',
-          target: [], check: () => true },
+        // The screen, one card per area, as Start here walks it (the card review, fix 3): the old
+        // "Where things are" was three areas on one card, and "How a card works" described the cards
+        // where Start here has the reader use one.
+        { id: 'header', title: 'The header, the bar across the top', kind: 'read',
+          // a tablet has no keys: the shortcut line goes
+          body: () => 'It holds the tools, such as [[Set Scale]], [[Counter]] and [[Measure]].\nThe tools that do not fit sit behind [[⋯]].' + ((window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(max-width: 768px)').matches) ? '' : '\nMost tools have a one-key shortcut. Click [[shortcuts]], at the bottom right of the screen, to see every key.'),
+          target: ['.header'], check: () => true },
+        { id: 'sidebar', title: 'The sidebar, the lists down the left', kind: 'read',
+          body: 'PAGES lists the sheets. COUNTERS and LINE TYPES hold what you count and what you trace.\nSUMMARY keeps the running totals.\nBID CHECK and EXPORT OPTIONS sit below it: the checks before a bid goes out, and the files you send.',
+          target: ['.sidebar'], check: () => true },
+        { id: 'bottom', title: 'Under the sheet: the footer and the status bar', kind: 'read',
+          body: 'The {{footer|.page-zoom-row}} comes first. It {{turns the pages|.page-nav}}, {{zooms in and out|.zoom-bar}} and switches {{layers|#canvasLayersBtn}}: clear sheets laid over the plan, each with its own marks.\nThe {{status bar|.status-bar}} is the strip below it, along the very bottom. It says {{where your work is saved|#statusMode}}, and when.',
+          target: ['.page-zoom-row', '.status-bar'], lightAll: true, check: () => true },
       ],
-      done: 'What a set is, what a takeoff is, the four verbs, and how a card works.\nNext: Chapter 1, read the sheet.',
+      done: 'What a set is, what a takeoff is, the four verbs, and where things are.\nNext: Chapter 1, read the sheet.',
     },
     // 1 -------------------------------------------------------------------------------------
     {

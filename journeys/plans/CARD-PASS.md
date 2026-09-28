@@ -42,13 +42,13 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the six fixes; 6, 2 and 1 are done, 3 is next.
+**Now:** the six fixes; 6, 2, 1 and 3 are done, 4 is next.
 
 ### The six fixes, before the pass
 
 - [x] 1. The plumbing tour ends with two Bid Check warnings it never mentions: a Bid Check card, and a takeoff that passes. DONE, the first half: a `bidcheck` card sits between `proof` and `handoff` (18 cards now). It opens BID CHECK, lights the two warning rows and says why each one warns (the x3 zone made the 1in pipe too small; the tour drew no hot water). The takeoff still warns on purpose: two real warnings read aloud teach more than a clean list. The hand-off card now says the copy asks first.
 - [x] 2. The electrical course's homerun and feeder steps pass while the run is still a draft: require the run finished. DONE: both checks want no live draft; the circles still tick as the reader goes, and the card's line says "The path is in. Click Finish under the sheet to end the run".
-- [ ] 3. Each course's Chapter 0 follows Start here: one card per screen area, and no "how cards work" card.
+- [x] 3. Each course's Chapter 0 follows Start here: one card per screen area, and no "how cards work" card. DONE in all three courses: `screen` / `where` became `header`, `sidebar` and `bottom`, each lighting its own area, and the `cards` card is gone. Openers and intros no longer count the cards.
 - [ ] 4. A card that opens with the last question's answer does two jobs: the answer shows on the question's own card.
 - [ ] 5. Cards about number keys have no tablet version: skipped on touch.
 - [x] 6. The HVAC tour quotes 442 CFM where the screen reads 508: the number goes. DONE: the card says the four diffusers give 600 CFM, more than the office needs (the room's own figure depends on the box the reader drags, so the card no longer quotes it).
@@ -169,7 +169,7 @@ ticked chapter is done. The line under "Now" names the card in hand.
 
 ## The plumbing course  (features/course-plumbing.js)
 
-- [ ] **before** (7): (open), set, estimator, verbs, screen, cards, (done)
+- [ ] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
 - [ ] **sheet** (9): (open), what, scale, prove, keynotes, schedule, row, units, (done)
 - [ ] **fixtures** (10): (open), wetwall, counters, restrooms, handsinks, kitchen, floorsinks, primers, keys, (done)
 - [ ] **water** (12): (open), service, trunk, linetypes, trace, hot, chain, drop, hangers, bends, read, (done)
@@ -182,7 +182,7 @@ ticked chapter is done. The line under "Now" names the card in hand.
 
 ## The electrical course  (features/course-electrical.js)
 
-- [ ] **before** (7): (open), set, estimator, verbs, where, cards, (done)
+- [ ] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
 - [ ] **sheet** (9): (open), what, scale, prove, panel, clearance, schedule, row, (done)
 - [ ] **devices** (8): (open), gfci, missed, duplex, heights, jbox, keys, (done)
 - [ ] **lighting** (7): (open), schedule, plan, power, os, why, (done)
@@ -195,7 +195,7 @@ ticked chapter is done. The line under "Now" names the card in hand.
 
 ## The HVAC course  (features/course-hvac.js)
 
-- [ ] **before** (7): (open), set, estimator, verbs, screen, cards, (done)
+- [ ] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
 - [ ] **sheet** (8): (open), what, scale, prove, unit, schedule, balance, (done)
 - [ ] **rooms** (7): (open), why, dining, needs, kitchen, deck, (done)
 - [ ] **diffusers** (7): (open), schedule, dining, rest, neck, grilles, (done)

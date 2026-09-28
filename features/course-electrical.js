@@ -1,7 +1,7 @@
 /*
  * features/course-electrical.js - the electrical course: how a restaurant gets its power,
  * taught on the engineered electrical set with the app's own tools. An opener, Before you
- * count (id `before`: five read cards for a reader who has never seen a drawing, ahead of and
+ * count (id `before`: six read cards for a reader who has never seen a drawing, ahead of and
  * not counted among the nine), then nine chapters on the tour engine (features/tutorial.js),
  * the plumbing course's sibling (features/course-plumbing.js), same rules, same doors. Plan of
  * record: journeys/plans/ELECTRICAL-COURSE.md. The cards are written for anyone at all
@@ -298,8 +298,8 @@
     // chapters and is not counted among them.
     {
       id: 'before', title: 'Chapter 0: Before you count', short: 'the words, first', minutes: 4, page: E101, noun: 'chapter', set: ESET, readOnly: true,
-      intro: 'Read this first if you have never seen a construction drawing. Five short cards, ahead of the nine chapters: what the sheets are, what an estimator does with them, and where the app keeps its tools.',
-      opener: 'These five cards are for reading. You click nothing on the sheets yet.\nThe sheets are sample drawings of a small restaurant. Nothing here touches your projects.',
+      intro: 'Read this first if you have never seen a construction drawing. A few short cards, ahead of the nine chapters: what the sheets are, what an estimator does with them, and where the app keeps its tools.',
+      opener: 'These cards are for reading. You click nothing on the sheets yet.\nThe sheets are sample drawings of a small restaurant. Nothing here touches your projects.',
       seed() { /* nothing: the cards only read */ },
       steps: [
         { id: 'set', title: 'A set of drawings', kind: 'read',
@@ -311,12 +311,18 @@
         { id: 'verbs', title: 'Count, trace, chain, check', kind: 'read',
           body: 'Four words for what you do on a sheet.\nCount: pick a counter, a named kind of mark, and click each thing it counts. One click, one mark. Your counters sit under COUNTERS.\nTrace: click along a run, the path a pipe or a wire takes, and the app adds up its feet. A line type is a named kind of run, like one size of pipe, kept under LINE TYPES.\nChain: [[Chain]] counts a device and traces the run to it in the same click.\nCheck: BID CHECK, a list in the left sidebar, says what the takeoff is missing and what does not add up.',
           target: ['#countersSectionTitle', '#lineTypesSectionTitle', '#bidCheckSectionTitle'], lightAll: true, check: () => true },
-        { id: 'where', title: 'Where things are', kind: 'read',
-          body: 'The {{header|.header}} is the row of tools across the top: [[Set Scale]], [[Measure]], [[Chain]] and the rest. A few sit behind [[⋯]].\n[[Set Scale]] sets the scale: how many feet an inch of paper stands for.\nThe {{left sidebar|.sidebar}} holds the lists: the sheets under PAGES, your counters and line types, the totals under SUMMARY, and BID CHECK.\nThe {{status bar|.status-bar}} is the strip along the bottom. It shows the file, the save and [[quick keys]]. A quick key is a number key a counter can sit on.',
-          target: ['.header', '.sidebar', '.status-bar'], lightAll: true, check: () => true },
-        { id: 'cards', title: 'How the cards teach', kind: 'read',
-          body: 'Some cards ask a question about the sheet, and you answer with a click.\nSuch a card ends with a line beside [[Show me where]]. The line says what the step still waits for, one thing at a time.\nA wrong click is refused: the line turns red and says why. It reads ✓ Done when the step is done.\n[[Show me where]] points at the place to click. [[Skip this step]] moves on without doing the step.\nA card that only asks keeps its answer behind [[Show the engineer\'s answer]].\nThe first time a trade word appears, the card says what it means. Nothing here expects you to know the trade already.',
-          target: [], check: () => true },
+        // The screen, one card per area, as Start here walks it (the card review, fix 3): the old
+        // "Where things are" was three areas on one card, and "How the cards teach" described the
+        // cards where Start here has the reader use one.
+        { id: 'header', title: 'The header, the bar across the top', kind: 'read',
+          body: 'It holds the tools: [[Set Scale]], [[Measure]], [[Chain]] and the rest. A few sit behind [[⋯]].\n[[Set Scale]] sets the scale: how many feet an inch of paper stands for.',
+          target: ['.header'], check: () => true },
+        { id: 'sidebar', title: 'The sidebar, the lists down the left', kind: 'read',
+          body: 'PAGES lists the sheets. COUNTERS and LINE TYPES hold what you count and what you trace.\nSUMMARY keeps the running totals, and BID CHECK sits below it.',
+          target: ['.sidebar'], check: () => true },
+        { id: 'bottom', title: 'Under the sheet: the footer and the status bar', kind: 'read',
+          body: 'The {{footer|.page-zoom-row}} comes first. It {{turns the pages|.page-nav}} and {{zooms in and out|.zoom-bar}}.\nThe {{status bar|.status-bar}} is the strip below it, along the very bottom. It says {{where your work is saved|#statusMode}}, and holds [[quick keys]].\nA quick key is a number key a counter can sit on.',
+          target: ['.page-zoom-row', '.status-bar'], lightAll: true, check: () => true },
       ],
       done: 'The sheets, the takeoff, the four verbs, and where the tools are.\nNext: [[Learn]] → Chapter 1, the E-sheets.',
     },

@@ -5,7 +5,7 @@
  * same rules, same doors. Plan of record: journeys/plans/HVAC-COURSE.md.
  *
  * Written for anyone at all (2026-09-27, journeys/plans/COURSE-LANGUAGE-2026-09-27.md option C):
- * chapter 0 (`before`, five read cards) comes ahead of the nine and is not counted among them;
+ * chapter 0 (`before`, six read cards) comes ahead of the nine and is not counted among them;
  * every trade and app word is glossed where it first appears, a doing card leads with its
  * numbered steps (a previous question's answer sits above them as "Answer:"), and no card
  * sentence runs past 25 words. Keep a new card that way.
@@ -339,8 +339,8 @@
     // with it, the app's verbs, the screen, and the card itself. No zones, no numbers a rule holds.
     {
       id: 'before', title: 'Chapter 0: Before you count', short: 'where to start', minutes: 4, page: M101, noun: 'chapter', set: MSET, readOnly: true,
-      intro: 'Five short cards before the nine chapters, for anyone who has never seen a construction drawing. What the drawings are, what an estimator does, and where things are on screen.',
-      opener: 'These five cards only read: you click nothing on the sheet.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
+      intro: 'A few short cards before the nine chapters, for anyone who has never seen a construction drawing. What the drawings are, what an estimator does, and where things are on screen.',
+      opener: 'These cards only read: you click nothing on the sheet.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { /* nothing: the chapter only reads */ },
       steps: [
         { id: 'set', title: 'A set of drawings', kind: 'read', cardAt: 'br',
@@ -352,12 +352,18 @@
         { id: 'verbs', title: 'What the app does', kind: 'read', cardAt: 'br',
           body: 'This app turns the drawings into a takeoff. It has four verbs, and the chapters teach each one.\nCount: pick a counter, one kind of thing such as a ceiling vent. Then click each one on the sheet, and the app keeps the tally.\nTrace, with [[Duct]]: click along a duct, corner by corner. The app measures its feet and weighs its metal.\nBox a room, with [[Room Sizer]]: drag a box around a room, so the app knows its size and the air it should get.\nCheck: BID CHECK, the app\'s checklist before a bid goes out, says what is missing or does not add up.\nFirst comes [[Set Scale]]: every sheet needs its scale, so the app knows how big the drawing is. Chapter 1 starts there.',
           target: [], check: () => true },
-        { id: 'screen', title: 'Where things are', kind: 'read', cardAt: 'tr',   // top right: the card names the footer, so it keeps off it
-          body: 'The {{header|.header}} runs across the top. It holds the tools, such as [[Set Scale]], [[Measure]] and [[Duct]]. The tools that do not fit sit behind [[⋯]].\nThe {{left sidebar|.sidebar}} lists the sheets under PAGES. Below them sits what you make: COUNTERS first and more as you go, down to BID CHECK and the SUMMARY of every total. Click a heading to fold or open it.\nThe {{footer|.page-zoom-row}} runs under the sheet. It {{turns the page|.page-nav}}, {{zooms in and out|.zoom-bar}} and {{rotates the sheet|#rotatePage}}.',
-          target: [], check: () => true },
-        { id: 'cards', title: 'How these cards work', kind: 'read', cardAt: 'br',
-          body: 'Each card asks one thing. Numbered lines are steps: do each one, in order, on the sheet or in the app.\nUnder the steps, one line says how it is going: what is still missing, why a click was wrong, or ✓ Done. The button beside it lights up the place to click.\nA card that asks a question keeps its answer behind a button. Try to answer first, then look.\n[[Next]] moves on once a step is done. A card with steps also has a link that skips them.',
-          target: [], check: () => true },
+        // The screen, one card per area, as Start here walks it (the card review, fix 3): the old
+        // "Where things are" was three areas on one card, and "How these cards work" described the
+        // cards where Start here has the reader use one.
+        { id: 'header', title: 'The header, the bar across the top', kind: 'read',
+          body: 'It holds the tools, such as [[Set Scale]], [[Measure]] and [[Duct]].\nThe tools that do not fit sit behind [[⋯]].',
+          target: ['.header'], check: () => true },
+        { id: 'sidebar', title: 'The sidebar, the lists down the left', kind: 'read',
+          body: 'PAGES lists the sheets. Below them sits what you make: COUNTERS first, and more as you go.\nBID CHECK and the SUMMARY of every total come last.\nClick a heading to fold or open it.',
+          target: ['.sidebar'], check: () => true },
+        { id: 'bottom', title: 'Under the sheet: the footer and the status bar', kind: 'read',
+          body: 'The {{footer|.page-zoom-row}} comes first. It {{turns the page|.page-nav}}, {{zooms in and out|.zoom-bar}} and {{rotates the sheet|#rotatePage}}.\nThe {{status bar|.status-bar}} is the strip below it, along the very bottom. It says {{where your work is saved|#statusMode}}, and when.',
+          target: ['.page-zoom-row', '.status-bar'], lightAll: true, check: () => true },
       ],
       done: 'A set of drawings, a takeoff, four verbs and the screen.\nNext: [[Learn]] → Chapter 1, the M-sheets.',
     },

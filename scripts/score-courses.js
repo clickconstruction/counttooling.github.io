@@ -87,7 +87,7 @@ const FIRST_USE = {
     'mop sink': 'fixtures', 'hand sink': 'sheet', 'cook line': 'fixtures', 'range': 'fixtures',
     '3-compartment sink': 'fixtures', 'dish pit': 'fixtures', 'FDA Food Code': 'fixtures', 'floor sink': 'fixtures',
     'indirect waste': 'fixtures', 'air gap': 'fixtures', 'typical': 'fixtures', 'trap': 'fixtures',
-    'trap primer': 'fixtures', 'child count': 'fixtures', 'quick key': 'fixtures', 'status bar': 'fixtures',
+    'trap primer': 'fixtures', 'child count': 'fixtures', 'quick key': 'fixtures', 'status bar': 'before',
     // Chapter 3, water
     'main': 'water', 'service': 'water', 'RPZ': 'water', 'backflow preventer': 'water', 'siphon': 'water',
     'trunk': 'water', 'hanger': 'water', 'general notes': 'water', 'water heater': 'water', 'HWR': 'water',

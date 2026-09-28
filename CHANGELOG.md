@@ -38,6 +38,38 @@ data-only backup after a reload. Both came back with no runs.
 - **The pin.** annotation-model.test.js walks `makeAnnotations()`'s keys and fails by name on
   one the table does not classify, so the next annotation kind is caught the day it is added.
 
+## fix(tour): a tour that starts stops the one running (TOUR-RESTART, 2026-09-27)
+
+Punch row TOUR-RESTART, [DECOMPOSITION_MAP.md](DECOMPOSITION_MAP.md) S07, defect N11. The tour
+overlay takes no pointer events, so Learn's tour buttons and rows, Project Settings → Help and the
+empty-canvas links stay reachable while a tour, lesson or course chapter runs. Starting one there
+never stopped the one running, so its clean-up never ran. Reproduced first, in
+[tour-restart.spec.js](tour-restart.spec.js), before the fix: mid-way through the Measuring lesson
+with Snap turned on, the plumbing tour from Learn left Snap on until the next load; the Organizing
+lesson's sidebar filter stayed on "this sheet" when a Learn row started another lesson; and no
+`left` event was logged for the tour that was replaced.
+
+- **features/tutorial.js `startTutorial`**: if a tour is running, it is stopped as left, not
+  finished, before the new one starts (after the cloud-project refusal, so a refused start leaves
+  the running tour alone). Its `onStop` runs: a lesson's `restoreDevice` puts Snap, the sidebar
+  filter and the search words back; a tour types its search words back; the blank tour sweeps its
+  palette and keeps its saved step. Its `tour_step` `left` event is logged. `stopTutorial` takes a
+  `{ switching }` option for this stop, which skips `retryDeferredRestorePrompt`: a deferred
+  "Project from Last Session" offer keeps waiting for the stop that really ends teaching.
+  `App.stopTutorial` stays `(finished)`. Starting the same tour again starts it over at its first
+  step.
+- **features/lessons.js**: `beginTeaching` (the per-run flags and `rememberDevice`) moved from
+  `startLesson` and the course runner's `start` into each lesson's and chapter's `onStart`. It used
+  to run before `startTutorial`, so with the stop in place the order was remember (kept the old
+  snapshot), stop (restored it and dropped it), and the new lesson ran with no snapshot at all:
+  its Snap stayed on after it stopped. Now the order is stop, restore, remember, so the snapshot is
+  always the reader's own. A start the engine refuses no longer leaves a snapshot behind.
+- **Spec**: [tour-restart.spec.js](tour-restart.spec.js), three cases: a trade tour over a lesson
+  (Snap back, the reader's search word held by the tour and typed back when it stops, the `left`
+  event); a lesson over a lesson (the first one's filter back, and the second one's stop hands back
+  the reader's Snap and filter); the same tour again from Project Settings (starts over, one `left`,
+  one search snapshot).
+
 ## fix(water): two runs that leave one point are siblings, not each other's branch (WATER-TAP, 2026-09-27)
 
 #262 gave `waterChildLinks` the guard duct's tap rule has: two runs that leave one point are

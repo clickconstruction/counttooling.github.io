@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the lessons, the three trade tours and the plumbing course are done. The electrical course is next, chapter `before`. The blank-sheet tour is still to do (it was set aside: it is a tour of buttons, already touch-aware, and its cards are short).
+**Now:** every entry has had its pass but the blank-sheet tour, which is next, card `welcome`. After it: a second reading of the three courses' question cards on a tablet (`cardshots.js <chapter> <outdir> tablet`), which the first pass walked on a laptop only.
 
 ### The six fixes, before the pass
 
@@ -84,6 +84,11 @@ Engine changes the pass has made so far, which every later card gets for free:
   in a 720 px window and scrolled.
 - In the courses "Press Enter" after a trace reads "Click Finish under the sheet (or press Enter)":
   a tablet dropped the line and had no way on.
+
+- A very long card (past 1,200 characters) is 560 px wide. The electrical course's one-line card still
+  scrolled at that width, so it is two cards now: `oneline`, then `read`.
+- In the HVAC course a duct run ends at Finish Duct Run under the sheet and sizes open from Size…,
+  the buttons a tablet has; the keys are the aside.
 
 Found on the way, fixed: the page badge was described the wrong way round in three cards (a yellow
 NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
@@ -215,26 +220,26 @@ NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 
 ## The electrical course  (features/course-electrical.js)
 
-- [ ] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
-- [ ] **sheet** (9): (open), what, scale, prove, panel, clearance, schedule, row, (done)
-- [ ] **devices** (8): (open), gfci, missed, duplex, heights, jbox, keys, (done)
-- [ ] **lighting** (7): (open), schedule, plan, power, os, why, (done)
-- [ ] **conduit** (9): (open), linetype, why12, ceiling, chain, fill, straps, read, (done)
-- [ ] **circuits** (8): (open), group, homerun, panelpoles, vd, load, cross, (done)
-- [ ] **equipment** (6): (open), three, poles, hood, dedicated, (done)
-- [ ] **service** (7): (open), read, feeder, rise, fill, gear, (done)
-- [ ] **whole** (6): (open), lay, compare, report, legend, (done)
-- [ ] **bid** (7): (open), open, rows, tick, proof, handoff, (done)
+- [x] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
+- [x] **sheet** (9): (open), what, scale, prove, panel, clearance, schedule, row, (done)
+- [x] **devices** (8): (open), gfci, missed, duplex, heights, jbox, keys, (done)
+- [x] **lighting** (7): (open), schedule, plan, power, os, why, (done)
+- [x] **conduit** (9): (open), linetype, why12, ceiling, chain, fill, straps, read, (done)
+- [x] **circuits** (8): (open), group, homerun, panelpoles, vd, load, cross, (done)
+- [x] **equipment** (6): (open), three, poles, hood, dedicated, (done)
+- [x] **service** (8): (open), oneline, read, feeder, rise, fill, gear, (done)
+- [x] **whole** (6): (open), lay, compare, report, legend, (done)
+- [x] **bid** (7): (open), open, rows, tick, proof, handoff, (done)
 
 ## The HVAC course  (features/course-hvac.js)
 
-- [ ] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
-- [ ] **sheet** (8): (open), what, scale, prove, unit, schedule, balance, (done)
-- [ ] **rooms** (7): (open), why, dining, needs, kitchen, deck, (done)
-- [ ] **diffusers** (7): (open), schedule, dining, rest, neck, grilles, (done)
-- [ ] **system** (4): (open), group, designed, (done)
-- [ ] **main** (8): (open), arm, trace, why, kitchen, attach, fittings, (done)
-- [ ] **plenum** (7): (open), scale, prove, depth, fits, static, (done)
-- [ ] **exhaust** (9): (open), grease, why, dampers, nodamper, restroom, makeup, interlock, (done)
-- [ ] **whole** (5): (open), lay, compare, copy, (done)
-- [ ] **bid** (7): (open), open, rows, tick, proof, handoff, (done)
+- [x] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
+- [x] **sheet** (8): (open), what, scale, prove, unit, schedule, balance, (done)
+- [x] **rooms** (7): (open), why, dining, needs, kitchen, deck, (done)
+- [x] **diffusers** (7): (open), schedule, dining, rest, neck, grilles, (done)
+- [x] **system** (4): (open), group, designed, (done)
+- [x] **main** (8): (open), arm, trace, why, kitchen, attach, fittings, (done)
+- [x] **plenum** (7): (open), scale, prove, depth, fits, static, (done)
+- [x] **exhaust** (9): (open), grease, why, dampers, nodamper, restroom, makeup, interlock, (done)
+- [x] **whole** (5): (open), lay, compare, copy, (done)
+- [x] **bid** (7): (open), open, rows, tick, proof, handoff, (done)

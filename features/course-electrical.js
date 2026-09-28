@@ -638,9 +638,14 @@
       opener: 'The sheets open on E-601, the one-line. On E-101 the scale is set and panel LP-1 is counted.',
       seed() { scaleE101(); markMissing(pick('panel'), pts(G.panel), E101); },
       steps: [
-        { id: 'read', title: 'Read the one-line', kind: 'read', cardAt: 'br',
+        // two cards since the card pass: what the one-line shows, then the question. As one, its answer
+        // scrolled in a 720 px window even at the widest card.
+        { id: 'oneline', title: 'Read the one-line', kind: 'read', cardAt: 'br',
+          body: 'E-601 is one line from the utility transformer, the power company\'s equipment at the street, to LP-1.\nThe service lateral is the buried wires from the utility. The meter counts what the building uses. The main disconnect shuts off the whole building.\nThe feeder is the heavy wires from the main disconnect to the panel. The ground ties the system to the earth.',
+          target: ['#annCanvas'], check: () => true },
+        { id: 'read', title: 'Why those sizes?', kind: 'read', cardAt: 'br',
           rules: ['elec.conductor.ampacity', 'elec.ground.equipment-conductor', 'elec.ground.electrode-conductor', 'elec.service.load-calculation'],
-          body: 'E-601 is one line from the utility transformer, the power company\'s equipment at the street, to LP-1.\nThe service lateral is the buried wires from the utility. The meter counts what the building uses. The main disconnect shuts off the whole building.\nThe feeder is the heavy wires from the main disconnect to the panel. The ground ties the system to the earth.\nThe feeder is 4 #3/0 copper and a #6 ground in 2" conduit. #3/0, said three-aught, is thicker than any numbered size.\nWhy those sizes?',
+          body: 'The feeder is 4 #3/0 copper and a #6 ground in 2" conduit. #3/0, said three-aught, is thicker than any numbered size.\nWhy those sizes, for this building?',
           reveal: 'The main is 200 A, so the feeder must carry 200 A.\n#3/0 copper THHN is rated 200 A at the 75 °C column the terminals allow (NEC 310.16). The terminals are where the wire is fastened, and they limit how hot it may run.\nFour of them: three phases and a neutral.\nThe equipment ground rides with them and is sized from the breaker, #6 copper for 200 A (NEC 250.122).\nThe grounding electrode conductor to the water pipe and the rods is #4 (250.66). That wire ties the system to the earth, through metal rods driven into the ground.\nThe 200 A itself is the engineer\'s load calculation (NEC Article 220): 22 kVA connected, 62 A, and the kitchen\'s future. A kVA is a thousand VA.\nNobody sizes a restaurant service to today\'s load: kitchens add equipment, so the service is sized with room to grow.',
           target: ['#annCanvas'], check: () => true },
         { id: 'feeder', title: 'Trace the feeder', kind: 'do', cardAt: 'br', page: E101, zones: () => traceZones(RE.emt2, pts(G.feeder), E101),

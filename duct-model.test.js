@@ -1066,6 +1066,59 @@ test('ductChildLinks: two runs leaving one point are both roots, not each other\
   assert.ok(path && ['main', 'back'].includes(path.path[0]));
 });
 
+test('ductChildLinks: runs drawn head to tail are one tree, not each other\'s tap (DUCT-TAP-LOOP)', () => {
+  // A ring of duct: A leaves the unit and B starts on A's end and comes back to A's
+  // start. Each first vertex lay on the other run, so both were children, the system
+  // had no root, designed CFM read 0, the static path was null and two taps were laid.
+  const A = netRun('A', [{ x: 0, y: 0 }, { x: 100, y: 0 }], { systemGroupId: 'rtu1' });
+  const B = netRun('B', [{ x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }], { systemGroupId: 'rtu1' });
+  const devices = [dev(100, 100, 500)];
+  const equipmentPos = { x: 0, y: 0 };
+  // With the unit placed, the run nearer it is the root (B is A's child, tapped at A's end).
+  const links = dm.ductChildLinks([B, A], { equipmentPos });
+  assert.deepStrictEqual(links.map((l) => [l.childId, l.parentId, l.s]), [['B', 'A', 100]]);
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs: [A, B], devices, systemGroupId: 'rtu1', equipmentPos }), 500);
+  const path = dm.ductStaticPath({ runs: [A, B], fittings: [], systemGroupId: 'rtu1', equipmentPos, frictionRate: 0.08 });
+  assert.ok(path && path.path[0] === 'A');
+  const taps = dm.inferAutoDuctFittings([A, B], { equipmentPos }).filter((f) => f.type === 'tap');
+  assert.deepStrictEqual(taps.map((f) => [f.runId, f.position]), [['A', { x: 100, y: 0 }]]);
+  // With no unit placed, the run drawn first is the root.
+  assert.deepStrictEqual(dm.ductChildLinks([B, A]).map((l) => [l.childId, l.parentId]), [['A', 'B']]);
+  assert.deepStrictEqual(dm.ductChildLinks([A, B]).map((l) => [l.childId, l.parentId]), [['B', 'A']]);
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs: [A, B], devices, systemGroupId: 'rtu1' }), 500);
+  // A plain continuation (B starts on A's end, A's start off B) was never a loop and is unchanged.
+  const C = netRun('C', [{ x: 100, y: 0 }, { x: 200, y: 0 }]);
+  assert.deepStrictEqual(dm.ductChildLinks([A, C]).map((l) => [l.childId, l.parentId]), [['C', 'A']]);
+  // Three runs round a square, each starting on the one before: one root, two links.
+  const P = netRun('P', [{ x: 0, y: 0 }, { x: 100, y: 0 }], { systemGroupId: 'rtu1' });
+  const Q = netRun('Q', [{ x: 100, y: 0 }, { x: 100, y: 100 }]);
+  const R = netRun('R', [{ x: 100, y: 100 }, { x: 0, y: 100 }, { x: 0, y: 0 }]);
+  assert.deepStrictEqual(dm.ductChildLinks([R, Q, P], { equipmentPos }).map((l) => [l.childId, l.parentId]).sort(), [['Q', 'P'], ['R', 'Q']]);
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs: [P, Q, R], devices: [dev(50, 100, 300)], systemGroupId: 'rtu1', equipmentPos }), 300);
+});
+
+test('ductRunSystems: a branch traced with no group lit belongs to its tree\'s system on every surface (DUCT-RUN-SYSTEM)', () => {
+  // Designed CFM and the static path keyed trees by their root; flex, the device
+  // system and the draft's scope read each run's own, so the branch's 200 CFM counted
+  // in RTU-1's designed air while its flex drop filed under "No system".
+  const main = netRun('main', [{ x: 0, y: 0 }, { x: 100, y: 0 }], { systemGroupId: 'rtu1' });
+  const branch = netRun('branch', [{ x: 50, y: 0 }, { x: 50, y: 60 }]);   // no group lit
+  const devices = [dev(100, 0, 300), dev(50, 60, 200)];
+  const runs = [main, branch];
+  assert.deepStrictEqual([...dm.ductRunSystems(runs)], [['main', 'rtu1'], ['branch', 'rtu1']]);
+  assert.strictEqual(dm.ductRunSystemId('branch', runs), 'rtu1');
+  assert.strictEqual(dm.ductRunSystemId('nope', runs), null);
+  assert.strictEqual(dm.ductDeviceSystemId(devices[1], runs), 'rtu1');
+  assert.strictEqual(dm.ductSystemDesignedCfm({ runs, devices, systemGroupId: 'rtu1' }), 500);
+  assert.deepStrictEqual(dm.tallyFlexDrops(devices, runs), [{ systemGroupId: 'rtu1', count: 2, totalFt: 10, overCount: 0 }]);
+  const draft = { vertices: [{ x: 0, y: 0 }, { x: 20, y: 0 }], systemGroupId: 'rtu1' };
+  assert.deepStrictEqual(dm.ductDraftRemainingCfm({ runs, devices, draft }), { cfm: 0, totalCfm: 500, servedCfm: 500 });
+  // A branch with its own system under a root that has none keeps its own.
+  const bare = netRun('bare', [{ x: 0, y: 200 }, { x: 100, y: 200 }]);
+  const own = netRun('own', [{ x: 50, y: 200 }, { x: 50, y: 260 }], { systemGroupId: 'ef1' });
+  assert.deepStrictEqual([...dm.ductRunSystems([bare, own])], [['bare', null], ['own', 'ef1']]);
+});
+
 test('ductDeviceSystemId: attachment-derived, marker-group fallback, else null', () => {
   const trunk = netRun('trunk', [{ x: 0, y: 0 }, { x: 300, y: 0 }], { systemGroupId: 'sysA' });
   assert.strictEqual(dm.ductDeviceSystemId(dev(100, 5, 150), [trunk]), 'sysA');

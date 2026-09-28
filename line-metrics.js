@@ -71,8 +71,10 @@
     // Each drop is entered in its own unit; convert to the effective scale's unit
     // before adding. A missing unit defaults to the scale unit (legacy behaviour).
     const su = eff.unit;
-    const sd = convertUnitValue(line.startDrop || 0, line.startDropUnit || su, su);
-    const ed = convertUnitValue(line.endDrop || 0, line.endDropUnit || su, su);
+    // XSS-COLOR sweep: a drop rides a project; Number() keeps a string drop from
+    // turning this sum into a string (the app itself only ever stores numbers).
+    const sd = convertUnitValue(Number(line.startDrop) || 0, line.startDropUnit || su, su);
+    const ed = convertUnitValue(Number(line.endDrop) || 0, line.endDropUnit || su, su);
     return base / eff.pixelsPerUnit + sd + ed;
   }
 

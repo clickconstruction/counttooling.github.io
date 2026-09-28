@@ -1531,6 +1531,8 @@
     return -diff * Math.PI / 180;
   }
 
+  // XSS-COLOR: iconSvgHtml (icon-render.js) escapes the path, color and viewBox;
+  // the printed report draws a project's counters with this.
   function renderIconHtml(iconValue, color) {
     return iconSvgHtml(iconValue, color, iconViewBoxString(iconValue));
   }
@@ -2607,7 +2609,7 @@
         ? state.counters.find(c => c.id === state.activeCounterType)
         : null;
       if (counter) {
-        counterBtn.innerHTML = '<svg viewBox="' + iconVbFor(counter.icon) + '" width="28" height="28"><path fill="' + escapeHtml(counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + escapeHtml(counter.icon) + '"/></svg>';   // MAP-XSS: a color or an icon path rides a project, so it is attribute text, never markup
+        counterBtn.innerHTML = '<svg viewBox="' + escapeHtml(iconVbFor(counter.icon)) + '" width="28" height="28"><path fill="' + escapeHtml(counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + escapeHtml(counter.icon) + '"/></svg>';   // MAP-XSS: a color or an icon path rides a project, so it is attribute text, never markup
         counterBtn.title = withRightClickHint(counter.name || 'Counter');
       } else {
         counterBtn.innerHTML = COUNTER_BTN_DEFAULT_SVG;
@@ -2624,7 +2626,7 @@
         : null;
       const svgEl = counterBtnSidebar.querySelector('svg');
       if (counter && svgEl) {
-        svgEl.outerHTML = '<svg viewBox="' + iconVbFor(counter.icon) + '" width="18" height="18"><path fill="' + escapeHtml(counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + escapeHtml(counter.icon) + '"/></svg>';   // MAP-XSS
+        svgEl.outerHTML = '<svg viewBox="' + escapeHtml(iconVbFor(counter.icon)) + '" width="18" height="18"><path fill="' + escapeHtml(counter.color || '#e8c547') + '" stroke="#000" stroke-width="32" stroke-linejoin="round" stroke-linecap="round" d="' + escapeHtml(counter.icon) + '"/></svg>';   // MAP-XSS
         counterBtnSidebar.title = withRightClickHint(counter.name || 'Counter');
       } else if (svgEl) {
         svgEl.outerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="18" height="18"><path fill="currentColor" d="M320 320C178.6 320 64 277 64 224C64 171 178.6 128 320 128C461.4 128 576 171 576 224C576 277 461.4 320 320 320zM64 416L64 306.7C80.9 319 101 328.9 122.1 336.8C175.1 356.7 245.1 368 320 368C394.9 368 464.9 356.7 517.9 336.8C539.1 328.9 559.1 319 576 306.7L576 416C576 469 461.4 512 320 512C178.6 512 64 469 64 416z"/></svg>';

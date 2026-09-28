@@ -144,10 +144,18 @@
   }
 
   // Zone locators (operate on a passed-in annotation object)
+  // XSS-COLOR sweep: a zone's multiplier rides a project, and every tally that
+  // sums it lands in a badge or a report cell. The app only ever writes an
+  // integer >= 1 (zone-modals.js parseInt), so a value that is not a finite
+  // number >= 1 reads as 1, never as a string summed into a count.
+  function zoneMultiplierOf(z) {
+    const m = z && z.multiplier;
+    return Number.isFinite(m) && m >= 1 ? m : 1;
+  }
   function getMultiplyZoneForPoint(ann, p) {
     const zones = ann?.multiplyZones || [];
     for (const z of zones) {
-      if (pointInRect(p, z.x1, z.y1, z.x2, z.y2)) return z.multiplier;
+      if (pointInRect(p, z.x1, z.y1, z.x2, z.y2)) return zoneMultiplierOf(z);
     }
     return 1;
   }
@@ -156,7 +164,7 @@
     const start = isPoly ? (line.points?.[0] || { x: 0, y: 0 }) : { x: line.x1, y: line.y1 };
     const end = isPoly ? (line.points?.[line.points?.length - 1] || { x: 0, y: 0 }) : { x: line.x2, y: line.y2 };
     for (const z of zones) {
-      if (pointInRect(start, z.x1, z.y1, z.x2, z.y2) && pointInRect(end, z.x1, z.y1, z.x2, z.y2)) return z.multiplier;
+      if (pointInRect(start, z.x1, z.y1, z.x2, z.y2) && pointInRect(end, z.x1, z.y1, z.x2, z.y2)) return zoneMultiplierOf(z);
     }
     return 1;
   }

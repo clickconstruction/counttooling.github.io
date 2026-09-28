@@ -19,6 +19,14 @@
   // sheet with no layers (all-pages-canvases) and its "plan" progress word
   // (all-pages). The notes and highlights bundles render each sheet once per
   // export (a one-sheet memo) instead of once per note or highlight.
+  //
+  // BUNDLE-ONE-SHEET (2026-09-27, DECOMPOSITION_MAP S05): the two bundle
+  // builders share collectBundleItems (every layer, like the sidebar buttons
+  // and the Summary), cropSheetJpeg and addBundleSummary (page-overflow guard
+  // for both tables). Both take doc = null and make their own A4; a doc they
+  // are given always gets a new page first, so a one-sheet export no longer
+  // prints the summary over the sheet. The sidebar Highlight / Note Pages (PDF)
+  // buttons call them through App.openBundlePdf (features/output.js).
 
   // Pure page-slicer for the rendered report raster (B5, J10): cut the tall
   // html2canvas raster into page-height slices, but never through a row.
@@ -135,17 +143,20 @@
   }
 
   // The notes and highlights bundles crop every item out of its sheet's full
-  // raster. Their items run sheet by sheet, so a one-sheet memo renders each
-  // sheet once per export; the previous sheet is dropped before the next one
-  // renders (holding every sheet's 4x canvas at once could run a big set out
-  // of memory). Returns sheetCanvas(pageIdx) -> the sheet's canvas, active layer.
+  // raster. Their items run sheet by sheet and layer by layer, so a one-raster
+  // memo renders each (sheet, layer) once per export; the previous raster is
+  // dropped before the next one renders (holding every sheet's 4x canvas at
+  // once could run a big set out of memory). Returns
+  // sheetCanvas(pageIdx, layer) -> the sheet's canvas drawn with THAT layer's
+  // marks (BUNDLE-ONE-SHEET: an item's crop comes from its own layer).
   function makeSheetRasterMemo(scale, overrides) {
-    let memo = { pageIdx: -1, canvas: null };
-    return async (pageIdx) => {
-      if (memo.pageIdx !== pageIdx) {
-        memo = { pageIdx: -1, canvas: null };
-        const { canvas } = await rasterPageCanvas(App.state.pages[pageIdx], { scale, overrides });
-        memo = { pageIdx, canvas };
+    let memo = { pageIdx: -1, layer: null, canvas: null };
+    return async (pageIdx, layer) => {
+      if (memo.pageIdx !== pageIdx || memo.layer !== layer) {
+        memo = { pageIdx: -1, layer: null, canvas: null };
+        const annotations = (layer && layer.annotations) || App.makeAnnotations();
+        const { canvas } = await rasterPageCanvas(App.state.pages[pageIdx], { scale, overrides, annotations });
+        memo = { pageIdx, layer, canvas };
       }
       return memo.canvas;
     };
@@ -242,13 +253,16 @@
         doc = addImagePage(doc, await raster(page));
       }
     }
-    if (doc && options.bundleHighlights && hasAnyHighlights()) {
+    // BUNDLE-ONE-SHEET: each builder always starts its section on a new page of
+    // the doc (and makes its own A4 doc when there is none), so a one-sheet
+    // export no longer gets its summary table printed over the sheet.
+    if (options.bundleHighlights && hasAnyHighlights()) {
       progress('Exporting highlights…');
-      await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
+      doc = await addHighlightsToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
     }
-    if (doc && options.bundleNotes && hasAnyNotes()) {
+    if (options.bundleNotes && hasAnyNotes()) {
       progress('Exporting notes…');
-      await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
+      doc = await addNotesToPdf(doc, { scale: EXPORT_SCALE, exportOverrides, pageFilter: i => included.includes(i) });
     }
     return { doc, included };
   }
@@ -261,58 +275,109 @@
     return App.state.pages.some(p => App.getPageCanvases(p).some(c => (c.annotations?.notes?.length || 0) > 0));
   }
 
-  async function addNotesToPdf(doc, options = {}) {
-    const scale = options.scale ?? 4;
-    const exportOverrides = options.exportOverrides ?? {};
-    const pageFilter = options.pageFilter ?? (() => true);
-    const PT_TO_MM = 25.4 / 72;
+  // ---- The notes and highlights bundles (BUNDLE-ONE-SHEET, 2026-09-27) ----
+  // Both builders share the three helpers below and one contract: pass the
+  // export's jsPDF doc (the section starts on a NEW page of it, always) or
+  // null (the builder makes its own A4 portrait doc). Each returns the doc it
+  // drew on, or the doc it was given (null when given null) when there was
+  // nothing to draw. Their layouts stay their own: notes run on uniform A4
+  // pages with the first note folded under the summary; highlights get one
+  // page sized to each crop.
+  const BUNDLE_A4_W = 210, BUNDLE_A4_H = 297;
+  const BUNDLE_MARGIN = 14;
+  const BUNDLE_BOTTOM = BUNDLE_A4_H - 12;
+
+  // Every note (with text) or highlight on the sheets pageFilter keeps, from
+  // EVERY layer: the sidebar buttons (hasAnyNotes / hasAnyHighlights) and the
+  // Summary count every layer, so the bundle does too. Sheet by sheet, then
+  // layer by layer, so the raster memo renders each (sheet, layer) once.
+  // kind: 'notes' | 'highlights'. Item: { pageIdx, pageLabel, layer, item }.
+  function collectBundleItems(kind, pageFilter) {
+    const keep = pageFilter || (() => true);
     const items = [];
     App.state.pages.forEach((page, pageIdx) => {
-      if (!pageFilter(pageIdx)) return;
-      const notes = App.getActiveAnnotations(page)?.notes || [];
-      notes.forEach(n => {
-        if (n.text) items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), note: n });
+      if (!keep(pageIdx)) return;
+      const pageLabel = page.label || 'Page ' + (pageIdx + 1);
+      App.getPageCanvases(page).forEach(layer => {
+        (layer.annotations?.[kind] || []).forEach(item => {
+          if (kind === 'notes' && !item.text) return;
+          items.push({ pageIdx, pageLabel, layer, item });
+        });
       });
     });
-    if (!items.length) return 0;
-    const summaryByPage = {};
-    items.forEach(it => {
-      const key = it.pageIdx;
-      if (!summaryByPage[key]) summaryByPage[key] = { pageIdx: it.pageIdx, pageLabel: it.pageLabel, count: 0 };
-      summaryByPage[key].count++;
-    });
-    // B5 (J10): the notes section uses uniform A4 portrait pages, and the
-    // Notes Summary folds onto the first notes page (the first note renders
-    // beneath the summary table when it fits) instead of sitting on its own
-    // mostly-empty page.
-    const A4_W = 210, A4_H = 297;
-    const MARGIN = 14;
-    const CONTENT_W = A4_W - MARGIN * 2;
-    const BOTTOM = A4_H - 12;
-    if (doc.getNumberOfPages() > 1) doc.addPage([A4_W, A4_H], 'p');
+    return items;
+  }
+
+  // Cut rect ({ x, y, w, h } in PDF points) out of a sheet raster drawn at
+  // `scale`; returns the crop as a JPEG data URL.
+  function cropSheetJpeg(sheetCanvas, rect, scale) {
+    const cropW = Math.max(1, Math.round(rect.w * scale));
+    const cropH = Math.max(1, Math.round(rect.h * scale));
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    cropCanvas.getContext('2d').drawImage(sheetCanvas, rect.x * scale, rect.y * scale, cropW, cropH, 0, 0, cropW, cropH);
+    return cropCanvas.toDataURL('image/jpeg', 0.95);
+  }
+
+  // Draw the "<title>" table (one row per sheet: page number, label, count)
+  // from the top of the doc's CURRENT page, breaking onto a fresh A4 page when
+  // a row would pass the bottom margin. Returns the y (mm) below the last row.
+  function addBundleSummary(doc, title, countLabel, rows) {
     doc.setFontSize(14);
-    doc.text('Notes Summary', MARGIN, 20);
+    doc.text(title, BUNDLE_MARGIN, 20);
     doc.setFontSize(10);
     let y = 35;
     doc.text('Page', 14, y);
     doc.text('Label', 50, y);
-    doc.text('# Notes', 120, y);
+    doc.text(countLabel, 120, y);
     y += 8;
-    Object.values(summaryByPage).forEach(row => {
-      if (y > BOTTOM) { doc.addPage([A4_W, A4_H], 'p'); y = 20; }
+    rows.forEach(row => {
+      if (y > BUNDLE_BOTTOM) { doc.addPage([BUNDLE_A4_W, BUNDLE_A4_H], 'p'); y = 20; }
       doc.text(String(row.pageIdx + 1), 14, y);
       doc.text(row.pageLabel, 50, y);
       doc.text(String(row.count), 120, y);
       y += 7;
     });
+    return y;
+  }
+
+  // One summary row per sheet, in sheet order, counting its items on every layer.
+  function summaryRows(items) {
+    const byPage = new Map();
+    items.forEach(it => {
+      if (!byPage.has(it.pageIdx)) byPage.set(it.pageIdx, { pageIdx: it.pageIdx, pageLabel: it.pageLabel, count: 0 });
+      byPage.get(it.pageIdx).count++;
+    });
+    return [...byPage.values()];
+  }
+
+  // Start a bundle section on a fresh A4 portrait page: a new doc when there
+  // is none, else a new page (never the doc's current page).
+  function startBundleSection(doc) {
+    if (!doc) return new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'p' });
+    doc.addPage([BUNDLE_A4_W, BUNDLE_A4_H], 'p');
+    return doc;
+  }
+
+  async function addNotesToPdf(doc = null, options = {}) {
+    const scale = options.scale ?? 4;
+    const exportOverrides = options.exportOverrides ?? {};
+    const items = collectBundleItems('notes', options.pageFilter);
+    if (!items.length) return doc;
+    // B5 (J10): the notes section uses uniform A4 portrait pages, and the
+    // Notes Summary folds onto the first notes page (the first note renders
+    // beneath the summary table when it fits) instead of sitting on its own
+    // mostly-empty page.
+    const CONTENT_W = BUNDLE_A4_W - BUNDLE_MARGIN * 2;
+    doc = startBundleSection(doc);
+    let y = addBundleSummary(doc, 'Notes Summary', '# Notes', summaryRows(items));
     y += 6;
-    let pageCount = doc.getNumberOfPages();
     let firstNoteRendered = false;
     const sheetCanvas = makeSheetRasterMemo(scale, exportOverrides);
-    for (let idx = 0; idx < items.length; idx++) {
-      const it = items[idx];
+    for (const it of items) {
       const page = App.state.pages[it.pageIdx];
-      const n = it.note;
+      const n = it.item;
       const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
       const pageW = viewport.width / scale, pageH = viewport.height / scale;
       const noteW = n.width || 150;
@@ -324,17 +389,9 @@
       const minY = Math.max(0, n.y - pad);
       const maxX = Math.min(pageW, n.x + noteW + pad);
       const maxY = Math.min(pageH, n.y + noteH / scale + pad);
-      let w = maxX - minX, hh = maxY - minY;
+      const w = maxX - minX, hh = maxY - minY;
       if (w < 1 || hh < 1) continue;
-      const fullCanvas = await sheetCanvas(it.pageIdx);
-      const cropW = Math.max(1, Math.round(w * scale));
-      const cropH = Math.max(1, Math.round(hh * scale));
-      const cropCanvas = document.createElement('canvas');
-      cropCanvas.width = cropW;
-      cropCanvas.height = cropH;
-      const cropCtx = cropCanvas.getContext('2d');
-      cropCtx.drawImage(fullCanvas, minX * scale, minY * scale, cropW, cropH, 0, 0, cropW, cropH);
-      const imgData = cropCanvas.toDataURL('image/jpeg', 0.95);
+      const imgData = cropSheetJpeg(await sheetCanvas(it.pageIdx, it.layer), { x: minX, y: minY, w, h: hh }, scale);
       const imgWMm = w * PT_TO_MM;
       const imgHMm = hh * PT_TO_MM;
       const caption = 'From Page ' + (it.pageIdx + 1) + ': ' + it.pageLabel;
@@ -346,91 +403,50 @@
       // caption + a usably-sized image + the note text; otherwise (and for
       // every later note) start a fresh uniform page.
       let captionTop;
-      if (!firstNoteRendered && y + 4 + 20 + 8 + Math.min(textH, 60) + 8 <= BOTTOM) {
+      if (!firstNoteRendered && y + 4 + 20 + 8 + Math.min(textH, 60) + 8 <= BUNDLE_BOTTOM) {
         captionTop = y + 4;
       } else {
-        doc.addPage([A4_W, A4_H], 'p');
-        pageCount++;
+        doc.addPage([BUNDLE_A4_W, BUNDLE_A4_H], 'p');
         captionTop = 10;
       }
       firstNoteRendered = true;
       const imageTop = captionTop + 4;
       // Scale the crop down (never up) to fit the content box above the text.
-      const availH = Math.max(15, BOTTOM - imageTop - 8 - textH);
+      const availH = Math.max(15, BUNDLE_BOTTOM - imageTop - 8 - textH);
       const fit = Math.min(1, CONTENT_W / imgWMm, availH / imgHMm);
       const drawW = imgWMm * fit;
       const drawH = imgHMm * fit;
       const textTop = imageTop + drawH + 8;
       doc.setFontSize(9);
-      doc.addImage(imgData, 'JPEG', MARGIN, imageTop, drawW, drawH);
-      doc.text(caption, MARGIN, captionTop);
+      doc.addImage(imgData, 'JPEG', BUNDLE_MARGIN, imageTop, drawW, drawH);
+      doc.text(caption, BUNDLE_MARGIN, captionTop);
       doc.setFontSize(10);
-      doc.text(n.text, MARGIN, textTop, { maxWidth: CONTENT_W });
+      doc.text(n.text, BUNDLE_MARGIN, textTop, { maxWidth: CONTENT_W });
     }
-    return pageCount;
+    return doc;
   }
 
-  async function addHighlightsToPdf(doc, options = {}) {
+  async function addHighlightsToPdf(doc = null, options = {}) {
     const scale = options.scale ?? 4;
     const exportOverrides = options.exportOverrides ?? {};
-    const pageFilter = options.pageFilter ?? (() => true);
-    const PT_TO_MM = 25.4 / 72;
-    const items = [];
-    App.state.pages.forEach((page, pageIdx) => {
-      if (!pageFilter(pageIdx)) return;
-      const highlights = App.getActiveAnnotations(page)?.highlights || [];
-      highlights.forEach(h => {
-        items.push({ pageIdx, pageLabel: page.label || 'Page ' + (pageIdx + 1), highlight: h });
-      });
-    });
-    if (!items.length) return 0;
-    const summaryByPage = {};
-    items.forEach(it => {
-      const key = it.pageIdx;
-      if (!summaryByPage[key]) summaryByPage[key] = { pageIdx: it.pageIdx, pageLabel: it.pageLabel, count: 0 };
-      summaryByPage[key].count++;
-    });
-    if (doc.getNumberOfPages() > 1) doc.addPage([210, 297], 'p');
-    doc.setFontSize(14);
-    doc.text('Highlights Summary', 14, 20);
-    doc.setFontSize(10);
-    let y = 35;
-    doc.text('Page', 14, y);
-    doc.text('Label', 50, y);
-    doc.text('# Highlights', 120, y);
-    y += 8;
-    Object.values(summaryByPage).forEach(row => {
-      doc.text(String(row.pageIdx + 1), 14, y);
-      doc.text(row.pageLabel, 50, y);
-      doc.text(String(row.count), 120, y);
-      y += 7;
-    });
-    let pageCount = doc.getNumberOfPages();
+    const items = collectBundleItems('highlights', options.pageFilter);
+    if (!items.length) return doc;
+    doc = startBundleSection(doc);
+    addBundleSummary(doc, 'Highlights Summary', '# Highlights', summaryRows(items));
     const sheetCanvas = makeSheetRasterMemo(scale, exportOverrides);
-    for (let idx = 0; idx < items.length; idx++) {
-      const it = items[idx];
+    for (const it of items) {
       const page = App.state.pages[it.pageIdx];
-      const h = it.highlight;
+      const h = it.item;
       const minX = Math.min(h.x1, h.x2), maxX = Math.max(h.x1, h.x2);
       const minY = Math.min(h.y1, h.y2), maxY = Math.max(h.y1, h.y2);
-      let w = maxX - minX, hh = maxY - minY;
-      if (w < 1 || hh < 1) continue;
+      if (maxX - minX < 1 || maxY - minY < 1) continue;
       const viewport = page.pdfPage.getViewport({ scale, rotation: page.rotation ?? 0 });
       const pageW = viewport.width / scale, pageH = viewport.height / scale;
       const clampMinX = Math.max(0, minX), clampMinY = Math.max(0, minY);
-      const clampMaxX = Math.min(pageW, maxX), clampMaxY = Math.min(pageH, maxY);
-      w = clampMaxX - clampMinX;
-      hh = clampMaxY - clampMinY;
+      const w = Math.min(pageW, maxX) - clampMinX;
+      const hh = Math.min(pageH, maxY) - clampMinY;
       if (w < 1 || hh < 1) continue;
-      const fullCanvas = await sheetCanvas(it.pageIdx);
-      const cropW = Math.max(1, Math.round(w * scale));
-      const cropH = Math.max(1, Math.round(hh * scale));
-      const cropCanvas = document.createElement('canvas');
-      cropCanvas.width = cropW;
-      cropCanvas.height = cropH;
-      const cropCtx = cropCanvas.getContext('2d');
-      cropCtx.drawImage(fullCanvas, clampMinX * scale, clampMinY * scale, cropW, cropH, 0, 0, cropW, cropH);
-      const imgData = cropCanvas.toDataURL('image/jpeg', 0.95);
+      const imgData = cropSheetJpeg(await sheetCanvas(it.pageIdx, it.layer), { x: clampMinX, y: clampMinY, w, h: hh }, scale);
       const wMm = w * PT_TO_MM;
       const hMm = hh * PT_TO_MM;
       const caption = 'From Page ' + (it.pageIdx + 1) + ': ' + it.pageLabel;
@@ -442,9 +458,8 @@
       doc.setFontSize(9);
       doc.addImage(imgData, 'JPEG', 14, imageTop, wMm, hMm);
       doc.text(caption, 14, captionTop);
-      pageCount++;
     }
-    return pageCount;
+    return doc;
   }
 
   App.addReportPagesToPdf = addReportPagesToPdf;

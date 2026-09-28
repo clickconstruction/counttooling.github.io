@@ -462,6 +462,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // Fixing → right-click the stray mark, Delete
     await open('fixing', 'undo');
     await page.evaluate(() => window.App.tutorialGoTo('context'));
+    // the sheet moves to the circled mark a beat after the step opens: the click is aimed once the view
+    // has stood still (on CI the point was read before the move and the right-click missed the mark)
+    await page.waitForFunction(() => { const s = window.state, k = s.zoom + ':' + s.pan.x + ':' + s.pan.y; const w = window; if (w.__viewKey !== k) { w.__viewKey = k; w.__viewAt = Date.now(); return false; } return Date.now() - w.__viewAt > 700; }, null, { timeout: 15000, polling: 100 });
     const pt = await page.evaluate(() => { const c = window.App.toCanvas({ x: 60 + 0.75 * 345, y: 70 + 0.75 * 330 }); const r = document.getElementById('annCanvas').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; return { x: r.left + c.x / dpr, y: r.top + c.y / dpr }; });
     await page.mouse.click(pt.x, pt.y, { button: 'right' });
     await expect(page.locator('#ctxDelete')).toBeVisible();

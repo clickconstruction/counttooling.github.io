@@ -191,17 +191,17 @@ const FIRST_USE = {
   // glossed on or before the card that first uses it, in that tour. The shared scale and
   // measure cards (tutorial.js SCALE_STEP, MEASURE_STEP) sit second and third in each.
   'tour-plumbing': {
-    'takeoff': 'welcome', 'bid': 'welcome', 'scale': 'welcome', 'riser': 'welcome', 'hanger': 'welcome',
-    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'takeoff': 'welcome', 'bid': 'welcome',
+    'scale': 'scale', 'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
     'counter': 'counter', 'water closet': 'counter', 'sidebar': 'counter', 'mark': 'counter', 'armed': 'counter',
     'set': 'place',
     'line type': 'linetype', 'PEX': 'linetype', 'branch': 'linetype', 'lavatory': 'linetype',
     'chain': 'chain', 'lav battery': 'chain', 'fixture': 'chain',
-    'slab': 'drop', 'footage': 'drop', 'plan view': 'drop', 'palette': 'drop', 'run': 'drop',
-    'child count': 'hangers', 'IPC': 'hangers', 'summary': 'hangers', 'export': 'hangers',
+    'riser': 'drop', 'slab': 'drop', 'footage': 'drop', 'plan view': 'drop', 'palette': 'drop', 'run': 'drop',
+    'hanger': 'hangers', 'child count': 'hangers', 'IPC': 'hangers', 'summary': 'hangers', 'export': 'hangers',
     'leader': 'waterside',
     'fixture unit': 'wsfu', 'WSFU': 'wsfu', 'chip': 'wsfu', 'public': 'wsfu', 'private': 'wsfu',
-    'main': 'size', 'fps': 'size', 'trace': 'size',
+    'main': 'size', 'fps': 'size', 'trace': 'size', 'fitting': 'size',
     'typical': 'zone', 'multiply zone': 'zone',
     'ADA': 'rfi', 'RFI': 'rfi', 'GC': 'rfi', 'PipeTooling': 'rfi',
     'legend': 'proof', 'clipboard': 'handoff', 'group': 'done',
@@ -297,7 +297,6 @@ const EARLY = [
   ['hvac', 'run', 'sheet'],                  // the verb, several times; the noun is glossed in Chapter 4
   ['hvac', 'run', 'rooms'],
   ['hvac', 'run', 'diffusers'],
-  ['tour-plumbing', 'set', 'welcome'],       // "You will set the scale": the verb; the place card glosses a set
   ['tour-plumbing', 'set', 'measure'],       // "every time you set a scale"
   ['tour-plumbing', 'set', 'scale'],         // the card's title, "Set the scale": the verb (titles are read since 2026-09-27)
   ['tour-blank', 'set', 'scale'],            // the same title on the blank-sheet tour

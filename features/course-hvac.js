@@ -395,6 +395,7 @@
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM101().check(), hint: () => proveM101().hint(), zones: () => proveM101().zones(),
           action: { label: 'Measure the 31\'-8" string', run: async () => { K().goPage(M101); if (!K().scaleIs(M101, 9)) await T().applyScalePreset('1/8" = 1\'', 9); const d = pts(G.dim318); K().measure(d[0], d[1]); } } },
         { id: 'unit', title: 'Which unit moves the most air?', kind: 'do', cardAt: 'tr',   // top right: off COUNTERS + Add, the first thing lit, and off the roof keys
+          answer: 'Answer: RTU-1, at 3,000 CFM. Every other number on the set follows from it.\nRTU-1 also carries 7.5 tons of cooling, its cooling size, and 1.0 in of static pressure. Static pressure is the push the fan has to give the air to get through the duct.',
           body: 'Four roof keys, each with a CFM: cubic feet per minute, how much air the unit moves.\n1. Under COUNTERS in the left sidebar, click [[+ Add]]. The project is HVAC, so the [[Quick]] tab offers Size, Type and Material.\n2. Set Type to RTU and click {{Add Counter|#counterQuickCountAdd}}.\n3. Click the roof key of the unit that moves the most air.',
           // the light follows the card: the way to the counter until there is one, then the sheet (the sheet was lit over step 1)
           target: () => (counter(RE.rtu) ? ['#annCanvas', '#countersList'] : ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter']),
@@ -402,7 +403,7 @@
           hint: () => (counter(RE.rtu) && marksOf(counter(RE.rtu), M101).length ? (markNear(counter(RE.rtu), pts(G.ef1)[0], 26, M101) ? 'EF-1 pulls 2,400 CFM out of the hood, and that is a lot, but one key says 3,000' : 'Read the CFM in each dashed box') : (K().armedNamed(RE.rtu) ? 'The counter is armed: click the roof key' : '')),
           action: { label: 'Find it for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickUnit(RE.rtu, 'RTU-1', 'RTU', '#2e86de'), pts(G.rtu), M101); K().dirty(); } } },
         { id: 'schedule', title: 'The room that breathes hardest', kind: 'do', cardAt: 'br',
-          body: 'Answer: RTU-1, at 3,000 CFM. Every other number on the set follows from it.\n1. Under PAGES (click the heading to open it if it is folded), click M-501, the schedules.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts the most air, nearly as much as the whole unit supplies.\n3. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.\nRTU-1 also carries 7.5 tons of cooling, its cooling size, and 1.0 in of static pressure. Static pressure is the push the fan has to give the air to get through the duct.',
+          body: '1. Under PAGES (click the heading to open it if it is folded), click M-501, the schedules.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts the most air, nearly as much as the whole unit supplies.\n3. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.',
           target: () => (K().onPage(M501) ? ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'] : ['#pagesList']),
           check: () => { const a = pageAnn(M501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 300 && Math.max(h.x1, h.x2) >= 300 && Math.min(h.y1, h.y2) <= 619 && Math.max(h.y1, h.y2) >= 619); },
           hint: () => { if (!K().onPage(M501)) return T().pagesFoldedHint('M-501'); const a = pageAnn(M501); return a && (a.highlights || []).length ? 'Not that row. Read down the EXHAUST column for the biggest number' : ''; },
@@ -603,13 +604,14 @@
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM601().check(), hint: () => proveM601().hint(), zones: () => proveM601().zones(),
           action: { label: 'Measure it for me', run: async () => { K().goPage(M601); if (!K().scaleIs(M601, 36)) await T().applyScalePreset('1/2" = 1\'', 36); const d = raw(SECTION.prove); K().measure(d[0], d[1]); } } },
         { id: 'depth', title: 'How deep is the main with its wrap?', kind: 'do', cardAt: 'br', page: M601, zones: () => depthM601().zones(),
+          answer: 'Answer: 1\'-4", twelve inches of duct and two of wrap each side. The section says it fits under the 3\'-0" plenum.',
           body: 'The plenum is the 3\'-0" between the ceiling and the deck. Inside it runs the 24x12 main with its 2" wrap.\n1. Click [[Measure]] again.\n2. Click both ends of the dimension on the duct\'s right side.',
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => depthM601().check(),
           onEnter: () => { depthEntryMeasure = S().lastMeasure; },
           hint: () => (S().lastMeasure && S().lastMeasure === depthEntryMeasure ? '' : depthM601().hint()),
           action: { label: 'Measure it for me', run: () => { K().goPage(M601); const d = raw(SECTION.depth); K().measure(d[0], d[1]); } } },
         { id: 'fits', title: 'Let the app say it fits', kind: 'do',
-          onEnter: () => T().foldBidCheck(), hold: true, body: 'Answer: 1\'-4", twelve inches of duct and two of wrap each side. The section says it fits under the 3\'-0" plenum.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.\nThe row can judge because chapter 2 gave every room a ceiling and a deck, and chapter 5 gave the main its wrap.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: '1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.\nThe row can judge because chapter 2 gave every room a ceiling and a deck, and chapter 5 gave the main its wrap.',
           target: () => (K().onPage(M101) ? ['#bidCheckSectionTitle'] : ['#pagesList']),   // the card's first line is M-101 (by hand, 2026-09-25)
           check: () => { const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
           hint: () => { if (!K().onPage(M101)) return T().pagesFoldedHint('M-101'); const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },

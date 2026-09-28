@@ -19,6 +19,9 @@
  * sheet; the answer waits behind the action button, "Show the engineer's answer" or the
  * step's own revealLabel, and Next is lit throughout. The plumbing course's teaching mode,
  * journeys/plans/PLUMBING-COURSE.md)
+ * (answer: a doing step that asks with its task. Once the check passes, the card shows the answer
+ * in place of the task and waits for Next, as `hold` does. The answer used to open the NEXT card,
+ * which then did two jobs: the last answer and its own task; the card review, fix 4)
  * (rules: the rulebook ids, from rules/rules.json, whose values the step teaches, and
  * rulesExempt: why a step that cites a code section names none, usually a section the
  * rulebook has no entry for yet. Neither changes the tour; scripts/check-lesson-rules.js, in
@@ -1429,7 +1432,7 @@
     const text = (b) => (typeof b === 'function' ? b() : b);
     let words = null;
     try { words = App.cardWordTaps ? App.cardWordTaps(tourId, stepIdx) : null; } catch (_) { words = null; }
-    const html = bodyHtml(text(step.body), words) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal), words) + '</div>' : '');
+    const html = bodyHtml(text(step.answer && step.kind === 'do' && done ? step.answer : step.body), words) + (step.reveal && revealed ? '<div class="tour-reveal">' + bodyHtml(text(step.reveal), words) + '</div>' : '');
     // written only when it changed: a word under the reader's finger, or holding the keyboard's
     // focus, is not replaced by the next tick
     const bodyEl = el('tourBody');
@@ -1631,7 +1634,7 @@
     }
     // auto-advance a beat after a doing-step completes — never on a step the
     // reader came Back to (its work is already there; Next is lit instead)
-    if (step.kind === 'do' && done && !heldByBack && !step.hold && stepIdx < STEPS.length - 1) {
+    if (step.kind === 'do' && done && !heldByBack && !step.hold && !step.answer && stepIdx < STEPS.length - 1) {
       if (!doneAt) doneAt = Date.now();
       else if (Date.now() - doneAt > 900) goTo(stepIdx + 1);
     } else doneAt = 0;
@@ -2240,10 +2243,12 @@
       steps: (def.steps || []).map((st, i) => {
         const m = { i, id: st.id, kind: st.kind, title: st.title, body: stepText(st.body) };
         if (st.reveal) m.reveal = stepText(st.reveal);
+        if (st.answer) m.answer = stepText(st.answer);
         m.targets = targetLabels(st);
         m.zones = countedZones(stepZones(st)).length;
         if (st.page != null) m.page = st.page;
         ['hint', 'progress', 'action', 'handsOff', 'hold'].forEach((k) => { if (st[k]) m[k] = true; });
+        if (st.answer) m.hold = true;
         if (Array.isArray(st.rules) && st.rules.length) m.rules = st.rules.slice();
         if (st.rulesExempt) m.rulesExempt = String(st.rulesExempt);
         return m;
@@ -2291,7 +2296,7 @@
   App.tutorialIds = () => Object.keys(TOURS);
   App.tutorialManifest = manifestOf;
   // Each step's card text alone, body then reveal, in step order: what features/learn-taps.js reads a run of cards from.
-  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? (def.steps || []).map((st) => stepText(st.body) + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
+  App.tutorialBodies = (id) => { const def = TOURS[id]; return def ? (def.steps || []).map((st) => stepText(st.body) + (st.answer ? '\n' + stepText(st.answer) : '') + (st.reveal ? '\n' + stepText(st.reveal) : '')) : null; };
   App.tutorialObserve = observe;
   App.startTutorial = startTutorial;
   App.openAdvancedSamplePlan = openAdvancedSamplePlan;   // the engineered sample plan (restaurant plumbing sheet) through the intake

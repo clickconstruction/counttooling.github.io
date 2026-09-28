@@ -165,6 +165,14 @@ const REVEALS = {
   before: [], sheet: ['what', 'units'], fixtures: [], water: ['trunk'], waste: ['underslab'], riser: ['why'], gas: ['meter'], details: ['why'], whole: [], bid: ['rows'],
 };
 
+// A doing step that asks a question holds on its own answer once the click is right (the card
+// review, fix 4): the card reads "Answer: …" in place of the task, and Next moves on.
+async function answeredThenNext(page, next) {
+  await expect(page.locator('#tourBody')).toContainText('Answer:', { timeout: 5000 });
+  await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+  await page.click('#tourNext');
+  await page.waitForFunction((want) => window.App.tutorialStepId() === want, next, { timeout: 5000 });
+}
 test.describe('The plumbing course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
     test('chapter "' + id + '": reveals its answers, does every step on real state, ticks it, and hands back to the course', async ({ page }) => {
@@ -204,7 +212,7 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     await expect(page.locator('#tourStatus')).toHaveText(/Not that one: it serves the bar/);
     await expect(page.locator('#tourNext')).toBeDisabled();
     await page.evaluate(() => { const k = window.App.lessonKit; const c = k.counterNamed(/^hs-?1\b|hand sink/i); k.mark(k.P101, c, [k.HAND_SINKS[1]]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'kitchen', null, { timeout: 5000 });
+    await answeredThenNext(page, 'kitchen');
     // the count hint names what is missing, by room
     await page.evaluate(() => { const k = window.App.lessonKit; const c = k.counterNamed(/^fd-?1\b|floor drain/i) || k.makeCounter('FD-1 Floor Drain', 'Floor Drain', '#e85447'); k.mark(k.P101, c, [k.FD.bar1, k.FD.bar2, k.FD.kitchen1, k.FD.kitchen2, k.FD.kitchen3]); k.dirty(); });
     await page.waitForTimeout(500);
@@ -222,7 +230,7 @@ test.describe('The plumbing course: a question is answered with a click', () => 
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/Not that one: the red note sends ALL KITCHEN WASTE through the interceptor/);
     await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.MOP, 'the mop sink: sewage, not grease', '#e8c547'); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'layer', null, { timeout: 5000 });
+    await answeredThenNext(page, 'layer');
     await gotoStep(page, 'cleanouts');
     await page.evaluate(() => { const k = window.App.lessonKit; const c = k.makeCounter('CO Cleanout', 'Floor Drain', '#2e86de'); k.mark(k.P101, c, [k.P(592, 210), k.P(596, 436)]); k.dirty(); });
     await page.waitForTimeout(500);

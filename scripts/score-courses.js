@@ -358,7 +358,7 @@ function propsOf(n) {
   return m;
 }
 const strOf = (n) => (isStr(n) ? n.value : flat(n).trim());
-const CARD_KEYS = ['title', 'body', 'reveal'];   // the title is card text too: it can carry the gloss, so the body need not repeat it (2026-09-27)
+const CARD_KEYS = ['title', 'body', 'answer', 'reveal'];   // the title is card text too: it can carry the gloss, so the body need not repeat it (2026-09-27)
 
 // The chapters of one file, in order: { id, title, line, cards: [{ id, line, pieces }] }.
 // A piece is { key, text, line }. A step array's element that names a constant object

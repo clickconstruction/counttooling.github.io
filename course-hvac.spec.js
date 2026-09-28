@@ -150,6 +150,14 @@ const EXPECT = {
 };
 const REVEALS = { before: [], sheet: ['what', 'balance'], rooms: ['why', 'deck'], diffusers: ['neck'], system: ['designed'], main: ['why'], plenum: ['static'], exhaust: ['why', 'nodamper', 'interlock'], whole: [], bid: ['rows'] };
 
+// A doing step that asks a question holds on its own answer once the click is right (the card
+// review, fix 4): the card reads "Answer: …" in place of the task, and Next moves on.
+async function answeredThenNext(page, next) {
+  await expect(page.locator('#tourBody')).toContainText('Answer:', { timeout: 5000 });
+  await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+  await page.click('#tourNext');
+  await page.waitForFunction((want) => window.App.tutorialStepId() === want, next, { timeout: 5000 });
+}
 test.describe('The HVAC course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
     test('chapter "' + id + '": reveals its answers, does every step on real state, ticks it, and hands back to the course', async ({ page }) => {
@@ -188,7 +196,7 @@ test.describe('The HVAC course: a question is answered with a click', () => {
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/EF-1 pulls 2,400 CFM out of the hood/);
     await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => x.name === 'RTU-1'); k.mark(0, c, [k.P(998, 328)]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule', null, { timeout: 5000 });
+    await answeredThenNext(page, 'schedule');
     expect(errors).toEqual([]);
   });
 
@@ -302,7 +310,7 @@ test.describe('The HVAC course, by hand', () => {
     await page.waitForTimeout(600);
     await expect(page.locator('#tourStatus')).not.toContainText('armed');
     await page.evaluate(() => { const k = window.App.lessonKit; const c = { id: window.App.uid(), name: 'RTU-1', icon: window.App.getOrderedIcons()[0].value, color: '#2e86de', lesson: true }; window.state.counters.push(c); k.mark(0, c, [k.P(998, 328)]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'schedule', null, { timeout: 5000 });
+    await answeredThenNext(page, 'schedule');
     await page.evaluate(() => { if (!document.getElementById('pagesSection').classList.contains('collapsed')) document.getElementById('pagesCollapseIcon').click(); });
     await page.waitForTimeout(600);
     await expect(page.locator('#tourStatus')).toContainText('PAGES is folded');

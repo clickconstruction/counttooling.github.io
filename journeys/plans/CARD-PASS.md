@@ -42,14 +42,14 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the six fixes; 6, 2, 1 and 3 are done, 4 is next.
+**Now:** the six fixes; 6, 2, 1, 3 and 4 are done, 5 is next.
 
 ### The six fixes, before the pass
 
 - [x] 1. The plumbing tour ends with two Bid Check warnings it never mentions: a Bid Check card, and a takeoff that passes. DONE, the first half: a `bidcheck` card sits between `proof` and `handoff` (18 cards now). It opens BID CHECK, lights the two warning rows and says why each one warns (the x3 zone made the 1in pipe too small; the tour drew no hot water). The takeoff still warns on purpose: two real warnings read aloud teach more than a clean list. The hand-off card now says the copy asks first.
 - [x] 2. The electrical course's homerun and feeder steps pass while the run is still a draft: require the run finished. DONE: both checks want no live draft; the circles still tick as the reader goes, and the card's line says "The path is in. Click Finish under the sheet to end the run".
 - [x] 3. Each course's Chapter 0 follows Start here: one card per screen area, and no "how cards work" card. DONE in all three courses: `screen` / `where` became `header`, `sidebar` and `bottom`, each lighting its own area, and the `cards` card is gone. Openers and intros no longer count the cards.
-- [ ] 4. A card that opens with the last question's answer does two jobs: the answer shows on the question's own card.
+- [x] 4. A card that opens with the last question's answer does two jobs: the answer shows on the question's own card. DONE: a step's new `answer` field (features/tutorial.js). Once the reader's click is right the card shows the answer in place of the task and waits for Next. 23 answers moved back to their question cards across the three courses, with the explanation that trailed them and their rule ids; the voltage-drop card asks a thinking question, so its answer waits behind a Show the answer button. The language check and the rules check read `answer` too.
 - [ ] 5. Cards about number keys have no tablet version: skipped on touch.
 - [x] 6. The HVAC tour quotes 442 CFM where the screen reads 508: the number goes. DONE: the card says the four diffusers give 600 CFM, more than the office needs (the room's own figure depends on the box the reader drags, so the card no longer quotes it).
 

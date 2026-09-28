@@ -140,8 +140,16 @@ const EXPECT = {
     expect(await page.evaluate(() => ['scale-verified', 'lighting-controls', 'equipment-connections'].map((k) => window.state.bidCheck.manual[k]))).toEqual([true, true, true]);
   },
 };
-const REVEALS = { before: [], sheet: ['what', 'row'], devices: ['heights'], lighting: ['why'], conduit: ['why12'], circuits: [], equipment: ['poles', 'dedicated'], service: ['read'], whole: [], bid: ['rows'] };
+const REVEALS = { before: [], sheet: ['what', 'row'], devices: ['heights'], lighting: ['why'], conduit: ['why12'], circuits: ['vd'], equipment: ['poles', 'dedicated'], service: ['read'], whole: [], bid: ['rows'] };
 
+// A doing step that asks a question holds on its own answer once the click is right (the card
+// review, fix 4): the card reads "Answer: …" in place of the task, and Next moves on.
+async function answeredThenNext(page, next) {
+  await expect(page.locator('#tourBody')).toContainText('Answer:', { timeout: 5000 });
+  await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
+  await page.click('#tourNext');
+  await page.waitForFunction((want) => window.App.tutorialStepId() === want, next, { timeout: 5000 });
+}
 test.describe('The electrical course: the chapters', () => {
   for (const id of Object.keys(EXPECT)) {
     test('chapter "' + id + '": reveals its answers, does every step on real state, ticks it, and hands back to the course', async ({ page }) => {
@@ -199,12 +207,12 @@ test.describe('The electrical course: a question is answered with a click', () =
     await expect(page.locator('#tourStatus')).toHaveText(/2 more: the cook line \(east\), the dish pit/);
     // the miss: a note on a labelled GFCI is refused, a note on the plain kitchen duplex is the answer
     await page.evaluate(() => { const k = window.App.lessonKit; const c = window.state.counters.find((x) => /GFCI/.test(x.name)); k.mark(0, c, [k.P(800, 358), k.P(660, 476)]); k.dirty(); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'missed', null, { timeout: 5000 });
+    await answeredThenNext(page, 'missed');
     await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.P(640, 106), 'RFI: this one?', '#e85447'); });
     await page.waitForTimeout(500);
     await expect(page.locator('#tourStatus')).toHaveText(/That one already says GFI/);
     await page.evaluate(() => { const k = window.App.lessonKit; k.addNote(k.P(600, 460), 'RFI: a plain duplex in the kitchen', '#e85447'); });
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'duplex', null, { timeout: 5000 });
+    await answeredThenNext(page, 'duplex');
     // T2 (settled 2026-09-27): the flagged receptacle is counted once, as a GFCI. A Duplex mark on it is
     // refused; the ten plain ones and the GFCI on the flagged one pass.
     const plain = [[136, 160], [136, 250], [136, 340], [136, 430], [200, 106], [300, 106], [400, 106], [500, 596], [760, 476], [930, 590]];

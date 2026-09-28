@@ -74,6 +74,22 @@ order, and the card lit Apply the whole time the dialog was open.
 Walked on screen at 1280 x 720 in both tours: every chip live, neither card scrolls, and the
 ring moved field by field to Apply as each was filled.
 
+## fix(tour): the Move card holds for Next once the drag passes it (TOUR-MOVE-HOLD, 2026-09-28)
+
+The follow-up TOUR-MOVE-GLIDE left open, taken the same day on the owner's go ("if you think you
+can fix it now"). After the reader's drag the Move card moved on 0.9 seconds later, so the two
+lines under its steps (the mouse wheel zooms; Esc brings you back from any tool) were gone
+before they were read. The card is now `hold: true`, as the Measure card before it is: the
+drag shows ✓ Done and lights Next, and the reader moves on.
+
+- **Only this card.** The card pass left the blank tour's other closing tips under their steps
+  on purpose (CARD-PASS.md "Still to do": an answer on each of 37 cards is about thirty clicks
+  of Next). The Esc line is the one the rest of the tour leans on, so this card pays the click.
+- **The same question stays open elsewhere**: the plumbing tour's `wsfu` card and the
+  electrical course's `circuits/load` are rows on the owner's list (CARD-REVIEW-OWNERS-LIST.md).
+- **Pinned** by the TOUR-MOVE-GLIDE tests in tutorial.spec.js, which now want the card still on
+  Move two seconds after the drag, done, with the Esc line on it, until Next is clicked.
+
 ## feat(quick-keys): one armed key and one searched list, in place of ten dropdowns (QUICK-KEYS-PICK, 2026-09-28)
 
 Reported by the owner on 2026-09-28 with a screenshot of the blank-sheet tour's quick keys card:

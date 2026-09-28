@@ -308,12 +308,13 @@ test.describe('The plumbing course by hand on a returning estimator\'s device (2
     await seam(page, 'keys');
     await page.click('#statusBarQuickKeys');
     await page.waitForSelector('#quickKeysModal.visible');
-    const val = (re) => page.evaluate((src) => { const o = Array.from(document.querySelector('#quickKeysModal select').options).find((x) => new RegExp(src).test(x.textContent)); return o && o.value; }, re);
-    await page.locator('#quickKeysModal select').nth(0).selectOption(await val('^FD-1'));
+    // as the card says: click the key, then the counter in the list
+    const pick = async (key, re) => { await page.click('#quickKeysStrip .quick-key-cap[data-slot="' + key + '"]'); await page.locator('#quickKeysResults .quick-key-item-name', { hasText: re }).first().click(); };
+    await pick('1', /^FD-1/);
     await page.waitForTimeout(1500);
     expect(await stepId(page)).toBe('keys');
     await expect(page.locator('#tourStatus')).toHaveText(/Now key 2: HS-1/);
-    await page.locator('#quickKeysModal select').nth(1).selectOption(await val('^HS-1'));
+    await pick('2', /^HS-1/);
     await expect(page.locator('#tourStatus')).toHaveText(/Close the dialog/);
     await page.click('#quickKeysDone');
     await stepTo(page, 'done', 5000);

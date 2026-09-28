@@ -540,7 +540,6 @@
     .canvas-peek-check.checked { background: var(--accent); border-color: var(--accent2); color: #000; }
     .canvas-peek-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .canvas-peek-pinned { font-size: 0.7rem; color: var(--text2); flex-shrink: 0; }
-    .quick-keys-search { margin-bottom: 10px; }
     .canvas-current-name { font-size: 0.85rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
     .canvas-index-display { font-size: 0.8rem; color: var(--text3); font-family: 'DM Mono', monospace; white-space: nowrap; }
     .zoom-bar { display: flex; align-items: center; gap: 8px; padding: 8px; flex: 1; justify-content: flex-end; }
@@ -1095,19 +1094,51 @@
        matching each icon's rendered ink-centre to the text. */
     #statusBarQuickKeys.has-icon svg { top: -1px; }
     #statusBarMacros.has-icon svg { top: 0.5px; }
-    .quick-keys-card { max-width: 480px; }
+    /* Quick Keys dialog: one armed key, one list (features/quick-keys.js). */
+    /* The card never scrolls: the list takes what height is left and scrolls alone. */
+    .quick-keys-card { max-width: 560px; display: flex; flex-direction: column; overflow: hidden; }
+    .quick-keys-card > * { flex-shrink: 0; }
+    .quick-keys-card > .quick-keys-body { display: flex; flex-direction: column; flex: 0 1 auto; min-height: 0; }
+    .quick-keys-body > * { flex-shrink: 0; }
     .quick-keys-hint { color: var(--text2); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }
     .quick-keys-empty { color: var(--yellow); font-size: 0.88rem; line-height: 1.45; margin: 0 0 12px 0; }
-    .quick-keys-list { display: flex; flex-direction: column; gap: 6px; max-height: 52vh; overflow-y: auto; }
-    .quick-key-row { display: flex; align-items: center; gap: 8px; }
-    .quick-key-cap { flex-shrink: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: var(--surface2); border: 1px solid var(--border2); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 0.85rem; color: var(--text); }
-    .quick-key-swatch { flex-shrink: 0; width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border2); }
-    .quick-key-swatch.is-empty { background: transparent; border-style: dashed; }
-    .quick-key-select { flex: 1; min-width: 0; padding: 6px 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: inherit; font-size: 0.88rem; }
-    .quick-key-stale { flex-shrink: 0; font-size: 0.72rem; color: var(--red); text-transform: uppercase; letter-spacing: 0.04em; }
-    .quick-key-clear { flex-shrink: 0; width: 28px; height: 28px; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text2); font-size: 1.1rem; line-height: 1; cursor: pointer; }
-    .quick-key-clear:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
-    .quick-key-clear:disabled { opacity: 0.3; cursor: default; }
+    .quick-keys-strip { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+    .quick-key-cap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; height: 46px; padding: 0; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 0.95rem; line-height: 1; cursor: pointer; }
+    .quick-key-cap:hover { border-color: var(--text2); color: var(--text); }
+    .quick-key-cap.is-bound { color: var(--text); }
+    .quick-key-cap.is-armed { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); color: var(--accent); background: var(--bg); }
+    .quick-key-cap-bar { width: 22px; height: 4px; border-radius: 2px; background: var(--border); }
+    .quick-key-cap-icon { display: block; }
+    .quick-key-cap { height: 50px; }
+    .quick-key-cap.is-stale .quick-key-cap-bar { background: var(--red); }
+    .quick-keys-now { display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 10px 0 8px; font-size: 0.88rem; color: var(--text2); }
+    .quick-key-now-name { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quick-key-stale { color: var(--red); }
+    .quick-key-clear { flex-shrink: 0; margin-left: auto; padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 4px; color: var(--text2); font-family: inherit; font-size: 0.8rem; cursor: pointer; }
+    .quick-key-clear:hover { border-color: var(--red); color: var(--red); }
+    .quick-keys-search { margin-bottom: 8px; padding: 9px 10px; font-size: 0.92rem; }
+    .quick-keys-body > .quick-keys-results { flex: 0 1 330px; min-height: 96px; }
+    .quick-keys-results { overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+    .quick-key-group { padding: 9px 12px 3px; font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); }
+    .quick-key-item { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 12px; font-size: 0.9rem; color: var(--text); cursor: pointer; border-left: 2px solid transparent; }
+    .quick-key-item:hover { background: var(--surface2); }
+    .quick-key-item.is-lit { background: var(--surface2); border-left-color: var(--accent); }
+    .quick-key-item.is-bound .quick-key-item-name { color: var(--text2); }
+    .quick-key-item-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quick-key-item .quick-key-slot-badge { margin-left: 0; }
+    .quick-key-icon { flex-shrink: 0; }
+    .quick-key-swatch { flex-shrink: 0; width: 14px; height: 14px; margin: 0 2px; border-radius: 3px; border: 1px solid var(--border2); }
+    .quick-key-line { flex-shrink: 0; width: 18px; height: 3px; border-radius: 2px; }
+    .quick-key-kind { flex-shrink: 0; font-size: 0.72rem; color: var(--text3); }
+    .quick-key-used { flex-shrink: 0; margin-left: auto; padding-left: 8px; font-family: 'DM Mono', monospace; font-size: 0.78rem; color: var(--text2); }
+    .quick-keys-results .quick-key-none { padding: 18px 12px; margin: 0; border: none; }
+    .quick-keys-card .actions { align-items: center; margin-top: 16px; }
+    .quick-keys-foot { margin-right: auto; font-size: 0.78rem; color: var(--text3); }
+    @media (pointer: coarse) { .quick-keys-foot { display: none; } }
+    @media (max-width: 520px) {
+      .quick-keys-strip { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+      .quick-keys-foot { display: none; }
+    }
     /* Quick Key keycap badge on bound sidebar rows — accent digit on a dark chip,
        echoing the Keyboard Map's lit-key look so the two surfaces read as one
        feature. Rendered by quickKeyBadgeHtml (app.js) inside the list renderers. */

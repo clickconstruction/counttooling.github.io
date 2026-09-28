@@ -247,7 +247,10 @@ test.describe('Interactive walkthrough', () => {
     // 11. bid check arrives folded (the reader opens it: 2026-09-24, it stayed open and the step
     // passed untouched), opens, and the card holds on what it says until Next
     expect(await page.evaluate(() => window.state.bidCheckCollapsed)).toBe(true);
-    // the card's fill figure is the one the app computes for 2 #12 + G in 3/4" EMT
+    // folded, the card is the one step; opened, it reads the list, and its fill figure is the one the
+    // app computes for 2 #12 + G in 3/4" EMT
+    await expect(page.locator('#tourBody')).toContainText('click BID CHECK to open it');
+    await page.evaluate(() => window.App.tutorialDoStep());
     await expect(page.locator('#tourBody')).toContainText('Conduit fill is already judged: 3/4" EMT at 7.5%.');
     await doAndGo(page);
     await waitForStep(page, 'handoff');

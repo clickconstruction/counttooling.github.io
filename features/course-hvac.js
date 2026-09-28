@@ -340,54 +340,63 @@
     {
       id: 'before', title: 'Chapter 0: Before you count', short: 'where to start', minutes: 4, page: M101, noun: 'chapter', set: MSET, readOnly: true,
       intro: 'Five short cards before the nine chapters, for anyone who has never seen a construction drawing. What the drawings are, what an estimator does, and where things are on screen.',
+      opener: 'These five cards only read: you click nothing on the sheet.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { /* nothing: the chapter only reads */ },
       steps: [
         { id: 'set', title: 'A set of drawings', kind: 'read', cardAt: 'br',
-          body: 'Before a building goes up, designers draw it on a set of drawings: a stack of sheets, one page each. Each trade, the plumbers, the electricians, the air people, gets its own sheets.\nM is for mechanical: the sheets for HVAC, which means heating, ventilation (fresh air in, stale air out) and air conditioning. An engineer, the designer of the air system, drew them.\nThis course uses three M-sheets from a small restaurant. M-101, in front of you, is the plan: the building seen from above, as if the roof were lifted off. M-501 holds the schedules, tables that list each item and its numbers. M-601 is a section: the building sliced through and seen from the side.\nEvery sheet has a title block, the box at its edge that gives its name and scale. The scale says how many feet an inch of paper stands for. A legend is the key to the symbols, and keynotes are the numbered notes.',
+          body: 'Before a building goes up, designers draw it on a set of drawings: a stack of sheets, one page each. Each trade, the plumbers, the electricians, the air people, gets its own sheets.\nM is for mechanical: the sheets for HVAC, which means heating, ventilation (fresh air in, stale air out) and air conditioning. An engineer, the designer of the air system, drew them.\nThis course uses {{three M-sheets|#pagesList}} from a small restaurant. M-101, in front of you, is the plan: the building seen from above, as if the roof were lifted off. M-501 holds the schedules, tables that list each item and its numbers. M-601 is a section: the building sliced through and seen from the side.\nEvery sheet has a title block, the box at its edge that gives its name and scale. The scale says how many feet an inch of paper stands for. A legend is the key to the symbols, and keynotes are the numbered notes.',
           target: [], check: () => true },
         { id: 'estimator', title: 'What an estimator does', kind: 'read', cardAt: 'br',
-          body: 'Before a contractor gets a job, it has to say what the job will cost. The estimator works that out, from the drawings alone.\nOn an HVAC job that is four things. Count what is drawn: every vent, fan and unit. Measure what is run: the feet of duct, the sheet-metal pipe air travels through, size by size. Weigh the duct, because a sheet-metal shop prices it by the pound. Then price it all.\nThe count and the feet together are the takeoff (the count and the feet a price is built on). The price the contractor offers is the bid.',
+          body: 'Before a contractor gets a job, it has to say what the job will cost. The estimator works that out, from the drawings alone.\nOn an HVAC job that is four things. Count what is drawn: every vent, fan and unit. Measure what is run: the feet of duct, the sheet-metal pipe air travels through, size by size. Weigh the duct, because a sheet-metal shop prices it by the pound. Then price it all.\nThe count and the feet together are the takeoff, what a price is built on. The price the contractor offers is the bid.',
           target: [], check: () => true },
         { id: 'verbs', title: 'What the app does', kind: 'read', cardAt: 'br',
-          body: 'This app turns the drawings into a takeoff. It has four verbs, and the chapters teach each one.\nCount: pick a counter, one kind of thing such as a ceiling vent. Then click each one on the sheet, and the app keeps the tally.\nTrace: click along a duct, corner by corner. The app measures its feet and weighs its metal.\nBox a room: drag a box around a room, so the app knows its size and the air it should get.\nCheck: Bid Check, the app\'s checklist before a bid goes out, says what is missing or does not add up.\nFirst, every sheet needs its scale set, so the app knows how big the drawing is. Chapter 1 starts there.',
+          body: 'This app turns the drawings into a takeoff. It has four verbs, and the chapters teach each one.\nCount: pick a counter, one kind of thing such as a ceiling vent. Then click each one on the sheet, and the app keeps the tally.\nTrace, with [[Duct]]: click along a duct, corner by corner. The app measures its feet and weighs its metal.\nBox a room, with [[Room Sizer]]: drag a box around a room, so the app knows its size and the air it should get.\nCheck: BID CHECK, the app\'s checklist before a bid goes out, says what is missing or does not add up.\nFirst comes [[Set Scale]]: every sheet needs its scale, so the app knows how big the drawing is. Chapter 1 starts there.',
           target: [], check: () => true },
-        { id: 'screen', title: 'Where things are', kind: 'read', cardAt: 'br',
-          body: 'The header runs across the top: [[Upload PDF]], [[Set Scale]], [[Measure]], [[Duct]] and the other tools. When it runs short of room, [[⋯]] at its end holds the tools that do not fit.\nThe left sidebar lists the sheets under PAGES. Below them sits what you make: COUNTERS, ROOMS, and more as you go, down to BID CHECK and the SUMMARY of every total. Click a heading to fold or open it.\nThe footer runs along the bottom. It turns the page, zooms in and out, and rotates the sheet.',
+        { id: 'screen', title: 'Where things are', kind: 'read', cardAt: 'tr',   // top right: the card names the footer, so it keeps off it
+          body: 'The {{header|.header}} runs across the top. It holds the tools, such as [[Set Scale]], [[Measure]] and [[Duct]]. The tools that do not fit sit behind [[⋯]].\nThe {{left sidebar|.sidebar}} lists the sheets under PAGES. Below them sits what you make: COUNTERS first and more as you go, down to BID CHECK and the SUMMARY of every total. Click a heading to fold or open it.\nThe {{footer|.page-zoom-row}} runs under the sheet. It {{turns the page|.page-nav}}, {{zooms in and out|.zoom-bar}} and {{rotates the sheet|#rotatePage}}.',
           target: [], check: () => true },
         { id: 'cards', title: 'How these cards work', kind: 'read', cardAt: 'br',
-          body: 'Each card asks one thing. Numbered lines are steps: do each one, in order, on the sheet or in the app.\nEvery card that asks you to do something ends with a line beside [[Show me where]]. That line says how it is going: what is still missing, why a click was wrong, or ✓ Done. [[Show me where]] lights up the place to click.\nA card that asks a question has [[Show the engineer\'s answer]]. Try to answer first, then look.\n[[Next]] moves on once a step is done. [[Skip this step]] moves on without it.',
+          body: 'Each card asks one thing. Numbered lines are steps: do each one, in order, on the sheet or in the app.\nUnder the steps, one line says how it is going: what is still missing, why a click was wrong, or ✓ Done. The button beside it lights up the place to click.\nA card that asks a question keeps its answer behind a button. Try to answer first, then look.\n[[Next]] moves on once a step is done. A card with steps also has a link that skips them.',
           target: [], check: () => true },
       ],
-      done: 'That is where to start: a set of drawings, a takeoff, four verbs and the screen.\nNext: [[Learn]] → Chapter 1, the M-sheets.',
+      done: 'A set of drawings, a takeoff, four verbs and the screen.\nNext: [[Learn]] → Chapter 1, the M-sheets.',
     },
     // 1 --------------------------------------------------------------------------------------------
     {
       id: 'sheet', title: 'Chapter 1: Read the M-sheets', short: 'the set, read', minutes: 8, page: M101, noun: 'chapter', set: MSET,
       intro: 'The air that goes in, comes back and goes out, all on one plan. The equipment on the roof, and the schedules that say how much air each room gets. Then a scale you prove.',
+      opener: 'The three sheets open bare, with no scale and nothing counted, the way a set arrives.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { /* the scale is the chapter's */ },
       steps: [
         { id: 'what', title: 'What is on an M-sheet?', kind: 'read', cardAt: 'br',
-          body: 'Look at the legend (the key to the symbols) and the keynotes (the numbered notes). Four kinds of duct, three kinds of grille, and four pieces of equipment that are not on this floor at all.\nA duct is the sheet-metal pipe air travels through. Supply duct carries air to the rooms, return duct brings it back, and exhaust duct throws it outside. A grille is a barred vent in the ceiling.\nWhere is the equipment, and why does the plan show it as a dashed box off to the side?',
-          reveal: 'On the roof. A restaurant this size is heated and cooled by one packaged rooftop unit, a single box that heats, cools and blows the air. The plan gives it a tag, a short name label, RTU-1: RTU for rooftop unit. It sits on a curb, a raised frame on the roof, over the kitchen.\nBeside it sit the hood\'s exhaust fan EF-1 (EF for exhaust fan), the make-up air unit MAU-1 and the restroom exhaust fan EF-2. The hood is the canopy over the stoves that pulls out smoke and grease. Make-up air is outside air brought in to replace what the hood throws out.\nThe plan can only show where each one\'s duct comes through the roof. So the engineer, the designer who drew the air system, draws a roof key instead. It is a dashed box with the unit\'s name, its air and its power. A leader, a thin pointer line, runs from it to the hole in the roof.\nAn HVAC estimator reads two schedules first, the equipment schedule and the room air schedule. The unit\'s CFM (cubic feet per minute, how much air moves) is the whole job: every other number follows from it. The rooms say where the air goes.',
+          body: 'Look at the legend and the keynotes. Four kinds of duct, three kinds of grille, and four pieces of equipment that are not on this floor at all.\nA duct is the sheet-metal pipe air travels through. Supply duct carries air to the rooms, return duct brings it back, and exhaust duct throws it outside. A grille is a barred vent in the ceiling.\nWhere is the equipment, and why does the plan show it as a dashed box off to the side?',
+          reveal: 'On the roof. A restaurant this size is heated and cooled by one packaged rooftop unit, a single box that heats, cools and blows the air. The plan gives it a tag, a short name label, RTU-1: RTU for rooftop unit. It sits on a curb, a raised frame on the roof, over the kitchen.\nBeside it sit the hood\'s exhaust fan EF-1 (EF for exhaust fan), the make-up air unit MAU-1 and the restroom exhaust fan EF-2. The hood is the canopy over the stoves that pulls out smoke and grease. Make-up air is outside air brought in to replace what the hood throws out.\nThe plan can only show where each one\'s duct comes through the roof. So the engineer draws a roof key instead. It is a dashed box with the unit\'s name, its air and its power. A leader, a thin pointer line, runs from it to the hole in the roof.\nAn HVAC estimator reads two schedules first, the equipment schedule and the room air schedule. The unit\'s CFM (cubic feet per minute, how much air moves) is the whole job: every other number follows from it. The rooms say where the air goes.',
           target: [], check: () => true },
         { id: 'scale', title: 'Set the scale', kind: 'do',
-          body: 'The title block, the box at the sheet\'s edge, gives the scale: 1/8" = 1\'-0". An eighth of an inch on paper is a foot of building.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].',
-          target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(M101, 9),
+          body: 'The title block gives the scale: 1/8" = 1\'-0". An eighth of an inch on paper is a foot of building.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].',
+          // inside the dialog the light goes on: the 1/8" preset when its tab is up, else the tab (the dialog had no light)
+          target: () => {
+            const b = Array.from(document.querySelectorAll('#scalePresetsList button')).find((x) => x.textContent.trim() === '1/8" = 1\'');
+            const at = b && b.parentElement ? '#' + (b.parentElement.id || 'scalePresetsList') + ' > :nth-child(' + (Array.from(b.parentElement.children).indexOf(b) + 1) + ')' : null;
+            return T().ladder(at, '#scaleModalTabs .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar');
+          },
+          check: () => K().scaleIs(M101, 9),
           action: { label: 'Use 1/8" = 1\'-0"', run: async () => { K().goPage(M101); await T().applyScalePreset('1/8" = 1\'', 9); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'bl', page: M101, hold: true,
           body: () => (proveM101().check()
-            ? proveM101().verdict() + ': the scale is right.\n1. Click [[Next]].'
-            : 'The engineer wrote 31\'-8" over the kitchen half: a dimension, a real distance written on the drawing. Only a dimension proves the scale, because a PDF shrunk onto smaller paper measures short.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of the 31\'-8" string over the kitchen half.\n3. Click inside circle 2, at its right end.'),
+            ? proveM101().verdict() + ': the scale is right.'
+            : 'The engineer wrote 31\'-8" over the kitchen half: a dimension, a real distance written on the drawing. Only a dimension proves the scale, because a PDF shrunk onto smaller paper measures short.\n1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at the left end of that dimension.\n3. Click inside circle 2, at its right end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM101().check(), hint: () => proveM101().hint(), zones: () => proveM101().zones(),
           action: { label: 'Measure the 31\'-8" string', run: async () => { K().goPage(M101); if (!K().scaleIs(M101, 9)) await T().applyScalePreset('1/8" = 1\'', 9); const d = pts(G.dim318); K().measure(d[0], d[1]); } } },
-        { id: 'unit', title: 'Which unit moves the most air?', kind: 'do', cardAt: 'tl',
-          body: 'Four roof keys, each with a CFM: cubic feet per minute, how much air the unit moves.\n1. Under COUNTERS in the left sidebar, click [[+ Add]]. A counter is one kind of thing you count. The project is HVAC, so the [[Quick]] tab offers Size, Type and Material.\n2. Set Type to RTU and click [[Add Counter]].\n3. Click the roof key of the unit that moves the most air.',
-          target: ['#annCanvas', '#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'],
+        { id: 'unit', title: 'Which unit moves the most air?', kind: 'do', cardAt: 'tr',   // top right: off COUNTERS + Add, the first thing lit, and off the roof keys
+          body: 'Four roof keys, each with a CFM: cubic feet per minute, how much air the unit moves.\n1. Under COUNTERS in the left sidebar, click [[+ Add]]. The project is HVAC, so the [[Quick]] tab offers Size, Type and Material.\n2. Set Type to RTU and click {{Add Counter|#counterQuickCountAdd}}.\n3. Click the roof key of the unit that moves the most air.',
+          // the light follows the card: the way to the counter until there is one, then the sheet (the sheet was lit over step 1)
+          target: () => (counter(RE.rtu) ? ['#annCanvas', '#countersList'] : ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter']),
           check: () => markNear(counter(RE.rtu), pts(G.rtu)[0], 26, M101),
           hint: () => (counter(RE.rtu) && marksOf(counter(RE.rtu), M101).length ? (markNear(counter(RE.rtu), pts(G.ef1)[0], 26, M101) ? 'EF-1 pulls 2,400 CFM out of the hood, and that is a lot, but one key says 3,000' : 'Read the CFM in each dashed box') : (K().armedNamed(RE.rtu) ? 'The counter is armed: click the roof key' : '')),
           action: { label: 'Find it for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickUnit(RE.rtu, 'RTU-1', 'RTU', '#2e86de'), pts(G.rtu), M101); K().dirty(); } } },
         { id: 'schedule', title: 'The room that breathes hardest', kind: 'do', cardAt: 'br',
-          body: 'Answer: RTU-1, at 3,000 CFM. Every other number on the set hangs off it, which means they all follow from it.\n1. Under PAGES (click the heading to open it if it is folded), click M-501, the schedules.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts the most air, nearly as much as the whole unit supplies.\n3. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.\nRTU-1 also carries 7.5 tons of cooling, its cooling size, and 1.0 in of static pressure. Static pressure is the push the fan has to give the air to get through the duct.',
+          body: 'Answer: RTU-1, at 3,000 CFM. Every other number on the set follows from it.\n1. Under PAGES (click the heading to open it if it is folded), click M-501, the schedules.\n2. In the ROOM AIR SCHEDULE, find the room that exhausts the most air, nearly as much as the whole unit supplies.\n3. Click [[⋯]], then [[Highlight]] (or press H), and drag a box over that row.\nRTU-1 also carries 7.5 tons of cooling, its cooling size, and 1.0 in of static pressure. Static pressure is the push the fan has to give the air to get through the duct.',
           target: () => (K().onPage(M501) ? ['#highlightBtn', '#highlightBtnSidebar', '#headerMoreBtn'] : ['#pagesList']),
           check: () => { const a = pageAnn(M501); return !!a && (a.highlights || []).some((h) => Math.min(h.x1, h.x2) <= 300 && Math.max(h.x1, h.x2) >= 300 && Math.min(h.y1, h.y2) <= 619 && Math.max(h.y1, h.y2) >= 619); },
           hint: () => { if (!K().onPage(M501)) return T().pagesFoldedHint('M-501'); const a = pageAnn(M501); return a && (a.highlights || []).length ? 'Not that row. Read down the EXHAUST column for the biggest number' : ''; },
@@ -404,6 +413,7 @@
     {
       id: 'rooms', title: 'Chapter 2: The rooms and their air', short: 'rooms that know their air', minutes: 9, page: M101, noun: 'chapter', set: MSET,
       intro: 'Why a room has a CFM and where the engineer got it. Then room boxes on the plan that carry the schedule\'s numbers, so the app can say when a room is short of air.',
+      opener: 'M-101 opens with its scale set, the work of chapter 1.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { scaleM101(); },
       steps: [
         { id: 'why', title: 'Where a room\'s CFM comes from', kind: 'read', cardAt: 'tl',
@@ -412,14 +422,22 @@
           reveal: 'The cooling load sets it: the heat the unit must remove. That is people, lights, the sun through the glass, the kitchen next door.\nThe code then says how much of that air must be fresh outside air, for the people in the room. That is ventilation. The code is IMC 403, drawn from ASHRAE 62.1, the ventilation standard. It puts a dining room at 7.5 CFM per person plus 0.18 per square foot. Here that is about 780 of the 1,200.\nOnly in a packed room with little heat does ventilation push the supply up. The engineer ran both; the schedule is the answer.\nThe app\'s own rule of thumb, one CFM per square foot for an office, is for design-build work. That is work with no engineer, where the contractor designs the system too. On an engineered set, type the schedule\'s number in. Then let the app check it against the diffusers, the ceiling vents air comes out of.',
           target: [], check: () => true },
         { id: 'dining', title: 'Box the dining room', kind: 'do', cardAt: 'bl', page: M101, zones: () => [roomBoxZone(ROOMS.dining)],
-          body: '1. In the header, click [[Room Sizer]] (or press V).\n2. Drag a box around DINING 100, in the shaded band outside the dashed line. The name fills in from the plan.\n3. In Ceiling, type 9. In Deck height, the underside of the roof, type 12. Click [[Apply]].\n4. Under ROOMS in the left sidebar, click DINING to open Edit Room. Set Room type to Custom and Target CFM to 1200, the schedule\'s number, and save.',
+          body: '1. Click [[Room Sizer]] (or press V). In a narrow header it sits behind [[⋯]].\n2. Drag a box around DINING 100, in the shaded band outside the dashed line. The name fills in from the plan.\n3. In Ceiling height, type 9. In Deck height, the underside of the roof, type 12. Click {{Apply|#roomBoxApply}}.\n4. Under ROOMS in the left sidebar, click DINING to open Edit Room. Set Room type to Custom and Target CFM to 1200, the schedule\'s number. Click {{Save|#roomEditSave}}.',
           target: () => roomLadder([ROOMS.dining]),
           check: () => roomReady(ROOMS.dining),
           hint: () => { const r = roomNamed(/dining/i); if (!r) return T().boxMiss(K().rectsOf(M101, 'roomBoxes'), rect(ROOMS.dining.inner), rect(ROOMS.dining.outer)); return r.targetCfmOverride === 1200 ? '' : 'The box is there: now give the room its 1,200 CFM (click DINING under ROOMS: Room type Custom, Target CFM 1200)'; },
           action: { label: 'Box it for me', run: () => boxRoom(ROOMS.dining) } },
         { id: 'needs', title: 'What the room says now', kind: 'read',
-          body: '1. In the left sidebar, look at ROOMS.\nDINING reads needs 1,200 · served 0, with a warning. The app knows what the room wants and has seen no diffuser yet. That badge is the whole of chapter 3, which is about turning it off.',
-          target: ['#roomsSection', '#roomsSectionTitle'], check: () => true },
+          body: 'Under ROOMS, at the foot of the left sidebar, DINING reads needs 1,200 · served 0, with a warning.\nThe app knows what the room wants and has seen no diffuser yet. Chapter 3 turns that warning off.',
+          // the whole DINING entry, its row and the needs / served line under it. While its last line is under the
+          // sidebar's edge that line is the target, so the engine scrolls to it (at 1280 x 720 the entry was cut off)
+          target: () => {
+            const wrap = (roomRowSel('DINING') || '').replace(/ \.room-row$/, '');
+            if (!wrap) return ['#roomsSection', '#roomsSectionTitle'];
+            const last = document.querySelector(wrap + ' .room-box-row'), side = last && last.closest('.sidebar');
+            return last && side && last.getBoundingClientRect().bottom > side.getBoundingClientRect().bottom ? [wrap + ' .room-box-row'] : [wrap];
+          },
+          check: () => true },
         { id: 'kitchen', title: 'Box the kitchen and the hall', kind: 'do', cardAt: 'tl', page: M101, zones: () => [roomBoxZone(ROOMS.kitchen), roomBoxZone(ROOMS.hall)],
           body: '1. Box KITCHEN 105: ceiling 9, deck 12, Custom, 800 CFM.\n2. Box HALL 107: ceiling 9, deck 12, Custom, 100 CFM.\nThese are the rooms the main runs through. The main is the big trunk duct from the unit. With both boxed, the app knows the ceiling under every foot of it.',
           target: () => roomLadder([ROOMS.kitchen, ROOMS.hall]),
@@ -427,7 +445,7 @@
           hint: () => (roomReady(ROOMS.kitchen) ? (roomNamed(/hall/i) ? 'HALL needs its 100 CFM' : 'Now the hall') : (roomNamed(/kitchen/i) ? 'KITCHEN needs its 800 CFM' : '')),
           action: { label: 'Box both for me', run: async () => { await boxRoom(ROOMS.kitchen); await boxRoom(ROOMS.hall); } } },
         { id: 'deck', title: 'The deck', kind: 'read', cardAt: 'tl',
-          body: 'Every box asked for a deck height as well as a ceiling. The keynote says ceilings at 9\'-0" and the roof deck, the underside of the roof, at 12\'-0".\nWhy does an air takeoff care about the deck?',
+          body: 'Every box asked for a deck height as well as a ceiling. The keynote says ceilings at 9\'-0" and the roof deck at 12\'-0".\nWhy does an air takeoff care about the deck?',
           reveal: 'Because everything hangs in the three feet between. The duct shares that space with its insulation, the flex, the plumbing, the conduit, and the return air the plenum carries.\nFlex is the soft round hose from a duct to a diffuser. Conduit is the pipe electrical wire runs in. The plenum is the space above the ceiling the air comes back through.\nPicture a 24x12 main, 24 inches wide and 12 deep, with two inches of wrap, insulation around its outside. If it does not fit under the deck, that is the most expensive discovery on a job: found on site, fixed at the contractor\'s cost. Chapter 6 measures it on the section and lets Bid Check judge it.\nOn the bid the plenum depth also sets the hanger lengths, the rods that hold the duct up. It sets whether the crew works from ladders or lifts.',
           target: [], check: () => true },
       ],
@@ -437,6 +455,7 @@
     {
       id: 'diffusers', title: 'Chapter 3: Diffusers, by the schedule', short: 'every grille counted', minutes: 10, page: M101, noun: 'chapter', set: MSET,
       intro: 'The diffuser schedule becomes your list of counters in one drag. Each counter carries its CFM, and the rooms watch themselves fill up.',
+      opener: 'M-101 opens with its scale set and three rooms boxed, the work of chapters 1 and 2.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { scaleM101(); seedRooms(); },
       steps: [
         { id: 'schedule', title: 'Counters from the schedule', kind: 'do',
@@ -458,13 +477,13 @@
           hint: () => (byTag('SD-1') ? AIR_TAGS.filter((t) => !(byTag(t) && byTag(t).cfm === TAGS[t][2])).map((t) => t + ' wants ' + TAGS[t][2] + ' CFM').join(' · ') : ''),
           action: { label: 'Read the schedule for me', run: readDiffuserSchedule } },
         { id: 'dining', title: 'Fill the dining room', kind: 'do', cardAt: 'bl', page: M101, zones: () => circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(0, 8)),
-          body: '1. Under PAGES, click M-101.\n2. In the sidebar, click SD-1 to arm it. Armed, each click on the sheet counts one.\n3. Click the eight circled diffusers in the dining room.\nWatch ROOMS as you go: served climbs by 150 a click, and the warning goes at 1,200.',
+          body: '1. Under PAGES, click M-101.\n2. In the sidebar, click SD-1 to arm it. Armed, each click on the sheet counts one.\n3. Click the eight circled diffusers in the dining room.\nWatch DINING under ROOMS, at the foot of the sidebar. Served climbs by 150 a click, and the warning goes at 1,200.',
           target: () => (K().onPage(M101) ? ['#annCanvas', '#countersList'] : ['#pagesList']), check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(0, 8))),
           // on M-501 still (the schedule step left the reader there): the way back, not eight rooms away
           hint: () => (!K().onPage(M101) ? T().pagesFoldedHint('M-101') : byTag('SD-1') ? missing(byTag('SD-1'), pts(G.SD1).slice(0, 8), ['north-west', 'north', 'north', 'north-east', 'south-west', 'south', 'south', 'south-east'].map((d) => 'the dining room, ' + d), 10, M101) : ''),
           action: { label: 'Count the eight for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('SD-1'), pts(G.SD1).slice(0, 8), M101); K().dirty(); } } },
         { id: 'rest', title: 'The rest of the supply', kind: 'do', cardAt: 'tl', page: M101, zones: () => circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8)).concat(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10), circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
-          body: '1,200 served: the DINING row reads needs 1,200 · served 1,200, and its ⚠ is gone. Now the rest.\n1. SD-1 is still armed from the dining room. Leave it be: clicking it in the sidebar would unarm it. Click the two in the bar and the one in the dish pit, where the dishes are washed.\n2. Arm SD-2 and click the hall and storage diffusers.\n3. Arm SD-3 and click the four in the kitchen.',
+          body: '1. SD-1 is still armed from the dining room. Leave it be: clicking it in the sidebar would unarm it. Click the two in the bar and the one in the dish pit, where the dishes are washed.\n2. Arm SD-2 and click the hall and storage diffusers.\n3. Arm SD-3 and click the four in the kitchen.',
           target: ['#annCanvas', '#countersList'], check: () => allDone(circlesOn(M101, byTag('SD-1'), pts(G.SD1).slice(8))) && allDone(circlesOn(M101, byTag('SD-2'), pts(G.SD2), 10)) && allDone(circlesOn(M101, byTag('SD-3'), pts(G.SD3))),
           hint: () => [row('SD-1', pts(G.SD1).slice(8), ['the bar (west)', 'the bar (east)', 'the dish pit']), row('SD-2', pts(G.SD2), ['the hall', 'storage']), row('SD-3', pts(G.SD3), ['the kitchen (west)', 'the kitchen', 'the kitchen', 'the kitchen (east)'])].map(([t, sp, lb]) => { const c = byTag(t); const m = c ? missing(c, sp, lb, 10, M101) : ''; return m ? t + ' ' + m : ''; }).filter(Boolean).join(' · '),
           action: { label: 'Count them for me', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); seedDiffusers(); K().dirty(); } } },
@@ -485,17 +504,25 @@
     {
       id: 'system', title: 'Chapter 4: The system', short: 'a unit that knows its load', minutes: 7, page: M101, noun: 'chapter', set: MSET,
       intro: 'A group with an equipment tag is a system: a unit and everything it feeds. Give it the unit\'s capacity and static pressure from the schedule, and the app reads the designed air against them.',
+      opener: 'M-101 opens with its scale set, its rooms boxed and its diffusers, the ceiling vents, counted. That is the work of chapters 1 to 3.\nThe sheets are a sample, a small restaurant\'s drawings. Nothing here touches your own work.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); },
       steps: [
         { id: 'group', title: 'Make RTU-1 a system', kind: 'do',
-          body: 'The equipment schedule gives RTU-1 3,000 CFM at 1.0" ESP. ESP is external static pressure, the push the unit has to spare for the duct.\n1. In the header, click the gear ([[Project Settings]]) and turn on [[Use groups]] if it is off. A group is a set of things the app totals together.\n2. Under GROUPS, click [[+ Add]].\n3. In Name, type RTU-1. In Equipment tag, type RTU-1 too.\n4. In Capacity, the most air the unit can move, type 3000. In Static available, type 1.0 (the schedule\'s ESP).\n5. Click [[Done]].\n6. Make an RTU counter (Quick: Type RTU) and click RTU-1\'s roof key, so the system knows where its unit is.',
+          body: 'The equipment schedule gives RTU-1 3,000 CFM at 1.0" ESP. ESP is external static pressure, the push the unit has to spare for the duct.\n1. In the header, click [[Project Settings]], the gear, and turn on {{Use groups|#settingsUseGroupsBtn}} if it is off. A group is a set of things the app totals together.\n2. Under GROUPS, click {{+ Add|#addGroup}}.\n3. In Name, type RTU-1. In Equipment tag, type RTU-1 too.\n4. In Capacity, the most air the unit can move, type 3000. In Static available, type 1.0 (the schedule\'s ESP).\n5. Click {{Done|#groupModalDone}}.\n6. Make an RTU counter (Quick: Type RTU) and click RTU-1\'s roof key, so the system knows where its unit is.',
           // inside Add Group, the field the card names next, then Done (the ring sat on Done over four empty boxes; by hand, 2026-09-25)
-          target: () => { const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm', '#groupModalEspInWg'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); }); return T().ladder(empty, '#groupModalDone', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn'); },
+          // the gear when nothing else of the ladder is up (step 1 had no light), and once the system is made the
+          // way to line 6's counter, then the sheet (the ring stayed on GROUPS' + Add over a finished group)
+          target: () => {
+            const g = system();
+            if (g && g.capacityCfm === 3000 && g.espInWg === 1 && !K().modalUp('groupModal')) return counter(RE.rtu) ? ['#annCanvas', '#countersList'] : ['#counterQuickCountAdd', '#counterModal .counter-tab[data-tab="quickcount"]', '#addCounter'];
+            const empty = ['#groupModalName', '#groupModalEquipTag', '#groupModalCapacityCfm', '#groupModalEspInWg'].find((sel) => { const f = document.querySelector(sel); return f && !String(f.value || '').trim(); });
+            return T().ladder(empty, '#groupModalDone', '#addGroup', '#groupsSectionTitle', '#settingsUseGroupsBtn').concat(['#settingsGearBtn', '#sidebarLogoGear']);
+          },
           check: () => { const g = system(); return !!(g && g.capacityCfm === 3000 && g.espInWg === 1 && markNear(counter(RE.rtu), pts(G.rtu)[0], 26, M101)); },
-          hint: () => { const g = system(); if (!g) return ''; if (g.capacityCfm !== 3000) return 'Capacity: 3000, from the schedule'; if (g.espInWg !== 1) return 'ESP: 1.0, the static pressure the schedule gives the unit'; return 'The system exists: now count RTU-1 on its roof key'; },
+          hint: () => { const g = system(); if (!g) return ''; if (g.capacityCfm !== 3000) return 'Capacity: 3000, from the schedule'; if (g.espInWg !== 1) return 'Static available: 1.0, the ESP the schedule gives the unit'; return 'The system exists: now count RTU-1 on its roof key'; },
           action: { label: 'Make RTU-1 for me', run: makeSystem } },
         { id: 'designed', title: 'How much of RTU-1 is spoken for?', kind: 'read',
-          body: '1. In the left sidebar, under GROUPS, look at RTU-1\'s row.\nIt reads the system\'s designed air, what its diffusers are drawn to deliver, against its capacity. It reads 0 of 3,000 for now. A diffuser counts toward a system only once a run (a traced duct) of that system reaches it, and the main is chapter 5. The schedule already says where it ends: 2,650.\nWhy would an engineer buy a 3,000 CFM unit for 2,650 CFM of diffusers?',
+          body: 'Under GROUPS in the left sidebar, RTU-1\'s row reads the system\'s designed air against its capacity. Designed air is what its diffusers are drawn to deliver.\nIt reads 0 designed / 3,000 capacity for now. A diffuser counts toward a system only once a run (a traced duct) of that system reaches it, and the main is chapter 5. The schedule already says where it ends: 2,650.\nWhy would an engineer buy a 3,000 CFM unit for 2,650 CFM of diffusers?',
           reveal: 'Note 2 on M-501 says it: the rest is future, room for the restaurant to grow. Rooftop units come in set sizes, and a kitchen grows. A unit run at its limit on the hottest day is a callback: a trip back to fix it, unpaid.\nThe margin is the engineer\'s call. The estimator prices the unit the schedule names, not the one the arithmetic would allow.\nBid Check\'s Systems within capacity row does the same sum and warns when the diffusers outrun the unit. That happens on the third addendum, the third round of changes the designers send out before the bid is due.',
           target: ['#groupsList', '#groupsSectionTitle', '#ductSectionTitle'], check: () => true },
       ],
@@ -505,17 +532,20 @@
     {
       id: 'main', title: 'Chapter 5: The main, sized down the hall', short: 'the main, traced', minutes: 12, page: M101, noun: 'chapter', set: MSET,
       intro: 'Trace the supply main, the big trunk duct, from the roof to the far end of the dining room. The Duct tool reads the engineer\'s printed sizes, and you learn why the duct shrinks as it goes.',
+      opener: 'The sheets open with chapters 1 to 4 already done: the scale set, three rooms boxed, the diffusers counted and RTU-1 made a system.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); },
       steps: [
         { id: 'arm', title: 'Arm the Duct tool', kind: 'do',
-          body: 'Every size on this plan is printed beside its run, and the app reads them. 24x12 means 24 inches wide by 12 deep.\n1. Point at the 24x12 printed at the RTU-1 drop, where the duct comes down from the roof at the kitchen\'s east wall. Press U (or click [[Duct]] in the header).\nPressed over a printed size, the dialog fills that size in and says so under it. From the header it starts at 24x12 anyway.\n2. Set Insulation to Wrap, insulation around the outside of the duct. (Liner, the other kind, lines the inside.)\n3. Click [[Start Tracing]].',
-          target: ['#ductCreateStart', '#ductCreateLiner', '#ductBtn', '#headerMoreBtn'],
+          body: 'Every size on this plan is printed beside its run, and the app reads them. 24x12 means 24 inches wide by 12 deep.\n1. In the header, click [[Duct]] (or press U).\n2. Check the size reads 24x12, and set it if not. The dialog fills in the printed size nearest the pointer, and says so under it.\n3. Set Insulation to Wrap, insulation around the outside of the duct. (Liner, the other kind, lines the inside.)\n4. Click [[Start Tracing]].',
+          // the ring in the card's order (card review, 2026-09-27): the size while it is not 24x12, Insulation
+          // until it reads Wrap, then Start Tracing. It sat on Start Tracing over Insulation: None.
+          target: () => { const form = ductFormLadder({ shape: 'rect', w: 24, h: 12 }); const liner = el('ductCreateLiner'); return (form.length === 1 && liner && liner.value !== 'wrap' ? ['#ductCreateLiner'] : []).concat(form, ['#ductBtn', '#headerMoreBtn']); },
           // Wrap too, the card's line 2: Insulation left at None passed (PERSONA-PASS prober)
           check: () => { const d = S().drawingDuct; return !!(d && d.segments && d.segments[0] && sizeKey(d.segments[0].size) === '24x12' && d.linerType === 'wrap') || mainDone(); },
           hint: () => { const d = S().drawingDuct; return d && d.segments && d.segments[0] && sizeKey(d.segments[0].size) === '24x12' && d.linerType !== 'wrap' ? { code: 'wrong-value', text: 'Insulation reads ' + (d.linerType || 'None') + '. Press Escape, open Duct again and set Insulation to Wrap, the plan\'s 2" wrap' } : ''; },
           action: { label: 'Arm it at 24x12 for me', run: async () => { K().goPage(M101); if (mainDone() || S().drawingDuct) return; if (el('ductBtn')) el('ductBtn').click(); await wait(100); if (App.setDuctCreateSize) App.setDuctCreateSize(RS(24, 12)); if (el('ductCreateLiner')) el('ductCreateLiner').value = 'wrap'; if (el('ductCreateStart')) el('ductCreateStart').click(); await wait(50); if (S().drawingDuct) { S().drawingDuct.linerType = 'wrap'; S().drawingDuct.linerThicknessIn = 2; } } } },
         { id: 'trace', title: 'Trace the main, stepping down where the plan does', kind: 'do', cardAt: 'bl', page: M101, zones: () => traceZones(pts(G.main), M101),
-          body: '1. Click the RTU-1 drop at the kitchen\'s east wall, then the corner in the hall.\n2. Follow the hall west. At the dining room wall the duct narrows: the plan draws a line across it and prints 20x12 beside it. The chip under the cursor, a small label, still reads 24x12. The hint at the bottom of the sheet reads Plan says 20x12 here, S to pick it.\n3. Click that line, where the size changes, and press S: the Duct size box opens. (S sets the scale only when no run is being drawn.) Under FROM THE PLAN, click 20x12.\n4. Do the same at 16x10 and at 12x10, then click the far end and press Enter.\nEach step down is a transition, a fitting that changes the duct from one size to another. A fitting is any shaped piece of duct that is not straight, and the app counts each one.',
+          body: '1. Click the RTU-1 drop, where the duct comes down from the roof at the kitchen\'s east wall. Then click the corner in the hall.\n2. Follow the hall west. At the dining room wall the duct narrows: the plan draws a line across it and prints 20x12 beside it. The chip under the cursor, a small label, still reads 24x12. The hint at the bottom of the sheet reads Plan says 20x12 here, S to pick it.\n3. Click that line, where the size changes, and press S: the Duct size box opens. (S sets the scale only when no run is being drawn.) Under FROM THE PLAN, click 20x12.\n4. Do the same at 16x10 and at 12x10, then click the far end and press Enter.\nEach step down is a transition, a fitting that changes the duct from one size to another. A fitting is any shaped piece of duct that is not straight, and the app counts each one.',
           target: ['#ductSizePopover', '#annCanvas'], check: mainDone,
           hint: () => {
             const d = S().drawingDuct;
@@ -524,7 +554,7 @@
             // ductRuns() is the LIVE annotations array: read its last entry, never pop it (a
             // .pop() here deleted the reader's committed run on every hint read, 2026-09-27).
             const done = !mainDone() && ductRuns(M101).slice(-1)[0];
-            return done ? 'That run went in as ' + runSizes(done).join(', ') + '. Press Ctrl+Z and trace it again, pressing S at 20x12, 16x10 and 12x10' : '';
+            return done ? 'That run went in as ' + runSizes(done).join(', ') + '. Click Undo in the footer and trace it again, pressing S at 20x12, 16x10 and 12x10' : '';
           },
           action: { label: 'Trace it for me', run: () => { if (mainDone()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); traceMain(); K().dirty(); } } },
         { id: 'why', title: 'Why the main shrinks', kind: 'read', cardAt: 'bl',
@@ -533,9 +563,9 @@
           reveal: 'Air leaves the main at every tap, so the far end carries a fraction of the flow. A duct sized for 3,000 CFM that carries 600 is sheet metal nobody needed: metal bought and hung for nothing.\nThe engineer sizes each stretch for the air still in it. The app\'s ductulator, its duct-sizing calculator, does the same sum live while you trace. It sizes at a friction rate of 0.08" per 100 ft: how fast the duct uses up the fan\'s push. It keeps the air under 1,200 fpm, so it stays quiet.\nThis engineer sized the main tighter. The 16x10 and the 12x10 run at about twice that friction rate. So the Duct size box\'s SUGGESTED row reads bigger than FROM THE PLAN, the plan\'s own size. The drawing is what you bid, and chapter 6 checks the fan can still push it.\nOn the bid each step is a transition fitting, and the pounds fall with the size. The Duct Schedule weighs 24x12 at 24 gauge and 12x10 at 26. Gauge is the metal\'s thickness: the higher the number, the thinner the sheet.',
           target: [], check: () => true },
         { id: 'kitchen', title: 'The kitchen branch', kind: 'do', cardAt: 'br', page: M101, zones: () => traceZones(pts(G.kitchen), M101),
-          body: '1. Click [[Duct]] again. The size fills from the printed size nearest your last click: check it reads 16x10, and set it if not.\n2. Click [[Start Tracing]].\n3. Click the tap at the main, the corner at the kitchen\'s south wall, and the far end. Press Enter.\nThis 16x10 branch taps the main at the kitchen wall. It runs down the west wall and across to the four kitchen diffusers. The tap counts itself, with a volume damper (VD): a blade in the duct that sets how much air goes down the branch.',
+          body: '1. Click [[Duct]] again. Check the size reads 16x10, and set it if not.\n2. Click [[Start Tracing]].\n3. Click the tap at the main, the corner at the kitchen\'s south wall, and the far end. Press Enter.\nThis branch feeds the four kitchen diffusers. Its tap counts itself, with a volume damper (VD): a blade in the duct that sets how much air goes down the branch.',
           target: () => ductFormLadder({ shape: 'rect', w: 16, h: 10 }).concat(['#ductBtn', '#annCanvas']), check: () => !!runWith(['16x10']),   // the dialog fills the size nearest the last click (12x10 after the main): the ring asks for 16x10
-          hint: () => { if (runWith(['16x10']) || S().drawingDuct) return ''; const other = ductRuns(M101).filter((r) => !mainDone() || runSizes(r).join(' ') !== MAIN_SIZES.join(' ')).pop(); return other ? 'That branch went in at ' + runSizes(other).join(', ') + '. Press Ctrl+Z and start it again at 16x10' : ''; },
+          hint: () => { if (runWith(['16x10']) || S().drawingDuct) return ''; const other = ductRuns(M101).filter((r) => !mainDone() || runSizes(r).join(' ') !== MAIN_SIZES.join(' ')).pop(); return other ? 'That branch went in at ' + runSizes(other).join(', ') + '. Click Undo in the footer and start it again at 16x10' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['16x10'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.kitchen, RS(16, 10), null, { name: 'Kitchen branch' }); K().dirty(); } } },
         { id: 'attach', title: 'Hang the diffusers on the runs', kind: 'do', cardAt: 'bl',
           body: 'A diffuser that hangs on no run is a stray, and a stray counts toward no system.\n1. Right-click a dining diffuser.\n2. Click [[Attach to nearest run]].\n3. Do the same for the rest: the dining, the hall, the kitchen, and the two easy to miss, the dish pit\'s and the storage room\'s.\nThe dining diffusers sit five or six feet off the main, on flex, the soft round hose from a duct to a diffuser. Each one you attach moves onto its run and draws its leader. Its flex drop, five feet by default, joins the schedule.',
@@ -553,6 +583,7 @@
     {
       id: 'plenum', title: 'Chapter 6: The plenum, and the pressure', short: 'the two physics rows', minutes: 9, page: M601, noun: 'chapter', set: MSET,
       intro: 'A section, the building sliced and seen from the side, drawn to scale. Measure the plenum and the wrapped main on it. Then Bid Check judges whether the duct fits, and whether the unit can push air to the far diffuser.',
+      opener: 'The sheets open with RTU-1\'s main and the kitchen branch traced, and the diffusers hung on them. The work starts on M-601, the third sheet.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); },
       steps: [
         { id: 'scale', title: 'A section at 1/2"', kind: 'do',
@@ -561,7 +592,7 @@
           action: { label: 'Use 1/2" = 1\'-0"', run: async () => { K().goPage(M601); await T().applyScalePreset('1/2" = 1\'', 36); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: M601, hold: true,
           body: () => (proveM601().check()
-            ? proveM601().verdict() + ': this sheet\'s scale is right too.\n1. Click [[Next]].'
+            ? proveM601().verdict() + ': this sheet\'s scale is right too.'
             : '1. In the header, click [[Measure]] (or press D).\n2. Click inside circle 1, at one end of the 12\'-0" string, floor to deck.\n3. Click inside circle 2, at the other end.'),
           target: ['#measureBtn', '#measureBtnSidebar'], check: () => proveM601().check(), hint: () => proveM601().hint(), zones: () => proveM601().zones(),
           action: { label: 'Measure it for me', run: async () => { K().goPage(M601); if (!K().scaleIs(M601, 36)) await T().applyScalePreset('1/2" = 1\'', 36); const d = raw(SECTION.prove); K().measure(d[0], d[1]); } } },
@@ -572,7 +603,7 @@
           hint: () => (S().lastMeasure && S().lastMeasure === depthEntryMeasure ? '' : depthM601().hint()),
           action: { label: 'Measure it for me', run: () => { K().goPage(M601); const d = raw(SECTION.depth); K().measure(d[0], d[1]); } } },
         { id: 'fits', title: 'Let the app say it fits', kind: 'do',
-          onEnter: () => T().foldBidCheck(), hold: true, body: 'Answer: 1\'-4", twelve inches of duct and two of wrap each side. The section says it fits under the 3\'-0" plenum.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.\nThe app can say it fits too. Chapter 2 gave every room a ceiling and a deck, and chapter 5 gave the main its wrap.',
+          onEnter: () => T().foldBidCheck(), hold: true, body: 'Answer: 1\'-4", twelve inches of duct and two of wrap each side. The section says it fits under the 3\'-0" plenum.\n1. Under PAGES, click M-101.\n2. In the left sidebar, click BID CHECK to expand it, and find Fits the roof.\nThe row can judge because chapter 2 gave every room a ceiling and a deck, and chapter 5 gave the main its wrap.',
           target: () => (K().onPage(M101) ? ['#bidCheckSectionTitle'] : ['#pagesList']),   // the card's first line is M-101 (by hand, 2026-09-25)
           check: () => { const r = ductRow('duct-fits-roof'); return S().bidCheckCollapsed === false && !!(r && (r.kind === 'auto' || r.verdict === 'ok')); },
           hint: () => { if (!K().onPage(M101)) return T().pagesFoldedHint('M-101'); const r = ductRow('duct-fits-roof'); return r && r.kind !== 'auto' ? 'The row is still a question: it needs the deck, a ceiling under the main, and the main itself' : ''; },
@@ -592,11 +623,12 @@
       // T2 (settled 2026-09-27): the hood, restroom and make-up fans are their own systems, so
       // RTU-1 is let go after the seed: a run traced here joins the active group, and none of
       // this chapter's air is RTU-1's (it read 4,575 of 3,000 with RTU-1 still active).
+      opener: 'The sheets open with RTU-1\'s supply traced and the exhaust grilles counted.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('EG-2'), pts(G.EG2), M101); S().activeGroupId = null; },
       steps: [
         { id: 'grease', title: 'Which duct must not be galvanized?', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.grease), M101),
           rules: ['hvac.duct.gauge-schedule', 'hvac.duct.grease-duct'],
-          body: 'One duct on this plan must not be galvanized, steel coated in zinc like the rest. The legend draws it darker.\n1. Click [[Duct]] (or press U).\n2. Set Round, 18, and Airside [[Exhaust]], the kind of air it carries. Set Material to Welded black steel.\n3. Click [[Start Tracing]].\n4. Click the hood collar, where the duct leaves the hood, then the elbow, then the curb where it rises to EF-1. Press Enter.\nEvery other supply and return duct is galvanized sheet, at the gauge the SMACNA table gives its size. Black steel is plain steel with no coating.',
+          body: 'Galvanized is steel coated in zinc, like the rest of the duct here. The legend draws this one darker.\n1. Click [[Duct]] (or press U).\n2. Set the shape to Round, the size to 18, and Airside to [[Exhaust]], the kind of air it carries. Set Material to Welded black steel.\n3. Click [[Start Tracing]].\n4. Click the hood collar, where the duct leaves the hood, then the elbow, then the curb where it rises to EF-1. Press Enter.\nEvery other supply and return duct is galvanized sheet, at the gauge the SMACNA table gives its size. Black steel is plain steel with no coating.',
           target: () => ductFormLadder({ shape: 'round', d: 18, airside: 'exhaust', material: 'black-steel' }).concat(['#ductBtn', '#annCanvas']), check: () => !!greaseRun(),
           hint: () => { const r = runWith(['18"ø']); if (r) return r.material === 'black-steel' ? '' : 'The run is there, but galvanized: right-click it and set its Material to Black steel'; const bs = ductRuns(M101).find((x) => x.material === 'black-steel'); return bs ? 'Black steel, but the hood duct is 18 inch round: check the size' : ''; },
           action: { label: 'Trace it for me', run: () => { if (greaseRun()) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.grease, RD(18), null, { airside: 'exhaust', material: 'black-steel', name: 'Hood exhaust', noSystem: true }); K().dirty(); } } },
@@ -618,13 +650,14 @@
           reveal: 'Nothing goes inside a grease duct that could catch grease, or close while the fire burns. So NFPA 96 forbids dampers in it of any kind. Where a grease duct passes a rated wall, it gets a listed enclosure or wrap for the rating instead. That is the wrap the keynote already calls for.\nA fire damper in the supply is a UL 555 frame with a curtain and a fusible link. UL, Underwriters Laboratories, is the lab that tests it. The fusible link melts in a fire and lets the curtain drop shut. An access door sits beside it so the link can be replaced, and a sleeve, a steel collar, carries it through the wall.\nThere are two on this plan, at the two penetrations, the places a duct goes through the wall. The main\'s sits above the kitchen door, because the header, the beam over the door, is part of the rated wall. Bid Check\'s Fire dampers row is now a count you can defend, one you can show your work for; chapter 9 ticks it.',
           target: [], check: () => true },
         { id: 'restroom', title: 'Trace the restroom exhaust', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.exhaust), M101),
-          body: 'The two EG-1 grilles in the restrooms and the mop room\'s EG-2 run to EF-2, the restroom exhaust fan, on 8" round duct.\n1. Click [[Duct]] (or press U).\n2. Set the shape to round, the size to 8, and Airside to [[Exhaust]].\n3. Click [[Start Tracing]].\n4. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
+          body: 'The two EG-1 grilles in the restrooms and the mop room\'s EG-2 run to EF-2, the restroom exhaust fan, on 8" round duct.\n1. Click [[Duct]] (or press U).\n2. Set the shape to Round, the size to 8, and Airside to [[Exhaust]].\n3. Click [[Start Tracing]].\n4. Click the grille in MEN, the corner past the mop room, and the fan\'s drop. Press Enter.',
           target: () => ductFormLadder({ shape: 'round', d: 8, airside: 'exhaust' }).concat(['#ductBtn', '#annCanvas']), check: () => { const r = runWith(['8"ø']); return !!(r && r.airside === 'exhaust'); },
           hint: () => { const r = runWith(['8"ø']); return r && r.airside !== 'exhaust' ? 'The run is there but marked supply: right-click it and set its airside to Exhaust' : ''; },
           action: { label: 'Trace it for me', run: () => { if (runWith(['8"ø'])) return; if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); K().goPage(M101); layRun(G.exhaust, RD(8), null, { airside: 'exhaust', name: 'Restroom exhaust', noSystem: true }); K().dirty(); } } },
         { id: 'makeup', title: 'The make-up air', kind: 'do', cardAt: 'tl', page: M101, zones: () => traceZones(pts(G.makeup), M101).concat(runWith(['20x16']) ? circlesOn(M101, byTag('MA-1'), pts(G.MA1), 12) : []),   // line 2 is on the sheet too: its circle (by hand, 2026-09-25)
-          body: 'Now the make-up air, outside air brought in to replace what the hood throws out.\n1. Click [[Duct]] again: 20x16, supply, then [[Start Tracing]].\n2. Click the MAU-1 drop at the east wall, then the register MA-1. Press Enter.\n3. Arm MA-1 and click the register.\nMAU-1 on the roof drops in at the east wall. A 20x16 rectangular duct carries its air west across the kitchen to MA-1.',
-          target: () => ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList']), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
+          body: '1. Click [[Duct]] again. Set the shape to Rect, the size to 20x16, and Airside to [[Supply]].\n2. Click [[Start Tracing]].\n3. Click the MAU-1 drop at the east wall, then the register MA-1. Press Enter.\n4. Arm MA-1 and click the register.\nMake-up air is outside air brought in to replace what the hood throws out. MAU-1 on the roof drops in at the east wall. A 20x16 rectangular duct carries its air west across the kitchen to MA-1.',
+          // the run traced, the ring moves to line 4: MA-1 under COUNTERS until it is armed, then the sheet (it stayed on Duct; card review, 2026-09-27)
+          target: () => (runWith(['20x16']) ? (K().armedNamed(/MA-1/i) ? ['#annCanvas'] : ['#countersList', '#annCanvas']) : ductFormLadder({ shape: 'rect', w: 20, h: 16, airside: 'supply' }).concat(['#ductBtn', '#annCanvas', '#countersList'])), check: () => !!runWith(['20x16']) && markNear(byTag('MA-1'), pts(G.MA1)[0], 12, M101),
           action: { label: 'Trace and count it for me', run: () => { K().goPage(M101); if (!runWith(['20x16'])) { if (S().drawingDuct && App.clearDuctDraft) App.clearDuctDraft(); layRun(G.makeup, RS(20, 16), null, { name: 'Make-up air', noSystem: true }); } App.pushUndoSnapshotCurrentPage(); markMissing(pickTag('MA-1'), pts(G.MA1), M101); K().dirty(); } } },
         { id: 'interlock', title: 'Why make-up air', kind: 'read',
           rules: ['hvac.exhaust.hood-makeup-air'],
@@ -638,10 +671,11 @@
     {
       id: 'whole', title: 'Chapter 8: The whole set', short: 'the set, finished', minutes: 10, page: M101, noun: 'chapter', set: MSET,
       intro: 'Every room, diffuser and run, and the system with its unit, done in one pass. Then set beside the reference by size, and the Duct Schedule copied for the bid.',
+      opener: 'The sheets open with the scale set on M-101 and nothing else. This chapter is the whole takeoff, start to finish.\nNothing here touches your projects.',
       seed() { scaleM101(); },
       steps: [
         { id: 'lay', title: 'Finish the takeoff', kind: 'do', cardAt: 'bl',
-          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] on this card stops naming what is missing. It names one thing at a time, and reads ✓ Done when nothing is.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\nA new run joins the group lit under GROUPS. Before the exhausts and the make-up duct, click RTU-1\'s row there to let it go: those fans are not RTU-1\'s.\n[[Skip this step]] moves on with the sheets as they are. The next card compares them against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
+          body: 'All of it on the sheets, by hand, the way the earlier chapters taught each piece.\n1. Count and trace until the line beside [[Show me where]] reads ✓ Done. Until then it names what is missing, one thing at a time.\nThe list: the rooms with their air, every diffuser and grille, RTU-1 as a system, and the main and its branches. Then the restroom exhaust, the make-up duct, the grease duct in black steel, and the two fire dampers.\nOnce RTU-1 is a system, a new run joins the group lit under GROUPS. Before the exhausts and the make-up duct, click RTU-1\'s row there to let it go: those fans are not RTU-1\'s.\nThe next card compares your sheets against the reference, the course\'s answer key.\n[[Finish the takeoff for me]] lays the answer key on the sheets instead, if you would rather see it done.',
           target: ['#annCanvas'], check: takeoffComplete, hint: takeoffHint,
           action: { label: 'Finish the takeoff for me', run: layEverything },
           // PP-WHOLE-SKIP (2026-09-27): the action is the engine's spec seam and draws no button on a
@@ -651,7 +685,7 @@
           // PP-WHOLE-SKIP (2026-09-27): Skip on the lay step leaves the sheets as they are, and
           // nothing fills them in. With nothing on the sheets there is nothing to compare, so the
           // card says so and points back at the button beside Skip, not a list of 0.0 ft and 0 lb.
-          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets are empty: no rooms, no diffusers, no duct. There is nothing to compare yet.\nTo see the answer key, click [[Back]] and press [[Finish the takeoff for me]]. It lays the whole takeoff on the sheets, and this card then checks it size by size.\nOr read on: [[Next]] moves on with the sheets as they are.' : compareBody()),
+          body: () => (takeoffSkipped() ? 'You skipped the takeoff, so the sheets are empty: no rooms, no diffusers, no duct. There is nothing to compare yet.\nTo see the answer key, click [[Back]] and press [[Finish the takeoff for me]]. It lays the whole takeoff on the sheets, and this card then checks it size by size.' : compareBody()),
           target: [], check: () => true },
         { id: 'copy', title: 'The schedule, copied', kind: 'do', hold: true,
           body: '1. Under DUCT, click [[Schedule]].\n[[Copy Schedule]] at its foot copies it as text, ready to paste into the bid. It carries the straight duct by size and gauge, the fittings, and the flex drops by system. It also carries the wrap in square feet, seam and waste, and the bid weight.',
@@ -666,6 +700,7 @@
     {
       id: 'bid', title: 'Chapter 9: Check it, sign it, hand it off', short: 'a bid you can defend', minutes: 8, page: M101, noun: 'chapter', set: MSET,
       intro: 'What each duct row of Bid Check means in the trade, and which ones the set already answers. Then the hand-off, the takeoff passed on to be priced, with the pounds in it.',
+      opener: 'The sheets open with the rooms, the diffusers, RTU-1\'s supply and the two fire dampers already on them.\nNothing here touches your projects.',
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); markMissing(pickUnit(RE.fd, 'Fire Damper', 'Fire Damper', '#e85447'), pts(G.fd), M101); },   // the rows reveal cites the two fire dampers chapter 7 counted
       steps: [
         { id: 'open', title: 'Open Bid Check', kind: 'do',
@@ -685,8 +720,9 @@
           target: () => T().ladder('#summaryCountDetailModal .modal-card', T().summaryRowOf('counter', byTag('SD-1')), '#summarySectionTitle'), check: () => K().detailOpenFor(byTag('SD-1')), hint: () => K().detailMiss(byTag('SD-1')),
           action: { label: 'Open the breakdown', run: () => { const c = byTag('SD-1'); if (c && App.openSummaryCountDetailModal) App.openSummaryCountDetailModal('counter', c.id); } } },
         { id: 'handoff', title: 'Hand it off', kind: 'read',
-          body: '1. Under EXPORT OPTIONS, [[Copy to /Tooling]] copies the whole takeoff for /Tooling, the pricing app. Its Duct block at the end carries the pounds. If a Bid Check row is still open, it asks first; [[Export anyway]] remembers your answer until something changes.\n2. [[Copy RFI Flags]] beside it copies every note that starts with RFI:, for the GC. This set has none yet. The make-up air interlock with the hood is the first you would write.\n3. [[Export PDFs]] makes the marked-up set.\nMore: [Doing an HVAC takeoff](/guides/hvac-takeoff/) and [Duct takeoff by the pound](/guides/duct-takeoff-by-the-pound/).',
-          target: ['#forPipeTooling', '#exportOptionsSectionTitle'], check: () => true },
+          // read, not done: three buttons said, none asked for, so the lines carry no numbers; all three are lit (card review, 2026-09-27)
+          body: 'Three buttons under EXPORT OPTIONS send the work out.\n{{Copy to /Tooling|#forPipeTooling}} copies the whole takeoff for /Tooling, the pricing app. Its Duct block at the end carries the pounds. If a Bid Check row is still open, it asks first; [[Export anyway]] remembers your answer until something changes.\n[[Copy RFI Flags]] copies every note that starts with RFI:, for the GC. This set has none yet. The make-up air interlock with the hood is the first you would write.\n{{Export PDFs|#specificPages}} makes the marked-up set.\nMore: [Doing an HVAC takeoff](/guides/hvac-takeoff/) and [Duct takeoff by the pound](/guides/duct-takeoff-by-the-pound/).',
+          target: ['#copyRfiFlags', '#forPipeTooling', '#specificPages', '#exportOptionsSectionTitle'], lightAll: true, check: () => true },
       ],
       done: 'That is the course: a restaurant\'s air read off the engineer\'s set, counted and weighed with the app, checked, and handed to the bid.\nWhen you are ready for a real set, click [[Upload PDF]].',
     },

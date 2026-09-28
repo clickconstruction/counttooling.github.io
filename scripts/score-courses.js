@@ -191,43 +191,43 @@ const FIRST_USE = {
   // glossed on or before the card that first uses it, in that tour. The shared scale and
   // measure cards (tutorial.js SCALE_STEP, MEASURE_STEP) sit second and third in each.
   'tour-plumbing': {
-    'takeoff': 'welcome', 'bid': 'welcome', 'scale': 'welcome', 'riser': 'welcome', 'hanger': 'welcome',
-    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'takeoff': 'welcome', 'bid': 'welcome',
+    'scale': 'scale', 'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
     'counter': 'counter', 'water closet': 'counter', 'sidebar': 'counter', 'mark': 'counter', 'armed': 'counter',
     'set': 'place',
     'line type': 'linetype', 'PEX': 'linetype', 'branch': 'linetype', 'lavatory': 'linetype',
     'chain': 'chain', 'lav battery': 'chain', 'fixture': 'chain',
-    'slab': 'drop', 'footage': 'drop', 'plan view': 'drop', 'palette': 'drop', 'run': 'drop',
-    'child count': 'hangers', 'IPC': 'hangers', 'summary': 'hangers', 'export': 'hangers',
+    'riser': 'drop', 'slab': 'drop', 'footage': 'drop', 'plan view': 'drop', 'palette': 'drop', 'run': 'drop',
+    'hanger': 'hangers', 'child count': 'hangers', 'IPC': 'hangers', 'summary': 'hangers', 'export': 'hangers',
     'leader': 'waterside',
     'fixture unit': 'wsfu', 'WSFU': 'wsfu', 'chip': 'wsfu', 'public': 'wsfu', 'private': 'wsfu',
-    'main': 'size', 'fps': 'size', 'trace': 'size',
+    'main': 'size', 'fps': 'size', 'trace': 'size', 'fitting': 'size',
     'typical': 'zone', 'multiply zone': 'zone',
     'ADA': 'rfi', 'RFI': 'rfi', 'GC': 'rfi', 'PipeTooling': 'rfi',
     'legend': 'proof', 'clipboard': 'handoff', 'group': 'done',
   },
   'tour-electrical': {
-    'takeoff': 'welcome', 'scale': 'welcome', 'conduit': 'welcome',
-    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'takeoff': 'welcome', 'conduit': 'welcome',
+    'scale': 'scale', 'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
     'trade': 'trade', 'counter': 'trade', 'sidebar': 'trade', 'mark': 'trade', 'E-sheet': 'trade', 'device': 'trade',
     'mount height': 'trade', 'bid': 'trade',
-    'receptacle': 'counter', 'duplex': 'counter', 'vertical': 'counter', 'chain': 'counter',
+    'receptacle': 'counter', 'duplex': 'counter',
     'armed': 'place',
     'line type': 'linetype', 'run': 'linetype', 'trace': 'linetype', 'EMT': 'linetype', 'raceway': 'linetype',
     'conductor': 'linetype', 'gauge': 'linetype', 'THHN': 'linetype', 'ground': 'linetype',
     'gear': 'ceiling', 'make-up': 'ceiling', 'drop': 'ceiling',
-    'footer': 'chain',
+    'chain': 'chain', 'vertical': 'chain', 'status bar': 'chain',
     'circuit': 'circuit', 'breaker': 'circuit', 'panel': 'circuit', 'group': 'circuit', 'circuit schedule': 'circuit',
     'tag': 'circuit',
-    'summary': 'summary', 'legend': 'summary', 'export': 'summary',
-    'bid check': 'bidcheck', 'fill': 'bidcheck', 'voltage drop': 'bidcheck', 'homerun': 'bidcheck',
+    'summary': 'summary', 'legend': 'summary',
+    'bid check': 'bidcheck', 'export': 'bidcheck', 'fill': 'bidcheck', 'voltage drop': 'bidcheck', 'homerun': 'bidcheck',
     'TakeoffTooling': 'handoff', 'labor': 'handoff',
   },
   'tour-hvac': {
     'takeoff': 'welcome', 'HVAC': 'welcome', 'ventilation': 'welcome', 'duct': 'welcome', 'engineer': 'welcome',
     'design-build': 'welcome', 'diffuser': 'welcome', 'CFM': 'welcome', 'main': 'welcome', 'fitting': 'welcome',
-    'bid': 'welcome', 'scale': 'welcome',
-    'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
+    'bid': 'welcome',
+    'scale': 'scale', 'header': 'scale', 'title block': 'scale', 'dimension': 'measure', 'PDF': 'measure',
     'room sizer': 'room', 'deck': 'room', 'deck height': 'room', 'tag': 'room',
     'counter': 'counter', 'sidebar': 'counter', 'chip': 'counter', 'mark': 'counter', 'armed': 'counter',
     'system': 'system', 'RTU': 'system', 'rooftop unit': 'system', 'group': 'system', 'capacity': 'system',
@@ -244,7 +244,7 @@ const FIRST_USE = {
     'header': 'welcome', 'footer': 'welcome', 'sidebar': 'welcome', 'trade': 'welcome',
     'scale': 'scale', 'title block': 'scale', 'dimension': 'scale',
     'move': 'move',
-    'mark': 'move', 'counter': 'counter', 'palette': 'counter', 'armed': 'counter',
+    'mark': 'move', 'counter': 'counter', 'palette': 'counter', 'armed': 'count',
     'quick key': 'quickkeys', 'status bar': 'quickkeys', 'number row': 'quickkeys', 'gear': 'quickkeys',
     'run': 'linetype', 'line type': 'linetype', 'trace': 'linetype', 'footage': 'linetype',
     'snap': 'snap', 'polyline': 'polyline', 'fitting': 'polyline', 'chain': 'chain',
@@ -267,11 +267,11 @@ const FIRST_USE = {
     // Start here, the uncounted opener (LEARN-START): the screen's parts and the words its one click needs
     'takeoff': 'start', 'header': 'start', 'sidebar': 'start', 'counter': 'start', 'line type': 'start',
     'summary': 'start', 'bid': 'start', 'bid check': 'start', 'export': 'start', 'footer': 'start',
-    'status bar': 'start', 'armed': 'start', 'mark': 'start', 'title block': 'start',
-    'scale': 'plans', 'fixture schedule': 'plans',
-    'schedule': 'plans', 'fixture': 'plans',
+    'status bar': 'start', 'mark': 'start', 'fixture': 'start',   // the open card: "every fixture (like sinks and drains)"
+    'scale': 'plans', 'fixture schedule': 'plans', 'title block': 'plans',
+    'schedule': 'plans',
     'dimension': 'scale', 'detail': 'scale', 'scale zone': 'scale', 'zone': 'scale',
-    'quick key': 'counting', 'number row': 'counting',
+    'armed': 'counting', 'quick key': 'counting', 'number row': 'counting',
     'Artboard': 'counting',
     'snap': 'measuring', 'run': 'measuring', 'trace': 'measuring', 'main': 'measuring',
     'meter': 'measuring', 'range': 'measuring', 'cook line': 'measuring', 'polyline': 'measuring', 'fitting': 'measuring',
@@ -297,8 +297,9 @@ const EARLY = [
   ['hvac', 'run', 'sheet'],                  // the verb, several times; the noun is glossed in Chapter 4
   ['hvac', 'run', 'rooms'],
   ['hvac', 'run', 'diffusers'],
-  ['tour-plumbing', 'set', 'welcome'],       // "You will set the scale": the verb; the place card glosses a set
   ['tour-plumbing', 'set', 'measure'],       // "every time you set a scale"
+  ['tour-plumbing', 'set', 'scale'],         // the card's title, "Set the scale": the verb (titles are read since 2026-09-27)
+  ['tour-blank', 'set', 'scale'],            // the same title on the blank-sheet tour
   ['tour-electrical', 'run', 'welcome'],     // "the pipe the wires run in": the verb; the linetype card glosses a run
   ['tour-electrical', 'panel', 'chain'],     // "the Chain panel", the tool's box; the circuit card glosses a power panel
 ];
@@ -357,7 +358,7 @@ function propsOf(n) {
   return m;
 }
 const strOf = (n) => (isStr(n) ? n.value : flat(n).trim());
-const CARD_KEYS = ['body', 'reveal'];
+const CARD_KEYS = ['title', 'body', 'reveal'];   // the title is card text too: it can carry the gloss, so the body need not repeat it (2026-09-27)
 
 // The chapters of one file, in order: { id, title, line, cards: [{ id, line, pieces }] }.
 // A piece is { key, text, line }. A step array's element that names a constant object
@@ -406,6 +407,13 @@ function parseCourse(src, file) {
     if (isChapter(n)) {
       const m = propsOf(n);
       const ch = { id: strOf(m.get('id').value), title: strOf(m.get('title').value), line: n.loc.start.line, cards: cardsUnder(m.get('steps').value) };
+      // the open card's own text (`opener`, and its title `openerTitle`) is a card too, read FIRST:
+      // it is what the reader meets before the chapter's steps (the card review, 2026-09-27)
+      if (m.has('opener')) {
+        const pieces = (m.has('openerTitle') ? textPieces(m.get('openerTitle').value).map((p) => ({ ...p, key: 'title' })) : [])
+          .concat(textPieces(m.get('opener').value).map((p) => ({ ...p, key: 'body' })));
+        ch.cards.unshift({ id: '(open)', line: m.get('opener').loc.start.line, pieces });
+      }
       if (m.has('done')) {
         const pieces = textPieces(m.get('done').value).map((p) => ({ ...p, key: 'done' }));
         ch.cards.push({ id: '(done)', line: m.get('done').loc.start.line, pieces });
@@ -442,9 +450,9 @@ function chaptersFor(entry, src) {
 
 // ===== reading the text ====================================================================
 // For the score a chip reads as its label and a link as its words.
-const scoreText = (t) => t.replace(/\[\[([^\]]+)\]\]/g, '$1').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+const scoreText = (t) => t.replace(/\{\{([^|{}]+)\|[^{}]+\}\}/g, '$1').replace(/\[\[([^\]]+)\]\]/g, '$1').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
 // For the terms a chip is taken out: it names a button, not the trade word.
-const termText = (t) => t.replace(/\[\[[^\]]+\]\]/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+const termText = (t) => t.replace(/\{\{([^|{}]+)\|[^{}]+\}\}/g, '$1').replace(/\[\[[^\]]+\]\]/g, ' ').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
 
 // A sentence ends at . ! or ? before a capital, a digit, a quote or a bracket, and at every
 // line break. "TYP. is" does not end one; an abbreviation before a capital does not either.

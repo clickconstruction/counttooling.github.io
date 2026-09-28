@@ -172,6 +172,9 @@
   document.addEventListener('click', (e) => {
     if (!rail.classList.contains('visible')) return;
     if (e.target.closest('#zoomRail') || e.target.closest('#zoomPct') || e.target.closest('#zoomModal')) return;
+    // a lesson's card is talking ABOUT the rail: a click on the card (its Next, a chip) leaves it open
+    // (the card review, 2026-09-27: a chip's click closed the rail and un-did the step)
+    if (e.target.closest('#tourCard')) return;
     closeZoomRail();
   });
   // Escape: features/esc-ladder.js's popover rungs call closeZoomRail (MAP-ESC), after

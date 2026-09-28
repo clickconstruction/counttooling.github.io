@@ -158,14 +158,15 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
   });
 
   // LEARN-START (2026-09-27): lesson 0, and the one card a device that has finished nothing sees.
-  test('Start here: a fresh device\'s empty canvas offers only it; its one click reads red outside, names a click with nothing armed, ticks inside; finishing brings the links back', async ({ page }) => {
+  test('Start here: a fresh device\'s empty canvas offers only it; its undo card wants the mistake, the undo and the mark that counts; finishing brings the links back', async ({ page }) => {
     test.setTimeout(120000);
     const errors = [];
     await boot(page, '/app/', errors);
     // the fresh device: one card under Drop a plan here, the line of links gone
     await expect(page.locator('#canvasEmptyHint')).toHaveClass(/is-fresh/);
     await expect(page.locator('#canvasEmptyHintStart')).toBeVisible();
-    await expect(page.locator('#canvasEmptyHintStart')).toContainText('Start here');
+    await expect(page.locator('#canvasEmptyHintStart')).toContainText('What is CountTooling?');
+    await expect(page.locator('#canvasEmptyHintStart')).toContainText('8 step walk through');   // the lesson is eight cards: '1 / 8' below
     await expect(page.locator('#canvasEmptyHint')).toContainText('Drop a plan here');
     for (const id of ['canvasEmptyHintTour', 'canvasEmptyHintTourPlumbing', 'canvasEmptyHintLearn', 'canvasEmptyHintCourse', 'canvasEmptyHintAdvancedPlan', 'canvasEmptyHintTourBlank']) await expect(page.locator('#' + id)).toBeHidden();
     // "or see every tour, lesson and course": Learn, the opener lit at row 0 and out of the count
@@ -178,18 +179,19 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // the card starts lesson 0
     await page.click('#canvasEmptyHintStart');
     expect(await page.evaluate(() => [window.App.tutorialId(), window.App.tutorialStepId()])).toEqual(['lesson:start', 'sheets']);
-    // the open card says one thing, that this is a sample and nothing here touches the reader's work;
-    // it repeats neither the Learn row's line nor itself
-    await expect(page.locator('#tourBody')).toContainText('Nothing you do on them touches your own projects');
+    // the open card says what the app is: its text, then the one button, nothing repeated from the Learn row
+    await expect(page.locator('#tourTitle')).toHaveText('CountTooling is a takeoff tool.');
+    await expect(page.locator('#tourBody')).toContainText('list every material and quantity');
     await expect(page.locator('#tourBody')).not.toContainText('Four minutes for anyone new');
-    await expect(page.locator('#tourBody')).not.toContainText('whatever it takes for granted');
-    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 9');
+    await expect(page.locator('#tourBody')).not.toContainText('Open the lesson sheets');
+    await expect(page.locator('#tourShow')).toHaveText('Open the lesson sheets');
+    expect(await page.locator('#tourStepNo').textContent()).toBe('1 / 8');
     await page.evaluate(() => window.App.tutorialDoStep());
-    await page.waitForFunction(() => window.App.tutorialStepId() === 'what', null, { timeout: 30000 });
+    await page.waitForFunction(() => window.App.tutorialStepId() === 'header', null, { timeout: 30000 });
     // where things are: Next moves the light, one part of the screen per card
     const lit = () => page.evaluate(() => { const s = document.getElementById('tourSpot').getBoundingClientRect(); return { l: Math.round(s.left), t: Math.round(s.top), w: Math.round(s.width), h: Math.round(s.height) }; });
     const spots = {};
-    for (const id of ['what', 'header', 'sidebar', 'bottom']) {
+    for (const id of ['header', 'sidebar', 'bottom']) {
       await page.waitForFunction((want) => window.App.tutorialStepId() === want, id);
       await page.waitForTimeout(250);
       spots[id] = await lit();
@@ -201,25 +203,31 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     expect(spots.bottom.t).toBeGreaterThan(spots.sidebar.t + spots.sidebar.h / 2);   // the footer, under the sheet
     // the lesson armed Title block for its one click
     expect(await page.evaluate(() => { const c = window.state.counters.find((x) => x.name === 'Title block'); return !!c && window.state.activeCounterType === c.id && window.state.tool === window.App.TOOL.COUNTER; })).toBe(true);
-    await expect(page.locator('#tourStatus')).toHaveText('Waiting for you…');
+    // the undo card: a mistake, its undo, then the mark that counts; the line under the steps says which comes next
+    await expect(page.locator('#tourTitle')).toHaveText('Make a mistake, then undo it');
+    await expect(page.locator('#tourStatus')).toHaveText('Click outside the circle first');
     const circle = async () => { await page.waitForFunction(() => window.App.tutorialZoneScreen().length === 1); return (await page.evaluate(() => window.App.tutorialZoneScreen()))[0]; };
     let z = await circle();
-    // 1. outside the circle: a mark lands, the line turns red and says why
+    // 1. outside the circle: the mistake. Guidance, not a miss: it is what the card asked for
     await page.mouse.click(z.cx, z.cy - z.r - 60);
-    await expect(page.locator('#tourStatus')).toHaveClass(/tour-status-miss/);
-    await expect(page.locator('#tourStatus')).toContainText('outside the circle');
+    await expect(page.locator('#tourStatus')).toContainText('That is the mistake');
+    await expect(page.locator('#tourStatus')).not.toHaveClass(/tour-status-miss/);
+    await expect(page.locator('#tourNext')).not.toHaveClass(/tour-next-ready/);
+    // 2. undo it: the line repeats how many undos are left
     await page.keyboard.press('ControlOrMeta+z');
-    await expect(page.locator('#tourStatus')).toHaveText('Waiting for you…');
-    // 2. inside it with the counter put down (M): nothing placed, and the line names it
+    await expect(page.locator('#tourStatus')).toContainText(/Undone, \d+ undos? left\. Now click inside the circle/);
+    // a click inside with the counter put down (M) places nothing, and the line says why, in red
     await page.keyboard.press('m');
     z = await circle();
     await page.mouse.click(z.cx, z.cy);
-    await expect(page.locator('#tourStatus')).toContainText('not armed');
-    // 3. armed again from COUNTERS, inside the circle: ✓ Done, held for Next
+    await expect(page.locator('#tourStatus')).toContainText('The counter is put down');
+    await expect(page.locator('#tourStatus')).toHaveClass(/tour-status-miss/);
+    // 3. picked up again from COUNTERS, inside the circle: ✓ Done, beside Back and Next, held for Next
     await page.click('#countersList .sidebar-item:has-text("Title block")');
     z = await circle();
     await page.mouse.click(z.cx, z.cy);
     await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    await expect(page.locator('.tour-card-nav #tourStatus')).toHaveCount(1);
     await expect(page.locator('#tourNext')).toHaveClass(/tour-next-ready/);
     await page.waitForTimeout(600);
     expect(await stepId(page)).toBe('try');
@@ -454,6 +462,9 @@ test.describe('Learn: the menu, the doors, and the reader\'s own work', () => {
     // Fixing → right-click the stray mark, Delete
     await open('fixing', 'undo');
     await page.evaluate(() => window.App.tutorialGoTo('context'));
+    // the sheet moves to the circled mark a beat after the step opens: the click is aimed once the view
+    // has stood still (on CI the point was read before the move and the right-click missed the mark)
+    await page.waitForFunction(() => { const s = window.state, k = s.zoom + ':' + s.pan.x + ':' + s.pan.y; const w = window; if (w.__viewKey !== k) { w.__viewKey = k; w.__viewAt = Date.now(); return false; } return Date.now() - w.__viewAt > 700; }, null, { timeout: 15000, polling: 100 });
     const pt = await page.evaluate(() => { const c = window.App.toCanvas({ x: 60 + 0.75 * 345, y: 70 + 0.75 * 330 }); const r = document.getElementById('annCanvas').getBoundingClientRect(); const dpr = window.devicePixelRatio || 1; return { x: r.left + c.x / dpr, y: r.top + c.y / dpr }; });
     await page.mouse.click(pt.x, pt.y, { button: 'right' });
     await expect(page.locator('#ctxDelete')).toBeVisible();

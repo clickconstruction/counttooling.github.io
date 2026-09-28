@@ -13,6 +13,47 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): the card review: ten rules, every card held to them, and the engine they needed (2026-09-27)
+
+Will walked lesson 0 card by card and found the same kinds of fault on each. The rules he was
+applying are written down ([CARD-REVIEW.md](journeys/plans/CARD-REVIEW.md)), and twelve agents
+held every tour, lesson and course card to them, in the app. What they could not change without
+changing what is taught is [the owner's list](journeys/plans/CARD-REVIEW-OWNERS-LIST.md), 106
+lines, none of them done.
+
+- **Start here, rewritten by hand.** Eight cards. The open card is "CountTooling is a takeoff
+  tool." and its one button (outlined in the accent, filled on hover); no "Waiting for you…", no
+  "click the button below". The header, sidebar and footer cards no longer repeat their titles.
+  The click card teaches undo: a mark outside the circle, the reader's own undo key (or Undo on
+  touch), then the mark that counts, with the undos left repeated on the card's line. The empty
+  canvas card reads "What is CountTooling?".
+- **A chip knows its control.** `[[Set Scale]]` wears the control's icon and a click lights the
+  control. Among controls that share a name it takes the one the step lights, then one in the open
+  dialog, then one in the same section. A control not on screen yet wears its icon and takes no
+  click. `[[⋯]]` reads "••• More". A button's badge or parenthesis does not hide it from its chip.
+  Next, Back, Show me where and Skip this step on a card are the card's own.
+- **A sidebar section in capitals** (PAGES, BID CHECK…) is set in the sidebar heading's style and
+  lights its heading. **A pointer**, `{{turns the pages|.page-nav}}`, is a chip with the card's own
+  words that lights what the selector names. **`lightAll`** lights the box around every target.
+- **The light glows as it lands** (a wash, a halo and a ripple, 2.3 s, once), and **the sheet
+  glides** to a step's targets and back out (2.6 s, ended by the reader's own wheel or click; a
+  spec and a reduce-motion device get the jump). The card drags by its whole top. ✓ Done sits in
+  the Back / Next row. The card's body is written only when it changes.
+- **`opener` / `openerTitle`** on a lesson or chapter: the open card's own text, in place of the
+  intro the Learn row already shows. Every lesson and chapter has one.
+- **The language check** reads a card's title and a chapter's opener, and a pointer as its words.
+- **Faults on the live site, fixed on the cards:** the three tours' done cards sent the reader to
+  an Upload PDF button that is hidden while a plan is open, and to a Help → Guides that does not
+  exist; the electrical tour said the footer shows the drop (it is the status bar); the HVAC tour's
+  "click Everything" cannot be done on a one-sheet set; the HVAC course said the Duct dialog
+  "starts at 24x12 anyway" (it does not, and the step could become impossible); the Measuring
+  lesson named a Snap button that shows only once a line tool is armed; "Press Enter" steps
+  vanished on touch and left no way to finish a run.
+- **features/zoom-rail.js:** a click on a lesson's card leaves the rail open (a chip's click closed
+  it and un-did the Working faster lesson's step).
+- No number, code citation or trade fact changed. One reading is written as the screen shows it
+  (24.44 ft, where the blank-sheet tour said 24'-5"). sw.js restamped.
+
 ## revert(water): the sibling guard on water runs, which broke the plumbing tour (WATER-TAP, 2026-09-27)
 
 ## fix(model): one mark-presence predicate; a duct-only takeoff comes back (REAPPLY-DUCT, 2026-09-27)

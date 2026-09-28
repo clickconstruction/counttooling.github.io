@@ -50,6 +50,37 @@ order, and the card lit Apply the whole time the dialog was open.
 Walked on screen at 1280 x 720 in both tours: every chip live, neither card scrolls, and the
 ring moved field by field to Apply as each was filled.
 
+## fix(tour): the Move card waits for the reader's own drag (TOUR-MOVE-GLIDE, 2026-09-28)
+
+Reported by wendi on 2026-09-28, on the blank-sheet tour's card 4 of 37, Header: Move: it
+"briefly showed this step and then moved to the next one without me clicking anything".
+Reproduced with the mouse parked: the card opened, and 1.8 seconds later the tour was on the
+counter card.
+
+- **The cause.** The Move card passes when the view has changed from where the card found it.
+  The Measure card before it zooms the sheet onto its two circles (2.7x at 1280 x 720), and
+  since the card review (#270, rule 10, "it moves gently") the engine glides back out to the
+  whole sheet over 2.6 seconds as the next card opens. The card took its starting view on its
+  first check, before the glide's first frame, so the glide itself read as the drag; 0.9
+  seconds after that the engine moved on. Before #270 the view jumped in one move, ahead of
+  that first check.
+- **Why no spec saw it.** The glide is off under `navigator.webdriver` (and for a device set
+  to reduce motion): every Playwright run gets the jump.
+- **The fix.** `App.tourKit.gliding()` (features/tutorial.js) says the engine is moving the
+  sheet itself. The Move check (features/tour-blank.js) takes no starting view and passes
+  nothing while it is; the Zoom check does the same. Both now take their starting view each
+  time the card opens going forward (`onEnter`), not once per tour: on a monitor large enough
+  that Measure needs no zoom, Back to Measure and Next again passed Move on the first visit's
+  view.
+- **No other card.** No lesson, course or trade-tour check reads the pan or the zoom.
+- **Pinned** by two tests in tutorial.spec.js, "Every button, on a blank sheet". The first turns
+  the glide on (it sets `navigator.webdriver` false), parks the mouse for 4.6 seconds and wants
+  the card still there and not done, then drags and wants the counter card. The second walks
+  the second visit at 2800 x 1700. Each was run with its own fix reverted alone and failed.
+- **Left for the owner:** after a real drag the card still moves on 0.9 seconds later, so its
+  two closing lines (the wheel, Esc) are barely read. Holding it for Next, as Measure does, is
+  the same question the owner's list asks of `wsfu` and `circuits/load`.
+
 ## feat(settings): a project is renamed from Project Settings (PROJECT-RENAME, 2026-09-28)
 
 Reported by an estimator on 2026-09-28: "I am not finding where to rename a project under

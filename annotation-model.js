@@ -168,6 +168,69 @@ function purgeFromGhosts(ann, kind, id) {
   return out;
 }
 
+// --- What counts as a mark (S08, one table) ----------------------------------
+//
+// Every key makeAnnotations() returns, classified ONCE. Three hand lists of "is
+// there anything on this layer" used to drift apart (the pages badge, the layer
+// count, the signed-out re-apply, which forgot duct runs: REAPPLY-DUCT). Each
+// key's role is one of:
+//   'mark'      the estimator put it there and it counts;
+//   'placement' where something sits, or a reference laid over the sheet, that
+//               is not takeoff (the legend box; a ghost Typical until Stamp);
+//   'derived'   rebuilt from other marks, so counting it would count twice
+//               (duct fittings are inferred from their runs and die with them).
+// `option` names the switch a caller may flip for the kinds whose answer depends
+// on the question (a zone is a mark by default; a ghost or a fitting is not).
+// `shape`: 'list' (an array), 'byId' ({ id: [marks] }), 'one' (an object or null).
+// annotation-model.test.js walks makeAnnotations()'s keys and fails by name on a
+// key missing here, so a new annotation kind is classified the day it is added.
+const ANNOTATION_KINDS = Object.freeze({
+  counterMarkers: { role: 'mark', shape: 'byId' },
+  quickLines:     { role: 'mark', shape: 'list' },
+  polylines:      { role: 'mark', shape: 'list' },
+  ductRuns:       { role: 'mark', shape: 'list' },
+  roomBoxes:      { role: 'mark', shape: 'list' },
+  highlights:     { role: 'mark', shape: 'list' },
+  notes:          { role: 'mark', shape: 'list' },
+  multiplyZones:  { role: 'mark', shape: 'list', option: 'zones' },
+  scaleZones:     { role: 'mark', shape: 'list', option: 'zones' },
+  ghosts:         { role: 'placement', shape: 'list', option: 'ghosts' },
+  legend:         { role: 'placement', shape: 'one' },
+  ductFittings:   { role: 'derived', shape: 'list', option: 'fittings' },
+});
+// Does this key count under these options? A kind with an option follows the
+// caller's boolean when one is given, else its role; a kind without one is
+// its role alone. An unclassified key never counts (the node test catches it).
+function annotationKindCounts(key, opts) {
+  const kind = ANNOTATION_KINDS[key];
+  if (!kind) return false;
+  if (kind.option && opts && typeof opts[kind.option] === 'boolean') return opts[kind.option];
+  return kind.role === 'mark';
+}
+// How many marks one layer's annotations hold. opts: { zones, ghosts, fittings },
+// each a boolean overriding the default (zones true, ghosts false, fittings false).
+// `atMost` stops counting once reached, so the presence test is cheap.
+function countAnnotationMarks(ann, opts, atMost) {
+  if (!ann || typeof ann !== 'object') return 0;
+  const cap = typeof atMost === 'number' && atMost > 0 ? atMost : Infinity;
+  let n = 0;
+  for (const key of Object.keys(ANNOTATION_KINDS)) {
+    if (!annotationKindCounts(key, opts)) continue;
+    const v = ann[key];
+    const shape = ANNOTATION_KINDS[key].shape;
+    if (shape === 'byId') {
+      if (v && typeof v === 'object') Object.keys(v).forEach((id) => { if (Array.isArray(v[id])) n += v[id].length; });
+    } else if (shape === 'one') {
+      if (v && typeof v === 'object') n += 1;
+    } else if (Array.isArray(v)) {
+      n += v.length;
+    }
+    if (n >= cap) return n;
+  }
+  return n;
+}
+function annotationHasMarks(ann, opts) { return countAnnotationMarks(ann, opts, 1) > 0; }
+
 // --- The project's own fields (R12, one list) --------------------------------
 //
 // What a takeoff carries besides its sheets: the palette, and the fields that
@@ -283,15 +346,17 @@ function createAnnotationModel(ctx) {
     page.canvases = [{ id: ctx.uid(), name: 'Main', annotations: ann }];
     delete page.annotations;
   }
-  function pageHasAnyAnnotations(p) {
-    return getPageCanvases(p).some(c => {
-      const ann = c.annotations || makeAnnotations();
-      return (ann.counterMarkers && Object.keys(ann.counterMarkers).length) || (ann.quickLines?.length) || (ann.polylines?.length) || (ann.highlights?.length) || (ann.notes?.length) || (ann.multiplyZones?.length) || (ann.scaleZones?.length) || (ann.roomBoxes?.length) || (ann.ductRuns?.length);
-    });
+  // S08: all three read the ANNOTATION_KINDS table above (opts as there).
+  function pageHasAnyAnnotations(p, opts) {
+    return getPageCanvases(p).some(c => annotationHasMarks(c && c.annotations, opts));
   }
-  function projectHasAnyCanvasMarkup() {
-    return Array.isArray(ctx.getState().pages) && ctx.getState().pages.some(pageHasAnyAnnotations);
+  function projectHasAnyCanvasMarkup(opts) {
+    const pages = ctx.getState().pages;
+    return Array.isArray(pages) && pages.some(p => pageHasAnyAnnotations(p, opts));
   }
+  // "How many marks are on this layer": the Clear Page confirm and the layer
+  // details name it. Moved here from app.js (S08); App.countCanvasMarks as before.
+  function countCanvasMarks(ann, opts) { return countAnnotationMarks(ann, opts); }
 
   function backupDataToProjFormat(data) {
     if (!data || (data.pages && Array.isArray(data.pages))) return data;
@@ -1119,6 +1184,7 @@ function createAnnotationModel(ctx) {
     migratePageToCanvases,
     pageHasAnyAnnotations,
     projectHasAnyCanvasMarkup,
+    countCanvasMarks,
     backupDataToProjFormat,
     computePageBakeFrame,
     verifyPageBakeFrame,
@@ -1155,5 +1221,5 @@ function createAnnotationModel(ctx) {
 
 // Dual-environment export (inert in the browser) for node --test + eslint.
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode, purgeFromGhosts, PALETTE_FIELDS, TAKEOFF_BACKUP_PROJECT_FIELDS, CARRIED_VIEW_FIELDS, freshProjectFields };
+  module.exports = { createAnnotationModel, dedupePaletteById, collectDropNodes, dropRefLine, applyDropToNode, purgeFromGhosts, ANNOTATION_KINDS, annotationKindCounts, countAnnotationMarks, annotationHasMarks, PALETTE_FIELDS, TAKEOFF_BACKUP_PROJECT_FIELDS, CARRIED_VIEW_FIELDS, freshProjectFields };
 }

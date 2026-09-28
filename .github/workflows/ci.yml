@@ -10,10 +10,14 @@ on:
     branches: [main]
   pull_request:
 
-# A new push to the same PR obsoletes the in-flight run — cancel it.
+# A new push to the same PR obsoletes the in-flight run — cancel it. Never on
+# main (punch row CI-MAIN, 2026-09-27): every push to main shares one group, so
+# on a busy day each merge cancelled the run before it and twenty main runs in
+# a row were cancelled without a verdict. Main's runs now queue: one runs, the
+# newest pending one waits, and anything pending in between is replaced.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
@@ -34,8 +38,19 @@ jobs:
   # DEV_AUTH_* creds; no secrets are configured, and none are needed — the
   # local-only specs are the bulk of the suite and carried every regression
   # this repo has caught.
+  #
+  # Split four ways by FILE (fullyParallel is false in playwright.config.js, so
+  # a spec file is the unit a shard takes), each shard on its own runner with
+  # two workers. On one runner the suite took 42 to 49 minutes. The floor is
+  # the longest file: tutorial.spec.js (about 558 s), then lessons.spec.js
+  # (about 293 s). fail-fast is off so one red shard does not cancel the
+  # other three and hide their failures.
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -49,10 +64,12 @@ jobs:
       - run: echo '// CI stub — real file is gitignored localhost dev-auth overrides' > config.local.js
       - run: npx playwright install --with-deps chromium
       # playwright.config.js starts its own webServer (npx serve -l 3456).
-      - run: npx playwright test
+      - run: npx playwright test --shard=${{ matrix.shard }}/4
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-error-contexts
+          # One name per shard: upload-artifact v4 refuses a second upload
+          # under a name already used in the run.
+          name: playwright-error-contexts-shard-${{ matrix.shard }}
           path: test-results/
           retention-days: 7

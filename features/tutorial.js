@@ -1578,7 +1578,14 @@
         }
       }
       const inView = seen(target, r);
-      if (!inView && (!scrollSettled || inStrip(target))) { try { target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect(); } catch (_) {} }
+      if (!inView && (!scrollSettled || inStrip(target))) {
+        try {
+          target.scrollIntoView({ block: 'nearest', inline: inStrip(target) ? 'center' : 'nearest' }); r = target.getBoundingClientRect();
+          // The nearest edge of a dialog can be under a row that sticks to it (Project Settings'
+          // Save row): the middle of the panel is clear of it (Wendi, 2026-09-28).
+          if (!inStrip(target) && !seen(target, r)) { target.scrollIntoView({ block: 'center', inline: 'nearest' }); r = target.getBoundingClientRect(); }
+        } catch (_) {}
+      }
       else if (inView) scrollSettled = true;
       const arrived = target !== lastTarget;   // the light has moved to a new control
       lastTarget = target;
@@ -1783,7 +1790,18 @@
       if (!b.width || !b.height) continue;   // a zero box clips nothing that shows (#annCanvas's wrapper: the canvas is positioned out of it)
       if (cy < b.top || cy > b.bottom || cx < b.left || cx > b.right) return false;
     }
-    return true;
+    return !underStickyRow(t, cx, cy);
+  }
+  // Inside the scrolling box and still not showing: a row that sticks to the box's edge lies over
+  // it. Project Settings' Save row covered Close project, and the ring was drawn on Save (Wendi,
+  // 2026-09-28: "this button doesn't exist where highlighted, have to scroll down").
+  function underStickyRow(t, cx, cy) {
+    const top = document.elementFromPoint(cx, cy);
+    if (!top || top === t || t.contains(top) || top.contains(t)) return false;
+    for (let p = top; p && p !== document.body; p = p.parentElement) {
+      if (getComputedStyle(p).position === 'sticky') return !p.contains(t);
+    }
+    return false;
   }
   // The pencil beside ONE palette row. "#lineTypesList .edit-btn" alone lights the first pencil in
   // the list: the reader's own 1.5in Copper on a device with a standing palette, while the card said

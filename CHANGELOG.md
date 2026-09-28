@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(tour): a card lights a control where it shows, never under a dialog's Save row (2026-09-28)
+
+Wendi, on the blank-sheet tour's close step: "this button doesn't exist where highlighted, have to
+scroll down which is confusing". The card says to click Close project in Project Settings. The
+ring was drawn over the left end of the Save row and the link itself was out of sight under it.
+
+- **Cause.** Project Settings' Save row sticks to the foot of the dialog (`.settings-actions`,
+  `position: sticky`). The engine's `seen()` asked only whether the control's centre was inside
+  the scrolling box, which it was, so nothing scrolled. When it did scroll, it asked for the
+  nearest edge, which is the edge the Save row covers.
+- **Fix** (features/tutorial.js). `seen()` also asks what is on top at the control's centre
+  (`underStickyRow`): a sticky row that does not hold the control means it does not show. And a
+  scroll to the nearest edge that leaves the control unseen is followed by one to the middle of
+  the panel. This is the engine, so every tour, lesson and course card gets it.
+- **Pinned** by tutorial.spec.js, "the close step lights Close project where it shows, clear of
+  the Save row", at 1280 x 720 and at Wendi's 1707 x 916: the link is the element on top, the
+  ring is around it and above the Save row, and the click closes the sheet. Both fail on the old
+  engine.
+
 ## feat(learn): the card pass: the six fixes, then every card one at a time (2026-09-28)
 
 The card review left six fixes and a list for Will. He said to make the six, then to go through

@@ -1288,9 +1288,9 @@ test.describe('The plumbing tour\'s persona calibration findings', () => {
       const body = await page.locator('#tourBody').textContent();
       expect(body).not.toMatch(/press/i);
       expect(body).toContain('Tap ☰ at the top left, then Polyline');
-      expect(body).toContain('On that card, click Pipe size');
-      expect(body).toContain('In the list of sizes, click 3/4″');
-      expect(body).toContain('Click Finish under the sheet');
+      expect(body).toContain('On that card, tap Pipe size');
+      expect(body).toContain('In the list of sizes, tap 3/4″');
+      expect(body).toContain('Tap Finish under the sheet');
       const pt = (p) => page.evaluate((q) => { const c = document.getElementById('annCanvas'); const r = c.getBoundingClientRect(); const b = window.App.toCanvas(q); return { x: r.left + b.x * (r.width / c.width), y: r.top + b.y * (r.height / c.height) }; }, p);
       await page.tap('#hamburger');
       await page.waitForTimeout(500);

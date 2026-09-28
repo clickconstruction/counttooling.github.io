@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the lessons. `start` and `plans` are done; `scale` is next, card `(open)`.
+**Now:** the lessons. `start` to `measuring` are done; `chain` is next, card `(open)`.
 
 ### The six fixes, before the pass
 
@@ -64,6 +64,11 @@ Engine changes the pass has made so far, which every later card gets for free:
   `testat.sh <log> <specs>` runs specs against HEAD in a second worktree (`card-pass-test`), so the
   tree being edited is never the tree under test.
 
+- No Set Scale card asks for the Architectural & Engineering tab any more: the dialog opens on it
+  for a sheet with no scale (nine cards, every tour and course).
+- A doing card whose text ran on after its steps now gives that text as its `answer`, once the step
+  is done: shorter while the reader works, and the result is read when there is a result.
+
 Found on the way, fixed: the page badge was described the wrong way round in three cards (a yellow
 NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 
@@ -71,9 +76,9 @@ NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 
 - [x] **start** (8): (open), header, sidebar, bottom, try, paths, words, (done)
 - [x] **plans** (7): (open), jump, rotate, rename, marked, prepare, (done)
-- [ ] **scale** (7): (open), set, prove, zone, provezone, more, (done)
-- [ ] **counting** (7): (open), counter, place, bind, usekey, settings, (done)
-- [ ] **measuring** (7): (open), snap, trace, bends, drop, read, (done)
+- [x] **scale** (7): (open), set, prove, zone, provezone, more, (done)
+- [x] **counting** (7): (open), counter, place, bind, usekey, settings, (done)
+- [x] **measuring** (7): (open), snap, trace, bends, drop, read, (done)
 - [ ] **chain** (5): (open), chain, hangers, rule, (done)
 - [ ] **repeats** (4): (open), zone, read, (done)
 - [ ] **organize** (8): (open), groupson, group, assign, filter, layer, hide, (done)

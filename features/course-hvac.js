@@ -379,7 +379,7 @@
           reveal: 'On the roof. A restaurant this size is heated and cooled by one packaged rooftop unit, a single box that heats, cools and blows the air. The plan gives it a tag, a short name label, RTU-1: RTU for rooftop unit. It sits on a curb, a raised frame on the roof, over the kitchen.\nBeside it sit the hood\'s exhaust fan EF-1 (EF for exhaust fan), the make-up air unit MAU-1 and the restroom exhaust fan EF-2. The hood is the canopy over the stoves that pulls out smoke and grease. Make-up air is outside air brought in to replace what the hood throws out.\nThe plan can only show where each one\'s duct comes through the roof. So the engineer draws a roof key instead. It is a dashed box with the unit\'s name, its air and its power. A leader, a thin pointer line, runs from it to the hole in the roof.\nAn HVAC estimator reads two schedules first, the equipment schedule and the room air schedule. The unit\'s CFM (cubic feet per minute, how much air moves) is the whole job: every other number follows from it. The rooms say where the air goes.',
           target: [], check: () => true },
         { id: 'scale', title: 'Set the scale', kind: 'do',
-          body: 'The title block gives the scale: 1/8" = 1\'-0". An eighth of an inch on paper is a foot of building.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/8" = 1\']].',
+          body: 'The title block gives the scale: 1/8" = 1\'-0". An eighth of an inch on paper is a foot of building.\n1. In the header, click [[Set Scale]] (or press S).\n2. Click [[1/8" = 1\']].',
           // inside the dialog the light goes on: the 1/8" preset when its tab is up, else the tab (the dialog had no light)
           target: () => {
             const b = Array.from(document.querySelectorAll('#scalePresetsList button')).find((x) => x.textContent.trim() === '1/8" = 1\'');
@@ -594,7 +594,7 @@
       seed() { scaleM101(); seedRooms(); seedDiffusers(); makeSystem(); seedMain(); },
       steps: [
         { id: 'scale', title: 'A section at 1/2"', kind: 'do',
-          body: 'M-601 is a section: the dining room sliced through and seen from the side, at 1/2" = 1\'-0".\n1. Click [[Set Scale]] (or press S).\n2. Click the [[Architectural & Engineering]] tab.\n3. Click [[1/2" = 1\']].',
+          body: 'M-601 is a section: the dining room sliced through and seen from the side, at 1/2" = 1\'-0".\n1. Click [[Set Scale]] (or press S).\n2. Click [[1/2" = 1\']].',
           target: ['#setScale', '#setScaleSidebar'], check: () => K().scaleIs(M601, 36),
           action: { label: 'Use 1/2" = 1\'-0"', run: async () => { K().goPage(M601); await T().applyScalePreset('1/2" = 1\'', 36); } } },
         { id: 'prove', title: 'Prove it', kind: 'do', cardAt: 'br', page: M601, hold: true,

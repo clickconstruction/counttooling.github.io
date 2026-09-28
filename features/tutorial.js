@@ -276,10 +276,11 @@
   // until then (card review, 2026-09-27: a chip for a control in a closed dialog lit the More button).
   const firstShowing = (...sels) => sels.map((sel, i) => (i ? 'body' + sels.slice(0, i).map((b) => ':not(:has(' + b + '))').join('') + ' ' : '') + sel).join(', ');
   const SHOWN = ':not([style*="display:none"]):not([style*="display: none"])';   // a panel the app hides with an inline display
-  const SCALE_TAB = firstShowing('#scaleModal.visible .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar');
   const SCALE_STEP = {
     id: 'scale', title: 'Set the scale', kind: 'do',
-    body: () => 'The scale says how many feet of building one inch of paper stands for. Every length the app reports starts here.\nThe title block, the box at the bottom right of a sheet, gives the scale. The sample plan\'s says 1/8".\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click the {{Architectural & Engineering|' + SCALE_TAB + '}} tab.\n3. Click [[1/8" = 1\']]. That is an eighth of an inch on paper for one foot of building.\nOn a real sheet, look in the title block first.',
+    // the dialog opens on its Architectural & Engineering tab for a sheet with no scale (features/scale.js
+    // preloadFromCurrentScale), so no step asks for the tab; the ladder still lights it for a reader who left it
+    body: () => 'The scale says how many feet of building one inch of paper stands for. Every length the app reports starts here.\nThe title block, the box at the bottom right of a sheet, gives the scale. The sample plan\'s says 1/8".\n1. In the header, the bar of tools across the top, click [[Set Scale]] (or press S).\n2. Click [[1/8" = 1\']]. That is an eighth of an inch on paper for one foot of building.\nOn a real sheet, look in the title block first.',
     target: ['#scalePresetsList', '#scaleModalTabs .counter-tab[data-tab="presets"]', '#setScale', '#setScaleSidebar', '[title="Set Scale"]'],
     check: () => !!(App.getPageScale && App.getPageScale(state().currentPage)),
     action: { label: 'Use 1/8" = 1\'-0"', run: applyEighthScale },

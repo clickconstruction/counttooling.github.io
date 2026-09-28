@@ -42,7 +42,7 @@ with a recommendation. (The six he has said to fix are listed first, below.)
 Work the entries in the order below, top to bottom, and the chapters inside each in order. A
 ticked chapter is done. The line under "Now" names the card in hand.
 
-**Now:** the lessons and the three trade tours are done. The blank-sheet tour is next, card `welcome`.
+**Now:** the lessons, the three trade tours and the plumbing course are done. The electrical course is next, chapter `before`. The blank-sheet tour is still to do (it was set aside: it is a tour of buttons, already touch-aware, and its cards are short).
 
 ### The six fixes, before the pass
 
@@ -79,6 +79,11 @@ Engine changes the pass has made so far, which every later card gets for free:
   done and holding on its answer, the way a reader does.
 - The plumbing tour's size card and the HVAC tour's duct card are three states each, as long as what
   the reader is doing: the size card was 696 px of a 720 px window and scrolled.
+
+- A long card is a wider card (470 px past 700 characters): an engineer's answer stood 696 px tall
+  in a 720 px window and scrolled.
+- In the courses "Press Enter" after a trace reads "Click Finish under the sheet (or press Enter)":
+  a tablet dropped the line and had no way on.
 
 Found on the way, fixed: the page badge was described the wrong way round in three cards (a yellow
 NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
@@ -197,16 +202,16 @@ NUMBER means the sheet has a scale, a yellow OUTLINE means it carries marks).
 
 ## The plumbing course  (features/course-plumbing.js)
 
-- [ ] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
-- [ ] **sheet** (9): (open), what, scale, prove, keynotes, schedule, row, units, (done)
-- [ ] **fixtures** (10): (open), wetwall, counters, restrooms, handsinks, kitchen, floorsinks, primers, keys, (done)
-- [ ] **water** (12): (open), service, trunk, linetypes, trace, hot, chain, drop, hangers, bends, read, (done)
-- [ ] **waste** (12): (open), downhill, two, layer, linetypes, ss, gw, cleanouts, vents, open, underslab, (done)
-- [ ] **riser** (8): (open), scale, prove, traparm, stack, why, co, (done)
-- [ ] **gas** (9): (open), meter, linetype, trace, bends, drops, hood, hangers, (done)
-- [ ] **details** (8): (open), why, scale, prove, zone, multiply, read, (done)
-- [ ] **whole** (6): (open), lay, compare, legend, pdfs, (done)
-- [ ] **bid** (8): (open), open, rows, tick, proof, ledger, handoff, (done)
+- [x] **before** (8): (open), set, estimator, verbs, header, sidebar, bottom, (done)
+- [x] **sheet** (9): (open), what, scale, prove, keynotes, schedule, row, units, (done)
+- [x] **fixtures** (10): (open), wetwall, counters, restrooms, handsinks, kitchen, floorsinks, primers, keys, (done)
+- [x] **water** (12): (open), service, trunk, linetypes, trace, hot, chain, drop, hangers, bends, read, (done)
+- [x] **waste** (12): (open), downhill, two, layer, linetypes, ss, gw, cleanouts, vents, open, underslab, (done)
+- [x] **riser** (8): (open), scale, prove, traparm, stack, why, co, (done)
+- [x] **gas** (9): (open), meter, linetype, trace, bends, drops, hood, hangers, (done)
+- [x] **details** (8): (open), why, scale, prove, zone, multiply, read, (done)
+- [x] **whole** (6): (open), lay, compare, legend, pdfs, (done)
+- [x] **bid** (8): (open), open, rows, tick, proof, ledger, handoff, (done)
 
 ## The electrical course  (features/course-electrical.js)
 

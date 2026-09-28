@@ -102,6 +102,7 @@
   let doneAt = 0;          // when the current step's check first passed (auto-advance after a beat)
   let heldByBack = false;  // the step was re-entered with Back: never auto-advance, Next lights up
   let revealed = false;    // a reveal step's answer is showing (reset on every step change)
+  let cardWidth = 360;     // 470 for a long card (render)
   let tourCounterId = null;
   let tourLineTypeId = null;
   let tourSecondCounterId = null;
@@ -1491,6 +1492,11 @@
     // focus, is not replaced by the next tick
     const bodyEl = el('tourBody');
     if (bodyEl.__last !== html) { bodyEl.innerHTML = html; bodyEl.__last = html; }
+    // A long card is a wider card: an engineer's answer of a thousand characters stood 696 px tall in a
+    // 720 px window and scrolled (the card pass). By length, not by height, so the width never flickers.
+    const wide = !isNarrow() && (bodyEl.textContent || '').length > 700;
+    el('tourCard').classList.toggle('tour-card-wide', wide);
+    cardWidth = wide ? 470 : 360;
     // The card never does the step for the reader. "Show me where" pulses the circle,
     // the boundary or the lit control; Next works only once the step is really done
     // (a reading step is done by reading); a quiet Skip keeps anyone from being stuck.
@@ -1603,7 +1609,7 @@
       // corner of a big dialog), the viewport corner farthest from the control, which
       // cannot cover it unless the control is most of the screen (found 2026-09-21: the
       // card sat on Trim your set's Open button, the one thing the step asked for).
-      const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220;
+      const cw = Math.min(cardWidth, window.innerWidth - 24), ch = card.offsetHeight || 220;
       const vw = window.innerWidth, vh = window.innerHeight, gap = 16, edge = 12;
       const clampX = (x) => Math.max(edge, Math.min(x, vw - cw - edge)), clampY = (y) => Math.max(edge, Math.min(y, vh - ch - edge));
       const spots = [
@@ -1680,7 +1686,7 @@
       spot.style.display = 'none';
       // No control to point at (a step about the sheet itself): the corner the step asks
       // for with cardAt, or where the reader dragged it, keeps the card off the drawing.
-      const cw = Math.min(360, window.innerWidth - 24), ch = card.offsetHeight || 220, edge = 12;
+      const cw = Math.min(cardWidth, window.innerWidth - 24), ch = card.offsetHeight || 220, edge = 12;
       let corner = step.cardAt ? { left: step.cardAt[1] === 'l' ? edge : window.innerWidth - cw - edge, top: step.cardAt[0] === 't' ? 56 : window.innerHeight - ch - 40 } : null;
       // With nothing to point at but targets on the sheet, the card still keeps off them (it sat
       // on the quick-key circle on a tablet, where the status-bar link it would light is gone).

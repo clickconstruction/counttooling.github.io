@@ -1,5 +1,7 @@
 # The card review: the owner's list (2026-09-27)
 
+> The card pass (2026-09-28, [CARD-PASS.md](CARD-PASS.md)) settled the rows marked **DONE** below. The rest still wait for Will: a number, a citation, a trade fact, or what a step checks.
+
 Twelve agents reviewed every teaching card against [CARD-REVIEW.md](CARD-REVIEW.md). What they could not
 change without changing WHAT is taught, or without Will's taste, is here: one line each, with the
 reviewer's recommendation (REC). Nothing on this list has been done.
@@ -7,7 +9,7 @@ reviewer's recommendation (REC). Nothing on this list has been done.
 ## Plumbing course, chapters 5-9
 1. Gas chapter intro says the rulebook "does not have yet" a gas hanger row; the hangers card says it has one that Bid Check does not read. REC: fix the intro to match the card.
 2. riser/why: title repeats the body's question; renaming it means updating the vent-terminal rule page that cites the title. REC: rename and update together, or leave.
-3. Answer-on-the-next-card pattern gives several cards two jobs (course-wide). REC: leave, it is the course's method.
+3. Answer-on-the-next-card pattern gives several cards two jobs (course-wide). REC: leave, it is the course's method. **DONE (card pass, 2026-09-28).**
 4. gas/hangers is 655 px tall in a 720 px window. REC: move the RFI flag paragraph to the hood card.
 5. details/multiply hint says "right-click the zone's label"; a touch reader has no right-click. REC: name the touch gesture.
 6. whole/compare (skipped) "Or read on: Next moves on" is borderline rule 3, settled today. REC: leave.
@@ -22,50 +24,50 @@ reviewer's recommendation (REC). Nothing on this list has been done.
 6. main/arm's hint: cover a wrong starting size too? Optional; a logic change.
 7. main/arm's hint says "Press Escape"; a touch reader has none. Goes with 2.
 ## Electrical tour
-1. Welcome lights nothing now (lit Upload PDF led to a file picker with no sample plan). Make the plumbing and HVAC welcomes the same? REC: yes.
+1. Welcome lights nothing now (lit Upload PDF led to a file picker with no sample plan). Make the plumbing and HVAC welcomes the same? REC: yes. **DONE (card pass, 2026-09-28).**
 2. Circuit card never has the reader put the devices in the group; by hand the circuit is empty. Add an assign step? REC: yes (changes a check).
 3. Summary card: drop the "heading folds the list" and legend gear sentences? REC: drop.
 4. Done card says "saved on this device" after the tour defined device as anything wired. Say "this computer"? REC: yes (but the status bar says "device").
 5. Counter title is two lines long with its gloss. REC: keep.
 6. Bid Check card in two states (folded / open). REC: keep.
-7. Line type card: after EC-TOUR-WIRE lands, move the EMT / raceway / conductor glosses ahead of the steps. REC: yes.
+7. Line type card: after EC-TOUR-WIRE lands, move the EMT / raceway / conductor glosses ahead of the steps. REC: yes. **DONE (card pass, 2026-09-28).**
 8. Tours have no opener mechanism; the welcome plays that part. REC: leave.
 ## Electrical course, chapters 0-4
-1. before/where is one card for three parts of the screen. Split into three cards as Start here does? REC: yes.
-2. before/cards describes how cards work (rule 7). Replace with a doing card like Start here's undo card? REC: yes.
-3. Answer cards do two jobs (six cards open with the last question's answer, then set a new task). Show the answer on the question card once its check passes? REC: yes; sheet/schedule is 684 px of 720.
+1. before/where is one card for three parts of the screen. Split into three cards as Start here does? REC: yes. **DONE (card pass, 2026-09-28).**
+2. before/cards describes how cards work (rule 7). Replace with a doing card like Start here's undo card? REC: yes. **DONE (card pass, 2026-09-28).**
+3. Answer cards do two jobs (six cards open with the last question's answer, then set a new task). Show the answer on the question card once its check passes? REC: yes; sheet/schedule is 684 px of 720. **DONE (card pass, 2026-09-28).**
 4. Four cards light the sheet while line 1 says + Add; the card sits on + Add when it is lit. Move those cards (cardAt)? REC: yes.
 5. devices/heights says "the panel with 78 in" but the chapter has no panel counter. Seed one or drop the clause? REC: seed.
-6. devices/keys teaches number keys; a touch reader has none. Skip the card on touch? REC: yes.
-7. lighting/plan says "As the cursor nears a letter"; touch has no cursor. REC: add a touch line.
+6. devices/keys teaches number keys; a touch reader has none. Skip the card on touch? REC: yes. **DONE (card pass, 2026-09-28).**
+7. lighting/plan says "As the cursor nears a letter"; touch has no cursor. REC: add a touch line. **DONE (card pass, 2026-09-28).**
 8. osStrayHint says "Press Ctrl+Z" and is pinned by a spec. REC: the Undo-button wording.
 9. conduit/linetype makes a line type and then edits it (seven lines). Two cards? REC: yes.
 ## HVAC course, chapters 0-4
-1. before/cards describes how cards work (rule 7). Drop it, as Start here has no such card? REC: yes (a spec edit too).
-2. before/screen is three areas on one card. Split as Start here does? REC: yes.
+1. before/cards describes how cards work (rule 7). Drop it, as Start here has no such card? REC: yes (a spec edit too). **DONE (card pass, 2026-09-28).**
+2. before/screen is three areas on one card. Split as Start here does? REC: yes. **DONE (card pass, 2026-09-28).**
 3. before/set has four jobs. Split in two? REC: yes.
-4. sheet/schedule ends with an aside on 7.5 tons and static pressure that serves no step. Move it to system/group? REC: yes.
-5. Three answers scroll at 1280x720 (sheet/what, rooms/why, diffusers/neck). Split each across two cards? REC: yes.
+4. sheet/schedule ends with an aside on 7.5 tons and static pressure that serves no step. Move it to system/group? REC: yes. **DONE (card pass, 2026-09-28).**
+5. Three answers scroll at 1280x720 (sheet/what, rooms/why, diffusers/neck). Split each across two cards? REC: yes. **DONE (card pass, 2026-09-28).**
 6. sheet/what's answer ends on a second subject. Its own card? REC: yes.
-7. Step 2 of every Set Scale card says to click the Architectural & Engineering tab, which is already open. Drop the step across all courses? REC: yes.
+7. Step 2 of every Set Scale card says to click the Architectural & Engineering tab, which is already open. Drop the step across all courses? REC: yes. **DONE (card pass, 2026-09-28).**
 8. sheet/prove's button label still says "string". REC: "dimension".
 9. Glosses repeated from an optional answer (hood, plenum, CFM) were kept. REC: keep.
 10. Done cards say "Next: Learn → Chapter N" while Learn is not on screen. REC: keep.
 ## Lessons 1-7
-1. Counting on a tablet: two cards teach number keys, and the quick keys link is desktop-only. Skip both on touch? REC: yes (needs an engine skip).
+1. Counting on a tablet: two cards teach number keys, and the quick keys link is desktop-only. Skip both on touch? REC: yes (needs an engine skip). **DONE (card pass, 2026-09-28).**
 2. plans/prepare now says "Project Settings has Add pages" (Upload PDF is hidden once a set is open). REC: keep.
-3. plans opener: the Trim step shows as a lone "1." beginning "Trim your set opens". Reword that engine text? REC: yes.
+3. plans opener: the Trim step shows as a lone "1." beginning "Trim your set opens". Reword that engine text? REC: yes. **DONE (card pass, 2026-09-28).**
 4. Openers of counting, measuring and chain share one sentence. Want each distinct? REC: leave.
 5. measuring/snap: the Snap button only exists while a line tool is armed; the card now arms Polyline first. REC: keep.
 6. repeats/zone now says why the number is 4 (TYP. OF 4), repeating the Learn row. REC: keep.
-7. chain step 6 "Press Enter to end the run" is dropped on touch and the step passes without it. Drop it for everyone? REC: yes.
-8. "Right-click the zone's label" (two cards): does a long press work on zone labels? Confirm, then add a touch line.
-9. plans/rename says the sheet "became P-501"; the sidebar shows "P-501 · Schedules". REC: match the sidebar.
+7. chain step 6 "Press Enter to end the run" is dropped on touch and the step passes without it. Drop it for everyone? REC: yes. **DONE (card pass, 2026-09-28).**
+8. "Right-click the zone's label" (two cards): does a long press work on zone labels? Confirm, then add a touch line. **DONE (card pass, 2026-09-28).**
+9. plans/rename says the sheet "became P-501"; the sidebar shows "P-501 · Schedules". REC: match the sidebar. **DONE (card pass, 2026-09-28).**
 10. APP BUG? chain/rule: the Hanger row in SUMMARY reads "1/32 in" for a 32-inch spacing.
 ## Plumbing course, chapters 0-4
-1. before/cards describes how cards work. Drop it, or make it a doing step? REC: drop.
-2. before/screen covers three areas on one card. Split like Start here? REC: yes.
-3. Three cards still scroll at 1280x720 (fixtures/primers, water/trunk revealed, water/chain): each carries the last card's answer plus a new lesson. Give the answer its own card? REC: yes.
+1. before/cards describes how cards work. Drop it, or make it a doing step? REC: drop. **DONE (card pass, 2026-09-28).**
+2. before/screen covers three areas on one card. Split like Start here? REC: yes. **DONE (card pass, 2026-09-28).**
+3. Three cards still scroll at 1280x720 (fixtures/primers, water/trunk revealed, water/chain): each carries the last card's answer plus a new lesson. Give the answer its own card? REC: yes. **DONE (card pass, 2026-09-28).**
 4. cardAt moved or removed on three cards that sat on what they talk about. REC: keep.
 5. waste/downhill: a question was added ("How far does the waste run under the floor, and which end sits higher?"). Keep that wording?
 6. water/chain: "lav to lav" is gone. Want that trade phrase taught? REC: leave it out.

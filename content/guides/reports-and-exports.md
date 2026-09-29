@@ -1,7 +1,7 @@
 ---
 title: Reports, exports, and sending a takeoff onward
 description: Turn your marked-up plan into numbers and deliverables: the on-canvas legend, Show Report, Export PDFs, Copy to /Tooling, and email summaries.
-updated: 2026-09-27
+updated: 2026-09-29
 order: 6
 icon: legend
 category: Output
@@ -49,6 +49,8 @@ Two different files: the sidebar **Export PDFs** button makes the marked-up deli
 - **Copy Summary (email/text)**: a plain-text summary for dropping into an email or message. It runs the same scale check before copying.
 
 Both copies offer two scopes. **Everything** is every mark on every [layer](/guides/canvas-layers/) of every sheet, whatever is showing on screen, so a bid never leaves marks behind on a layer you had turned off. **This sheet** is the sheet you are on, pre-checked to **what's on your screen** at that moment: the active layer (always included) plus whatever the show-all peek has turned on; when the sheet carries more than one layer a **layer picker** under the scope buttons lets you tick or untick layers before you copy. The pasted text starts with a header that names exactly what it holds, `Counts, Maple St TI · every sheet · every layer` or `Counts, Maple St TI · this sheet · layers: Main, Gas`, so the number a bid was built on is written down with it and never quietly depends on a view toggle.
+
+A group marked **Alternate** (see [Organizing a busy sheet](/guides/organizing-a-busy-sheet/)) is set apart in both copies: Copy Summary opens with *Base: … Alternate … adds …* and heads the block *Alternate: <name>*; Copy to /Tooling puts the group's rows after the base rows under a `--- Alternate: <name> ---` heading, with the Copied confirmation naming what the alternate holds; Open in TakeoffTooling marks each of its rows. A bid on the other end can price the job with and without it.
 
 On an HVAC takeoff both copies end with a **--- Duct ---** block (the [Duct Schedule](/guides/duct-takeoff-by-the-pound/)'s per-size LF · lb rows, the straight and fittings totals and the Bid weight, tab-separated like the rest) so a sheet-metal bid never leaves without its pounds. Sheets with no duct add nothing.
 

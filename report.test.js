@@ -212,3 +212,56 @@ test('pageHeadingFor: a named sheet stands alone; a default label keeps its "Pag
   assert.strictEqual(pageHeadingFor('', 4), 'Page 5');
   assert.strictEqual(pageHeadingFor(undefined, 0), 'Page 1');
 });
+
+// ALT-GROUPS (2026-09-29): an alternate group sorts after Untagged, its rows go
+// under a framed heading in the /Tooling text, and the summary reads them back.
+const { alternateTotals, alternateTotalsSentence, ALTERNATE_COPY_HEADING_PREFIX } = require('./report.js');
+
+test('orderGroupIds: alternates come after Untagged, alphabetical among themselves', () => {
+  const names = { g1: 'Zeta', g2: 'Alpha', a1: 'Break room', a2: 'Annex' };
+  const getGroupName = (gid) => names[gid] || 'Untagged';
+  const isAlternate = (gid) => gid === 'a1' || gid === 'a2';
+  const ordered = orderGroupIds({ g1: {}, a1: {}, null: {} }, { g2: {}, a2: {} }, getGroupName, isAlternate);
+  assert.deepStrictEqual(ordered, ['g2', 'g1', 'null', 'a2', 'a1']);
+  // Without the predicate nothing changes for callers that never pass one.
+  assert.deepStrictEqual(orderGroupIds({ g1: {}, null: {} }, { g2: {} }, getGroupName), ['g2', 'g1', 'null']);
+});
+
+test('alternateTotals: the base sums every non-alternate group (Untagged included); an empty alternate is left out', () => {
+  const summaries = {
+    counterSummaryByGroup: { g1: { c1: { total: 4 } }, null: { c2: { total: 1 } }, a1: { c1: { total: 1 }, c2: { total: 1 } }, a2: {} },
+    lineTypeSummaryByGroup: { g1: { l1: { lengthFt: 112, lengthPx: 0 } }, null: { l2: { lengthFt: 152, lengthPx: 40 } }, a1: { l1: { lengthFt: 48.5, lengthPx: 0 } } },
+  };
+  const isAlternate = (gid) => gid === 'a1' || gid === 'a2';
+  const t = alternateTotals(['g1', 'null', 'a1', 'a2'], summaries, isAlternate);
+  assert.deepStrictEqual(t.base, { counts: 5, ft: 264, px: 40 });
+  assert.deepStrictEqual(t.alternates, [{ gid: 'a1', counts: 2, ft: 48.5, px: 0 }]);
+  assert.strictEqual(alternateTotals(['g1', 'null'], summaries, isAlternate), null);
+  const sentence = alternateTotalsSentence(t, (gid) => ({ a1: 'Break room' })[gid] || 'Untagged');
+  assert.strictEqual(sentence, 'Base: 5 counts · 264.00 ft + 40 px. Alternate Break room adds 2 counts · 48.50 ft.');
+  assert.strictEqual(alternateTotalsSentence(null, () => ''), '');
+});
+
+test('summarizeToolingExport: an alternate block counts in the totals AND in alternates[]; the heading is never a row', () => {
+  const text = [
+    '--- Counts, Sunridge Dental · every sheet ---',
+    '[Restroom A] WC\t4\t2',
+    'ft of 4" PVC\t152.00\t1, 2',
+    '',
+    ALTERNATE_COPY_HEADING_PREFIX + 'Break room ---',
+    '[Break room] WC\t1\t3',
+    '[Break room] ft of 2" PVC\t48.50\t3',
+    '',
+    'View link:\thttps://counttooling.com/app/?t=3f9c1234',
+  ].join('\n');
+  const s = summarizeToolingExport(text);
+  assert.deepStrictEqual(s.ea, { items: 2, total: 5 });
+  assert.deepStrictEqual(s.ft, { items: 2, total: 200.5 });
+  assert.strictEqual(s.alternates.length, 1);
+  assert.strictEqual(s.alternates[0].name, 'Break room');
+  assert.deepStrictEqual(s.alternates[0].ea, { items: 1, total: 1 });
+  assert.deepStrictEqual(s.alternates[0].ft, { items: 1, total: 48.5 });
+  assert.strictEqual(formatToolingExportSummary(s), '2 counts (5 ea) · 2 line types (200.5 ft) · 1 alternate: Break room (1 ea · 48.5 ft)');
+  // A text with no alternate keeps its exact old shape.
+  assert.strictEqual('alternates' in summarizeToolingExport('WC\t4\t2'), false);
+});

@@ -13,6 +13,49 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(groups): a group can be an alternate — bid it with and without (ALT-GROUPS, 2026-09-29)
+
+The owner's ask: a customer's plan set sometimes carries a section they call an *alternate*
+and want priced with and without. The estimator already counts such a section as a group;
+now the group says so, and every export carries the fact, so PipeTooling and TakeoffTooling
+can price the bid both ways. Mock-up (before / after, the owner's three picks):
+artifact `KCEHH7Z6CoS67JzCrM9HtH`.
+
+- **The flag.** `group.alternate === true`, set from one **Alternate** switch in the group
+  dialog (`#groupModalAlternateBtn`, under Color, before the trade fields — a bidding fact,
+  not a trade one). `applyAlternateTo` in features/groups.js sets it only when on and DELETES
+  it when off (the D4 rule), so every existing group object keeps its shape. Groups ride the
+  save payload, the canvas JSON, the cloud row and share links wholesale, so nothing else
+  had to learn the field.
+- **Order.** An alternate sorts after Untagged, alphabetical among alternates —
+  `orderGroupIds(…, isAlternate)` in report.js (the fourth argument is optional; callers that
+  pass none see the old order) and the same rule in features/summary-list.js — so the base
+  bid reads as one block on every surface.
+- **Sidebar.** The Groups row carries an `ALT` mark and the note *alternate · bid with and
+  without*; the assign buttons read `Break room · ALT`. The Summary heads the block
+  *Alternate: Break room* and ends with the two numbers the customer asked for: *Base · 5
+  counts · 264.00 ft* and *+ Break room · 2 counts · 48.50 ft* (`.summary-alt-totals`; feet and
+  px apart through `App.formatFeetPx`).
+- **Copy to /Tooling.** Every row is exactly what it was, `[Group]` prefix and all. Alternate
+  groups come after the base rows, each under `--- Alternate: <name> ---`
+  (`ALTERNATE_COPY_HEADING_PREFIX`), a blank line before the heading. Both importers already
+  treat a framed line as structure and never as a row, so an old PipeTooling or
+  TakeoffTooling reads the new text as it read the old; a new importer reads the heading.
+  `summarizeToolingExport` counts the alternate's rows in ea / ft / px as before (the two ends
+  still reconcile) and adds `alternates[] = [{ name, ea, ft, px }]` only when the text carries
+  one; `formatToolingExportSummary` appends *1 alternate: Break room (1 ea · 48.5 ft)*.
+- **Open in TakeoffTooling.** `alternate: true` on every row of an alternate group, present
+  only when true. The agent door (`import-takeoff`, takeoff.json v2 `groups[].alternate`)
+  passes the flag through — **deploy `import-takeoff` after this merges.**
+- **Show Report and Copy Summary.** The group heading reads *Alternate: <name>*; one sentence
+  under the headline — *Base: 8 counts · 264.00 ft. Alternate Break room adds 2 counts ·
+  48.50 ft.* (`alternateTotals` / `alternateTotalsSentence`, both exported for node).
+- **Left out on purpose** (the owner's call): the canvas. Marks in an alternate draw as
+  they did; Show group colors is unchanged.
+- Tests: report.test.js (the order, the totals and sentence, the summary's alternate block),
+  [alternate-groups.spec.js](alternate-groups.spec.js) (the dialog round trip, the marks, the
+  Summary, both exports, the email, switching it back off deletes the key).
+
 ## fix(chooser): the Line Type chooser's search box no longer takes the caret from a name being typed (FLAKE-WATER-FIELD, 2026-09-28)
 
 Punch row FLAKE-WATER-FIELD: water-runs.spec.js "the Water field on the four line-type surfaces"

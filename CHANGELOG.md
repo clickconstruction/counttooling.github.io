@@ -13,6 +13,36 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(chooser): the Line Type chooser's search box no longer takes the caret from a name being typed (FLAKE-WATER-FIELD, 2026-09-28)
+
+Punch row FLAKE-WATER-FIELD: water-runs.spec.js "the Water field on the four line-type surfaces"
+failed now and then with the Cold radio unchecked, once on main's CI and once locally, never
+alone. Reading found nothing deferred on the path from the name to the radio. The error context
+CI keeps from a failed run (main run 36331260907, 2026-09-27) explained it: the page snapshot
+showed the name the spec typed for the Create tab, "Domestic cold water 1in", sitting in the
+dialog's search box, which was the active element. The name field never fired its input event,
+so the radio it prefills stayed on "—".
+
+- **Cause.** `showChooseLineTypeModal` hands the caret to the search box a beat after it opens
+  (a frame, then a tick, so the dialog is painted first). The spec opened the chooser and
+  switched to Create in one call, then typed; under CI load the beat fired between Playwright's
+  focus of the name field and its text, and the search box took the text. A reader who opens
+  the chooser, goes straight to Create or Quick and starts typing on a slow tablet meets the
+  same beat.
+- **The twin.** The Counter dialog never had it: B17 (2026-09-14) hides its search row off the
+  Choose tab, since the search filters only that list, and a hidden box cannot take the caret.
+  That fix reached one dialog of two, the map's commonest pattern.
+- **Fix** (features/choose-create-line-type.js): the chooser's search row shows on Choose only,
+  as the Counter dialog's does (the inert box on Create and Quick goes with it); and the deferred
+  focus yields when another field of the dialog already holds the caret or Choose is no longer
+  the tab showing, the rule counter.js's `focusCreateName` has had since 2026-09-12.
+- **Pinned** by chooser-focus.spec.js: open, switch tab and focus a field in one evaluate so the
+  beat fires after; on the old code the Create and Quick cases failed every time. A third case
+  keeps the intended behaviour (alone, the search box does get the caret) and a fourth records
+  the Counter dialog's row hiding and the chooser's parity. The water-field test itself passed
+  40 of 40 at 4 workers before the fix, which is why the row waited for a trace: the ordering
+  the flake needs comes from load, not from repeats.
+
 ## test(lessons): the undo card's click waits for the sheet to stand still (FLAKE-START-UNDO, 2026-09-28)
 
 Punch row FLAKE-START-UNDO, explained by the 2026-09-28 map (T01) and closed here. The tour

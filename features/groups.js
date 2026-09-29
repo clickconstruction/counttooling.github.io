@@ -59,6 +59,7 @@
     document.getElementById('groupModalCapacityCfm').value = g && g.capacityCfm != null ? g.capacityCfm : '';
     document.getElementById('groupModalEspInWg').value = g && g.espInWg > 0 ? g.espInWg : '';   // D11
     document.getElementById('groupModalPlenumBtn').setAttribute('aria-pressed', String(!!(g && g.plenumReturn)));
+    document.getElementById('groupModalAlternateBtn').setAttribute('aria-pressed', String(!!(g && g.alternate)));   // ALT-GROUPS
     syncPlenumRowVisibility();
     App.renderGroupCircuitFields && App.renderGroupCircuitFields(g);   // S4 circuit row
     const groups = state.groups || [];
@@ -99,7 +100,7 @@
       btn.style.background = (g.color || App.COLORS[0]);
       btn.style.color = '#fff';
       btn.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
-      btn.textContent = g.name || 'Group';
+      btn.textContent = (g.name || 'Group') + (g.alternate ? ' · ALT' : '');   // ALT-GROUPS: the mark follows the name
       btn.onclick = () => { container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); };
       container.appendChild(btn);
     });
@@ -129,7 +130,7 @@
       btn.style.background = (g.color || App.COLORS[0]);
       btn.style.color = '#fff';
       btn.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
-      btn.textContent = g.name || 'Group';
+      btn.textContent = (g.name || 'Group') + (g.alternate ? ' · ALT' : '');   // ALT-GROUPS: the mark follows the name
       btn.onclick = () => {
         container.querySelectorAll('.group-assign-btn').forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
@@ -188,6 +189,14 @@
     }
   }
 
+  // ALT-GROUPS (2026-09-29): the Alternate switch. Set only when on and DELETED
+  // when off, the D4 rule, so a group that was never an alternate stays
+  // { id, name, color } and old projects are byte-identical.
+  function applyAlternateTo(grp) {
+    if (document.getElementById('groupModalAlternateBtn').getAttribute('aria-pressed') === 'true') grp.alternate = true;
+    else delete grp.alternate;
+  }
+
   document.getElementById('groupModalDone').onclick = () => {
     const state = App.state;
     const name = document.getElementById('groupModalName').value.trim() || 'Group';
@@ -198,12 +207,14 @@
       pendingGroupEdit.name = name;
       pendingGroupEdit.color = color;
       applySystemFieldsTo(pendingGroupEdit);
+      applyAlternateTo(pendingGroupEdit);
       App.applyGroupCircuitFields && App.applyGroupCircuitFields(pendingGroupEdit);
       App.markProjectDirty();
     } else {
       App.pushUndoSnapshot();
       const newGroup = { id: App.uid(), name, color };
       applySystemFieldsTo(newGroup);
+      applyAlternateTo(newGroup);
       App.applyGroupCircuitFields && App.applyGroupCircuitFields(newGroup);
       if (!state.groups) state.groups = [];
       state.groups.push(newGroup);
@@ -224,6 +235,10 @@
   document.getElementById('groupModalEquipTag').addEventListener('input', syncPlenumRowVisibility);
   document.getElementById('groupModalPlenumBtn').onclick = () => {
     const btn = document.getElementById('groupModalPlenumBtn');
+    btn.setAttribute('aria-pressed', String(btn.getAttribute('aria-pressed') !== 'true'));
+  };
+  document.getElementById('groupModalAlternateBtn').onclick = () => {
+    const btn = document.getElementById('groupModalAlternateBtn');
     btn.setAttribute('aria-pressed', String(btn.getAttribute('aria-pressed') !== 'true'));
   };
 

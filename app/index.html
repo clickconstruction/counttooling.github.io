@@ -2362,6 +2362,16 @@
         <label>Color</label>
         <div id="groupModalColorRow" class="color-row"></div>
       </div>
+      <!-- Alternate (ALT-GROUPS, 2026-09-29): the section the customer wants priced
+           with and without. A bidding fact, not a trade one, so it sits before the
+           trade fields. Off by default; features/groups.js sets `alternate: true` only
+           when on and DELETES it when off, so every existing group keeps its shape. -->
+      <div class="form-group setting-row" id="groupModalAlternateRow">
+        <span class="setting-label">Alternate<small>Bid it with and without. Every export prices this group on its own.</small></span>
+        <button type="button" class="toggle-switch" id="groupModalAlternateBtn" aria-pressed="false" title="Alternate: the customer wants this section priced with and without">
+          <span class="toggle-switch-knob"></span>
+        </button>
+      </div>
       <!-- System fields (DUCT-PLAN §2, unit D4): optional equipment tag +
            capacity make the group a SYSTEM ("RTU-1 · 600 CFM"). Empty = plain
            group, zero behavior change. Plenum-return (§1) only shows once a

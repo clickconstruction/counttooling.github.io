@@ -2188,6 +2188,12 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 .group-system-tag { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); margin-top: 1px; }
 .group-plenum-note { display: block; font-size: 0.68rem; color: var(--text3); font-style: italic; margin-top: 1px; }
 .group-modal-hint { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
+/* Alternate groups (ALT-GROUPS, 2026-09-29): the ALT mark after a group's name in the
+   sidebar, its one-line note, and the Summary's base / + alternate totals at the foot. */
+.group-alt-chip { display: inline-block; font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.08em; padding: 0 5px; border-radius: 3px; border: 1px solid var(--accent2); color: var(--accent); margin-left: 6px; vertical-align: 1px; line-height: 1.4; }
+.group-alt-note { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); margin-top: 1px; }
+.summary-alt-totals { display: grid; gap: 3px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text2); }
+.summary-alt-totals b { color: var(--text); font-weight: 500; }
 
 /* Air balance (DUCT unit D7, DUCT-PLAN §3): the system capacity line under a
    group header ("600 designed / 600 capacity ✓"), the room needs/served badge

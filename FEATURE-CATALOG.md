@@ -153,7 +153,8 @@ of a plan is legible without a single icon hunt.
 *Problem:* A dense sheet with hundreds of marks becomes an undifferentiated cloud; restroom groups
 and risers need their own numbers.
 *Useful because:* Assign marks to groups and get subtotals per area — the plan stays organized and
-the numbers stay auditable.
+the numbers stay auditable. Flip a group to **alternate** and the bid prices with and without it:
+the Summary, the report and both exports carry the base and what the alternate adds.
 
 **Counter settings — size, opacity, rings, count numbers, outline**
 *Problem:* Marks that are readable at fit-zoom vanish at print scale, and vice versa.

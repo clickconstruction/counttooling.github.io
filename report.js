@@ -199,6 +199,22 @@
   // WATER-PLAN rung 5: the Water Sizing rows (features/water-schedule.js) under
   // a "--- Water sizing ---" heading, the duct block's twin. [] without water runs.
   const WATER_COPY_HEADING = '--- Water sizing ---';
+  // ALT-GROUPS rung 2: an alternate's own water sizing rides under
+  // "--- Alternate: <name> · Water sizing ---" — its runs serving its fixtures — after the
+  // whole-plan block (the bid WITH the alternate). Duct has no per-alternate block: a duct
+  // run belongs to no group (a group is its SYSTEM, D4), so the duct block stays whole-plan.
+  const ALTERNATE_WATER_SUFFIX = ' · Water sizing';
+  // The annotations narrowed to one group's items: markers by their group; a line outside
+  // the group keeps its INDEX (the water runs point at lines by index) but loses its type,
+  // so it is no run and serves nothing. Zones and the rest ride along untouched.
+  function annotationsInGroup(ann, gid) {
+    if (!ann) return ann;
+    const keep = (item) => ((item && item.group) || null) === (gid || null);
+    const counterMarkers = {};
+    Object.entries(ann.counterMarkers || {}).forEach(([cid, arr]) => { counterMarkers[cid] = (arr || []).filter(keep); });
+    const strip = (line) => (keep(line) ? line : Object.assign({}, line, { lineTypeId: null }));
+    return Object.assign({}, ann, { counterMarkers, quickLines: (ann.quickLines || []).map(strip), polylines: (ann.polylines || []).map(strip) });
+  }
   // A schedule's rows or its report table, built by the feature that owns the
   // schedule (App[name](schedule, …)); no schedule or no builder, nothing.
   function appBuild(name, schedule, fallback, ...args) {
@@ -206,6 +222,11 @@
   }
   const getWaterCopyRows = (pageIndices, getAnn) => appBuild('buildWaterCopyRows', getWaterSchedule(pageIndices, getAnn), []);
   const getDuctCopyRows = (pageIndices, getAnn) => appBuild('buildDuctCopyRows', getDuctSchedule(pageIndices, getAnn), []);
+  // One alternate's water rows, or [] when none of its lines is a water run.
+  const getAlternateWaterCopyRows = (pageIndices, getAnn, gid) => {
+    const sched = getWaterSchedule(pageIndices, (page, pi) => annotationsInGroup(getAnn(page, pi), gid));
+    return sched && Array.isArray(sched.rows) && sched.rows.length ? appBuild('buildWaterCopyRows', sched, []) : [];
+  };
 
   // The prologue every summary builder shares (R19): the scope and annotation
   // source from the options, the group names, the aggregation walk, and the
@@ -589,6 +610,14 @@
       lines.push(WATER_COPY_HEADING);
       lines.push(...waterRows);
     }
+    // ALT-GROUPS rung 2: each alternate's own water sizing, last.
+    orderedGroupIds.filter(gid => isAlternate(gid)).forEach(gid => {
+      const rows = getAlternateWaterCopyRows(pageIndices, getAnn, gid);
+      if (!rows.length) return;
+      if (lines.length) lines.push('');
+      lines.push(ALTERNATE_COPY_HEADING_PREFIX + getGroupName(gid) + ALTERNATE_WATER_SUFFIX + ' ---');
+      lines.push(...rows);
+    });
     if (scopeLine) lines.unshift('--- ' + scopeLine + ' ---');   // D25: framed like '--- Duct ---', which the paste parser treats as a heading
     return lines.join('\n');
   }
@@ -675,18 +704,26 @@
     String(text).split(/\r?\n/).forEach((line) => {
       if (!line.trim()) { inDuct = false; inWater = false; inAlt = null; return; }
       if (line.trim().startsWith(ALTERNATE_COPY_HEADING_PREFIX) && /\s---$/.test(line.trim())) {
-        inAlt = { name: line.trim().slice(ALTERNATE_COPY_HEADING_PREFIX.length, -4).trim(), ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } };
-        (out.alternates = out.alternates || []).push(inAlt);
-        inDuct = false; inWater = false;
+        // "--- Alternate: <name> ---" opens its rows; "--- Alternate: <name> · Water sizing ---"
+        // (rung 2) its own water block — `alternates[i].water`, never `out.water`.
+        const raw = line.trim().slice(ALTERNATE_COPY_HEADING_PREFIX.length, -4).trim();
+        const suffix = ALTERNATE_WATER_SUFFIX.trim();
+        const isWater = raw.toLowerCase().endsWith(suffix.toLowerCase());
+        const name = (isWater ? raw.slice(0, raw.length - suffix.length) : raw).trim();
+        out.alternates = out.alternates || [];
+        inAlt = out.alternates.find(a => a.name.toLowerCase() === name.toLowerCase()) || null;
+        if (!inAlt) { inAlt = { name, ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } }; out.alternates.push(inAlt); }
+        inDuct = false;
+        if (isWater) { inAlt.water = { rows: 0, warnings: 0 }; inWater = inAlt.water; } else inWater = false;
         return;
       }
       if (line.trim() === DUCT_COPY_HEADING) { inDuct = true; inWater = false; out.duct = { rows: 0, bidWeightLb: 0 }; return; }
-      if (line.trim() === WATER_COPY_HEADING) { inWater = true; inDuct = false; out.water = { rows: 0, warnings: 0 }; return; }
+      if (line.trim() === WATER_COPY_HEADING) { inDuct = false; out.water = { rows: 0, warnings: 0 }; inWater = out.water; return; }
       if (inWater) {
         const total = /^(Cold|Hot) water total\t.*\t(\d+) ⚠$/.exec(line);
-        if (total) { out.water.warnings += parseInt(total[2], 10); return; }
+        if (total) { inWater.warnings += parseInt(total[2], 10); return; }
         if (/^(Cold|Hot) water total\t|^Sized at /.test(line)) return;
-        out.water.rows += 1;
+        inWater.rows += 1;
         return;
       }
       // D25: the scope header ("--- Counts — <project> · every sheet · layers: … ---")
@@ -727,6 +764,7 @@
         if (a.ea.items) p.push(fmt(a.ea.total) + ' ea');
         if (a.ft.items) p.push(fmt(a.ft.total) + ' ft');
         if (a.px.items) p.push(fmt(a.px.total) + ' px');
+        if (a.water && a.water.rows) p.push(a.water.rows + (a.water.rows === 1 ? ' water run' : ' water runs') + (a.water.warnings ? ', ' + a.water.warnings + ' ⚠' : ''));
         return a.name + ' (' + (p.join(' · ') || 'nothing') + ')';
       };
       parts.push(s.alternates.length + (s.alternates.length === 1 ? ' alternate: ' : ' alternates: ') + s.alternates.map(one).join(', '));
@@ -884,6 +922,11 @@
     // WATER-PLAN rung 5: the water sizing block.
     const waterRowsE = getWaterCopyRows(pageIndices, getAnn);
     if (waterRowsE.length) pushSection(WATER_COPY_HEADING, waterRowsE);
+    // ALT-GROUPS rung 2: each alternate's own water sizing — the same rows the /Tooling text carries.
+    orderedGroupIds.filter(gid => isAlternate(gid)).forEach(gid => {
+      const rows = getAlternateWaterCopyRows(pageIndices, getAnn, gid);
+      if (rows.length) pushSection(ALTERNATE_COPY_HEADING_PREFIX + getGroupName(gid) + ALTERNATE_WATER_SUFFIX + ' ---', rows);
+    });
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     if (roomTotals.length > 0) {
       pushSection('--- Rooms ---', roomTotals.map(t => {
@@ -943,6 +986,6 @@
 
   // Node test harness only: inert in the browser (where `module` is undefined).
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { escapeHtml, pickScaleForLineType, reportTitleFor, pageHeadingFor, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary, alternateTotals, alternateTotalsSentence, ALTERNATE_COPY_HEADING_PREFIX };
+    module.exports = { escapeHtml, pickScaleForLineType, reportTitleFor, pageHeadingFor, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary, alternateTotals, alternateTotalsSentence, ALTERNATE_COPY_HEADING_PREFIX, ALTERNATE_WATER_SUFFIX, annotationsInGroup };
   }
 })();

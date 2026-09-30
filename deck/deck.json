@@ -1,0 +1,62 @@
+{
+  "v": 4,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-09-30T05:20:00Z"
+  },
+  "lists": "css",
+  "title": "ClickTooling Pitch",
+  "order": [
+    "cover",
+    "first-mover",
+    "together",
+    "hvac",
+    "three-ways",
+    "overhead",
+    "novelty",
+    "robot-alongside",
+    "accuracy",
+    "cheap-audit",
+    "plans-mistakes",
+    "codes-marking",
+    "counttooling-shot",
+    "pipetooling-materials",
+    "takeofftooling-materials",
+    "traction",
+    "revenue-paths",
+    "ask"
+  ],
+  "sections": {
+    "s1": {
+      "description": "Three apps, one bid, and what that means for an HVAC company.",
+      "start": "cover"
+    },
+    "s2": {
+      "description": "Who bids the work decides what you keep.",
+      "start": "three-ways"
+    },
+    "s3": {
+      "description": "What is new: the robot is a user, and it is scored.",
+      "start": "novelty"
+    },
+    "s4": {
+      "description": "Under the hood: plan mistakes, codes, tools, and the material libraries.",
+      "start": "plans-mistakes"
+    },
+    "s5": {
+      "description": "Real work today, and the ask.",
+      "start": "traction"
+    }
+  },
+  "faces": {
+    "oswald": {
+      "family": "Oswald",
+      "href": "https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&display=swap"
+    },
+    "public-sans": {
+      "family": "Public Sans",
+      "href": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap"
+    }
+  },
+  "designSystems": []
+}

@@ -13,6 +13,21 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(groups): the alternate's own water sizing block (ALT-GROUPS rung 2, 2026-09-30)
+
+Copy to /Tooling and the email summary end with one `--- Alternate: <name> · Water sizing ---`
+block per alternate that holds a water run — the alternate's runs serving the alternate's
+fixtures — after the whole-plan `--- Water sizing ---` block (the bid WITH it). report.js
+`annotationsInGroup(ann, gid)` narrows a page's annotations to one group: markers by their
+group; a line outside the group keeps its INDEX (the water runs point at lines by index) but
+loses its type, so it is no run and serves nothing. `summarizeToolingExport` reads the block
+as `alternates[i].water = { rows, warnings }` (never `out.water`) and the Copied detail says
+*1 water run, 1 ⚠*. **No per-alternate duct block**: a duct run belongs to no group (a group
+is its SYSTEM, D4), so the duct schedule stays whole-plan until duct runs can join a group.
+PipeTooling's paste parser reads the suffixed heading as the same alternate and skips the
+schedule rows (v2.4208). Tests: report.test.js (the narrowing, the summarizer), a second case
+in alternate-groups.spec.js.
+
 ## feat(groups): a group can be an alternate — bid it with and without (ALT-GROUPS, 2026-09-29)
 
 The owner's ask: a customer's plan set sometimes carries a section they call an *alternate*

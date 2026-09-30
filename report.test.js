@@ -215,7 +215,7 @@ test('pageHeadingFor: a named sheet stands alone; a default label keeps its "Pag
 
 // ALT-GROUPS (2026-09-29): an alternate group sorts after Untagged, its rows go
 // under a framed heading in the /Tooling text, and the summary reads them back.
-const { alternateTotals, alternateTotalsSentence, ALTERNATE_COPY_HEADING_PREFIX } = require('./report.js');
+const { alternateTotals, alternateTotalsSentence, ALTERNATE_COPY_HEADING_PREFIX, ALTERNATE_WATER_SUFFIX, annotationsInGroup } = require('./report.js');
 
 test('orderGroupIds: alternates come after Untagged, alphabetical among themselves', () => {
   const names = { g1: 'Zeta', g2: 'Alpha', a1: 'Break room', a2: 'Annex' };
@@ -264,4 +264,53 @@ test('summarizeToolingExport: an alternate block counts in the totals AND in alt
   assert.strictEqual(formatToolingExportSummary(s), '2 counts (5 ea) · 2 line types (200.5 ft) · 1 alternate: Break room (1 ea · 48.5 ft)');
   // A text with no alternate keeps its exact old shape.
   assert.strictEqual('alternates' in summarizeToolingExport('WC\t4\t2'), false);
+});
+
+// ALT-GROUPS rung 2 (2026-09-30): an alternate's own water sizing block.
+test('annotationsInGroup: markers filtered by group; a line outside keeps its index but loses its type; the rest rides along', () => {
+  const ann = {
+    counterMarkers: { wc: [{ id: 'm1', group: 'a' }, { id: 'm2', group: 'b' }, { id: 'm3' }], wh: [{ id: 'm4', group: 'a' }] },
+    quickLines: [{ id: 'q1', lineTypeId: 'cold', group: 'a' }, { id: 'q2', lineTypeId: 'cold', group: 'b' }],
+    polylines: [{ id: 'p1', lineTypeId: 'hot', points: [] }],
+    zones: [{ id: 'z' }],
+  };
+  const a = annotationsInGroup(ann, 'a');
+  assert.deepStrictEqual(a.counterMarkers, { wc: [{ id: 'm1', group: 'a' }], wh: [{ id: 'm4', group: 'a' }] });
+  assert.strictEqual(a.quickLines.length, 2);
+  assert.strictEqual(a.quickLines[0], ann.quickLines[0]);                 // in the group: the same object
+  assert.deepStrictEqual(a.quickLines[1], { id: 'q2', lineTypeId: null, group: 'b' });
+  assert.deepStrictEqual(a.polylines, [{ id: 'p1', lineTypeId: null, points: [] }]);
+  assert.strictEqual(a.zones, ann.zones);
+  assert.strictEqual(ann.quickLines[1].lineTypeId, 'cold');               // the source is untouched
+  assert.strictEqual(annotationsInGroup(null, 'a'), null);
+});
+
+test('summarizeToolingExport: "--- Alternate: <name> · Water sizing ---" is the alternate\'s own water unit, never out.water', () => {
+  const text = [
+    'WC\t12\t1',
+    '',
+    ALTERNATE_COPY_HEADING_PREFIX + 'Break room ---',
+    '[Break room] WC\t1\t1',
+    '',
+    '--- Water sizing ---',
+    'Cold main\t1″\t3 fixtures · 12 WSFU\t8.0 gpm\t5.1 fps\t✓',
+    'Cold water total\t\t3 fixtures\t\t\t✓',
+    'Sized at 8 fps cold / 5 fps hot, practice not code; public fixture units\t\t\t\t\t',
+    '',
+    ALTERNATE_COPY_HEADING_PREFIX + 'Break room' + ALTERNATE_WATER_SUFFIX + ' ---',
+    'Break room cold\t¾″\t1 fixture · 4 WSFU\t4.0 gpm\t9.2 fps\t⚠ over 8 fps',
+    'Cold water total\t\t1 fixture\t\t\t1 ⚠',
+    'Sized at 8 fps cold / 5 fps hot, practice not code; public fixture units\t\t\t\t\t',
+  ].join('\n');
+  const s = summarizeToolingExport(text);
+  assert.deepStrictEqual(s.water, { rows: 1, warnings: 0 });
+  assert.strictEqual(s.alternates.length, 1);
+  assert.deepStrictEqual(s.alternates[0].ea, { items: 1, total: 1 });
+  assert.deepStrictEqual(s.alternates[0].water, { rows: 1, warnings: 1 });
+  assert.deepStrictEqual(s.ea, { items: 2, total: 13 });
+  assert.strictEqual(formatToolingExportSummary(s), '2 counts (13 ea) · water sizing (1 run) · 1 alternate: Break room (1 ea · 1 water run, 1 ⚠)');
+  // The water heading alone (no rows block before it) still names the alternate once.
+  const only = summarizeToolingExport(['WC\t2\t1', '', ALTERNATE_COPY_HEADING_PREFIX + 'Roof' + ALTERNATE_WATER_SUFFIX + ' ---', 'Roof cold\t½″\t\t\t\t✓'].join('\n'));
+  assert.deepStrictEqual(only.alternates.map(a => [a.name, a.water]), [['Roof', { rows: 1, warnings: 0 }]]);
+  assert.strictEqual('water' in only, false);
 });

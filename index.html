@@ -114,6 +114,10 @@
           <video class="hero-video" muted playsinline preload="none" poster="/img/hero-plumbing.png" aria-hidden="true" tabindex="-1">
             <source src="/img/hero-plumbing.mp4" type="video/mp4">
           </video>
+          <!-- Tap to play: shown only when the browser refused to start the film on its own (iOS Low
+               Power Mode, a data saver, a strict autoplay policy). A tap on the pill or on the frame is
+               the user gesture those browsers honour; the pill goes as soon as the film plays. -->
+          <button type="button" class="hero-play" id="heroPlay"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>Play the takeoff</button>
           <!-- The end screen: over the held frame once the film has played, the usual end-of-video
                idiom, so the bar below never changes height. -->
           <div class="hc-end" id="hcEnd" hidden>
@@ -154,7 +158,8 @@
       // Three films, one per trade (scripts/build-hero-video.js), each a real takeoff done
       // on camera. The chips above the film are the selector: the lit chip is the film
       // playing, a click swaps the film and its poster in place. Playback starts once the
-      // hero scrolls into view, fading in over the poster; the film plays ONCE and holds on
+      // hero scrolls into view, fading in over the poster (a browser that refuses that start,
+      // iOS Low Power Mode above all, gets a Play pill: the tap is the gesture it wants); the film plays ONCE and holds on
       // its finished takeoff (the still underneath is the film's last frame, so the hold is a
       // cross-fade back to it). The chapter bar under the film reads the video's own clock
       // and /img/hero-<film>.chapters.json. Reduced-motion readers keep the still, which the
@@ -184,7 +189,17 @@
         }
         function chipFor(trade) { for (var i = 0; i < chips.length; i++) if (chips[i].getAttribute('data-trade') === trade) return chips[i]; return chips[0]; }
         function light() { chips.forEach(function (c) { c.classList.toggle('is-live', !!v && !v.paused && c.getAttribute('data-trade') === current); }); }
-        function start() { if (!v || reduced) return; v.preload = 'auto'; var p = v.play(); if (p && p.catch) p.catch(function (err) { window.__heroPlayError = String(err); }); }
+        // A start the page asks for on its own can be refused (iOS Low Power Mode, a data saver, a
+        // strict autoplay policy): NotAllowedError, the still stays, and the frame shows the Play
+        // pill. The next tap is a user gesture, which those browsers honour; 'playing' clears the pill.
+        // Any other failure (a codec the browser lacks) keeps the still with no pill, since a tap
+        // would not help.
+        function start() {
+          if (!v || reduced) return;
+          v.preload = 'auto';
+          var p = v.play();
+          if (p && p.catch) p.catch(function (err) { window.__heroPlayError = String(err); if (err && err.name === 'NotAllowedError') media.classList.add('needs-tap'); });
+        }
         function select(trade, byUser) {
           current = trade; ended = false;
           if (endRow) endRow.hidden = true;
@@ -310,10 +325,15 @@
           window.setTimeout(function () { order.forEach(function (k) { if (!films[k] && k !== current && window.fetch) fetch(chipFor(k).getAttribute('data-film') + '.chapters.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.chapters) { films[k] = j; buildStrip(); } }).catch(function () {}); }); }, 0);
         }
         chips.forEach(function (c) { c.addEventListener('click', function () { pinned = true; select(c.getAttribute('data-trade'), true); }); });
+        // The Play pill, or the frame itself while the pill shows (never the end screen's own buttons).
+        media.addEventListener('click', function (e) {
+          if (!e.target.closest) return;
+          if (e.target.closest('.hero-play') || (media.classList.contains('needs-tap') && e.target.closest('.hero-frame') && !e.target.closest('.hc-end'))) start();
+        });
         if (order.indexOf(asked) >= 0) { pinned = true; select(asked, false); } else { document.documentElement.setAttribute('data-hero-trade', current); setResults(chipFor(current).getAttribute('data-film'), current); loadFilm(current); }
         if (v && !reduced) {
           v.addEventListener('pause', light);
-          v.addEventListener('playing', function () { if (!ended) media.classList.add('is-playing'); light(); });
+          v.addEventListener('playing', function () { media.classList.remove('needs-tap'); if (!ended) media.classList.add('is-playing'); light(); });
           // The film plays once and holds (no loop, no turn-taking): see hold().
           v.addEventListener('ended', hold);
           v.addEventListener('timeupdate', function () { var f = films[current]; if (f && !v.paused && v.currentTime >= f.duration - 0.5) hold(); renderStrip(); });

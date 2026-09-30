@@ -56,6 +56,16 @@ a { color: inherit; }
 .hero-media .hero-shot { margin: 0; width: 100%; }
 .hero-video { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 12px; border: 1px solid var(--border); object-fit: cover; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
 .hero-media.is-playing .hero-video { opacity: 1; }
+/* The Play pill: only while the browser has refused the film's own start (iOS Low Power Mode, a
+   data saver, a strict autoplay policy). A tap on it, or anywhere on the frame, is the user gesture
+   those browsers honour; the pill goes as soon as the film plays. */
+.hero-play { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); align-items: center; gap: 10px; white-space: nowrap; font: 600 1rem 'DM Sans', system-ui, sans-serif; color: var(--bg); background: var(--accent); border: none; border-radius: 999px; padding: 12px 22px 12px 16px; cursor: pointer; box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55); }
+.hero-play svg { width: 18px; height: 18px; fill: currentColor; }
+.hero-play:hover { background: #f0d060; }
+.hero-play:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+.hero-media.needs-tap .hero-play { display: inline-flex; }
+.hero-media.needs-tap .hero-frame { cursor: pointer; }
+@media (max-width: 720px) { .hero-play { font-size: 0.95rem; padding: 10px 18px 10px 14px; } }
 .chip { transition: border-color 0.3s ease, color 0.3s ease, box-shadow 0.3s ease; }
 /* The hero chapters (LANDING-REFRESH.md "The hero chapters"): a bar attached UNDER the film on
    its own surface, so nothing covers the app (its footer, its tallies, the hand-off toast). A

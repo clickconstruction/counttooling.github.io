@@ -67,7 +67,9 @@
   estimator would do) and encodes `img/hero-<film>.{mp4,png}` with ffmpeg (the PNG is the
   poster; plumbing's is the SEO spec's `img.hero-shot`). Manual, like `build:screenshots`.
   `index.html`'s trade chips are the selector: the pressed chip is the film selected, the lit
-  one is playing, a click swaps the film in place. A film plays ONCE and holds on its finished
+  one is playing, a click swaps the film in place. Playback starts on its own once the hero is in
+  view; a browser that refuses that start (iOS Low Power Mode) shows a **Play the takeoff** pill
+  and starts on the tap. A film plays ONCE and holds on its finished
   takeoff (the still under the video is its last frame). **The hero chapters** are a two-line bar
   under the film: a question the film's own clock answers, and four chapters (Scale, what the
   trade counts, what it runs, Pricing) as a rail that fills in turn and seeks on click, each

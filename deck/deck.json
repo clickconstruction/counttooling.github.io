@@ -10,43 +10,35 @@
     "cover",
     "bottleneck",
     "answer",
-    "every-trade",
-    "hvac",
-    "three-ways",
-    "overhead",
-    "novelty",
-    "robot-alongside",
-    "accuracy",
-    "cheap-audit",
+    "robot",
     "plans-mistakes",
-    "codes-marking",
-    "counttooling-shot",
-    "pipetooling-materials",
-    "takeofftooling-materials",
+    "every-trade",
+    "for-hvac",
+    "see-it",
     "traction",
+    "ask",
+    "appendix",
     "revenue-paths",
-    "ask"
+    "libraries",
+    "robot-alongside",
+    "cheap-audit"
   ],
   "sections": {
     "s1": {
-      "description": "The problem, the answer, and every trade on the building.",
+      "description": "The problem, the answer, and the robot.",
       "start": "cover"
     },
     "s2": {
-      "description": "Who bids the work decides what you keep.",
-      "start": "three-ways"
-    },
-    "s3": {
-      "description": "What is new: the robot is a user, and it is scored.",
-      "start": "novelty"
-    },
-    "s4": {
-      "description": "Under the hood: plan mistakes, codes, tools, and the material libraries.",
+      "description": "What changes for a shop, and for you.",
       "start": "plans-mistakes"
     },
-    "s5": {
-      "description": "Real work today, and the ask.",
-      "start": "traction"
+    "s3": {
+      "description": "See it, the numbers, and the ask.",
+      "start": "see-it"
+    },
+    "s4": {
+      "description": "Backup for the questions after.",
+      "start": "appendix"
     }
   },
   "faces": {

@@ -8,8 +8,8 @@
   "title": "ClickTooling Pitch",
   "order": [
     "cover",
-    "first-mover",
-    "together",
+    "bottleneck",
+    "answer",
     "every-trade",
     "hvac",
     "three-ways",
@@ -29,7 +29,7 @@
   ],
   "sections": {
     "s1": {
-      "description": "Three apps, one bid, and every trade on the building.",
+      "description": "The problem, the answer, and every trade on the building.",
       "start": "cover"
     },
     "s2": {

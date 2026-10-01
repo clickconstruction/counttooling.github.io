@@ -122,7 +122,7 @@ function normalizeProjectCodes(raw) {
 // and writes the blob back on every change (saveDisplaySettings). Never in the project.
 // ringSize is a percent of the marker, on the Ring size slider's 50 to 200 (MAP-RING-DEFAULT:
 // it was 1 until 2026-09-26, a ring 1% of the marker that drew nothing, under the slider).
-const COUNTER_SETTINGS_DEFAULTS = { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 100, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false };
+const COUNTER_SETTINGS_DEFAULTS = { size: 22, opacity: 1, showRings: false, numberSize: 10, ringSize: 100, ringOpacity: 1, ringSolid: true, outlineSize: 0, showOnlyCountersOnCurrentPage: false, autoPick: false };   // autoPick: the plan's tags pick the counter (AUTO-PICK, features/tag-reader.js)
 const LINE_TYPE_SETTINGS_DEFAULTS = { opacity: 1, lineSize: 2, dropXSize: 10, dropIconStyle: 'circle', orientLengthWithLine: true, parallelEndsSize: 10, lengthLabelSize: 12, snapToHorizontalVertical: false, showOnlyLineTypesOnCurrentPage: false, showOnlyLinesOnCurrentPage: false };
 // The sidebar filter scope and its two legacy page-only booleans keep their own device
 // keys (counterSidebarFilterScope / lineTypeSidebarFilterScope), so the blob leaves them out.

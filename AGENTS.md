@@ -588,7 +588,8 @@ state but removes none of these device keys.
 
 `counterSettings`, `lineTypeSettings` (MAP-SETTINGS, 2026-09-26: the Counter and Line
 Type display settings, per DEVICE, never in the project payload: marker size, opacity,
-rings, number size, outline; line width, opacity, drop size and icon, parallel ends,
+rings, number size, outline, `autoPick` (AUTO-PICK, 2026-10-01: the plan's tags pick the
+counter, off by default, features/tag-reader.js `App.setAutoPick`); line width, opacity, drop size and icon, parallel ends,
 length label size and orientation, `snapToHorizontalVertical` (the 8-way 45° snap toggle;
 the key keeps its original H/V-era name), and the Lines `showOnlyLinesOnCurrentPage`
 toggle. app.js starts state from `COUNTER_SETTINGS_DEFAULTS` / `LINE_TYPE_SETTINGS_DEFAULTS`
@@ -804,7 +805,7 @@ Tool enum note: `TOOL.SCHEDULE` (S6, the schedule-box rect tool) has no hotkey �
 is armed from the Counter modal's Create tab.
 
 1-9/0 (Quick Keys — user-bound counters/line types, per project), M (Move),
-S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), P
+S (Set Scale), C (Counter), L (Line modal), J (Snap to 45°), A (Auto-pick: the plan's tag picks the counter; the header pill beside Counter, features/tag-reader.js), P
 (Polyline), U (Duct — D18; D was taken, so the first free letter of "Duct";
 mid-trace S steps the duct size instead of Set Scale; a polyline of a water-sided line type does the same with the water size popover, WATER-PLAN rung 4, features/water-size.js), T (Chain — counter +
 connecting line per click), B (Drop — one

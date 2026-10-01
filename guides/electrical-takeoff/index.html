@@ -30,8 +30,8 @@
   "headline": "Doing an electrical takeoff",
   "description": "Count devices and fixtures, measure conduit and homeruns with drops for risers, and multiply typical floors: electrical estimating straight off the plan PDF.",
   "image": "https://counttooling.com/og-image.png",
-  "datePublished": "2026-09-27",
-  "dateModified": "2026-09-27",
+  "datePublished": "2026-10-01",
+  "dateModified": "2026-10-01",
   "author": {
     "@type": "Organization",
     "name": "CountTooling",
@@ -91,7 +91,7 @@
     <article class="article">
     <div class="path-banner">Part of <a id="pathBannerLink" href="/guides/path/electrical/">Electrical track</a><span id="pathBannerStep"> · step 3 of 4</span></div>
       <h1>Doing an electrical takeoff</h1>
-      <p class="article-meta">Last updated Sep 27, 2026</p>
+      <p class="article-meta">Last updated Oct 1, 2026</p>
       <div class="prose">
 <p>An electrical takeoff is device counts plus linear footage: receptacles, fixtures, and switches on one side; conduit, feeders, and homeruns on the other. CountTooling does both on the plan itself, then derives the wire from the conduit and checks the result against the code tables.</p>
 <p><strong>New here?</strong> Open the app with nothing loaded and click <strong>electrical</strong> under <em>take the five-minute tour</em> (or open it directly: <a href="/app/?tour=electrical">the electrical tour</a>). It walks this article on the sample plan (set and prove the scale, switch the trade, add a duplex receptacle, count three, make a 3/4&quot; EMT type with its conductors, set the ceiling, chain a run with its verticals, make it circuit LP-1 / 7, read the wire, open Bid Check, hand it off). It circles where to click on the sheet, checks each step against what you actually did, and <em>Show me where</em> points at anything you cannot find. The picture below is the takeoff that tour ends with. For the why as well as the how, <a href="/app/?course=electrical">the electrical course</a> is nine chapters on the same restaurant&#39;s electrical set: which receptacles the code wants GFCI, where the panel may sit, why the far circuit wants bigger wire, and the app&#39;s own checks against the tables (<a href="/guides/learning-the-app/">Learn CountTooling by doing</a> lists them).</p>
@@ -101,7 +101,7 @@
 <h2>Count the devices</h2>
 <p>Make a counter per device type (receptacles, switches, fixtures by type, data drops, panels), each with its own color and symbol so the sheet stays readable (the electrical set ships with the app; <a href="/guides/custom-icons/">upload your own SVG symbols</a> to match a fixture schedule). Then click through the sheet; every click is one tally, rolled up across the whole set.</p>
 <ul>
-<li><strong>The plan picks the fixture type.</strong> Lighting is counted by the letter beside the symbol, and on a real (not scanned) PDF that letter is text the app can read. With a counter armed, the cursor shows <strong>Plan says B</strong> and the click lands on your Type B counter: one tool for every fixture type. No Type B yet? Press Enter and it is created. To build the whole palette at once, open the Counter dialog&#39;s Create tab and choose <strong>Read a schedule from the sheet…</strong>, then drag a box over the fixture schedule: every &quot;tag + description&quot; row becomes a counter in one confirm.</li>
+<li><strong>The plan picks the fixture type.</strong> Lighting is counted by the letter beside the symbol, and on a real (not scanned) PDF that letter is text the app can read. Turn on <strong>Auto-pick</strong> (the pill beside the Counter button while a counter is armed, or press <code>A</code>): near a letter B a ring marks it, the status bar says <strong>Plan says B</strong>, and the click lands on your Type B counter, one armed counter for every fixture type. A counter whose own name says the letter keeps the click, so a &quot;B emergency&quot; variant still counts as itself. No Type B yet? Press Enter and it is created. Auto-pick is off until you turn it on, and stays the way you leave it on this device. To build the whole palette at once, open the Counter dialog&#39;s Create tab and choose <strong>Read a schedule from the sheet…</strong>, then drag a box over the fixture schedule: every &quot;tag + description&quot; row becomes a counter in one confirm.</li>
 <li><strong><a href="/guides/organizing-a-busy-sheet/">Groups</a> are circuits.</strong> Give a group a <strong>panel and circuit number</strong> (&quot;LP-1 · 7&quot;) in the group dialog and it becomes a circuit: the report&#39;s <strong>Circuit schedule</strong> lists each one with its devices, conduit, homerun and wire feet and the farthest device from the panel along the runs. Make your panel counter a panel (name + the schedule&#39;s pole count) and the app checks circuits on plan against the schedule, &quot;LP-1 · 31 on plan · 42 scheduled ⚠&quot; catches the homeruns you have not drawn yet. Flag the run to the panel as a <strong>homerun</strong> (on the line type, or one run in Line Properties) and it draws the arrow with the circuit tag. With a circuit selected, the Chain tool puts every device and run on it; with none selected, a chain continues the circuit of the run it extends.</li>
 <li><strong><a href="/guides/working-faster-with-the-keyboard/">Quick Keys</a></strong> put your device types on the number row: <code>1</code> places receptacles, <code>2</code> places switches, and your hands never leave the plan.</li>
 </ul>

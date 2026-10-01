@@ -10,6 +10,7 @@
     "cover",
     "first-mover",
     "together",
+    "every-trade",
     "hvac",
     "three-ways",
     "overhead",
@@ -28,7 +29,7 @@
   ],
   "sections": {
     "s1": {
-      "description": "Three apps, one bid, and what that means for an HVAC company.",
+      "description": "Three apps, one bid, and every trade on the building.",
       "start": "cover"
     },
     "s2": {

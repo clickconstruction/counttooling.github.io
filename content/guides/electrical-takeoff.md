@@ -1,7 +1,7 @@
 ---
 title: Doing an electrical takeoff
 description: Count devices and fixtures, measure conduit and homeruns with drops for risers, and multiply typical floors: electrical estimating straight off the plan PDF.
-updated: 2026-09-27
+updated: 2026-10-01
 order: 9.2
 icon: polyline
 category: By trade
@@ -21,7 +21,7 @@ Open the Counter [[counter]] modal's **Quick** tab and switch the **Trade** cont
 
 Make a counter per device type (receptacles, switches, fixtures by type, data drops, panels), each with its own color and symbol so the sheet stays readable (the electrical set ships with the app; [upload your own SVG symbols](/guides/custom-icons/) to match a fixture schedule). Then click through the sheet; every click is one tally, rolled up across the whole set.
 
-- **The plan picks the fixture type.** Lighting is counted by the letter beside the symbol, and on a real (not scanned) PDF that letter is text the app can read. With a counter armed, the cursor shows **Plan says B** and the click lands on your Type B counter: one tool for every fixture type. No Type B yet? Press Enter and it is created. To build the whole palette at once, open the Counter dialog's Create tab and choose **Read a schedule from the sheet…**, then drag a box over the fixture schedule: every "tag + description" row becomes a counter in one confirm.
+- **The plan picks the fixture type.** Lighting is counted by the letter beside the symbol, and on a real (not scanned) PDF that letter is text the app can read. Turn on **Auto-pick** (the pill beside the Counter button while a counter is armed, or press `A`): near a letter B a ring marks it, the status bar says **Plan says B**, and the click lands on your Type B counter, one armed counter for every fixture type. A counter whose own name says the letter keeps the click, so a "B emergency" variant still counts as itself. No Type B yet? Press Enter and it is created. Auto-pick is off until you turn it on, and stays the way you leave it on this device. To build the whole palette at once, open the Counter dialog's Create tab and choose **Read a schedule from the sheet…**, then drag a box over the fixture schedule: every "tag + description" row becomes a counter in one confirm.
 - **[Groups](/guides/organizing-a-busy-sheet/) are circuits.** Give a group a **panel and circuit number** ("LP-1 · 7") in the group dialog and it becomes a circuit: the report's **Circuit schedule** lists each one with its devices, conduit, homerun and wire feet and the farthest device from the panel along the runs. Make your panel counter a panel (name + the schedule's pole count) and the app checks circuits on plan against the schedule, "LP-1 · 31 on plan · 42 scheduled ⚠" catches the homeruns you have not drawn yet. Flag the run to the panel as a **homerun** (on the line type, or one run in Line Properties) and it draws the arrow with the circuit tag. With a circuit selected, the Chain tool puts every device and run on it; with none selected, a chain continues the circuit of the run it extends.
 - **[Quick Keys](/guides/working-faster-with-the-keyboard/)** put your device types on the number row: `1` places receptacles, `2` places switches, and your hands never leave the plan.
 

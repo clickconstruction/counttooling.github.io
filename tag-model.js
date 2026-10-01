@@ -40,6 +40,36 @@ function tagOfCounter(counter) {
   return null;
 }
 
+// AUTO-PICK (2026-10-01): a counter whose NAME says the tag keeps the click. An estimator
+// who splits one plan tag by size ("3IN FD", "4IN FS-1", '3" FS1') has armed exactly the
+// counter the tag names, so the plan's FD must not move that click to the bare "FD". A word
+// of the name equals the tag with hyphens ignored (FS1 = FS-1), case ignored.
+function nameMentionsTag(name, tag) {
+  const norm = (s) => String(s || '').toUpperCase().replace(/-/g, '');
+  const t = norm(tag);
+  if (!t) return false;
+  return String(name || '').toUpperCase().split(/[^A-Z0-9-]+/).some((w) => w && norm(w) === t);
+}
+
+// What a click at `pt` does with the plan's tags (features/tag-reader.js; AUTO-PICK).
+// counters: the palette; armedId: the counter lit in the sidebar. Returns null when no tag
+// is in reach, else { tag, x, y, w, h, kind, counterId }:
+//   'armed' — the armed counter carries the tag, or its name says it: the click stays put;
+//   'other' — another counter carries it (an explicit `tag` first, then one read from a
+//             name, palette order inside each): auto-pick would move the click there;
+//   'none'  — no counter carries it (Enter can make one).
+function tagPickAt(items, pt, counters, armedId, radius) {
+  if (!pt) return null;
+  const near = nearestTag(items, pt, radius);
+  if (!near) return null;
+  const cs = counters || [];
+  const out = (kind, c) => ({ tag: near.str, x: near.x, y: near.y, w: near.w || 0, h: near.h || 0, kind, counterId: c ? c.id : null });
+  const armed = cs.find((c) => c.id === armedId);
+  if (armed && (tagOfCounter(armed) === near.str || nameMentionsTag(armed.name, near.str))) return out('armed', armed);
+  const other = cs.find((c) => c.tag && String(c.tag).trim().toUpperCase() === near.str) || cs.find((c) => tagOfCounter(c) === near.str);
+  return other ? out('other', other) : out('none', null);
+}
+
 // items: [{ str, x, y, w, h }] in app PDF-space (y down; x,y = top-left of the
 // text box). Returns the tag token within `radius` of `pt` (measured to the box's
 // center) that is most plausibly the symbol's own — { str, x, y, w, h, dist } — or
@@ -115,7 +145,7 @@ function parseScheduleRows(rows) {
   return out;
 }
 
-const TAG_MODEL_API = { isTagToken, tagOfCounter, nearestTag, rowsInBox, parseScheduleRows };
+const TAG_MODEL_API = { isTagToken, tagOfCounter, nameMentionsTag, tagPickAt, nearestTag, rowsInBox, parseScheduleRows };
 if (typeof window !== 'undefined') window.TagModel = TAG_MODEL_API;
 // Node test harness only: in a classic browser <script> `module` is undefined.
 if (typeof module !== 'undefined' && module.exports) module.exports = TAG_MODEL_API;

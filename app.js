@@ -2370,9 +2370,9 @@
     // run's segments at their stepped stroke widths + rubber band + the cursor
     // size chip. Sits after the hideMarks early-return above, so a hidden
     // overlay paints no duct either.
-    if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, lineOpacity: lo });
+    if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, dpr: currentEffDpr, lineOpacity: lo });   // dpr: the cursor chip's fixed screen size (AUTO-PICK)
     if (App.drawWaterOverlay) App.drawWaterOverlay(ctx, { fontScale: z * currentEffDpr });   // WATER-PLAN rung 4: syncs the water suggestion card
-    if (App.drawTagOverlay) App.drawTagOverlay(ctx, { fontScale: z * currentEffDpr });   // S6: the "Plan says B" chip
+    if (App.drawTagOverlay) App.drawTagOverlay(ctx, { dpr: currentEffDpr });   // S6 / AUTO-PICK: the ring and badge, a fixed size on screen
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
       const editColor = state.editingPolyline.color || '#4a9eff';
@@ -2714,6 +2714,9 @@
       else if (id === 'lineTypeSnapToHVHeaderBtn') { /* keep tool-based display from snap block */ }
       else el.style.display = '';
     });
+    // AUTO-PICK: the header pill shows while the Counter tool is armed, never to a viewer
+    // (features/tag-reader.js owns its display, its pressed state and the settings mirror).
+    App.syncAutoPickUI && App.syncAutoPickUI();
     // Per-project Groups gate: hide the whole Groups section unless the
     // project opted in OR already contains groups (existing organized
     // takeoffs keep their section with no migration). Runs after the
@@ -5743,8 +5746,8 @@
       renderAnnotations();
     } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.MEASURE && state.scaleMode === SCALE_MODES.POINT_B && state.scalePointA && !state.scalePointB) /* MEASURE-BAND: the dashed band to the second point follows the mouse, as it already followed the loupe */ || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.SCHEDULE && state.scheduleBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost)) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing())) {
       renderAnnotations();
-    } else if (state.tool === TOOL.COUNTER && App.tagHintText && App.tagHintText()) {
-      renderAnnotations();   // S6: the tag chip follows the cursor
+    } else if (state.tool === TOOL.COUNTER && App.tagOverlayStale && App.tagOverlayStale()) {
+      renderAnnotations();   // AUTO-PICK: the tag cue appears, moves to another tag, or goes
     }
     const t = hitTest(pdf);
     state.hoverLegendResize = !!(t && t.type === 'legendResize');
@@ -6202,6 +6205,7 @@
       updateUI();
     },
     rotatePage: () => rotatePage90(),
+    toggleAutoPick: () => App.toggleAutoPick && App.toggleAutoPick(),   // AUTO-PICK: features/tag-reader.js
   };
 
   document.addEventListener('keydown', (e) => {

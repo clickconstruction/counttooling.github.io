@@ -1070,12 +1070,13 @@
   // The blank tour (features/tour-blank.js) takes the same snapshot through lessonKit with
   // { searches: false }: a tour's search words already ride the engine's own key
   // (features/tutorial.js), so its snapshot leaves them out and restoreDevice leaves them be
-  // (MAP-SETTINGS, 2026-09-26: Snap persists per device now, so it has to come back too).
+  // (MAP-SETTINGS, 2026-09-26: Snap persists per device now, so it has to come back too; so does
+  // Auto-pick, 2026-10-01, which the electrical course's chapter 3 turns on).
   const BEFORE_KEY = 'clickcount-lesson-device-before';
   let deviceBefore = (() => { try { return JSON.parse(localStorage.getItem(BEFORE_KEY) || 'null'); } catch (_) { return null; } })();
   function rememberDevice(opts) {
     if (deviceBefore) return;
-    deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) };
+    deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical), autoPick: !!(S().counterSettings && S().counterSettings.autoPick) };
     if (!opts || opts.searches !== false) deviceBefore.searches = getSearches();
     try { localStorage.setItem(BEFORE_KEY, JSON.stringify(deviceBefore)); } catch (_) { /* private mode: this session's stop still restores */ }
   }
@@ -1084,6 +1085,8 @@
     if (!deviceBefore) return;
     if (App.getCounterListFilterScope && App.getCounterListFilterScope() !== deviceBefore.scope) App.setCounterListFilterScope(deviceBefore.scope);
     if (!!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) !== deviceBefore.snap && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
+    // AUTO-PICK (2026-10-01): the electrical course turns it on; the reader's own setting comes back.
+    if (typeof deviceBefore.autoPick === 'boolean' && !!(S().counterSettings && S().counterSettings.autoPick) !== deviceBefore.autoPick && App.setAutoPick) App.setAutoPick(deviceBefore.autoPick, { toast: false });
     if (deviceBefore.searches) setSearches(deviceBefore.searches);
     deviceBefore = null;
     App.updateUI();

@@ -13,6 +13,58 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(counter): auto-pick from plan tags is a switch, off by default (AUTO-PICK, 2026-10-01)
+
+wendi, an estimator, reported it: *"it is choosing what counter I can use instead of letting me
+assign a counter, the suggestions get in the way of me seeing things on the plans."* Both halves
+were the tag reader (S6, features/tag-reader.js). A click within 24 pt of a word on the plan that
+looks like a tag landed on whatever counter carried that tag, silently, on every electrical
+project and on any project with one tagged counter. A counter's NAME counted as its tag, so on
+her plumbing bid, with 3IN FS1 / 4IN FS-1 armed, clicks beside the plan's FS-1 went to the bare
+FS-1 counter. That is why her palette held seven floor-sink counters, most at 0. Since the
+plumbing course (2026-09-21) the tag pattern also matches IN, TO, MEN and BAR. And its
+"Plan says" label was drawn at 11 px times the zoom: at 400% it was a 44 px bar across the
+sheet beside the cursor. Reproduced on the plumbing sample (3IN FD armed, two clicks, FD 2 and
+3IN FD 0). Plan and real-app mockup, both passes of "is this the best we can do":
+artifact `MHnbTcec1HgDrm4SxZPWJ2`. The owner's three picks: off for everyone, per device, the A key.
+
+- **The switch.** `counterSettings.autoPick` (constants.js `COUNTER_SETTINGS_DEFAULTS`, per
+  device through `App.saveDisplaySettings`, never the project), off by default. Three doors,
+  Snap's pattern: the **Auto-pick** pill `#counterAutoPickBtn` beside the Counter button, shown
+  only while the Counter tool is armed and never to a viewer (outlined when on, not filled,
+  so it does not read as a second armed tool; icon only under 1100 px); the **A** key
+  (hotkeys.js `toggleAutoPick` runner, Macros row regenerated); and a Counter Settings row
+  (`#counterAutoPickBtnSetting`). One writer, `App.setAutoPick(on, { toast })`, with a toast
+  that says which way it went.
+- **Off,** the plan's text never moves a click. The status bar offers the switch, and only
+  when another counter's tag is under the cursor ("Plan says CO · A turns on auto-pick").
+  Nothing is drawn on the sheet.
+- **On,** the tag's counter takes the click, except that a counter whose NAME says the tag
+  keeps it: 3IN FD keeps FD, 4IN FS-1 keeps FS-1, hyphens ignored (tag-model.js
+  `nameMentionsTag`, `tagPickAt`, node-tested). Among the other counters an explicit tag beats
+  one read from a name. The sheet shows a cue only when the click will land somewhere other
+  than the armed counter: a ring in that counter's colour and its own icon as a badge, a fixed
+  size on screen at any zoom (`env.dpr`, never the zoom). A tag no counter carries gets a
+  dashed ring and a plus, and Enter makes the counter ("Type X" on electrical, the bare tag
+  elsewhere). The receiving counter's sidebar row flashes after a moved click, the cue a
+  tablet gets with no hover. app.js's mousemove repaints only when the cue changes
+  (`App.tagOverlayStale`), so a cue never lingers.
+- **The duct tool's cursor chip** had the same zoom-times label; it keeps one screen size now
+  (12 px at any zoom). The segment chips along the trace still label the plan at its scale.
+- **Teaching.** The electrical course's chapter 3 "The plan says which" card turns it on
+  (`[[Auto-pick]]`, or A) and its hint says so when it is off; the lesson kit snapshots the
+  reader's setting with Snap's and gives it back when the lesson stops. The keyboard and
+  electrical guides say how it works.
+- **Telemetry.** `tag_suggestion_accepted` with route `auto-pick` fires only while the switch
+  is on, so it counts accepted picks, not silent overrides.
+- Not moved: marks already placed on the wrong counter. The app has no move-to-another-counter
+  tool, so those are redone by hand.
+- Tests: tag-model.test.js (the name rule, the pick); tag-reader.spec.js rewritten (off by
+  default the click is the armed counter's; A, the pill and Counter Settings are one switch
+  that survives a reload; on, the tag picks and the row flashes; the name rule; Enter; a
+  viewer never sees the pill); course-electrical.spec.js (the by-hand E-201 test clicks the pill,
+  and stopping the chapter gives the reader's setting back).
+
 ## feat(groups): the alternate's own water sizing block (ALT-GROUPS rung 2, 2026-09-30)
 
 Copy to /Tooling and the email summary end with one `--- Alternate: <name> · Water sizing ---`

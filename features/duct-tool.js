@@ -572,11 +572,14 @@
     ctx.globalAlpha = 1;
     // Per-segment size chips at the segment midpoints (committed-look labels
     // arrive via canvas-draw at commit; these track the live trace).
-    const chip = (label, cx, cy, remember) => {
-      const fontSize = 10 * fontScale;
+    // `size` = the font in device px: the segment chips label the plan and scale with it; the
+    // cursor chip is UI and keeps one screen size (AUTO-PICK, 2026-10-01: at 400% it stood
+    // 40 px tall over the sheet).
+    const chip = (label, cx, cy, remember, size) => {
+      const fontSize = size || 10 * fontScale;
       ctx.font = '600 ' + fontSize + 'px DM Sans';
       const tw = ctx.measureText(label).width;
-      const pad = 4;
+      const pad = size ? fontSize * 0.35 : 4;
       const x = cx - tw / 2 - pad, y = cy - fontSize / 2 - pad;
       const w = tw + pad * 2, h = fontSize + pad * 2;
       ctx.fillStyle = 'rgba(255,255,255,0.92)';
@@ -602,11 +605,12 @@
     const cur = currentDuctSize();
     if (cur && cursor) {
       const pc = App.toCanvas(cursor);
-      // Offset scales with the overlay's font scale so the chip clears the
-      // cursor at any zoom/DPR.
-      const chipX = pc.x + 24 + 14 * fontScale;
-      const chipY = pc.y - 10 - 8 * fontScale;
-      chip(formatDuctSize(cur) + ' ▾', chipX, chipY, true);
+      // A fixed screen size, clear of the cursor at any zoom (env.dpr; the older overlay
+      // callers that pass none fall back to the font scale).
+      const dpr = env?.dpr || fontScale;
+      const chipX = pc.x + 34 * dpr;
+      const chipY = pc.y - 18 * dpr;
+      chip(formatDuctSize(cur) + ' ▾', chipX, chipY, true, 12 * dpr);
       // ONE quiet line goes with the chip — never two: D10's plan callout
       // ("Plan says 20×12 here. S to pick it") when the sheet's text layer prints
       // a different size within reach of the cursor, else D6's design-build

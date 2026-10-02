@@ -1185,6 +1185,42 @@
       renderRows({ list: el('learnCourseList-' + id), prog: el('learnCourseProgress-' + id), items: chapters, isDone: (c) => !!done[key(c.id)], lit: nextId === undefined ? suggested() : nextId, title: (c) => c.title.replace(/^Chapter \d+: /, ''), number: (c) => { const m = /^Chapter (\d+):/.exec(c.title); return m ? Number(m[1]) : null; }, attr: 'chapter', noun: 'chapters', start, scroll: false });
     }
     const openAtCourse = () => openLearnMenu(undefined, { course: id, chapter: suggested() });
+    // FIELD-TAKEOFF (2026-10-02): /app/?field=<course> opens the course's sheets with its finished
+    // takeoff on them and no card: the test drive's field door (/test/), a plan set someone can ask
+    // questions of. The finished takeoff is chapter 8's: its seed, then the lay step's "Finish the
+    // takeoff for me". No tour runs, so nothing is snapshotted or restored; the palette it makes is
+    // tracked like any teaching set's and leaves with the sheets.
+    const whole = chapters.find((c) => c.id === 'whole');
+    const layStep = whole && whole.steps.find((s) => s.id === 'lay');
+    const layAll = layStep && layStep.action && layStep.action.run;
+    async function openFinished() {
+      if (!layAll) return false;
+      await openSheetsFor(whole);
+      for (let i = 0; i < 300 && seededFor !== whole.id; i++) {
+        // Trim your set can come up after openSheetsFor's own Open (its pages still building), and
+        // the course's reader would press Open again; nobody is here to, so press it once a second
+        if (i % 10 === 9 && modalUp('preparePdfModal')) el('preparePdfDone').click();
+        seedIfReady(whole);
+        await wait(100);
+      }
+      if (seededFor !== whole.id) return false;
+      // A second visit reopens the set with the last visit's marks on it, and the lay places only what
+      // it cannot find at the plan's own spots: diffusers it slid onto their runs last time are not
+      // there, so they were laid again (21 SD-1 for 11, by hand). The answer key starts on clean sheets.
+      S().pages.forEach((p) => (p.canvases || []).forEach((cv) => { cv.annotations = App.makeAnnotations(); }));
+      S().rooms = [];   // the HVAC lay boxes a room only when no room of that name stands (seedRooms)
+      await layAll();
+      S().tool = App.TOOL.NONE;
+      S().currentPage = whole.page || 0;
+      App.clearUndoStacks();
+      dirty();
+      App.fitZoom();
+      if (App.showToast) App.showToast('A finished takeoff on the sample sheets. Tap any mark to read it.', 5000);
+      App.finishedTakeoffReady = id;   // the test drive's phone frame lifts its cover on this
+      return true;
+    }
+    App.openFinishedTakeoff = App.openFinishedTakeoff || {};
+    App.openFinishedTakeoff[id] = openFinished;
     const d = doors || {};
     el(d.hint) && (el(d.hint).onclick = (e) => { e.preventDefault(); openAtCourse(); });
     el(d.settings) && (el(d.settings).onclick = () => { App.hideModal('settingsModal'); openAtCourse(); });
@@ -1195,6 +1231,9 @@
       if (want && chapters.some((c) => c.id === want)) {
         App.setTutorialPending(true);   // the boot's restore offer waits, as it does for ?tour= and ?lesson=
         setTimeout(() => { App.setTutorialPending(false); start(want); }, 600);
+      } else if (params.get('field') === id && layAll) {
+        App.setTutorialPending(true);
+        setTimeout(() => { openFinished().finally(() => App.setTutorialPending(false)); }, 600);   // held until laid: the restore offer waits for a plan
       } else if (params.get('course') === id) {
         App.setTutorialPending(true);
         setTimeout(() => { App.setTutorialPending(false); openAtCourse(); }, 600);

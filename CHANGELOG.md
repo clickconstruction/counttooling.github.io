@@ -13,6 +13,20 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(site): the test drive at /test/, a prototype for the pitch (TEST-DRIVE, 2026-10-02)
+
+A static page (`test/index.html`, `noindex`, not in the sitemap, outside the service worker's
+`/app/` scope) for handing the app to someone after a pitch. Pick a trade (HVAC, plumbing,
+electrical; the landing's trade marks), then a door: "I'm at my computer and I want to
+generate estimates" or "I'm in the field on my phone and I need an answer". The desk door
+lists five moments per trade, each with the trade's badge on its left and a Try it that opens
+the real app on that course's chapter (`/app/?chapter=<trade>:<id>`, or `?lesson=scale`). The
+field door runs the app inside a phone frame (an iframe at 390 px, so the app's own phone
+layout renders); on a real phone it opens the app full screen. The hash is the state
+(`#<trade>`, `#<trade>/desk`, `#<trade>/field`). Still a prototype: the field questions open
+course chapters rather than a finished takeoff, and a tap on a duct run does not read out its
+size yet.
+
 ## feat(counter): auto-pick from plan tags is a switch, off by default (AUTO-PICK, 2026-10-01)
 
 wendi, an estimator, reported it: *"it is choosing what counter I can use instead of letting me

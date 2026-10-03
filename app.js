@@ -3276,6 +3276,7 @@
   // SECTION: Toasts & line color picker
   let airboardToastTimer = null;
   function showToast(msg, durationMs) {
+    if (window.App && window.App.toastMuted && window.App.toastMuted()) return;   // DEMO-TRACK: a running demo mutes the app's notices (features/demo-track.js)
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
     const el = document.getElementById('airboardToastText');
     if (el) el.textContent = msg || '';

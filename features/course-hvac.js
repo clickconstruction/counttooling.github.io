@@ -277,14 +277,16 @@
   const scheduleFeet = () => { const out = {}; const sch = App.computeDuctSchedule ? App.computeDuctSchedule() : null; ((sch && sch.straightRows) || []).forEach((r) => { const k = String(r.sizeKey || '').replace(/×/g, 'x').replace(/Ø/g, 'ø').replace(/\s/g, ''); out[k] = (out[k] || 0) + (r.lengthFt || 0); }); return { rows: out, lb: sch ? sch.bidWeightLb : 0, grease: sch ? sch.grease : null }; };
   const fmtFt = (n) => (Math.round(n * 10) / 10).toFixed(1);
   const countOk = ([tag, spots]) => { const c = byTag(tag); return !!c && marksOf(c, M101).length >= spots.length && spots.every((pt) => markNear(c, pt, 100, M101)); };   // attached, a diffuser sits on its run, up to the attach reach from the printed spot
-  async function layEverything() {
+  // Synchronous, so a seed can lay it before its run's first card renders (the demo track's mistake
+  // and handoff moments seed with it); `await layEverything()` still works where a caller awaits it.
+  function layEverything() {
     scaleM101();
     App.pushUndoSnapshotCurrentPage();
     seedRooms();
     seedDiffusers();
     markMissing(pickTag('RG-1'), pts(G.RG1), M101); markMissing(pickTag('EG-1'), pts(G.EG1), M101); markMissing(pickTag('EG-2'), pts(G.EG2), M101); markMissing(pickTag('MA-1'), pts(G.MA1), M101);
     markMissing(pickUnit(RE.stat, 'Thermostat', 'Thermostat', '#c8963a'), pts(G.T), M101);
-    await makeSystem();
+    makeSystem();
     // DS-DINING-ATTACH (A2). Every run but the bar, one attach, then the bar and the
     // attach again. Each device then sits on the run the plan draws to it: the dish and
     // storage diffusers on the back rooms, MA-1 on the make-up run and the EG-1 grilles on
@@ -756,5 +758,12 @@
   const course = K().registerCourse({ id: COURSE, chapters: CHAPTERS, doors: { hint: 'canvasEmptyHintCourseHvac', settings: 'settingsCourseHvac' } });
   App.startChapterHvac = course.start;
   App.courseHvacIds = () => CHAPTERS.map((c) => c.id);
+  // What the HVAC demo track (features/demo-hvac.js, DEMO-TRACK) lays and reads: the course's seeds,
+  // its geometry and its readers, published as they are, so the demo copies none of them.
+  App.courseHvacKit = {
+    MSET, M101, M501, G, ROOMS, TAGS, MAIN_SIZES, RS, RD, pts, rect, sizeKey,
+    scaleM101, seedRooms, seedDiffusers, makeSystem, seedMain, traceMain, layRun, layEverything, attachAll, pickTag, boxRoom,
+    mainDone, runWith, ductRuns, runSizes, byTag, roomNamed, roomBoxZone, traceZones, circlesOn, system, scheduleFeet, ductRow, manual,
+  };
   App.courseHvacReference = () => ({ feet: REF_DUCT.reduce((o, [k, ft]) => { o[k] = ft(); return o; }, {}), counts: COUNTS().map(([t, sp]) => [t, sp.length]) });
 })();

@@ -28,9 +28,9 @@ const RENDERED_IN_JS = {
 const RETIRED = ['Copy to PipeTooling', 'Legend Settings]]', 'Snap to horizontal/vertical'];
 
 // The teaching files are FOUND, never listed (R16, D24): the tour engine and the lessons by
-// name, any tour-* or course-* file, and any feature file that registers a tour through
+// name, any tour-*, course-* or demo-* file, and any feature file that registers a tour through
 // App.registerTour. A new tour or course is checked the day it lands, with no edit here.
-const TEACHING_NAME = /^(tutorial|lessons|tour-.+|course-.+)\.js$/;
+const TEACHING_NAME = /^(tutorial|lessons|tour-.+|course-.+|demo-.+)\.js$/;   // demo-*: the demo track (DEMO-TRACK)
 function tourSources() {
   return fs.readdirSync(path.join(ROOT, 'features'))
     .filter((f) => f.endsWith('.js') && (TEACHING_NAME.test(f) || read('features/' + f).includes('App.registerTour(')))
@@ -48,7 +48,7 @@ function actionLabels(src) {
 test('the teaching files are found by pattern, the tours and courses among them', () => {
   const found = tourSources();
   // a floor, so a finder that matches nothing cannot pass the two checks below vacuously
-  ['features/tutorial.js', 'features/lessons.js', 'features/tour-blank.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js']
+  ['features/tutorial.js', 'features/lessons.js', 'features/tour-blank.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js', 'features/demo-track.js', 'features/demo-hvac.js']
     .forEach((f) => assert.ok(found.includes(f), f + ' is a teaching file'));
   fs.readdirSync(path.join(ROOT, 'features')).filter((f) => f.endsWith('.js') && read('features/' + f).includes('App.registerTour('))
     .forEach((f) => assert.ok(found.includes('features/' + f), f + ' registers a tour, so its labels are checked'));

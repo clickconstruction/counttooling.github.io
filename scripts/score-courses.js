@@ -33,7 +33,8 @@
  * a button, not the trade word) and a Markdown link read as its words.
  *
  * Adding a file is one line in COURSES and its FIRST_USE block. Today: the three courses,
- * the plumbing, electrical and HVAC tours, the blank-sheet tour, and Start here with the thirteen lessons.
+ * the plumbing, electrical and HVAC tours, the blank-sheet tour, Start here with the thirteen lessons,
+ * and the HVAC demo track.
  *
  *   node scripts/score-courses.js            # the per-chapter score
  *   node scripts/score-courses.js --check    # the check (npm run check, npm run check:courses)
@@ -57,6 +58,9 @@ const COURSES = [
   { name: 'tour-hvac', file: 'features/tutorial.js', chapters: ['HVAC_STEPS'], unit: 'card' },
   { name: 'tour-blank', file: 'features/tour-blank.js', unit: 'card' },
   { name: 'lessons', file: 'features/lessons.js' },
+  // The demo track (DEMO-TRACK): each card stands alone, and a demo card needs no glossed word at all,
+  // so its first-use table is empty. A card that wants a gloss is a card to shorten instead.
+  { name: 'demo-hvac', file: 'features/demo-hvac.js', unit: 'card' },
 ];
 const SENTENCE_CAP = 25;     // words in one sentence on a card
 const GRADE_CEILING = 6;     // the whole course's Flesch-Kincaid grade (the memo holds 4 to 6)
@@ -260,6 +264,7 @@ const FIRST_USE = {
     'bid check': 'bidcheck', 'fill': 'bidcheck', 'cloud': 'savestatus',
     'read-only': 'share', 'clipboard': 'share', 'deliverable': 'exports', 'active layer': 'clearpage',
   },
+  'demo-hvac': {},
   // The lessons are read in the Learn menu's order, each lesson a chapter; `(file)` is the
   // step every lesson opens with (lessons.js sheetsStep).
   lessons: {

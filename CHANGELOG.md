@@ -13,6 +13,60 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(demo): the demo track, its engine and the HVAC demo (DEMO-TRACK phase 1, 2026-10-02)
+
+Todd, after playing the test drive: its "Try it" opened course chapters, twelve minutes written for
+a reader who will sit through nine of them, and it "took me a good amount of time to gain the
+context, which made me not want to use the app". The demo track is the replacement, a separate
+script per trade on the tour engine, every card one action and one sentence of what it was worth
+(plan: [DEMO-TRACK](journeys/plans/DEMO-TRACK.md), the five decisions).
+
+- **features/demo-track.js**, the shared engine. `App.registerDemo({ trade, set, orientation,
+  moments })` registers `demo:<trade>:<moment>` per moment and `demo:<trade>` for all of them in
+  order. ONE orientation card per trade per session (what the plan is, what the lists on the left
+  are, how many clicks are coming; sessionStorage `clickcount-demo-oriented`), then every card is one
+  action. "Do it for me" on every doing card (the engine's `alt` button; the demo is exempt from the
+  lessons' no-do-it-for-me rule). The quiet UI: a sidebar section the card does not name shows its
+  heading alone, a header tool it does not name is dimmed and still works, all of it classes the stop
+  removes. The sheets open through the lessons' own doors, now on `App.lessonKit` (`openSheetsFor`,
+  `seedIfReady`, `isSeeded`), and the guest's device is the lessons' snapshot, put back on stop.
+  Doors: `/app/?demo=hvac` and `/app/?demo=hvac:<moment>`.
+- **features/demo-hvac.js**, five moments on the mechanical set, 2 or 3 cards each: the Duct dialog
+  reading 24x12 off M-101 and a three-circle trace whose elbow counts itself; the Duct Schedule's
+  Bid weight ("1,499 pounds of sheet metal. Shops price duct by the pound.") and Copy Schedule;
+  DINING 100 boxed (the demo fills the dialog from the plan) and filled with its eight diffusers until
+  it reads served; Bid Check's Systems within capacity turning from ✓ to ⚠ when Addendum 3 raises the
+  kitchen diffusers to 300 CFM ("more than its 3,000"). **That mistake is STAGED by the demo**: the
+  sample set carries no native defect (RTU-1's 2,650 designed CFM fits its 3,000), so the card's
+  handsOff "Apply addendum 3" button sets SD-3 to 300 CFM on the open sheets, and Bid Check catches
+  the change; and Bid Check, a signed row and Show Report,
+  whose card points at [[Learn]] once. Every number on a card is read live. Every seed and reader is
+  the HVAC course's, published as `App.courseHvacKit` (its `layEverything` is synchronous now, so a
+  seed lays it whole; the course is otherwise unchanged).
+- **From the coordinator's hand walk at tablet and phone widths** (same PR): the sheet JUMPS onto a demo
+  card's circles instead of gliding for 2.6 s under the guest's first tap (a step's new `jump` flag,
+  one line in features/tutorial.js `glideView`, set on every demo card; no tour sets it); demo circles
+  are 30 sheet points, twice the trade tours' 12 to 16; a trace that is visibly right counts and is
+  finished for the guest even when a corner missed its circle (feet within 10% of the leg's, both ends
+  within a circle); a card that sends the guest to the sidebar says "Tap ☰, then…" on a narrow layout
+  (the stylesheet's 768 px), and the drawer's two button grids recede with the header's tools; Trim
+  your set is never painted while a demo's set comes in (`body.demo-opening`) and its Open is pressed
+  once it has stood a second, never per tick (a press per tick ran the async commit over itself); the
+  orientation card waits until the sheet is PAINTED (pixels on #pdfCanvas, not just pages built) before
+  it says "This is a plan", and says "the ☰ menu keeps its totals" where the sidebar is a drawer; and
+  the app's own toasts are muted while a demo runs (`App.toastMuted`, one guard line at the top of
+  app.js `showToast`), so the Duct tool's first-run "Groups are on. Assign this run to a system in
+  Groups." no longer lands over the guest's finished trace.
+- **Tooling**: teaching-labels.test.js finds `demo-*` files; check-lesson-rules.js reads both demo
+  files; score-courses.js scores `demo-hvac` card by card with an empty first-use table (a demo card
+  needs no glossed word; grade 1.8, no sentence over 25 words).
+- **demo-hvac.spec.js**: every moment walked through `App.tutorialDoStep()` on real state, the
+  orientation first and once a session (and only over a painted sheet), the quiet UI on and off, a
+  dimmed tool still arming, the trace card's circles held still for 1.5 s with `navigator.webdriver`
+  read as false (as a browser, so a glide would show), a guest's own three clicks tracing the leg, a
+  missed corner still counting, the ☰ wording and Trim your set never painted at 390 px, both doors,
+  and the clock: goto to the first payoff card, printed, under 60 s (about 4 s headless).
+
 ## feat(roles): Lead, a role under admin and over user (LEAD-ROLE, 2026-10-02)
 
 Will: Wendi (an estimator) should be able to take over projects, "a role less than admin

@@ -11,8 +11,9 @@
   <link rel="stylesheet" href="/marketing.css">
   <style>
     /* PROTOTYPE (2026-10-02). A choice of two doors, then a short track for each. Every
-       "Try it" opens the real app on the HVAC course sheets; nothing here signs in or
-       touches anyone's work. */
+       "Try it" opens the real app on a trade's sample sheets (the desk door a one-minute demo,
+       /app/?demo=<trade>:<moment>; the field door a finished takeoff, /app/?field=<trade>);
+       nothing here signs in or touches anyone's work. */
     body { min-height: 100vh; }
     .td-main { padding-top: 8px; padding-bottom: 72px; }
     .td-kicker { color: var(--accent); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: .8rem; }
@@ -134,7 +135,7 @@
           <div class="td-door-who">At the desk</div>
           <div class="td-door-quote">"I'm at my computer and I want to generate estimates."</div>
           <div class="td-door-what" data-t="deskWhat"></div>
-          <div class="td-door-go">Five short moments →</div>
+          <div class="td-door-go">Five one-minute demos →</div>
         </button>
         <button class="td-door" data-go="field">
           <div class="td-door-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg></div>
@@ -151,7 +152,7 @@
       <button class="td-back" data-go="choose">← Back</button>
       <div class="td-kicker"><span data-t="name"></span> · At the desk</div>
       <h1 class="td-h1">From plans to a bid you can defend.</h1>
-      <p class="td-lede">Each one opens the real app on the sample sheets, with a card that walks you through it. Do as many as you like, in any order.</p>
+      <p class="td-lede">Each one opens the real app on the sample sheets. You make one click at a time and the app does the rest. About a minute each, in any order.</p>
       <div class="td-moments" id="moments"></div>
     </section>
 
@@ -188,7 +189,8 @@
     };
     const mark = (t, size) => '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" aria-hidden="true">' + MARK[t] + '</svg>';
 
-    // Each trade's course (features/course-<trade>.js), chapter by chapter, and its lessons.
+    // Each trade's five demo moments (DEMO-TRACK, features/demo-<trade>.js). A moment's id is its
+    // door, /app/?demo=<trade>:<id>, fixed by journeys/plans/DEMO-TRACK.md: change them together.
     const TRADES = {
       hvac: {
         name: 'HVAC', sheets: 'A small restaurant\'s mechanical sheets,',
@@ -196,27 +198,27 @@
         fieldWhat: 'Find every diffuser, measure a run, check a room\'s air, with the plans in your pocket and no signal needed.',
         offline: 'Works offline once it\'s loaded: basements and mechanical rooms included. Add it to your home screen and it opens like an app.',
         moments: [
-          { ch: 'main', img: 'hvac-3-trace', min: 12, title: 'The plan tells you the duct size',
+          { id: 'size', img: 'hvac-3-trace', title: 'The plan tells you the duct size',
             body: 'Start the duct tool beside a printed size and it reads it off the plan. Trace the main down the hall; elbows, transitions and taps count themselves.',
             why: '<b>No typing sizes.</b> The fittings are counted from what you drew.' },
-          { ch: 'main', img: 'hvac-5-schedule', min: 12, title: 'Pounds of sheet metal, in one number',
+          { id: 'pounds', img: 'hvac-5-schedule', title: 'Pounds of sheet metal, in one number',
             body: 'The Duct Schedule turns the trace into feet and pounds per size, picks the gauge from the SMACNA table, adds seams and waste, and gives one Bid weight.',
             why: '<b>Priced the way shops price duct:</b> by the pound.' },
-          { ch: 'rooms', img: 'hvac-2-room-size', min: 9, title: 'Every room knows its air',
+          { id: 'rooms', img: 'hvac-2-room-size', title: 'Every room knows its air',
             body: 'Draw a box around a room. It gets its square feet, its volume and the airflow it needs.',
             why: '<b>The load, room by room,</b> before a single grille is counted.' },
-          { ch: 'system', img: 'hvac-6-bid-check', min: 7, star: true, title: 'It catches the mistake in the plans',
+          { id: 'mistake', img: 'hvac-6-bid-check', star: true, title: 'It catches the mistake in the plans',
             body: 'Hang the rooms on the rooftop unit and Bid Check adds the air. When the rooms need more than the unit gives, it says so, before the bid goes out.',
             why: '<b>Caught before you bid, the people who drew it pay.</b> Caught in the field, you do.' },
-          { ch: 'bid', img: 'hvac-1-quick-tab', min: 8, title: 'Check it, sign it, hand it off',
+          { id: 'handoff', img: 'hvac-1-quick-tab', title: 'Check it, sign it, hand it off',
             body: 'Every page scaled, nothing counted twice, every rule cited by its section. Then one click to a report your customer can read.',
             why: '<b>A number you can defend</b> line by line.' },
         ],
         questions: [
           { ico: '◎', q: 'Where are all the supply diffusers?', a: 'Tap one diffuser. Every one like it gets a ring, and the chip says how many are on the sheet.' },
-          { ico: '↔', q: 'How long is this run?', a: 'Press D for Measure, or pick it from the ⋯ menu. Tap one end, then the other: the plan\'s scale does the rest.' },
-          { ico: '⬚', q: 'How much air does this room need?', a: 'Each boxed room is tagged on the sheet with its volume and the airflow it needs, and a ✓ when its diffusers deliver it. Pinch in to read it.' },
-          { ico: '✓', q: 'Can the rooftop unit carry these rooms?', a: 'Open the menu (☰), then BID CHECK: "Systems within capacity" sets what the rooms need against what RTU-1 gives.' },
+          { ico: '↔', q: 'How long is this run?', a: 'Open the menu (☰), tap Measure, and close the menu. Tap one end, then the other: the length shows at the bottom.' },
+          { ico: '⬚', q: 'How much air does this room need?', a: 'Each room is boxed on the sheet with its size. Open the menu (☰) and look under ROOMS: its floor area and volume, the air it needs, and the air its diffusers serve.' },
+          { ico: '✓', q: 'Can the rooftop unit carry these rooms?', a: 'Open the menu (☰) and tap BID CHECK: "Systems within capacity" sets the air the diffusers are designed for against what RTU-1 can give.' },
         ],
       },
       plumbing: {
@@ -225,27 +227,27 @@
         fieldWhat: 'Find every floor drain, measure a run, read a drop, with the plans in your pocket and no signal needed.',
         offline: 'Works offline once it\'s loaded: crawl spaces and basements included. Add it to your home screen and it opens like an app.',
         moments: [
-          { ch: 'fixtures', img: 'plumbing-1-quick-tab', min: 10, title: 'The schedule makes your counters',
+          { id: 'schedule', img: 'plumbing-1-quick-tab', title: 'The schedule makes your counters',
             body: 'Drag a box over the fixture schedule and every fixture on it becomes a counter, named the way the plan tags it. Then click each one on the plan.',
             why: '<b>No typing the fixture list.</b> The sheet does it.' },
-          { ch: 'water', img: 'plumbing-2-rulebook', min: 12, title: 'Trace the pipe, get the parts it needs',
+          { id: 'pipe', img: 'plumbing-2-rulebook', title: 'Trace the pipe, get the parts it needs',
             body: 'Trace the water from the meter. The app counts the hangers and fittings from your trace, by the spacing rule for that pipe, and sizes it by the fixtures it feeds.',
             why: '<b>The parts the plan never draws,</b> counted for you.' },
-          { ch: 'riser', img: 'plumbing-3-riser', min: 8, title: 'The vertical feet the plan cannot show',
+          { id: 'riser', img: 'plumbing-3-riser', title: 'The vertical feet the plan cannot show',
             body: 'A stack is one circle on the floor plan. The riser sheet draws it standing up, so the upright pipe gets measured too.',
             why: '<b>Feet most bids miss,</b> on the bid.' },
-          { lesson: 'scale', img: 'plumbing-4-scale-check', min: 3, title: 'Prove the scale before you count',
+          { id: 'scale', img: 'plumbing-4-scale-check', title: 'Prove the scale before you count',
             body: 'Set the scale, then check it against a dimension you can read. One wrong scale makes every foot on the sheet wrong.',
             why: '<b>The most expensive mistake</b> is the one in every line.' },
-          { ch: 'bid', img: 'plumbing-5-bid-check', min: 8, star: true, title: 'It checks the bid against the code',
+          { id: 'bid', img: 'plumbing-5-bid-check', star: true, title: 'It checks the bid against the code',
             body: 'Bid Check reads the takeoff: every page scaled, nothing counted twice. Then the code rows you sign yourself, like fixture units against the drain, each cited by its section. Then hand it off.',
             why: '<b>Caught before you bid, the people who drew it pay.</b> Caught in the field, you do.' },
         ],
         questions: [
           { ico: '◎', q: 'Where are all the floor drains?', a: 'Tap one floor drain. Every one gets a ring, and the chip says how many are on the sheet.' },
-          { ico: '↔', q: 'How long is this run?', a: 'Press D for Measure, or pick it from the ⋯ menu. Tap one end, then the other: the plan\'s scale does the rest.' },
+          { ico: '↔', q: 'How long is this run?', a: 'Open the menu (☰), tap Measure, and close the menu. Tap one end, then the other: the length shows at the bottom.' },
           { ico: '#', q: 'Which fixture is this, and how many are there?', a: 'Tap a mark: the chip names it, gives its number, and the count on this sheet.' },
-          { ico: '≡', q: 'How much pipe of each size?', a: 'Open the menu (☰), then SUMMARY: every pipe by size and material, in feet, beside every count.' },
+          { ico: '≡', q: 'How much pipe of each size?', a: 'Open the menu (☰) and scroll to SUMMARY: every pipe by size and material, in feet, with its hangers and elbows, under every count.' },
         ],
       },
       electrical: {
@@ -254,27 +256,27 @@
         fieldWhat: 'Find every GFCI, measure a homerun, count the lights, with the plans in your pocket and no signal needed.',
         offline: 'Works offline once it\'s loaded: basements and electrical rooms included. Add it to your home screen and it opens like an app.',
         moments: [
-          { ch: 'devices', img: 'electrical-1-quick-tab', min: 10, star: true, title: 'It catches the outlet that needs a GFCI',
+          { id: 'gfci', img: 'electrical-1-quick-tab', star: true, title: 'It catches the outlet that needs a GFCI',
             body: 'Count the receptacles, and learn which rooms the code wants ground-fault protected. On this set the engineer left one off. Flag it with a question right on the plan, and bid it the way the inspector will pass it.',
             why: '<b>Caught before you bid, the people who drew it pay.</b> Caught by the inspector, you do.' },
-          { ch: 'conduit', img: 'electrical-3-conduit', min: 12, title: 'Draw the conduit, get the wire',
+          { id: 'wire', img: 'electrical-3-conduit', title: 'Draw the conduit, get the wire',
             body: 'A line type that knows its conduit and its wires. Draw the run and the wire is counted for you, with the drops down to each box.',
             why: '<b>Wire is never typed.</b> It comes from what you drew.' },
-          { ch: 'circuits', img: 'electrical-2-chain', min: 12, title: 'A circuit that checks itself',
+          { id: 'circuit', img: 'electrical-2-chain', title: 'A circuit that checks itself',
             body: 'Group the devices into a circuit with its panel and number. The homerun reaches the panel, and the voltage-drop row says whether the wire is big enough.',
             why: '<b>The engineer\'s math,</b> checked as you count.' },
-          { ch: 'service', img: 'electrical-4-wire', min: 8, title: 'How full may a conduit be?',
+          { id: 'fill', img: 'electrical-4-wire', title: 'How full may a conduit be?',
             body: 'Trace the feeder from the service to the panel. The app judges the fill against the code table and cites the section.',
             why: '<b>Every rule cited,</b> so the number holds up when someone asks.' },
-          { ch: 'bid', img: 'electrical-6-handoff', min: 8, title: 'Check it, prove it, hand it off',
+          { id: 'handoff', img: 'electrical-6-handoff', title: 'Check it, prove it, hand it off',
             body: 'Bid Check reads the takeoff. Then the counts, the wire and the conduit go to pricing in one step.',
             why: '<b>A number you can defend</b> line by line.' },
         ],
         questions: [
           { ico: '◎', q: 'Where are all the GFCIs?', a: 'Tap one GFCI. Every one gets a ring, and the chip says how many are on the sheet.' },
-          { ico: '↔', q: 'How long is the homerun?', a: 'Press D for Measure, or pick it from the ⋯ menu. Tap one end, then the other: the plan\'s scale does the rest.' },
+          { ico: '↔', q: 'How long is the homerun?', a: 'Open the menu (☰), tap Measure, and close the menu. Tap one end, then the other: the length shows at the bottom.' },
           { ico: '#', q: 'How many of this light are there?', a: 'Turn to E-201 with the arrows at the bottom, then tap a fixture: its type, its number, and the count on the sheet.' },
-          { ico: '≡', q: 'How much conduit of each size?', a: 'Open the menu (☰), then SUMMARY: every conduit by size, in feet, with the verticals counted in.' },
+          { ico: '≡', q: 'How much conduit of each size?', a: 'Open the menu (☰) and scroll to SUMMARY: every conduit by size, in feet, and the wire pulled through it.' },
         ],
       },
     };
@@ -283,7 +285,7 @@
     const isPhone = () => window.matchMedia('(max-width: 900px)').matches;
     let trade = 'hvac';
     let view = 'choose';
-    const appUrl = (t, item) => item.lesson ? '/app/?lesson=' + item.lesson : '/app/?chapter=' + t + ':' + item.ch;
+    const appUrl = (t, item) => '/app/?demo=' + t + ':' + item.id;
 
     document.querySelectorAll('.td-chip').forEach((b) => { b.innerHTML = mark(b.dataset.trade, 18) + TRADES[b.dataset.trade].name; });
 
@@ -303,7 +305,7 @@
           '<div><div class="td-moment-n">' + (i + 1) + ' of ' + T.moments.length + (m.star ? ' · the one to see' : '') + '</div>' +
           '<h3>' + m.title + '</h3><p>' + m.body + '</p><p class="td-why">' + m.why + '</p></div>' +
           '<div class="td-moment-go"><a class="btn" href="' + appUrl(trade, m) + '" target="_blank" rel="noopener">Try it</a>' +
-          '<span class="td-min">about ' + m.min + ' min</span></div>' +
+          '<span class="td-min">about a minute</span></div>' +
         '</article>').join('');
 
       $('questions').innerHTML = T.questions.map((q, i) =>

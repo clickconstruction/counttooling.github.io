@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(learn): a finished takeoff behind the test drive's field door (FIELD-TAKEOFF, 2026-10-02)
+
+The test drive's field door (`/test/#<trade>/field`) opened a course chapter, so a guest met a
+teaching card before any answer. Now it opens `/app/?field=<trade>`: the course's sheets with
+its finished takeoff on them, the same answer key chapter 8 lays with "Finish the takeoff for
+me", and no card. It lives in features/lessons.js `registerCourse`, so each course gets it from
+its own `whole` chapter with no change to the course files. Plumbing lands on 36 counts and
+496 ft on P-101, electrical on 69 counts and 160.5 ft, HVAC on 11 SD-1 and the rest of the
+diffusers, 7 duct runs, 10 fittings, 3 rooms and RTU-1 within capacity.
+
+- **A second visit doubled the HVAC diffusers** (21 SD-1 for 11): the set reopened with the last
+  visit's marks, and the lay places only what it cannot find at the plan's spots, while the
+  diffusers it had slid onto their runs were no longer there. The door clears the sheets' marks
+  and the room list before it lays. The course's own button was right (11): its sheets start clean.
+- **"Your last session: sample-lessons"** came up over the electrical takeoff just laid.
+  restore-last-session.js now drops a LOCAL offer whose project is a teaching set once a plan is
+  open: those sheets are reset whenever they open. restore-last-session.spec.js's seeded backup
+  was named `sample-plan` with no bearing on the case it tests, and is `my-takeoff` now.
+- **The test page** loads the takeoff once per trade under a "Laying out a finished takeoff…"
+  cover (lifted on `App.finishedTakeoffReady`), and its four questions say how to ask the phone,
+  each answer checked against the takeoff (the find-this-counter ring and its "N on this page"
+  chip, Measure, the room tag, the Bid Check and Summary rows).
+
+field-takeoff.spec.js: each trade lands on its answer key with no tour and no dialog, and a
+second visit lands on the same one.
+
 ## feat(site): the test drive at /test/, a prototype for the pitch (TEST-DRIVE, 2026-10-02)
 
 A static page (`test/index.html`, `noindex`, not in the sitemap, outside the service worker's

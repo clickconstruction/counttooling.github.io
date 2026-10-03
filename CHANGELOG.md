@@ -66,6 +66,42 @@ script per trade on the tour engine, every card one action and one sentence of w
   read as false (as a browser, so a glide would show), a guest's own three clicks tracing the leg, a
   missed corner still counting, the ☰ wording and Trim your set never painted at 390 px, both doors,
   and the clock: goto to the first payoff card, printed, under 60 s (about 4 s headless).
+## feat(test-drive): the desk door opens the demo, the field door says where to tap (DEMO-TRACK phase 3, 2026-10-02)
+
+Todd played the test drive and it took him too long to get the point. The desk door's "Try it"
+opened twelve-minute course chapters; the field door opened a finished takeoff with nothing on
+the screen saying what to do with it. This is the page half of [the demo track](journeys/plans/DEMO-TRACK.md):
+the engine and the trade scripts (`features/demo-track.js`, `features/demo-<trade>.js`) land
+on their own branch, so until they merge the new links open the plain app.
+
+- **The desk door** (`test/index.html`): every moment carries a fixed `id` and its "Try it"
+  opens `/app/?demo=<trade>:<id>`, the ids the plan names (HVAC `size` `pounds` `rooms`
+  `mistake` `handoff`; plumbing `schedule` `pipe` `riser` `scale` `bid`; electrical `gfci`
+  `wire` `circuit` `fill` `handoff`). The `ch` / `lesson` keys and the per-moment minutes are
+  gone: each says "about a minute", the door says "Five one-minute demos", and the lede
+  promises what a demo gives, one click at a time and the app does the rest.
+- **The field door's first-tap prompt** (decision 3, second half; features/lessons.js beside
+  `openFinished`): once `/app/?field=<trade>` has laid its takeoff, ONE line sits on the sheet,
+  "Tap any mark to read it" (HVAC "Tap any diffuser"). It wears the Duct tool's hint card
+  (`.duct-hint-card`: centred, takes no click), sits just under the sheet when a phone's
+  fitted sheet leaves room below it (re-placed by a ResizeObserver as the raster lands), and
+  goes on the first pointerdown anywhere, a tap that still reads the mark. A tab-session key,
+  `sessionStorage` `clickcount-field-prompt-<trade>`, keeps it from coming back on the next
+  visit. Not a `.modal-overlay`, so the restore offer and the Esc ladder never see it. It
+  replaces the corner toast that said the same thing for five seconds.
+- **The field questions, checked against the app at 375 px.** "Press D for Measure, or pick
+  it from the ⋯ menu" named a key a phone does not have and a menu a phone does not show: now
+  the ☰ menu's Measure, and the length reads in the status bar. HVAC's room answer promised a
+  CFM tag and a ✓ on the sheet that only a plan-named room draws (the course's rooms carry
+  their size there): it now sends the reader to the menu's ROOMS ("needs 1,200 · served
+  1,200"). "Systems within capacity" sets the diffusers' designed air against the unit
+  ("RTU-1 · 2,650 designed / 3,000 capacity"), not the rooms' need. Electrical's SUMMARY
+  answer drops "the verticals counted in" for what the list shows, the wire pulled through
+  each conduit; plumbing's adds the hangers and elbows it lists.
+- **field-takeoff.spec.js**: each trade's prompt is up with its words when the takeoff lands,
+  is not inside or a `.modal-overlay`, takes no click, reads whole, survives the restore-offer
+  wait, goes on one tap, and is not back on the second visit; a 375 px case puts it just under
+  the sheet, inside the screen.
 
 ## feat(roles): Lead, a role under admin and over user (LEAD-ROLE, 2026-10-02)
 

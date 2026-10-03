@@ -1220,9 +1220,45 @@
       App.clearUndoStacks();
       dirty();
       App.fitZoom();
-      if (App.showToast) App.showToast('A finished takeoff on the sample sheets. Tap any mark to read it.', 5000);
+      showFieldPrompt();
       App.finishedTakeoffReady = id;   // the test drive's phone frame lifts its cover on this
       return true;
+    }
+    // DEMO-TRACK decision 3, the field door's half: ONE line on the sheet saying what to do first,
+    // gone on the first pointerdown anywhere (that tap still reads the mark) and not back this tab
+    // session. The Duct tool's hint card (.duct-hint-card: centred at the sheet's foot, never takes a
+    // click), so no .modal-overlay: the restore offer and the Esc ladder never see it.
+    function showFieldPrompt() {
+      const seenKey = 'clickcount-field-prompt-' + id;
+      try { if (sessionStorage.getItem(seenKey)) return; } catch (_) { /* no storage: show it */ }
+      const host = el('canvasWrapper');
+      if (!host || el('fieldPrompt')) return;
+      const card = document.createElement('div');
+      card.id = 'fieldPrompt';
+      card.className = 'duct-hint-card field-prompt';
+      card.setAttribute('role', 'status');
+      card.textContent = id === 'hvac' ? 'Tap any diffuser' : 'Tap any mark to read it';
+      host.appendChild(card);
+      // A phone fits the sheet to its width, a band at the top with the screen empty under it: there
+      // the line sits just under the sheet's edge, where the eye is, not at the far foot of the screen.
+      const place = () => {
+        const w = host.getBoundingClientRect();
+        const sheet = el('pdfCanvas') && el('pdfCanvas').getBoundingClientRect();
+        const under = sheet && sheet.height > 0 ? sheet.bottom - w.top + 12 : null;
+        const room = under != null && under + card.offsetHeight + 12 < w.height;
+        card.style.top = room ? under + 'px' : '';
+        card.style.bottom = room ? 'auto' : '';
+      };
+      place();
+      // the fitted raster lands some beats after the takeoff (seconds, on a slow phone): place it again
+      // whenever the sheet or the screen changes size, until the card goes
+      const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(() => card.isConnected && place()) : null;
+      if (watch) { watch.observe(host); if (el('pdfCanvas')) watch.observe(el('pdfCanvas')); }
+      document.addEventListener('pointerdown', () => {
+        card.remove();
+        if (watch) watch.disconnect();
+        try { sessionStorage.setItem(seenKey, '1'); } catch (_) { /* the card is gone either way */ }
+      }, { capture: true, once: true });
     }
     App.openFinishedTakeoff = App.openFinishedTakeoff || {};
     App.openFinishedTakeoff[id] = openFinished;

@@ -52,6 +52,9 @@ for (const { trade, set, check } of TRADES) {
     test.setTimeout(120000);
     const errors = collectConsoleErrors(page);
     await openField(page, trade);
+    // the counts are drawn big and ringed for a phone, in memory only: the device's settings are untouched
+    expect(await page.evaluate(() => ({ size: window.App.state.counterSettings.size, rings: window.App.state.counterSettings.showRings }))).toEqual({ size: 48, rings: true });
+    expect(await page.evaluate(() => localStorage.getItem('counterSettings'))).toBe(null);
     const first = await tally(page);
     expect(first.name).toBe(set);
     check(first);

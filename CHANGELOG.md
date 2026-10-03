@@ -13,6 +13,14 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(learn): the field door's counts are big enough to read on a phone (FIELD-TAKEOFF, 2026-10-02)
+
+A counter's marker is a fixed size on screen (Counter Settings' Icon size, 22 by default), so on
+a phone the field door's counts were specks beside the plan's own symbols (the owner, from the
+test drive's phone frame). The door now draws them at 48 with their coloured rings on, in
+memory only: `saveDisplaySettings` is never called, so the device's own Counter Settings are
+as they were on its next load. field-takeoff.spec.js pins both halves.
+
 ## feat(learn): a finished takeoff behind the test drive's field door (FIELD-TAKEOFF, 2026-10-02)
 
 The test drive's field door (`/test/#<trade>/field`) opened a course chapter, so a guest met a

@@ -30,12 +30,34 @@
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const M101 = 0;
   const fmt = (n) => Math.round(n || 0).toLocaleString('en-US');
+  // The sidebar is a drawer behind ☰ on a narrow layout (styles.css max-width: 768px, the engine's own
+  // isNarrow): a card that sends the guest to the sidebar says to open it first there.
+  const narrow = () => { try { if (window.matchMedia('(max-width: 768px)').matches) return true; } catch (_) { /* older engines */ } const h = el('hamburger'); return !!h && h.getClientRects().length > 0 && getComputedStyle(h).display !== 'none'; };
 
   // ----- size: the main's first leg, 24x12 from the unit to the dining room wall -------------------------
   const LEG = () => H().G.main.slice(0, 6);   // the drop, the hall corner, the dining wall
   const CALLOUT = () => K().P(916, 318);       // beside the printed 24x12 at the drop: where a hand would point
+  // A demo circle is a finger wide on a tablet: 30 sheet points, twice the trade tours' 12 to 16 (the
+  // engine's own floor is 26 px on screen). Every on-sheet card here uses it.
+  const R = 30;
   const committedRuns = () => H().ductRuns(M101).map((r) => r.vertices || []);
-  const legDone = () => H().mainDone() || T().allDone(T().pathZones(H().pts(LEG()), 15, committedRuns()));
+  const legZones = (paths) => T().pathZones(H().pts(LEG()), R, paths);
+  // A visibly right trace counts even when a corner missed its circle: its feet within 10% of the leg's
+  // and its two ends within a circle of the leg's two ends (either way round). A guest must never look
+  // at a drawn duct beside "0 of 3 done".
+  function visiblyRight(verts) {
+    const v = verts || [];
+    if (v.length < 2) return false;
+    const ppu = (App.getPageScale(M101) || {}).pixelsPerUnit;
+    if (!(ppu > 0)) return false;
+    let pts = 0; for (let i = 1; i < v.length; i++) pts += Math.hypot(v[i].x - v[i - 1].x, v[i].y - v[i - 1].y);
+    const legFt = K().planFeet(LEG());
+    if (Math.abs(pts / ppu - legFt) > legFt * 0.1) return false;
+    const leg = H().pts(LEG()), a = leg[0], b = leg[leg.length - 1], near = (p, q) => Math.hypot(p.x - q.x, p.y - q.y) <= R;
+    const first = v[0], last = v[v.length - 1];
+    return (near(first, a) && near(last, b)) || (near(first, b) && near(last, a));
+  }
+  const legDone = () => H().mainDone() || T().allDone(legZones(committedRuns())) || committedRuns().some(visiblyRight);
   let sizeRead = null;   // { size, fromPlan } as the Duct dialog showed it
   function readDuctDialog() {
     if (!K().modalUp('ductCreateModal')) return;
@@ -62,7 +84,7 @@
   function finishLegWhenTraced() {
     const d = S().drawingDuct;
     if (finishing || !d || !(d.vertices || []).length) return;
-    if (!T().allDone(T().pathZones(H().pts(LEG()), 15, [d.vertices]))) return;
+    if (!T().allDone(legZones([d.vertices])) && !visiblyRight(d.vertices)) return;
     finishing = true;
     setTimeout(() => { finishing = false; if (S().drawingDuct && el('finishDuctRunBtn')) el('finishDuctRunBtn').click(); }, 250);
   }
@@ -185,7 +207,7 @@
     // decision 3: the one card before the first moment of the session
     orientation: {
       id: 'welcome', title: 'A restaurant\'s air, in a few clicks',
-      body: (clicks) => 'This is a plan of a small restaurant\'s air, and the lists on the left keep its totals.\nAbout ' + clicks + ' clicks are coming, one per card, and nothing here touches your own work.',
+      body: (clicks, layout) => 'This is a plan of a small restaurant\'s air, and ' + (layout && layout.narrow ? 'the ☰ menu keeps' : 'the lists on the left keep') + ' its totals.\nAbout ' + clicks + ' clicks are coming, one per card, and nothing here touches your own work.',
     },
     moments: [
       {
@@ -203,7 +225,7 @@
             body: 'Click the three circles, starting at the unit on the right.',
             answer: tracePayoff,
             onEnter: () => { armDuct(); },
-            zones: () => H().traceZones(H().pts(LEG()), M101),
+            zones: () => { const d = S().drawingDuct, zs = legZones(committedRuns().concat(d && d.vertices ? [d.vertices] : [])); if (legDone()) zs.forEach((z) => { z.done = true; }); return zs; },
             target: ['#annCanvas'],
             check: () => { finishLegWhenTraced(); return legDone(); },
             action: { label: 'Trace it', run: traceLegForMe } },
@@ -214,7 +236,7 @@
         seed: seedDuct,
         steps: [
           { id: 'schedule', title: 'Pounds of sheet metal, in one number', kind: 'do',
-            body: 'Under DUCT in the sidebar, click [[Schedule]].',
+            body: () => (narrow() ? 'Tap ☰, then under DUCT tap [[Schedule]].' : 'Under DUCT in the sidebar, click [[Schedule]].'),
             answer: () => 'That is ' + fmt(schedule().bidWeightLb) + ' pounds of sheet metal. Shops price duct by the pound.',
             target: ['#ductScheduleBtn', '#ductSectionTitle'],
             check: () => K().modalUp('ductScheduleModal'),
@@ -244,9 +266,9 @@
             body: 'Click the eight circles in the dining room.',
             answer: () => { const b = diningBalance() || {}; return 'DINING gets ' + fmt(b.servedCfm) + ' of its ' + fmt(b.targetCfm) + ' CFM now. The warning went out by itself.'; },
             onEnter: armSd1, quiet: ['#roomsSection'],
-            zones: () => H().circlesOn(M101, sd1(), SD1_DINING()),
+            zones: () => H().circlesOn(M101, sd1(), SD1_DINING(), R),
             target: ['#annCanvas'],
-            check: () => T().allDone(H().circlesOn(M101, sd1(), SD1_DINING())),
+            check: () => T().allDone(H().circlesOn(M101, sd1(), SD1_DINING(), R)),
             action: { label: 'Count them', run: () => { K().goPage(M101); App.pushUndoSnapshotCurrentPage(); K().markMissing(H().pickTag('SD-1'), SD1_DINING(), M101); K().dirty(); } } },
         ],
       },
@@ -255,7 +277,7 @@
         seed: seedWholeSet,
         steps: [
           { id: 'open', title: 'It catches the mistake in the plans', kind: 'do',
-            body: 'Click BID CHECK in the sidebar to open it.',
+            body: () => (narrow() ? 'Tap ☰, then tap BID CHECK to open it.' : 'Click BID CHECK in the sidebar to open it.'),
             answer: () => 'RTU-1 sends ' + fmt(designed()) + ' CFM and can give ' + fmt(capacity()) + '. The ✓ says the unit is big enough.',
             onEnter: () => T().foldBidCheck(),
             target: () => T().bidCheckRows('demo:hvac:mistake', ['duct-systems-capacity']), lightAll: true,
@@ -274,20 +296,20 @@
         seed: seedWholeSet,
         steps: [
           { id: 'check', title: 'Check it, sign it, hand it off', kind: 'do',
-            body: 'Click BID CHECK in the sidebar to open it.',
+            body: () => (narrow() ? 'Tap ☰, then tap BID CHECK to open it.' : 'Click BID CHECK in the sidebar to open it.'),
             answer: () => okRows() + ' rows checked themselves. The rest wait for you to sign.',
             onEnter: () => T().foldBidCheck(),
             target: () => T().bidCheckRows('demo:hvac:handoff'), lightAll: true,
             check: bidOpen,
             action: { label: 'Open it', run: () => K().openBidCheck() } },
           { id: 'sign', title: 'Sign what you checked', kind: 'do',
-            body: 'Click the row that reads Scale verified on every counted sheet.',
+            body: () => (narrow() ? 'Tap ☰ if the sidebar is shut, then tap the row Scale verified on every counted sheet.' : 'Click the row that reads Scale verified on every counted sheet.'),
             answer: 'Signed. That tick goes out with the bid.',
             target: ['#bidCheckList [data-row-id="scale-verified"]', '#bidCheckSectionTitle'],
             check: () => H().manual('scale-verified'),
             action: { label: 'Sign it', run: () => K().tickManual('scale-verified') } },
           { id: 'report', title: 'Hand it off', kind: 'do',
-            body: 'Click [[Show Report]].',
+            body: () => (narrow() ? 'Tap ☰, then near the bottom tap [[Show Report]].' : 'Under EXPORT OPTIONS in the sidebar, click [[Show Report]].'),
             answer: 'Pick This sheet or Every sheet, and the report your customer reads opens. The whole HVAC course is in [[Learn]].',
             onEnter: () => { reportAsked.on = false; },
             target: ['#showReportMenu', '#printReport', '#exportOptionsSectionTitle'],

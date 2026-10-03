@@ -43,13 +43,26 @@ script per trade on the tour engine, every card one action and one sentence of w
   whose card points at [[Learn]] once. Every number on a card is read live. Every seed and reader is
   the HVAC course's, published as `App.courseHvacKit` (its `layEverything` is synchronous now, so a
   seed lays it whole; the course is otherwise unchanged).
+- **From the coordinator's hand walk at tablet and phone widths** (same PR): the sheet JUMPS onto a demo
+  card's circles instead of gliding for 2.6 s under the guest's first tap (a step's new `jump` flag,
+  one line in features/tutorial.js `glideView`, set on every demo card; no tour sets it); demo circles
+  are 30 sheet points, twice the trade tours' 12 to 16; a trace that is visibly right counts and is
+  finished for the guest even when a corner missed its circle (feet within 10% of the leg's, both ends
+  within a circle); a card that sends the guest to the sidebar says "Tap ☰, then…" on a narrow layout
+  (the stylesheet's 768 px), and the drawer's two button grids recede with the header's tools; Trim
+  your set is never painted while a demo's set comes in (`body.demo-opening`) and its Open is pressed
+  once it has stood a second, never per tick (a press per tick ran the async commit over itself); the
+  orientation card waits until the sheet is PAINTED (pixels on #pdfCanvas, not just pages built) before
+  it says "This is a plan", and says "the ☰ menu keeps its totals" where the sidebar is a drawer.
 - **Tooling**: teaching-labels.test.js finds `demo-*` files; check-lesson-rules.js reads both demo
   files; score-courses.js scores `demo-hvac` card by card with an empty first-use table (a demo card
   needs no glossed word; grade 1.8, no sentence over 25 words).
 - **demo-hvac.spec.js**: every moment walked through `App.tutorialDoStep()` on real state, the
-  orientation first and once a session, the quiet UI on and off, a dimmed tool still arming, a
-  guest's own three clicks tracing the leg, both doors, and the clock: goto to the first payoff card,
-  printed, under 60 s (about 5 s headless).
+  orientation first and once a session (and only over a painted sheet), the quiet UI on and off, a
+  dimmed tool still arming, the trace card's circles held still for 1.5 s with `navigator.webdriver`
+  read as false (as a browser, so a glide would show), a guest's own three clicks tracing the leg, a
+  missed corner still counting, the ☰ wording and Trim your set never painted at 390 px, both doors,
+  and the clock: goto to the first payoff card, printed, under 60 s (about 4 s headless).
 
 ## feat(roles): Lead, a role under admin and over user (LEAD-ROLE, 2026-10-02)
 

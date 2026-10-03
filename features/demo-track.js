@@ -65,6 +65,9 @@
   function openRun(run) {
     if (K().isSeeded(run)) return Promise.resolve();
     if (opening) return opening;
+    // Trim your set means nothing to a guest: while the demo's own set comes in, the dialog is never
+    // painted (styles.css body.demo-opening), and its Open is pressed for them.
+    document.body.classList.add('demo-opening');
     opening = (async () => {
       try { await K().openSheetsFor(run); } catch (_) { /* the card's button stays for a second try */ }
       // Trim your set can come up after openSheetsFor's own Open (its pages still building), and a
@@ -72,28 +75,55 @@
       // After 3 s, only while the set is on its way in: a guest who kept their own plan at Close
       // project's question gets the card's button back at once, not after a 30 s wait.
       const coming = () => S().currentProjectName === run.set.name || K().modalUp('preparePdfModal');
+      // Its Open commits asynchronously, so it is pressed again only once the dialog has stayed up a
+      // full second since the last press (a press per tick ran the commit over itself); hidden by the
+      // class above, it is never seen either way.
+      let upSince = 0;
       for (let i = 0; i < 300 && live && !K().isSeeded(run) && (i < 30 || coming()); i++) {
-        if (i % 10 === 9 && K().modalUp('preparePdfModal') && el('preparePdfDone')) el('preparePdfDone').click();
+        if (!K().modalUp('preparePdfModal')) upSince = 0;
+        else if (!upSince) upSince = Date.now();
+        else if (Date.now() - upSince >= 1000 && el('preparePdfDone')) { el('preparePdfDone').click(); upSince = Date.now(); }
         K().seedIfReady(run);
         await wait(100);
       }
-    })().finally(() => { opening = null; });
+    })().finally(() => { opening = null; document.body.classList.remove('demo-opening'); });
     return opening;
   }
   // The first card of a run: the orientation, or (already oriented this session) a card that only
   // waits for the sheets and moves on by itself. Both open the sheets on start, unasked: the guest
   // came for the demo. Over the guest's own plan the lessons' door asks first (Close project).
+  // The sheet is PAINTED: the raster has landed on #pdfCanvas, not just the pages built. The orientation
+  // says "this is a plan", so it waited over a black canvas for 8 s at the tablet width until this
+  // (the coordinator's hand walk, 2026-10-02). A few pixels sampled; once true it stays true for the run.
+  let paintedFor = null;
+  function sheetPainted(run) {
+    if (paintedFor === run.id) return true;
+    const c = el('pdfCanvas');
+    if (!c || !(c.width > 0) || !(c.height > 0)) return false;
+    try {
+      const probe = document.createElement('canvas'); probe.width = 8; probe.height = 8;
+      const p = probe.getContext('2d'); p.drawImage(c, 0, 0, 8, 8);
+      const d = p.getImageData(0, 0, 8, 8).data;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 0 && d[i] + d[i + 1] + d[i + 2] > 384) { paintedFor = run.id; return true; }
+    } catch (_) { paintedFor = run.id; return true; }   // nothing to sample with: the pages being built is the best signal
+    return false;
+  }
+  // Wide, the sidebar is on screen; narrow (the engine's own 768 px, the stylesheet's drawer), behind ☰.
+  const narrow = () => { try { return window.matchMedia('(max-width: 768px)').matches; } catch (_) { return false; } };
+  const OPENING = 'The sample plan is opening.';
   function openCard(demo, run, withOrientation, clicks) {
     const o = demo.orientation;
+    const ready = () => K().isSeeded(run) && sheetPainted(run);
     return {
       id: withOrientation ? o.id : 'open',
       title: withOrientation ? o.title : run.title,
       kind: 'do', handsOff: true,
-      hold: withOrientation,   // the orientation is read: it waits for Next once the sheets are in
-      body: withOrientation ? (typeof o.body === 'function' ? () => o.body(clicks) : o.body) : 'The sample plan is opening.',
+      hold: withOrientation,   // the orientation is read: it waits for Next once the sheet is painted
+      // the orientation's words point at the plan, so they wait for it; the body is told the layout
+      body: () => (withOrientation && ready() ? o.body(clicks, { narrow: narrow() }) : OPENING),
       target: ['#preparePdfDone'],
-      check: () => { K().seedIfReady(run); return K().isSeeded(run); },
-      progress: () => (opening ? 'Opening the sample plan…' : ''),
+      check: () => { K().seedIfReady(run); return ready(); },
+      progress: () => (opening || (K().isSeeded(run) && !sheetPainted(run)) ? 'Opening the sample plan…' : ''),
       action: { label: 'Open the sample plan', run: () => openRun(run), show: () => !opening },
     };
   }
@@ -107,7 +137,9 @@
   }
   // Decision 2: every doing card the guest could do by hand also offers to do it.
   function demoCard(card) {
-    const c = Object.assign({}, card);
+    // `jump`: the sheet jumps onto a card's circles rather than gliding for 2.6 s, so a guest who taps
+    // the moment they appear never taps a moving target (the coordinator's hand walk, 2026-10-02)
+    const c = Object.assign({ jump: true }, card);
     if (c.kind === 'do' && c.action && !c.handsOff && !c.alt) c.alt = { label: DO_IT, run: c.action.run };
     return c;
   }
@@ -115,8 +147,8 @@
 
   // ----- decision 4: the quiet UI --------------------------------------------------------------------
   // A sidebar section is named by its heading in capitals (the cards' own convention, which the engine
-  // also lights), by a target or pointer that sits in it, or by a control chip naming a button in it; a header tool by a
-  // target that is it, or a control chip that is its name.
+  // also lights), by a target or pointer that sits in it, or by a control chip naming a button in it; a header tool
+  // (or one of the drawer's tool buttons) by a target that is it, or a control chip that is its name.
   const SECTIONS = { 'PAGES': 'pagesSection', 'COUNTERS': 'countersSection', 'LINE TYPES': 'lineTypesSection', 'GROUPS': 'groupsSection', 'DUCT': 'ductSection', 'BID CHECK': 'bidCheckSection', 'ROOMS': 'roomsSection', 'SUMMARY': 'summarySection', 'EXPORT OPTIONS': null };
   const sectionEl = (name) => (SECTIONS[name] ? el(SECTIONS[name]) : (el('exportOptionsSectionTitle') || {}).parentElement || null);
   const textOf = (v) => { try { return String((typeof v === 'function' ? v() : v) || ''); } catch (_) { return ''; } };
@@ -142,7 +174,8 @@
       const holds = n.els.some((e) => sec.contains(e)) || (n.chips.length && [...sec.querySelectorAll('button')].some((b) => nameOf(b).some((l) => n.chips.includes(l))));
       sec.classList.toggle('demo-quiet-fold', !(said || holds));
     });
-    document.querySelectorAll('.header-tools-scroll .sidebar-triggers').forEach((btn) => {
+    // the header's tools, and on a narrow layout the drawer's two button grids that lead the sidebar
+    document.querySelectorAll('.header-tools-scroll .sidebar-triggers, .sidebar-header-buttons .sidebar-btn, .sidebar-tool-buttons .sidebar-btn').forEach((btn) => {
       if (btn.id === 'headerMoreBtn' || btn.id === 'doneEditing') return;   // the way to a tool behind ⋯, and a mode's own exit
       const named = n.els.some((e) => e === btn || btn.contains(e)) || nameOf(btn).some((l) => n.chips.includes(l));
       btn.classList.toggle('demo-quiet-dim', !named);
@@ -156,7 +189,7 @@
   const quietNow = () => { if (live) applyQuiet(live.steps[live.idx]); };
 
   // ----- registering a demo --------------------------------------------------------------------------
-  //   App.registerDemo({ trade, set, orientation: { id, title, body(clicks) }, moments: [{ id, title, page, seed, steps }] })
+  //   App.registerDemo({ trade, set, orientation: { id, title, body(clicks, { narrow }) }, moments: [{ id, title, page, seed, steps }] })
   function registerDemo(demo) {
     DEMOS[demo.trade] = demo;
     const all = 'demo:' + demo.trade;
@@ -186,6 +219,7 @@
         onStep(id, idx) { if (live) { live.idx = idx; quietNow(); } },
         onStop() {
           if (live && live.timer) clearInterval(live.timer);
+          document.body.classList.remove('demo-opening');
           live = null;
           clearQuiet();
           K().restoreDevice();

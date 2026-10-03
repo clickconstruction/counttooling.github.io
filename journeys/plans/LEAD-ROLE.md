@@ -38,7 +38,7 @@ simply stops honouring a lock whose `checked_out_at` is older than 30 minutes
 (`check_out_project` takes it, the UPDATE policy refuses the old holder, `can_edit` and
 `can_check_out` are computed with the same window;
 `supabase/migrations/20260305030845_inactivity_checkout.sql`,
-`20260927030000_get_project_permissions.sql`). So the row keeps the LAST holder's name and
+`20260927194936_get_project_permissions.sql`). So the row keeps the LAST holder's name and
 stamp forever, which is harmless as long as the client treats an old stamp as "free".
 
 The client does not. Every surface that names the holder renders `checked_out_email`
@@ -173,3 +173,8 @@ FEATURES.md one line.
 STALE-LOCK first (small, and it is the bug Wendi reported), then LEAD-ROLE's migration,
 then its client pass, then the owner change as its own PR (it is the one piece with a
 storage move in it).
+
+**STALE-LOCK landed 2026-10-02** (CHANGELOG "fix(checkout): an expired lock reads as
+Available"): the predicate, the five surfaces, the sweep migration, the node test and
+stale-lock.spec.js, as planned above. The holder's words live in features/turn-in.js
+(`App.isCheckoutLockLive`, `App.checkoutHolderText`).

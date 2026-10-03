@@ -156,7 +156,8 @@
         if (lastLocalBackupAt) canvasTitle += '\nLocal: ' + App.formatSaveTime(lastLocalBackupAt);
         if (dotEl) { dotEl.className = 'dot dot-yellow'; dotEl.title = canvasTitle; }
         if (canvasLabelEl) canvasLabelEl.textContent = 'Canvas Viewing (read-only)';
-        base = state.checkedOutEmail ? ('Viewing, ' + (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing') : 'Viewing, Available (check out to edit)';
+        // STALE-LOCK: an expired lock's holder reads "Available · last edited by…", never "is editing".
+        base = state.checkedOutEmail ? ('Viewing, ' + App.checkoutHolderText(state.checkedOutEmail, state.checkedOutAt)) : 'Viewing, Available (check out to edit)';
       } else {
         let canvasTitle = 'Canvas sync: Project not saved to cloud';
         if (state.lastSavedAt) canvasTitle += '\nCloud: ' + App.formatSaveTime(state.lastSavedAt);

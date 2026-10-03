@@ -67,7 +67,9 @@
             ? [p.counter_count != null ? p.counter_count + (p.counter_count === 1 ? ' counter' : ' counters') : null, p.line_count != null ? p.line_count + (p.line_count === 1 ? ' line' : ' lines') : null].filter(Boolean).join(' · ')
             : '';
           if (countStr) metaLine2Parts.push(countStr);
-          if (p.checked_out_email) metaLine2Parts.push('Checked out by ' + esc(p.checked_out_email) + (App.twinBadgeHtml ? App.twinBadgeHtml(p.checked_out_email) : ''));
+          // STALE-LOCK: an expired lock is named as expired; the force below still clears it.
+          if (p.checked_out_email && App.isCheckoutLockLive(p.checked_out_at)) metaLine2Parts.push('Checked out by ' + esc(p.checked_out_email) + (App.twinBadgeHtml ? App.twinBadgeHtml(p.checked_out_email) : ''));
+          else if (p.checked_out_email) metaLine2Parts.push('Lock expired · last held by ' + esc(p.checked_out_email) + (App.twinBadgeHtml ? App.twinBadgeHtml(p.checked_out_email) : ''));
           const metaLine2 = metaLine2Parts.join(' · ');
           const canvasOnlyBadge = !p.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
           const showForceCheckIn = state.isAdmin && (p.checked_out_by || p.checked_out_email);

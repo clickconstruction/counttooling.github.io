@@ -141,7 +141,7 @@
     if (v.wsfu != null) counter.wsfu = v.wsfu;
     if (v.wsfu != null && v.occupancy) counter.wsfuOccupancy = v.occupancy;
     // WATER-PLAN §8: wsfu_prefill, accepted or overwritten (on for everyone since the
-    // allowlist migration 20260923190000 reached prod, 2026-09-27).
+    // allowlist migration 20260927194932 reached prod, 2026-09-27).
     const f = forms[key];
     const read = f && WM() ? WM().wsfuPrefillFor(f.name(), v.occupancy || projectOccupancy()) : null;
     if (read && App.logUserEvent) {

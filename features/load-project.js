@@ -165,10 +165,15 @@
     const countsBadge = (proj.counter_count != null || proj.line_count != null) && (proj.counter_count > 0 || proj.line_count > 0)
       ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">' + [proj.counter_count > 0 ? (proj.counter_count + ' cnt') : null, proj.line_count > 0 ? (proj.line_count + ' ln') : null].filter(Boolean).join(' · ') + '</span>'
       : '';
+    // STALE-LOCK: "Available" before "Locked by" (the row keeps its last holder
+    // after the lock expires, and this order once read the owner's own free
+    // project as locked), and a holder is named as locked only while the lock
+    // is honoured; an expired one is "Available · last edited by…".
     let lockBadge = '';
     if (proj.can_edit) lockBadge = ' <span class="badge" style="background:var(--green);color:var(--bg);font-size:11px;">You\'re editing</span>';
-    else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>' + (App.twinBadgeHtml ? App.twinBadgeHtml(proj.checked_out_email) : '');
     else if (proj.can_check_out) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Available</span>';
+    else if (proj.checked_out_email && App.isCheckoutLockLive(proj.checked_out_at)) lockBadge = ' <span class="badge" style="background:var(--yellow);color:var(--bg);font-size:11px;">Locked by ' + esc(proj.checked_out_email) + '</span>' + (App.twinBadgeHtml ? App.twinBadgeHtml(proj.checked_out_email) : '');
+    else if (proj.checked_out_email) lockBadge = ' <span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">' + esc(App.checkoutHolderText(proj.checked_out_email, proj.checked_out_at)) + '</span>';
     const ownerBadge = proj.is_owner ? '' : ' <span class="badge" style="background:var(--blue);color:var(--bg);font-size:11px;">Shared</span>';
     let reviewBadge = '';
     if (proj.review_status === 'ready') reviewBadge = ' <span class="badge" style="background:var(--accent);color:var(--bg);font-size:11px;">Ready for review</span>';

@@ -391,7 +391,7 @@
   Auth, the `projects` table (`pdf_path`, `pdf_hash`, `size_bytes`), the `pdfs`
   storage bucket, several RPCs (the permissions refresh asks `get_project_permissions`,
   one project's checkout row without its takeoff,
-  `supabase/migrations/20260927030000_get_project_permissions.sql`, on prod since
+  `supabase/migrations/20260927194936_get_project_permissions.sql`, on prod since
   2026-09-27; save-engine.js still falls back to `list_accessible_projects` on a PGRST202
   until that fallback is deleted, PUNCHLIST MAP-PERMS), and Edge Functions (`admin-create-user`,
   `admin-delete-user` (optional `reassignToUserId`), `admin-reassign-projects`,
@@ -772,7 +772,15 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   `sb-request-id` lives server-side and is not browser-readable (CORS), so it is
   absent from the client events.
 - Sharing uses checkout/turn-in (one editor at a time, 30-minute inactivity expiry
-  with keep-alive). Admins can force turn-in (Manage Projects; on the project open
+  with keep-alive). The expiry is LAZY on the server (the RPCs and policies stop
+  honouring a lock older than `CHECKOUT_INACTIVITY_MS`; the row keeps its last holder's
+  name and stamp), so a surface that names the holder asks `App.isCheckoutLockLive(at)`
+  / `App.checkoutHolderText(email, at)` (features/turn-in.js, over save-utils.js's pure
+  `checkoutLockIsLive`) and an expired lock reads "Available · last edited by …", never
+  "is editing" (STALE-LOCK, 2026-10-02). The backstop is the pg_cron job
+  `sweep-expired-checkouts` (every 15 minutes, `sweep_expired_checkouts()`), which nulls
+  locks older than the same 30 minutes; the holder's own tab classifies that UPDATE as
+  expiry, not a force. Admins can force turn-in (Manage Projects; on the project open
   and checked out in their own tab that row offers the normal Turn in instead,
   `App.tryTurnIn`, R1-ADMIN). Expiry surfaces a recovery modal with
   silent auto-recheckout under it. Symbols: `doTurnIn`,

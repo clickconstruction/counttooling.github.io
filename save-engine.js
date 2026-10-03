@@ -871,7 +871,7 @@ function createSaveEngine(ctx) {
   // get_project_permissions returns the one row refreshProjectPermissions
   // reads (can_edit, can_check_out, checked_out_*), where the list returned
   // every visible project WITH its whole takeoff (`data`). Its migration
-  // (supabase/migrations/20260927030000_get_project_permissions.sql) is on
+  // (supabase/migrations/20260927194936_get_project_permissions.sql) is on
   // prod since 2026-09-27. Where the function is missing, PostgREST answers
   // PGRST202 (function not in the schema cache): the read falls back to
   // list_accessible_projects in the same refresh and latches, so the missing

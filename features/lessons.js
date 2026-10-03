@@ -1212,6 +1212,11 @@
       await layAll();
       S().tool = App.TOOL.NONE;
       S().currentPage = whole.page || 0;
+      // Counts big enough to read on a phone, ringed in their colour (the marker is a fixed size on
+      // screen: 22 is a speck beside the plan's own symbols). In memory only, never saveDisplaySettings:
+      // this device's own Counter Settings are as they were on the next load.
+      const cs = S().counterSettings || {};
+      S().counterSettings = Object.assign({}, cs, { size: Math.max(cs.size || 0, 48), showRings: true });
       App.clearUndoStacks();
       dirty();
       App.fitZoom();

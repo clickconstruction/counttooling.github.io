@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(demo): the electrical demo (DEMO-TRACK phase 2, 2026-10-02)
+
+The electrical half of [the demo track](journeys/plans/DEMO-TRACK.md), built in the HVAC demo's shape
+on its engine, which this change does not touch. Five moments on the electrical set, the test page's
+five (`TRADES.electrical.moments`), two or three cards each, one action and one sentence of what it was
+worth, every number read live.
+
+- **features/demo-electrical.js**. `gfci`: E-101's ten drawn GFCIs counted, the guest clicks the
+  kitchen outlet drawn plain ("That makes 11 GFCI outlets, not 10. This sample plan leaves one plain on
+  purpose, and the code wants every kitchen outlet protected."), then clicks it again with Note armed
+  and the demo writes the RFI and presses Done ("Caught before you bid, the people who drew it pay for
+  it."). **That miss is the sample set's, staged**: scripts/sample-electrical.js draws it plain for the
+  course's chapter 2, the app has no GFCI detector, and the card says so. `wire`: Chain opened with
+  Duplex and the course's 0.75in EMT already picked, then four circles down the dining west wall
+  ("That is 60.5 feet of conduit, the drops down to each box included. It holds 182 feet of #12 wire,
+  and nobody typed a foot."). `circuit`: the homerun to LP-1 in four circles, then Bid Check's
+  voltage-drop row warning at the app's 12 A ("loses 5.7% of its voltage, over the 3% the code advises.
+  The app names the fix, #8 wire."), and a handsOff Use 6 amps, the panel schedule's load, turning it ✓.
+  `fill`: the feeder in two circles, then its fill ("Those wires fill 33.4% of the conduit, and the
+  code allows 40%."). `handoff`: the course's finished takeoff, Bid Check, a signed row, Show Report,
+  and [[Learn]] once. Orientation: "A restaurant's wiring, in a few clicks".
+- **What phase 1's hand walk taught, kept**: `jump` on every card (the engine's default), 30-point
+  circles, a visibly right trace counting (feet within 10%, both ends in their circles) with Finish
+  pressed for the guest, the Chain panel closed off the circles while the tool stays armed, the ☰
+  wording on a narrow layout, and the app's toasts muted while it runs.
+- **features/course-electrical.js** publishes `App.courseElectricalKit` at its foot (the set, the
+  geometry `G`, the readers, `pick`, `scaleE101`, `chainWestWall`, `circuitOne`, `makeHomerun`,
+  `makeFeeder`, `layEverything` and the rest); the course is otherwise unchanged.
+- **Tooling**: teaching-labels.test.js, check-lesson-rules.js and score-courses.js read the file
+  (entry `demo-electrical`, an empty first-use table; grade 2.4, no sentence over 25 words).
+- **demo-electrical.spec.js**: every moment walked by `App.tutorialDoStep()` on real state; both
+  doors and the orientation once a session; as a browser (`navigator.webdriver` false) the GFCI
+  circle held still for 1.5 s and the guest's own clicks counting and flagging it, four clicks chaining
+  the wall, a homerun whose corner missed its circle still counting, two clicks tracing the feeder and
+  no toast after it; at 390 px the ☰ wording and Trim your set never painted; and the clock, goto to
+  the first payoff card under 60 s (about 3.5 s headless).
+
 ## feat(demo): the demo track, its engine and the HVAC demo (DEMO-TRACK phase 1, 2026-10-02)
 
 Todd, after playing the test drive: its "Try it" opened course chapters, twelve minutes written for

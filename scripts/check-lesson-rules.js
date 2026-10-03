@@ -50,7 +50,7 @@ const ROOT = path.join(__dirname, '..');
 const SOURCES = [
   'features/tutorial.js', 'features/tour-blank.js', 'features/lessons.js',
   'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js',
-  'features/demo-track.js', 'features/demo-hvac.js',   // the demo track (DEMO-TRACK): a demo card that states a rule's number names it too
+  'features/demo-track.js', 'features/demo-hvac.js', 'features/demo-electrical.js',   // the demo track (DEMO-TRACK): a demo card that states a rule's number names it too
 ];
 const TEXT_KEYS = ['body', 'answer', 'reveal', 'hint', 'progress'];
 

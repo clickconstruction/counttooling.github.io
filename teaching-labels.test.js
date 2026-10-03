@@ -48,7 +48,7 @@ function actionLabels(src) {
 test('the teaching files are found by pattern, the tours and courses among them', () => {
   const found = tourSources();
   // a floor, so a finder that matches nothing cannot pass the two checks below vacuously
-  ['features/tutorial.js', 'features/lessons.js', 'features/tour-blank.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js', 'features/demo-track.js', 'features/demo-hvac.js']
+  ['features/tutorial.js', 'features/lessons.js', 'features/tour-blank.js', 'features/course-plumbing.js', 'features/course-electrical.js', 'features/course-hvac.js', 'features/demo-track.js', 'features/demo-hvac.js', 'features/demo-electrical.js']
     .forEach((f) => assert.ok(found.includes(f), f + ' is a teaching file'));
   fs.readdirSync(path.join(ROOT, 'features')).filter((f) => f.endsWith('.js') && read('features/' + f).includes('App.registerTour('))
     .forEach((f) => assert.ok(found.includes('features/' + f), f + ' registers a tour, so its labels are checked'));

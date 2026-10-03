@@ -125,10 +125,12 @@ way the courses' compare cards do, so it cannot drift from the sheet.
 
 ## Open after phase 2
 
-- The opening card offers "Open the sample plan" beside "Opening the sample plan…" while the
-  open is in flight (openRun's loop ends after 3 s if the set's name is not up yet; the card's
-  check then seeds it). Guarded against a double open, but the button should not show mid-open.
-  A cold first load of a four-sheet set took 15 to 30 s on a worktree server; the live site's
-  service worker caches the set after the first visit, so a demo laptop opens each trade once.
+- The opening card offering "Open the sample plan" beside "Opening the sample plan…" mid-open:
+  LANDED 2026-10-02 (CHANGELOG "the opening card never offers its button mid-open"). openRun now
+  holds the open from the press until the run is seeded (the file heard arriving at `#pdfInput`,
+  a 45 s ceiling), and gives the button back at once when the guest kept their own plan or the
+  fetch failed, the card's line saying the plan did not open. A cold first load of a four-sheet
+  set took 15 to 30 s on a worktree server; the live site's service worker caches the set after
+  the first visit, so a demo laptop opens each trade once.
 - A real tablet and phone walk with a stopwatch, by a person: the orchestrator's walks were a
-  mouse in a 651 px pane. PUNCHLIST DEMO-TRACK stays open for that and the item above.
+  mouse in a 651 px pane. PUNCHLIST DEMO-TRACK stays open for that.

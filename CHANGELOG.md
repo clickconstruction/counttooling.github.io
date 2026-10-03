@@ -13,6 +13,45 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(roles): Lead, a role under admin and over user (LEAD-ROLE, 2026-10-02)
+
+Will: Wendi (an estimator) should be able to take over projects, "a role less than admin
+but more than user, allowing her a few more clean-up tools". Overseer (2026-08-28) is
+read-only by design, a reviewer who must never touch a bid, so this is a fourth flag,
+`profiles.is_lead`. A lead sees every project (Load Project, Bid Board) and its PDF, checks
+out any project whose lock is free or expired, forces a live lock, adds and removes a
+project's shares, hands ONE bid to another estimator, and requests or gives a review. Never
+users, passwords, deletes, the global reload or others' activity; those stay admin.
+
+- **Migration** `20261002210000_lead_role.sql` (applied to prod 2026-10-02): the lead arm
+  beside the admin arm in every take-over right (`user_can_access_project`,
+  `check_out_project`, `force_check_in_project`, `can_check_out` / `my_access_role`
+  `'lead'` / WHERE in both `list_accessible_projects` and `get_project_permissions`, the
+  three share RPCs, `set_project_review_status`), the two see-everything policies, and two
+  new RPCs: `admin_set_lead` (the Manage Users toggle) and `reassign_project(project, to)`,
+  the per-project hand-off (the bulk `admin-reassign-projects` stays for retiring an
+  account): it moves the owner, renames the PDF under the new owner's storage folder,
+  re-owns the view links, keeps the old owner as an editor share, releases the old owner's
+  checkout and logs `project_reassigned`. `list_users_for_admin` gains `is_lead` and the
+  label `Admin > Lead > Overseer > User`; `admin-list-users` redeployed; `invite-to-project` (its
+  guard admits a lead; only Load Project's "Who has access" Add calls it) awaits its redeploy.
+- **Two predicates, not a third flag read.** `App.canOversee()` (admin, overseer, lead:
+  the every-project list, the owner filter, the Bid Board) and `App.canTakeOver()` (admin,
+  lead: the force button, Check Out on any project, "Who has access", Hand to…, review).
+  The `state.isAdmin` reads that meant "take over" switched to them; the ones that mean
+  "manage accounts" did not. `state.isLead` loads beside `isOverseer` at the five profile
+  reads and rides the save-logs envelope.
+- **Hand to…** (features/hand-off.js): a Project Settings button for a lead or admin, a
+  picker over `list_users_for_project_invite`, `reassign_project`, then the permissions
+  re-read and a toast naming both estimators.
+- **Manage Users** gets a lead toggle (a flag icon) beside the overseer eye. The force
+  notice reads "An admin or lead turned this project in"; Manage Projects' button is
+  "Force turn-in" (the "(admin)" went). Copy in the share and review RPC refusals names
+  the lead.
+- Pinned by lead-role.spec.js (the predicates and buttons follow the flag; Manage Users,
+  Manage Projects and the global reload stay admin-only; the Hand to… dialog's list, call,
+  refresh and toast; a refusal stays open and says why) and manage-projects.spec.js.
+
 ## fix(checkout): an expired lock reads as Available, never as "is editing" (STALE-LOCK, 2026-10-02)
 
 Wendi's Save Status export: the Lone Star Market bid read "grace@clickplumbing.com is

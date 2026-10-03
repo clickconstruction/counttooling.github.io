@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,074 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
-| [save-engine.js](save-engine.js) | 3,261 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
+| [app.js](app.js) | 7,092 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [save-engine.js](save-engine.js) | 3,263 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,410 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,835 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,843 | All CSS, token-organized. Leave. |
-| [features/load-project.js](features/load-project.js) | 747 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
+| [app/index.html](app/index.html) | 3,861 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,850 | All CSS, token-organized. Leave. |
+| [features/load-project.js](features/load-project.js) | 748 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 1,225 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 991 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (103 files) | 35,722 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (104 files) | 35,852 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -190,6 +190,7 @@ modules. Candidates in priority order:
 | [features/item-details.js](features/item-details.js) | Twenty-fifth feature-file split (`window.App` registry pilot #25) — the Counter / Line Type **details modal** (`#counterLineTypeDetailsModal`: rename, color, icon grid, per-page usage jump list, delete with `#deleteCounterLineTypeConfirmModal` confirm via the private `performDeleteCounterLineType`), the **Line Properties modal** (`#linePropertiesModal`: name/color/drops ±1/±10/clear + per-drop units, polyline vertex-edit entry). `deleteGroup` lived here until MAP-GHOST-DELETE moved it to [features/groups.js](features/groups.js); `performDeleteCounterLineType` now also purges the deleted type from every ghost (Typical) through `App.purgeFromEveryGhost`. The three modal-state flags (`counterLineTypeDetailsItem`, `pendingDeleteCounterLineType`, `pendingLineProperties`) move as private `let`s; the close/confirm bindings move from the zone & page-action handler block. Two core hooks: `hideModal('counterLineTypeDetailsModal')` resets the flag via the `App.onCounterLineTypeDetailsHidden` callback (Groups pattern), and the shared custom-icon upload handler reads the open item via the **feature-registered getter** `App.getCounterLineTypeDetailsItem()`. Registers `App.openCounterLineTypeDetailsModal`/`App.openLinePropertiesModal`/`App.closeLinePropertiesModal`. Two new publish-only deps `enterEditMode`/`countItemsInGroup` (the latter now read by groups.js `deleteGroup`); reuses `state`/`TOOL`/`showModal`/`hideModal`/`pushUndoSnapshot`/`markProjectDirty`/`updateUI`/`renderPdf`/`getOrderedIcons`/`getEffectiveCustomIcons`/`iconVbFor`/`getPageCanvases`/`makeAnnotations`/`showLineColorModal`/`getActiveAnnotations`/`getPageScale`/`fitZoom`. `showModal`/`hideModal` **stay** in app.js under the renamed marker `// SECTION: Modal primitives (showModal / hideModal)`; the external callers (sidebar edit pens, lines-list edit/dblclick, context-menu Line Properties, Escape branch) reach the modals via `App.*` S1: the per-counter **Mount height** field (`#counterLineTypeDetailsMount`, inches AFF; blur commits, blank deletes) beside CFM. D15: the `#counterLineTypeDetailsCfmOverrides` sublabel under CFM — "Placed marks with their own CFM: (override 250)" from `App.getCounterCfmOverrideText` when a placed marker's `cfmOverride` differs from the type's; hidden otherwise. |
 | [features/output.js](features/output.js) | Twenty-sixth feature-file split (`window.App` registry pilot #26) — the **output-actions cluster** (the "Output" features): **Copy to PipeTooling** (`#forPipeTooling` dropdown toggle + `doCopyPipeTooling` with the view-link footer + the by-unit Copied detail line `#pipeToolingCopiedDetail` via `setCopiedDetail` — counts / ft / px from report.js `summarizeToolingExport` + the prefetched export view-link cache `exportViewLinkUrl`/`exportViewLinkProjectId` + `canExportViewLink`/`prefetchExportViewLink`, gated by the **pre-export scale check** `collectUnscaledLinePages`/`runGatedCopy` + `#toolingScaleCheckModal` with its `pendingToolingExport` stash, the `App.onToolingScaleCheckHidden` hide callback, and the Tier-3 B3 Set-scale resume: `resumeToolingExport` + the interactive `#copyAgainModal` "Copy again" toast, fired via the `App.onScaleApplied` callback features/scale.js invokes on every scale commit), **Copy Summary** (`#copySummaryText` dropdown + `doCopyEmailSummary`), and **Download current page** (`downloadCurrentPageAsPdf` + `#downloadCurrentPageBtn` + its mode menu). B3 also: both copy buttons skip their scope drop-up at 1 page / 1 canvas (`isSingleScope`, the Download pattern), the two copy drop-ups anchor to their buttons (`right:auto`) and close each other (`closeScopeMenu`), and clipboard failures toast in plain words (`showCopyFailed`; B20 retired the alert). X7 (B20, 2026-09-14): `#copySummaryTextDropdown` sits with its export siblings, above `.sidebar-tooling-links`. R14 (2026-09-26): the click-away for the four report menus (Show Report, Copy to /Tooling, TakeoffTooling, Copy Summary) is one document listener here over `REPORT_MENUS` and `closeScopeMenu`; app.js's click-away keeps the context, canvas, export and download menus. BUNDLE-ONE-SHEET (2026-09-27): the sidebar `#bundleHighlights` / `#bundleNotes` buttons moved here from app.js, bound beside `syncOutputMenus` (which shows or hides them) to `App.openBundlePdf(kind)` (`'highlights' | 'notes'`: jsPDF check with the 'Highlight Pages (PDF) requires jsPDF' / 'Note Pages (PDF) requires jsPDF' toast, then `App.addHighlightsToPdf` / `App.addNotesToPdf(null, …)` at scale 4 opened in a new tab). Otherwise no entry points registered — the bindings move with their DOM elements, so the mobile burger menu's dispatched clicks keep working untouched; the registrations are the `App.onViewLinkRevoked()` callback (the Share modal's revoke clears the private cache through it), `App.onScaleApplied`, and — D5 — `App.runGatedCopy` (the shared T1-05 gate, generalized with an optional `collectFlagged` collector so the Duct Schedule copy flags unscaled DUCT runs instead of line types; the collector rides the pending/resume stashes so Export-anyway and Copy-again re-walk the same rule; D9: on the pipe-tooling / takeoff-tooling surfaces `doCopy` is wrapped in `App.runBidGate` — the Bid Check "Review · Export anyway" toast, features/bid-check.js since R13 — so the scale gate's Export-anyway and Copy-again run it too). Two new publish-only deps `SUPABASE_ENABLED`/`getOrCreateViewLinkUrl` (the view-link minting **stays** in app.js — the header Share button uses it too — under the renamed marker `// SECTION: View-link URL helpers & show-highlights/notes`); reuses `state`/`getSupabase()`/`showToast`/`showModal`/`hideModal`/`sanitizeForFilename`/`ensureActiveCanvas`/`getPageCanvases`/`renderAnnotationsToContext`/`makeAnnotations`/`logUserEvent` + the `window.*` report fns. The `downloadProjectPdf`/`downloadPdfBuffer` helpers and the header export/report dropdowns stay in app.js (markers renamed `// SECTION: PDF download helpers` and `// SECTION: Export & report dropdown menus`) D25 (X6 option D): **layer-aware copy.** The "Every sheet (visible layers)" scope is retired — it copied the ACTIVE layer per page and ignored the show-all peek (J11: 11 on screen, 6 copied). The copy menus (Copy to /Tooling, TakeoffTooling, Copy Summary) offer **This sheet / Everything**, plus a **layer picker** (`.copy-layer-picker`, one per menu) rendered on open and shown only when a page in scope has 2+ layers, pre-checked to what is on screen at copy time — each page's active layer (checked + locked: the peek's own "active always implied" rule) plus its peek set. Layers are picked by NAME across the pages in scope; the locked row means each page's active layer only, never a non-active twin that shares its name. A hover over This sheet / Everything re-renders the picker for that scope carrying ticks over by name; the open forces a fresh render from the screen. `layersFor` computes the same default when a copy fires without the menu ever rendering (a spec, a keyboard route). **2026-09-14 (Will: "everything be every layer on every page"):** Everything is every layer on every sheet again, whatever is on screen — its option runs `window.getMergedAnnotationsForPage`, `layersFor('all')` is null, the picker renders every layer ticked + locked under an "Every layer" title, and `scope.everyLayer` (`everyLayerFlag`) puts `every layer` in the paste header on layered projects (single-layer projects keep the bare `every sheet`). This sheet keeps the on-screen default and the pickable rows, and its ticks survive a hover across Everything (`dataset.sheetTicks`). An estimator's /Tooling paste was missing marks on a hidden layer; the on-screen default for Everything was the cause. The picked names ride `runGatedCopy` → the copy functions (a 4th arg, through the bid-gate wrapper) → `opts.scope = { mode, layers }` for report.js's paste header; telemetry `copy_summary` carries `mode` + `layers: n`. Regression: [copy-layers.spec.js](copy-layers.spec.js); [output.spec.js](output.spec.js) re-pinned (two scopes; Everything stays on every project). R25 (2026-09-26): `downloadCurrentPageAsPdf` no longer rasters sheets itself. Per mode it builds the selections (this sheet or every sheet) and layer mode (active or every layer) and calls `App.runSpecificPagesExport` ([features/pdf-bundle.js](features/pdf-bundle.js)) at scale 4 / JPEG 0.95 / the Export settings' marker and line sizes, with `ensureActiveCanvas`, `captionSingleLayer` (all-canvases), `skipSheetsWithoutLayers` (all-pages-canvases) and `progressNoun: 'plan'` (all-pages); it keeps its file names, the button-title progress (every-sheet modes only) and the `download-current-page` log source. The four modes are pinned by output.spec.js "Download modes" (file name, page count, page size, captions, read back with pdf-lib). |
 | [output.spec.js](output.spec.js) | Playwright regression for pilot #26 — with clipboard permissions granted: the Copy Summary option writes the email summary to the clipboard + shows the copied modal; the Copy to PipeTooling option writes the tab-delimited summary and shows the "save to include a view link" toast (cloud enabled, no cloud project → no footer); the Download button opens its mode menu on a multi-page project and the this-canvas option yields a real download named `takeoff-page1_*.pdf`; `App.onViewLinkRevoked` is registered. A second test pins the pre-export scale check: an unscaled line page flags in `#toolingScaleCheckModal` (counter-only pages don't), Cancel drops the export, Export anyway copies with the px unit, Set scale jumps to the flagged page and opens the Set Scale modal, and a scale zone around the line passes the check without a page scale. Asserts no console / page errors; `npx playwright test output.spec.js` |
+| [features/hand-off.js](features/hand-off.js) | **Hand a bid to another estimator** (LEAD-ROLE, 2026-10-02): Project Settings' `#settingsHandOff` (shown by app.js `updateSettingsCheckoutSection` for `App.canTakeOver()`, a lead or an admin) opens `#handOffModal`, a picker over `list_users_for_project_invite`, and `reassign_project(p_project_id, p_to_user_id)` moves the owner, renames the PDF under the new owner's storage folder, keeps the old owner as an editor share, releases the old owner's checkout and logs `project_reassigned`; the client then re-reads permissions and toasts. Registers `App.openHandOffModal`, `App.handOffCurrentProject`. Deps: `state`, `getSupabase`, `showModal`/`hideModal`, `showToast`, `refreshProjectPermissions`, `updateUI`, `updateSettingsCheckoutSection`, `escapeHtml`, `canTakeOver`. Spec: [lead-role.spec.js](lead-role.spec.js). |
 | [features/share-links.js](features/share-links.js) | Twenty-seventh feature-file split (`window.App` registry pilot #27) — the **Share Project modal** (`#shareProjectModal`): the people list (add via the `invite-to-project` Edge Function, role change / remove via `add_project_share`/`remove_project_share`, loaded via `list_users_for_project_invite` + `list_project_shares`) and the **view-links section** (list / create / Copy URL / access log / revoke via the `*_view_link*` RPCs), plus the `#shareViewLinkCreate`/`#shareProjectModalClose`/`#shareProjectAdd` bindings and the collapse toggle (the view-links section starts EXPANDED — B6/J14 — and its "Recipients enter their email (…)" copy is wired to `VIEW_LINK_ALLOWED_DOMAINS` at load via `#shareViewLinksDomains`). Registers `App.openShareProjectModal`. Cloud-coupled: reads the client via `App.getSupabase()` at call time in every handler (client recycle + the accessor only exists when `SUPABASE_ENABLED`); revoke calls `App.onViewLinkRevoked()` ([features/output.js](features/output.js)) — **feature-to-feature coupling mediated entirely by the registry**, load order irrelevant. No new published deps (`getSupabase`/`SUPABASE_URL`/`showModal`/`hideModal`/`showToast`/`state` all pre-existing). The two openers (`#sidebarLogoShare`, `#settingsShareProject`) stay in app.js as deferred `App.*` calls; the shared view-link minting `getOrCreateViewLinkUrl` + the copy-project openers stay under the renamed marker `// SECTION: Share modal pointer & copy-project openers` |
 | [share-links.spec.js](share-links.spec.js) | Playwright regression for pilot #27 — always-run registry-contract smoke (the full flow is Supabase-gated): `App.openShareProjectModal` + `App.onViewLinkRevoked` are functions; opening with no cloud project/session is a safe no-op (modal stays hidden); the view-links collapse toggle round-trips; the close binding hides a force-shown modal. Asserts no console / page errors; `npx playwright test share-links.spec.js` |
 | [features/import-clear.js](features/import-clear.js) | Twenty-eighth feature-file split (`window.App` registry pilot #28) — the **canvas JSON import** (`#importInput` change handler + the `#importBtn`/`#importBtnSidebar` openers + the import-canvas-after-PDF prompt modal `#importCanvasAfterPdfModal`) and the **Clear Page confirm flow** (`showClearPageModal` + the `#clearPage`/`#clearPageSidebar` openers + the `#clearPageCancel`/`#clearPageConfirm` handlers, consolidated from the zone & page-action handler block). Registers `App.showClearPageModal` (the Project Settings row stays in app.js as a deferred `App.*` call); the other bindings move with their DOM elements. Two new publish-only deps `applyPageAnnotationsFromData` (the shared per-page deserialize funnel — also used by cloud load / view mode / load-annotations) and `getActiveCanvas`; reuses `state`/`ensureGroupColors`/`saveUserCustomIcons`/`reconcileOrphanedCountersAndLineTypes`/`clearUndoStacks`/`markProjectDirty`/`updateUI`/`renderPdf`/`showModal`/`hideModal`/`pushUndoSnapshot`/`makeAnnotations`. The shared **custom-icon upload handler** that shared the old section stays in app.js under the renamed marker `// SECTION: Custom icon upload handler` (icon-domain infrastructure feeding four icon grids across app.js + three feature files). **Tier-3 B2** import feedback: a bad file toasts in-app (naming Export Canvas as the source of a valid .json) instead of the old native `alert('Invalid import file')`, and a page-count-mismatch import toasts "Applied marks to N of M pages — the plan has fewer pages than the export" instead of dropping the extra entries silently R12 (2026-09-26): the import reads the file through `App.hydrateStateFromProjectData(data, { scaleFallback: data.scale, trimLayers: true })` and keeps its own extras: the applied-pages toast (from the hydrator's `{ pageEntries, appliedPages }`), reconcile, the undo clear and the dirty mark. |
@@ -646,72 +647,72 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L199 - Icon data (icon *_PATH consts, VB_384_512_PATHS, CUSTOM_ICONS) lives in icons.js,
 - L243 - ICONS array lives in icons.js (see icon-data note above).
 - L295 - State
-- L532 - [sync] Sync recovery & client recycle
-- L615 - Feature flags (per device, dormant-by-default ships)
-- L642 - [sync] Global force reload
-- L733 - [sync] Save Status log & envelope
-- L736 - [sync] Field-error telemetry
-- L795 - [sync] Dirty tracking & local session reset
-- L801 - Undo/redo stacks
-- L1000 - [sync] Checkout probe, hashing & PDF cache
-- L1062 - Math & Format Helpers
-- L1582 - Coordinate Helpers
-- L1590 - PDF render bitmap cache
-- L1644 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1655 - PDF Rendering
-- L2500 - Recent bids
-- L2527 - UI Render Functions
-- L2883 - Placing selection (setActiveCounterType / setActiveLineType)
-- L2993 - Inline rename & polyline edit mode
-- L3109 - Modal primitives (showModal / hideModal)
-- L3275 - Toasts & line color picker
-- L3343 - Airboard cloud sync
-- L3388 - Supabase RPC & presence heartbeat
-- L3428 - User activity / event telemetry
-- L3487 - Supabase auth & dev auth
-- L3673 - [sync] Checkout subscription & permission refresh
-- L3683 - Modals & Handlers
-- L3751 - PDF intake (upload, test PDF, hashing)
-- L3759 - Toolbar tool buttons
-- L3920 - Tool sidebar buttons & legend overlay
-- L4006 - Add Line Type modal
-- L4088 - Line color & sidebar handlers
-- L4159 - Polyline modal & drawing
-- L4216 - Zoom bar & page navigation
-- L4242 - Export canvas JSON
-- L4267 - PDF download helpers
-- L4276 - View-link URL helpers & show-highlights/notes
-- L4308 - Custom icon upload handler
-- L4318 - Macros & custom-icon tips openers
-- L4338 - Sidebar drawer toggles
-- L4369 - Mobile actions burger menu pointer & header logo
-- L4381 - User Activity pointer (format.js + features/user-activity.js)
-- L4393 - My Settings pointer (features/my-settings.js)
-- L4418 - Project Settings pointer (features/project-settings.js)
-- L4424 - Auth & settings entry buttons
-  - L4469 - Project Settings checkout & Save Status bell
-  - L4579 - [sync] Checkout expired recovery
-  - L4635 - [sync] Turn In
-  - L4700 - Share modal pointer & copy-project openers
-  - L4731 - Settings menu actions
-  - L4743 - Auth sign-in form
-  - L4768 - Save Project modal
-  - L4779 - Checkout expired recovery modal wiring
-  - L4882 - Last-session restore prompt
-- L4894 - Canvas Event Handlers
-- L5276 - Event Binding
-- L5286 - Aim loupe (mobile press-hold precise placement)
-- L5439 - Zoom transform preview & commit
-- L5518 - Canvas mouse, wheel & touch handlers
-- L6178 - Global dropdown dismissal & keyboard hotkeys
-- L6356 - [sync] Manual save to cloud
-- L6366 - [sync] Auto-save
-- L6373 - [sync] Local backup (IndexedDB takeoff state)
-- L6382 - [sync] Visibility & timers
-- L6399 - [sync] Checkout keep-alive
-- L6413 - App feature registry
-- L6794 - View-only mode
-- L6800 - Init / boot
+- L533 - [sync] Sync recovery & client recycle
+- L616 - Feature flags (per device, dormant-by-default ships)
+- L643 - [sync] Global force reload
+- L734 - [sync] Save Status log & envelope
+- L737 - [sync] Field-error telemetry
+- L796 - [sync] Dirty tracking & local session reset
+- L802 - Undo/redo stacks
+- L1001 - [sync] Checkout probe, hashing & PDF cache
+- L1063 - Math & Format Helpers
+- L1583 - Coordinate Helpers
+- L1591 - PDF render bitmap cache
+- L1645 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1656 - PDF Rendering
+- L2501 - Recent bids
+- L2528 - UI Render Functions
+- L2884 - Placing selection (setActiveCounterType / setActiveLineType)
+- L2994 - Inline rename & polyline edit mode
+- L3110 - Modal primitives (showModal / hideModal)
+- L3276 - Toasts & line color picker
+- L3344 - Airboard cloud sync
+- L3389 - Supabase RPC & presence heartbeat
+- L3429 - User activity / event telemetry
+- L3488 - Supabase auth & dev auth
+- L3679 - [sync] Checkout subscription & permission refresh
+- L3689 - Modals & Handlers
+- L3757 - PDF intake (upload, test PDF, hashing)
+- L3765 - Toolbar tool buttons
+- L3926 - Tool sidebar buttons & legend overlay
+- L4012 - Add Line Type modal
+- L4094 - Line color & sidebar handlers
+- L4165 - Polyline modal & drawing
+- L4222 - Zoom bar & page navigation
+- L4248 - Export canvas JSON
+- L4273 - PDF download helpers
+- L4282 - View-link URL helpers & show-highlights/notes
+- L4314 - Custom icon upload handler
+- L4324 - Macros & custom-icon tips openers
+- L4344 - Sidebar drawer toggles
+- L4375 - Mobile actions burger menu pointer & header logo
+- L4387 - User Activity pointer (format.js + features/user-activity.js)
+- L4399 - My Settings pointer (features/my-settings.js)
+- L4424 - Project Settings pointer (features/project-settings.js)
+- L4430 - Auth & settings entry buttons
+  - L4475 - Project Settings checkout & Save Status bell
+  - L4588 - [sync] Checkout expired recovery
+  - L4644 - [sync] Turn In
+  - L4709 - Share modal pointer & copy-project openers
+  - L4740 - Settings menu actions
+  - L4752 - Auth sign-in form
+  - L4777 - Save Project modal
+  - L4788 - Checkout expired recovery modal wiring
+  - L4891 - Last-session restore prompt
+- L4903 - Canvas Event Handlers
+- L5285 - Event Binding
+- L5295 - Aim loupe (mobile press-hold precise placement)
+- L5448 - Zoom transform preview & commit
+- L5527 - Canvas mouse, wheel & touch handlers
+- L6187 - Global dropdown dismissal & keyboard hotkeys
+- L6365 - [sync] Manual save to cloud
+- L6375 - [sync] Auto-save
+- L6382 - [sync] Local backup (IndexedDB takeoff state)
+- L6391 - [sync] Visibility & timers
+- L6408 - [sync] Checkout keep-alive
+- L6422 - App feature registry
+- L6811 - View-only mode
+- L6817 - Init / boot
 
 <!-- END SECTION TOC -->
 

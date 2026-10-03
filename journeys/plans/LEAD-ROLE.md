@@ -178,3 +178,9 @@ storage move in it).
 Available"): the predicate, the five surfaces, the sweep migration, the node test and
 stale-lock.spec.js, as planned above. The holder's words live in features/turn-in.js
 (`App.isCheckoutLockLive`, `App.checkoutHolderText`).
+
+**LEAD-ROLE landed 2026-10-02** (CHANGELOG "feat(roles): Lead"): the migration
+`20261002210000_lead_role.sql` on prod, `App.canOversee` / `App.canTakeOver`, the Manage Users
+toggle, Hand to… (features/hand-off.js, `reassign_project`), lead-role.spec.js. Left for the
+owner: `supabase functions deploy invite-to-project --no-verify-jwt --use-api`, and the
+toggle on Wendi's row.

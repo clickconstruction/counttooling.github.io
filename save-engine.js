@@ -1809,6 +1809,7 @@ function createSaveEngine(ctx) {
         bakeMismatchPages: pages.filter(p => p && p.bakeMismatch).length,
         counters, lines, multiplyZones, scaleZones, highlights, notes,
         isAdmin: !!ctx.getState().isAdmin,
+        isLead: !!ctx.getState().isLead,
         isViewer: !!ctx.getState().isViewer,
         // Checkout ownership (multi-user contention / expiry diagnosis)
         checkedOutBy: ctx.getState().checkedOutBy || null,
@@ -1864,6 +1865,7 @@ function createSaveEngine(ctx) {
       user: {
         email: userEmail,
         isAdmin: !!ctx.getState().isAdmin,
+        isLead: !!ctx.getState().isLead,
         isViewer: !!ctx.getState().isViewer
       },
       browser: {

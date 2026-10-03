@@ -72,7 +72,7 @@
           else if (p.checked_out_email) metaLine2Parts.push('Lock expired · last held by ' + esc(p.checked_out_email) + (App.twinBadgeHtml ? App.twinBadgeHtml(p.checked_out_email) : ''));
           const metaLine2 = metaLine2Parts.join(' · ');
           const canvasOnlyBadge = !p.pdf_path ? '<span class="badge" style="background:var(--surface2);color:var(--text2);font-size:11px;">Canvas only</span>' : '';
-          const showForceCheckIn = state.isAdmin && (p.checked_out_by || p.checked_out_email);
+          const showForceCheckIn = App.canTakeOver() && (p.checked_out_by || p.checked_out_email);
           // R1-ADMIN (2026-09-27, Will's call): forcing the project you have open and
           // checked out in THIS tab is really your own Turn In, so that row offers the
           // normal one (save first, then release, "Project turned in."). A force there
@@ -83,7 +83,7 @@
           const forceCheckInBtn = !showForceCheckIn ? ''
             : heldHere
               ? '<button type="button" class="settings-project-force-checkin settings-project-turn-in" data-project-id="' + esc(p.id) + '">Turn in</button>'
-              : '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in (admin)</button>';
+              : '<button type="button" class="settings-project-force-checkin" data-project-id="' + esc(p.id) + '">Force turn-in</button>';
           return '<div class="settings-user-row settings-project-row" data-project-id="' + esc(p.id) + '">' +
             '<div class="settings-project-info">' +
             '<span class="settings-project-name" title="' + esc(p.name) + '">' + esc(p.name || 'Untitled') + '</span>' +

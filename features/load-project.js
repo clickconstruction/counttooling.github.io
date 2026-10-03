@@ -132,7 +132,7 @@
     if (ownEl && ownEl.value === 'mine') filtered = filtered.filter(function (p) { return p.is_owner; });
     else if (ownEl && ownEl.value === 'shared') filtered = filtered.filter(function (p) { return !p.is_owner; });
     if (roleEl && roleEl.value) filtered = filtered.filter(function (p) { return (p.my_access_role || '') === roleEl.value; });
-    if ((App.state.isAdmin || App.state.isOverseer) && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
+    if (App.canOversee() && ownerEl && ownerEl.value) filtered = filtered.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
     if (searchEl) {
       const q = (searchEl.value || '').trim().toLowerCase();
       if (q) filtered = filtered.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1 || (p.external_ref || '').toLowerCase().indexOf(q) !== -1; });
@@ -186,7 +186,8 @@
     const deleteBtnHtml = proj.is_owner ? '<button type="button" class="load-project-delete" title="Delete from cloud" aria-label="Delete">' + trashSvg + '</button>' : '';
     const copyNewBtnHtml = proj.pdf_path ? '<button type="button" class="load-project-copy-new" title="Open a local copy. Save to cloud from Project Settings when ready.">Copy to new</button>' : '';
     const actionsHtml = (countsBadge || canvasOnlyBadge || copyNewBtnHtml || deleteBtnHtml) ? '<div class="load-project-actions">' + countsBadge + canvasOnlyBadge + copyNewBtnHtml + deleteBtnHtml + '</div>' : '';
-    const adminAccessHtml = state.isAdmin
+    // LEAD-ROLE: the "Who has access" block is for whoever manages shares (admin or lead).
+    const adminAccessHtml = App.canTakeOver()
       ? '<div class="load-project-admin-access">' +
         '<div class="load-project-access-header">' +
         '<button type="button" class="load-project-access-toggle" aria-expanded="true" aria-controls="loadProjectAccess_' + proj.id + '">' +
@@ -306,7 +307,7 @@
   }
   // Admin "Who has access" block: expand/collapse, access-list fetch, invite.
   function bindLoadProjectAdminAccess(lp, proj, div) {
-    if (!App.state.isAdmin) return;
+    if (!App.canTakeOver()) return;
     const toggleBtn = div.querySelector('.load-project-access-toggle');
     const accessPanel = div.querySelector('.load-project-access-panel');
     const addWrap = div.querySelector('.load-project-access-add-wrap');
@@ -660,7 +661,7 @@
           if (roleEl2) roleEl2.value = '';
           if (searchEl2) searchEl2.value = '';
           let ownerEmailsUnique = [];
-          if (state.isAdmin || state.isOverseer) {
+          if (App.canOversee()) {
             const seenO = Object.create(null);
             for (let ei = 0; ei < projectsAll.length; ei++) {
               const emo = projectsAll[ei].owner_email;
@@ -668,10 +669,10 @@
             }
             ownerEmailsUnique.sort();
           }
-          if (ownerWrap2) ownerWrap2.style.display = ((state.isAdmin || state.isOverseer) && ownerEmailsUnique.length > 1) ? 'inline-flex' : 'none';
+          if (ownerWrap2) ownerWrap2.style.display = (App.canOversee() && ownerEmailsUnique.length > 1) ? 'inline-flex' : 'none';
           if (ownerEmailSel2) {
             ownerEmailSel2.innerHTML = '<option value="">All owners</option>';
-            if (state.isAdmin || state.isOverseer) {
+            if (App.canOversee()) {
               for (let ej = 0; ej < ownerEmailsUnique.length; ej++) {
                 const opto = document.createElement('option');
                 opto.value = ownerEmailsUnique[ej];
@@ -721,9 +722,9 @@
         // -> hidden. Set before the render so there is no flash.
         const advWrap = document.getElementById('loadProjectAdvancedWrap');
         const advBtn = document.getElementById('loadProjectAdvancedToggle');
-        if (advWrap) advWrap.style.display = state.isAdmin ? '' : 'none';
+        if (advWrap) advWrap.style.display = App.canTakeOver() ? '' : 'none';
         if (advBtn) {
-          const advanced = state.isAdmin && localStorage.getItem('loadProjectAdvanced') === 'true';
+          const advanced = App.canTakeOver() && localStorage.getItem('loadProjectAdvanced') === 'true';
           advBtn.setAttribute('aria-pressed', advanced ? 'true' : 'false');
           listEl.classList.toggle('hide-access', !advanced);
           advBtn.onclick = () => {

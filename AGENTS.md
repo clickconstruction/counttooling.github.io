@@ -247,7 +247,7 @@
     (`// SECTION: App feature registry`), and exposes its own helpers to
     report.js via `window.*`. Linted with `no-undef` as error, the rest of
     the recommended set as warnings.
-  - **<!-- feature-count -->103<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
+  - **<!-- feature-count -->104<!-- /feature-count --> `features/*.js` registry files**, after app.js and before
     report.js — one IIFE per feature/modal that reads its deps from `App.*`
     at call time and registers its public entry points back onto `App` (rules
     in "`window.App` registry" below; per-file entry points + deps in the
@@ -730,7 +730,11 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
 
 ### Cloud state (when Supabase enabled)
 
-`state.supabaseSession`, `state.isAdmin`, `state.currentProjectId`,
+`state.supabaseSession`, `state.isAdmin`, `state.isOverseer`, `state.isLead` (LEAD-ROLE, 2026-10-02:
+`profiles.is_lead`; read the two predicates, never the flags: `App.canOversee()` = admin, overseer
+or lead, sees every project; `App.canTakeOver()` = admin or lead, acts on a project it does not
+own: check out, force a live lock, manage shares, Hand to…, review. Account management stays
+`state.isAdmin`), `state.currentProjectId`,
 `state.currentProjectName`, `state.isViewer`, `state.canCheckOut`,
 `state.checkedOutBy` / `checkedOutAt` / `checkedOutEmail`, `state.projectOwnerId`,
 `state.loadedViaViewLink`. Cloud-only UI is hidden when `SUPABASE_ENABLED` is false.
@@ -780,7 +784,7 @@ sessions use `view:dropSizes:<token>` instead — see features/drop-peek.js).
   "is editing" (STALE-LOCK, 2026-10-02). The backstop is the pg_cron job
   `sweep-expired-checkouts` (every 15 minutes, `sweep_expired_checkouts()`), which nulls
   locks older than the same 30 minutes; the holder's own tab classifies that UPDATE as
-  expiry, not a force. Admins can force turn-in (Manage Projects; on the project open
+  expiry, not a force. Admins and leads can force turn-in (Project Settings; admins also from Manage Projects; on the project open
   and checked out in their own tab that row offers the normal Turn in instead,
   `App.tryTurnIn`, R1-ADMIN). Expiry surfaces a recovery modal with
   silent auto-recheckout under it. Symbols: `doTurnIn`,

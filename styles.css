@@ -1532,6 +1532,10 @@
     .user-list-modal .settings-user-overseer:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
     .user-list-modal .settings-user-overseer.active { color: var(--accent); }
     .user-list-modal .settings-user-overseer svg { width: 18px; height: 18px; display: block; }
+    .user-list-modal .settings-user-lead { flex: none; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text3); }
+    .user-list-modal .settings-user-lead:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
+    .user-list-modal .settings-user-lead.active { color: var(--accent); }
+    .user-list-modal .settings-user-lead svg { width: 18px; height: 18px; display: block; }
     .user-list-modal .settings-user-dates { width: 86px; flex: none; display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
     #manageUserModal .settings-user-dates-btn { border: none; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
     #manageUserModal .settings-user-dates-btn:hover { background: rgba(232, 197, 71, 0.14); }
@@ -1546,6 +1550,7 @@
     .user-list-modal .settings-user-header .settings-user-set-password-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-overseer-head { width: 36px; flex: none; }
+    .user-list-modal .settings-user-header .settings-user-lead-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
     /* Manage Users: tighten the action icons (magic-link / set-password / transfer / overseer /
@@ -1554,10 +1559,12 @@
     #manageUserModal .settings-user-set-password,
     #manageUserModal .settings-user-transfer,
     #manageUserModal .settings-user-overseer,
+    #manageUserModal .settings-user-lead,
     #manageUserModal .settings-user-activity,
     #manageUserModal .settings-user-header .settings-user-set-password-head,
     #manageUserModal .settings-user-header .settings-user-transfer-head,
     #manageUserModal .settings-user-header .settings-user-overseer-head,
+    #manageUserModal .settings-user-header .settings-user-lead-head,
     #manageUserModal .settings-user-header .settings-user-activity-head { margin-left: -8px; }
     /* Per-user activity overview modal */
     .ua-overview-header { padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }

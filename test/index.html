@@ -69,6 +69,11 @@
     .td-phone::before { content: ''; position: absolute; top: 14px; left: 50%; transform: translateX(-50%); width: 96px; height: 24px; background: #000; border: 1px solid #1c1c1f; border-radius: 14px; }
     .td-phone::after { content: '9:41'; position: absolute; top: 16px; left: 44px; color: #ddd; font-size: 13px; font-weight: 600; }
     .td-phone iframe { width: var(--w); height: var(--h); border: 0; border-radius: 6px 6px 34px 34px; background: #fff; display: block; }
+    .td-cover { position: absolute; left: 14px; right: 14px; top: 44px; bottom: 28px; border-radius: 6px 6px 34px 34px; background: var(--surface);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text2); font-size: 1rem; transition: opacity .4s; }
+    .td-cover[hidden] { display: flex; opacity: 0; pointer-events: none; }
+    .td-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--border2); border-top-color: var(--accent); animation: td-spin 0.9s linear infinite; }
+    @keyframes td-spin { to { transform: rotate(360deg); } }
     .td-phone-cap { color: var(--text3); font-size: .85rem; }
     .td-open-real { color: var(--text2); font-size: .9rem; }
 
@@ -157,13 +162,13 @@
           <button class="td-back" data-go="choose">← Back</button>
           <div class="td-kicker"><span data-t="name"></span> · On the job</div>
           <h1 class="td-h1">The answer, in three taps.</h1>
-          <p class="td-lede" id="fieldLede">Pick a question. The phone on the right is the real app, the way it runs on a phone. Tap and drag it with your mouse.</p>
+          <p class="td-lede" id="fieldLede">A finished takeoff on the sample sheets, in the real app the way it runs on a phone. Pick a question, then ask it of the phone with your mouse.</p>
           <div style="height:28px"></div>
           <div class="td-qs" id="questions"></div>
           <p class="td-note" data-t="offline"></p>
         </div>
         <div class="td-phone-wrap">
-          <div class="td-phone" id="phone"><iframe id="phoneFrame" title="CountTooling on a phone" src="about:blank"></iframe></div>
+          <div class="td-phone" id="phone"><iframe id="phoneFrame" title="CountTooling on a phone" src="about:blank"></iframe><div class="td-cover" id="phoneCover"><div class="td-spin"></div><span>Laying out a finished takeoff…</span></div></div>
           <div class="td-phone-cap">Shown at phone size · <a class="td-open-real" id="phoneOpen" href="#" target="_blank" rel="noopener">open full screen</a></div>
         </div>
       </div>
@@ -208,10 +213,10 @@
             why: '<b>A number you can defend</b> line by line.' },
         ],
         questions: [
-          { ch: 'diffusers', ico: '◎', q: 'Where are all the diffusers on this floor?', a: 'Tap one diffuser and every one like it lights up across the sheet.' },
-          { ch: 'main', ico: '↔', q: 'How long is this run?', a: 'Measure: tap one end, then the other. The plan\'s scale does the rest.' },
-          { ch: 'rooms', ico: '⬚', q: 'How much air does this room need?', a: 'The room box shows its square feet and airflow.' },
-          { ch: 'system', ico: '✓', q: 'Can this unit carry these rooms?', a: 'The unit\'s total against what the rooms ask for.' },
+          { ico: '◎', q: 'Where are all the supply diffusers?', a: 'Tap one diffuser. Every one like it gets a ring, and the chip says how many are on the sheet.' },
+          { ico: '↔', q: 'How long is this run?', a: 'Press D for Measure, or pick it from the ⋯ menu. Tap one end, then the other: the plan\'s scale does the rest.' },
+          { ico: '⬚', q: 'How much air does this room need?', a: 'Each boxed room is tagged on the sheet with its volume and the airflow it needs, and a ✓ when its diffusers deliver it. Pinch in to read it.' },
+          { ico: '✓', q: 'Can the rooftop unit carry these rooms?', a: 'Open the menu (☰), then BID CHECK: "Systems within capacity" sets what the rooms need against what RTU-1 gives.' },
         ],
       },
       plumbing: {
@@ -237,10 +242,10 @@
             why: '<b>Caught before you bid, the people who drew it pay.</b> Caught in the field, you do.' },
         ],
         questions: [
-          { ch: 'fixtures', ico: '◎', q: 'Where are all the floor drains?', a: 'Tap one floor drain and every one lights up across the sheet.' },
-          { ch: 'water', ico: '↔', q: 'How long is this run?', a: 'Measure: tap one end, then the other. The plan\'s scale does the rest.' },
-          { ch: 'gas', ico: '#', q: 'Which fixture is this, and how many are there?', a: 'Tap a mark: its name, its number, and the count on this sheet.' },
-          { ch: 'waste', ico: '✎', q: 'Why does this one go a different way?', a: 'The estimator\'s notes sit on the plan, where the question is.' },
+          { ico: '◎', q: 'Where are all the floor drains?', a: 'Tap one floor drain. Every one gets a ring, and the chip says how many are on the sheet.' },
+          { ico: '↔', q: 'How long is this run?', a: 'Press D for Measure, or pick it from the ⋯ menu. Tap one end, then the other: the plan\'s scale does the rest.' },
+          { ico: '#', q: 'Which fixture is this, and how many are there?', a: 'Tap a mark: the chip names it, gives its number, and the count on this sheet.' },
+          { ico: '≡', q: 'How much pipe of each size?', a: 'Open the menu (☰), then SUMMARY: every pipe by size and material, in feet, beside every count.' },
         ],
       },
       electrical: {
@@ -266,10 +271,10 @@
             why: '<b>A number you can defend</b> line by line.' },
         ],
         questions: [
-          { ch: 'devices', ico: '◎', q: 'Where are all the GFCIs?', a: 'Tap one GFCI and every one lights up across the sheet.' },
-          { ch: 'circuits', ico: '↔', q: 'How long is the homerun?', a: 'Measure: tap one end, then the other. The plan\'s scale does the rest.' },
-          { ch: 'lighting', ico: '#', q: 'How many of this light are there?', a: 'Tap a fixture: its type, its number, and the count on this sheet.' },
-          { ch: 'devices', ico: '✎', q: 'What did the estimator flag here?', a: 'The questions sit on the plan, where they were asked.' },
+          { ico: '◎', q: 'Where are all the GFCIs?', a: 'Tap one GFCI. Every one gets a ring, and the chip says how many are on the sheet.' },
+          { ico: '↔', q: 'How long is the homerun?', a: 'Press D for Measure, or pick it from the ⋯ menu. Tap one end, then the other: the plan\'s scale does the rest.' },
+          { ico: '#', q: 'How many of this light are there?', a: 'Turn to E-201 with the arrows at the bottom, then tap a fixture: its type, its number, and the count on the sheet.' },
+          { ico: '≡', q: 'How much conduit of each size?', a: 'Open the menu (☰), then SUMMARY: every conduit by size, in feet, with the verticals counted in.' },
         ],
       },
     };
@@ -306,13 +311,34 @@
         '<div><b>' + q.q + '</b><span>' + q.a + '</span></div></button>').join('');
     }
 
+    // The field door is the trade's finished takeoff (/app/?field=<trade>, features/lessons.js
+    // FIELD-TAKEOFF), loaded once; a question says how to ask it, it never reloads the phone.
+    const fieldUrl = (t) => '/app/?field=' + t;
+    function loadPhone() {
+      const url = fieldUrl(trade);
+      $('phoneOpen').href = url;
+      if ($('phoneFrame').dataset.trade === trade) return;
+      $('phoneFrame').dataset.trade = trade;
+      $('phoneFrame').src = url;
+      $('phoneCover').hidden = false;
+      // Same origin: lift the cover once the app has laid the takeoff and drawn the sheet under it.
+      const want = trade;
+      const poll = setInterval(() => {
+        if ($('phoneFrame').dataset.trade !== want) { clearInterval(poll); return; }
+        try {
+          const w = $('phoneFrame').contentWindow;
+          const c = w.document.getElementById('pdfCanvas');
+          if (w.App && w.App.finishedTakeoffReady === want && c && c.width > 0) {
+            clearInterval(poll);
+            setTimeout(() => { $('phoneCover').hidden = true; }, 1500);   // the first raster lands a beat after
+          }
+        } catch (_) { /* still navigating */ }
+      }, 400);
+    }
     function ask(i) {
-      const q = TRADES[trade].questions[i];
       document.querySelectorAll('.td-q').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.i === i)));
-      // On a real phone the app opens full screen; on a computer it runs inside the phone frame.
-      if (isPhone()) { window.location.href = appUrl(trade, q); return; }
-      $('phoneFrame').src = appUrl(trade, q);
-      $('phoneOpen').href = appUrl(trade, q);
+      // On a real phone the app opens full screen on the takeoff.
+      if (isPhone()) window.location.href = fieldUrl(trade);
     }
     $('questions').addEventListener('click', (e) => {
       const b = e.target.closest('.td-q');
@@ -342,8 +368,8 @@
       $('vDesk').hidden = view !== 'desk';
       $('vField').hidden = view !== 'field';
       if (view === 'field') {
-        if (isPhone()) $('fieldLede').textContent = 'Pick a question. The app opens full screen on the plans.';
-        else { fitPhone(); ask(0); }
+        if (isPhone()) $('fieldLede').textContent = 'A finished takeoff on the sample sheets. Pick a question and the app opens full screen on it.';
+        else { fitPhone(); loadPhone(); }
       }
       window.scrollTo(0, 0);
     }

@@ -103,7 +103,7 @@
 > (give the pipe its water, fixture units on the lavatory, trace the main and take 3/4″ at S),
 > and the plumbing guide names the rows. Telemetry (§8): `water_run` and `wsfu_prefill` are
 > wired; they shipped behind a `water-telemetry` feature flag until the allowlist migration
-> `20260923190000_log_user_event_water.sql` was on prod. **2026-09-27:** the owner had the
+> `20260927194932_log_user_event_water.sql` was on prod. **2026-09-27:** the owner had the
 > migration applied to prod (verified there), and punch row WATER-TELEM removed the flag and
 > its reads, so both events fire for every signed-in session. Open, not blocking:
 > WATER-TABLES (the trade check of the rules) and the Quick Line trace (one segment) gets no
@@ -309,7 +309,7 @@ commit; `wsfu_prefill` (accepted / overwritten) on counter create;
 DUCT-PLAN got on day 7.
 
 **Live 2026-09-27.** The allowlist migration
-`supabase/migrations/20260923190000_log_user_event_water.sql` is applied to
+`supabase/migrations/20260927194932_log_user_event_water.sql` is applied to
 prod, and the `water-telemetry` feature flag is gone: `water_run`
 (features/water-size.js `onPolylineCommitted`) and `wsfu_prefill`
 (features/water-fixtures.js `applyFieldToCounter`) fire for everyone. As

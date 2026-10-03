@@ -4498,8 +4498,11 @@
         text = 'Checked out by you';
         checkInBtn.style.display = '';
       } else if (state.checkedOutEmail) {
-        dot = 'yellow';
-        text = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
+        // STALE-LOCK: yellow only while the lock is honoured; an expired one reads
+        // "Available · last edited by…" in grey. The admin force still clears the row.
+        const live = window.App?.isCheckoutLockLive ? window.App.isCheckoutLockLive(state.checkedOutAt) : true;
+        dot = live ? 'yellow' : 'grey';
+        text = window.App?.checkoutHolderText ? window.App.checkoutHolderText(state.checkedOutEmail, state.checkedOutAt) : (state.checkedOutEmail + ' is editing');
         if (state.isAdmin) forceBtn.style.display = '';
       }
       const saved = formatSaveTimeParts(state.lastSavedAt).clock;
@@ -6600,6 +6603,7 @@
   App.formatSaveTime = formatSaveTime;
   App.formatSaveTimeParts = formatSaveTimeParts;
   App.formatAgo = formatAgo;
+  App.checkoutLockIsLive = checkoutLockIsLive; // save-utils.js (STALE-LOCK; features/turn-in.js wraps it with the server clock)
   App.getLastSaveIncludedPdf = () => lastSaveIncludedPdf;
   App.isSaveInProgress = () => saveEngine.isSaveInProgress();
   App.isSavePdfInProgress = () => saveEngine.isSavePdfInProgress();

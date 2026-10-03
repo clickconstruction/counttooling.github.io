@@ -143,6 +143,25 @@
   // R14 (moved from app.js's updateUIInner, which calls it at the same point of every
   // render): the header edit-status banner and its sidebar copy. The buttons it draws carry
   // the data-action values handleEditStatusBannerClick below answers.
+  // STALE-LOCK (2026-10-02): the words for the holder a project row still
+  // names. The server never clears a checkout, it stops honouring one older
+  // than CHECKOUT_INACTIVITY_MS, so the row keeps the LAST holder for good
+  // (Wendi's export: a lock 50.8 hours dead read "grace is editing" on every
+  // surface). Live: "<email> is editing". Expired: "Available · last edited
+  // by <email>, 2d ago". One place for the words; the header, the status bar,
+  // Project Settings, Load Project and Manage Projects all read these two.
+  function isCheckoutLockLive(checkedOutAt) {
+    return App.checkoutLockIsLive(checkedOutAt, App.serverNowMs(), CHECKOUT_INACTIVITY_MS);
+  }
+  function checkoutHolderText(email, checkedOutAt) {
+    const who = App.twinEmailText ? App.twinEmailText(email) : email;
+    if (isCheckoutLockLive(checkedOutAt)) return who + ' is editing';
+    const agoSec = (App.serverNowMs() - new Date(checkedOutAt).getTime()) / 1000;
+    return 'Available · last edited by ' + who + ', ' + App.formatAgo(agoSec);
+  }
+  App.isCheckoutLockLive = isCheckoutLockLive;
+  App.checkoutHolderText = checkoutHolderText;
+
   function renderEditStatusBanner() {
     const state = App.state;
     const editBanner = document.getElementById('headerEditStatusBanner');
@@ -204,10 +223,13 @@
           editBanner.appendChild(btn);
           editBanner.classList.add('edit-status-available');
         } else if (state.checkedOutEmail) {
+          // A role with no checkout arm (a viewer share, an overseer) never
+          // reaches the canCheckOut rung, so the holder's words carry the
+          // live / expired distinction (STALE-LOCK).
           const span = document.createElement('span');
-          span.textContent = (App.twinEmailText ? App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
+          span.textContent = checkoutHolderText(state.checkedOutEmail, state.checkedOutAt);
           editBanner.appendChild(span);
-          editBanner.classList.add('edit-status-viewing');
+          editBanner.classList.add(isCheckoutLockLive(state.checkedOutAt) ? 'edit-status-viewing' : 'edit-status-available');
         } else {
           const span = document.createElement('span');
           span.textContent = 'Viewing only';

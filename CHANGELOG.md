@@ -13,6 +13,43 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(checkout): an expired lock reads as Available, never as "is editing" (STALE-LOCK, 2026-10-02)
+
+Wendi's Save Status export: the Lone Star Market bid read "grace@clickplumbing.com is
+editing" in the header, the status bar and Project Settings, with no Check Out and no force
+button, while `checkedOutAt` was `2026-09-30T16:46Z`, 50.8 hours before the read. Grace had
+done nothing wrong. The lock expires LAZILY: `check_out_project` takes a lock older than 30
+minutes, the UPDATE policy stops honouring its holder, `can_edit` / `can_check_out` read it as
+free, but nothing ever nulls `checked_out_by`, so the row keeps its last holder's name. Five
+surfaces rendered `checked_out_email` without asking `checked_out_at`; Load Project tested
+"Locked by" before "Available", so even the owner's own expired lock read as locked. A role
+with no checkout arm (an overseer, a viewer share) never reaches the `canCheckOut` rung, so
+for Wendi "Available" was unreachable on any project anyone had ever touched.
+
+- **One predicate.** save-utils.js `checkoutLockIsLive(checkedOutAt, nowMs, windowMs)`, the
+  SQL window in JavaScript (a missing or unreadable stamp is live, as the server treats it);
+  features/turn-in.js wraps it with the server clock as `App.isCheckoutLockLive(at)` and
+  writes the words once, `App.checkoutHolderText(email, at)`: live "grace is editing",
+  expired "Available · last edited by grace, 2d ago".
+- **Five surfaces ask it.** The header banner (grey "available" class when expired), the
+  status bar, Project Settings (grey dot; the admin force still clears the row), Load
+  Project (`can_edit` → `can_check_out` "Available" → live "Locked by" → expired
+  "Available · last edited by…") and Manage Projects ("Lock expired · last held by…"; the
+  force button stays).
+- **The backstop.** `supabase/migrations/20261002200000_sweep_expired_checkouts.sql`:
+  `sweep_expired_checkouts()` and the pg_cron job `sweep-expired-checkouts` every 15
+  minutes, nulling locks older than the same 30 minutes, so the row itself says free and
+  the realtime UPDATE repaints open tabs. The holder's own tab classifies that UPDATE as
+  expiry (its last-known stamp is past the window), never as a force. 30 minutes stays.
+- **Two migration files renamed to prod's stamps.** `log_user_event_water` and
+  `get_project_permissions` were applied to prod on 2026-09-27 through the MCP, which
+  recorded them as `20260927194932` and `20260927194936`; the repo's `20260923190000` /
+  `20260927030000` names made every `db push` refuse. Renamed (AGENTS.md's rule: the repo
+  takes prod's stamp, prod's history is never repaired), every mention updated.
+- Pinned by save-utils.test.js (29 / 31 minutes, Wendi's stamp, the null and unreadable
+  stamps) and stale-lock.spec.js (the three surfaces on a seeded state, Load Project and
+  Manage Projects on stubbed lists, live and two days old side by side).
+
 ## feat(site): the test drive at /test/, a prototype for the pitch (TEST-DRIVE, 2026-10-02)
 
 A static page (`test/index.html`, `noindex`, not in the sitemap, outside the service worker's
@@ -1139,8 +1176,8 @@ it; or move the badges and the footer to the showing layer as well.
 ## chore(water, save): the water events on for everyone, the lean permissions read live (WATER-TELEM, MAP-PERMS, 2026-09-27)
 
 On 2026-09-27 the owner had two migrations applied to the production database, and both were
-verified there: `supabase/migrations/20260923190000_log_user_event_water.sql` (`log_user_event`
-accepts `water_run` and `wsfu_prefill`) and `supabase/migrations/20260927030000_get_project_permissions.sql`
+verified there: `supabase/migrations/20260927194932_log_user_event_water.sql` (`log_user_event`
+accepts `water_run` and `wsfu_prefill`) and `supabase/migrations/20260927194936_get_project_permissions.sql`
 (`public.get_project_permissions(uuid)` exists). This change is code and docs only; it touches no
 database. Nothing on screen changes.
 
@@ -1848,7 +1885,7 @@ tab return, turn-in and recovery, and it read `list_accessible_projects` to keep
 with its whole takeoff (`data`). For an admin or overseer that is the whole projects table per
 refresh, on the connection the autosave shares (DECOMPOSITION_MAP.md D28).
 
-- **The RPC, drafted, NOT applied**: `supabase/migrations/20260927030000_get_project_permissions.sql`
+- **The RPC, drafted, NOT applied**: `supabase/migrations/20260927194936_get_project_permissions.sql`
   creates `get_project_permissions(p_project_id uuid)`, one row: the list's columns in the list's
   order minus `data`, `pdf_path` and `pdf_hash`, every expression copied from the list's latest
   definition (20260831100000), the list's access rule (owner, any share, admin, overseer) plus
@@ -4047,7 +4084,7 @@ water only) is built; the row closes.
 - **Telemetry** (§8): `water_run` (side, size, material, segments, the load and flow at the
   run's head, whether the S moment sized it) on every committed water-sided polyline and
   `wsfu_prefill` (accepted or overwritten) on counter create, behind the `water-telemetry`
-  feature flag until migration `20260923190000_log_user_event_water.sql` is on prod (punch
+  feature flag until migration `20260927194932_log_user_event_water.sql` is on prod (punch
   row WATER-TELEM applies it and flips the flag).
 
 [water-bidcheck.spec.js](water-bidcheck.spec.js) walks the rows, the ticks, the badge, the

@@ -108,6 +108,15 @@ way the courses' compare cards do, so it cannot drift from the sheet.
 
 ## Progress
 
-- Phase 1 (shared engine + HVAC): launched 2026-10-02.
-- Phase 2 (plumbing, electrical in parallel): after phase 1 merges.
-- Phase 3 (test page wired to `?demo=`, the field door's first-tap prompt): with phase 1.
+- Phase 1 (shared engine + HVAC): LANDED 2026-10-02, PR #316 (`features/demo-track.js`,
+  `features/demo-hvac.js`, `demo-hvac.spec.js`). The orchestrator's hand walk at 651 px and
+  800 px found six faults the spec had not (the sheet gliding under the first tap, 15-point
+  circles, a right trace not counting, sidebar wording where the sidebar is behind ☰, the Trim
+  your set flash, the orientation over a black canvas) plus the app's own toasts leaking in;
+  all fixed on the branch before merge, each with a spec case. The clock: about 4 s headless,
+  about 16 s by hand to the first payoff. The lesson for phase 2: walk it by hand at a narrow
+  width before calling it done; the spec's `tutorialDoStep` path cannot see what a finger sees.
+- Phase 3 (test page wired to `/app/?demo=<trade>:<id>`, the field door's first-tap prompt):
+  LANDED 2026-10-02, PR #315.
+- Phase 2 (plumbing, electrical in parallel, `claude/demo-plumbing` / `claude/demo-electrical`,
+  shared files frozen): launched 2026-10-02 off main 64aa5ec2.

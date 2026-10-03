@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## fix(demo): the opening card never offers its button mid-open (DEMO-TRACK, 2026-10-02)
+
+On a slow first load of a sample set the demo's opening card showed "Opening the sample plan…" and
+the "Open the sample plan" button side by side for many seconds (by hand, on demo:electrical:gfci
+and demo:plumbing:schedule, the four-sheet sets). The cause was openRun's patience, not the open:
+its loop gave up 3 s after the lessons' door came back unless the set's name or Trim your set was up,
+`opening` went null, and the card's `show: () => !opening` offered the button while the set was still
+on its way. A press was guarded from a double open, but "Opening" beside "Open" read as stuck.
+
+- **features/demo-track.js** tracks the open's true state. The set has ARRIVED once the door hands
+  its file to `#pdfInput` (tutorial.js openPlanFile's change, heard on the input for the length of
+  the call) or a Trim your set was already up for it to press. Arrived, the open holds until the run
+  is seeded, under a 45 s ceiling (`OPEN_CEILING_MS`); a door that comes back without it kept the
+  guest's own plan at Close project's question or its fetch failed, and the button is back at once
+  (it was about 3 s). An open that ends without the set says so on the card's line: "The sample plan
+  did not open." The button also stays away once the run is seeded and the sheet is still painting.
+  A second press returns the same open, as before.
+- **demo-hvac.spec.js**: the set's response held 5 s (read every 200 ms: the opening words, the
+  progress line, never the button, then ✓ and the orientation); the app's read of the file held
+  20 s, past the door's own 15 s wait for Trim your set, the window the old loop gave up in (this one
+  fails on the old engine); and a guest's own plan kept at Close project, the button back within 4 s
+  with the line saying it did not open.
+
 ## feat(demo): the electrical demo (DEMO-TRACK phase 2, 2026-10-02)
 
 The electrical half of [the demo track](journeys/plans/DEMO-TRACK.md), built in the HVAC demo's shape

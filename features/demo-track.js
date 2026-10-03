@@ -48,6 +48,7 @@
   const builtFor = {};      // tour id -> the steps the engine last read (the quiet UI looks a card up by index)
   let live = null;          // { tourId, steps, idx, timer } while a demo runs
   let opening = null;       // the open in flight, so a second press (or the spec seam) never opens twice
+  let failedFor = null;     // the run whose last open ended without its set (declined, a failed fetch, the ceiling)
 
   // ----- decision 3: the one orientation card per trade per session --------------------------------
   const orientedMemo = new Set();   // the session's own record when sessionStorage is unavailable
@@ -63,30 +64,47 @@
   // ----- the sheets ----------------------------------------------------------------------------------
   // A run is what the lessons' doors take: an id, the set, the page to land on and the seed.
   const runOf = (demo, tourId, moment) => ({ id: tourId, set: demo.set, page: moment.page || 0, seed: moment.seed, title: moment.title });
+  // How long an open whose file has arrived may take to seed: a cold first load of a four-sheet set
+  // took 15 to 30 s on a worktree server. Past it the card's button is back and its line says so.
+  const OPEN_CEILING_MS = 45000;
+  // The open is in flight from the press until the run is seeded, the guest kept their own plan at
+  // Close project's question, the fetch failed, or the ceiling passed, and `opening` holds for all of
+  // it: the card never offers "Open the sample plan" beside "Opening the sample plan…" (it did on a
+  // slow first load, the loop giving up after 3 s while the set was still on its way, DEMO-TRACK
+  // "Open after phase 2"). A second press during it returns the same open.
   function openRun(run) {
     if (K().isSeeded(run)) return Promise.resolve();
     if (opening) return opening;
+    failedFor = null;
     // Trim your set means nothing to a guest: while the demo's own set comes in, the dialog is never
     // painted (styles.css body.demo-opening), and its Open is pressed for them.
     document.body.classList.add('demo-opening');
     opening = (async () => {
-      try { await K().openSheetsFor(run); } catch (_) { /* the card's button stays for a second try */ }
+      const t0 = Date.now();
+      // The set ARRIVED once the lessons' door hands its file to #pdfInput (tutorial.js openPlanFile
+      // dispatches the change), or a Trim your set was already up for the door to press. A door that
+      // comes back without either kept the guest's own plan at Close project's question, or its fetch
+      // failed: the card's button is back at once, not after a wait.
+      let arrived = K().modalUp('preparePdfModal');
+      const input = el('pdfInput');
+      const onArrive = () => { arrived = true; };
+      if (input) input.addEventListener('change', onArrive, true);
+      let threw = false;
+      try { await K().openSheetsFor(run); } catch (_) { threw = true; } finally { if (input) input.removeEventListener('change', onArrive, true); }
       // Trim your set can come up after openSheetsFor's own Open (its pages still building), and a
       // guest has no reason to know it; press it, as the field door does (lessons.js openFinished).
-      // After 3 s, only while the set is on its way in: a guest who kept their own plan at Close
-      // project's question gets the card's button back at once, not after a 30 s wait.
-      const coming = () => S().currentProjectName === run.set.name || K().modalUp('preparePdfModal');
       // Its Open commits asynchronously, so it is pressed again only once the dialog has stayed up a
       // full second since the last press (a press per tick ran the commit over itself); hidden by the
       // class above, it is never seen either way.
       let upSince = 0;
-      for (let i = 0; i < 300 && live && !K().isSeeded(run) && (i < 30 || coming()); i++) {
+      while (!threw && arrived && live && !K().isSeeded(run) && Date.now() - t0 < OPEN_CEILING_MS) {
         if (!K().modalUp('preparePdfModal')) upSince = 0;
         else if (!upSince) upSince = Date.now();
         else if (Date.now() - upSince >= 1000 && el('preparePdfDone')) { el('preparePdfDone').click(); upSince = Date.now(); }
         K().seedIfReady(run);
         await wait(100);
       }
+      if (!K().isSeeded(run)) failedFor = run.id;
     })().finally(() => { opening = null; document.body.classList.remove('demo-opening'); });
     return opening;
   }
@@ -124,8 +142,10 @@
       body: () => (withOrientation && ready() ? o.body(clicks, { narrow: narrow() }) : OPENING),
       target: ['#preparePdfDone'],
       check: () => { K().seedIfReady(run); return ready(); },
-      progress: () => (opening || (K().isSeeded(run) && !sheetPainted(run)) ? 'Opening the sample plan…' : ''),
-      action: { label: 'Open the sample plan', run: () => openRun(run), show: () => !opening },
+      progress: () => (opening || (K().isSeeded(run) && !sheetPainted(run)) ? 'Opening the sample plan…' : failedFor === run.id ? 'The sample plan did not open.' : ''),
+      // offered only when no open is in flight and the set is not in: the guest kept their own plan,
+      // the fetch failed, or the ceiling passed
+      action: { label: 'Open the sample plan', run: () => openRun(run), show: () => !opening && !K().isSeeded(run) },
     };
   }
   // A moment's seed on its first card, in the all-moments run (its sheets are already open).

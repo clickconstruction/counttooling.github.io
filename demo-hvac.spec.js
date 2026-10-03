@@ -12,7 +12,7 @@
  * first moment's payoff card, under 60 s by the page's own timer, printed so a slow one is seen.
  */
 const { test, expect } = require('@playwright/test');
-const { collectConsoleErrors, bootApp, stepTo } = require('./spec-helpers');
+const { collectConsoleErrors, bootApp, uploadPdf, stepTo } = require('./spec-helpers');
 
 const stepId = (page) => page.evaluate(() => window.App.tutorialStepId());
 const info = (page) => page.evaluate(() => window.App.tutorialStepInfo());
@@ -225,6 +225,86 @@ test.describe('the HVAC demo track', () => {
     expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).map((r) => r.vertices.length))).toEqual([3]);
     expect(await page.evaluate(() => window.App.tutorialZones().every((z) => z.done))).toBe(true);   // never "1 of 3 done" beside a drawn duct
     await expect(page.locator('#tourBody')).toContainText('feet of 24x12 duct');
+    errors.assertNoErrors();
+  });
+
+  // The opening card as the guest reads it: its words, whether its button is offered, its status line.
+  const openingCard = (page) => page.evaluate(() => {
+    const show = document.getElementById('tourShow');
+    return {
+      body: document.getElementById('tourBody').innerText.trim(),
+      button: !!show && show.style.display !== 'none' && show.offsetParent !== null,
+      status: document.getElementById('tourStatus').innerText.trim(),
+      done: !!(window.App.tutorialStepInfo() || {}).done,
+    };
+  });
+
+  // Read the opening card every 200 ms until it is done, then hold it to what a slow open must show:
+  // the opening words, the progress line, and never the button beside them; then ✓ and the orientation.
+  async function watchSlowOpen(page, atLeastReads) {
+    await page.waitForFunction(() => window.App.tutorialId && window.App.tutorialId() === 'demo:hvac:size');
+    const seen = [];
+    const t0 = Date.now();
+    for (;;) {
+      const s = await openingCard(page);
+      if (s.done || Date.now() - t0 > 60000) break;
+      seen.push(s);
+      await page.waitForTimeout(200);
+    }
+    expect(seen.length).toBeGreaterThanOrEqual(atLeastReads);   // polled across the whole delay
+    expect(seen.filter((s) => s.body !== 'The sample plan is opening.')).toEqual([]);
+    expect(seen.filter((s) => s.button)).toEqual([]);
+    expect(seen.filter((s) => s.status !== 'Opening the sample plan…')).toEqual([]);
+    await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done, null, { timeout: 30000 });
+    await expect(page.locator('#tourStatus')).toHaveText('✓ Done');
+    await expect(page.locator('#tourBody')).toContainText('the lists on the left keep its totals');
+    expect(await page.evaluate(() => window.state.currentProjectName)).toBe('sample-hvac');
+  }
+
+  test('a slow first load: the card says the plan is opening and never offers its button meanwhile', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    // the set's response held 5 s, the cold first load the tester saw on a four-sheet set
+    let held = 0;
+    await page.route('**/samples/sample-hvac.pdf', async (route) => { held++; await new Promise((r) => setTimeout(r, 5000)); await route.continue(); });
+    await bootApp(page, { url: '/app/?demo=hvac:size', viewport: { width: 1280, height: 800 } });
+    await watchSlowOpen(page, 20);
+    expect(held).toBe(1);
+    errors.assertNoErrors();
+  });
+
+  test('a slow intake past the door\'s own 15 s wait: still opening, still no button, then ✓', async ({ page }) => {
+    test.setTimeout(120000);
+    const errors = collectConsoleErrors(page);
+    // The file arrives at once, but the app reads it 20 s later: past openSheetsFor's 15 s wait for
+    // Trim your set, the window where the card used to give up after 3 s and offer its button.
+    await page.addInitScript(() => {
+      const own = File.prototype.arrayBuffer;
+      let once = false;
+      File.prototype.arrayBuffer = function () {
+        if (this.name !== 'sample-hvac.pdf' || once) return own.call(this);
+        once = true;
+        return new Promise((r) => setTimeout(r, 20000)).then(() => own.call(this));
+      };
+    });
+    await bootApp(page, { url: '/app/?demo=hvac:size', viewport: { width: 1280, height: 800 } });
+    await watchSlowOpen(page, 90);
+    errors.assertNoErrors();
+  });
+
+  test('a guest who keeps their own plan at Close project gets the button back at once', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await bootApp(page, { viewport: { width: 1280, height: 800 } });
+    await uploadPdf(page);
+    await page.evaluate(() => window.App.startDemo('hvac', 'size'));
+    await expect(page.locator('#confirmModal')).toBeVisible();   // Close project's question
+    await page.click('#confirmCancel');
+    const kept = Date.now();
+    await expect(page.locator('#tourShow')).toBeVisible({ timeout: 4000 });
+    expect(Date.now() - kept).toBeLessThan(4000);
+    await expect(page.locator('#tourShow')).toHaveText('Open the sample plan');
+    await expect(page.locator('#tourStatus')).toHaveText('The sample plan did not open.');
+    expect(await page.evaluate(() => [window.state.pages.length, window.state.currentProjectName === 'sample-hvac'])).toEqual([2, false]);   // their plan, as it was
+    await page.click('#tourLeave');
     errors.assertNoErrors();
   });
 

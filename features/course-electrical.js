@@ -774,4 +774,12 @@
   App.startChapterElectrical = course.start;
   App.courseElectricalIds = () => CHAPTERS.map((c) => c.id);
   App.courseElectricalReference = () => ({ feet: RUNS.reduce((o, r) => { o[r.name] = r.feet(); return o; }, {}), counts: COUNTS().map((c) => [c[3], c[1].length]) });
+  // The electrical demo track (features/demo-electrical.js, DEMO-TRACK) lays its moments with the
+  // course's own seeds, points and readers: published here, read at call time, the course unchanged.
+  App.courseElectricalKit = {
+    ESET, E101, E201, E501, E601, G, RE, TAGS, MOUNT, CEILING_FT, FEEDER_RISE_FT, pts, planFeet,
+    counter, byTag, lineType, typeIds, pageAnn, marksOf, markNear, polylinesOn, notesNear, bidRow, manual,
+    plainDuplex, gfciAll, pick, pickLight, markMissing, scaleE101, setCeiling, makeEmt, makeHomerun, makeFeeder,
+    chainWestWall, tracePlan, circuitOne, circuit1, layEverything,
+  };
 })();

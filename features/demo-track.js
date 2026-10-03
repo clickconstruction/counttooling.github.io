@@ -31,7 +31,8 @@
  * (the restore offer waits; the tour starts after 600 ms).
  *
  * Registrations: registerDemo({ trade, set, orientation, moments }), startDemo(trade, momentId?),
- * demoIds(trade). Boundary rule: read shared deps from App.* at call time, never captured at load.
+ * demoIds(trade), toastMuted() (true while a demo runs: app.js showToast's one-line guard).
+ * Boundary rule: read shared deps from App.* at call time, never captured at load.
  */
 (function () {
   'use strict';
@@ -245,6 +246,10 @@
     return App.startTutorial('demo:' + trade + (momentId ? ':' + momentId : ''));
   }
 
+  // A guest cannot act on the app's own notices ("Groups are on. Assign this run to a system in
+  // Groups." when a trace finishes): while a demo runs, app.js showToast stays quiet. The demo's
+  // payoffs are its cards, never a toast.
+  App.toastMuted = () => !!live;
   App.registerDemo = registerDemo;
   App.startDemo = startDemo;
   App.demoIds = (trade) => ((DEMOS[trade] || {}).moments || []).map((m) => m.id);

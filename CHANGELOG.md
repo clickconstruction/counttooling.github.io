@@ -53,7 +53,10 @@ script per trade on the tour engine, every card one action and one sentence of w
   your set is never painted while a demo's set comes in (`body.demo-opening`) and its Open is pressed
   once it has stood a second, never per tick (a press per tick ran the async commit over itself); the
   orientation card waits until the sheet is PAINTED (pixels on #pdfCanvas, not just pages built) before
-  it says "This is a plan", and says "the ☰ menu keeps its totals" where the sidebar is a drawer.
+  it says "This is a plan", and says "the ☰ menu keeps its totals" where the sidebar is a drawer; and
+  the app's own toasts are muted while a demo runs (`App.toastMuted`, one guard line at the top of
+  app.js `showToast`), so the Duct tool's first-run "Groups are on. Assign this run to a system in
+  Groups." no longer lands over the guest's finished trace.
 - **Tooling**: teaching-labels.test.js finds `demo-*` files; check-lesson-rules.js reads both demo
   files; score-courses.js scores `demo-hvac` card by card with an empty first-use table (a demo card
   needs no glossed word; grade 1.8, no sentence over 25 words).

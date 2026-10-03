@@ -205,6 +205,11 @@ test.describe('the HVAC demo track', () => {
     await page.waitForFunction(() => (window.App.tutorialStepInfo() || {}).done, null, { timeout: 10000 });
     expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).ductRuns || []).length)).toBe(1);
     await expect(page.locator('#tourBody')).toContainText('elbow');
+    // the app's own first-run notice ("Groups are on…") is muted while a demo runs
+    await page.waitForTimeout(400);
+    expect(await page.locator('.toast-card:visible').count()).toBe(0);
+    await page.click('#tourLeave');
+    expect(await page.evaluate(() => window.App.toastMuted())).toBe(false);
     errors.assertNoErrors();
   });
 

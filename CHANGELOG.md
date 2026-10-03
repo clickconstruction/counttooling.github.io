@@ -13,6 +13,44 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(demo): the demo track, its engine and the HVAC demo (DEMO-TRACK phase 1, 2026-10-02)
+
+Todd, after playing the test drive: its "Try it" opened course chapters, twelve minutes written for
+a reader who will sit through nine of them, and it "took me a good amount of time to gain the
+context, which made me not want to use the app". The demo track is the replacement, a separate
+script per trade on the tour engine, every card one action and one sentence of what it was worth
+(plan: [DEMO-TRACK](journeys/plans/DEMO-TRACK.md), the five decisions).
+
+- **features/demo-track.js**, the shared engine. `App.registerDemo({ trade, set, orientation,
+  moments })` registers `demo:<trade>:<moment>` per moment and `demo:<trade>` for all of them in
+  order. ONE orientation card per trade per session (what the plan is, what the lists on the left
+  are, how many clicks are coming; sessionStorage `clickcount-demo-oriented`), then every card is one
+  action. "Do it for me" on every doing card (the engine's `alt` button; the demo is exempt from the
+  lessons' no-do-it-for-me rule). The quiet UI: a sidebar section the card does not name shows its
+  heading alone, a header tool it does not name is dimmed and still works, all of it classes the stop
+  removes. The sheets open through the lessons' own doors, now on `App.lessonKit` (`openSheetsFor`,
+  `seedIfReady`, `isSeeded`), and the guest's device is the lessons' snapshot, put back on stop.
+  Doors: `/app/?demo=hvac` and `/app/?demo=hvac:<moment>`.
+- **features/demo-hvac.js**, five moments on the mechanical set, 2 or 3 cards each: the Duct dialog
+  reading 24x12 off M-101 and a three-circle trace whose elbow counts itself; the Duct Schedule's
+  Bid weight ("1,499 pounds of sheet metal. Shops price duct by the pound.") and Copy Schedule;
+  DINING 100 boxed (the demo fills the dialog from the plan) and filled with its eight diffusers until
+  it reads served; Bid Check's Systems within capacity turning from ✓ to ⚠ when Addendum 3 raises the
+  kitchen diffusers to 300 CFM ("more than its 3,000"). **That mistake is STAGED by the demo**: the
+  sample set carries no native defect (RTU-1's 2,650 designed CFM fits its 3,000), so the card's
+  handsOff "Apply addendum 3" button sets SD-3 to 300 CFM on the open sheets, and Bid Check catches
+  the change; and Bid Check, a signed row and Show Report,
+  whose card points at [[Learn]] once. Every number on a card is read live. Every seed and reader is
+  the HVAC course's, published as `App.courseHvacKit` (its `layEverything` is synchronous now, so a
+  seed lays it whole; the course is otherwise unchanged).
+- **Tooling**: teaching-labels.test.js finds `demo-*` files; check-lesson-rules.js reads both demo
+  files; score-courses.js scores `demo-hvac` card by card with an empty first-use table (a demo card
+  needs no glossed word; grade 1.8, no sentence over 25 words).
+- **demo-hvac.spec.js**: every moment walked through `App.tutorialDoStep()` on real state, the
+  orientation first and once a session, the quiet UI on and off, a dimmed tool still arming, a
+  guest's own three clicks tracing the leg, both doors, and the clock: goto to the first payoff card,
+  printed, under 60 s (about 5 s headless).
+
 ## feat(roles): Lead, a role under admin and over user (LEAD-ROLE, 2026-10-02)
 
 Will: Wendi (an estimator) should be able to take over projects, "a role less than admin

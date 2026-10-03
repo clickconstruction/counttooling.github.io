@@ -1326,5 +1326,10 @@
     onTouch, undoKey,   // a card that differs for a reader with no keys, or by machine (the card review)
     rememberDevice,   // the blank tour's door: rememberDevice({ searches: false })
     restoreDevice,
+    // The demo track (features/demo-track.js, DEMO-TRACK): a moment opens its set and lays its seed
+    // through the same doors a lesson does, so the palette watch, Trim your set and the settle test
+    // are the lessons' own. `isSeeded` is the open card's check: the set open and THIS run's seed laid.
+    openSheetsFor, seedIfReady,
+    isSeeded: (lesson) => isSetOpen(lesson) && seededFor === lesson.id,
   };
 })();

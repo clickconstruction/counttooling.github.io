@@ -1813,6 +1813,12 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-ui-live { cursor: pointer; }
 .tour-ui-live:hover, .tour-ui-live:focus-visible { border-color: var(--accent); outline: none; }
 .tour-flash { position: fixed; border-radius: 8px; pointer-events: none; }
+/* DEMO-TRACK (features/demo-track.js): the quiet UI while a demo runs. A sidebar section the card does
+   not name shows its heading alone, and a header tool it does not name recedes; both still work, and
+   the stop removes the classes, never the app's own fold state. */
+body.demo-quiet .sidebar-section.demo-quiet-fold > :not(.sidebar-section-header-row):not(h3) { display: none !important; }
+body.demo-quiet .header-tools-scroll .demo-quiet-dim { opacity: 0.3; transition: opacity 0.2s; }
+body.demo-quiet .header-tools-scroll .demo-quiet-dim:hover, body.demo-quiet .header-tools-scroll .demo-quiet-dim:focus-visible { opacity: 0.85; }
 .tour-flash::after { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; background: rgba(232, 197, 71, 0.34); box-shadow: 0 0 0 3px rgba(232, 197, 71, 1), 0 0 22px 6px rgba(232, 197, 71, 0.75), 0 0 64px 18px rgba(232, 197, 71, 0.45); }
 .tour-flash::before { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; border: 3px solid rgba(232, 197, 71, 0.9); }
 .tour-flash.is-arriving::after { animation: tourSpotArrive 2.3s ease-out 1 both; }

@@ -254,7 +254,8 @@
     const hasValidCheckout = proj.checked_out_by === userId && !lockExpired;
     state.loadedViaViewLink = false;
     state.isViewer = !hasValidCheckout;
-    state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
+    // LEAD-ROLE: a lead or admin may check out any project, as the server's can_check_out says.
+    state.canCheckOut = ((isOwner || App.canTakeOver()) && (!proj.checked_out_by || lockExpired)) || false;
     if (proj.id === 'local') {
       // Local sessions have no checkout: the derivation above computes
       // hasValidCheckout = false (checked_out_by is always null), which left

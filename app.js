@@ -345,6 +345,7 @@
     currentProjectUpdatedAt: null,
     isAdmin: false,
     isOverseer: false,
+    isLead: false,      // LEAD-ROLE (2026-10-02): profiles.is_lead, see App.canTakeOver
     isDigitalTwin: false,
     pendingDeletePage: null,
     supabaseSession: null,
@@ -974,7 +975,7 @@
   function handleCrossTabSignOut(source) {
     try { pushSaveEvent('cross_tab_signout', 'Sign-out received from another tab', source || ''); } catch (_) {}
     try { resetLocalSessionState(); } catch (_) {}
-    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; state.isDigitalTwin = false; } catch (_) {}
+    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; state.isLead = false; state.isDigitalTwin = false; } catch (_) {}
     // Clear lastAuthUserId so the local SIGNED_OUT event that follows (once
     // supabase-js syncs the auth storage change) skips a redundant broadcast.
     lastAuthUserId = null;
@@ -2761,12 +2762,12 @@
       if (manageUsersBtn) manageUsersBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const bidBoardBtnSidebar = document.getElementById('bidBoardBtnSidebar');
-      if (bidBoardBtnSidebar) bidBoardBtnSidebar.style.display = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
+      if (bidBoardBtnSidebar) bidBoardBtnSidebar.style.display = (loggedIn && (state.isOverseer || state.isAdmin || state.isLead)) ? '' : 'none';
       // Desktop entry lives in the status bar (the mobile sidebar hides on wide
       // screens, which left desktop overseers/admins with no way to open the board).
       const statusBarBidBoard = document.getElementById('statusBarBidBoard');
       const statusBarBidBoardSep = document.getElementById('statusBarBidBoardSep');
-      const showBidBoardLink = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
+      const showBidBoardLink = (loggedIn && (state.isOverseer || state.isAdmin || state.isLead)) ? '' : 'none';
       if (statusBarBidBoard) statusBarBidBoard.style.display = showBidBoardLink;
       if (statusBarBidBoardSep) statusBarBidBoardSep.style.display = showBidBoardLink;
       const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
@@ -3499,9 +3500,10 @@
     state.supabaseSession = session;
     if (session?.user) {
       lastAuthUserId = session.user.id;
-      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
       state.isOverseer = !!profile?.is_overseer;
+      state.isLead = !!profile?.is_lead;
       state.isDigitalTwin = !!profile?.is_digital_twin;
       startPresenceHeartbeat();
       maybeLogSessionStartOnce();
@@ -3511,6 +3513,7 @@
       lastAuthUserId = null;
       state.isAdmin = false;
       state.isOverseer = false;
+      state.isLead = false;
       state.isDigitalTwin = false;
       stopPresenceHeartbeat();
     }
@@ -3527,9 +3530,10 @@
           resetLocalSessionState();
           lastAuthUserId = newUserId;
           if (session?.user) {
-            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', session.user.id).maybeSingle();
             state.isAdmin = !!profile?.is_admin;
             state.isOverseer = !!profile?.is_overseer;
+            state.isLead = !!profile?.is_lead;
             state.isDigitalTwin = !!profile?.is_digital_twin;
             startPresenceHeartbeat();
             maybeLogSessionStartOnce();
@@ -3544,9 +3548,10 @@
       if (session?.user) {
         const userChanged = newUserId !== prevUserId;
         lastAuthUserId = newUserId;
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         state.isOverseer = !!profile?.is_overseer;
+        state.isLead = !!profile?.is_lead;
         state.isDigitalTwin = !!profile?.is_digital_twin;
         startPresenceHeartbeat();
         maybeLogSessionStartOnce();
@@ -3587,6 +3592,7 @@
         stopPresenceHeartbeat();
         state.isAdmin = false;
         state.isOverseer = false;
+        state.isLead = false;
         state.isDigitalTwin = false;
         const hadSession = !!prevUserId;
         lastAuthUserId = null;
@@ -4486,6 +4492,9 @@
       checkOutBtn.style.display = 'none';
       checkInBtn.style.display = 'none';
       forceBtn.style.display = 'none';
+      // LEAD-ROLE: Hand to… (features/hand-off.js) for whoever may take a project over.
+      const handOffBtn = document.getElementById('settingsHandOff');
+      if (handOffBtn) handOffBtn.style.display = (window.App?.canTakeOver && window.App.canTakeOver() && !state.loadedViaViewLink) ? '' : 'none';
       // One line: the checkout state, then the last save time when there is one. The dot
       // colours it (green = yours, yellow = someone else's, grey = available).
       let dot = 'grey';
@@ -4503,7 +4512,7 @@
         const live = window.App?.isCheckoutLockLive ? window.App.isCheckoutLockLive(state.checkedOutAt) : true;
         dot = live ? 'yellow' : 'grey';
         text = window.App?.checkoutHolderText ? window.App.checkoutHolderText(state.checkedOutEmail, state.checkedOutAt) : (state.checkedOutEmail + ' is editing');
-        if (state.isAdmin) forceBtn.style.display = '';
+        if (window.App?.canTakeOver ? window.App.canTakeOver() : state.isAdmin) forceBtn.style.display = '';
       }
       const saved = formatSaveTimeParts(state.lastSavedAt).clock;
       if (saved) text += (text ? ' · ' : '') + 'saved ' + saved;
@@ -6424,6 +6433,14 @@
   // async boot below never calls into a features/*.js file that has not registered yet.
   const shellScriptsReady = () => (document.readyState === 'loading' ? new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true })) : Promise.resolve());
   App.state = state;
+  // LEAD-ROLE (2026-10-02): the two role predicates every surface asks instead of
+  // state.isAdmin, so the next role is one line here. canOversee: sees every project
+  // (Load Project's every-project list and owner filter, the Bid Board). canTakeOver:
+  // acts on a project it does not own (check out, force a live lock, manage shares,
+  // hand it off, request or give a review). Account management (Manage Users,
+  // passwords, deletes, the global reload, others' activity) stays state.isAdmin.
+  App.canOversee = () => !!(state.isAdmin || state.isOverseer || state.isLead);
+  App.canTakeOver = () => !!(state.isAdmin || state.isLead);
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
   App.countCanvasMarks = countCanvasMarks;   // the confirms count the marks they touch
@@ -7013,9 +7030,10 @@
         window.history.replaceState({}, '', u.toString());
       }
       if (ok) {
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', state.supabaseSession.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', state.supabaseSession.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         state.isOverseer = !!profile?.is_overseer;
+        state.isLead = !!profile?.is_lead;
         state.isDigitalTwin = !!profile?.is_digital_twin;
       }
     }

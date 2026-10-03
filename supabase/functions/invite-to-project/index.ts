@@ -24,10 +24,11 @@ Deno.serve(async (req) => {
     if (!proj) return jsonRes(404, { error: 'Project not found' })
 
     const { data: existingShare } = await adminClient.from('project_shares').select('user_id').eq('project_id', project_id).eq('user_id', user.id).maybeSingle()
-    const { data: callerProfile } = await adminClient.from('profiles').select('is_admin').eq('user_id', user.id).maybeSingle()
+    const { data: callerProfile } = await adminClient.from('profiles').select('is_admin, is_lead').eq('user_id', user.id).maybeSingle()
     const isOwner = proj.user_id === user.id
     const isMember = !!existingShare
-    const isAdmin = !!callerProfile?.is_admin
+    // LEAD-ROLE (2026-10-02): a lead manages any project's shares, as an admin does.
+    const isAdmin = !!callerProfile?.is_admin || !!callerProfile?.is_lead
     if (!isOwner && !isMember && !isAdmin) {
       return jsonRes(403, { error: 'No permission to add share' })
     }

@@ -11,7 +11,7 @@
  * fetch and stubs App.getSupabase() / App.tryTurnIn, and pins that the row for
  * the project open and checked out in this tab offers the normal "Turn in"
  * (App.tryTurnIn, no force RPC) while every other checked-out row keeps
- * "Force turn-in (admin)".
+ * "Force turn-in".
  */
 const { test, expect } = require('@playwright/test');
 const { ensureSignedInWithProject } = require('./cloud-test-helpers');
@@ -89,8 +89,8 @@ test.describe('window.App registry pilot - Manage Projects modal', () => {
 
     await openList();
     await expect(rowBtn('p-open')).toHaveText('Turn in');
-    await expect(rowBtn('p-other')).toHaveText('Force turn-in (admin)');
-    await expect(rowBtn('p-mine-elsewhere')).toHaveText('Force turn-in (admin)');
+    await expect(rowBtn('p-other')).toHaveText('Force turn-in');
+    await expect(rowBtn('p-mine-elsewhere')).toHaveText('Force turn-in');
     await expect(rowBtn('p-free')).toHaveCount(0);
 
     // Turn in = the normal Turn In, never the force RPC; the list redraws after.
@@ -108,7 +108,7 @@ test.describe('window.App registry pilot - Manage Projects modal', () => {
     // Open here but NOT held by this tab (viewing only): the admin force, as before.
     await page.evaluate(() => { const st = /** @type {any} */ (window).App.state; st.isViewer = true; st.checkedOutBy = null; });
     await openList();
-    await expect(rowBtn('p-open')).toHaveText('Force turn-in (admin)');
+    await expect(rowBtn('p-open')).toHaveText('Force turn-in');
 
     await page.evaluate(() => { const st = /** @type {any} */ (window).App.state; st.supabaseSession = null; st.isAdmin = false; st.currentProjectId = null; });
     expect(errors).toEqual([]);

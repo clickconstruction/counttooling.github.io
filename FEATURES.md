@@ -107,6 +107,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Viewer scale sharing** — A view-link recipient can set a page scale and it shares back to the project, so field questions get answered without a round trip.
 - **Artboard (cloud palette)** — Your counters, line types, modifiers, and Quick Key layout follow your account to any device — set up once, reuse every bid; loading mid-bid re-links your placed marks by name, nothing stops counting.
 - **My Standards** — See which counters and line types you actually use across all your projects and add the standards to your Artboard in one click.
+- **Lead role (takes over bids)** — A lead estimator sees every bid, checks out any, frees a stuck lock, manages who has access, and hands a bid to another estimator with one click, without the keys to accounts and deletes an admin holds.
 - **Admin toolkit** — Create/manage users, transfer project ownership, force turn-in, audit per-user activity, and push a global reload — all inside the app.
 
 ## Platform

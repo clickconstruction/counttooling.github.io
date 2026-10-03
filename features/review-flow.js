@@ -49,7 +49,7 @@
     const supabase = App.getSupabase();
     // Only meaningful for a signed-in user with a cloud project open, and an
     // overseer's read-only session never requests reviews from here.
-    const show = !!(supabase && state.supabaseSession?.user && state.currentProjectId && (!state.isViewer || state.isAdmin));
+    const show = !!(supabase && state.supabaseSession?.user && state.currentProjectId && (!state.isViewer || App.canTakeOver()));
     row.style.display = show ? '' : 'none';
     if (!show) return;
     const textEl = document.getElementById('settingsReviewStatusText');

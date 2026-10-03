@@ -118,5 +118,17 @@ way the courses' compare cards do, so it cannot drift from the sheet.
   width before calling it done; the spec's `tutorialDoStep` path cannot see what a finger sees.
 - Phase 3 (test page wired to `/app/?demo=<trade>:<id>`, the field door's first-tap prompt):
   LANDED 2026-10-02, PR #315.
-- Phase 2 (plumbing, electrical in parallel, `claude/demo-plumbing` / `claude/demo-electrical`,
-  shared files frozen): launched 2026-10-02 off main 64aa5ec2.
+- Phase 2 (plumbing, electrical in parallel, shared files frozen): LANDED 2026-10-02, PRs #318
+  (electrical) and #319 (plumbing). Each hand-walked at 651 px by the orchestrator before merge
+  (electrical `gfci`: one tap, the 11-not-10 payoff, no toast; plumbing `schedule`: one drag,
+  eight counters named off the sheet). All three trades live behind `/test/`.
+
+## Open after phase 2
+
+- The opening card offers "Open the sample plan" beside "Opening the sample plan…" while the
+  open is in flight (openRun's loop ends after 3 s if the set's name is not up yet; the card's
+  check then seeds it). Guarded against a double open, but the button should not show mid-open.
+  A cold first load of a four-sheet set took 15 to 30 s on a worktree server; the live site's
+  service worker caches the set after the first visit, so a demo laptop opens each trade once.
+- A real tablet and phone walk with a stopwatch, by a person: the orchestrator's walks were a
+  mouse in a 651 px pane. PUNCHLIST DEMO-TRACK stays open for that and the item above.

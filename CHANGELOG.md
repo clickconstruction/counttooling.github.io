@@ -49,6 +49,45 @@ worth, every number read live.
   the wall, a homerun whose corner missed its circle still counting, two clicks tracing the feeder and
   no toast after it; at 390 px the ☰ wording and Trim your set never painted; and the clock, goto to
   the first payoff card under 60 s (about 3.5 s headless).
+## feat(demo): the plumbing demo (DEMO-TRACK phase 2, 2026-10-02)
+
+The test drive's plumbing "Try it" buttons already pointed at `/app/?demo=plumbing:<moment>`; until
+now those opened the plain app. This is the plumbing half of [the demo track](journeys/plans/DEMO-TRACK.md),
+the HVAC demo's shape copied card for card: one orientation card ("A restaurant's plumbing, in a few
+clicks"), then five moments of two or three cards, every card one action and one sentence of what it
+was worth, every number read live, every on-sheet card a 30-point circle the sheet jumps to.
+
+- **features/demo-plumbing.js**, on the lesson set. `schedule`: P-501 turned upright and the schedule
+  box armed for the guest; a drag around the table opens the proposal, which stands 0.9 s and is then
+  created for them ("That made 8 counters, WC-1, U-1, L-1, HS-1, 3CS-1, MS-1, FD-1, FS-1. Each is
+  named the way the plan tags it, and nobody typed a name."; Create arms the last counter it made, which the demo puts down so a stray tap on the schedule places nothing), then the two toilets on P-101. `pipe`: the
+  cold trunk in four circles with its hanger rule and Fittings from bends already on ("That is 95 feet
+  of 1.5 inch copper. The app counted 10 hangers and 2 elbows by itself."), then the hot water return
+  ("Most bids miss this line, because it looks like the hot supply."). `riser`: P-601's stack in two
+  circles ("17 feet of 4 inch pipe, standing up. The floor plan shows it as one small circle.") and its
+  cleanout. `scale`: P-101's scale cleared for the moment, Set Scale at 1/8", then the 31'-8" string
+  measured ("You measured 31'-8", the same as the drawing."). `bid`: the course's whole takeoff,
+  on which Bid Check catches the chained lavatory branch, 0.75in Copper CW, counting no hangers and no
+  elbows. **That miss is the course's own, not staged**: "Finish the takeoff for me" chains the branch
+  without a hanger rule. A handsOff Fix it turns both rows ✓, the fixture-units row is signed, and the
+  last card points at [[Learn]] once. The demo presses Finish for the guest once a trace's last circle
+  is in, and a visibly right trace counts with a corner outside its circle (length within 10%, both ends
+  within a circle). The Measure proof allows 6 ft, two finger-wide clicks at 1/8", which still refuses
+  a wrong scale (1/4" reads the string near 16 ft).
+- **features/course-plumbing.js** publishes `App.coursePlumbingKit` at its foot (geometry, seeds,
+  readers, `readSchedule`, `layEverything`, and `SET`, the lesson set the chapters run on, named
+  because the demo engine reads a set's name). Publish only: no chapter changed.
+- **No engine change.** demo-track.js, demo-hvac.js, tutorial.js and lessons.js are untouched (the
+  electrical demo is built beside this one on the same base).
+- **Tooling**: the file is on teaching-labels.test.js's floor, in check-lesson-rules.js's sources, and
+  scored by score-courses.js as `demo-plumbing` (grade 1.9, no sentence over 25 words).
+- **demo-plumbing.spec.js**: every moment walked by `App.tutorialDoStep()` on real state, the
+  orientation first, the quiet UI on and off, the guest's search word put back; a moment door alone and
+  the orientation once a session; as a browser (`navigator.webdriver` false), the trunk's circles held
+  still 1.5 s, four taps tracing it with no toast after, a missed corner still counting, and a guest's
+  own drag over the schedule; at 390 px the ☰ wording and Trim your set never painted; the clock, goto
+  to the first payoff card, printed and under 60 s (about 3.9 s headless; 5.0 to 5.5 s with a real
+  drag in a browser that glides, at 1280 and 390 px).
 
 ## feat(demo): the demo track, its engine and the HVAC demo (DEMO-TRACK phase 1, 2026-10-02)
 

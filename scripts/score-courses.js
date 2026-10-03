@@ -34,7 +34,7 @@
  *
  * Adding a file is one line in COURSES and its FIRST_USE block. Today: the three courses,
  * the plumbing, electrical and HVAC tours, the blank-sheet tour, Start here with the thirteen lessons,
- * and the HVAC and electrical demo tracks.
+ * and the HVAC, electrical and plumbing demo tracks.
  *
  *   node scripts/score-courses.js            # the per-chapter score
  *   node scripts/score-courses.js --check    # the check (npm run check, npm run check:courses)
@@ -62,6 +62,7 @@ const COURSES = [
   // so its first-use table is empty. A card that wants a gloss is a card to shorten instead.
   { name: 'demo-hvac', file: 'features/demo-hvac.js', unit: 'card' },
   { name: 'demo-electrical', file: 'features/demo-electrical.js', unit: 'card' },
+  { name: 'demo-plumbing', file: 'features/demo-plumbing.js', unit: 'card' },
 ];
 const SENTENCE_CAP = 25;     // words in one sentence on a card
 const GRADE_CEILING = 6;     // the whole course's Flesch-Kincaid grade (the memo holds 4 to 6)
@@ -267,6 +268,7 @@ const FIRST_USE = {
   },
   'demo-hvac': {},
   'demo-electrical': {},
+  'demo-plumbing': {},
   // The lessons are read in the Learn menu's order, each lesson a chapter; `(file)` is the
   // step every lesson opens with (lessons.js sheetsStep).
   lessons: {

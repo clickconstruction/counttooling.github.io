@@ -123,6 +123,15 @@ way the courses' compare cards do, so it cannot drift from the sheet.
   (electrical `gfci`: one tap, the 11-not-10 payoff, no toast; plumbing `schedule`: one drag,
   eight counters named off the sheet). All three trades live behind `/test/`.
 
+## Checking it on the real site
+
+`npm run smoke:demo` ([scripts/smoke-demo.js](../../scripts/smoke-demo.js)) walks all fifteen
+moments on https://counttooling.com (or any origin given), each in a fresh browser context, and
+prints each payoff and the seconds to the first one. Manual, not in `npm run check`. On
+2026-10-02, after phase 2: all fifteen finish; first payoff 4.3 to 6.3 s cold on a laptop and a
+phone viewport; a whole moment 6 to 11 s. (The 15 to 30 s the orchestrator saw by hand was a
+hidden browser pane throttling its timers, not the site.)
+
 ## Open after phase 2
 
 - The opening card offering "Open the sample plan" beside "Opening the sample plan…" mid-open:

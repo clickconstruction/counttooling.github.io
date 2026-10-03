@@ -13,6 +13,15 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## chore(demo): a smoke walker for the demo track on the real site (2026-10-02)
+
+`npm run smoke:demo` (scripts/smoke-demo.js): every demo moment of all three trades, each in a
+fresh browser context against https://counttooling.com (or an origin given), walked by the
+demo's own "Do it for me" seam to its last card. It prints each payoff sentence, the seconds to
+the first payoff and to the end, and exits 1 on a moment that does not finish, a page or console
+error, the quiet UI left on, or a first payoff over 60 s. Manual like build:screenshots, not in
+`npm run check`. First run after phase 2: fifteen of fifteen, first payoff 4.3 to 6.3 s cold.
+
 ## fix(demo): the opening card never offers its button mid-open (DEMO-TRACK, 2026-10-02)
 
 On a slow first load of a sample set the demo's opening card showed "Opening the sample plan…" and

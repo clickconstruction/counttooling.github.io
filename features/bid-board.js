@@ -25,6 +25,42 @@
   // supabase/functions/cleanup-test-accounts/index.ts.
   const HIDDEN_TEST_OWNERS = ['dev-agent@clickplumbing.com', 'test@clickplumbing.com'];
 
+  // PEOPLE-TWINS (2026-10-13, Wendi's board): twin-owned bids are the fleet's
+  // backtests and smoke runs, not an estimator's work, and they outnumber the
+  // human bids many to one, so a lead's board opened on 41 machine bids. The
+  // board carries a People · Twins · All switch (#bidBoardKind) and opens on
+  // People for everyone but an admin, who opens on All (the view they had).
+  // A twin is told by the owner's email, the same pattern twin-login enforces
+  // (TWIN_EMAIL_RE in supabase/functions/twin-login/index.ts): the RPC carries
+  // no twin flag, and a twin account outside the pattern cannot sign in, so
+  // the pattern is the fleet. The switch hides itself when the company has
+  // no twin bids; the estimator filter lists only the owners the segment shows.
+  const TWIN_OWNER_RE = /^twin-estimator-\d+@twins\.counttooling\.local$/i;
+  function isTwinOwner(email) { return TWIN_OWNER_RE.test(email || ''); }
+  function boardKind() {
+    const checked = document.querySelector('#bidBoardKind input:checked');
+    return checked ? checked.value : 'people';
+  }
+  function setBoardKind(kind) {
+    const input = document.querySelector('#bidBoardKind input[value="' + kind + '"]');
+    if (input) input.checked = true;
+  }
+  function kindRows() {
+    const kind = boardKind();
+    if (kind === 'all') return boardRows.slice();
+    return boardRows.filter(function (p) { return isTwinOwner(p.owner_email) === (kind === 'twins'); });
+  }
+  function hiddenTwinsNoteHtml() {
+    if (boardKind() !== 'people') return '';
+    const n = boardRows.filter(function (p) { return isTwinOwner(p.owner_email); }).length;
+    if (!n) return '';
+    return '<p class="bid-board-hidden-note">' + n + (n === 1 ? ' twin bid is' : ' twin bids are') + ' off · <button type="button" class="bid-board-show-twins">show twins</button></p>';
+  }
+  function onKindChange() {
+    fillOwnerFilter();
+    renderBidBoardList();
+  }
+
   function esc(s) { return App.escapeHtml(s); }
 
   // "who made it" display: strip the domain so cards read as names, with the
@@ -101,7 +137,7 @@
   function getFilteredBidRows() {
     const searchEl = document.getElementById('bidBoardSearch');
     const ownerEl = document.getElementById('bidBoardOwnerFilter');
-    let rows = boardRows.slice();
+    let rows = kindRows();
     const q = searchEl && searchEl.value ? searchEl.value.trim().toLowerCase() : '';
     if (q) rows = rows.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1 || (p.external_ref || '').toLowerCase().indexOf(q) !== -1; });
     if (ownerEl && ownerEl.value) rows = rows.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
@@ -112,8 +148,13 @@
     const listEl = document.getElementById('bidBoardList');
     if (!listEl) return;
     const rows = getFilteredBidRows();
+    const wireShowTwins = function () {
+      const showTwins = listEl.querySelector('.bid-board-show-twins');
+      if (showTwins) showTwins.onclick = function () { setBoardKind('twins'); onKindChange(); };
+    };
     if (!rows.length) {
-      listEl.innerHTML = '<p class="bid-board-empty empty-state">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>';
+      listEl.innerHTML = '<p class="bid-board-empty empty-state">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>' + hiddenTwinsNoteHtml();
+      wireShowTwins();
       return;
     }
     // "Ready for review" bids get their own lane pinned above the rest — the
@@ -125,6 +166,8 @@
         ready.map(bidCardHtml).join('') +
         (rest.length ? '<div class="bid-board-lane-title">All bids</div>' + rest.map(bidCardHtml).join('') : '')
       : rows.map(bidCardHtml).join('');
+    listEl.innerHTML += hiddenTwinsNoteHtml();
+    wireShowTwins();
     listEl.querySelectorAll('.bid-card').forEach(function (card) {
       const proj = boardRows.find(function (p) { return p.id === card.dataset.projectId; });
       if (!proj) return;
@@ -198,13 +241,16 @@
     if (!ownerEl) return;
     const seen = Object.create(null);
     const owners = [];
-    for (let i = 0; i < boardRows.length; i++) {
-      const em = boardRows[i].owner_email;
+    const rows = kindRows();   // PEOPLE-TWINS: only the owners the segment shows
+    for (let i = 0; i < rows.length; i++) {
+      const em = rows[i].owner_email;
       if (em && !seen[em]) { seen[em] = true; owners.push(em); }
     }
     owners.sort();
+    const keep = ownerEl.value && owners.indexOf(ownerEl.value) !== -1 ? ownerEl.value : '';
     ownerEl.innerHTML = '<option value="">All estimators</option>' +
       owners.map(function (em) { return '<option value="' + esc(em) + '">' + esc(ownerLabel(em)) + '</option>'; }).join('');
+    ownerEl.value = keep;
     ownerEl.parentElement.style.display = owners.length > 1 ? '' : 'none';
   }
 
@@ -220,6 +266,12 @@
     if (searchEl) { searchEl.value = ''; searchEl.oninput = renderBidBoardList; }
     const ownerEl = document.getElementById('bidBoardOwnerFilter');
     if (ownerEl) { ownerEl.value = ''; ownerEl.onchange = renderBidBoardList; }
+    const kindEl = document.getElementById('bidBoardKind');
+    if (kindEl) {
+      setBoardKind(state.isAdmin ? 'all' : 'people');   // PEOPLE-TWINS: an admin keeps the whole board
+      kindEl.querySelectorAll('input').forEach(function (r) { r.onchange = onKindChange; });
+      kindEl.style.display = 'none';
+    }
     listEl.innerHTML = '<p class="bid-board-empty">Loading bids…</p>';
     App.showModal('bidBoardModal');
     try {
@@ -229,6 +281,7 @@
         return;
       }
       boardRows = (projects || []).filter(function (p) { return HIDDEN_TEST_OWNERS.indexOf(p.owner_email || '') === -1; });
+      if (kindEl) kindEl.style.display = boardRows.some(function (p) { return isTwinOwner(p.owner_email); }) ? '' : 'none';
       fillOwnerFilter();
       renderBidBoardList();
     } catch (e) {

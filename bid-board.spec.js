@@ -17,6 +17,8 @@ const STUB_ROWS = [
   { id: 'p3', name: 'Lakeway Medical Office', owner_email: 'jake@example.com', counter_count: 310, line_count: 54, updated_at: '2026-08-25T12:00:00Z', pdf_path: null, is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer' },
   // Test-harness debris: must be hidden from the board entirely.
   { id: 'p4', name: 'IndexedDB Test 1787863165971', owner_email: 'dev-agent@clickplumbing.com', counter_count: 1, line_count: 0, updated_at: '2026-08-28T12:00:00Z', pdf_path: 'u/p4.pdf', is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer' },
+  // A digital twin's backtest (PEOPLE-TWINS): off the board until Twins or All is picked, except for an admin.
+  { id: 'p5', name: 'ZZ Twin Oak Hill (backtest)', owner_email: 'twin-estimator-1@twins.counttooling.local', counter_count: 90, line_count: 10, updated_at: '2026-08-28T13:00:00Z', pdf_path: 'u/p5.pdf', is_owner: false, can_edit: false, can_check_out: false, my_access_role: 'viewer', review_status: 'ready', review_requested_at: '2026-08-28T13:00:00Z' },
 ];
 
 async function bootApp(page) {
@@ -153,6 +155,54 @@ test.describe('Bid Board - overseer all-bids browser', () => {
 
     // The registry entry the settings row shares is wired.
     expect(await page.evaluate(() => typeof window.App.setProjectReviewStatus)).toBe('function');
+    expect(errors).toEqual([]);
+  });
+
+  test('People · Twins · All: the fleet is off for a lead and on for an admin', async ({ page }) => {
+    const errors = await bootApp(page);
+    await stubOverseerSession(page, STUB_ROWS);
+    await page.evaluate(() => window.App.openBidBoard());
+    await expect(page.locator('#bidBoardModal')).toBeVisible();
+
+    // Not an admin: the board opens on People, the twin's bid is off, and a
+    // line under the list says so. The ready lane counts only what shows.
+    await expect(page.locator('#bidBoardKind')).toBeVisible();
+    await expect(page.locator('#bidBoardKind input:checked')).toHaveValue('people');
+    await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(3);
+    await expect(page.locator('#bidBoardList')).not.toContainText('ZZ Twin');
+    await expect(page.locator('.bid-board-hidden-note')).toHaveText('1 twin bid is off · show twins');
+    expect(await page.locator('.bid-board-lane-title').allTextContents()).toEqual(['Ready for review (1)', 'All bids']);
+
+    // "show twins" flips the segment: only the fleet, and only its owner in the estimator list.
+    await page.click('.bid-board-show-twins');
+    await expect(page.locator('#bidBoardKind input:checked')).toHaveValue('twins');
+    await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(1);
+    await expect(page.locator('#bidBoardList .bid-card-name')).toHaveText('ZZ Twin Oak Hill (backtest)');
+    await expect(page.locator('.bid-board-hidden-note')).toHaveCount(0);
+    expect(await page.locator('#bidBoardOwnerFilter option').allTextContents()).toEqual(['All estimators', 'twin-estimator-1']);
+
+    // All: everyone, both ready bids in the lane, every owner in the list.
+    await page.locator('#bidBoardKind label', { hasText: 'All' }).click();
+    await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(4);
+    expect(await page.locator('.bid-board-lane-title').allTextContents()).toEqual(['Ready for review (2)', 'All bids']);
+    expect(await page.locator('#bidBoardOwnerFilter option').allTextContents()).toEqual(['All estimators', 'jake', 'twin-estimator-1', 'wendi']);
+
+    // An admin opens on All, the view they always had.
+    await page.click('#bidBoardClose');
+    await page.evaluate(() => { window.state.isAdmin = true; window.App.openBidBoard(); });
+    await expect(page.locator('#bidBoardModal')).toBeVisible();
+    await expect(page.locator('#bidBoardKind input:checked')).toHaveValue('all');
+    await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(4);
+    await page.click('#bidBoardClose');
+
+    // A company with no twin bids never sees the switch.
+    await stubOverseerSession(page, STUB_ROWS.filter((r) => r.id !== 'p5'));
+    await page.evaluate(() => { window.state.isAdmin = false; window.App.openBidBoard(); });
+    await expect(page.locator('#bidBoardModal')).toBeVisible();
+    await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(3);
+    await expect(page.locator('#bidBoardKind')).toBeHidden();
+    await expect(page.locator('.bid-board-hidden-note')).toHaveCount(0);
+    await page.click('#bidBoardClose');
     expect(errors).toEqual([]);
   });
 

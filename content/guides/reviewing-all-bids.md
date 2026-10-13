@@ -1,7 +1,7 @@
 ---
 title: Reviewing every bid: the Overseer role
 description: The Overseer role gives one person a read-only window into every bid in the company: an All Bids board, one click to open any takeoff, and no way to change anything.
-updated: 2026-08-28
+updated: 2026-10-13
 order: 7.5
 icon: hide-marks
 category: Collaboration
@@ -25,6 +25,11 @@ newest first, one card per bid:
 1. **Search**: start typing any part of a bid's name to narrow the board.
 2. **Filter by estimator**: pick a name to see just that person's bids.
 3. **Click any card** to open the bid.
+
+A company that runs digital twins also gets a **People · Twins · All** switch beside the
+search: the twins' backtests outnumber the estimators' bids many to one, so the board opens on
+**People** (an admin opens on **All**), and a line under the list says how many twin bids are
+off, with a link to show them.
 
 Each card tells you the story at a glance:
 

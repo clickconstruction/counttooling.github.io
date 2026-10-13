@@ -13,6 +13,32 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(bid-board): People · Twins · All, and an intro that says what the board does (PEOPLE-TWINS, 2026-10-13)
+
+Wendi, a lead, opened All Bids on 41 cards, every one a digital twin's backtest, each wearing a
+gold Ready badge and two gold buttons. The twins' bids are the fleet's work, not an estimator's,
+and they outnumber the human bids many to one, so no restyling of the cards could quiet her
+board. This is the first step of the "All Bids, quieter" mockups (the canvas of 2026-10-13); the
+quiet list and the review bar in the bid are the follow-up, BOARD-QUIET in the punch list.
+
+- **The switch.** A People · Twins · All `.radio-seg` beside the search (`#bidBoardKind`). The
+  board opens on People for everyone but an admin, who opens on All, the view they had. A twin
+  is told by the owner's email against the pattern twin-login enforces
+  (`twin-estimator-N@twins.counttooling.local`, `TWIN_OWNER_RE`): the RPC carries no twin flag,
+  and a twin account outside the pattern cannot sign in, so the pattern is the fleet. Under
+  People a line under the list says how many twin bids are off, with a "show twins" link; the
+  estimator filter lists only the owners the segment shows and keeps its pick when it survives
+  the flip; the switch hides itself for a company with no twin bids. The choice is per open,
+  not stored: the default is the role's.
+- **The copy.** The intro said "Read-only, nothing can be changed by accident" above two buttons
+  that change a bid's review status (written for the overseer's board before the handoff
+  landed). Now: "Every bid in the company, newest first. Click one to open it read-only."
+- features/bid-board.js, app/index.html, styles.css, the Overseer guide's board section (rebuilt),
+  sw.js restamped. bid-board.spec.js gains the fifth test: People and the note for a non-admin,
+  show twins, All with both ready bids in the lane and every owner listed, the admin's All, and
+  the switch hidden when no bid is twin-owned; the existing four pass unchanged under the
+  People default.
+
 ## docs(guides): the measuring article teaches Show Length and Move label (2026-10-13)
 
 The measuring guide (content/guides/measuring-runs-lines-and-polylines.md) never taught the

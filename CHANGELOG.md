@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs: the hand-kept lists caught up to main at 576239a (2026-10-12)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md and SUPABASE_SETUP.md against the code
+after the 38 PRs since #284 (the demo track and the test drive, the pitch deck, the Lead role,
+the stale lock, alternates, auto-pick, the flake fixes). The feature PRs kept their own entries,
+their Files-table rows and most of AGENTS.md; what drifted was the lists nothing generates, plus
+the thirteen deck PRs and the hero autoplay fix that never wrote an entry (added below, dated).
+
+- **AGENTS.md.** The site layout named `/`, `/app/`, `/guides/` and `/rules/` but not the two
+  static pages added since (`/test/`, the test drive, and `/deck/`, the generated pitch deck, both
+  `noindex`, outside the sitemap and the service worker), nor the app doors they open
+  (`?demo=<trade>:<moment>`, `?field=<trade>`). The teaching bullet gains the demo track (the
+  engine, the three scripts, the sessionStorage keys, `npm run smoke:demo`) and the
+  no-do-it-for-me rule names its one exemption. check-lesson-rules and check-courses read the
+  demo files too. A group's `alternate` joins the fields-ride-existing-objects rule. Persisted
+  settings gain `ct:notesDisplay` (written since 2026-08-30, never listed),
+  `clickcount-pending-global-reload` and the two sessionStorage keys; the sign-out key list
+  lives in features/project-settings.js, not app.js. Cloud state gains `state.isDigitalTwin`.
+  The doc map names DEMO-TRACK.md, LEAD-ROLE.md and deck/README.md.
+- **ARCHITECTURE.md.** Files rows for test/index.html, `deck/` with its two scripts, and
+  scripts/smoke-demo.js. In the catalog: the Hotkeys line listed eleven keys of seventeen; the
+  sitemap "lists just `/`" (it has held every guide and rule page since build:guides took it
+  over); Groups gains the alternate, Counter Settings the Auto-pick switch, Sharing the lead
+  role and the stale-lock reading, Admin the lead toggle.
+- **SUPABASE_SETUP.md.** `invite-to-project` "still needs" its lead-role redeploy: it was
+  redeployed the same evening (version 7; the deployed source read from prod on 2026-10-12
+  carries the lead guard). An entry for `log_user_event_water`, the newest allowlist
+  re-creation and the one the allowlist test reads, the stamps on both 2026-09-27 entries, and
+  a note under migration naming on the two files renamed to prod's stamps.
+- Not touched: RECONSTITUTE.md (the annotation shape, the tool enum and the payload fields
+  all match the code), DECOMPOSITION_MAP.md (read at 65f712f; T01, T02, Q05, Q07 and Q08
+  carry their landed notes), PUNCHLIST.md (read; every row still open, DEMO-TRACK's added by
+  its PR), JOURNEY-MAP.md (the test drive and the demo track have no journey yet; a product
+  call, not a docs one).
+
 ## chore(demo): a smoke walker for the demo track on the real site (2026-10-02)
 
 `npm run smoke:demo` (scripts/smoke-demo.js): every demo moment of all three trades, each in a
@@ -385,6 +420,32 @@ artifact `MHnbTcec1HgDrm4SxZPWJ2`. The owner's three picks: off for everyone, pe
   that survives a reload; on, the tag picks and the row flashes; the name rule; Enter; a
   viewer never sees the pill); course-electrical.spec.js (the by-hand E-201 test clicks the pill,
   and stopping the chapter gives the reader's setting back).
+
+## feat(site): the pitch deck at /deck/ (2026-09-29 to 2026-10-02)
+
+PRs #292, #294 to #304 and #307, none of which wrote an entry; recorded here from their
+commits. A pitch deck at counttooling.com/deck/, `noindex` and outside the sitemap, reached by
+its link. `deck/index.html` is built by `node scripts/build-deck.js` from `deck/deck.json` and
+`deck/slides/<id>.html`, the Slides-artifact format the deck is edited in at claude.ai, so a
+slide edited there pastes back whole; `/_blob` images map to `deck/assets/` and `/img/`, the
+arrows become inline SVG, the viewer scales the 1920×1080 stage (arrows, click, swipe, `#n`;
+N notes, F full screen), a video plays only on its slide, and the CountTooling slide plays the
+plumbing hero film. Oswald and Public Sans are vendored as variable woff2. The arc settled at
+ten beats and a backup section (cover, the problem, the answer, the robot, every plan set has
+mistakes, every trade, what it means for an HVAC company, traction, revenue paths, the ask),
+the cover was re-laid five times in a day to match the artifact, a revenue-paths slide got a
+BLS-based model (`deck/model/revenue_paths.py`), and on 2026-10-02 the hand-off:
+`node scripts/sync-deck.js <folder>` makes `deck/` match a saved copy of the artifact. The
+rules for the next editor are in [deck/README.md](deck/README.md).
+
+## fix(landing): the hero film plays on a phone that refuses autoplay (2026-09-30)
+
+PR #293, no entry of its own. iOS Low Power Mode (and a data saver or a strict autoplay
+policy) rejects the in-view start with NotAllowedError, so the still stayed and the clock sat
+at 0:00. A refused start now shows a "Play the takeoff" pill over the frame; a tap on it or
+on the frame is the user gesture those browsers honour, and `playing` takes the pill away. Any
+other failure (a codec the browser lacks) keeps the still with no pill. hero-tap-to-play.spec.js
+(+3); AGENTS.md's hero bullet was amended in the PR.
 
 ## feat(groups): the alternate's own water sizing block (ALT-GROUPS rung 2, 2026-09-30)
 

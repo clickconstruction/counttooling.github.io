@@ -109,12 +109,14 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     await expect(firstCard.locator('.bid-card-name')).toHaveText('Riverside Apartments');
     await expect(firstCard.locator('.bid-card-owner')).toHaveText('wendi');
     await expect(firstCard.locator('.bid-card-badge:not([class*="bid-card-badge-"])')).toHaveText('214 counts · 38 lines');
-    // Cloud-completeness badges: pdf_path present -> "Fully cloud" (p1, p2);
-    // missing -> "Canvas only" (p3). Date carries the relative age suffix.
-    await expect(page.locator('#bidBoardList .bid-card-badge-cloud')).toHaveCount(2);
-    await expect(firstCard.locator('.bid-card-badge-cloud')).toHaveText('✓ Fully cloud');
-    await expect(page.locator('#bidBoardList .bid-card-badge-warn')).toHaveCount(1);
-    await expect(page.locator('#bidBoardList .bid-card-badge-warn')).toHaveText('Canvas only');
+    // Cloud completeness (CLOUD-OFF-ICON): a bid with its PDF in the cloud says nothing; one
+    // without (p3) wears a crossed-out cloud in its corner with the note on it. Date carries
+    // the relative age suffix.
+    await expect(page.locator('#bidBoardList .bid-card-badge-cloud')).toHaveCount(0);
+    await expect(page.locator('#bidBoardList .bid-card-badge-warn')).toHaveCount(0);
+    await expect(page.locator('#bidBoardList .bid-card-cloud-off')).toHaveCount(1);
+    await expect(page.locator('#bidBoardList .bid-card', { hasText: 'Lakeway Medical Office' }).locator('.bid-card-cloud-off')).toHaveAttribute('aria-label', /^Canvas only\./);
+    await expect(firstCard.locator('.bid-card-cloud-off')).toHaveCount(0);
     await expect(firstCard.locator('.bid-card-date')).toContainText(/today|yesterday|days ago/);
 
     // Search filter.

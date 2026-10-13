@@ -3048,12 +3048,14 @@
         <h2>All Bids</h2>
         <div class="bid-board-filters">
           <input type="search" id="bidBoardSearch" placeholder="Search bids…" autocomplete="off" aria-label="Search bids by name" class="bid-board-search" />
+          <!-- PEOPLE-TWINS: shown only when the company has twin-owned bids; features/bid-board.js picks the opening segment. -->
+          <div class="radio-seg bid-board-kind" role="radiogroup" aria-label="People, twins or all" id="bidBoardKind" style="display:none;"><label><input type="radio" name="bidBoardKind" value="people" checked><span>People</span></label><label><input type="radio" name="bidBoardKind" value="twins"><span>Twins</span></label><label><input type="radio" name="bidBoardKind" value="all"><span>All</span></label></div>
           <span class="bid-board-owner-wrap"><label for="bidBoardOwnerFilter" class="bid-board-filter-label">Estimator</label>
             <select id="bidBoardOwnerFilter" class="bid-board-owner-filter" aria-label="Filter by estimator"></select>
           </span>
         </div>
       <button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
-      <p class="form-group bid-board-intro">Every bid in the company, newest first. Click one to view it. Read-only, nothing can be changed by accident.</p>
+      <p class="form-group bid-board-intro">Every bid in the company, newest first. Click one to open it read-only.</p>
       <div id="bidBoardError" class="form-group" style="display:none;"></div>
       <div id="bidBoardList" class="bid-board-list form-group"></div>
       <div class="actions">

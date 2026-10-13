@@ -2492,6 +2492,11 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 #bidBoardModal .bid-board-search { flex: 1 1 160px; min-width: 0; max-width: 320px; padding: 7px 10px; font-size: 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); box-sizing: border-box; font-family: inherit; }
 #bidBoardModal .bid-board-owner-filter { padding: 7px 10px; font-size: 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); max-width: 100%; font-family: inherit; }
 #bidBoardModal .bid-board-intro { color: var(--text2); }
+/* PEOPLE-TWINS: the People · Twins · All segment and the "N twin bids are off" line under the list. */
+#bidBoardModal .bid-board-kind label { padding: 6px 10px; font-size: 0.85rem; }
+#bidBoardModal .bid-board-hidden-note { grid-column: 1 / -1; margin: 6px 0 0; font-size: 0.8rem; color: var(--text3); }
+#bidBoardModal .bid-board-show-twins { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+#bidBoardModal .bid-board-show-twins:hover { text-decoration: underline; }
 #bidBoardModal .bid-board-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 #bidBoardModal .bid-board-empty { color: var(--text2); margin: 0; grid-column: 1 / -1; }
 #bidBoardModal .bid-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }

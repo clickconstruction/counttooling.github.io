@@ -13,6 +13,22 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs(guides): the measuring article teaches Show Length and Move label (2026-10-13)
+
+The measuring guide (content/guides/measuring-runs-lines-and-polylines.md) never taught the
+on-sheet length label, so LABEL-SLIDE had nowhere to land in Help. A "Length labels on the
+sheet" section, between Reading drops back and Keep lines clean: Show Length and Hide Length
+from the line's right-click menu (long-press on touch), what the chip is (feet and inches at the
+midpoint, turned along the line, a tick across each end), that it is markup and prints and
+exports, unlike the drop chips, and where its size and orientation live (Line Type Settings:
+Label size, Orient length with line direction); then Move label (the slide, the drop by click
+or lift, a polyline's label crossing legs), Esc or a right-click to put it back, Reset label,
+and the short-run limit. Text only, no screenshot; `updated` 2026-10-13; guides rebuilt.
+Verified by guides.test.js and a read of the rendered page in the browser; guides.spec.js
+could not launch on the dev machine (Playwright 1.58.2's headless Chromium build is missing
+from the browser cache; `npx playwright install chromium` restores it), so CI's e2e job is the
+browser check.
+
 ## docs: the hand-kept lists caught up to main at 5362f42 (2026-10-13)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md and

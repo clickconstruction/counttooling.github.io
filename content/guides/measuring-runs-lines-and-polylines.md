@@ -1,7 +1,7 @@
 ---
 title: Measuring runs with lines and polylines
 description: Trace pipe, conduit, and other linear runs to get real lengths off the plan: straight lines, multi-segment polylines, arcs, drops, and the Measure tool.
-updated: 2026-09-21
+updated: 2026-10-13
 order: 4
 icon: line
 category: Measuring
@@ -49,6 +49,12 @@ On the sheet, a drop is a small ringed marker at the end of its run, but the rin
 ![The Drop sizes toggle on: every drop marker carries its size on the sheet, and the header button lights up.](/guides/img/drop-sizes-toggle.png)
 
 Both are reading aids, not markup: they never ride into [exports, prints, or reports](/guides/reports-and-exports/), and they work in [view-only links](/guides/sharing-and-view-links/) too, so a GC or inspector can read your risers without asking.
+
+## Length labels on the sheet
+
+The footer and the legend carry the totals, but a reader of the sheet often wants each run's length where the run is. Right-click a line (long-press on a touch screen) and choose **Show Length**: a small white chip with the run's length in feet and inches sits at its midpoint, turned to read along the line, with a short tick across each end of the run. **Hide Length** on the same menu takes it off again. Unlike the drop chips above, a length label is markup: it prints and exports with the sheet. Its size, and whether it turns with the line, are set once for every label in **Line Type Settings** (right-click the **Line** [[line]] tool): *Label size* and *Orient length with line direction*.
+
+When a label lands on the plan's own dimension text, or on a neighbouring run's label, move it. Right-click the line and choose **Move label**: the label follows the pointer along its line, so slide it to a clear stretch and click to drop it (on a touch screen, drag it and lift). It never leaves its line, so it still reads as that run's dimension; on a polyline it can cross onto another leg and turns to follow it. `Esc` or a right-click puts it back where it was, and **Reset label** on the menu sends a moved label home to the midpoint. A run shorter than its own label stays covered wherever the label sits; hide that one's length instead.
 
 ## Keep lines clean
 

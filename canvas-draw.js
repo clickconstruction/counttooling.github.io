@@ -749,6 +749,14 @@ function createCanvasDraw(deps) {
 
   // The unified persisted-marks painter. See the env divergence register in
   // the file header; anything not in env reads state via deps at call time.
+  // LABEL-SLIDE: where a line's length label sits, a fraction of the line's length
+  // (line.labelT, set by the right-click Move label slide); absent or unreadable is the
+  // midpoint, which every label had before.
+  function labelSeatFraction(line) {
+    const t = line ? line.labelT : undefined;
+    return typeof t === 'number' && Number.isFinite(t) ? Math.max(0, Math.min(1, t)) : 0.5;
+  }
+
   function drawAnnotationsCore(ctx, ann, env) {
     const state = deps.getState();
     const tc = env.tc;
@@ -969,12 +977,28 @@ function createCanvasDraw(deps) {
           drawPerpTick(ctx, tc, aPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y }, tickLen, tickColor, lw);
           drawPerpTick(ctx, tc, bPdf, { x: bPdf.x - aPdf.x, y: bPdf.y - aPdf.y }, tickLen, tickColor, lw);
         }
-        const midPdf = isCurved && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
+        // LABEL-SLIDE: the label's seat is a fraction of the way along the line (q.labelT;
+        // absent = the midpoint, drawn exactly as before). An arc's seat is the bezier
+        // parameter and its heading the tangent there, which at the midpoint is the chord's.
+        const labelT = labelSeatFraction(q);
+        let midPdf, labelAngle;
+        if (labelT === 0.5) {
+          midPdf = isCurved && ctrlPdf ? quadraticBezierPoint(0.5, aPdf, ctrlPdf, bPdf) : { x: (aPdf.x + bPdf.x) / 2, y: (aPdf.y + bPdf.y) / 2 };
+          labelAngle = Math.atan2(bPdf.y - aPdf.y, bPdf.x - aPdf.x);
+        } else if (isCurved && ctrlPdf) {
+          midPdf = quadraticBezierPoint(labelT, aPdf, ctrlPdf, bPdf);
+          const tx = 2 * (1 - labelT) * (ctrlPdf.x - aPdf.x) + 2 * labelT * (bPdf.x - ctrlPdf.x);
+          const ty = 2 * (1 - labelT) * (ctrlPdf.y - aPdf.y) + 2 * labelT * (bPdf.y - ctrlPdf.y);
+          labelAngle = Math.atan2(ty, tx);
+        } else {
+          midPdf = { x: aPdf.x + labelT * (bPdf.x - aPdf.x), y: aPdf.y + labelT * (bPdf.y - aPdf.y) };
+          labelAngle = Math.atan2(bPdf.y - aPdf.y, bPdf.x - aPdf.x);
+        }
         const mid = tc(midPdf);
         const effScale = deps.getEffectiveScaleForLine(ann, q, false, env.pageIdx);
         const realLen = deps.getLineRealWorldLength(q, env.pageIdx, false, ann);
         const label = deps.formatDistFeetInchesFromReal(realLen, effScale);
-        drawLengthLabel(label, mid, Math.atan2(bPdf.y - aPdf.y, bPdf.x - aPdf.x));
+        drawLengthLabel(label, mid, labelAngle);
       }
     });
     (ann.polylines || []).forEach(poly => {
@@ -1019,29 +1043,12 @@ function createCanvasDraw(deps) {
         const tickColor = poly.color || '#4a9eff';
         drawPerpTick(ctx, tc, pts[0], { x: pts[1].x - pts[0].x, y: pts[1].y - pts[0].y }, tickLen, tickColor, lw);
         if (pts.length > 2) drawPerpTick(ctx, tc, pts[pts.length - 1], { x: pts[pts.length - 1].x - pts[pts.length - 2].x, y: pts[pts.length - 1].y - pts[pts.length - 2].y }, tickLen, tickColor, lw);
-        const totalLen = polylineDistance(pts, poly.closed);
-        let acc = 0;
-        let midPdf = pts[0];
-        let segAngle = 0;
-        const halfLen = totalLen / 2;
-        for (let i = 0; i < pts.length - 1; i++) {
-          const segLen = ptDist(pts[i], pts[i + 1]);
-          if (acc + segLen >= halfLen) {
-            const t = (halfLen - acc) / segLen;
-            midPdf = { x: pts[i].x + t * (pts[i + 1].x - pts[i].x), y: pts[i].y + t * (pts[i + 1].y - pts[i].y) };
-            segAngle = Math.atan2(pts[i + 1].y - pts[i].y, pts[i + 1].x - pts[i].x);
-            break;
-          }
-          acc += segLen;
-        }
-        if (poly.closed && pts.length >= 3) {
-          const segLen = ptDist(pts[pts.length - 1], pts[0]);
-          if (acc + segLen >= halfLen) {
-            const t = (halfLen - acc) / segLen;
-            midPdf = { x: pts[pts.length - 1].x + t * (pts[0].x - pts[pts.length - 1].x), y: pts[pts.length - 1].y + t * (pts[0].y - pts[pts.length - 1].y) };
-            segAngle = Math.atan2(pts[0].y - pts[pts.length - 1].y, pts[0].x - pts[pts.length - 1].x);
-          }
-        }
+        // LABEL-SLIDE: the label's seat is a fraction of the run's length (poly.labelT, the
+        // right-click Move label slide; absent = halfway, the walk every label had), on
+        // whichever leg holds it, headed along that leg.
+        const seat = polylinePointAtFraction(pts, poly.closed, labelSeatFraction(poly));
+        const midPdf = { x: seat.x, y: seat.y };
+        const segAngle = seat.angle;
         const mid = tc(midPdf);
         const effScale = deps.getEffectiveScaleForLine(ann, poly, true, env.pageIdx);
         const realLen = deps.getLineRealWorldLength(poly, env.pageIdx, true, ann);

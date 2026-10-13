@@ -9,7 +9,8 @@
  *      (ESC-STACK, DECOMPOSITION_MAP S06). It closes through its CLOSERS entry (its own
  *      Cancel or Close, for a dialog that holds pending state) or a plain hide. An
  *      overlay marked `data-esc="none"` (the blocking Turn In progress) swallows the key;
- *   3. an open header popover (the bid menu, the ⋯ tool menu, the zoom rail);
+ *   3. an open header popover (the bid menu, the ⋯ tool menu, the zoom rail), then a
+ *      length label in hand (LABEL-SLIDE, features/mark-context-menu.js), put back;
  *   4. the armed tool, one step per press (TOOL_RUNGS): a pending start, then a palette,
  *      then the tool itself, through the MAP-RESETS helpers (App.clearToolStarts,
  *      App.resetToMove) rather than a hand list of starts;
@@ -182,6 +183,9 @@
     if (top) { dismissOverlay(top); return; }
     const pop = POPOVER_RUNGS.find((p) => p.open());
     if (pop) { pop.close(); return; }
+    // LABEL-SLIDE: a length label in hand goes back to its seat before any tool rung
+    // (features/mark-context-menu.js).
+    if (s.movingLabel) { App.cancelLabelMove && App.cancelLabelMove(); return; }
     const T = App.TOOL;
     const tr = TOOL_RUNGS.find((r) => (r.when ? r.when(s) : s.tool === T[r.tool]));
     if (tr) { runToolRung(tr, s); return; }

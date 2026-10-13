@@ -85,8 +85,9 @@ of every canvas's `annotations`:
 
 - **counterMarkers** — map of `typeId -> [{ x, y, id, group }]`. Keyed by the
   counter type's id.
-- **quickLines** — `[{ x1, y1, x2, y2, color, id, lineTypeId, group, startDrop?, endDrop? }]`.
-- **polylines** — `[{ points: [{x,y}...], closed, color, id, lineTypeId, group, startDrop?, endDrop? }]`.
+- **quickLines** — `[{ x1, y1, x2, y2, color, id, lineTypeId, group, startDrop?, endDrop?, showLength?, labelT? }]`
+  (`labelT`, LABEL-SLIDE: where the length label sits, a fraction of the line's length; absent = the midpoint).
+- **polylines** — `[{ points: [{x,y}...], closed, color, id, lineTypeId, group, startDrop?, endDrop?, showLength?, labelT? }]`.
 - **highlights**, **notes**, **multiplyZones**, **scaleZones**, **roomBoxes**
   (Room Sizer boxes, each referencing a `state.rooms[]` id), **ghosts** (a typical
   copied as a reference overlay), **ductRuns** / **ductFittings** (the duct

@@ -144,6 +144,15 @@
     return rows;
   }
 
+  // Oldest waiting first (Will, 2026-10-13): the Ready lane runs oldest request first, so the
+  // bid that has waited longest is the first card and the review bar's first Next ready. A
+  // row with no stamp sorts last.
+  function byOldestWaiting(a, b) {
+    const ta = a.review_requested_at ? new Date(a.review_requested_at).getTime() : Infinity;
+    const tb = b.review_requested_at ? new Date(b.review_requested_at).getTime() : Infinity;
+    return ta - tb;
+  }
+
   function renderBidBoardList() {
     const listEl = document.getElementById('bidBoardList');
     if (!listEl) return;
@@ -159,10 +168,12 @@
     }
     // "Ready for review" bids get their own lane pinned above the rest — the
     // estimator's handoff signal is the first thing an overseer sees.
-    const ready = rows.filter(function (p) { return p.review_status === 'ready'; });
+    const ready = rows.filter(function (p) { return p.review_status === 'ready'; }).sort(byOldestWaiting);
     const rest = rows.filter(function (p) { return p.review_status !== 'ready'; });
+    // REVIEW-BAR: the lane as shown is the bar's Next ready queue (features/review-flow.js).
+    App.setReviewQueue && App.setReviewQueue(ready);
     listEl.innerHTML = ready.length
-      ? '<div class="bid-board-lane-title">Ready for review (' + ready.length + ')</div>' +
+      ? '<div class="bid-board-lane-title">Ready for review (' + ready.length + ')<span class="bid-board-lane-hint"> · oldest waiting first</span></div>' +
         ready.map(bidCardHtml).join('') +
         (rest.length ? '<div class="bid-board-lane-title">All bids</div>' + rest.map(bidCardHtml).join('') : '')
       : rows.map(bidCardHtml).join('');

@@ -2571,6 +2571,7 @@
     // Same seam: the Notes ledger (features/notes-ledger.js) re-syncs its
     // header badge and, when open, its drawer rows.
     App.onNotesLedgerSync && App.onNotesLedgerSync();
+    App.refreshReviewBar && App.refreshReviewBar();   // REVIEW-BAR (features/review-flow.js): hides once the project it was shown for is gone
     notePerfSample('updateUIMs', performance.now() - t0);
   }
   // N3: rapid mark placement must never rebuild the sidebar per click — the

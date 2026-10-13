@@ -2531,6 +2531,23 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 .settings-review-row .settings-review-status { flex: 1; min-width: 0; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #settingsModal .settings-review-row .settings-review-btn { padding: 6px 2px; white-space: nowrap; }
 .settings-review-row .settings-review-btn:disabled { opacity: 0.6; cursor: wait; text-decoration: none; }
+#bidBoardModal .bid-board-lane-hint { color: var(--border2); }
+/* REVIEW-BAR (features/review-flow.js): under the header while a ready bid is open by a reviewer.
+   In the .app flex column like the header, so the sheet below gives up its height. */
+.review-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; min-height: 40px; padding: 4px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+.review-bar-kicker { font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.review-bar-text { color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-bar.done .review-bar-text { color: var(--green); }
+.review-bar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.review-bar button { font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.review-bar-changes { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.review-bar-changes:hover { color: var(--text); border-color: var(--accent2); }
+.review-bar-reviewed { background: var(--accent); border: 1px solid var(--accent); color: var(--bg); font-weight: 600; }
+.review-bar-reviewed:hover { background: var(--accent2); border-color: var(--accent2); }
+.review-bar-next { background: none; border: none; color: var(--accent); padding: 6px 4px; }
+.review-bar-next:hover { text-decoration: underline; }
+.review-bar button:disabled { opacity: 0.6; cursor: wait; }
+@media (max-width: 768px) { .review-bar { padding: 4px 10px; gap: 8px; } .review-bar-text { white-space: normal; } .review-bar-actions { margin-left: 0; } }
 
     /* Notes ledger (features/notes-ledger.js) — header badge, right drawer,
        and the note hover chip. Pins themselves are canvas-drawn. */

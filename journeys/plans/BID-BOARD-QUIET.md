@@ -24,20 +24,19 @@ D the cards kept and quieted).
   for everyone but an admin, a "N twin bids are off · show twins" line, the estimator filter
   narrowed to the segment, the switch hidden when no bid is twin-owned; the intro rewritten.
   Detail in CHANGELOG.md.
+- REVIEW-BAR (2026-10-13, Will's two calls: oldest waiting first, the bar next): the Ready
+  lane sorts on `review_requested_at`; a ready bid opened by a reviewer carries a bar under the
+  header with how long it has waited, Request changes…, Mark reviewed and Next ready, which walks
+  the lane as the board shows it. features/review-flow.js owns it. Detail in CHANGELOG.md.
 
 ## What is left
 
-1. **C, the review bar in the bid.** On a ready bid opened by someone who `App.canOversee()`, a
-   slim bar under the header: how long it has waited, its counts, Request changes…, one filled
-   Mark reviewed, and Next ready (the next bid in the lane, so 41 reviews are a loop, not 41
-   trips to the board). features/review-flow.js owns it. The board's per-card buttons go once
-   it lands; the Overseer guide ("clicks Mark reviewed right on the card") and bid-board.spec.js
-   change with it.
-2. **A, the board as a list.** One row per bid, 42px: name with the stamp in dim mono, estimator,
+1. **A, the board as a list.** One row per bid, 42px: name with the stamp in dim mono, estimator,
    counts, days waiting; actions on the hovered row only; badges for exceptions only (canvas
-   only, changes requested); the Ready lane oldest-waiting first. Forty rows to a screen.
-3. **B, grouped by estimator**, only once the company has more than two or three human
+   only, changes requested). Forty rows to a screen.
+2. **B, grouped by estimator**, only once the company has more than two or three human
    estimators; with one or two it is A with a caret.
 
-Decisions still Will's: the Ready lane's sort (oldest waiting first is the assumption), and
-whether the board's per-card buttons go when C lands or stay beside it.
+Decision still Will's: whether the board's per-card Mark reviewed and Request changes… go now
+that the bar carries them, or stay for a bid the reviewer does not need to open (they stay
+today).

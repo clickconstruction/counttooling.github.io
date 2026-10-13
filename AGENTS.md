@@ -518,7 +518,10 @@
   be added there and to save/load + export/import.
 - A palette item's `childCounts[]` rows are `{ name, qty, per: 'count'|'run'|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` names the rulebook rule a row was taken from (the § chip). Palettes serialize wholesale, so both ride save/load, export/import and the Artboard for free.
 - Electrical fields ride existing objects, never new ones: a line type's `raceway`
-  / `conductors` / `tickMarks` / `homerun`, a line's own `conductors` / `homerun`, a
+  / `conductors` / `tickMarks` / `homerun`, a line's own `conductors` / `homerun` /
+  `labelT` (LABEL-SLIDE, 2026-10-12: where its length label sits, a fraction of the line's
+  length, absent = the midpoint; the right-click Move label slide sets it, Reset label removes
+  it, and canvas-draw.js walks it for the live overlay and every export), a
   counter's `mountHeightIn` / `cablePerCount` / `panelName` / `poles`, a counter's `tag`, a group's
   `panel` / `circuit` / `loadAmps` (palettes serialize wholesale; a line's
   override rides the annotation). Wire and cable are DERIVED at tally time

@@ -88,6 +88,57 @@
   function quadraticBezierPoint(t, p0, p1, p2) {
     return { x: (1 - t) * (1 - t) * p0.x + 2 * (1 - t) * t * p1.x + t * t * p2.x, y: (1 - t) * (1 - t) * p0.y + 2 * (1 - t) * t * p1.y + t * t * p2.y };
   }
+  // LABEL-SLIDE (2026-10-12): a length label's seat is a fraction of its line's length,
+  // 0 at the first vertex, 1 at the last (or back at the first when closed). These two
+  // are the slide's halves: where along the line the point nearest the pointer sits,
+  // and the point (and the leg's heading) a fraction of the way along, which the
+  // painter walks for every label (0.5 is the midpoint it always drew).
+  function polylineFractionNearest(pts, closed, p) {
+    if (!pts || pts.length < 2) return 0.5;
+    const total = polylineDistance(pts, closed);
+    if (!(total > 0)) return 0.5;
+    const n = closed && pts.length >= 3 ? pts.length : pts.length - 1;
+    let best = Infinity, bestAt = 0, acc = 0;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const len = ptDist(a, b);
+      if (len > 0) {
+        const u = Math.max(0, Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (len * len)));
+        const d = ptDist(p, { x: a.x + u * (b.x - a.x), y: a.y + u * (b.y - a.y) });
+        if (d < best) { best = d; bestAt = acc + u * len; }
+      }
+      acc += len;
+    }
+    return Math.max(0, Math.min(1, bestAt / total));
+  }
+  function polylinePointAtFraction(pts, closed, t) {
+    if (!pts || !pts.length) return { x: 0, y: 0, angle: 0 };
+    const total = polylineDistance(pts, closed);
+    const target = total * Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0.5));
+    const n = closed && pts.length >= 3 ? pts.length : pts.length - 1;
+    let acc = 0;
+    for (let i = 0; i < n; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length];
+      const len = ptDist(a, b);
+      if (acc + len >= target || i === n - 1) {
+        const u = len > 0 ? Math.max(0, Math.min(1, (target - acc) / len)) : 0;
+        return { x: a.x + u * (b.x - a.x), y: a.y + u * (b.y - a.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
+      }
+      acc += len;
+    }
+    return { x: pts[0].x, y: pts[0].y, angle: 0 };
+  }
+  // The bezier parameter nearest a point, by sampling: an arc line's label seat.
+  function quadraticBezierParamNearest(p, p0, p1, p2, samples) {
+    const n = samples || 64;
+    let best = Infinity, bestT = 0.5;
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const d = ptDist(p, quadraticBezierPoint(t, p0, p1, p2));
+      if (d < best) { best = d; bestT = t; }
+    }
+    return bestT;
+  }
   // 20-step polyline approximation of the curve. Integer loop so the final
   // step lands on t = 1 exactly — a float `t += 0.05` accumulator drifts to
   // 1.0000000000000004 and drops the last segment (~5% short on every arc).
@@ -494,6 +545,7 @@
     module.exports = {
       ptDist, snapLineToAngle, polylineDistance, polygonArea, distToSegment,
       getQuadraticBezierControlPoint, quadraticBezierPoint, quadraticBezierLength, distToQuadraticBezier,
+      polylineFractionNearest, polylinePointAtFraction, quadraticBezierParamNearest,
       rotatePoint90CW, pointInRect, rectsOverlap, clampMenuPosition,
       getMultiplyZoneForPoint, getMultiplyZoneForLine, getScaleZoneForLine, counterTally,
       formatLineLengthRealSum, formatFeet, formatFeetPx, parseRealWorldLength, parseFraction, parseMountHeightIn, formatMountHeightIn,

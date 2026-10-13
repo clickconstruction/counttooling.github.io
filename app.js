@@ -328,7 +328,7 @@
     recentLineColors: [],
     recentBids: [],
     recentDrops: [],
-    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
+    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, movingLabel: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
     pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
@@ -5041,6 +5041,7 @@
     if (pdfOverride) { pdf = pdfOverride; }
     else { const pt = canvasPointFromEvent(e); pdf = canvasToPdf(pt.x, pt.y); }
     state.mousePos = pdf;
+    if (state.movingLabel) { App.dropMovingLabel && App.dropMovingLabel(pdf); return; }   // LABEL-SLIDE: the drop
     // R14: the grid's "Set origin on page" pick is features/grid.js's (armed there too).
     if (state.gridOriginPickMode) { App.commitGridOriginPick && App.commitGridOriginPick(pdf); return; }
     if (state.tool === TOOL.SCALE) {
@@ -5271,6 +5272,7 @@
   function handleContextMenu(e) {
     e.preventDefault();
     if (state.isViewer) return;
+    if (state.movingLabel) { App.cancelLabelMove && App.cancelLabelMove(); return; }   // LABEL-SLIDE: a right-click mid-move puts the label back
     const pt = canvasPointFromEvent(e);
     const pdf = canvasToPdf(pt.x, pt.y);
     if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
@@ -5569,6 +5571,8 @@
     if (e.button !== 0) return;
     const pt = canvasPointFromEvent(e);
     state.mousePos = canvasToPdf(pt.x, pt.y);
+    // LABEL-SLIDE: a length label in hand drops on the click that follows; no other drag starts.
+    if (state.movingLabel) return;
     // Ghost drag. Gated on TOOL.GHOST: a ghost sits ON TOP of the plan where
     // real marks live, so outside its own tool it must never intercept a click
     // meant for the takeoff underneath.
@@ -5673,6 +5677,13 @@
         state.aimRafPending = true;
         requestAnimationFrame(() => { state.aimRafPending = false; drawAimLoupe(); renderAnnotations(); });
       }
+      return;
+    }
+    // LABEL-SLIDE (features/mark-context-menu.js): a length label in hand slides along
+    // its line under the pointer; the next click drops it, Esc puts it back.
+    if (state.movingLabel) {
+      if (App.slideMovingLabel) App.slideMovingLabel(pdf);
+      if (annCanvas) annCanvas.style.cursor = 'move';
       return;
     }
     if (state.aimPressTimer && state.aimMouseDownClient && ptDist({ x: e.clientX, y: e.clientY }, state.aimMouseDownClient) > RECT_DRAG_MIN_PX) {
@@ -6098,6 +6109,16 @@
         }
         return;
       }
+      // LABEL-SLIDE: a label in hand follows the finger along its line; the lift drops it.
+      if (state.movingLabel) {
+        e.preventDefault();
+        if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+        const pt = canvasPointFromEvent(e);
+        const pdf = canvasToPdf(pt.x, pt.y);
+        state.mousePos = pdf;
+        if (App.slideMovingLabel) App.slideMovingLabel(pdf);
+        return;
+      }
       // EDIT_POLY: drag the grabbed vertex (with the loupe), touch parity with mouse.
       // Skip if a long-press already fired a delete (draggingVertexIdx would be stale).
       if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null && state.editingPolyline &&
@@ -6144,6 +6165,16 @@
     if (e.touches.length < 2) {
       if (state.pinchStartDistance != null) commitPinchZoom();
       state.pinchStartDistance = null;
+    }
+    // LABEL-SLIDE: the lift drops the label where the finger is (a tap seats it there too).
+    if (state.movingLabel && !e.touches.length) {
+      e.preventDefault();
+      if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+      state.longPressFired = false;
+      state.touchPanStart = null;
+      const pt = canvasPointFromEvent(e);
+      if (App.dropMovingLabel) App.dropMovingLabel(canvasToPdf(pt.x, pt.y));
+      return;
     }
     if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null) {
       // Release a dragged polyline vertex. (A long-press delete is handled by the
@@ -6749,6 +6780,10 @@
   App.SCALE_MODES = SCALE_MODES;
   App.SCALE_PRESETS = SCALE_PRESETS;
   App.ptDist = ptDist;
+  // LABEL-SLIDE (features/mark-context-menu.js): the slide's projection helpers (geometry.js).
+  App.getQuadraticBezierControlPoint = getQuadraticBezierControlPoint;
+  App.polylineFractionNearest = polylineFractionNearest;
+  App.quadraticBezierParamNearest = quadraticBezierParamNearest;
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.parseMountHeightIn = parseMountHeightIn;

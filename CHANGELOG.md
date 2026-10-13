@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(line): a length label slides along its line (LABEL-SLIDE, 2026-10-12)
+
+Wendi: "need ability to move length labels in CountTooling so they can be legible when they
+overlap". Her screenshot: lines traced over the plan's own dimension lines, so each label sat
+on the plan's dimension text. The label stays on its line, where a plan reader expects a
+dimension, and it slides.
+
+- **The gesture.** Right-click a line whose length shows: **Move label** puts the label in hand;
+  it slides along the line under the pointer, projected onto the nearest point, so a polyline's
+  label can cross onto another leg and turns with it; the next click (or the finger's lift) drops
+  it; Esc or a right-click puts it back. **Reset label** sends a moved label home. Works from
+  any tool and leaves the tool armed.
+- **The field.** `line.labelT`, a fraction of the line's length, absent until a label is moved
+  and deleted again by Reset, so an unmoved line keeps its shape; lines ride every payload
+  wholesale, so save/load, export/import, the cloud and PDF export carry it with no new
+  plumbing. canvas-draw.js walks the seat for the live overlay and every export (an arc's seat is
+  the bezier parameter, its heading the tangent). One undo snapshot per move, at the first slide.
+- **Where it lives.** features/mark-context-menu.js (the two rows, the slide, `App.slideMovingLabel`
+  / `dropMovingLabel` / `cancelLabelMove`), app.js's mouse and touch handlers (`state.movingLabel`
+  takes the pointer: mousedown starts no other drag, mousemove and touchmove slide, the click or
+  lift drops, a right-click cancels), features/esc-ladder.js (the rung before any tool rung),
+  geometry.js (`polylineFractionNearest`, `polylinePointAtFraction`, `quadraticBezierParamNearest`,
+  node-tested).
+- **A latent bug the walk fixed.** The old halfway walk for a CLOSED polyline let the closing-leg
+  branch override the leg it had already found, so a closed run's label sat on its closing leg
+  near the first vertex instead of halfway round (the pixel fixture's closed polyline showed it:
+  seat (342, 81) where halfway is (439, 174)). The three pixel baselines are re-recorded on both
+  platforms (darwin locally, linux in the official Playwright image, the config's recipe); the
+  diffs are confined to that one label's two positions.
+- **The limit.** A label never leaves its line, so a line shorter than its label stays covered
+  wherever it slides; Hide Length is that case's answer.
+- Pinned by label-slide.spec.js (the rows, the projected seat at three quarters, the white box at
+  the new seat and gone from the midpoint, the drop, undo and redo, Reset label, Esc, a polyline's
+  label crossing legs) and geometry.test.js.
+
 ## feat(line): the rubber band ends on a solid mark at both ends (RUBBER-BAND-CAPS, 2026-10-12)
 
 Wendy, dragging a line: a dashed band with two bare ends says "somewhere around here". The

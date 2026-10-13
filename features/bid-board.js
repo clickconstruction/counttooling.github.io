@@ -108,16 +108,23 @@
       proj.counter_count > 0 ? (proj.counter_count + (proj.counter_count === 1 ? ' count' : ' counts')) : null,
       proj.line_count > 0 ? (proj.line_count + (proj.line_count === 1 ? ' line' : ' lines')) : null,
     ].filter(Boolean).join(' · ');
-    // Cloud completeness: a bid with its PDF in storage is fully in the cloud
-    // (canvas markups always ride in the project row); without it, only the
-    // canvas is backed up and the plan itself lives on the estimator's device.
+    // Cloud completeness (CLOUD-OFF-ICON, 2026-10-13, Will): a bid with its PDF in storage
+    // is fully in the cloud (canvas markups always ride in the project row) and the card says
+    // nothing about it. Without the PDF, only the canvas is backed up and the plan itself
+    // lives on the estimator's device: a crossed-out cloud sits in the card's top-right
+    // corner (over the title if it must), with the note on hover and in its label.
+    const cloudOffNote = 'Canvas only. The markups are in the cloud, but the plan PDF was never uploaded and still lives on the estimator\'s device.';
     const cloudBadge = proj.pdf_path
-      ? '<span class="bid-card-badge bid-card-badge-cloud" title="Canvas and PDF are both in the cloud">✓ Fully cloud</span>'
-      : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud. The PDF was never uploaded">Canvas only</span>';
+      ? ''
+      : '<span class="bid-card-cloud-off" role="img" aria-label="' + esc(cloudOffNote) + '" data-tip="' + esc(cloudOffNote) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M22.6 17A5 5 0 0 0 18 10h-1.3a8 8 0 0 0-7-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"/><line x1="1" y1="1" x2="23" y2="23"/>' +
+          '</svg></span>';
     // DROP-CARD-BUTTONS (2026-10-13): a card carries no decision. Mark reviewed and
     // Request changes… live on the review bar in the opened bid (features/review-flow.js),
     // which the card click reaches, so a bid is reviewed where it is read.
-    return '<div class="bid-card" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
+    return '<div class="bid-card' + (cloudBadge ? ' bid-card-no-pdf' : '') + '" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
+      cloudBadge +
       '<div class="bid-card-name">' + esc(proj.name || 'Untitled') +
         (proj.external_ref ? ' <span class="bid-stamp" title="Upstream bid ' + esc(proj.external_ref) + '">' + esc(proj.external_ref) + '</span>' : '') +
       '</div>' +
@@ -125,7 +132,6 @@
       '<div class="bid-card-meta">' +
         reviewBadgeHtml(proj) +
         (counts ? '<span class="bid-card-badge">' + esc(counts) + '</span>' : '') +
-        cloudBadge +
         (date ? '<span class="bid-card-date">' + esc(date) + '</span>' : '') +
       '</div>' +
       '<div class="bid-card-status">Loading…</div>' +

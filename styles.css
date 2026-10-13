@@ -2502,11 +2502,18 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 #bidBoardModal .bid-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
 #bidBoardModal .bid-card:hover, #bidBoardModal .bid-card:focus-visible { background: var(--surface2); border-color: var(--accent); outline: none; }
 #bidBoardModal .bid-card-name { font-size: 1.05rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
-#bidBoardModal .bid-card-owner { font-size: 0.85rem; color: var(--accent); }
+#bidBoardModal .bid-card-owner { font-size: 0.85rem; color: var(--accent); text-align: right; }
+/* CLOUD-OFF-ICON (2026-10-13): a bid without its PDF in the cloud wears a crossed-out cloud in the
+   card's top-right corner; the note rides a CSS tooltip under it on hover. Fully cloud says nothing. */
+#bidBoardModal .bid-card { position: relative; }
+#bidBoardModal .bid-card-cloud-off { position: absolute; top: 9px; right: 10px; width: 26px; height: 26px; padding: 3px; box-sizing: border-box; border-radius: 50%; background: inherit; color: var(--yellow); opacity: 0.9; }
+#bidBoardModal .bid-card-cloud-off svg { display: block; width: 20px; height: 20px; }
+#bidBoardModal .bid-card-no-pdf .bid-card-name { padding-right: 28px; }   /* the title wraps short of the corner rather than running under the cloud */
+#bidBoardModal .bid-card-cloud-off::after { content: attr(data-tip); position: absolute; top: 30px; right: -2px; width: 232px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); color: var(--text); font-size: 0.78rem; line-height: 1.4; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 5; }
+#bidBoardModal .bid-card-cloud-off:hover::after, #bidBoardModal .bid-card:focus-visible .bid-card-cloud-off::after { opacity: 1; }
 #bidBoardModal .bid-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 #bidBoardModal .bid-card-badge { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--surface2); color: var(--text2); }
 #bidBoardModal .bid-card-badge-warn { background: var(--yellow); color: var(--bg); }
-#bidBoardModal .bid-card-badge-cloud { background: var(--green); color: var(--bg); }
 #bidBoardModal .bid-card-date { font-size: 0.78rem; color: var(--text3); margin-left: auto; }
 #bidBoardModal .bid-card-status { display: none; font-size: 0.8rem; color: var(--text2); }
 #bidBoardModal .bid-card.loading { pointer-events: none; opacity: 0.75; cursor: wait; }

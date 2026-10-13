@@ -13,6 +13,25 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## style(bid-board): the cloud says nothing unless it is missing (CLOUD-OFF-ICON, 2026-10-13)
+
+Will, on the quieter cards: "when something is fully cloud I would like to see nothing; when
+canvas only, a cloud with a line through it up in the corner, the note on hover; and the
+estimator aligned right."
+
+- The green ✓ Fully cloud badge is gone; the normal case is silent. A bid without its PDF in
+  the cloud wears a crossed-out cloud (an inline stroke SVG, the accent yellow at 90%) in the
+  card's top-right corner, over the title if the title runs that far, on a halo of the card's
+  own background. Hover it (or focus the card) and a small note drops under it: "Canvas only.
+  The markups are in the cloud, but the plan PDF was never uploaded and still lives on the
+  estimator's device." The same note is its `aria-label`.
+- The estimator's name sits right-aligned under the title.
+- features/bid-board.js, styles.css (the badge rule out, the icon and its tooltip in; the card
+  is `position: relative` for the corner), bid-board.spec.js (no cloud badges; one crossed-out
+  cloud on the card without a PDF, labelled; none on the first), the Overseer guide's card
+  bullet (rebuilt), the ARCHITECTURE row, sw.js restamped. The guide's board screenshot still
+  shows the old badges until `npm run build:screenshots` is run.
+
 ## feat(bid-board): the cards carry no decision (DROP-CARD-BUTTONS, 2026-10-13)
 
 Will's call on the before/after boards of the "All Bids, quieter" canvas: now that the review

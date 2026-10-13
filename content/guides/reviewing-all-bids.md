@@ -39,11 +39,11 @@ Each card tells you the story at a glance:
   has no markups yet.
 - **When it was last touched**: the date plus a plain-English age: *today*, *yesterday*,
   *12 days ago*.
-- **Cloud status**: <span style="white-space:nowrap;">**✓ Fully cloud**</span> (green) means
-  the markups *and* the plan PDF are both saved to the cloud, so the bid opens complete
-  anywhere. **Canvas only** (yellow) means only the markups made it to the cloud, the PDF
-  still lives on the estimator's device, so the drawing itself can't be displayed until they
-  save it with the PDF included.
+- **Cloud status**: a card that says nothing about it is complete, the markups *and* the plan
+  PDF both saved to the cloud, so the bid opens anywhere. A crossed-out cloud in the card's top
+  corner means **canvas only**: the markups made it to the cloud but the PDF still lives on the
+  estimator's device, so the drawing can't be displayed until they save it with the PDF
+  included. Hover the cloud for the note.
 
 If you close the board, it's one click away: **All Bids** in the sidebar.
 

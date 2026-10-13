@@ -2246,6 +2246,23 @@
     // MAP-RESETS: each rubber band draws only under its own tool (the Chain, Delete
     // Area and Ghost bands already did), so a start some path forgot to clear can
     // never paint under another tool or in Move (D05, D17, D26).
+    // RUBBER-BAND-CAPS (2026-10-12, Wendy): a dashed band can stop a gap short of
+    // either end, so each end carries a short solid tick across the line in the
+    // band's colour: the entry point, which nothing marks once the mouse has left
+    // it, and the cursor end, which the dashes may not reach. The dash pattern is
+    // anchored at the entry point (canvas starts it at the path's first point), so
+    // the band grows out of its entry and the ticks say where it really starts and
+    // ends; fitting the dashes to the length would make every dash crawl instead.
+    // The dash is in device pixels, so it is scaled to read the same on every screen.
+    const bandDash = [4 * currentEffDpr, 4 * currentEffDpr];
+    const drawBandCap = (p, dx, dy) => {
+      const len = Math.hypot(dx, dy);
+      if (!len) return;
+      const nx = -dy / len, ny = dx / len, half = Math.max(4 * currentEffDpr, lw * 1.5);
+      ctx.save(); ctx.setLineDash([]); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x - nx * half, p.y - ny * half); ctx.lineTo(p.x + nx * half, p.y + ny * half); ctx.stroke();
+      ctx.restore();
+    };
     if (state.tool === TOOL.LINE && state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       const aPdf = state.quickLineStart;
@@ -2255,11 +2272,15 @@
       const useArc = lt?.curveStyle === 'arc';
       const ctrlPdf = useArc ? getQuadraticBezierControlPoint(aPdf, bPdf, 1) : null;
       const ctrl = ctrlPdf ? toCanvas(ctrlPdf) : null;
-      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash(bandDash);
       ctx.beginPath(); ctx.moveTo(a.x, a.y);
       if (useArc && ctrl) ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
       else ctx.lineTo(b.x, b.y);
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.stroke();
+      const tanA = ctrl || b, tanB = ctrl || a;    // an arc's ticks follow its tangents
+      drawBandCap(a, tanA.x - a.x, tanA.y - a.y);
+      drawBandCap(b, b.x - tanB.x, b.y - tanB.y);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     if (state.tool === TOOL.CHAIN && state.chainStart && state.chainStart.page === state.currentPage && state.mousePos) {
       // Chain rubber band: anchor (last placed counter) -> cursor, in the
@@ -2269,9 +2290,12 @@
       let bPdf = state.mousePos;
       if (lts.snapToHorizontalVertical) bPdf = snapLineToAngle(aPdf.x, aPdf.y, bPdf.x, bPdf.y);
       const a = toCanvas(aPdf), b = toCanvas(bPdf);
-      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash(bandDash);
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.stroke();
+      drawBandCap(a, b.x - a.x, b.y - a.y);
+      drawBandCap(b, b.x - a.x, b.y - a.y);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     if (state.tool === TOOL.DROP) {
       // Drop tool armed: every line end on the page becomes a labeled target
@@ -2353,19 +2377,25 @@
     }
     if (state.drawingPolyline && state.drawingPolyline.points.length >= 1) {
       const pts = state.drawingPolyline.points;
-      ctx.strokeStyle = state.drawingPolyline.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      const p0 = toCanvas(pts[0]); ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < pts.length; i++) { const p = toCanvas(pts[i]); ctx.lineTo(p.x, p.y); }
+      ctx.strokeStyle = state.drawingPolyline.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash(bandDash);
+      const cps = pts.map(toCanvas);
       if (state.mousePos) {
         let pmPdf = state.mousePos;
         if (lts.snapToHorizontalVertical) {
           const prev = pts[pts.length - 1];
           pmPdf = snapLineToAngle(prev.x, prev.y, pmPdf.x, pmPdf.y);
         }
-        const pm = toCanvas(pmPdf); ctx.lineTo(pm.x, pm.y);
+        cps.push(toCanvas(pmPdf));
       }
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(cps[0].x, cps[0].y);
+      for (let i = 1; i < cps.length; i++) ctx.lineTo(cps[i].x, cps[i].y);
+      ctx.stroke();
+      if (cps.length > 1) {    // the first point and the cursor end, across their own legs
+        const c0 = cps[0], c1 = cps[1], cn = cps[cps.length - 1], cm = cps[cps.length - 2];
+        drawBandCap(c0, c1.x - c0.x, c1.y - c0.y);
+        drawBandCap(cn, cn.x - cm.x, cn.y - cm.y);
+      }
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     // Duct trace preview (features/duct-tool.js, DUCT unit D2): the in-progress
     // run's segments at their stepped stroke widths + rubber band + the cursor

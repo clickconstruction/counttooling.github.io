@@ -13,6 +13,29 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(line): the rubber band ends on a solid mark at both ends (RUBBER-BAND-CAPS, 2026-10-12)
+
+Wendy, dragging a line: a dashed band with two bare ends says "somewhere around here". The
+dash pattern was already anchored at the entry point (canvas starts it at the path's first
+point), so the band grows out of its entry; what was missing was anything solid at either end.
+The far end can stop a gap short of the cursor, and the entry point has nothing marking it once
+the mouse has left it. Fitting the dashes to the length so the band always ends on a full dash
+would make every dash crawl as the line grows, so that is not what this does.
+
+- **app.js** (the live overlay's previews): the Quick Line, Chain and Polyline rubber bands end
+  in a short solid tick across the line at both ends, in the band's colour and opacity, 8 CSS px
+  long (three line widths when the line is thicker), round-capped; an arc line type's ticks
+  follow the curve's tangents, and a polyline's sit at its first point and at the cursor. One
+  helper, `drawBandCap`, beside the three blocks. The band's dash, which was 4 device pixels on
+  and off, is `bandDash`, scaled by the device pixel ratio so it reads the same on every screen.
+  Measure and Set Scale keep their own crosshair glyphs; committed lines are untouched
+  (canvas-draw.js and the pixel baselines).
+- Pinned by rubber-band-caps.spec.js: after one Quick Line click and a mouse move, the pixels
+  3 CSS px either side of the line at the entry point and at the cursor carry the line's
+  colour while the middle of the band does not (on the old app.js the end samples are blank:
+  the band is two pixels wide and nothing crosses it); the same for a polyline's first point
+  and cursor end; the second click still commits the line.
+
 ## docs: the hand-kept lists caught up to main at 576239a (2026-10-12)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md and SUPABASE_SETUP.md against the code

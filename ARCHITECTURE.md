@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,159 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,171 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,263 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,417 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
 | [app/index.html](app/index.html) | 3,880 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,879 | All CSS, token-organized. Leave. |
+| [styles.css](styles.css) | 2,880 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 751 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 1,225 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 991 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (108 files) | 37,489 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (108 files) | 37,513 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -246,7 +246,7 @@ modules. Candidates in priority order:
 | [features/save-project.js](features/save-project.js) | The **Save Project modal**: open/prefill with the PDF-size probe ladder (buffer → IDB `pdfCacheGet` → storage `.info`), the Include-PDF toggle pair, and the Save action with the three-tier checkout-expiry preflight (`probeCheckoutLock`) and the stale-cloud-PDF confirm, delegating to `performSaveProjectToCloud`. In the canvas-only state (a bid open without its PDF, `App.isCanvasOnlyPending()`, the engine's MAP-EMPTY-SAVE test published by app.js) it rewords `#saveProjectNoPdfMessage` to say the marks can't be saved until the PDF is back and disables Save (MAP-MANUAL-SAVE; the engine holds the write too). Registers **nothing** — the zone-modals pattern; every handler moved with its DOM element. Coverage rides [upload-then-save.spec.js](upload-then-save.spec.js) (dev-auth-gated) and [indexeddb-backup.spec.js](indexeddb-backup.spec.js) (no name-matched spec; the expiry preflight is untested). |
 | [features/line-color.js](features/line-color.js) | The **shared color-selection service** (registry split #36): `showLineColorModal(currentColor, onApply)` (callback stashed on `state.pendingLineColorApply`), `pushRecentColor` (custom-only recents via the pure `nextRecentColors`, localStorage-persisted), and `setupCreateColorPicker(opts)` (the Presets / custom / Recent picker embedded in the three create surfaces). Consumed by features/item-details.js, counter.js, choose-create-line-type.js, quick-line.js, and app.js — a shared dependency of four feature files, so it must not be merged into any one of them. Reads `COLORS` / `nextRecentColors` as bare constants.js globals (unlike the other feature files). Regression: [create-color-picker.spec.js](create-color-picker.spec.js) (no name-matched spec). |
 | [features/custom-icon-upload.js](features/custom-icon-upload.js) | **Custom icon upload** (registry split #37): `parseUploadedSvg` (SVG path/rect/circle/ellipse/line → normalized path icon) + the `#customIconUploadInput` handler that persists the icon (`getUserCustomIcons`/`saveUserCustomIcons`) and refreshes the three custom icon grids (Create Counter, Quick Count, Details). The Create Counter grid is rebuilt by its owner's builder, `App.buildCreateCustomIconGrid` ([features/counter.js](features/counter.js)), the same one the panel opens with, so a pick after an upload fills the name AND re-reads the fixture units (MAP-ICON-PREFILL, D34); the upload's own autofill re-reads them too (`App.syncWsfuForm('create')`). `selectUploadedIcon` makes the success visible (T2-05 #19): it scrolls the new cell into view (`scrollIntoView({ block: 'nearest' })` — the cell appends below the grid's 200px fold) and adds the one-shot `.flash-new` selection-ring pulse (styles.css `icon-cell-flash` keyframes; no removal listener — every upload rebuilds the grid via `innerHTML`, so the class never survives a rerender). Registers nothing; reads feature-registered members at call time (`App.buildCreateCustomIconGrid` + `App.markCreateIconPicked` from counter.js, `App.syncWsfuForm` from water-fixtures.js, `App.updateCounterQuickCountNamePreview` from quick-modals.js, `App.getCounterLineTypeDetailsItem` from item-details.js). Persistence side covered by [custom-icon-paths-indexeddb.spec.js](custom-icon-paths-indexeddb.spec.js); the upload path by [custom-icon-upload.spec.js](custom-icon-upload.spec.js) (real FileReader + DOMParser walk via `setInputFiles`; grid refresh + selection + name autofill; a custom pick after an upload prefills Fixture units the same as before one; the T2-05 in-scroll-window + `.flash-new` assertions; the no-supported-shapes rejection alert). |
-| [features/ghost.js](features/ghost.js) | **The Ghost tool** (PROTOTYPE): rubber-band a batch of placed marks into a translucent reference copy ("a typical"), drag it over another part of the sheet, and optionally **Stamp** it down as real counted marks. Owns the capture→place gesture (`handleGhostCanvasClick`, staged `handleGhostEscape`) and the per-ghost right-click menu (`tryOpenGhostMenuAt` — Stamp / Show counts / Show runs / Delete). The model half is pure in annotation-model.js (`captureGhostFromRect`, `ghostCounts`, `ghostBounds`, `translateGhost`, `stampGhostIntoAnnotations`, `ghostIndexAtPoint`); drawing is `drawGhosts` in canvas-draw.js (live overlay ONLY — never the export path, like the grid). Ghosts are a DISTINCT annotation kind (`ann.ghosts[]`, `{ id, label, showCounters, showLines, src }` with src annotation-shaped in absolute PDF-space) so no tally surface can read them; Stamp is the single door to counted marks. MAP-GHOST-DELETE: registers `App.purgeFromEveryGhost(kind, id)`, which the delete cascades (item-details.js `performDeleteCounterLineType`, groups.js `deleteGroup`) call after pruning the live marks; it runs the pure `purgeFromGhosts` over every page and layer plus the ghost riding the cursor, and drops `activeGhostId` / the open menu for a ghost it emptied, so a deleted type or group cannot be stamped back uncounted. App.* deps: state, TOOL, ensureActiveCanvas, getActiveAnnotations, getPageCanvases, pushUndoSnapshot, markProjectDirty, showToast, placeFixedMenu, renderAnnotations, updateUI, logUserEvent + the model wrappers (and `purgeFromGhosts`). Hotkey G. |
+| [features/ghost.js](features/ghost.js) | **The Ghost tool** (PROTOTYPE): rubber-band a batch of placed marks into a translucent reference copy ("a typical"), drag it over another part of the sheet, and optionally **Stamp** it down as real counted marks. Owns the capture→place gesture (`handleGhostCanvasClick`, staged `handleGhostEscape`) and the per-ghost right-click menu (`tryOpenGhostMenuAt` — Stamp / Show counts / Show runs / Delete). The model half is pure in annotation-model.js (`captureGhostFromRect`, `ghostCounts`, `ghostBounds`, `translateGhost`, `stampGhostIntoAnnotations`, `ghostIndexAtPoint`); drawing is `drawGhosts` in canvas-draw.js (live overlay ONLY — never the export path, like the grid). Ghosts are a DISTINCT annotation kind (`ann.ghosts[]`, `{ id, label, showCounters, showLines, src }` with src annotation-shaped in absolute PDF-space) so no tally surface can read them; Stamp is the single door to counted marks. STAMP-PICKUP (2026-10-13, Wendi): Stamp hands the ghost back to the cursor: the marks land, the ghost leaves `ann.ghosts` and rides the pointer again (`state.placingGhost`, grabbed where the menu was opened, `state.placingGhostFromStamp`), so nothing stays over the stamped marks and the next spot is one click away; Esc lets it go, another tool orphans it, and app.js's undo/redo drop it (`dropGhostPickedUpByStamp`), since the undo of the stamp puts the ghost back on the sheet. MAP-GHOST-DELETE: registers `App.purgeFromEveryGhost(kind, id)`, which the delete cascades (item-details.js `performDeleteCounterLineType`, groups.js `deleteGroup`) call after pruning the live marks; it runs the pure `purgeFromGhosts` over every page and layer plus the ghost riding the cursor, and drops `activeGhostId` / the open menu for a ghost it emptied, so a deleted type or group cannot be stamped back uncounted. App.* deps: state, TOOL, ensureActiveCanvas, getActiveAnnotations, getPageCanvases, pushUndoSnapshot, markProjectDirty, showToast, placeFixedMenu, renderAnnotations, updateUI, logUserEvent + the model wrappers (and `purgeFromGhosts`). Hotkey G. |
 | [ghost.spec.js](ghost.spec.js) | Playwright regression for features/ghost.js: registry contract + G arming, the three-click capture→place gesture leaving every tally untouched (footer text pinned byte-identical), the both-ends capture rule + empty-box refusal, the staged Escape ladder, show/hide toggles gating Stamp, Stamp minting fresh-id real marks with the ghost surviving for the next drop, and the save/load sanitizer roundtrip. MAP-GHOST-DELETE: deleting a counter, a line type (the details modal's Delete + confirm) or a group (`App.deleteGroup` + `#confirmOk`) empties it out of the Typical, and a Stamp from the ghost menu brings back none of it; deleting everything a Typical held removes the Typical. |
 | [features/hotkey-peek.js](features/hotkey-peek.js) | **Hotkey peek**: hold Cmd (or Alt) about 1.5s to show a `<kbd>` badge on every visible control that has a hotkey (`body.hotkey-peek`); release, blur or a second key hides or cancels it. Badges are stamped lazily from `App.HOTKEYS` (so they cannot drift from the keydown handler); runner entries map through `RUNNER_BADGE_TARGETS`. Adds a visual layer only, never handles a hotkey. Debug seam `App.__hotkeyPeekState`. Spec: [hotkey-peek.spec.js](hotkey-peek.spec.js). |
 | [keyboard-map.spec.js](keyboard-map.spec.js) | Playwright regression for the Keyboard Map — the load-bearing test is the **derivation guard**: it walks every `<kbd>` in the Macros table, normalizes it with a mirror of the feature's `normalizeKeyToken`, and asserts each one resolves to a board key that is lit (so a future shortcut row the board can't represent fails CI-adjacent local runs rather than silently going dark). Split by breakpoint: the **desktop** describe (default viewport) asserts the inline board is pre-built and visible on Macros-open with **no second click**, the See Keyboard button and its modal stay out of the way, the tool hotkeys `M/S/C/L/J/P/D/R/H/X/V/N/Z/Q` + Space/Escape/arrows are lit, modifiers are outlined rather than filled, an unmapped key (`G`) is a plain silhouette, and the hover caption names the action (incl. a two-action key); a second desktop test asserts the layout contract — card within the viewport, the **body** (not the card) scrolling, and the board sitting above it. The **mobile** describe (375×812) asserts the inverse visibility, that the button opens the modal on top of the list, that the board scrolls inside `.kb-board-wrap` without the page body overflowing, Escape ordering (board first, then the list), and the close button. Both run the derivation guard against their own host. Filters the gitignored `/config.local.js` 404 like [render-pixels.spec.js](render-pixels.spec.js). `npx playwright test keyboard-map.spec.js` |
@@ -663,65 +663,65 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L737 - [sync] Field-error telemetry
 - L796 - [sync] Dirty tracking & local session reset
 - L802 - Undo/redo stacks
-- L1001 - [sync] Checkout probe, hashing & PDF cache
-- L1063 - Math & Format Helpers
-- L1583 - Coordinate Helpers
-- L1591 - PDF render bitmap cache
-- L1645 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1656 - PDF Rendering
-- L2531 - Recent bids
-- L2558 - UI Render Functions
-- L2915 - Placing selection (setActiveCounterType / setActiveLineType)
-- L3025 - Inline rename & polyline edit mode
-- L3141 - Modal primitives (showModal / hideModal)
-- L3307 - Toasts & line color picker
-- L3376 - Airboard cloud sync
-- L3421 - Supabase RPC & presence heartbeat
-- L3461 - User activity / event telemetry
-- L3520 - Supabase auth & dev auth
-- L3711 - [sync] Checkout subscription & permission refresh
-- L3721 - Modals & Handlers
-- L3789 - PDF intake (upload, test PDF, hashing)
-- L3797 - Toolbar tool buttons
-- L3958 - Tool sidebar buttons & legend overlay
-- L4044 - Add Line Type modal
-- L4126 - Line color & sidebar handlers
-- L4197 - Polyline modal & drawing
-- L4254 - Zoom bar & page navigation
-- L4280 - Export canvas JSON
-- L4305 - PDF download helpers
-- L4314 - View-link URL helpers & show-highlights/notes
-- L4346 - Custom icon upload handler
-- L4356 - Macros & custom-icon tips openers
-- L4376 - Sidebar drawer toggles
-- L4407 - Mobile actions burger menu pointer & header logo
-- L4419 - User Activity pointer (format.js + features/user-activity.js)
-- L4431 - My Settings pointer (features/my-settings.js)
-- L4456 - Project Settings pointer (features/project-settings.js)
-- L4462 - Auth & settings entry buttons
-  - L4507 - Project Settings checkout & Save Status bell
-  - L4620 - [sync] Checkout expired recovery
-  - L4676 - [sync] Turn In
-  - L4741 - Share modal pointer & copy-project openers
-  - L4772 - Settings menu actions
-  - L4784 - Auth sign-in form
-  - L4809 - Save Project modal
-  - L4820 - Checkout expired recovery modal wiring
-  - L4923 - Last-session restore prompt
-- L4935 - Canvas Event Handlers
-- L5319 - Event Binding
-- L5329 - Aim loupe (mobile press-hold precise placement)
-- L5482 - Zoom transform preview & commit
-- L5561 - Canvas mouse, wheel & touch handlers
-- L6250 - Global dropdown dismissal & keyboard hotkeys
-- L6428 - [sync] Manual save to cloud
-- L6438 - [sync] Auto-save
-- L6445 - [sync] Local backup (IndexedDB takeoff state)
-- L6454 - [sync] Visibility & timers
-- L6471 - [sync] Checkout keep-alive
-- L6485 - App feature registry
-- L6878 - View-only mode
-- L6884 - Init / boot
+- L1012 - [sync] Checkout probe, hashing & PDF cache
+- L1074 - Math & Format Helpers
+- L1594 - Coordinate Helpers
+- L1602 - PDF render bitmap cache
+- L1656 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1667 - PDF Rendering
+- L2542 - Recent bids
+- L2569 - UI Render Functions
+- L2926 - Placing selection (setActiveCounterType / setActiveLineType)
+- L3037 - Inline rename & polyline edit mode
+- L3153 - Modal primitives (showModal / hideModal)
+- L3319 - Toasts & line color picker
+- L3388 - Airboard cloud sync
+- L3433 - Supabase RPC & presence heartbeat
+- L3473 - User activity / event telemetry
+- L3532 - Supabase auth & dev auth
+- L3723 - [sync] Checkout subscription & permission refresh
+- L3733 - Modals & Handlers
+- L3801 - PDF intake (upload, test PDF, hashing)
+- L3809 - Toolbar tool buttons
+- L3970 - Tool sidebar buttons & legend overlay
+- L4056 - Add Line Type modal
+- L4138 - Line color & sidebar handlers
+- L4209 - Polyline modal & drawing
+- L4266 - Zoom bar & page navigation
+- L4292 - Export canvas JSON
+- L4317 - PDF download helpers
+- L4326 - View-link URL helpers & show-highlights/notes
+- L4358 - Custom icon upload handler
+- L4368 - Macros & custom-icon tips openers
+- L4388 - Sidebar drawer toggles
+- L4419 - Mobile actions burger menu pointer & header logo
+- L4431 - User Activity pointer (format.js + features/user-activity.js)
+- L4443 - My Settings pointer (features/my-settings.js)
+- L4468 - Project Settings pointer (features/project-settings.js)
+- L4474 - Auth & settings entry buttons
+  - L4519 - Project Settings checkout & Save Status bell
+  - L4632 - [sync] Checkout expired recovery
+  - L4688 - [sync] Turn In
+  - L4753 - Share modal pointer & copy-project openers
+  - L4784 - Settings menu actions
+  - L4796 - Auth sign-in form
+  - L4821 - Save Project modal
+  - L4832 - Checkout expired recovery modal wiring
+  - L4935 - Last-session restore prompt
+- L4947 - Canvas Event Handlers
+- L5331 - Event Binding
+- L5341 - Aim loupe (mobile press-hold precise placement)
+- L5494 - Zoom transform preview & commit
+- L5573 - Canvas mouse, wheel & touch handlers
+- L6262 - Global dropdown dismissal & keyboard hotkeys
+- L6440 - [sync] Manual save to cloud
+- L6450 - [sync] Auto-save
+- L6457 - [sync] Local backup (IndexedDB takeoff state)
+- L6466 - [sync] Visibility & timers
+- L6483 - [sync] Checkout keep-alive
+- L6497 - App feature registry
+- L6890 - View-only mode
+- L6896 - Init / boot
 
 <!-- END SECTION TOC -->
 

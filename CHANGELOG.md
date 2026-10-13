@@ -13,6 +13,27 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(ghost): Stamp hands the ghost back to the cursor (STAMP-PICKUP, 2026-10-13)
+
+Wendi: "i want the text and box to go away after using a ghost stamp." The box and the word
+Typical are the ghost itself, which survived its own stamp by design so it could be dragged
+to the next location and stamped again; clearing it meant right-click, Delete ghost, after
+every stamp. The same next-stamp is served better by carrying the ghost than by leaving it.
+
+- **Stamp** now lands the marks and hands the ghost back to the cursor, grabbed where the menu
+  was opened, exactly as it rides between capture and the first drop. Nothing stays over the
+  marks just stamped. The next click drops it on the next spot; Esc lets it go ("Ghost
+  dropped. The stamped marks stay."); any other tool orphans it as before.
+- **Undo** of a stamp takes the marks back and puts the ghost back on the sheet, so the copy in
+  hand is dropped rather than doubled (`state.placingGhostFromStamp`, read by app.js's undo and
+  redo through `dropGhostPickedUpByStamp`); a ghost in hand from a capture is untouched by an
+  unrelated undo, since no step holds it. On touch nothing moves until the next tap, which is
+  how placement already works there.
+- features/ghost.js (the stamp branch, the grab point from the menu, Esc, the purge), app.js
+  (the state field, clearToolStarts, undo/redo), ghost.spec.js (the new test: stamp, in hand
+  with the grab point, the next drop, stamp again, Esc, undo and redo, a captured ghost's undo),
+  the ARCHITECTURE row, sw.js and the TOC restamped.
+
 ## style(bid-board): the cloud says nothing unless it is missing (CLOUD-OFF-ICON, 2026-10-13)
 
 Will, on the quieter cards: "when something is fully cloud I would like to see nothing; when

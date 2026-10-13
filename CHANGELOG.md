@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(review): the review bar in the bid, and the Ready lane oldest waiting first (REVIEW-BAR, 2026-10-13)
+
+BOARD-QUIET step 1, Will's two calls of 2026-10-13: the Ready lane sorts oldest waiting first,
+and the decision moves to where the evidence is. A reviewer judged a bid from a card she had
+not opened; now the board is for triage and the bid carries its own decision.
+
+- **The bar.** While a bid that is ready for review is open by someone who can oversee it
+  (admin, overseer, lead), a slim bar sits under the header in the app's flex column, so the
+  sheet gives up its height rather than being covered: "Reviewing · waiting 11 days ·
+  twin-estimator-1 · 70 counts", then Request changes… (the confirm dialog's one-line note, the
+  server still refusing a blank one), one filled Mark reviewed, and Next ready, which opens the
+  next bid in the board's lane. After a decision the bar says what happened and how many are
+  left ("Reviewed ✓ · 40 more ready"), and Next ready walks on, so a morning of reviews is one
+  loop instead of forty trips to the board. It hides when the open project is no longer the one
+  it was shown for.
+- **How it knows.** features/load-project.js ends a cloud load by calling
+  `App.onCloudProjectRowLoaded(proj)` with the RPC row, which carries `review_status`; the
+  board hands its Ready lane as rendered to `App.setReviewQueue` on every render, so Next
+  ready walks the lane the reviewer sees, filters included. A decision writes the status onto
+  the row the board holds, so its lane agrees without a refetch.
+- **Oldest waiting first.** The lane sorts on `review_requested_at`, a row without a stamp
+  last; the lane title says so in a dim hint.
+- The board's per-card Mark reviewed and Request changes… stay beside the bar for a bid the
+  reviewer does not need to open; whether they go is still Will's call (BOARD-QUIET).
+- features/review-flow.js (the bar), features/bid-board.js (the sort, the queue),
+  features/load-project.js (the hook), app.js (`updateUI` calls `App.refreshReviewBar`),
+  app/index.html, styles.css, the Overseer guide's handoff section (rebuilt), sw.js restamped.
+  bid-board.spec.js gains the review-bar test (the bar on the oldest ready card, Mark reviewed,
+  Next ready walking to the twin's bid, Request changes through the dialog, the board agreeing,
+  the bar gone with the project, no bar for a reviewed bid or a non-reviewer) and pins the
+  lane's order.
+
 ## feat(bid-board): People · Twins · All, and an intro that says what the board does (PEOPLE-TWINS, 2026-10-13)
 
 Wendi, a lead, opened All Bids on 41 cards, every one a digital twin's backtest, each wearing a

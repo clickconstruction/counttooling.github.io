@@ -270,6 +270,17 @@
       <span>Drag Counters and Lines by their left colors to re-order.</span>
       <button type="button" id="sidebarReorderFinish" class="sidebar-btn-inline sidebar-reorder-finish-btn">Finish reordering</button>
     </div>
+    <!-- REVIEW-BAR (features/review-flow.js): under the header while a bid that is ready for
+         review is open by someone who can oversee it. The board's Ready lane feeds Next ready. -->
+    <div class="review-bar" id="reviewBar" style="display:none;">
+      <span class="review-bar-kicker">Reviewing</span>
+      <span class="review-bar-text" id="reviewBarText"></span>
+      <span class="review-bar-actions">
+        <button type="button" class="review-bar-changes" id="reviewBarChanges">Request changes…</button>
+        <button type="button" class="review-bar-reviewed" id="reviewBarReviewed">Mark reviewed</button>
+        <button type="button" class="review-bar-next" id="reviewBarNext">Next ready ▸</button>
+      </span>
+    </div>
     <div class="main">
       <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
       <div class="right-menu-backdrop" id="rightMenuBackdrop"></div>

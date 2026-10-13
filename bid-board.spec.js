@@ -142,7 +142,7 @@ test.describe('Bid Board - overseer all-bids browser', () => {
 
     // The ready bid gets its own pinned lane; the rest fall under "All bids".
     const laneTitles = await page.locator('.bid-board-lane-title').allTextContents();
-    expect(laneTitles).toEqual(['Ready for review (1)', 'All bids']);
+    expect(laneTitles).toEqual(['Ready for review (1) · oldest waiting first', 'All bids']);
     await expect(page.locator('#bidBoardList .bid-card-badge-ready')).toHaveText('Ready for review');
     await expect(page.locator('#bidBoardList .bid-card-badge-reviewed')).toHaveText('Reviewed ✓');
 
@@ -171,7 +171,7 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(3);
     await expect(page.locator('#bidBoardList')).not.toContainText('ZZ Twin');
     await expect(page.locator('.bid-board-hidden-note')).toHaveText('1 twin bid is off · show twins');
-    expect(await page.locator('.bid-board-lane-title').allTextContents()).toEqual(['Ready for review (1)', 'All bids']);
+    expect(await page.locator('.bid-board-lane-title').allTextContents()).toEqual(['Ready for review (1) · oldest waiting first', 'All bids']);
 
     // "show twins" flips the segment: only the fleet, and only its owner in the estimator list.
     await page.click('.bid-board-show-twins');
@@ -184,7 +184,9 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     // All: everyone, both ready bids in the lane, every owner in the list.
     await page.locator('#bidBoardKind label', { hasText: 'All' }).click();
     await expect(page.locator('#bidBoardList .bid-card')).toHaveCount(4);
-    expect(await page.locator('.bid-board-lane-title').allTextContents()).toEqual(['Ready for review (2)', 'All bids']);
+    expect(await page.locator('.bid-board-lane-title').allTextContents()).toEqual(['Ready for review (2) · oldest waiting first', 'All bids']);
+    // Oldest waiting first: p1 asked on the 27th, the twin on the 28th.
+    expect(await page.locator('#bidBoardList .bid-card-name').allTextContents()).toEqual(['Riverside Apartments', 'ZZ Twin Oak Hill (backtest)', 'Oak Hill Elementary', 'Lakeway Medical Office']);
     expect(await page.locator('#bidBoardOwnerFilter option').allTextContents()).toEqual(['All estimators', 'jake', 'twin-estimator-1', 'wendi']);
 
     // An admin opens on All, the view they always had.
@@ -203,6 +205,70 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     await expect(page.locator('#bidBoardKind')).toBeHidden();
     await expect(page.locator('.bid-board-hidden-note')).toHaveCount(0);
     await page.click('#bidBoardClose');
+    expect(errors).toEqual([]);
+  });
+
+  test('review bar: shows on an open ready bid, takes the decision, walks Next ready', async ({ page }) => {
+    const errors = await bootApp(page);
+    await stubOverseerSession(page, STUB_ROWS);
+    // A cloud load needs the real backend; stand in for it the way the real one ends: the
+    // project is open and the hook fires with the row.
+    await page.evaluate(() => {
+      window.__loaded = [];
+      window.App.loadCloudProjectRow = async (proj, ui) => {
+        window.__loaded.push(proj.id);
+        window.state.currentProjectId = proj.id;
+        if (ui && ui.hostModalId) window.App.hideModal(ui.hostModalId);
+        window.App.onCloudProjectRowLoaded(proj);
+      };
+    });
+    await page.evaluate(() => window.App.openBidBoard());
+    await expect(page.locator('#bidBoardModal')).toBeVisible();
+    await expect(page.locator('#reviewBar')).toBeHidden();
+    await page.locator('#bidBoardKind label', { hasText: 'All' }).click();
+
+    // Open the first ready card (the oldest waiting): the bar shows under the header.
+    await page.locator('#bidBoardList .bid-card').first().click();
+    await expect(page.locator('#reviewBar')).toBeVisible();
+    await expect(page.locator('#reviewBarText')).toHaveText(/^waiting \d+ days · wendi · 214 counts · 38 lines$/);
+    await expect(page.locator('#reviewBarReviewed')).toBeVisible();
+    await expect(page.locator('#reviewBarChanges')).toBeVisible();
+    await expect(page.locator('#reviewBarNext')).toBeVisible();
+
+    // Mark reviewed: the decision buttons go, the text says what happened and what is left.
+    await page.click('#reviewBarReviewed');
+    await expect(page.locator('#reviewBarText')).toHaveText('Reviewed ✓ · 1 more ready');
+    await expect(page.locator('#reviewBarReviewed')).toBeHidden();
+    await expect(page.locator('#reviewBarChanges')).toBeHidden();
+
+    // Next ready opens the next bid in the lane; nothing is left after it, so Next goes.
+    await page.click('#reviewBarNext');
+    await expect(page.locator('#reviewBarText')).toHaveText(/^waiting \d+ days · twin-estimator-1 · 90 counts · 10 lines$/);
+    expect(await page.evaluate(() => window.__loaded)).toEqual(['p1', 'p5']);
+    await expect(page.locator('#reviewBarNext')).toBeHidden();
+
+    // Request changes goes through the confirm dialog; a note is required; the text quotes it.
+    await page.click('#reviewBarChanges');
+    await expect(page.locator('#confirmInput')).toBeVisible();
+    await page.fill('#confirmInput', 'tighten the vent sizes');
+    await page.click('#confirmOk');
+    await expect(page.locator('#reviewBarText')).toHaveText('Sent back: “tighten the vent sizes” · none left ready');
+
+    // Reopening the board shows the lane as the decisions left it; closing the project hides the bar.
+    await page.evaluate(() => window.App.openBidBoard());
+    await expect(page.locator('#bidBoardModal')).toBeVisible();
+    await page.locator('#bidBoardKind label', { hasText: 'All' }).click();
+    await expect(page.locator('.bid-board-lane-title')).toHaveCount(0);
+    await expect(page.locator('#bidBoardList .bid-card-badge-warn', { hasText: 'Changes requested' })).toHaveCount(1);
+    await page.click('#bidBoardClose');
+    await page.evaluate(() => { window.state.currentProjectId = null; window.App.updateUI(); });
+    await expect(page.locator('#reviewBar')).toBeHidden();
+
+    // A bid that is not ready, or a user who cannot oversee, gets no bar.
+    await page.evaluate(() => { window.state.currentProjectId = 'p2'; window.App.showReviewBar(Object.assign({}, window.__p2 || { id: 'p2', review_status: 'reviewed' })); });
+    await expect(page.locator('#reviewBar')).toBeHidden();
+    await page.evaluate(() => { window.state.isOverseer = false; window.state.currentProjectId = 'p9'; window.App.showReviewBar({ id: 'p9', review_status: 'ready', owner_email: 'x@example.com' }); });
+    await expect(page.locator('#reviewBar')).toBeHidden();
     expect(errors).toEqual([]);
   });
 

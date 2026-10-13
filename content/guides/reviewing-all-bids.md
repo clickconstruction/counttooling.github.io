@@ -111,9 +111,12 @@ sign in, CountTooling brings you back to the bid you last had open; the board is
 
 - On the overseer's board, that bid jumps into a pinned **Ready for review** lane at the top,
   wearing a gold badge, no searching, no asking who finished what.
-- After looking it over, the overseer clicks **Mark reviewed** right on the card. The bid
-  drops out of the lane and keeps a quiet **Reviewed ✓** badge, so both sides can see it's
-  been seen.
+- The lane runs oldest waiting first, so the bid that has waited longest is the first card.
+- Open a ready bid and a **Reviewing** bar sits under the header: how long it has waited, who
+  made it, its counts, then **Request changes…**, **Mark reviewed** and **Next ready**, which
+  opens the next bid in the lane, so a morning of reviews is one loop. The same two decisions
+  are on the card for a bid you do not need to open. Either way the bid drops out of the lane
+  and keeps a quiet **Reviewed ✓** badge, so both sides can see it's been seen.
 - If the estimator changes the bid afterward, they can **Mark ready again** from the same
   Project Settings row (or **Withdraw** a request that went up too early).
 

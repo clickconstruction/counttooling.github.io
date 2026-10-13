@@ -558,6 +558,9 @@
         // dedicated modal so the user has a clear next action.
         openCanvasOnlyNeedsPdfModal({ reason: 'no_pdf_stored' });
       }
+      // REVIEW-BAR (features/review-flow.js): the row carries review_status, so the bar
+      // can show for a ready bid opened by a reviewer, from the board or Load Project.
+      App.onCloudProjectRowLoaded && App.onCloudProjectRowLoaded(proj);
       fitZoom();
       updateUI();
   }

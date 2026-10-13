@@ -13,6 +13,23 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(bid-board): the cards carry no decision (DROP-CARD-BUTTONS, 2026-10-13)
+
+Will's call on the before/after boards of the "All Bids, quieter" canvas: now that the review
+bar in the opened bid carries Mark reviewed and Request changes…, the per-card copies go. A
+reviewer who has not opened a bid cannot say what should change in it, and a Mark reviewed on
+the card invited ticking off what was never looked at. A ready card drops from about 236px to
+about 150px, so a lane of forty fits two screens instead of six, and a card is one control
+again (no buttons inside a button, no stop-propagation).
+
+- features/bid-board.js: the two rows and their handlers go from `bidCardHtml` and the render;
+  the card click is the way to the decision. styles.css loses their rules. The board no longer
+  calls `App.setProjectReviewStatus`; features/review-flow.js's header says so.
+- bid-board.spec.js: the review-handoff test now pins that no card carries a button; the
+  review-bar test already covers both decisions and Next ready. The Overseer guide's handoff
+  section (rebuilt), the ARCHITECTURE rows for bid-board and review-flow, the plan file and the
+  BOARD-QUIET row, sw.js restamped.
+
 ## feat(review): the review bar in the bid, and the Ready lane oldest waiting first (REVIEW-BAR, 2026-10-13)
 
 BOARD-QUIET step 1, Will's two calls of 2026-10-13: the Ready lane sorts oldest waiting first,

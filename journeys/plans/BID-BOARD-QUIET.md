@@ -28,6 +28,8 @@ D the cards kept and quieted).
   lane sorts on `review_requested_at`; a ready bid opened by a reviewer carries a bar under the
   header with how long it has waited, Request changes…, Mark reviewed and Next ready, which walks
   the lane as the board shows it. features/review-flow.js owns it. Detail in CHANGELOG.md.
+- DROP-CARD-BUTTONS (2026-10-13, Will's call on the canvas's before/after boards): the cards
+  carry no decision; the bar is the only one. Detail in CHANGELOG.md.
 
 ## What is left
 
@@ -37,6 +39,5 @@ D the cards kept and quieted).
 2. **B, grouped by estimator**, only once the company has more than two or three human
    estimators; with one or two it is A with a caret.
 
-Decision still Will's: whether the board's per-card Mark reviewed and Request changes… go now
-that the bar carries them, or stay for a bid the reviewer does not need to open (they stay
-today).
+With the buttons gone, the next redundancies on a ready card are the gold Ready badge inside
+the Ready lane and the green Fully cloud badge for the normal case: the step from D to A.

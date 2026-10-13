@@ -114,7 +114,9 @@
     const cloudBadge = proj.pdf_path
       ? '<span class="bid-card-badge bid-card-badge-cloud" title="Canvas and PDF are both in the cloud">✓ Fully cloud</span>'
       : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud. The PDF was never uploaded">Canvas only</span>';
-    const canMarkReviewed = proj.review_status === 'ready' && App.canOversee();
+    // DROP-CARD-BUTTONS (2026-10-13): a card carries no decision. Mark reviewed and
+    // Request changes… live on the review bar in the opened bid (features/review-flow.js),
+    // which the card click reaches, so a bid is reviewed where it is read.
     return '<div class="bid-card" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
       '<div class="bid-card-name">' + esc(proj.name || 'Untitled') +
         (proj.external_ref ? ' <span class="bid-stamp" title="Upstream bid ' + esc(proj.external_ref) + '">' + esc(proj.external_ref) + '</span>' : '') +
@@ -126,10 +128,6 @@
         cloudBadge +
         (date ? '<span class="bid-card-date">' + esc(date) + '</span>' : '') +
       '</div>' +
-      (canMarkReviewed
-        ? '<button type="button" class="bid-card-review-btn">Mark reviewed</button>' +
-          '<button type="button" class="bid-card-changes-btn">Request changes…</button>'
-        : '') +
       '<div class="bid-card-status">Loading…</div>' +
       '</div>';
   }
@@ -205,45 +203,6 @@
       };
       card.onclick = open;
       card.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void open(); } };
-      const reviewBtn = card.querySelector('.bid-card-review-btn');
-      if (reviewBtn) {
-        reviewBtn.onclick = async function (e) {
-          e.stopPropagation();
-          reviewBtn.disabled = true;
-          const res = await App.setProjectReviewStatus(proj.id, 'reviewed');
-          if (res && res.ok) {
-            proj.review_status = 'reviewed';
-            proj.reviewed_at = new Date().toISOString();
-            App.showToast('Marked "' + (proj.name || 'Untitled') + '" reviewed.', 3000);
-            renderBidBoardList();
-          } else {
-            App.showToast((res && res.error) || 'Could not mark reviewed.', 4000);
-            reviewBtn.disabled = false;
-          }
-        };
-      }
-      const changesBtn = card.querySelector('.bid-card-changes-btn');
-      if (changesBtn) {
-        changesBtn.onclick = async function (e) {
-          e.stopPropagation();
-          // The server refuses a blank note ('changes' without guidance is noise);
-          // cancel aborts cleanly.
-          const note = await App.confirmDialog({ title: 'What should change before this bid comes back?', input: { placeholder: 'One line the estimator will read' }, confirmLabel: 'Send back' });
-          if (note == null || !note.trim()) return;
-          changesBtn.disabled = true;
-          const res = await App.setProjectReviewStatus(proj.id, 'changes', note.trim());
-          if (res && res.ok) {
-            proj.review_status = 'changes';
-            proj.review_note = note.trim();
-            proj.reviewed_at = new Date().toISOString();
-            App.showToast('Changes requested on "' + (proj.name || 'Untitled') + '".', 3000);
-            renderBidBoardList();
-          } else {
-            App.showToast((res && res.error) || 'Could not request changes.', 4000);
-            changesBtn.disabled = false;
-          }
-        };
-      }
     });
   }
 

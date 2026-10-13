@@ -13,6 +13,31 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs: the hand-kept lists caught up to main at 5362f42 (2026-10-13)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md and
+FEATURE-CATALOG.md against the code after the two PRs since the 2026-10-12 pass (#324
+RUBBER-BAND-CAPS, #325 LABEL-SLIDE). Both kept their CHANGELOG entries, their spec rows, the
+catalog, RECONSTITUTE's line shapes and the fields rule; what drifted was the lists a row keeps
+inside itself, and the two product-copy files neither PR touched.
+
+- **AGENTS.md.** The in-memory state list gains `state.movingLabel` (the label in hand, one
+  slide long); the Esc rule names the rung a label in hand takes, under the overlays and the
+  popovers and before the tool's.
+- **ARCHITECTURE.md.** The mark-context-menu row still counted nine row handlers and named
+  neither `#ctxMoveLabel` nor `#ctxResetLabel`, said nothing new was published (app.js now
+  publishes the three projection helpers for it, and it registers the three slide hooks), and
+  listed no label-slide spec; the esc-ladder row's rung order skipped the label rung; the
+  canvas-draw row's bare-name reads lacked `polylinePointAtFraction`, the seat walk.
+- **FEATURES.md and FEATURE-CATALOG.md.** A line and an entry for the sliding length label:
+  AUTO-PICK, ALT-GROUPS and LEAD-ROLE each wrote theirs, LABEL-SLIDE did not. The rubber-band
+  caps are a polish of the preview, not a line a buyer reads, so no entry.
+- Not touched: RECONSTITUTE.md (the `labelT` shape landed with the PR), SUPABASE_SETUP.md
+  (nothing under supabase/ changed), PUNCHLIST.md (neither PR closed a row; both came from
+  direct asks), the guides (the measuring article does not teach the length label at all, so
+  there is nothing to bring up to date; a paragraph teaching Move label is a guide change for
+  the guides' own pass, not drift).
+
 ## feat(line): a length label slides along its line (LABEL-SLIDE, 2026-10-12)
 
 Wendi: "need ability to move length labels in CountTooling so they can be legible when they

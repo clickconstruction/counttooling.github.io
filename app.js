@@ -296,7 +296,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, placingGhostFromStamp: false, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, stripPins: {}, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { ...COUNTER_SETTINGS_DEFAULTS },   // per device: merged from localStorage below (MAP-SETTINGS)
     iconNames: {},
@@ -871,18 +871,29 @@
   }
   // The one undo choke point (Ctrl+Z + the bottom-bar button): a successful
   // undo toasts how many are left so the 50-step ceiling is never a surprise.
+  // STAMP-PICKUP (features/ghost.js): a ghost that Stamp handed to the cursor is dropped by
+  // an undo or redo, since the undo of the stamp puts that ghost back on the sheet (the
+  // snapshot holds it) and a second copy in hand would double it. A ghost in hand from a
+  // capture is untouched: no step holds it, so nothing comes back for it to double.
+  function dropGhostPickedUpByStamp() {
+    if (!state.placingGhostFromStamp) return;
+    state.placingGhost = null;
+    state.placingGhostLast = null;
+    state.placingGhostFromStamp = false;
+  }
   function undo() {
     // Undo/redo take the snapshot for the opposite stack at apply time, so the
     // run being edited must be home for those too (else redo drops it).
     const applied = withEditingPolylineHome(() => undoStackModel.undo());
     if (applied) {
       leaveEditModeIfOrphaned();
+      dropGhostPickedUpByStamp();
       const left = undoStackModel.undoDepth();
       showToast(left + (left === 1 ? ' undo left' : ' undos left'), 1000);
     }
     return applied;
   }
-  function redo() { const applied = withEditingPolylineHome(() => undoStackModel.redo()); if (applied) leaveEditModeIfOrphaned(); return applied; }
+  function redo() { const applied = withEditingPolylineHome(() => undoStackModel.redo()); if (applied) { leaveEditModeIfOrphaned(); dropGhostPickedUpByStamp(); } return applied; }
   function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
 
   function resetAutosaveDegradedState() { return saveEngine.resetAutosaveDegradedState(); }
@@ -2945,6 +2956,7 @@
     state.ghostRectStart = null;
     state.placingGhost = null;   // a ghost in hand is orphaned by any other tool
     state.placingGhostLast = null;
+    state.placingGhostFromStamp = false;
     if (state.tool !== TOOL.SCALE && (state.scalePointA || state.scalePointB)) {
       state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE;
     }

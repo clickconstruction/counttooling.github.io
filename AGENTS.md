@@ -469,6 +469,8 @@
   own `onclick`). Esc closes the topmost visible overlay and never unwinds the tool under it: a
   dialog that holds pending state gets a `CLOSERS` entry there naming its Cancel, anything else
   just hides, and a blocking overlay carries `data-esc="none"` so Esc does nothing (MAP-ESC).
+  Under the overlays and the header popovers, a length label in hand goes back to its seat
+  before any tool rung (LABEL-SLIDE).
   Open every dialog through `showModal`, never by adding `visible` yourself: it raises a dialog
   opened over another above it and `hideModal` gives back its authored z, so the painted top is
   the last one opened and is the one Esc closes (ESC-STACK). Action buttons in `.actions` carry a role class
@@ -753,7 +755,12 @@ door's first-tap prompt, shown once; features/lessons.js).
   features/drop-peek.js),
   `state.peekCanvasIdsByPage` (the peek's optional per-page layer subset —
   pageIdx → canvas-id array chosen via right-click on `#showAllCanvasesBtn`;
-  active layer always implied, empty array = active only, absent = all).
+  active layer always implied, empty array = active only, absent = all),
+  `state.movingLabel` (LABEL-SLIDE, 2026-10-12 — the length label in hand:
+  `{ type, index, pageIdx, lineId, before, moved }`, set by the context menu's Move
+  label row, cleared by the drop, Esc or a right-click; a handle whose line is gone or
+  on another page cancels itself at the next slide; one slide long, never persisted;
+  features/mark-context-menu.js).
 - `config.example.js` is the template; `config.js` is committed for production.
 
 ### Cloud state (when Supabase enabled)

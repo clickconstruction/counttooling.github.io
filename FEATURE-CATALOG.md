@@ -195,6 +195,13 @@ floors — which is real material and labor (a 12–18% under-measurement class)
 *Useful because:* Add a drop value at either end of a run and the vertical footage joins the total,
 visible on the plan as an explicit marker.
 
+**Length labels that slide**
+*Problem:* A run traced over the plan's own dimension line, or beside another run, puts its length
+label on the plan's text or a neighbour's label, and neither reads.
+*Useful because:* Right-click the run, **Move label**, and the label slides along its line to where
+it reads; it never leaves the line, so it still reads as that run's dimension, and **Reset label**
+sends it home.
+
 **Measure tool (D)**
 *Problem:* Checking one dimension shouldn't require creating takeoff data you then have to delete.
 *Useful because:* Two clicks give a distance readout — scale-zone aware — and leave the takeoff

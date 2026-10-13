@@ -8,8 +8,8 @@
   //     or re-requests after changes. The row re-renders whenever
   //     #settingsModal becomes visible (MutationObserver on its class — no
   //     app.js hook needed) and reads the live status from the projects row.
-  //   * features/bid-board.js calls App.setProjectReviewStatus for the
-  //     overseer's per-card "Mark reviewed" action.
+  //   * The board's cards carry no decision since DROP-CARD-BUTTONS (2026-10-13):
+  //     the review bar below is the reviewer's only one.
   //   * The review bar (#reviewBar, REVIEW-BAR 2026-10-13, BOARD-QUIET step 1): the
   //     decision happens where the evidence is. While a bid that is ready for
   //     review is open by someone who can oversee it (App.canOversee: admin,

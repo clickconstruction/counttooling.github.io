@@ -134,7 +134,7 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     expect(errors).toEqual([]);
   });
 
-  test('review handoff: ready lane, badges, and Mark reviewed', async ({ page }) => {
+  test('review handoff: ready lane and badges; the card carries no decision', async ({ page }) => {
     const errors = await bootApp(page);
     await stubOverseerSession(page, STUB_ROWS);
     await page.evaluate(() => window.App.openBidBoard());
@@ -146,12 +146,11 @@ test.describe('Bid Board - overseer all-bids browser', () => {
     await expect(page.locator('#bidBoardList .bid-card-badge-ready')).toHaveText('Ready for review');
     await expect(page.locator('#bidBoardList .bid-card-badge-reviewed')).toHaveText('Reviewed ✓');
 
-    // Overseer sees Mark reviewed on the ready card only; clicking it (RPC
-    // stubbed ok) re-renders the board with the bid reviewed and no lane left.
-    await expect(page.locator('#bidBoardList .bid-card-review-btn')).toHaveCount(1);
-    await page.click('#bidBoardList .bid-card-review-btn');
-    await expect(page.locator('.bid-board-lane-title')).toHaveCount(0);
-    await expect(page.locator('#bidBoardList .bid-card-badge-reviewed')).toHaveCount(2);
+    // DROP-CARD-BUTTONS: no button on any card. Mark reviewed and Request changes… live on
+    // the review bar in the opened bid (the review-bar test below).
+    await expect(page.locator('#bidBoardList .bid-card-review-btn')).toHaveCount(0);
+    await expect(page.locator('#bidBoardList .bid-card-changes-btn')).toHaveCount(0);
+    await expect(page.locator('#bidBoardList .bid-card button')).toHaveCount(0);
 
     // The registry entry the settings row shares is wired.
     expect(await page.evaluate(() => typeof window.App.setProjectReviewStatus)).toBe('function');

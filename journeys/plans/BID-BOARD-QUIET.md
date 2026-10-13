@@ -30,6 +30,9 @@ D the cards kept and quieted).
   the lane as the board shows it. features/review-flow.js owns it. Detail in CHANGELOG.md.
 - DROP-CARD-BUTTONS (2026-10-13, Will's call on the canvas's before/after boards): the cards
   carry no decision; the bar is the only one. Detail in CHANGELOG.md.
+- CLOUD-OFF-ICON (2026-10-13, Will): the green Fully cloud badge is gone; a bid without its PDF
+  wears a crossed-out cloud in the card's corner with the note on hover; the estimator sits
+  right-aligned. Detail in CHANGELOG.md.
 
 ## What is left
 
@@ -39,5 +42,5 @@ D the cards kept and quieted).
 2. **B, grouped by estimator**, only once the company has more than two or three human
    estimators; with one or two it is A with a caret.
 
-With the buttons gone, the next redundancies on a ready card are the gold Ready badge inside
-the Ready lane and the green Fully cloud badge for the normal case: the step from D to A.
+With the buttons and the Fully cloud badge gone, the one redundancy left on a ready card is the
+gold Ready badge inside the Ready lane: the step from D to A.

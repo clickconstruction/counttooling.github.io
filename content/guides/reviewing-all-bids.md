@@ -121,9 +121,9 @@ sign in, CountTooling brings you back to the bid you last had open; the board is
   Project Settings row (or **Withdraw** a request that went up too early).
 
 Who can do what is enforced by the server, not the buttons: only the bid's owner, an editor
-on it, or an admin can mark it ready or withdraw; only an overseer or admin can mark it
-reviewed. The same badges show up in **Load Project** rows, so estimators see the state of
-their own bids wherever they look.
+on it, a lead or an admin can mark it ready or withdraw; only an overseer, a lead or an admin
+can mark it reviewed. The same badges show up in **Load Project** rows, so estimators see the
+state of their own bids wherever they look.
 
 ## Granting the role (admins)
 
@@ -136,8 +136,8 @@ Users**, each row has an **eye toggle**:
   **Role** column reads *Overseer*. Click it again to take the role away; the change applies
   the next time they load the app.
 - Overseer is **read-everything, write-nothing**. It doesn't grant any admin powers, no user
-  management, no deleting, no editing other people's projects. (Admins already see every
-  project and don't need the flag; they also get the All Bids board.)
+  management, no deleting, no editing other people's projects. (Admins and leads already see
+  every project and don't need the flag; they get the All Bids board too.)
 - The role is a good fit for exactly the person who should *look but never touch*: reviews
   stay safe because the server refuses an overseer every write, even if a bug or a
   mis-click asked for one.

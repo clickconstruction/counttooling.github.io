@@ -89,6 +89,7 @@ async function drawOverlays(page, items, accent) {
           // Place the label above the box, but drop it below if that would clip past the top edge.
           const labTop = it.y - 30 < 2 ? it.y + it.h + 8 : it.y - 30;
           lab.style.cssText = `position:absolute;left:${it.x}px;top:${labTop}px;background:${accent};color:#161617;font:600 15px/1 'DM Sans',system-ui,sans-serif;padding:6px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.5);`;
+          lab.dataset.boxRight = String(it.x + it.w);   // for the right-edge pass below
           root.appendChild(lab);
         }
       } else {
@@ -98,6 +99,14 @@ async function drawOverlays(page, items, accent) {
       root.appendChild(el);
     }
     document.body.appendChild(root);
+    // A label that would run past the right edge (a box in the viewport's top-right corner,
+    // such as the board card's cloud icon) is right-aligned to its box instead.
+    root.querySelectorAll('[data-box-right]').forEach((lab) => {
+      if (lab.getBoundingClientRect().right > window.innerWidth - 2) {
+        lab.style.left = 'auto';
+        lab.style.right = (window.innerWidth - Number(lab.dataset.boxRight)) + 'px';
+      }
+    });
   }, { items, accent });
 }
 
@@ -945,7 +954,7 @@ const SHOTS = [
       { n: 2, sel: '#bidBoardOwnerFilter' },
       { n: 3, sel: '#bidBoardList .bid-card' },
     ],
-    boxes: [{ sel: '#bidBoardList .bid-card-badge-warn', label: 'Cloud status' }],
+    boxes: [{ sel: '#bidBoardList .bid-card-cloud-off', label: 'Cloud status' }],
   },
 
   // A bid open in the overseer's read-only viewer ("Viewing only" banner).
@@ -1000,7 +1009,8 @@ const SHOTS = [
 
 // Synthetic list_accessible_projects rows for the Bid Board shots: realistic
 // bid names and demo estimator emails, dates relative to the run so the
-// "days ago" labels read naturally. One canvas-only row shows the warn badge.
+// "days ago" labels read naturally. One canvas-only row wears the crossed-out cloud
+// (CLOUD-OFF-ICON).
 function overseerBidRows() {
   const day = 864e5, now = Date.now();
   let n = 0;

@@ -21,6 +21,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Synthetic scale bar** — A dashed reference bar drawn on the sheet lets you eyeball a preset scale against a known dimension at any time.
 - **Scale zones** — A detail or isometric drawn at a different scale on the same sheet measures correctly without re-scaling the page. On a compressed/rescaled sheet, zone presets carry the same sheet-size correction as the page, so detail and plan agree.
 - **Multiply zones** — Count one typical floor, wrap it in a ×10 zone, and the totals reflect all ten — no duplicate clicking. Every counter total surface shows the multiplied ("with repeats") number; hovering a sidebar or Summary badge shows how many marks are physically placed.
+- **Ghost / Stamp (G)** — Rubber-band a typical (a restroom group, a unit) into a translucent copy that rides the cursor, drop it where the next one goes, and Stamp it down as real counted marks; the ghost itself never counts, and after a stamp it is back in hand for the next spot, so a four-restroom floor is one capture and four stamps.
 
 ## Counting
 
@@ -108,6 +109,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 - **Viewer scale sharing** — A view-link recipient can set a page scale and it shares back to the project, so field questions get answered without a round trip.
 - **Artboard (cloud palette)** — Your counters, line types, modifiers, and Quick Key layout follow your account to any device — set up once, reuse every bid; loading mid-bid re-links your placed marks by name, nothing stops counting.
 - **My Standards** — See which counters and line types you actually use across all your projects and add the standards to your Artboard in one click.
+- **All Bids board + bid review handoff** — An overseer, lead or admin sees every bid in the company on one board, newest first, with search and an estimator filter (a company running digital twins gets a People · Twins · All switch, so the fleet's backtests stay out of the way). An estimator marks a bid Ready for review from Project Settings; it joins a pinned lane, oldest waiting first, and opening it shows a Reviewing bar with Request changes…, Mark reviewed and Next ready, so a morning of reviews is one loop, not forty trips to the board.
 - **Lead role (takes over bids)** — A lead estimator sees every bid, checks out any, frees a stuck lock, manages who has access, and hands a bid to another estimator with one click, without the keys to accounts and deletes an admin holds.
 - **Admin toolkit** — Create/manage users, transfer project ownership, force turn-in, audit per-user activity, and push a global reload — all inside the app.
 

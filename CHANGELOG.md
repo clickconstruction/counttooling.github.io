@@ -48,6 +48,45 @@ The plan (journeys/plans/DEEP-ZOOM.md, measured on main the same day) in three p
   features/zoom-rail.js, deep-zoom.spec.js (new), zoom.spec.js (the slider's max is the device's
   ceiling), the ARCHITECTURE rows and catalog bullet, AGENTS.md's `maxZoom` field, the plan file's
   Built section, the PUNCHLIST row closed, sw.js, the TOC and the file map restamped.
+## docs: the hand-kept lists caught up to main at 655a023 (2026-10-13)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md,
+FEATURE-CATALOG.md, the Overseer guide and the BOARD-QUIET plan against the code after the seven
+PRs since the pass at 5362f42 earlier today (#327 the measuring guide, #328 the BOARD-QUIET row,
+#329 PEOPLE-TWINS, #330 REVIEW-BAR, #331 DROP-CARD-BUTTONS, #332 CLOUD-OFF-ICON, #333
+STAMP-PICKUP). Each kept its CHANGELOG entry, its ARCHITECTURE rows and, for the board, the
+guide; what drifted was the lists beside them, the product copy, and the lines LEAD-ROLE
+(2026-10-02) had already left behind in the rows these PRs touched.
+
+- **AGENTS.md.** The in-memory state list gains the ghost in hand (`state.placingGhost`,
+  `placingGhostLast`, `placingGhostFromStamp`), since STAMP-PICKUP made it a cross-file contract
+  that app.js's undo reads.
+- **ARCHITECTURE.md.** The ghost.spec row said the ghost survives its own stamp for the next drop
+  and listed neither the STAMP-PICKUP test nor the drag test; the bid-board row named overseers
+  and admins where the sidebar button and the server have included leads since LEAD-ROLE, and
+  its spec list lacked this week's three board tests; the review-flow row gave
+  `setProjectReviewStatus` two arguments and a reviewer set without leads. The feature catalog
+  ("Features Beyond Spec") had no bullet for the Ghost / Stamp tool (2026-08-20) or for the All
+  Bids board and the review handoff (2026-08-28); both written.
+- **FEATURES.md and FEATURE-CATALOG.md.** A line and an entry for the All Bids board with the
+  review handoff (none of the four board PRs wrote one); a line and an entry for Ghost / Stamp,
+  which had none since it shipped; and the catalog's Lead role entry, which FEATURES.md had and
+  the catalog did not.
+- **SUPABASE_SETUP.md.** The handoff bullet still had the overseer clicking Mark reviewed on the
+  card.
+- **The Overseer guide.** "Only an overseer or admin can mark it reviewed" and the admins aside
+  under Granting the role, both from before leads; rebuilt. The board screenshot showed the old
+  badges (the CLOUD-OFF-ICON entry said so): the generator's callout box still pointed at the
+  removed `.bid-card-badge-warn`, now `.bid-card-cloud-off`, and `overseer-all-bids.png` is
+  rebuilt from it (the overlay now right-aligns a callout label whose box sits at the frame's
+  right edge, where "Cloud status" was clipped).
+- **BOARD-QUIET.** The plan's Shipped list lacked CLOUD-OFF-ICON and its closing line still named
+  the Fully cloud badge as a redundancy to remove; the PUNCHLIST row names the fourth step.
+- Code comments the rows copy: features/review-flow.js's and features/bid-board.js's headers
+  (leads), ghost.spec.js's old stamp test (the pure stamp leaves the ghost in its list). sw.js
+  restamped for the two shell files.
+- Not touched: RECONSTITUTE.md (no shape changed; a ghost in hand is state, not a payload),
+  JOURNEY-MAP.md, the deck, the courses.
 
 ## feat(ghost): Stamp hands the ghost back to the cursor (STAMP-PICKUP, 2026-10-13)
 

@@ -554,6 +554,7 @@
             <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
             <canvas id="cropCanvas" class="crop-canvas"></canvas>
             <canvas id="annCanvas" class="ann-canvas"></canvas>
+            <canvas id="annWindowCanvas" class="ann-window-canvas" style="display:none;"></canvas>
           </div>
           <canvas id="aimLoupe" class="aim-loupe" aria-hidden="true"></canvas>
         </div>
@@ -1294,7 +1295,8 @@
       <div class="modal-card-header"><h2>Zoom Settings</h2><button type="button" class="modal-close-btn" data-modal-close aria-label="Close">×</button></div>
       <div class="form-group">
         <label class="range-label"><span>Maximum zoom for this project</span><span class="range-val"><span id="zoomMaxVal">400</span>%</span></label>
-        <input type="range" id="zoomMax" min="100" max="1200" value="400" step="50">
+        <input type="range" id="zoomMax" min="100" max="5000" value="400" step="50">
+        <div class="setting-hint" id="zoomMaxHint" style="display:none;"></div>
       </div>
       <div class="form-group">
         <label class="range-label"><span>Mousewheel zoom speed (all projects)</span><span class="range-val"><span id="zoomSpeedVal">1.0</span>x</span></label>

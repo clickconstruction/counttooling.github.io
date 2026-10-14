@@ -17,7 +17,7 @@ Implementation history (the sync-hardening work + the modularization arc) lives 
 
 ## Large-file map (decomposition status)
 
-Current first-party line counts (`wc -l`, 2026-10-13 — the **numbers and this
+Current first-party line counts (`wc -l`, 2026-10-14 — the **numbers and this
 date are GENERATED** by `npm run build:filemap`
 ([scripts/build-filemap.js](scripts/build-filemap.js)); `npm run check` fails
 when they drift, so don't edit counts by hand. Which files are listed and every
@@ -28,18 +28,18 @@ off — and where it doesn't.
 
 | File | Lines | Status / verdict |
 |------|------:|------------------|
-| [app.js](app.js) | 7,171 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
+| [app.js](app.js) | 7,321 | **The remaining monolith** — down from 16.2k (9.9k after save-engine Stage 6, 8.1k after the Tier-2 splits, then −987 from the canvas-draw extraction). The only file worth actively shrinking; the region table below says what's left and in what order. |
 | [save-engine.js](save-engine.js) | 3,263 | Done — the extracted save/sync seam module (Stages 1–7), 91 node tests. R21 (2026-09-26) folded its repeated blocks inside the file; do not split it. Large but modular and fully node-testable; no further action. |
 | [pdf-tile-cache.js](pdf-tile-cache.js) | 867 | Done (stage 1, 2026-07-30) — the PDF raster-cache substrate extracted from app.js's "PDF render bitmap cache" section (`createPdfTileCache(ctx)`, the save-engine seam recipe): page-bitmap LRU, downsample pyramid, persisted zoom rungs, idle prefetch, full-document warm-up. Pinned by nine Playwright specs (page-switch-cache, pyramid, pyramid-persist, rung-prefetch, doc-warmup, zoom-ladder, commit-tile, crop-tile, tile-grid). Stage 2 (later): the Sharp crop tile / tile grid section. |
 | [canvas-draw.js](canvas-draw.js) | 1,417 | Done — the unified annotation draw core (`createCanvasDraw(deps)` + `drawAnnotationsCore`), node-tested, guarded by [render-pixels.spec.js](render-pixels.spec.js). Both draw paths are thin env-builders over it. |
-| [app/index.html](app/index.html) | 3,880 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
-| [styles.css](styles.css) | 2,880 | All CSS, token-organized. Leave. |
+| [app/index.html](app/index.html) | 3,882 | The shell: HTML structure + every modal, no inline JS. Flat markup with no build step to split it; grows roughly linearly with modal count. Leave. |
+| [styles.css](styles.css) | 2,881 | All CSS, token-organized. Leave. |
 | [features/load-project.js](features/load-project.js) | 751 | Largest feature file (Load Project modal + filters), split 2026-07-30: the copy/fork domain moved to [features/copy-project.js](features/copy-project.js) at the file's documented domain boundary, and the row renderer was decomposed along its action boundaries (size / row HTML / actions / admin access / load click). Healthy — leave. |
 | [annotation-model.js](annotation-model.js) | 1,225 | Done — extracted canvas/annotation data model + node tests. |
 | [undo-stack.js](undo-stack.js) | 218 | Done (2026-07-30) — `createUndoStack(ctx)` split out of annotation-model.js: the model is pure-ish data transformation, the stack is a command-history controller with UI side-effect hooks in its ctx. Covered by the undo tests in [annotation-model.test.js](annotation-model.test.js) (interleaved with model tests, dual-require). |
 | [icons.js](icons.js) | 531 | Bundled icon data, mostly literals. Leave. |
 | [report.js](report.js) | 991 | Self-contained report builder with a frozen `window.*` contract. Leave. |
-| `features/*.js` (108 files) | 37,513 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
+| `features/*.js` (108 files) | 37,531 total | Mostly single-feature files with their own specs. The largest are the teaching layer (tutorial 1,656; lessons 1,043, the three courses 609 to 725; tour-blank 794) and duct-tool (866); DECOMPOSITION_MAP.md has a verdict for every one. |
 
 ### What's left inside app.js (by `// SECTION:` size)
 
@@ -123,14 +123,15 @@ modules. Candidates in priority order:
 | [zoom-ladder.spec.js](zoom-ladder.spec.js) | Playwright regression for the **zoom ladder** (commit-snap to rungs; `snapZoomToRung`/`nextRungUp`/`nextRungDown` in constants.js) — ± buttons step exactly one rung and invert; a wheel gesture keeps a continuous preview but its COMMIT lands on a rung with the cursor anchor preserved (±2px); bouncing between visited rungs adds zero visible-path rasters (cache-miss stat frozen, hits +4) — the point of the feature. `npx playwright test zoom-ladder.spec.js` |
 | [rung-prefetch.spec.js](rung-prefetch.spec.js) | Playwright regression for the **adjacent-rung idle prefetch** — after a commit lands on a rung, `runPdfBitmapPrefetch` warms rung±1 of the current page (before the neighbor-page fit prefetches); asserts the prefetched stat rises and the next `doZoomIn` needs zero new pdf.js render calls (pure blit). `npx playwright test rung-prefetch.spec.js` |
 | [commit-tile.spec.js](commit-tile.spec.js) | Playwright regression for **window-first cold commits** — wraps `pdfPage.render` so full-page rasters resolve ~1.2s late (tile renders run native), then asserts: a cold-rung wheel commit shows the sharp visible-window tile while the old base is still up, the committed zoom is already on a rung, the tile retires when the crisp base paints, and a warm commit (down-rung prefetched — gated on `App.__pdfBitmapCacheKeys`, since the `prefetched` stat is a lifetime counter) blits with no tile. `npx playwright test commit-tile.spec.js` |
+| [deep-zoom.spec.js](deep-zoom.spec.js) | Playwright regression for **DEEP-ZOOM** (journeys/plans/DEEP-ZOOM.md, 2026-10-14): on the restaurant sheet at 3000%, `#annWindowCanvas` is visible, covers the wrapper, and is one screen of pixels at full density while `#annCanvas` is clamped under 0.4; the full-page buffers sit under 24 Mpx (part 3); a pixel probe at the seeded 8 px run's midpoint reads its colour on both canvases, and the SAME screen distance from the centre is clear on the window and still ink on the page overlay (sharp versus soft); twenty real Move drags re-cut the window at every mouse-up where the pan left the view with the ratchet untouched; hide-marks clears it; at 100% it retires. The ceiling case: `getMaxZoom()` is 50 on a capable device (12 under `deviceMemory < 4`), the layout wall over a 400,000 pt sheet gives 40, a 10 Mpx canvas cap gives 12, the project's own 8 wins under it; Zoom Settings on the small-cap device shows 1200 with the hint naming the project's 3000% and Done without moving leaves 3000% alone, a moved slider writes; the rail shows 14 ticks with a 2000% label at the full ceiling. `npx playwright test deep-zoom.spec.js` |
 | [crop-tile.spec.js](crop-tile.spec.js) | Playwright regression for the **deep-zoom sharp crop tile** (`#cropCanvas`, `// SECTION: Deep-zoom sharp crop tile` in app.js) — forces an `effectiveDpr` clamp via `App.setCanvasCaps` + zoom 3, then asserts the tile appears with ink after the 200ms debounce, covers the visible window at the right content-space position, respects the render-area budget, sits below the annotation overlay (z-order + DOM order), clears immediately on a page flip (`renderPdf` entry), and retires at a sharp zoom; no console/page errors. `npx playwright test crop-tile.spec.js` |
 | [render-pixels.spec.js](render-pixels.spec.js) | **The pixel-regression safety net** (baselines re-recorded 2026-10-12 for LABEL-SLIDE: the fixture's closed polyline's label moved from its closing leg near the first vertex to halfway round, the old walk's latent bug; every other pixel unchanged) for the draw paths — seeds a fixture takeoff exercising every mark kind (straight + arc quick lines with drops/labels/selection glow, closed polyline, highlight, multiply + scale zones, room box, wrapping note, counters with rings/outline/index numbers, group dots, legend, grid), then compares the raw canvas buffers of the live overlay (`renderAnnotations` → `#annCanvas`) and two export renders (`renderAnnotationsToContext` at export scale with `lineScale`/`markerScale`, and via `annotationsOverride`) against committed baselines in `render-pixels.spec.js-snapshots/` with `maxDiffPixels: 0`. Baselines are machine-rasterized — regenerate on a new machine with `--update-snapshots`. `npx playwright test render-pixels.spec.js` |
 | [features/canvas-repair.js](features/canvas-repair.js) | First feature-file split of the `app.js` IIFE (the `window.App` registry pilot) — the Canvas Repair modal (`openCanvasRepairModal` + `applyCanvasRepair`). Its own classic-script IIFE loaded **after** [app.js](app.js) (and before [report.js](report.js)); reads shared `state`/helpers from `window.App` at call time and registers `App.openCanvasRepairModal`/`App.applyCanvasRepair` back onto it. app.js invokes them via deferred bindings (`() => App.fn()`). See "Feature files / `window.App` registry" below |
 | [canvas-repair.spec.js](canvas-repair.spec.js) | Playwright regression for the registry pilot — uploads `test-2pages.pdf`, adds a page-0 marker, asserts `window.App.openCanvasRepairModal`/`applyCanvasRepair` are functions and `App.state === window.state`, opens the modal + clicks `#canvasRepairApply` (no-op default mapping), and asserts the marker survives with no console / page errors; `npx playwright test canvas-repair.spec.js` |
 | [features/note.js](features/note.js) | Second feature-file split (`window.App` registry pilot #2) — the Note add/edit modal (`openNoteModal` + its `noteModalCancel`/`noteModalDone` button bindings). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.openNoteModal`, and binds the modal's Cancel/Done at load. app.js's 5 inbound call sites (canvas click / dblclick / context-menu / touch handlers) call it via `App.openNoteModal(...)` |
 | [note.spec.js](note.spec.js) | Playwright regression for pilot #2 — uploads `test-2pages.pdf`, asserts `window.App.openNoteModal`/`ensureActiveCanvas`/`showLineColorModal` are functions, then exercises add (type + `#noteModalDone` persists a note), edit (reopen on the note object, change text), and cancel (`#noteModalCancel` clears `pendingNote`/`editingNote` and adds nothing), reading notes back via `window.App.ensureActiveCanvas`; asserts no console / page errors; `npx playwright test note.spec.js` |
-| [features/zoom.js](features/zoom.js) | Third feature-file split (`window.App` registry pilot #3) — the Zoom Settings modal (`showZoomModal` + its `zoomModalClose`/`zoomMax`/`zoomSpeed` handlers). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showZoomModal`, binds the modal inputs at load. `getMaxZoom`/`getWheelZoomSpeed` stay defined in app.js (used in ~10 places there) and are read via `App.*` — the first "publish-only, do-not-move" dep. its inbound call sites are the Zoom Rail's gear button ([features/zoom-rail.js](features/zoom-rail.js)) — the zoom-% click itself only toggles the rail |
-| [features/zoom-rail.js](features/zoom-rail.js) | The **Zoom Rail** — the giant floating vertical zoom slider on the right edge, **toggled** by clicking the footer zoom-% (`#zoomPct`). Log-scale track (equal distance per doubling, 0.2 → `getMaxZoom()`) with round-percent tick marks (majors labelled), an accent-yellow %-readout draggable thumb with a light magnetic snap to ticks, +/− buttons, and a gear that opens the Zoom Settings modal (the modal's only entry point — the rail's z-index 300 sits above the modal overlay's 200, so both stay usable together). Drags anchor the zoom at the canvas-wrapper center and reuse app.js's cheap transform preview + debounced commit. Replaced the old `#zoomOverlay` popover (markup/handlers/dismisser removed). Registers `App.openZoomRail`/`App.closeZoomRail`/`App.toggleZoomRail` plus the `App.onZoomRailSync` core-→-feature callback (called from `updateUI` and the pinch rAF so the thumb tracks wheel/pinch/±/fit while open; also rebuilds ticks when Zoom Settings changes the max zoom, and closes the rail if the project unloads). Five publish-only deps `doZoomIn`/`doZoomOut`/`updateContainerTransform`/`commitWheelZoom`/`syncZoomIndicators` (the drag's per-move sync is the light `syncZoomIndicators` — zoom-% + thumb only, **never** the full `updateUI()`, whose all-pages sidebar rebuild made zoom gestures lag on large projects; the full `updateUI()` runs once in the commit — see [zoom-no-updateui-during-gesture.spec.js](zoom-no-updateui-during-gesture.spec.js)). Dismissal: re-click the zoom %, outside click (clicks inside `#zoomModal` don't count), or Escape — the rail **stays until dismissed** (B9/J15 removed the old ~5s idle auto-fade, an invisible timer that lost the rail mid-adjustment on a field pause) |
+| [features/zoom.js](features/zoom.js) | Third feature-file split (`window.App` registry pilot #3) — the Zoom Settings modal (`showZoomModal` + its `zoomModalClose`/`zoomMax`/`zoomSpeed` handlers). Its own IIFE loaded **after** [app.js](app.js); reads shared `state`/helpers from `window.App` at call time, registers `App.showZoomModal`, binds the modal inputs at load. `getMaxZoom`/`getWheelZoomSpeed` stay defined in app.js (used in ~10 places there) and are read via `App.*` — the first "publish-only, do-not-move" dep. its inbound call sites are the Zoom Rail's gear button ([features/zoom-rail.js](features/zoom-rail.js)) — the zoom-% click itself only toggles the rail DEEP-ZOOM part 2 (2026-10-14): the slider runs to the device's ceiling (`App.getDeviceZoomCeiling()`, 5000% on a capable device, 1200% on a small-cap or low-memory one) and shows the PROJECT's own ceiling held to that range, with `#zoomMaxHint` saying where the device holds it; Done writes `state.maxZoom` only when the slider moved, so opening the dialog on a phone never lowers a project's 3000% to 1200%. |
+| [features/zoom-rail.js](features/zoom-rail.js) | The **Zoom Rail** — the giant floating vertical zoom slider on the right edge, **toggled** by clicking the footer zoom-% (`#zoomPct`). Log-scale track (equal distance per doubling, 0.2 → `getMaxZoom()`) with round-percent tick marks (majors labelled), an accent-yellow %-readout draggable thumb with a light magnetic snap to ticks, +/− buttons, and a gear that opens the Zoom Settings modal (the modal's only entry point — the rail's z-index 300 sits above the modal overlay's 200, so both stay usable together). Drags anchor the zoom at the canvas-wrapper center and reuse app.js's cheap transform preview + debounced commit. Replaced the old `#zoomOverlay` popover (markup/handlers/dismisser removed). Registers `App.openZoomRail`/`App.closeZoomRail`/`App.toggleZoomRail` plus the `App.onZoomRailSync` core-→-feature callback (called from `updateUI` and the pinch rAF so the thumb tracks wheel/pinch/±/fit while open; also rebuilds ticks when Zoom Settings changes the max zoom, and closes the rail if the project unloads). Five publish-only deps `doZoomIn`/`doZoomOut`/`updateContainerTransform`/`commitWheelZoom`/`syncZoomIndicators` (the drag's per-move sync is the light `syncZoomIndicators` — zoom-% + thumb only, **never** the full `updateUI()`, whose all-pages sidebar rebuild made zoom gestures lag on large projects; the full `updateUI()` runs once in the commit — see [zoom-no-updateui-during-gesture.spec.js](zoom-no-updateui-during-gesture.spec.js)). Dismissal: re-click the zoom %, outside click (clicks inside `#zoomModal` don't count), or Escape — the rail **stays until dismissed** (B9/J15 removed the old ~5s idle auto-fade, an invisible timer that lost the rail mid-adjustment on a field pause) DEEP-ZOOM (2026-10-14): `TICK_PCTS` gains 2000, 3000 and 5000 (2000 a major), shown only when `getMaxZoom()` allows. |
 | [zoom-rail.spec.js](zoom-rail.spec.js) | Playwright regression for the Zoom Rail — uploads `test-2pages.pdf`, asserts the registry contract (`openZoomRail`/`closeZoomRail`/`toggleZoomRail`/`onZoomRailSync` + the 4 publish-only deps), `#zoomPct` click toggles the rail (modal does **not** open; gear opens it with the rail staying up), mouse-drags the track past the ends asserting `state.zoom` rises to max then clamps to 0.2 with `#zoomPct` in sync, stays-until-dismissed persistence (B9: no idle auto-fade; unrelated `updateUI` churn doesn't dismiss it either) + the accent-yellow thumb, tick rebuild when max zoom changes 400% → 1200% (8 → 11 ticks), external `state.zoom` writes resync the thumb, mobile viewport tap shows the rail without the modal (and `#zoomOverlay` is gone), and outside-click + Escape dismiss; asserts no console / page errors; `npx playwright test zoom-rail.spec.js` |
 | [page-switch-cache.spec.js](page-switch-cache.spec.js) | Perf regression for the **PDF render bitmap cache** (`// SECTION: PDF render bitmap cache` in app.js) — the LRU of recently-rendered page ImageBitmaps keyed by the self-validating tuple (pdfPage proxy + rotation + zoom + effDpr) that makes revisits and idle-prefetched neighbor visits a synchronous blit instead of a pdf.js raster. Wraps each page's `pdfPage.render` with a call-counting spy, then asserts: a revisit adds **zero** render calls with `App.__pdfBitmapCacheStats().hits` incremented and real canvas content; rotate + undo (which rewrites `page.rotation` in place) both force fresh rasters (key self-invalidation); 12 rapid no-wait page flips ride the new `pdfRenderTask.cancel()` path with no console errors and land on the right page; the ~250ms idle prefetch caches the neighbor so its first visit is a blit; and `App.clearPdfBitmapCache()` empties to size 0. `npx playwright test page-switch-cache.spec.js` |
 | [zoom-no-updateui-during-gesture.spec.js](zoom-no-updateui-during-gesture.spec.js) | Perf regression for the zoom-gesture paths — asserts wheel zooming does **not** run the full `updateUI()` per frame (sentinel child planted in `#pagesList` must survive the gesture — any `updateUI()` wipes it via `renderPagesList`'s innerHTML rebuild), that `#zoomPct` still tracks `state.zoom` per frame via the light `syncZoomIndicators()` (published on the registry), and that exactly one full `updateUI()` + re-render lands at the debounced `commitWheelZoom` (sentinel gone after the 150 ms window); uploads `samples/sample-plan.pdf`; asserts no console / page errors; `npx playwright test zoom-no-updateui-during-gesture.spec.js` |
@@ -665,63 +666,64 @@ live list with current `app.js` line numbers is generated by `npm run build:toc`
 - L802 - Undo/redo stacks
 - L1012 - [sync] Checkout probe, hashing & PDF cache
 - L1074 - Math & Format Helpers
-- L1594 - Coordinate Helpers
-- L1602 - PDF render bitmap cache
-- L1656 - Sharp crop tile (deep-zoom sharpening + window-first commits)
-- L1667 - PDF Rendering
-- L2542 - Recent bids
-- L2569 - UI Render Functions
-- L2926 - Placing selection (setActiveCounterType / setActiveLineType)
-- L3037 - Inline rename & polyline edit mode
-- L3153 - Modal primitives (showModal / hideModal)
-- L3319 - Toasts & line color picker
-- L3388 - Airboard cloud sync
-- L3433 - Supabase RPC & presence heartbeat
-- L3473 - User activity / event telemetry
-- L3532 - Supabase auth & dev auth
-- L3723 - [sync] Checkout subscription & permission refresh
-- L3733 - Modals & Handlers
-- L3801 - PDF intake (upload, test PDF, hashing)
-- L3809 - Toolbar tool buttons
-- L3970 - Tool sidebar buttons & legend overlay
-- L4056 - Add Line Type modal
-- L4138 - Line color & sidebar handlers
-- L4209 - Polyline modal & drawing
-- L4266 - Zoom bar & page navigation
-- L4292 - Export canvas JSON
-- L4317 - PDF download helpers
-- L4326 - View-link URL helpers & show-highlights/notes
-- L4358 - Custom icon upload handler
-- L4368 - Macros & custom-icon tips openers
-- L4388 - Sidebar drawer toggles
-- L4419 - Mobile actions burger menu pointer & header logo
-- L4431 - User Activity pointer (format.js + features/user-activity.js)
-- L4443 - My Settings pointer (features/my-settings.js)
-- L4468 - Project Settings pointer (features/project-settings.js)
-- L4474 - Auth & settings entry buttons
-  - L4519 - Project Settings checkout & Save Status bell
-  - L4632 - [sync] Checkout expired recovery
-  - L4688 - [sync] Turn In
-  - L4753 - Share modal pointer & copy-project openers
-  - L4784 - Settings menu actions
-  - L4796 - Auth sign-in form
-  - L4821 - Save Project modal
-  - L4832 - Checkout expired recovery modal wiring
-  - L4935 - Last-session restore prompt
-- L4947 - Canvas Event Handlers
-- L5331 - Event Binding
-- L5341 - Aim loupe (mobile press-hold precise placement)
-- L5494 - Zoom transform preview & commit
-- L5573 - Canvas mouse, wheel & touch handlers
-- L6262 - Global dropdown dismissal & keyboard hotkeys
-- L6440 - [sync] Manual save to cloud
-- L6450 - [sync] Auto-save
-- L6457 - [sync] Local backup (IndexedDB takeoff state)
-- L6466 - [sync] Visibility & timers
-- L6483 - [sync] Checkout keep-alive
-- L6497 - App feature registry
-- L6890 - View-only mode
-- L6896 - Init / boot
+- L1607 - Coordinate Helpers
+- L1615 - PDF render bitmap cache
+- L1669 - Sharp crop tile (deep-zoom sharpening + window-first commits)
+- L1680 - PDF Rendering
+- L2495 - Deep-zoom overlay window
+- L2669 - Recent bids
+- L2696 - UI Render Functions
+- L3053 - Placing selection (setActiveCounterType / setActiveLineType)
+- L3164 - Inline rename & polyline edit mode
+- L3280 - Modal primitives (showModal / hideModal)
+- L3446 - Toasts & line color picker
+- L3515 - Airboard cloud sync
+- L3560 - Supabase RPC & presence heartbeat
+- L3600 - User activity / event telemetry
+- L3659 - Supabase auth & dev auth
+- L3850 - [sync] Checkout subscription & permission refresh
+- L3860 - Modals & Handlers
+- L3928 - PDF intake (upload, test PDF, hashing)
+- L3936 - Toolbar tool buttons
+- L4097 - Tool sidebar buttons & legend overlay
+- L4183 - Add Line Type modal
+- L4265 - Line color & sidebar handlers
+- L4336 - Polyline modal & drawing
+- L4393 - Zoom bar & page navigation
+- L4419 - Export canvas JSON
+- L4444 - PDF download helpers
+- L4453 - View-link URL helpers & show-highlights/notes
+- L4485 - Custom icon upload handler
+- L4495 - Macros & custom-icon tips openers
+- L4515 - Sidebar drawer toggles
+- L4546 - Mobile actions burger menu pointer & header logo
+- L4558 - User Activity pointer (format.js + features/user-activity.js)
+- L4570 - My Settings pointer (features/my-settings.js)
+- L4595 - Project Settings pointer (features/project-settings.js)
+- L4601 - Auth & settings entry buttons
+  - L4646 - Project Settings checkout & Save Status bell
+  - L4759 - [sync] Checkout expired recovery
+  - L4815 - [sync] Turn In
+  - L4880 - Share modal pointer & copy-project openers
+  - L4911 - Settings menu actions
+  - L4923 - Auth sign-in form
+  - L4948 - Save Project modal
+  - L4959 - Checkout expired recovery modal wiring
+  - L5062 - Last-session restore prompt
+- L5074 - Canvas Event Handlers
+- L5458 - Event Binding
+- L5468 - Aim loupe (mobile press-hold precise placement)
+- L5637 - Zoom transform preview & commit
+- L5717 - Canvas mouse, wheel & touch handlers
+- L6410 - Global dropdown dismissal & keyboard hotkeys
+- L6588 - [sync] Manual save to cloud
+- L6598 - [sync] Auto-save
+- L6605 - [sync] Local backup (IndexedDB takeoff state)
+- L6614 - [sync] Visibility & timers
+- L6631 - [sync] Checkout keep-alive
+- L6645 - App feature registry
+- L7040 - View-only mode
+- L7046 - Init / boot
 
 <!-- END SECTION TOC -->
 
@@ -1413,6 +1415,21 @@ Everything below is built on top of the [RECONSTITUTE.md](RECONSTITUTE.md) core.
   info modes, Esc cancels, sits above every other modal). No native `alert()` /
   `confirm()` / `prompt()` anywhere in app.js, features/, or report.js.
 - **Middle mouse pan** — hold middle button to pan regardless of tool.
+- **Deep zoom** (DEEP-ZOOM, 2026-10-14, [journeys/plans/DEEP-ZOOM.md](journeys/plans/DEEP-ZOOM.md)) — zoom
+  runs to 5000% (`deviceZoomCeiling()`: 1200% on a small canvas cap or a low-memory Chromium,
+  then the layout wall over the sheet's longest side; `getMaxZoom()` is the project's own ceiling
+  under it, and only the project's rides the payload). Past the canvas budget the page overlay
+  `#annCanvas` is as soft as the PDF base, so `renderAnnotationWindow` (`// SECTION: Deep-zoom
+  overlay window`) paints the **overlay window** `#annWindowCanvas`: the visible area at full
+  density, the same `paintOverlay` body with `toCanvas` rebound to `state.zoom × dpr` minus the
+  window's origin (`overlayOffset`), boxed by the crop tile's math and re-cut on every overlay
+  paint, at pan end and at a cold zoom commit (`recutOverlayWindow`, a full overlay paint); the
+  window paints first so the page pass leaves every DOM anchor the overlays record in
+  page-buffer units, and the page pass ends by clearing the window's box out of `#annCanvas`,
+  so the soft overlay never halos the crisp marks and stands only in the strips a pan reveals;
+  the aim loupe samples the crop canvas and the window where they stand. Past 4× the full-page canvas is
+  only a backdrop under the tiles and the window, so `effectiveDpr` holds it to 24 Mpx
+  (`DEEP_ZOOM_BASE_MAX_AREA`). Spec: [deep-zoom.spec.js](deep-zoom.spec.js).
 - **Zoom Rail** — clicking the footer zoom % toggles a giant floating vertical
   slider on the right edge ([features/zoom-rail.js](features/zoom-rail.js)):
   log-scale track with labelled tick marks, a draggable accent-yellow %-readout

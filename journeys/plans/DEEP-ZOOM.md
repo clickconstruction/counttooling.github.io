@@ -120,6 +120,32 @@ effDpr, so cached rungs stay valid; pdf-tile-cache.js's own budgets are unchange
 - Then one run on Wendi's machine: the Save Status export already carries her probed cap,
   the safety knob and any blank events (the `display` block).
 
+## Built (2026-10-14)
+
+All three parts, in the order above, one PR, with deep-zoom.spec.js (the tests listed below as
+written) and the zoom, rail, tile and render-pixels specs green. Three refinements over the
+proposal, each found while building:
+
+- The window's gate reads `effectiveDpr(page, state.zoom)`, the density the page overlay WILL
+  have at the zoom asked for, not the one it last painted at, so the cold-commit cut (made
+  before the raster lands) shows on the first deep zoom too.
+- The window paints BEFORE the page pass, so the page pass is the last to run and every DOM
+  anchor an overlay records while painting (the duct cursor chip, the water card) stays in
+  page-buffer units; a second canvas painted last would have left them in window units.
+- The device ceiling is read-time only: the save blob and the project payload carry
+  `getProjectMaxZoom()` (the project's own, 400% unset), and the Zoom Settings dialog shows
+  the project's own held to the device's range and writes it back only when the slider moved,
+  so a phone that opens the dialog cannot lower a project's 3000% to 1200%.
+- The window is transparent, and the first 3000% screenshot showed the page overlay's fat, soft
+  marks haloing the crisp ones through it. The page pass now ends by clearing the window's box
+  out of `#annCanvas`, so under the window only the window shows and the soft overlay stands
+  only in the strips a pan reveals; a pan end and a cold commit repaint the whole overlay
+  (`recutOverlayWindow`), not the window alone, so the hole moves with it. The aim loupe
+  samples the crop canvas and the window where they stand, so a tablet keeps its marks under
+  the loupe at depth.
+
+Live check: see CHANGELOG.md's DEEP-ZOOM entry.
+
 ## Decisions
 
 Assumed, Will to confirm: the ceiling is 5000%, and phones and small-cap devices hold 1200%.

@@ -18,10 +18,28 @@
 (function() {
   const App = (window.App = window.App || {});
 
+  // DEEP-ZOOM part 2 (journeys/plans/DEEP-ZOOM.md): the slider runs to the device's ceiling
+  // (App.getDeviceZoomCeiling: 5000% on a capable device, 1200% on a small-cap or low-memory
+  // one) and shows the PROJECT's own ceiling held to that range; Done writes it back only when
+  // the slider moved, so opening the dialog on a phone never lowers a project's 3000% to 1200%.
+  let shownMaxPct = null;
   function showZoomModal() {
-    const maxVal = Math.round(App.getMaxZoom() * 100);
-    document.getElementById('zoomMax').value = maxVal;
-    document.getElementById('zoomMaxVal').textContent = maxVal;
+    const state = App.state;
+    const ceilingPct = Math.round(App.getDeviceZoomCeiling() * 100);
+    const slider = document.getElementById('zoomMax');
+    slider.max = String(Math.max(100, ceilingPct));
+    const projectPct = Math.round((state.maxZoom ?? 4) * 100);
+    shownMaxPct = Math.max(100, Math.min(ceilingPct, projectPct));
+    slider.value = shownMaxPct;
+    document.getElementById('zoomMaxVal').textContent = shownMaxPct;
+    const hint = document.getElementById('zoomMaxHint');
+    if (hint) {
+      const held = ceilingPct < 5000;
+      hint.textContent = held
+        ? 'This device holds zoom at ' + ceilingPct + '%.' + (projectPct > ceilingPct ? ' The project\'s ' + projectPct + '% applies on a larger screen.' : '')
+        : '';
+      hint.style.display = held ? '' : 'none';
+    }
     const speed = App.getWheelZoomSpeed();
     const speedPct = Math.round(speed * 100);
     document.getElementById('zoomSpeed').value = speedPct;
@@ -32,7 +50,7 @@
   document.getElementById('zoomModalClose').onclick = () => {
     const state = App.state;
     const maxPct = parseInt(document.getElementById('zoomMax').value, 10);
-    state.maxZoom = maxPct / 100;
+    if (shownMaxPct == null || maxPct !== shownMaxPct) state.maxZoom = maxPct / 100;   // DEEP-ZOOM: an untouched slider leaves the project's ceiling alone
     const speedPct = parseInt(document.getElementById('zoomSpeed').value, 10);
     const speed = speedPct / 100;
     try { localStorage.setItem('zoomSettings', JSON.stringify({ wheelZoomSpeed: speed })); } catch (_) {}

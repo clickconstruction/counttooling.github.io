@@ -81,12 +81,13 @@ test.describe('window.App registry pilot - Zoom modal', () => {
 
     await page.evaluate(() => window.App.showZoomModal());
     await page.waitForSelector('#zoomModal.visible', { timeout: 5000 });
-    // The slider ceiling is now 1200 and it reflects the live 400% default.
+    // The slider runs to the device's ceiling (DEEP-ZOOM: 5000 on a capable device, 1200 on a
+    // small-cap or low-memory one) and it reflects the live 400% default.
     const slider = await page.evaluate(() => {
       const m = document.getElementById('zoomMax');
-      return { max: m.max, value: m.value };
+      return { max: m.max, value: m.value, ceiling: String(Math.round(window.App.getDeviceZoomCeiling() * 100)) };
     });
-    expect(slider.max).toBe('1200');
+    expect(slider.max).toBe(slider.ceiling);
     expect(slider.value).toBe('400');
 
     // Raise to 1200% and close -> persisted as 12.
@@ -122,7 +123,7 @@ test.describe('window.App registry pilot - Zoom modal', () => {
     // with it (unlike the old popover, it does NOT dismiss).
     await page.locator('#zoomRailSettings').click();
     await page.waitForSelector('#zoomModal.visible', { timeout: 3000 });
-    expect(await page.evaluate(() => document.getElementById('zoomMax').max)).toBe('1200');
+    expect(await page.evaluate(() => document.getElementById('zoomMax').max)).toBe(await page.evaluate(() => String(Math.round(window.App.getDeviceZoomCeiling() * 100))));   // DEEP-ZOOM: the device's ceiling
     expect(await page.evaluate(() => document.getElementById('zoomRail').classList.contains('visible'))).toBe(true);
 
     expect(errors).toEqual([]);

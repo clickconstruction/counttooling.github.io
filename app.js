@@ -698,7 +698,7 @@
     // (the load paths write it).
     getServerClockOffsetMs: () => serverClockOffsetMs,
     captureDisplayInfoObj: () => captureDisplayInfoObj(),
-    getMaxZoom: () => getMaxZoom(),
+    getMaxZoom: () => getProjectMaxZoom(),   // DEEP-ZOOM: the project's own ceiling rides the save blob, never the device's
     assertPdfWithinLimit: (bytes, context) => assertPdfWithinLimit(bytes, context),
     maybeLogProjectSaveEvent: (projectId) => maybeLogProjectSaveEvent(projectId),
     setLastSaveIncludedPdf: (v) => { lastSaveIncludedPdf = v; },
@@ -1256,6 +1256,7 @@
   const pdfCanvas = document.getElementById('pdfCanvas');
   const cropCanvas = document.getElementById('cropCanvas');
   const annCanvas = document.getElementById('annCanvas');
+  const annWindowCanvas = document.getElementById('annWindowCanvas');   // DEEP-ZOOM: the overlay window (the visible area, full density)
   // Low-latency presentation hint: desynchronize these canvases from the
   // compositor's vsync queue (Chrome honors it; others ignore it). Must be
   // the FIRST getContext call per canvas — every later plain getContext('2d')
@@ -1264,6 +1265,7 @@
     if (pdfCanvas) pdfCanvas.getContext('2d', { desynchronized: true });
     if (cropCanvas) cropCanvas.getContext('2d', { desynchronized: true });
     if (annCanvas) annCanvas.getContext('2d', { desynchronized: true });
+    if (annWindowCanvas) annWindowCanvas.getContext('2d', { desynchronized: true });
   } catch (_) { /* hint only */ }
   const aimLoupe = document.getElementById('aimLoupe');
 
@@ -1302,6 +1304,12 @@
   const RENDER_AREA_SAFETY_MIN = 0.12;   // ratchet floor — below this we accept a soft bitmap
   const RENDER_AREA_SAFETY_STEP = 0.6;   // each ratchet step multiplies the knob
   let renderAreaSafety = RENDER_AREA_SAFETY_MAX;
+  // DEEP-ZOOM part 3 (journeys/plans/DEEP-ZOOM.md): past DEEP_ZOOM_BASE_FROM the full-page canvas is
+  // only a backdrop under the tile compositor and the overlay window, so its buffer is budgeted to
+  // DEEP_ZOOM_BASE_MAX_AREA and peak memory at depth about halves. The bitmap cache keys carry the
+  // effDpr, so cached rungs stay valid; the step only binds where the base is already clamped.
+  const DEEP_ZOOM_BASE_FROM = 4;
+  const DEEP_ZOOM_BASE_MAX_AREA = 24e6;
 
   // Does this canvas's far corner actually read back? A canvas that silently failed to
   // allocate its backing store (memory pressure / over the device cap) paints blank with
@@ -1354,10 +1362,15 @@
     // offscreen) can coexist without exhausting device memory. maxDim is left intact —
     // the failure is area/memory-driven, not single-axis overflow, and clampEffectiveDpr
     // already takes the min across both, so this only bites when area is the binding limit.
-    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea: caps.maxArea * renderAreaSafety });
+    let maxArea = caps.maxArea * renderAreaSafety;
+    if (zoom > DEEP_ZOOM_BASE_FROM) maxArea = Math.min(maxArea, DEEP_ZOOM_BASE_MAX_AREA);   // DEEP-ZOOM part 3
+    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea });
   }
 
-  function toCanvas(p) { const scale = currentRenderZoom * currentEffDpr; return { x: p.x * scale, y: p.y * scale }; }   // buffer space — currentRenderZoom, NOT state.zoom (rung blits)
+  // DEEP-ZOOM: the overlay window's origin in its own buffer, subtracted while renderAnnotationWindow
+  // paints; zero for the page pass, so #annCanvas pixels stay byte-identical (x - 0 is exact).
+  let overlayOffset = { x: 0, y: 0 };
+  function toCanvas(p) { const scale = currentRenderZoom * currentEffDpr; return { x: p.x * scale - overlayOffset.x, y: p.y * scale - overlayOffset.y }; }   // buffer space — currentRenderZoom, NOT state.zoom (rung blits)
 
   function canvasToPdf(canvasX, canvasY) {
     return { x: (canvasX - state.pan.x) / state.zoom, y: (canvasY - state.pan.y) / state.zoom };
@@ -1713,6 +1726,7 @@
       annCanvas.height = 0;
       annCanvas.style.width = '0';
       annCanvas.style.height = '0';
+      hideAnnotationWindow();
       lastPaintedPdfPage = null;
       return;
     }
@@ -2041,9 +2055,31 @@
     annCanvas.height = pdfCanvas.height;
     annCanvas.style.width = pdfCanvas.style.width;
     annCanvas.style.height = pdfCanvas.style.height;
-    const ctx = annCanvas.getContext('2d');
+    // DEEP-ZOOM: the window paints FIRST, so the page pass below is the last to run and every
+    // DOM anchor an overlay records while it paints (the duct cursor chip, the water card) is
+    // left in page-buffer units, as before the window existed.
+    renderAnnotationWindow(page);
+    paintOverlay(annCanvas.getContext('2d'), annCanvas.width, annCanvas.height, page);
+    // The window is transparent, and under it the page overlay draws every mark fat and soft
+    // (raw buffer widths at a fifth of the density), which haloed the crisp marks: the page pass
+    // ends by clearing the window's box out of itself, so under the window only the window
+    // shows, and the soft overlay stands only in the strips a pan reveals until pan end.
+    if (annWindowBox) {
+      const pageCssW = parseFloat(pdfCanvas.style.width) || 0, pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+      if (pageCssW > 0 && pageCssH > 0) {
+        const b = annWindowBox, sx = annCanvas.width / pageCssW, sy = annCanvas.height / pageCssH;
+        annCanvas.getContext('2d').clearRect(b.x0 * sx, b.y0 * sy, b.w * sx, b.h * sy);
+      }
+    }
+  }
+  // Everything the live overlay draws, into `ctx` (a width × height buffer). The page pass
+  // (#annCanvas, sized to #pdfCanvas) and the DEEP-ZOOM window (#annWindowCanvas, the visible
+  // area at full density) run this one body; the window differs only through the module values
+  // the body and toCanvas read (currentRenderZoom, currentEffDpr, overlayOffset), which
+  // renderAnnotationWindow rebinds around its call.
+  function paintOverlay(ctx, width, height, page) {
     const z = currentRenderZoom;   // buffer space (rung blits render at the rung, CSS carries the residual)
-    ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+    ctx.clearRect(0, 0, width, height);
     // Hide-marks mode: the overlay is sized + cleared (so the bare PDF shows
     // through) but nothing is painted on it. Toggle via the header eye button.
     if (state.hideMarks) return;
@@ -2456,6 +2492,75 @@
     }
   }
 
+  // SECTION: Deep-zoom overlay window
+  // DEEP-ZOOM part 1 (2026-10-14, journeys/plans/DEEP-ZOOM.md). Past the canvas budget the page
+  // overlay (#annCanvas) is sized to the clamped #pdfCanvas buffer, so at 3000% its marks draw at a
+  // fifth of the screen's density and read as blur beside the sheet, which the tile compositor
+  // keeps crisp. The window is a third canvas over the overlay, the visible area only, at full
+  // density: the same painter, with toCanvas rebound to state.zoom × dpr minus the window's
+  // origin. Its box is the crop tile's math (pdf-tile-cache.js renderCropTile): container units of
+  // the last full render, scaled on screen by k = zoom / lastRenderedZoom, so a mid-gesture or a
+  // tile-first commit is screen-sharp too. Painted with every overlay paint, re-cut at the pan-end
+  // sites that schedule the crop tile and at a cold zoom commit; during a pan it rides the
+  // container transform and a newly exposed strip shows the page overlay until pan end, exactly as
+  // the PDF tiles behave. Hidden while the overlay is not meaningfully soft (the tile's deficit).
+  const ANN_WINDOW_MIN_DEFICIT = 1.15;   // the crop tile's CROP_TILE_MIN_DEFICIT
+  let annWindowBox = null;               // the last cut, { x0, y0, w, h, k, dpr, bw, bh }: the spec seam App.__annWindow
+  function hideAnnotationWindow() {
+    annWindowBox = null;
+    if (!annWindowCanvas) return;
+    if (annWindowCanvas.width || annWindowCanvas.height) { annWindowCanvas.width = 0; annWindowCanvas.height = 0; }
+    annWindowCanvas.style.display = 'none';
+  }
+  // The gate reads the density the page overlay HAS or WILL have at this zoom (a cold zoom
+  // commit cuts the window before its raster lands), not only the one it last painted at.
+  function overlayWindowWanted(page) {
+    if (!annWindowCanvas || !page || !page.pdfPage) return false;
+    const baseEff = effectiveDpr(page, state.zoom);
+    return baseEff > 0 && (window.devicePixelRatio || 1) / baseEff >= ANN_WINDOW_MIN_DEFICIT;
+  }
+  // A pan end or a cold zoom commit: a full overlay paint, which cuts the window at the view's
+  // new place and the hole under it; nothing at all when no window is wanted (the old path).
+  function recutOverlayWindow() {
+    if (annWindowBox || overlayWindowWanted(state.pages[state.currentPage])) renderAnnotations();
+  }
+  function renderAnnotationWindow(page) {
+    if (!annWindowCanvas) return;
+    page = page || state.pages[state.currentPage];
+    const dpr = window.devicePixelRatio || 1;
+    if (!overlayWindowWanted(page)) { hideAnnotationWindow(); return; }
+    const r = cWrapper ? cWrapper.getBoundingClientRect() : null;
+    const pageCssW = parseFloat(pdfCanvas.style.width) || 0;
+    const pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+    if (!r || !r.width || !r.height || !pageCssW || !pageCssH) { hideAnnotationWindow(); return; }
+    const k = lastRenderedZoom > 0 ? state.zoom / lastRenderedZoom : 1;
+    const x0 = Math.max(0, -state.pan.x / k);
+    const y0 = Math.max(0, -state.pan.y / k);
+    const w = Math.min(pageCssW, x0 + r.width / k) - x0;
+    const h = Math.min(pageCssH, y0 + r.height / k) - y0;
+    if (w <= 0 || h <= 0) { hideAnnotationWindow(); return; }
+    const bw = Math.ceil(w * k * dpr), bh = Math.ceil(h * k * dpr);
+    // One screen of pixels; past the render budget (a huge display on a ratcheted-down budget)
+    // the page overlay stands alone rather than risk a window that allocates blank.
+    if (bw * bh > getCanvasCaps().maxArea * renderAreaSafety) { hideAnnotationWindow(); return; }
+    if (annWindowCanvas.width !== bw || annWindowCanvas.height !== bh) { annWindowCanvas.width = bw; annWindowCanvas.height = bh; }
+    annWindowCanvas.style.width = w + 'px';
+    annWindowCanvas.style.height = h + 'px';
+    annWindowCanvas.style.left = x0 + 'px';
+    annWindowCanvas.style.top = y0 + 'px';
+    annWindowCanvas.style.display = '';
+    annWindowBox = { x0, y0, w, h, k, dpr, bw, bh };
+    const savedZoom = currentRenderZoom, savedEff = currentEffDpr, savedOffset = overlayOffset;
+    currentRenderZoom = state.zoom;
+    currentEffDpr = dpr;
+    overlayOffset = { x: x0 * k * dpr, y: y0 * k * dpr };
+    try {
+      paintOverlay(annWindowCanvas.getContext('2d'), bw, bh, page);
+    } finally {
+      currentRenderZoom = savedZoom; currentEffDpr = savedEff; overlayOffset = savedOffset;
+    }
+  }
+
   function renderAnnotationsToContext(ctx, page, scale, exportOverrides, annotationsOverride) {
     const tc = (p) => ({ x: p.x * scale, y: p.y * scale });
     const ann = annotationsOverride ?? getActiveAnnotations(page);
@@ -2516,7 +2621,29 @@
     return { x: snappedX, y: snappedY };
   }
 
-  function getMaxZoom() { return state.maxZoom ?? 4; }
+  // DEEP-ZOOM part 2: the project's ceiling (Zoom Settings, state.maxZoom; 400% unset) under the
+  // device's. 1200% where the canvas probe found a small cap (iOS Safari probes about 16.7 Mpx)
+  // or Chromium reports under 4 GB (deviceMemory is undefined on Safari and Firefox, so only a
+  // Chromium low-memory device), else 5000%; then the layout wall, Firefox's ~17.9 M CSS px per
+  // element side, as 16e6 over the current sheet's longest side in points. The payload keeps the
+  // project's own ceiling (getProjectMaxZoom), never the device's, so a phone cannot lower it.
+  const DEVICE_ZOOM_CEILING = 50, DEVICE_ZOOM_CEILING_SMALL = 12, DEVICE_ZOOM_SMALL_CAP_PX = 32e6, LAYOUT_WALL_CSS_PX = 16e6;
+  function deviceZoomCeiling() {
+    const caps = getCanvasCaps();
+    const lowMemory = typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory < 4;
+    let ceiling = (caps.maxArea < DEVICE_ZOOM_SMALL_CAP_PX || lowMemory) ? DEVICE_ZOOM_CEILING_SMALL : DEVICE_ZOOM_CEILING;
+    const page = state.pages[state.currentPage];
+    if (page && page.pdfPage) {
+      try {
+        const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+        const longest = Math.max(vp.width, vp.height);
+        if (longest > 0) ceiling = Math.min(ceiling, Math.floor(LAYOUT_WALL_CSS_PX / longest));
+      } catch (_) { /* a page mid-load keeps the device ceiling */ }
+    }
+    return Math.max(1, ceiling);
+  }
+  function getProjectMaxZoom() { return state.maxZoom ?? 4; }
+  function getMaxZoom() { return Math.min(getProjectMaxZoom(), deviceZoomCeiling()); }
   function getWheelZoomSpeed() {
     try {
       const s = localStorage.getItem('zoomSettings');
@@ -4301,7 +4428,7 @@
   // "which marks did we bid to" snapshot. R12: the same payload the cloud save
   // writes, from the one builder (save-utils.js buildProjectData).
   function buildCanvasExportData() {
-    return buildProjectData(state, { customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), bakeFrame: computePageBakeFrame });
+    return buildProjectData(state, { customIconPaths: getUserCustomIcons(), maxZoom: getProjectMaxZoom(), bakeFrame: computePageBakeFrame });
   }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
@@ -5470,7 +5597,23 @@
     lctx.imageSmoothingEnabled = true;
     try {
       lctx.drawImage(pdfCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
-      lctx.drawImage(annCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
+      // DEEP-ZOOM: at depth the page canvases are the soft backdrop (and the page overlay has
+      // the window's box cleared out of it), so the loupe samples the crop canvas and the
+      // overlay window where they stand, the same screen region, each boxed in container
+      // units (pdf pt × lastRenderedZoom) at its own density (buffer px per container px).
+      const cssW = parseFloat(pdfCanvas.style.width) || 0;
+      const basePerCss = cssW > 0 ? pdfCanvas.width / cssW : 0;
+      const layer = (canvas, x0, y0, cssBoxW) => {
+        const density = canvas.width / cssBoxW;
+        const lx = (state.aimPoint.x * lastRenderedZoom - x0) * density, ly = (state.aimPoint.y * lastRenderedZoom - y0) * density;
+        const ls = (srcSize / basePerCss) * density;
+        lctx.drawImage(canvas, lx - ls / 2, ly - ls / 2, ls, ls, 0, 0, aimLoupe.width, aimLoupe.height);
+      };
+      if (basePerCss > 0 && cropCanvas && cropCanvas.width > 0 && cropCanvas.style.display !== 'none' && parseFloat(cropCanvas.style.width) > 0) {
+        layer(cropCanvas, parseFloat(cropCanvas.style.left) || 0, parseFloat(cropCanvas.style.top) || 0, parseFloat(cropCanvas.style.width));
+      }
+      if (basePerCss > 0 && annWindowBox) layer(annWindowCanvas, annWindowBox.x0, annWindowBox.y0, annWindowBox.w);
+      else lctx.drawImage(annCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
     } catch (_) { /* source rect partly off-canvas — drawImage clips */ }
     const cxp = aimLoupe.width / 2, cyp = aimLoupe.height / 2, rr = 14 * ratio;
     lctx.strokeStyle = '#e8c547'; lctx.lineWidth = 1.5 * ratio;
@@ -5519,6 +5662,7 @@
           return Math.abs(rung - state.zoom) > 1e-9 && pdfBitmapCacheGet(page.pdfPage, rot, rung, effectiveDpr(page, rung));
         })();
       if (!warm) {
+        recutOverlayWindow();   // DEEP-ZOOM: the marks are screen-sharp at the new zoom while the tile rasters (the k math)
         renderCropTile({ force: true, onDone: () => renderPdf() });
         return;
       }
@@ -5914,6 +6058,7 @@
       state.isPanning = false;
       state.panStart = null;
       scheduleCropTile();   // pan settled — re-cover the new visible window
+      recutOverlayWindow();   // DEEP-ZOOM: and re-cut the overlay window
       return;
     }
     if (e.button !== 0) return;
@@ -5952,6 +6097,7 @@
     state.isPanning = false;
     state.panStart = null;
     scheduleCropTile();   // pan settled — re-cover the new visible window (no-ops when base is sharp)
+    recutOverlayWindow();   // DEEP-ZOOM: and re-cut the overlay window
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
@@ -5981,6 +6127,7 @@
       state.isPanning = false;
       state.panStart = null;
       scheduleCropTile();
+      recutOverlayWindow();   // DEEP-ZOOM
     }
     // A drag released on the canvas was already ended by its mouseup; one still
     // live here came up off the canvas (MAP-RESETS, D21).
@@ -6232,6 +6379,7 @@
       state.touchPanning = false;
       state.touchPanStart = null;
       scheduleCropTile();   // touch pan settled
+      recutOverlayWindow();   // DEEP-ZOOM: and re-cut the overlay window
       return;
     }
     if (e.changedTouches && e.changedTouches.length && state.longPressTimer) {
@@ -6552,6 +6700,8 @@
   App.commitWheelZoom = commitWheelZoom;
   App.syncZoomIndicators = syncZoomIndicators;
   App.getCanvasCaps = getCanvasCaps;
+  App.getDeviceZoomCeiling = deviceZoomCeiling;   // DEEP-ZOOM: features/zoom.js (the slider's max and its hint)
+  App.__annWindow = () => annWindowBox;          // DEEP-ZOOM: the overlay window's last cut (deep-zoom.spec.js)
   App.setCanvasCaps = setCanvasCaps;
   App.effectiveDpr = effectiveDpr;
   App.__getRenderAreaSafety = () => renderAreaSafety;   // debug/test seam (mirrors setCanvasCaps)

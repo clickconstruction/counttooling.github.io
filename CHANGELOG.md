@@ -13,6 +13,41 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(zoom): zoom past 1200% with a sharp overlay window (DEEP-ZOOM, 2026-10-14)
+
+Wendi wanted to zoom in past 1200%, and at depth her marks blurred while the sheet stayed crisp.
+The plan (journeys/plans/DEEP-ZOOM.md, measured on main the same day) in three parts:
+
+- **The overlay window** (part 1). Past the canvas budget `#annCanvas` is sized to the clamped
+  `#pdfCanvas` buffer, so at 3000% the marks drew at a fifth of the screen's density. A third
+  canvas, `#annWindowCanvas`, is now the visible area at full density: `renderAnnotationsInner`
+  is split into the sizing and `paintOverlay(ctx, width, height, page)`, and
+  `renderAnnotationWindow` runs that same body with `currentRenderZoom`, `currentEffDpr` and a
+  new `overlayOffset` rebound around the call (restored in a finally), boxed by the crop tile's
+  math in container units with the k factor, so a mid-gesture paint and a tile-first commit are
+  screen-sharp too. Painted with every overlay paint (the window first, so the page pass leaves
+  the overlays' DOM anchors in page units), re-cut at the four pan-end sites beside
+  `scheduleCropTile` and at a cold zoom commit before its tile rasters; hidden while the page
+  overlay is not meaningfully soft (the crop tile's 1.15 deficit) and when one screen of pixels
+  would exceed the render budget. The page pass is byte-identical (render-pixels holds).
+  Found on the first 3000% screenshot: the window is transparent, and under it the page overlay
+  drew every mark fat and soft (raw buffer widths at a fifth of the density), haloing the crisp
+  marks; so the page pass ends by clearing the window's box out of itself, under the window only
+  the window shows, the soft overlay stands only in the strips a pan reveals, and a pan end or a
+  cold commit repaints the whole overlay (`recutOverlayWindow`). The aim loupe samples the crop
+  canvas and the window where they stand, so a tablet keeps sharp marks under the loupe at depth.
+- **The ceiling** (part 2). `getMaxZoom()` is the project's own ceiling under
+  `deviceZoomCeiling()`: 1200% where the canvas probe found under 32 Mpx (iOS Safari) or Chromium
+  reports under 4 GB, else 5000%, then Firefox's layout wall as 16e6 over the sheet's longest
+  side. The save blob and the project payload carry `getProjectMaxZoom()`, never the device's.
+  Zoom Settings' slider runs to the device's ceiling, shows the project's own held to it with a
+  hint where the device holds it, and writes only when moved. The rail gains 2000, 3000 and 5000.
+- **The backdrop budget** (part 3). Past 4× `effectiveDpr` holds the full-page buffer to 24 Mpx,
+  about half the peak memory at depth, since the tiles and the window carry the screen.
+- app.js (`// SECTION: Deep-zoom overlay window`), app/index.html, styles.css, features/zoom.js,
+  features/zoom-rail.js, deep-zoom.spec.js (new), zoom.spec.js (the slider's max is the device's
+  ceiling), the ARCHITECTURE rows and catalog bullet, AGENTS.md's `maxZoom` field, the plan file's
+  Built section, the PUNCHLIST row closed, sw.js, the TOC and the file map restamped.
 ## docs: the hand-kept lists caught up to main at 655a023 (2026-10-13)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md,

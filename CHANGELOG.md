@@ -48,6 +48,13 @@ The plan (journeys/plans/DEEP-ZOOM.md, measured on main the same day) in three p
   features/zoom-rail.js, deep-zoom.spec.js (new), zoom.spec.js (the slider's max is the device's
   ceiling), the ARCHITECTURE rows and catalog bullet, AGENTS.md's `maxZoom` field, the plan file's
   Built section, the PUNCHLIST row closed, sw.js, the TOC and the file map restamped.
+- **Live check** (2026-10-14, after the Pages build of e7f80508): on counttooling.com, the
+  restaurant sheet with two counters and two runs seeded, zoom set to 3000% on a 2× display: the
+  device ceiling read 50, the overlay window cut at 804 × 641 CSS px with a 1608 × 1283 buffer
+  (k = 1), the page overlay at 0.166 density with its box cleared under the window, the full-page
+  buffer at 23,994,600 px, the tiles live, the ratchet at 0.5, a probe on the seeded run in the
+  window its colour and clear one CSS px above it. Before the merge the same sheet at the old
+  1200% ceiling drew the icons soft and the runs three pixels fat beside crisp plan text.
 ## docs: the hand-kept lists caught up to main at 655a023 (2026-10-13)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md,

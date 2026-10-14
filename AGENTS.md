@@ -760,7 +760,13 @@ door's first-tap prompt, shown once; features/lessons.js).
   `{ type, index, pageIdx, lineId, before, moved }`, set by the context menu's Move
   label row, cleared by the drop, Esc or a right-click; a handle whose line is gone or
   on another page cancels itself at the next slide; one slide long, never persisted;
-  features/mark-context-menu.js).
+  features/mark-context-menu.js),
+  `state.placingGhost` + `placingGhostLast` + `placingGhostFromStamp` (the Ghost tool's copy
+  in hand, features/ghost.js: between a capture and its drop, and since STAMP-PICKUP,
+  2026-10-13, after a Stamp, which takes the ghost off the sheet and hands it back to the
+  cursor grabbed where its menu opened; `placingGhostFromStamp` is read by app.js's undo and
+  redo, which drop the copy in hand because the undo of the stamp puts the ghost back on the
+  sheet; Esc lets it go, any other tool orphans it in `clearToolStarts`; never persisted).
 - `config.example.js` is the template; `config.js` is committed for production.
 
 ### Cloud state (when Supabase enabled)

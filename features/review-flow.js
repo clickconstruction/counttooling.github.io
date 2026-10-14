@@ -22,8 +22,8 @@
   //     row (review_status rides it), and hides when the open project is no
   //     longer the one it was shown for (App.refreshReviewBar, from updateUI).
   // All transitions go through the set_project_review_status RPC, which
-  // enforces who can do what server-side ('ready'/clear: owner, editor share,
-  // or admin; 'reviewed': overseer or admin) — this file never gates harder
+  // enforces who can do what server-side ('ready'/clear: owner, editor share, admin or
+  // lead; 'reviewed' and 'changes': overseer, lead or admin, LEAD-ROLE) — this file never gates harder
   // than the server, it only hides the row where it could never apply.
 
   async function setProjectReviewStatus(projectId, status, note) {

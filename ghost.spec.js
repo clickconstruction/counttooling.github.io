@@ -190,8 +190,8 @@ test.describe('Ghost tool (features/ghost.js)', () => {
     expect(now.counters).toBe(4);
     expect(now.lines).toBe(1);
 
-    // Re-enable runs and stamp again — the ghost survives its own stamp, so a
-    // typical can be walked across the sheet and dropped repeatedly.
+    // Re-enable runs and stamp again: the pure stamp leaves the ghost in its list (it is the
+    // menu's Stamp that hands it to the cursor, STAMP-PICKUP below), so it stamps repeatedly.
     const res2 = await page.evaluate(() => {
       const ann = window.App.getActiveAnnotations(window.state.pages[0]);
       ann.ghosts[0].showLines = true;

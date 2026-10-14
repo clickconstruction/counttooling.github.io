@@ -10,7 +10,7 @@
   // into the same load path as the Load Project modal
   // (App.loadCloudProjectRow, extracted from features/load-project.js), so a
   // bid always opens in the existing read-only viewer mode -- the overseer has
-  // no checkout arm server-side. Admins can open the board too (same button);
+  // no checkout arm server-side. Admins and leads (LEAD-ROLE) open the board too (same button);
   // it auto-opens only for pure overseers signing in with nothing else to
   // restore. Cross-file deps read from App at call time: getSupabase,
   // showModal, hideModal, escapeHtml, loadCloudProjectRow, showToast.

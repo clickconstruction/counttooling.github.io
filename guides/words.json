@@ -1087,7 +1087,7 @@
     },
     {
      "term": "Move",
-     "text": "The resting tool, on when no other is. It drags the sheet, and a mark in the wrong place."
+     "text": "The tool that slides the sheet, and slides a mark to a new spot. It is the tool you have when no other tool is on."
     },
     {
      "term": "Multiply zone",

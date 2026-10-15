@@ -3,7 +3,7 @@
 Will, 2026-10-14: Wendi wants to zoom in past 1200%. The fear is the white or black canvas
 from "too many pixels", which the app had before. Investigated and measured on main at
 655a0231 the same day; the proposal below was approved and then handed to another builder.
-Nothing is built. Mockups: none needed; the measurements and screenshots were taken on the
+Built the same day, all three parts (see Built, below). Mockups: none needed; the measurements and screenshots were taken on the
 real app on the restaurant sheet (`samples/sample-plan-advanced.pdf`, P-101, 1224×792 pt).
 
 ## What the measurements say
@@ -149,3 +149,5 @@ Live check: see CHANGELOG.md's DEEP-ZOOM entry.
 ## Decisions
 
 Assumed, Will to confirm: the ceiling is 5000%, and phones and small-cap devices hold 1200%.
+Open as PUNCHLIST row DEEP-ZOOM-CONFIRM (2026-10-14), together with the run on Wendi's machine
+under Tests above.

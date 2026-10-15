@@ -70,6 +70,7 @@ Compiled 2026-07-31 from the live app, ARCHITECTURE.md's feature catalog, and th
 ## Speed & navigation
 
 - **Instant zoom & pan (wheel, pinch, zoom rail)** — Big, dense sheets stay responsive — zoom commits are served from cache so the view sharpens immediately instead of re-rendering for seconds.
+- **Deep zoom (to 5000%)** — Zoom in to 5000% on a desktop (1200% on a phone or a small-memory device) and the marks stay as crisp as the sheet: the visible area gets its own full-density overlay, so a congested detail reads at any depth with no white or black canvas.
 - **Background page warm-up** — After a document opens, every page pre-renders in idle time, so jumping deep into a 40-page set is instant instead of a cold multi-second load.
 - **Offline-grade caching of rendered pages** — Sheets you visited render from a persisted cache on reopen — yesterday's project opens warm today.
 - **Aim loupe (mobile)** — Press-and-hold magnifier for precise mark placement with a finger.

@@ -13,6 +13,38 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## docs: the hand-kept lists caught up to main at ec29abc (2026-10-14)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md,
+FEATURE-CATALOG.md, PUNCHLIST.md, the guides and the DEEP-ZOOM plan against the code after the
+three PRs since the pass at 655a023 (#335 the DEEP-ZOOM row and plan, #336 the feature, #337 its
+live check). The feature wrote its CHANGELOG entry, its ARCHITECTURE rows and catalog bullet and
+AGENTS.md's `maxZoom` field; what drifted was around them.
+
+- **RECONSTITUTE.md.** The coordinate contract said `toCanvas` multiplies by `state.zoom *
+  devicePixelRatio`; it has been the render zoom and the effective density since the rung blits,
+  and DEEP-ZOOM gave it a third term, the overlay window's origin. Both bullets say so, and the
+  rendering pipeline names the second overlay target.
+- **ARCHITECTURE.md.** The zoom.spec row described one of its three tests and none of the
+  DEEP-ZOOM change (the slider's max is the device's ceiling, not a literal 1200); the two zoom
+  feature rows ran their DEEP-ZOOM sentence onto the previous one with no period; the Deep zoom
+  catalog bullet said nothing of Zoom Settings or the rail's three new ticks; the grep table had
+  no row for the overlay window or the ceiling; the registry's publish-only examples gain
+  `getDeviceZoomCeiling`.
+- **FEATURES.md and FEATURE-CATALOG.md.** A line and an entry for deep zoom (the feature wrote
+  neither).
+- **PUNCHLIST.md.** The DEEP-ZOOM row was closed on ship, but the plan's Decisions still read
+  "Assumed, Will to confirm" for the two ceilings and its Tests still owe one run on Wendi's
+  machine: row DEEP-ZOOM-CONFIRM, a ⚑ call, points at both. The plan's intro said "Nothing is
+  built" above its own Built section; fixed, and Decisions names the row.
+- features/zoom.js's header names the third publish-only dep it reads; sw.js restamped.
+- Not touched: SUPABASE_SETUP.md (nothing under supabase/ changed), the guides (none names a
+  zoom ceiling), JOURNEY-MAP.md, the deck, DECOMPOSITION_MAP.md (a dated reading at 65f712f; its
+  line that `renderAnnotationsInner` is untouched and untested predates the `paintOverlay` split
+  and deep-zoom.spec.js, and the next `build:projectmap` reading supersedes it). Pre-existing,
+  not from these PRs: aim-loupe-desktop, aim-loupe-phase2, measure-loupe and zoom-canvas-cap
+  have no ARCHITECTURE Files row.
+
 ## feat(zoom): zoom past 1200% with a sharp overlay window (DEEP-ZOOM, 2026-10-14)
 
 Wendi wanted to zoom in past 1200%, and at depth her marks blurred while the sheet stayed crisp.
@@ -55,6 +87,7 @@ The plan (journeys/plans/DEEP-ZOOM.md, measured on main the same day) in three p
   buffer at 23,994,600 px, the tiles live, the ratchet at 0.5, a probe on the seeded run in the
   window its colour and clear one CSS px above it. Before the merge the same sheet at the old
   1200% ceiling drew the icons soft and the runs three pixels fat beside crisp plan text.
+
 ## docs: the hand-kept lists caught up to main at 655a023 (2026-10-13)
 
 A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md,

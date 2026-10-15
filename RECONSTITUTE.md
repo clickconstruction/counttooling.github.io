@@ -120,8 +120,12 @@ All annotations are stored in **PDF-space** (zoom- and pan-independent), so the
 takeoff is stable across zoom levels and screen sizes. Three helpers own the
 conversion (see `// SECTION: Coordinate Helpers`):
 
-- `toCanvas(p)` — PDF-space -> canvas pixels. Multiplies by
-  `state.zoom * devicePixelRatio`.
+- `toCanvas(p)` — PDF-space -> canvas pixels. Multiplies by the render zoom and the
+  effective density, `currentRenderZoom * currentEffDpr` (`state.zoom * devicePixelRatio`
+  when the raster is exact; a rung blit holds the zoom at the rung and the canvas budget
+  clamps the density), and while the deep-zoom overlay window paints it also subtracts
+  the window's origin, `overlayOffset` (zero for the page pass; DEEP-ZOOM 2026-10-14,
+  ARCHITECTURE.md "Deep zoom").
 - `canvasToPdf(canvasX, canvasY)` — canvas/wrapper coords -> PDF-space. Divides by
   `state.zoom` after subtracting `state.pan`.
 - Never store canvas pixels in annotations; always convert to PDF-space first.
@@ -167,7 +171,10 @@ events -> handlers -> mutate state -> render
   `state.zoom * devicePixelRatio`, copies it to the visible PDF canvas, then calls
   `renderAnnotations()`.
 - `renderAnnotations()` draws the active canvas's annotations onto the annotation
-  canvas (converting PDF-space -> canvas pixels via `toCanvas`).
+  canvas (converting PDF-space -> canvas pixels via `toCanvas`), and past the canvas
+  budget once more onto the overlay window, the visible area at full density
+  (`renderAnnotationWindow`, the same `paintOverlay` body), so the marks stay as sharp
+  as the sheet at deep zoom.
 - `updateUI()` reconciles the DOM (sidebar lists, buttons, status bar) with
   `state`.
 - `renderAnnotationsToContext(ctx, page, scale, overrides, annotationsOverride)`

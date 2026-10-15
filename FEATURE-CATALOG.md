@@ -328,6 +328,15 @@ sheet re-renders for seconds after every zoom and the view "moves under you."
 *Useful because:* Rendering is cached, ladder-stepped, and moved off the main thread, so zooming a
 dense CAD sheet re-sharpens continuously instead of freezing.
 
+**Deep zoom (to 5000%)**
+*Problem:* A congested detail (a stacked riser, a packed mechanical room) needs more than 1200%,
+and at depth the marks used to blur against the still-crisp sheet, while older builds went white or
+black from "too many pixels."
+*Useful because:* The ceiling is 5000% on a capable device (1200% on a phone or a small-memory one;
+the project's own setting rides the save, never the device's), the visible area gets its own
+full-density overlay so counters, numbers and length labels stay as sharp as the plan's line work,
+and the full-page backdrop is budgeted so deep zoom uses less memory than 1200% did.
+
 **Background page warm-up**
 *Problem:* Jumping deep into a 40-page set means a cold multi-second render on every first visit.
 *Useful because:* After a document opens, idle time pre-renders every page (your marked pages

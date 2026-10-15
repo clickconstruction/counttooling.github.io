@@ -296,7 +296,7 @@
   const state = {
     pages: [], currentPage: 0, zoom: 1.0, tool: TOOL.NONE, scaleMode: SCALE_MODES.NONE,
     scalePointA: null, scalePointB: null, gridOriginPickMode: false, activeCounterType: null, activePolylineId: null, drawingPolyline: null,
-    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
+    quickLineStart: null, highlightStart: null, multiplyZoneStart: null, scaleZoneStart: null, deleteZoneStart: null, roomBoxStart: null, scheduleBoxStart: null, chainStart: null, ghostRectStart: null, placingGhost: null, placingGhostLast: null, placingGhostFromStamp: false, activeGhostId: null, draggingGhostIdx: null, draggingGhostLast: null, ghostDragMoved: false, justFinishedDragGhost: false, pendingRoomBox: null, pendingRoomBoxEdit: null, pendingMultiplyZone: null, pendingMultiplyZoneValue: null, pendingMultiplyZoneEdit: null, pendingScaleZone: null, pendingScaleZoneEdit: null, scaleModalApplyTarget: null, scaleCheckMode: false, pendingNote: null, editingNote: null, mousePos: { x: 0, y: 0 }, pan: { x: 0, y: 0 }, isPanning: false, panStart: null,
     counters: [], lineTypes: [], activeLineTypeId: null, groupsEnabled: false, trade: null, stripPins: {}, ceilingHeightFt: null, makeUpFt: null, codes: null, bidCheck: { manual: {} }, bidCheckCollapsed: true, ctxTarget: null, selectedLineId: null, selectedLineIsPoly: false, selectedLinePageIdx: null, selectedDuctRunId: null, selectedDuctRunPageIdx: null, ductListCollapsed: false,
     counterSettings: { ...COUNTER_SETTINGS_DEFAULTS },   // per device: merged from localStorage below (MAP-SETTINGS)
     iconNames: {},
@@ -328,7 +328,7 @@
     recentLineColors: [],
     recentBids: [],
     recentDrops: [],
-    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
+    editingPolyline: null, editingPolyIndex: null, draggingVertexIdx: null, movingLabel: null, resizingNoteIdx: null, resizingNotePageIdx: null, resizingNoteFontSizeIdx: null, resizingNoteFontSizePageIdx: null, resizingNoteFontSizeStartY: null, resizingNoteFontSizeStartLocalY: null, resizingNoteFontSizeStartVal: null, justFinishedResize: false, draggingNoteIdx: null, draggingNotePageIdx: null, draggingNoteOffset: null, dragNoteStartPos: null, justFinishedDragNote: false, draggingLegend: false, resizingLegend: false, legendDragOffset: null, legendResizeStart: null, draggingZone: null, justFinishedZoneDrag: false, longPressTimer: null, longPressFired: false,
     pinchStartDistance: null, pinchStartZoom: null,
     touchPanStart: null, touchPanning: false,
     aiming: false, aimPressTimer: null, aimPoint: null, aimClient: null, aimRafPending: false,
@@ -345,6 +345,7 @@
     currentProjectUpdatedAt: null,
     isAdmin: false,
     isOverseer: false,
+    isLead: false,      // LEAD-ROLE (2026-10-02): profiles.is_lead, see App.canTakeOver
     isDigitalTwin: false,
     pendingDeletePage: null,
     supabaseSession: null,
@@ -697,7 +698,7 @@
     // (the load paths write it).
     getServerClockOffsetMs: () => serverClockOffsetMs,
     captureDisplayInfoObj: () => captureDisplayInfoObj(),
-    getMaxZoom: () => getMaxZoom(),
+    getMaxZoom: () => getProjectMaxZoom(),   // DEEP-ZOOM: the project's own ceiling rides the save blob, never the device's
     assertPdfWithinLimit: (bytes, context) => assertPdfWithinLimit(bytes, context),
     maybeLogProjectSaveEvent: (projectId) => maybeLogProjectSaveEvent(projectId),
     setLastSaveIncludedPdf: (v) => { lastSaveIncludedPdf = v; },
@@ -870,18 +871,29 @@
   }
   // The one undo choke point (Ctrl+Z + the bottom-bar button): a successful
   // undo toasts how many are left so the 50-step ceiling is never a surprise.
+  // STAMP-PICKUP (features/ghost.js): a ghost that Stamp handed to the cursor is dropped by
+  // an undo or redo, since the undo of the stamp puts that ghost back on the sheet (the
+  // snapshot holds it) and a second copy in hand would double it. A ghost in hand from a
+  // capture is untouched: no step holds it, so nothing comes back for it to double.
+  function dropGhostPickedUpByStamp() {
+    if (!state.placingGhostFromStamp) return;
+    state.placingGhost = null;
+    state.placingGhostLast = null;
+    state.placingGhostFromStamp = false;
+  }
   function undo() {
     // Undo/redo take the snapshot for the opposite stack at apply time, so the
     // run being edited must be home for those too (else redo drops it).
     const applied = withEditingPolylineHome(() => undoStackModel.undo());
     if (applied) {
       leaveEditModeIfOrphaned();
+      dropGhostPickedUpByStamp();
       const left = undoStackModel.undoDepth();
       showToast(left + (left === 1 ? ' undo left' : ' undos left'), 1000);
     }
     return applied;
   }
-  function redo() { const applied = withEditingPolylineHome(() => undoStackModel.redo()); if (applied) leaveEditModeIfOrphaned(); return applied; }
+  function redo() { const applied = withEditingPolylineHome(() => undoStackModel.redo()); if (applied) { leaveEditModeIfOrphaned(); dropGhostPickedUpByStamp(); } return applied; }
   function clearUndoStacks() { return undoStackModel.clearUndoStacks(); }
 
   function resetAutosaveDegradedState() { return saveEngine.resetAutosaveDegradedState(); }
@@ -974,7 +986,7 @@
   function handleCrossTabSignOut(source) {
     try { pushSaveEvent('cross_tab_signout', 'Sign-out received from another tab', source || ''); } catch (_) {}
     try { resetLocalSessionState(); } catch (_) {}
-    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; state.isDigitalTwin = false; } catch (_) {}
+    try { state.supabaseSession = null; state.isAdmin = false; state.isOverseer = false; state.isLead = false; state.isDigitalTwin = false; } catch (_) {}
     // Clear lastAuthUserId so the local SIGNED_OUT event that follows (once
     // supabase-js syncs the auth storage change) skips a redundant broadcast.
     lastAuthUserId = null;
@@ -1244,6 +1256,7 @@
   const pdfCanvas = document.getElementById('pdfCanvas');
   const cropCanvas = document.getElementById('cropCanvas');
   const annCanvas = document.getElementById('annCanvas');
+  const annWindowCanvas = document.getElementById('annWindowCanvas');   // DEEP-ZOOM: the overlay window (the visible area, full density)
   // Low-latency presentation hint: desynchronize these canvases from the
   // compositor's vsync queue (Chrome honors it; others ignore it). Must be
   // the FIRST getContext call per canvas — every later plain getContext('2d')
@@ -1252,6 +1265,7 @@
     if (pdfCanvas) pdfCanvas.getContext('2d', { desynchronized: true });
     if (cropCanvas) cropCanvas.getContext('2d', { desynchronized: true });
     if (annCanvas) annCanvas.getContext('2d', { desynchronized: true });
+    if (annWindowCanvas) annWindowCanvas.getContext('2d', { desynchronized: true });
   } catch (_) { /* hint only */ }
   const aimLoupe = document.getElementById('aimLoupe');
 
@@ -1290,6 +1304,12 @@
   const RENDER_AREA_SAFETY_MIN = 0.12;   // ratchet floor — below this we accept a soft bitmap
   const RENDER_AREA_SAFETY_STEP = 0.6;   // each ratchet step multiplies the knob
   let renderAreaSafety = RENDER_AREA_SAFETY_MAX;
+  // DEEP-ZOOM part 3 (journeys/plans/DEEP-ZOOM.md): past DEEP_ZOOM_BASE_FROM the full-page canvas is
+  // only a backdrop under the tile compositor and the overlay window, so its buffer is budgeted to
+  // DEEP_ZOOM_BASE_MAX_AREA and peak memory at depth about halves. The bitmap cache keys carry the
+  // effDpr, so cached rungs stay valid; the step only binds where the base is already clamped.
+  const DEEP_ZOOM_BASE_FROM = 4;
+  const DEEP_ZOOM_BASE_MAX_AREA = 24e6;
 
   // Does this canvas's far corner actually read back? A canvas that silently failed to
   // allocate its backing store (memory pressure / over the device cap) paints blank with
@@ -1342,10 +1362,15 @@
     // offscreen) can coexist without exhausting device memory. maxDim is left intact —
     // the failure is area/memory-driven, not single-axis overflow, and clampEffectiveDpr
     // already takes the min across both, so this only bites when area is the binding limit.
-    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea: caps.maxArea * renderAreaSafety });
+    let maxArea = caps.maxArea * renderAreaSafety;
+    if (zoom > DEEP_ZOOM_BASE_FROM) maxArea = Math.min(maxArea, DEEP_ZOOM_BASE_MAX_AREA);   // DEEP-ZOOM part 3
+    return clampEffectiveDpr({ pageW: vp.width, pageH: vp.height, zoom, dpr: window.devicePixelRatio || 1, maxDim: caps.maxDim, maxArea });
   }
 
-  function toCanvas(p) { const scale = currentRenderZoom * currentEffDpr; return { x: p.x * scale, y: p.y * scale }; }   // buffer space — currentRenderZoom, NOT state.zoom (rung blits)
+  // DEEP-ZOOM: the overlay window's origin in its own buffer, subtracted while renderAnnotationWindow
+  // paints; zero for the page pass, so #annCanvas pixels stay byte-identical (x - 0 is exact).
+  let overlayOffset = { x: 0, y: 0 };
+  function toCanvas(p) { const scale = currentRenderZoom * currentEffDpr; return { x: p.x * scale - overlayOffset.x, y: p.y * scale - overlayOffset.y }; }   // buffer space — currentRenderZoom, NOT state.zoom (rung blits)
 
   function canvasToPdf(canvasX, canvasY) {
     return { x: (canvasX - state.pan.x) / state.zoom, y: (canvasY - state.pan.y) / state.zoom };
@@ -1701,6 +1726,7 @@
       annCanvas.height = 0;
       annCanvas.style.width = '0';
       annCanvas.style.height = '0';
+      hideAnnotationWindow();
       lastPaintedPdfPage = null;
       return;
     }
@@ -2029,9 +2055,31 @@
     annCanvas.height = pdfCanvas.height;
     annCanvas.style.width = pdfCanvas.style.width;
     annCanvas.style.height = pdfCanvas.style.height;
-    const ctx = annCanvas.getContext('2d');
+    // DEEP-ZOOM: the window paints FIRST, so the page pass below is the last to run and every
+    // DOM anchor an overlay records while it paints (the duct cursor chip, the water card) is
+    // left in page-buffer units, as before the window existed.
+    renderAnnotationWindow(page);
+    paintOverlay(annCanvas.getContext('2d'), annCanvas.width, annCanvas.height, page);
+    // The window is transparent, and under it the page overlay draws every mark fat and soft
+    // (raw buffer widths at a fifth of the density), which haloed the crisp marks: the page pass
+    // ends by clearing the window's box out of itself, so under the window only the window
+    // shows, and the soft overlay stands only in the strips a pan reveals until pan end.
+    if (annWindowBox) {
+      const pageCssW = parseFloat(pdfCanvas.style.width) || 0, pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+      if (pageCssW > 0 && pageCssH > 0) {
+        const b = annWindowBox, sx = annCanvas.width / pageCssW, sy = annCanvas.height / pageCssH;
+        annCanvas.getContext('2d').clearRect(b.x0 * sx, b.y0 * sy, b.w * sx, b.h * sy);
+      }
+    }
+  }
+  // Everything the live overlay draws, into `ctx` (a width × height buffer). The page pass
+  // (#annCanvas, sized to #pdfCanvas) and the DEEP-ZOOM window (#annWindowCanvas, the visible
+  // area at full density) run this one body; the window differs only through the module values
+  // the body and toCanvas read (currentRenderZoom, currentEffDpr, overlayOffset), which
+  // renderAnnotationWindow rebinds around its call.
+  function paintOverlay(ctx, width, height, page) {
     const z = currentRenderZoom;   // buffer space (rung blits render at the rung, CSS carries the residual)
-    ctx.clearRect(0, 0, annCanvas.width, annCanvas.height);
+    ctx.clearRect(0, 0, width, height);
     // Hide-marks mode: the overlay is sized + cleared (so the bare PDF shows
     // through) but nothing is painted on it. Toggle via the header eye button.
     if (state.hideMarks) return;
@@ -2245,6 +2293,23 @@
     // MAP-RESETS: each rubber band draws only under its own tool (the Chain, Delete
     // Area and Ghost bands already did), so a start some path forgot to clear can
     // never paint under another tool or in Move (D05, D17, D26).
+    // RUBBER-BAND-CAPS (2026-10-12, Wendy): a dashed band can stop a gap short of
+    // either end, so each end carries a short solid tick across the line in the
+    // band's colour: the entry point, which nothing marks once the mouse has left
+    // it, and the cursor end, which the dashes may not reach. The dash pattern is
+    // anchored at the entry point (canvas starts it at the path's first point), so
+    // the band grows out of its entry and the ticks say where it really starts and
+    // ends; fitting the dashes to the length would make every dash crawl instead.
+    // The dash is in device pixels, so it is scaled to read the same on every screen.
+    const bandDash = [4 * currentEffDpr, 4 * currentEffDpr];
+    const drawBandCap = (p, dx, dy) => {
+      const len = Math.hypot(dx, dy);
+      if (!len) return;
+      const nx = -dy / len, ny = dx / len, half = Math.max(4 * currentEffDpr, lw * 1.5);
+      ctx.save(); ctx.setLineDash([]); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x - nx * half, p.y - ny * half); ctx.lineTo(p.x + nx * half, p.y + ny * half); ctx.stroke();
+      ctx.restore();
+    };
     if (state.tool === TOOL.LINE && state.quickLineStart && state.mousePos) {
       const lt = state.lineTypes.find(l => l.id === state.activeLineTypeId);
       const aPdf = state.quickLineStart;
@@ -2254,11 +2319,15 @@
       const useArc = lt?.curveStyle === 'arc';
       const ctrlPdf = useArc ? getQuadraticBezierControlPoint(aPdf, bPdf, 1) : null;
       const ctrl = ctrlPdf ? toCanvas(ctrlPdf) : null;
-      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash(bandDash);
       ctx.beginPath(); ctx.moveTo(a.x, a.y);
       if (useArc && ctrl) ctx.quadraticCurveTo(ctrl.x, ctrl.y, b.x, b.y);
       else ctx.lineTo(b.x, b.y);
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.stroke();
+      const tanA = ctrl || b, tanB = ctrl || a;    // an arc's ticks follow its tangents
+      drawBandCap(a, tanA.x - a.x, tanA.y - a.y);
+      drawBandCap(b, b.x - tanB.x, b.y - tanB.y);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     if (state.tool === TOOL.CHAIN && state.chainStart && state.chainStart.page === state.currentPage && state.mousePos) {
       // Chain rubber band: anchor (last placed counter) -> cursor, in the
@@ -2268,9 +2337,12 @@
       let bPdf = state.mousePos;
       if (lts.snapToHorizontalVertical) bPdf = snapLineToAngle(aPdf.x, aPdf.y, bPdf.x, bPdf.y);
       const a = toCanvas(aPdf), b = toCanvas(bPdf);
-      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = lt?.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash(bandDash);
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.stroke();
+      drawBandCap(a, b.x - a.x, b.y - a.y);
+      drawBandCap(b, b.x - a.x, b.y - a.y);
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     if (state.tool === TOOL.DROP) {
       // Drop tool armed: every line end on the page becomes a labeled target
@@ -2352,27 +2424,33 @@
     }
     if (state.drawingPolyline && state.drawingPolyline.points.length >= 1) {
       const pts = state.drawingPolyline.points;
-      ctx.strokeStyle = state.drawingPolyline.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      const p0 = toCanvas(pts[0]); ctx.moveTo(p0.x, p0.y);
-      for (let i = 1; i < pts.length; i++) { const p = toCanvas(pts[i]); ctx.lineTo(p.x, p.y); }
+      ctx.strokeStyle = state.drawingPolyline.color || '#4a9eff'; ctx.lineWidth = lw; ctx.globalAlpha = lo; ctx.setLineDash(bandDash);
+      const cps = pts.map(toCanvas);
       if (state.mousePos) {
         let pmPdf = state.mousePos;
         if (lts.snapToHorizontalVertical) {
           const prev = pts[pts.length - 1];
           pmPdf = snapLineToAngle(prev.x, prev.y, pmPdf.x, pmPdf.y);
         }
-        const pm = toCanvas(pmPdf); ctx.lineTo(pm.x, pm.y);
+        cps.push(toCanvas(pmPdf));
       }
-      ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.beginPath(); ctx.moveTo(cps[0].x, cps[0].y);
+      for (let i = 1; i < cps.length; i++) ctx.lineTo(cps[i].x, cps[i].y);
+      ctx.stroke();
+      if (cps.length > 1) {    // the first point and the cursor end, across their own legs
+        const c0 = cps[0], c1 = cps[1], cn = cps[cps.length - 1], cm = cps[cps.length - 2];
+        drawBandCap(c0, c1.x - c0.x, c1.y - c0.y);
+        drawBandCap(cn, cn.x - cm.x, cn.y - cm.y);
+      }
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
     }
     // Duct trace preview (features/duct-tool.js, DUCT unit D2): the in-progress
     // run's segments at their stepped stroke widths + rubber band + the cursor
     // size chip. Sits after the hideMarks early-return above, so a hidden
     // overlay paints no duct either.
-    if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, lineOpacity: lo });
+    if (App.drawDuctOverlay) App.drawDuctOverlay(ctx, { fontScale: z * currentEffDpr, dpr: currentEffDpr, lineOpacity: lo });   // dpr: the cursor chip's fixed screen size (AUTO-PICK)
     if (App.drawWaterOverlay) App.drawWaterOverlay(ctx, { fontScale: z * currentEffDpr });   // WATER-PLAN rung 4: syncs the water suggestion card
-    if (App.drawTagOverlay) App.drawTagOverlay(ctx, { fontScale: z * currentEffDpr });   // S6: the "Plan says B" chip
+    if (App.drawTagOverlay) App.drawTagOverlay(ctx, { dpr: currentEffDpr });   // S6 / AUTO-PICK: the ring and badge, a fixed size on screen
     if (state.editingPolyline) {
       const pts = state.editingPolyline.points || [];
       const editColor = state.editingPolyline.color || '#4a9eff';
@@ -2411,6 +2489,75 @@
     if (state.showGridOverlay) {
       const scale = currentRenderZoom * currentEffDpr;
       canvasDraw.drawGrid(ctx, page, state.currentPage, scale, toCanvas);
+    }
+  }
+
+  // SECTION: Deep-zoom overlay window
+  // DEEP-ZOOM part 1 (2026-10-14, journeys/plans/DEEP-ZOOM.md). Past the canvas budget the page
+  // overlay (#annCanvas) is sized to the clamped #pdfCanvas buffer, so at 3000% its marks draw at a
+  // fifth of the screen's density and read as blur beside the sheet, which the tile compositor
+  // keeps crisp. The window is a third canvas over the overlay, the visible area only, at full
+  // density: the same painter, with toCanvas rebound to state.zoom × dpr minus the window's
+  // origin. Its box is the crop tile's math (pdf-tile-cache.js renderCropTile): container units of
+  // the last full render, scaled on screen by k = zoom / lastRenderedZoom, so a mid-gesture or a
+  // tile-first commit is screen-sharp too. Painted with every overlay paint, re-cut at the pan-end
+  // sites that schedule the crop tile and at a cold zoom commit; during a pan it rides the
+  // container transform and a newly exposed strip shows the page overlay until pan end, exactly as
+  // the PDF tiles behave. Hidden while the overlay is not meaningfully soft (the tile's deficit).
+  const ANN_WINDOW_MIN_DEFICIT = 1.15;   // the crop tile's CROP_TILE_MIN_DEFICIT
+  let annWindowBox = null;               // the last cut, { x0, y0, w, h, k, dpr, bw, bh }: the spec seam App.__annWindow
+  function hideAnnotationWindow() {
+    annWindowBox = null;
+    if (!annWindowCanvas) return;
+    if (annWindowCanvas.width || annWindowCanvas.height) { annWindowCanvas.width = 0; annWindowCanvas.height = 0; }
+    annWindowCanvas.style.display = 'none';
+  }
+  // The gate reads the density the page overlay HAS or WILL have at this zoom (a cold zoom
+  // commit cuts the window before its raster lands), not only the one it last painted at.
+  function overlayWindowWanted(page) {
+    if (!annWindowCanvas || !page || !page.pdfPage) return false;
+    const baseEff = effectiveDpr(page, state.zoom);
+    return baseEff > 0 && (window.devicePixelRatio || 1) / baseEff >= ANN_WINDOW_MIN_DEFICIT;
+  }
+  // A pan end or a cold zoom commit: a full overlay paint, which cuts the window at the view's
+  // new place and the hole under it; nothing at all when no window is wanted (the old path).
+  function recutOverlayWindow() {
+    if (annWindowBox || overlayWindowWanted(state.pages[state.currentPage])) renderAnnotations();
+  }
+  function renderAnnotationWindow(page) {
+    if (!annWindowCanvas) return;
+    page = page || state.pages[state.currentPage];
+    const dpr = window.devicePixelRatio || 1;
+    if (!overlayWindowWanted(page)) { hideAnnotationWindow(); return; }
+    const r = cWrapper ? cWrapper.getBoundingClientRect() : null;
+    const pageCssW = parseFloat(pdfCanvas.style.width) || 0;
+    const pageCssH = parseFloat(pdfCanvas.style.height) || 0;
+    if (!r || !r.width || !r.height || !pageCssW || !pageCssH) { hideAnnotationWindow(); return; }
+    const k = lastRenderedZoom > 0 ? state.zoom / lastRenderedZoom : 1;
+    const x0 = Math.max(0, -state.pan.x / k);
+    const y0 = Math.max(0, -state.pan.y / k);
+    const w = Math.min(pageCssW, x0 + r.width / k) - x0;
+    const h = Math.min(pageCssH, y0 + r.height / k) - y0;
+    if (w <= 0 || h <= 0) { hideAnnotationWindow(); return; }
+    const bw = Math.ceil(w * k * dpr), bh = Math.ceil(h * k * dpr);
+    // One screen of pixels; past the render budget (a huge display on a ratcheted-down budget)
+    // the page overlay stands alone rather than risk a window that allocates blank.
+    if (bw * bh > getCanvasCaps().maxArea * renderAreaSafety) { hideAnnotationWindow(); return; }
+    if (annWindowCanvas.width !== bw || annWindowCanvas.height !== bh) { annWindowCanvas.width = bw; annWindowCanvas.height = bh; }
+    annWindowCanvas.style.width = w + 'px';
+    annWindowCanvas.style.height = h + 'px';
+    annWindowCanvas.style.left = x0 + 'px';
+    annWindowCanvas.style.top = y0 + 'px';
+    annWindowCanvas.style.display = '';
+    annWindowBox = { x0, y0, w, h, k, dpr, bw, bh };
+    const savedZoom = currentRenderZoom, savedEff = currentEffDpr, savedOffset = overlayOffset;
+    currentRenderZoom = state.zoom;
+    currentEffDpr = dpr;
+    overlayOffset = { x: x0 * k * dpr, y: y0 * k * dpr };
+    try {
+      paintOverlay(annWindowCanvas.getContext('2d'), bw, bh, page);
+    } finally {
+      currentRenderZoom = savedZoom; currentEffDpr = savedEff; overlayOffset = savedOffset;
     }
   }
 
@@ -2474,7 +2621,29 @@
     return { x: snappedX, y: snappedY };
   }
 
-  function getMaxZoom() { return state.maxZoom ?? 4; }
+  // DEEP-ZOOM part 2: the project's ceiling (Zoom Settings, state.maxZoom; 400% unset) under the
+  // device's. 1200% where the canvas probe found a small cap (iOS Safari probes about 16.7 Mpx)
+  // or Chromium reports under 4 GB (deviceMemory is undefined on Safari and Firefox, so only a
+  // Chromium low-memory device), else 5000%; then the layout wall, Firefox's ~17.9 M CSS px per
+  // element side, as 16e6 over the current sheet's longest side in points. The payload keeps the
+  // project's own ceiling (getProjectMaxZoom), never the device's, so a phone cannot lower it.
+  const DEVICE_ZOOM_CEILING = 50, DEVICE_ZOOM_CEILING_SMALL = 12, DEVICE_ZOOM_SMALL_CAP_PX = 32e6, LAYOUT_WALL_CSS_PX = 16e6;
+  function deviceZoomCeiling() {
+    const caps = getCanvasCaps();
+    const lowMemory = typeof navigator !== 'undefined' && navigator.deviceMemory != null && navigator.deviceMemory < 4;
+    let ceiling = (caps.maxArea < DEVICE_ZOOM_SMALL_CAP_PX || lowMemory) ? DEVICE_ZOOM_CEILING_SMALL : DEVICE_ZOOM_CEILING;
+    const page = state.pages[state.currentPage];
+    if (page && page.pdfPage) {
+      try {
+        const vp = page.pdfPage.getViewport({ scale: 1, rotation: page.rotation ?? 0 });
+        const longest = Math.max(vp.width, vp.height);
+        if (longest > 0) ceiling = Math.min(ceiling, Math.floor(LAYOUT_WALL_CSS_PX / longest));
+      } catch (_) { /* a page mid-load keeps the device ceiling */ }
+    }
+    return Math.max(1, ceiling);
+  }
+  function getProjectMaxZoom() { return state.maxZoom ?? 4; }
+  function getMaxZoom() { return Math.min(getProjectMaxZoom(), deviceZoomCeiling()); }
   function getWheelZoomSpeed() {
     try {
       const s = localStorage.getItem('zoomSettings');
@@ -2540,6 +2709,7 @@
     // Same seam: the Notes ledger (features/notes-ledger.js) re-syncs its
     // header badge and, when open, its drawer rows.
     App.onNotesLedgerSync && App.onNotesLedgerSync();
+    App.refreshReviewBar && App.refreshReviewBar();   // REVIEW-BAR (features/review-flow.js): hides once the project it was shown for is gone
     notePerfSample('updateUIMs', performance.now() - t0);
   }
   // N3: rapid mark placement must never rebuild the sidebar per click — the
@@ -2714,6 +2884,9 @@
       else if (id === 'lineTypeSnapToHVHeaderBtn') { /* keep tool-based display from snap block */ }
       else el.style.display = '';
     });
+    // AUTO-PICK: the header pill shows while the Counter tool is armed, never to a viewer
+    // (features/tag-reader.js owns its display, its pressed state and the settings mirror).
+    App.syncAutoPickUI && App.syncAutoPickUI();
     // Per-project Groups gate: hide the whole Groups section unless the
     // project opted in OR already contains groups (existing organized
     // takeoffs keep their section with no migration). Runs after the
@@ -2758,12 +2931,12 @@
       if (manageUsersBtn) manageUsersBtn.style.display = loggedIn && state.isAdmin ? '' : 'none';
       if (manageUsersBtnSidebar) manageUsersBtnSidebar.style.display = loggedIn && state.isAdmin ? '' : 'none';
       const bidBoardBtnSidebar = document.getElementById('bidBoardBtnSidebar');
-      if (bidBoardBtnSidebar) bidBoardBtnSidebar.style.display = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
+      if (bidBoardBtnSidebar) bidBoardBtnSidebar.style.display = (loggedIn && (state.isOverseer || state.isAdmin || state.isLead)) ? '' : 'none';
       // Desktop entry lives in the status bar (the mobile sidebar hides on wide
       // screens, which left desktop overseers/admins with no way to open the board).
       const statusBarBidBoard = document.getElementById('statusBarBidBoard');
       const statusBarBidBoardSep = document.getElementById('statusBarBidBoardSep');
-      const showBidBoardLink = (loggedIn && (state.isOverseer || state.isAdmin)) ? '' : 'none';
+      const showBidBoardLink = (loggedIn && (state.isOverseer || state.isAdmin || state.isLead)) ? '' : 'none';
       if (statusBarBidBoard) statusBarBidBoard.style.display = showBidBoardLink;
       if (statusBarBidBoardSep) statusBarBidBoardSep.style.display = showBidBoardLink;
       const settingsManageProjectsBtn = document.getElementById('settingsManageProjects');
@@ -2910,6 +3083,7 @@
     state.ghostRectStart = null;
     state.placingGhost = null;   // a ghost in hand is orphaned by any other tool
     state.placingGhostLast = null;
+    state.placingGhostFromStamp = false;
     if (state.tool !== TOOL.SCALE && (state.scalePointA || state.scalePointB)) {
       state.scalePointA = null; state.scalePointB = null; state.scaleMode = SCALE_MODES.NONE;
     }
@@ -3272,6 +3446,7 @@
   // SECTION: Toasts & line color picker
   let airboardToastTimer = null;
   function showToast(msg, durationMs) {
+    if (window.App && window.App.toastMuted && window.App.toastMuted()) return;   // DEMO-TRACK: a running demo mutes the app's notices (features/demo-track.js)
     if (airboardToastTimer) clearTimeout(airboardToastTimer);
     const el = document.getElementById('airboardToastText');
     if (el) el.textContent = msg || '';
@@ -3496,9 +3671,10 @@
     state.supabaseSession = session;
     if (session?.user) {
       lastAuthUserId = session.user.id;
-      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+      const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', session.user.id).maybeSingle();
       state.isAdmin = !!profile?.is_admin;
       state.isOverseer = !!profile?.is_overseer;
+      state.isLead = !!profile?.is_lead;
       state.isDigitalTwin = !!profile?.is_digital_twin;
       startPresenceHeartbeat();
       maybeLogSessionStartOnce();
@@ -3508,6 +3684,7 @@
       lastAuthUserId = null;
       state.isAdmin = false;
       state.isOverseer = false;
+      state.isLead = false;
       state.isDigitalTwin = false;
       stopPresenceHeartbeat();
     }
@@ -3524,9 +3701,10 @@
           resetLocalSessionState();
           lastAuthUserId = newUserId;
           if (session?.user) {
-            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+            const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', session.user.id).maybeSingle();
             state.isAdmin = !!profile?.is_admin;
             state.isOverseer = !!profile?.is_overseer;
+            state.isLead = !!profile?.is_lead;
             state.isDigitalTwin = !!profile?.is_digital_twin;
             startPresenceHeartbeat();
             maybeLogSessionStartOnce();
@@ -3541,9 +3719,10 @@
       if (session?.user) {
         const userChanged = newUserId !== prevUserId;
         lastAuthUserId = newUserId;
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', session.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', session.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         state.isOverseer = !!profile?.is_overseer;
+        state.isLead = !!profile?.is_lead;
         state.isDigitalTwin = !!profile?.is_digital_twin;
         startPresenceHeartbeat();
         maybeLogSessionStartOnce();
@@ -3584,6 +3763,7 @@
         stopPresenceHeartbeat();
         state.isAdmin = false;
         state.isOverseer = false;
+        state.isLead = false;
         state.isDigitalTwin = false;
         const hadSession = !!prevUserId;
         lastAuthUserId = null;
@@ -4248,7 +4428,7 @@
   // "which marks did we bid to" snapshot. R12: the same payload the cloud save
   // writes, from the one builder (save-utils.js buildProjectData).
   function buildCanvasExportData() {
-    return buildProjectData(state, { customIconPaths: getUserCustomIcons(), maxZoom: getMaxZoom(), bakeFrame: computePageBakeFrame });
+    return buildProjectData(state, { customIconPaths: getUserCustomIcons(), maxZoom: getProjectMaxZoom(), bakeFrame: computePageBakeFrame });
   }
   document.getElementById('exportBtn').onclick = () => {
     if (!projectHasAnyCanvasMarkup()) return;
@@ -4483,6 +4663,9 @@
       checkOutBtn.style.display = 'none';
       checkInBtn.style.display = 'none';
       forceBtn.style.display = 'none';
+      // LEAD-ROLE: Hand to… (features/hand-off.js) for whoever may take a project over.
+      const handOffBtn = document.getElementById('settingsHandOff');
+      if (handOffBtn) handOffBtn.style.display = (window.App?.canTakeOver && window.App.canTakeOver() && !state.loadedViaViewLink) ? '' : 'none';
       // One line: the checkout state, then the last save time when there is one. The dot
       // colours it (green = yours, yellow = someone else's, grey = available).
       let dot = 'grey';
@@ -4495,9 +4678,12 @@
         text = 'Checked out by you';
         checkInBtn.style.display = '';
       } else if (state.checkedOutEmail) {
-        dot = 'yellow';
-        text = (window.App?.twinEmailText ? window.App.twinEmailText(state.checkedOutEmail) : state.checkedOutEmail) + ' is editing';
-        if (state.isAdmin) forceBtn.style.display = '';
+        // STALE-LOCK: yellow only while the lock is honoured; an expired one reads
+        // "Available · last edited by…" in grey. The admin force still clears the row.
+        const live = window.App?.isCheckoutLockLive ? window.App.isCheckoutLockLive(state.checkedOutAt) : true;
+        dot = live ? 'yellow' : 'grey';
+        text = window.App?.checkoutHolderText ? window.App.checkoutHolderText(state.checkedOutEmail, state.checkedOutAt) : (state.checkedOutEmail + ' is editing');
+        if (window.App?.canTakeOver ? window.App.canTakeOver() : state.isAdmin) forceBtn.style.display = '';
       }
       const saved = formatSaveTimeParts(state.lastSavedAt).clock;
       if (saved) text += (text ? ' · ' : '') + 'saved ' + saved;
@@ -4995,6 +5181,7 @@
     if (pdfOverride) { pdf = pdfOverride; }
     else { const pt = canvasPointFromEvent(e); pdf = canvasToPdf(pt.x, pt.y); }
     state.mousePos = pdf;
+    if (state.movingLabel) { App.dropMovingLabel && App.dropMovingLabel(pdf); return; }   // LABEL-SLIDE: the drop
     // R14: the grid's "Set origin on page" pick is features/grid.js's (armed there too).
     if (state.gridOriginPickMode) { App.commitGridOriginPick && App.commitGridOriginPick(pdf); return; }
     if (state.tool === TOOL.SCALE) {
@@ -5225,6 +5412,7 @@
   function handleContextMenu(e) {
     e.preventDefault();
     if (state.isViewer) return;
+    if (state.movingLabel) { App.cancelLabelMove && App.cancelLabelMove(); return; }   // LABEL-SLIDE: a right-click mid-move puts the label back
     const pt = canvasPointFromEvent(e);
     const pdf = canvasToPdf(pt.x, pt.y);
     if (state.tool === TOOL.EDIT_POLY && state.editingPolyline) {
@@ -5409,7 +5597,23 @@
     lctx.imageSmoothingEnabled = true;
     try {
       lctx.drawImage(pdfCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
-      lctx.drawImage(annCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
+      // DEEP-ZOOM: at depth the page canvases are the soft backdrop (and the page overlay has
+      // the window's box cleared out of it), so the loupe samples the crop canvas and the
+      // overlay window where they stand, the same screen region, each boxed in container
+      // units (pdf pt × lastRenderedZoom) at its own density (buffer px per container px).
+      const cssW = parseFloat(pdfCanvas.style.width) || 0;
+      const basePerCss = cssW > 0 ? pdfCanvas.width / cssW : 0;
+      const layer = (canvas, x0, y0, cssBoxW) => {
+        const density = canvas.width / cssBoxW;
+        const lx = (state.aimPoint.x * lastRenderedZoom - x0) * density, ly = (state.aimPoint.y * lastRenderedZoom - y0) * density;
+        const ls = (srcSize / basePerCss) * density;
+        lctx.drawImage(canvas, lx - ls / 2, ly - ls / 2, ls, ls, 0, 0, aimLoupe.width, aimLoupe.height);
+      };
+      if (basePerCss > 0 && cropCanvas && cropCanvas.width > 0 && cropCanvas.style.display !== 'none' && parseFloat(cropCanvas.style.width) > 0) {
+        layer(cropCanvas, parseFloat(cropCanvas.style.left) || 0, parseFloat(cropCanvas.style.top) || 0, parseFloat(cropCanvas.style.width));
+      }
+      if (basePerCss > 0 && annWindowBox) layer(annWindowCanvas, annWindowBox.x0, annWindowBox.y0, annWindowBox.w);
+      else lctx.drawImage(annCanvas, sx, sy, srcSize, srcSize, 0, 0, aimLoupe.width, aimLoupe.height);
     } catch (_) { /* source rect partly off-canvas — drawImage clips */ }
     const cxp = aimLoupe.width / 2, cyp = aimLoupe.height / 2, rr = 14 * ratio;
     lctx.strokeStyle = '#e8c547'; lctx.lineWidth = 1.5 * ratio;
@@ -5458,6 +5662,7 @@
           return Math.abs(rung - state.zoom) > 1e-9 && pdfBitmapCacheGet(page.pdfPage, rot, rung, effectiveDpr(page, rung));
         })();
       if (!warm) {
+        recutOverlayWindow();   // DEEP-ZOOM: the marks are screen-sharp at the new zoom while the tile rasters (the k math)
         renderCropTile({ force: true, onDone: () => renderPdf() });
         return;
       }
@@ -5523,6 +5728,8 @@
     if (e.button !== 0) return;
     const pt = canvasPointFromEvent(e);
     state.mousePos = canvasToPdf(pt.x, pt.y);
+    // LABEL-SLIDE: a length label in hand drops on the click that follows; no other drag starts.
+    if (state.movingLabel) return;
     // Ghost drag. Gated on TOOL.GHOST: a ghost sits ON TOP of the plan where
     // real marks live, so outside its own tool it must never intercept a click
     // meant for the takeoff underneath.
@@ -5627,6 +5834,13 @@
         state.aimRafPending = true;
         requestAnimationFrame(() => { state.aimRafPending = false; drawAimLoupe(); renderAnnotations(); });
       }
+      return;
+    }
+    // LABEL-SLIDE (features/mark-context-menu.js): a length label in hand slides along
+    // its line under the pointer; the next click drops it, Esc puts it back.
+    if (state.movingLabel) {
+      if (App.slideMovingLabel) App.slideMovingLabel(pdf);
+      if (annCanvas) annCanvas.style.cursor = 'move';
       return;
     }
     if (state.aimPressTimer && state.aimMouseDownClient && ptDist({ x: e.clientX, y: e.clientY }, state.aimMouseDownClient) > RECT_DRAG_MIN_PX) {
@@ -5743,8 +5957,8 @@
       renderAnnotations();
     } else if ((state.tool === TOOL.LINE && state.quickLineStart) || (state.tool === TOOL.POLYLINE && state.drawingPolyline && state.drawingPolyline.points.length >= 1) || (state.tool === TOOL.MEASURE && state.scaleMode === SCALE_MODES.POINT_B && state.scalePointA && !state.scalePointB) /* MEASURE-BAND: the dashed band to the second point follows the mouse, as it already followed the loupe */ || (state.tool === TOOL.HIGHLIGHT && state.highlightStart) || (state.tool === TOOL.MULTIPLY_ZONE && state.multiplyZoneStart) || (state.tool === TOOL.SCALE_ZONE && state.scaleZoneStart) || (state.tool === TOOL.ROOM && state.roomBoxStart) || (state.tool === TOOL.SCHEDULE && state.scheduleBoxStart) || (state.tool === TOOL.DELETE_ZONE && state.deleteZoneStart) || (state.tool === TOOL.CHAIN && state.chainStart) || (state.tool === TOOL.GHOST && (state.ghostRectStart || state.placingGhost)) || (state.tool === TOOL.DUCT && App.isDuctDrawing && App.isDuctDrawing())) {
       renderAnnotations();
-    } else if (state.tool === TOOL.COUNTER && App.tagHintText && App.tagHintText()) {
-      renderAnnotations();   // S6: the tag chip follows the cursor
+    } else if (state.tool === TOOL.COUNTER && App.tagOverlayStale && App.tagOverlayStale()) {
+      renderAnnotations();   // AUTO-PICK: the tag cue appears, moves to another tag, or goes
     }
     const t = hitTest(pdf);
     state.hoverLegendResize = !!(t && t.type === 'legendResize');
@@ -5844,6 +6058,7 @@
       state.isPanning = false;
       state.panStart = null;
       scheduleCropTile();   // pan settled — re-cover the new visible window
+      recutOverlayWindow();   // DEEP-ZOOM: and re-cut the overlay window
       return;
     }
     if (e.button !== 0) return;
@@ -5882,6 +6097,7 @@
     state.isPanning = false;
     state.panStart = null;
     scheduleCropTile();   // pan settled — re-cover the new visible window (no-ops when base is sharp)
+    recutOverlayWindow();   // DEEP-ZOOM: and re-cut the overlay window
   });
 
   (cWrapper || pdfCanvas).addEventListener('mouseleave', () => {
@@ -5911,6 +6127,7 @@
       state.isPanning = false;
       state.panStart = null;
       scheduleCropTile();
+      recutOverlayWindow();   // DEEP-ZOOM
     }
     // A drag released on the canvas was already ended by its mouseup; one still
     // live here came up off the canvas (MAP-RESETS, D21).
@@ -6052,6 +6269,16 @@
         }
         return;
       }
+      // LABEL-SLIDE: a label in hand follows the finger along its line; the lift drops it.
+      if (state.movingLabel) {
+        e.preventDefault();
+        if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+        const pt = canvasPointFromEvent(e);
+        const pdf = canvasToPdf(pt.x, pt.y);
+        state.mousePos = pdf;
+        if (App.slideMovingLabel) App.slideMovingLabel(pdf);
+        return;
+      }
       // EDIT_POLY: drag the grabbed vertex (with the loupe), touch parity with mouse.
       // Skip if a long-press already fired a delete (draggingVertexIdx would be stale).
       if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null && state.editingPolyline &&
@@ -6099,6 +6326,16 @@
       if (state.pinchStartDistance != null) commitPinchZoom();
       state.pinchStartDistance = null;
     }
+    // LABEL-SLIDE: the lift drops the label where the finger is (a tap seats it there too).
+    if (state.movingLabel && !e.touches.length) {
+      e.preventDefault();
+      if (state.longPressTimer) { clearTimeout(state.longPressTimer); state.longPressTimer = null; }
+      state.longPressFired = false;
+      state.touchPanStart = null;
+      const pt = canvasPointFromEvent(e);
+      if (App.dropMovingLabel) App.dropMovingLabel(canvasToPdf(pt.x, pt.y));
+      return;
+    }
     if (state.tool === TOOL.EDIT_POLY && state.draggingVertexIdx !== null) {
       // Release a dragged polyline vertex. (A long-press delete is handled by the
       // context-menu path; here we just finalize the drag.)
@@ -6142,6 +6379,7 @@
       state.touchPanning = false;
       state.touchPanStart = null;
       scheduleCropTile();   // touch pan settled
+      recutOverlayWindow();   // DEEP-ZOOM: and re-cut the overlay window
       return;
     }
     if (e.changedTouches && e.changedTouches.length && state.longPressTimer) {
@@ -6202,6 +6440,7 @@
       updateUI();
     },
     rotatePage: () => rotatePage90(),
+    toggleAutoPick: () => App.toggleAutoPick && App.toggleAutoPick(),   // AUTO-PICK: features/tag-reader.js
   };
 
   document.addEventListener('keydown', (e) => {
@@ -6417,6 +6656,14 @@
   // async boot below never calls into a features/*.js file that has not registered yet.
   const shellScriptsReady = () => (document.readyState === 'loading' ? new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true })) : Promise.resolve());
   App.state = state;
+  // LEAD-ROLE (2026-10-02): the two role predicates every surface asks instead of
+  // state.isAdmin, so the next role is one line here. canOversee: sees every project
+  // (Load Project's every-project list and owner filter, the Bid Board). canTakeOver:
+  // acts on a project it does not own (check out, force a live lock, manage shares,
+  // hand it off, request or give a review). Account management (Manage Users,
+  // passwords, deletes, the global reload, others' activity) stays state.isAdmin.
+  App.canOversee = () => !!(state.isAdmin || state.isOverseer || state.isLead);
+  App.canTakeOver = () => !!(state.isAdmin || state.isLead);
   App.uid = uid;
   App.makeAnnotations = makeAnnotations;
   App.countCanvasMarks = countCanvasMarks;   // the confirms count the marks they touch
@@ -6453,6 +6700,8 @@
   App.commitWheelZoom = commitWheelZoom;
   App.syncZoomIndicators = syncZoomIndicators;
   App.getCanvasCaps = getCanvasCaps;
+  App.getDeviceZoomCeiling = deviceZoomCeiling;   // DEEP-ZOOM: features/zoom.js (the slider's max and its hint)
+  App.__annWindow = () => annWindowBox;          // DEEP-ZOOM: the overlay window's last cut (deep-zoom.spec.js)
   App.setCanvasCaps = setCanvasCaps;
   App.effectiveDpr = effectiveDpr;
   App.__getRenderAreaSafety = () => renderAreaSafety;   // debug/test seam (mirrors setCanvasCaps)
@@ -6596,6 +6845,7 @@
   App.formatSaveTime = formatSaveTime;
   App.formatSaveTimeParts = formatSaveTimeParts;
   App.formatAgo = formatAgo;
+  App.checkoutLockIsLive = checkoutLockIsLive; // save-utils.js (STALE-LOCK; features/turn-in.js wraps it with the server clock)
   App.getLastSaveIncludedPdf = () => lastSaveIncludedPdf;
   App.isSaveInProgress = () => saveEngine.isSaveInProgress();
   App.isSavePdfInProgress = () => saveEngine.isSavePdfInProgress();
@@ -6693,6 +6943,10 @@
   App.SCALE_MODES = SCALE_MODES;
   App.SCALE_PRESETS = SCALE_PRESETS;
   App.ptDist = ptDist;
+  // LABEL-SLIDE (features/mark-context-menu.js): the slide's projection helpers (geometry.js).
+  App.getQuadraticBezierControlPoint = getQuadraticBezierControlPoint;
+  App.polylineFractionNearest = polylineFractionNearest;
+  App.quadraticBezierParamNearest = quadraticBezierParamNearest;
   App.parseFraction = parseFraction;
   App.parseRealWorldLength = parseRealWorldLength;
   App.parseMountHeightIn = parseMountHeightIn;
@@ -7005,9 +7259,10 @@
         window.history.replaceState({}, '', u.toString());
       }
       if (ok) {
-        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer').eq('user_id', state.supabaseSession.user.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('is_admin, is_digital_twin, is_overseer, is_lead').eq('user_id', state.supabaseSession.user.id).maybeSingle();
         state.isAdmin = !!profile?.is_admin;
         state.isOverseer = !!profile?.is_overseer;
+        state.isLead = !!profile?.is_lead;
         state.isDigitalTwin = !!profile?.is_digital_twin;
       }
     }

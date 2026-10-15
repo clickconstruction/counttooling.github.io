@@ -557,3 +557,26 @@ test('getMultiplyZoneFor*: a multiplier that is not a finite number >= 1 reads a
   const ann = { ...zone('<b data-xss="1"></b>'), counterMarkers: { c1: [{ x: 5, y: 5 }, { x: 6, y: 6 }] } };
   assert.deepStrictEqual(g.counterTally(ann, 'c1'), { placed: 2, withRepeats: 2 });
 });
+
+// LABEL-SLIDE: a length label's seat along its line, as a fraction of the line's length.
+test('polylineFractionNearest / polylinePointAtFraction: the seat nearest a point, and the point at a seat', () => {
+  const pts = [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }];   // two legs, 200 long
+  assert.strictEqual(g.polylineFractionNearest(pts, false, { x: 50, y: 40 }), 0.25);     // the first leg, a quarter in
+  assert.strictEqual(g.polylineFractionNearest(pts, false, { x: 140, y: 50 }), 0.75);    // the second leg, halfway
+  assert.strictEqual(g.polylineFractionNearest(pts, false, { x: -30, y: -30 }), 0);      // before the start clamps
+  assert.strictEqual(g.polylineFractionNearest(pts, false, { x: 100, y: 500 }), 1);      // past the end clamps
+  assert.strictEqual(g.polylineFractionNearest([{ x: 3, y: 3 }], false, { x: 0, y: 0 }), 0.5);   // no length: the midpoint
+  assert.deepStrictEqual(g.polylinePointAtFraction(pts, false, 0.5), { x: 100, y: 0, angle: 0 });   // the old halfway walk
+  assert.deepStrictEqual(g.polylinePointAtFraction(pts, false, 0.75), { x: 100, y: 50, angle: Math.PI / 2 });
+  assert.deepStrictEqual(g.polylinePointAtFraction(pts, false, undefined), { x: 100, y: 0, angle: 0 });   // no seat: halfway
+  // Closed: the closing leg counts, on both halves.
+  const sq = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  assert.strictEqual(g.polylineFractionNearest(sq, true, { x: -5, y: 5 }), 0.875);   // the closing leg, halfway: (30 + 5) / 40
+  assert.deepStrictEqual(g.polylinePointAtFraction(sq, true, 0.875), { x: 0, y: 5, angle: -Math.PI / 2 });
+});
+test('quadraticBezierParamNearest: the parameter under a point on the arc', () => {
+  const a = { x: 0, y: 0 }, b = { x: 100, y: 0 }, c = g.getQuadraticBezierControlPoint(a, b, 1);
+  assert.strictEqual(g.quadraticBezierParamNearest(a, a, c, b), 0);
+  assert.strictEqual(g.quadraticBezierParamNearest(b, a, c, b), 1);
+  assert.strictEqual(g.quadraticBezierParamNearest(g.quadraticBezierPoint(0.25, a, c, b), a, c, b), 0.25);
+});

@@ -9,11 +9,13 @@
  * PDFPageProxy, converted into app PDF-space through the same viewport the
  * annotations use — see pageTextItems):
  *
- *   1. Tag-aware placement. With the Counter tool armed on an electrical
- *      project, the cursor reads the nearest tag ("Plan says B"); the click
- *      lands on the counter whose tag matches (tag-model.js tagOfCounter —
- *      an explicit `counter.tag`, else a name like "Type B" / "B — …"), and
- *      when no counter has that tag, Enter creates "Type B" and places it.
+ *   1. Auto-pick (tag-aware placement, on a switch since 2026-10-01). With the
+ *      Counter tool armed and AUTO-PICK on (the header pill, the A key, Counter
+ *      Settings; per device, off by default), the click lands on the counter
+ *      whose tag the plan prints beside it (tag-model.js tagPickAt — an explicit
+ *      `counter.tag`, else a name like "Type B" / "FS-1"), unless the armed
+ *      counter's own name says that tag; when no counter has it, Enter creates
+ *      one. Off, the plan's text never moves a click. See the section below.
  *   2. Palette from the schedule. TOOL.SCHEDULE (the "Read a schedule from the
  *      sheet…" link on the Counter modal's Create tab) is a rect tool: drag a
  *      box over the fixture schedule and the rows inside it are proposed as
@@ -33,8 +35,10 @@
  * a lazy load lands register App.onPageTextLoaded(pageIdx) (duct-callouts.js).
  *
  * Registrations: drawTagOverlay(ctx, env) (renderAnnotations, after the duct
- * overlay), tagHintText() (status bar), tagSwapCounterId(pdfPoint) (the
- * Counter tool's placement), tagCreateFromHint() (Enter), proposeCountersFromBox
+ * overlay), tagOverlayStale() (app.js's mousemove), tagHintText() (status bar),
+ * tagSwapCounterId(pdfPoint) (the Counter tool's placement), tagCreateFromHint()
+ * (Enter), setAutoPick / toggleAutoPick / syncAutoPickUI (the switch: the pill,
+ * the A key, Counter Settings, updateUI), proposeCountersFromBox
  * (TOOL.SCHEDULE corner 2), renderTagField(kind, item) (details modal),
  * renderTagReaderUI() (updateUI: the Create-tab link), pageTextItems(pageIdx),
  * queryPdfTextNear(pageIdx, pdfPt, radiusPt), textItemsFromContent(tc, vp) (the
@@ -57,7 +61,9 @@
   // --- the text layer, in app PDF-space --------------------------------------
   const textCache = new Map();   // pageIdx -> { pdfPage, rotation, items: [] | null (loading), promise }
 
-  function active() {
+  // Where the tag tools are offered (the details modal's Tag field, the Create tab's schedule
+  // link): electrical projects, and any project with a counter carrying an explicit tag.
+  function tagsOffered() {
     const state = App.state;
     if (!state) return false;
     if (state.trade === 'electrical') return true;
@@ -141,49 +147,77 @@
     return out.sort((a, b) => a.dist - b.dist);
   }
 
-  // --- tag-aware placement ------------------------------------------------------
-  let currentHint = null;   // { tag, counterId | null, x, y } for the cursor position
-
-  // The counter a tag belongs to: the ARMED counter when it carries the tag (the reader
-  // chose it, and two counters can share a tag: a standing "J-Box 4x4" beside the "J-Box
-  // Junction Box" just made both read J, and every click went to the palette's one, found
-  // by hand 2026-09-24), else the first counter with the tag.
-  function counterForTag(tag) {
+  // --- tag-aware placement: AUTO-PICK, on a switch ------------------------------------
+  // wendi, 2026-10-01: "it is choosing what counter I can use instead of letting me assign a
+  // counter, the suggestions get in the way of me seeing things on the plans". The reader
+  // moved a click to whatever counter carried the tag beside it, silently, on every
+  // electrical project and every project with one tagged counter, and painted its
+  // "Plan says" label at 11 px times the zoom over the sheet. Now:
+  //   - the move is a SWITCH, counterSettings.autoPick (per device, off by default): the
+  //     header's Auto-pick pill while the Counter tool is armed, the A key, Counter Settings;
+  //   - off, the plan's text never changes a click; one status-bar line offers the switch
+  //     when ANOTHER counter's tag is under the cursor;
+  //   - on, a counter whose name says the tag keeps the click (3IN FD keeps FD,
+  //     tag-model.js tagPickAt), and the sheet shows a cue ONLY when the click will land
+  //     elsewhere: a ring in that counter's colour and its icon as a badge, a fixed size on
+  //     screen at any zoom; a tag no counter carries gets a dashed ring and Enter makes it;
+  //   - a click that moved flashes the receiving counter's sidebar row (a tablet has no hover).
+  function autoPickOn() { const cs = App.state && App.state.counterSettings; return !!(cs && cs.autoPick); }
+  // The cursor's tag is read when auto-pick is on, or when some counter carries a tag
+  // (explicit or read from its name): the only case where the off line has an offer.
+  function reading() {
+    const state = App.state;
+    if (!state) return false;
+    if (autoPickOn()) return true;
     const tm = TM();
-    const cs = App.state.counters || [];
-    const armed = cs.find((c) => c.id === App.state.activeCounterType);
-    if (armed && tm.tagOfCounter(armed) === tag) return armed;
-    return cs.find((c) => tm.tagOfCounter(c) === tag) || null;
+    return !!tm && (state.counters || []).some((c) => tm.tagOfCounter(c));
   }
-  function hintAt(pt) {
+  const counterById = (id) => (App.state.counters || []).find((c) => c.id === id) || null;
+  const onTouch = () => !!(App.isCoarsePointer && App.isCoarsePointer());
+
+  // { tag, x, y, w, h, kind: 'armed' | 'other' | 'none', counterId } for a point, or null.
+  function pickAt(pt) {
     const state = App.state;
     const tm = TM();
-    if (!tm || !pt || !active()) return null;
+    if (!tm || !pt || !state || state.tool !== App.TOOL.COUNTER || !reading()) return null;
     const items = pageTextItems(state.currentPage);
     if (!items.length) return null;
-    const near = tm.nearestTag(items, pt, HINT_RADIUS_PT);
-    if (!near) return null;
-    const counter = counterForTag(near.str);
-    return { tag: near.str, counterId: counter ? counter.id : null, counterName: counter ? counter.name : null, x: near.x, y: near.y, w: near.w, h: near.h };
+    return tm.tagPickAt(items, pt, state.counters, state.activeCounterType, HINT_RADIUS_PT);
   }
-  // The counter id a click at `pt` should land on: the tag's counter when one
-  // exists (and it is a different counter than the active one, or the same —
-  // either way the tag wins); null = place as before.
+
+  // The counter id a click at `pt` should land on: with auto-pick on, the tag's counter when
+  // it is another one; null = the armed counter, as always.
   function tagSwapCounterId(pt) {
-    const h = hintAt(pt);
-    if (!h || !h.counterId) return null;
-    if (h.counterId !== App.state.activeCounterType) {
-      App.logUserEvent && App.logUserEvent('tag_suggestion_accepted', App.state.currentProjectId || null, { tag: h.tag, route: 'click' });
-    }
+    if (!autoPickOn()) return null;
+    const h = pickAt(pt);
+    if (!h || h.kind !== 'other') return null;
+    App.logUserEvent && App.logUserEvent('tag_suggestion_accepted', App.state.currentProjectId || null, { tag: h.tag, route: 'auto-pick' });
+    flashCounterRow(h.counterId);
     return h.counterId;
   }
+  // The receiving counter's sidebar row flashes once: the cue a tap gets, with no hover.
+  function flashCounterRow(id) {
+    requestAnimationFrame(() => {
+      const row = Array.from(document.querySelectorAll('#countersList [data-counter-id]')).find((r) => r.dataset.counterId === id);
+      if (!row) return;
+      row.classList.remove('tag-pick-flash');
+      void row.offsetWidth;   // restart the animation on a second click in a row
+      row.classList.add('tag-pick-flash');
+      setTimeout(() => row.classList.remove('tag-pick-flash'), 1200);
+    });
+  }
+
+  // The status bar's readout (status-hint-model.js, the Counter tool's line).
   function tagHintText() {
     const state = App.state;
     if (!state || state.tool !== App.TOOL.COUNTER || !state.mousePos) return '';
-    const h = hintAt(state.mousePos);
-    currentHint = h;
+    const h = pickAt(state.mousePos);
     if (!h) return '';
-    return 'Plan says ' + h.tag + (h.counterName ? ' → ' + h.counterName : ' · Enter creates Type ' + h.tag);
+    const c = h.counterId ? counterById(h.counterId) : null;
+    if (!autoPickOn()) return h.kind === 'other' ? 'Plan says ' + h.tag + (onTouch() ? ' · Auto-pick is off' : ' · A turns on auto-pick') : '';
+    if (h.kind === 'armed') return 'Plan says ' + h.tag + ' · stays on ' + (c ? c.name : '');
+    if (h.kind === 'other') return 'Plan says ' + h.tag + ' · auto-pick → ' + (c ? c.name : '');
+    return 'Plan says ' + h.tag + ' · Enter makes it a counter';
   }
   function iconForTag(tag) {
     const letter = String(tag || '').charAt(0);
@@ -193,15 +227,16 @@
     const troffer = (App.getEffectiveCustomIcons ? App.getEffectiveCustomIcons() : []).find((ic) => ic.name === '2x4 Troffer');
     return troffer ? troffer.value : (icons[0] ? icons[0].value : '');
   }
-  // Enter with a hint that has no counter yet: create "Type B" (tagged) and
-  // make it active. Returns true when it acted.
+  // Enter, with auto-pick on, over a tag no counter carries: make the counter (tagged) and arm
+  // it. An electrical letter reads "Type B"; any other trade's tag is its own name ("WH").
+  // Returns true when it acted.
   function tagCreateFromHint() {
     const state = App.state;
-    if (!state || state.tool !== App.TOOL.COUNTER) return false;
-    const h = currentHint || (state.mousePos ? hintAt(state.mousePos) : null);
-    if (!h || h.counterId) return false;
+    if (!state || state.tool !== App.TOOL.COUNTER || !autoPickOn() || !state.mousePos) return false;
+    const h = pickAt(state.mousePos);
+    if (!h || h.kind !== 'none') return false;
     App.pushUndoSnapshot();
-    const counter = { id: App.uid(), name: 'Type ' + h.tag, icon: iconForTag(h.tag), color: App.COLORS[(state.counters || []).length % App.COLORS.length], tag: h.tag };
+    const counter = { id: App.uid(), name: state.trade === 'electrical' ? 'Type ' + h.tag : h.tag, icon: iconForTag(h.tag), color: App.COLORS[(state.counters || []).length % App.COLORS.length], tag: h.tag };
     state.counters.push(counter);
     state.activeCounterType = counter.id;
     App.markProjectDirty();
@@ -211,37 +246,97 @@
     return true;
   }
 
-  // The cursor chip, painted on the live overlay (device px; env.fontScale =
-  // zoom × DPR) — the duct tool's chip idiom.
-  function drawTagOverlay(ctx, env) {
+  // The switch's one writer: the pill, the A key and Counter Settings all come here.
+  // Per device (MAP-SETTINGS: App.saveDisplaySettings writes localStorage counterSettings).
+  function setAutoPick(on, opts) {
     const state = App.state;
-    if (!state || state.tool !== App.TOOL.COUNTER || !state.mousePos || !active()) return;
-    const h = hintAt(state.mousePos);
-    currentHint = h;
+    if (!state || !state.counterSettings) return;
+    state.counterSettings.autoPick = !!on;
+    App.saveDisplaySettings && App.saveDisplaySettings();
+    syncAutoPickUI();
+    if (!opts || opts.toast !== false) {
+      const key = onTouch() ? '' : ' · A turns it ' + (on ? 'off' : 'on');
+      App.showToast(on ? 'Auto-pick on · a tag on the plan picks the counter' + key : 'Auto-pick off · the click places the counter you armed' + key, 2600);
+    }
+    App.updateUI && App.updateUI();
+    App.renderAnnotations && App.renderAnnotations();
+  }
+  function toggleAutoPick() { setAutoPick(!autoPickOn()); }
+  // The pill shows while the Counter tool is armed (Snap's pattern beside Quick Line), never
+  // to a viewer; the Counter Settings toggle mirrors it. Called from app.js's updateUI.
+  function syncAutoPickUI() {
+    const state = App.state;
+    if (!state) return;
+    const on = autoPickOn();
+    const pill = document.getElementById('counterAutoPickBtn');
+    if (pill) {
+      pill.classList.toggle('active', on);
+      pill.setAttribute('aria-pressed', on ? 'true' : 'false');
+      pill.style.display = (!state.isViewer && state.tool === App.TOOL.COUNTER) ? '' : 'none';
+    }
+    const cb = document.getElementById('counterAutoPick');
+    if (cb) cb.checked = on;
+    const btn = document.getElementById('counterAutoPickBtnSetting');
+    if (btn) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+  document.getElementById('counterAutoPickBtn')?.addEventListener('click', (e) => { e.stopPropagation(); toggleAutoPick(); });
+
+  // The sheet's cue, on the live overlay: drawn only with auto-pick on and only when the click
+  // will NOT land on the armed counter. Fixed screen size (env.dpr, never the zoom).
+  let drawnKey = '';
+  function overlayPick() {
+    const state = App.state;
+    if (!state || !autoPickOn() || state.tool !== App.TOOL.COUNTER || !state.mousePos) return null;
+    const h = pickAt(state.mousePos);
+    return h && h.kind !== 'armed' ? h : null;
+  }
+  const keyOf = (h) => (h ? h.kind + '|' + h.tag + '|' + h.counterId + '|' + h.x + ',' + h.y : '');
+  // app.js's mousemove asks before repainting: true when the cue appears, moves or goes.
+  function tagOverlayStale() { return keyOf(overlayPick()) !== drawnKey; }
+  function drawTagOverlay(ctx, env) {
+    const h = overlayPick();
+    drawnKey = keyOf(h);
     if (!h) return;
-    const fontScale = (env && env.fontScale) || 1;
-    const p = App.toCanvas(state.mousePos);
-    const label = 'Plan says ' + h.tag + (h.counterName ? ' → ' + h.counterName : ' · Enter creates Type ' + h.tag);
-    const fontSize = 11 * fontScale;
+    const dpr = (env && env.dpr) || 1;
+    const c = h.counterId ? counterById(h.counterId) : null;
+    const color = c ? (c.color || '#e8c547') : '#ffffff';
+    const a = App.toCanvas({ x: h.x, y: h.y }), b = App.toCanvas({ x: h.x + h.w, y: h.y + h.h });
+    const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const r = Math.hypot(b.x - a.x, b.y - a.y) / 2 + 5 * dpr;
     ctx.save();
-    ctx.font = '600 ' + fontSize + 'px DM Sans, sans-serif';
-    const tw = ctx.measureText(label).width;
-    const pad = 5 * fontScale;
-    const x = p.x + 18 * fontScale, y = p.y - 14 * fontScale - fontSize;
-    ctx.fillStyle = 'rgba(20,20,20,0.88)';
-    ctx.fillRect(x, y, tw + pad * 2, fontSize + pad * 2);
-    ctx.fillStyle = h.counterName ? '#e8c547' : '#fff';
-    ctx.textBaseline = 'top';
-    ctx.fillText(label, x + pad, y + pad);
-    // ring the tag it read
-    const t = App.toCanvas({ x: h.x + h.w / 2, y: h.y + h.h / 2 });
-    ctx.strokeStyle = '#e8c547'; ctx.lineWidth = Math.max(1, 1.2 * fontScale); ctx.setLineDash([3 * fontScale, 2 * fontScale]);
-    ctx.beginPath(); ctx.arc(t.x, t.y, Math.max(6, (h.h || 8) * 0.9 * fontScale), 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 4 * dpr; ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineWidth = 2.5 * dpr; ctx.strokeStyle = color;
+    if (!c) ctx.setLineDash([5 * dpr, 4 * dpr]);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    // the badge: the counter the click will place (or a plus: Enter makes one)
+    const bx = cx + r * 0.72, by = cy - r * 0.72;
+    ctx.fillStyle = '#141414'; ctx.strokeStyle = color; ctx.lineWidth = 2 * dpr;
+    ctx.beginPath(); ctx.arc(bx, by, 11 * dpr, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (c && c.icon) {
+      try {
+        const vb = String(App.iconVbFor ? App.iconVbFor(c.icon) : '0 0 640 640').split(/[\s,]+/).map(Number);
+        const w = vb[2] || 640, hh = vb[3] || 640, sc = (14 * dpr) / Math.max(w, hh);
+        ctx.translate(bx - (w * sc) / 2, by - (hh * sc) / 2);
+        ctx.scale(sc, sc);
+        ctx.translate(-(vb[0] || 0), -(vb[1] || 0));
+        ctx.fillStyle = color;
+        ctx.fill(new Path2D(c.icon));
+      } catch (_) { /* a malformed icon path: the ring and the badge still say it */ }
+    } else if (!c) {
+      ctx.fillStyle = '#ffffff'; ctx.font = '700 ' + (14 * dpr) + 'px DM Sans, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('+', bx, by + 0.5 * dpr);
+    }
     ctx.restore();
   }
 
   // --- palette from the schedule -------------------------------------------------
   let pendingProposal = null;
+  // A schedule row's tag already in the palette (an explicit tag or one read from a name).
+  const counterForTag = (tag) => (App.state.counters || []).find((c) => TM().tagOfCounter(c) === tag) || null;
 
   function proposeCountersFromBox(box) {
     const state = App.state;
@@ -308,7 +403,7 @@
     const group = document.getElementById('counterLineTypeDetailsTagGroup');
     const el = document.getElementById('counterLineTypeDetailsTag');
     if (!group || !el) return;
-    const show = kind === 'counter' && (active() || item.tag);
+    const show = kind === 'counter' && (tagsOffered() || item.tag);
     group.style.display = show ? '' : 'none';
     if (!show) return;
     el.value = item.tag || '';
@@ -329,7 +424,7 @@
     // Offered on electrical projects, on any project with a tagged counter, and on plumbing and
     // HVAC projects, whose fixture and diffuser schedules carry tags too (the plumbing course reads
     // P-501 with it; the HVAC course's chapter 3 asked for it on M-501 and it was hidden, by hand 2026-09-25).
-    if (link) link.style.display = (active() || App.state.trade === 'plumbing' || App.state.trade === 'hvac') && App.state.pages && App.state.pages.length ? '' : 'none';
+    if (link) link.style.display = (tagsOffered() || App.state.trade === 'plumbing' || App.state.trade === 'hvac') && App.state.pages && App.state.pages.length ? '' : 'none';
   }
 
   App.pageTextItems = pageTextItems;
@@ -337,9 +432,13 @@
   App.peekPageTextItems = peekPageTextItems;                   // D24: canvas-draw's non-fetching read
   App.queryPdfTextNear = queryPdfTextNear;
   App.drawTagOverlay = drawTagOverlay;
+  App.tagOverlayStale = tagOverlayStale;               // AUTO-PICK: app.js's mousemove repaints when the cue changes
   App.tagHintText = tagHintText;
   App.tagSwapCounterId = tagSwapCounterId;
   App.tagCreateFromHint = tagCreateFromHint;
+  App.setAutoPick = setAutoPick;                       // AUTO-PICK: the switch's one writer
+  App.toggleAutoPick = toggleAutoPick;                 // the A key (hotkeys.js runner) and the pill
+  App.syncAutoPickUI = syncAutoPickUI;                 // app.js's updateUI
   App.cancelSchedulePalette = cancelSchedulePalette;   // MAP-ESC: the palette's Esc and ×
   App.proposeCountersFromBox = proposeCountersFromBox;
   App.renderTagField = renderTagField;

@@ -16,7 +16,8 @@
  * window.App registry that app.js populates during its own load, registers
  * openCounterSettingsModal back onto App, and binds the modal's value handlers
  * + close + reorder + the Counters gear opener (#countersSettingsBtn) at this
- * file's load. HEADING-CLICK (2026-09-27): the COUNTERS title folds the list;
+ * file's load. The Auto-pick row (2026-10-01) writes through App.setAutoPick
+ * (features/tag-reader.js), the switch's one writer. HEADING-CLICK (2026-09-27): the COUNTERS title folds the list;
  * the gear and the Counter buttons' right-click menu open this modal.
  *
  * Scope is the Counter *settings* modal only. The Counters section fold (the
@@ -63,6 +64,7 @@
       if (row.after) row.after(on);
     });
     App.syncFilterScopeSegment('counterShowOnlySegment', App.getCounterListFilterScope());
+    App.syncAutoPickUI && App.syncAutoPickUI();   // AUTO-PICK: the row mirrors the header pill
     document.getElementById('counterSettingsReorder').style.display = state.counters.length < 2 ? 'none' : '';
     App.showModal('counterSettingsModal');
   }
@@ -118,6 +120,12 @@
       App.renderAnnotations();
     };
   });
+  // AUTO-PICK (2026-10-01): the same switch as the header pill and the A key, through its one
+  // writer in features/tag-reader.js (which saves it with the rest of this device's settings).
+  // Not a TOGGLES row: the pill already owns the id counterAutoPickBtn.
+  document.getElementById('counterAutoPickBtnSetting').onclick = () => {
+    App.setAutoPick && App.setAutoPick(!(App.state.counterSettings && App.state.counterSettings.autoPick), { toast: false });
+  };
   document.querySelectorAll('#counterShowOnlySegment button').forEach(btn => {
     btn.onclick = () => {
       App.setCounterListFilterScope(btn.dataset.scope);

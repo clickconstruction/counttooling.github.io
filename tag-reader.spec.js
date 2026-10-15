@@ -1,17 +1,20 @@
 // @ts-check
 /**
- * Electrical, First-Class S6 — read the tags.
+ * Electrical, First-Class S6 — read the tags; AUTO-PICK (2026-10-01) — on a switch.
  *
  * A PDF with a real text layer is built in-page with the vendored pdf-lib
  * (fixture tags "A" / "B" beside two fixture symbols, and a small fixture
  * schedule), so the reader has something to read. Guards: the text layer
- * lands in app PDF-space; the cursor hint names the nearest tag and the
- * counter it maps to; a click lands on the tag's counter instead of the
- * active one; Enter creates "Type X" when no counter carries the tag; the
- * schedule tool's box proposes tag + description rows and creates counters;
- * the details modal writes the tag; a plumbing project reads nothing.
+ * lands in app PDF-space; auto-pick is OFF by default and then the plan's
+ * text never moves a click (wendi's report: it chose her counter for her),
+ * the status bar only offers the switch; the A key, the header pill and the
+ * Counter Settings row are one switch, saved per device; ON, a click lands on
+ * the tag's counter unless the armed counter's name says the tag; Enter
+ * creates a counter for a tag nobody carries; the schedule tool's box
+ * proposes tag + description rows; the details modal writes the tag.
  */
 const { test, expect } = require('@playwright/test');
+const { collectConsoleErrors } = require('./spec-helpers.js');
 
 // Build the fixture in the page (PDFLib is the app's vendored lib) and feed it
 // to #pdfInput. Letter page 612 × 792 pt; pdf-lib y is bottom-up, the app's
@@ -57,11 +60,18 @@ async function bootWithTextPdf(page, trade) {
   await page.waitForFunction(() => window.App.pageTextItems(0).length > 0, null, { timeout: 5000 });
 }
 
-test.describe('Electrical, First-Class S6 — read the tags', () => {
-  test('text layer in app space; hint, tag-aware click, Enter creates, schedule box proposes counters', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+const marks = (page) => page.evaluate(() => {
+  const m = window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers;
+  return Object.fromEntries(Object.keys(m).filter((k) => m[k].length).map((k) => [k, m[k].length]));
+});
+const hintAt = (page, pt) => page.evaluate((p) => { window.state.mousePos = p; return window.App.tagHintText(); }, pt);
+const clickAt = (page, pt) => page.evaluate((p) => window.App.handleCanvasClick(null, p), pt);
+const autoPick = (page) => page.evaluate(() => !!window.state.counterSettings.autoPick);
+const B_SPOT = { x: 425, y: 305 };
+
+test.describe('Read the tags · auto-pick on a switch', () => {
+  test('off by default the plan never moves a click; A turns it on and the tag picks the counter; Enter and the schedule still build the palette', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
     await bootWithTextPdf(page, 'electrical');
     expect(await page.evaluate(() => typeof window.App?.proposeCountersFromBox)).toBe('function');
 
@@ -71,20 +81,34 @@ test.describe('Electrical, First-Class S6 — read the tags', () => {
     expect(Math.abs(bItem.x - 430)).toBeLessThan(2);
     expect(Math.abs(bItem.y + bItem.h - 310)).toBeLessThan(4);
 
-    // hover beside the B symbol: "Plan says B → B — 2x2 troffer"
-    const hint = await page.evaluate(() => { window.state.mousePos = { x: 425, y: 305 }; return window.App.tagHintText(); });
-    expect(hint).toBe('Plan says B → B — 2x2 troffer');
-    // the click lands on the tag's counter, not the active Type A
-    await page.evaluate(() => window.App.handleCanvasClick ? window.App.handleCanvasClick(null, { x: 425, y: 305 }) : null);
-    const placed = await page.evaluate(() => { const ann = window.App.getActiveAnnotations(window.state.pages[0]); return { a: (ann.counterMarkers.typeA || []).length, b: (ann.counterMarkers.typeB || []).length }; });
-    expect(placed).toEqual({ a: 0, b: 1 });
-    // far from any tag: the active counter places as before
-    await page.evaluate(() => window.App.handleCanvasClick(null, { x: 100, y: 600 }));
-    expect(await page.evaluate(() => (window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers.typeA || []).length)).toBe(1);
+    // OFF (the default): the pill shows beside the armed Counter, unpressed; beside the B the
+    // status bar only offers the switch, and the click is Type A's (wendi, 2026-10-01)
+    expect(await autoPick(page)).toBe(false);
+    await expect(page.locator('#counterAutoPickBtn')).toBeVisible();
+    await expect(page.locator('#counterAutoPickBtn')).toHaveAttribute('aria-pressed', 'false');
+    expect(await hintAt(page, B_SPOT)).toBe('Plan says B · A turns on auto-pick');
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ typeA: 1 });
 
-    // "X" has no counter: the hint offers Enter, Enter creates Type X (tagged) and activates it
-    const hintX = await page.evaluate(() => { window.state.mousePos = { x: 503, y: 488 }; return window.App.tagHintText(); });
-    expect(hintX).toBe('Plan says X · Enter creates Type X');
+    // A turns it on: the pill presses, the device keeps it
+    await page.locator('#annCanvas').focus().catch(() => {});
+    await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());
+    await page.keyboard.press('a');
+    expect(await autoPick(page)).toBe(true);
+    await expect(page.locator('#counterAutoPickBtn')).toHaveAttribute('aria-pressed', 'true');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('counterSettings') || '{}').autoPick)).toBe(true);
+
+    // ON: the same click lands on the tag's counter, and its sidebar row flashes
+    expect(await hintAt(page, B_SPOT)).toBe('Plan says B · auto-pick → B — 2x2 troffer');
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ typeA: 1, typeB: 1 });
+    await expect(page.locator('#countersList [data-counter-id="typeB"].tag-pick-flash')).toHaveCount(1);
+    // far from any tag: the armed counter places as before
+    await clickAt(page, { x: 100, y: 600 });
+    expect(await marks(page)).toEqual({ typeA: 2, typeB: 1 });
+
+    // "X" has no counter: Enter creates Type X (tagged, electrical's name) and arms it
+    expect(await hintAt(page, { x: 503, y: 488 })).toBe('Plan says X · Enter makes it a counter');
     await page.keyboard.press('Enter');
     const created = await page.evaluate(() => { const c = window.state.counters[window.state.counters.length - 1]; return { name: c.name, tag: c.tag, active: window.state.activeCounterType === c.id }; });
     expect(created).toEqual({ name: 'Type X', tag: 'X', active: true });
@@ -113,25 +137,70 @@ test.describe('Electrical, First-Class S6 — read the tags', () => {
     await page.fill('#counterLineTypeDetailsTag', 'a1');
     await page.press('#counterLineTypeDetailsTag', 'Enter');
     expect(await page.evaluate(() => window.state.counters.find((c) => c.id === 'typeA').tag)).toBe('A1');
-    expect(errors).toEqual([]);
+    errors.assertNoErrors();
+  });
+
+  test('on, a counter whose name says the tag keeps the click: 3IN B stays 3IN B beside a B (wendi, 2026-10-01)', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await bootWithTextPdf(page, 'plumbing');
+    await page.evaluate(() => { const s = window.state; s.counters.push({ id: 'b3', name: '3IN B', icon: 'M96 96h448v448H96z', color: '#d6338a' }); s.activeCounterType = 'b3'; window.App.updateUI(); });
+    // off: nothing to offer, the armed counter's name already says B
+    expect(await hintAt(page, B_SPOT)).toBe('');
+    await page.click('#counterAutoPickBtn');
+    expect(await autoPick(page)).toBe(true);
+    expect(await hintAt(page, B_SPOT)).toBe('Plan says B · stays on 3IN B');
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ b3: 1 });
+    // Type A armed, the B moves the click to the first counter that carries it
+    await page.evaluate(() => { window.state.activeCounterType = 'typeA'; window.App.updateUI(); });
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ b3: 1, typeB: 1 });
+    // on a plumbing project Enter names a new counter by its tag alone
+    expect(await hintAt(page, { x: 503, y: 488 })).toBe('Plan says X · Enter makes it a counter');
+    await page.keyboard.press('Enter');
+    expect(await page.evaluate(() => { const c = window.state.counters[window.state.counters.length - 1]; return [c.name, c.tag]; })).toEqual(['X', 'X']);
+    errors.assertNoErrors();
   });
 
   test('two counters carry the same tag: the armed one takes the click, not the first in the list (by hand, 2026-09-24)', async ({ page }) => {
-    const errors = [];
-    page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
-    page.on('pageerror', (err) => { errors.push(err.message); });
+    const errors = collectConsoleErrors(page);
     await bootWithTextPdf(page, 'electrical');
+    await page.evaluate(() => window.App.setAutoPick(true, { toast: false }));
     // the standing palette's "B — 2x2 troffer" (typeB) sits first; the reader makes a second B and arms it
     await page.evaluate(() => { const s = window.state; s.counters.push({ id: 'typeB2', name: 'B — the one just made', icon: 'M96 96h448v448H96z', color: '#e85447' }); s.activeCounterType = 'typeB2'; window.App.updateUI(); });
-    expect(await page.evaluate(() => { window.state.mousePos = { x: 425, y: 305 }; return window.App.tagHintText(); })).toBe('Plan says B → B — the one just made');
-    await page.evaluate(() => window.App.handleCanvasClick(null, { x: 425, y: 305 }));
-    expect(await page.evaluate(() => { const m = window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers; return { b: (m.typeB || []).length, b2: (m.typeB2 || []).length }; })).toEqual({ b: 0, b2: 1 });
-    // with Type A armed the tag still wins, and the first B takes it as before
+    expect(await hintAt(page, B_SPOT)).toBe('Plan says B · stays on B — the one just made');
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ typeB2: 1 });
+    // with Type A armed the tag wins, and the first B takes it as before
     await page.evaluate(() => { window.state.activeCounterType = 'typeA'; window.App.updateUI(); });
-    expect(await page.evaluate(() => { window.state.mousePos = { x: 425, y: 305 }; return window.App.tagHintText(); })).toBe('Plan says B → B — 2x2 troffer');
-    await page.evaluate(() => window.App.handleCanvasClick(null, { x: 425, y: 305 }));
-    expect(await page.evaluate(() => { const m = window.App.getActiveAnnotations(window.state.pages[0]).counterMarkers; return { a: (m.typeA || []).length, b: (m.typeB || []).length, b2: (m.typeB2 || []).length }; })).toEqual({ a: 0, b: 1, b2: 1 });
-    expect(errors).toEqual([]);
+    expect(await hintAt(page, B_SPOT)).toBe('Plan says B · auto-pick → B — 2x2 troffer');
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ typeB: 1, typeB2: 1 });
+    errors.assertNoErrors();
+  });
+
+  test('one switch: the pill, Counter Settings and a reload agree; a viewer never sees the pill; Move hides it', async ({ page }) => {
+    const errors = collectConsoleErrors(page);
+    await bootWithTextPdf(page, 'electrical');
+    await page.evaluate(() => window.App.openCounterSettingsModal());
+    await page.waitForSelector('#counterSettingsModal.visible');
+    await expect(page.locator('#counterAutoPickBtnSetting')).toHaveAttribute('aria-pressed', 'false');
+    await page.click('#counterAutoPickBtnSetting');
+    expect(await autoPick(page)).toBe(true);
+    await expect(page.locator('#counterAutoPickBtnSetting')).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#counterAutoPickBtn')).toHaveAttribute('aria-pressed', 'true');
+    await page.click('#counterSettingsClose');
+    // the pill shows only with the Counter tool armed
+    await page.evaluate(() => { window.state.tool = window.App.TOOL.NONE; window.App.updateUI(); });
+    await expect(page.locator('#counterAutoPickBtn')).toBeHidden();
+    await page.evaluate(() => { window.state.tool = window.App.TOOL.COUNTER; window.state.isViewer = true; window.App.updateUI(); });
+    await expect(page.locator('#counterAutoPickBtn')).toBeHidden();
+    await page.evaluate(() => { window.state.isViewer = false; window.App.updateUI(); });
+    // per device: a reload keeps it
+    await page.reload();
+    await page.waitForFunction(() => window.App && window.App.bootSettled === true, null, { timeout: 30000 });
+    expect(await autoPick(page)).toBe(true);
+    errors.assertNoErrors();
   });
 
   test('an HVAC project offers Read a schedule on the Create tab before any counter carries a tag (by hand, 2026-09-25)', async ({ page }) => {
@@ -141,14 +210,11 @@ test.describe('Electrical, First-Class S6 — read the tags', () => {
     await expect(page.locator('#counterReadSchedule')).toBeVisible();
   });
 
-  test('a plumbing project reads nothing: no hint, no swap, the Create-tab link hidden', async ({ page }) => {
-    await bootWithTextPdf(page, 'plumbing').catch(() => {});
-    // the text cache never primes for a non-electrical project with untagged counters
-    const hint = await page.evaluate(() => { window.state.mousePos = { x: 425, y: 305 }; return window.App.tagHintText(); });
-    expect(hint).toBe('');
-    await page.evaluate(() => window.App.handleCanvasClick(null, { x: 425, y: 305 }));
-    const placed = await page.evaluate(() => { const ann = window.App.getActiveAnnotations(window.state.pages[0]); return { a: (ann.counterMarkers.typeA || []).length, b: (ann.counterMarkers.typeB || []).length }; });
-    expect(placed).toEqual({ a: 1, b: 0 });
-    expect(await page.locator('#counterReadSchedule').isVisible()).toBe(false);
+  test('a palette with no tag-like names reads nothing: no offer, no move', async ({ page }) => {
+    await bootWithTextPdf(page, 'plumbing');
+    await page.evaluate(() => { const s = window.state; s.counters = [{ id: 'lav', name: 'Lavatory', icon: 'M96 96h448v448H96z', color: '#3a6fc8' }]; s.activeCounterType = 'lav'; window.App.updateUI(); });
+    expect(await hintAt(page, B_SPOT)).toBe('');
+    await clickAt(page, B_SPOT);
+    expect(await marks(page)).toEqual({ lav: 1 });
   });
 });

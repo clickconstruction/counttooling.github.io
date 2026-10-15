@@ -1,7 +1,7 @@
 ---
 title: Reviewing every bid: the Overseer role
 description: The Overseer role gives one person a read-only window into every bid in the company: an All Bids board, one click to open any takeoff, and no way to change anything.
-updated: 2026-08-28
+updated: 2026-10-13
 order: 7.5
 icon: hide-marks
 category: Collaboration
@@ -26,6 +26,11 @@ newest first, one card per bid:
 2. **Filter by estimator**: pick a name to see just that person's bids.
 3. **Click any card** to open the bid.
 
+A company that runs digital twins also gets a **People · Twins · All** switch beside the
+search: the twins' backtests outnumber the estimators' bids many to one, so the board opens on
+**People** (an admin opens on **All**), and a line under the list says how many twin bids are
+off, with a link to show them.
+
 Each card tells you the story at a glance:
 
 - **The bid's name**, as the estimator saved it.
@@ -34,11 +39,11 @@ Each card tells you the story at a glance:
   has no markups yet.
 - **When it was last touched**: the date plus a plain-English age: *today*, *yesterday*,
   *12 days ago*.
-- **Cloud status**: <span style="white-space:nowrap;">**✓ Fully cloud**</span> (green) means
-  the markups *and* the plan PDF are both saved to the cloud, so the bid opens complete
-  anywhere. **Canvas only** (yellow) means only the markups made it to the cloud, the PDF
-  still lives on the estimator's device, so the drawing itself can't be displayed until they
-  save it with the PDF included.
+- **Cloud status**: a card that says nothing about it is complete, the markups *and* the plan
+  PDF both saved to the cloud, so the bid opens anywhere. A crossed-out cloud in the card's top
+  corner means **canvas only**: the markups made it to the cloud but the PDF still lives on the
+  estimator's device, so the drawing can't be displayed until they save it with the PDF
+  included. Hover the cloud for the note.
 
 If you close the board, it's one click away: **All Bids** in the sidebar.
 
@@ -106,16 +111,19 @@ sign in, CountTooling brings you back to the bid you last had open; the board is
 
 - On the overseer's board, that bid jumps into a pinned **Ready for review** lane at the top,
   wearing a gold badge, no searching, no asking who finished what.
-- After looking it over, the overseer clicks **Mark reviewed** right on the card. The bid
-  drops out of the lane and keeps a quiet **Reviewed ✓** badge, so both sides can see it's
-  been seen.
+- The lane runs oldest waiting first, so the bid that has waited longest is the first card.
+- Open a ready bid and a **Reviewing** bar sits under the header: how long it has waited, who
+  made it, its counts, then **Request changes…**, **Mark reviewed** and **Next ready**, which
+  opens the next bid in the lane, so a morning of reviews is one loop. The card itself carries
+  no decision: a bid is reviewed where it is read. Once marked, it drops out of the lane and
+  keeps a quiet **Reviewed ✓** badge, so both sides can see it's been seen.
 - If the estimator changes the bid afterward, they can **Mark ready again** from the same
   Project Settings row (or **Withdraw** a request that went up too early).
 
 Who can do what is enforced by the server, not the buttons: only the bid's owner, an editor
-on it, or an admin can mark it ready or withdraw; only an overseer or admin can mark it
-reviewed. The same badges show up in **Load Project** rows, so estimators see the state of
-their own bids wherever they look.
+on it, a lead or an admin can mark it ready or withdraw; only an overseer, a lead or an admin
+can mark it reviewed. The same badges show up in **Load Project** rows, so estimators see the
+state of their own bids wherever they look.
 
 ## Granting the role (admins)
 
@@ -128,8 +136,8 @@ Users**, each row has an **eye toggle**:
   **Role** column reads *Overseer*. Click it again to take the role away; the change applies
   the next time they load the app.
 - Overseer is **read-everything, write-nothing**. It doesn't grant any admin powers, no user
-  management, no deleting, no editing other people's projects. (Admins already see every
-  project and don't need the flag; they also get the All Bids board.)
+  management, no deleting, no editing other people's projects. (Admins and leads already see
+  every project and don't need the flag; they get the All Bids board too.)
 - The role is a good fit for exactly the person who should *look but never touch*: reviews
   stay safe because the server refuses an overseer every write, even if a bug or a
   mis-click asked for one.

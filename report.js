@@ -107,13 +107,44 @@
   // Untagged last, then alphabetical by group name — the one ordering every
   // summary surface uses. getGroupName may return null for a deleted group's
   // id; treat that like Untagged for comparison purposes only.
-  function orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName) {
+  // ALT-GROUPS (2026-09-29): an alternate group (isAlternate(gid), optional)
+  // sorts after Untagged, alphabetical among alternates, so the base bid reads
+  // as one block and the alternates follow it on every surface.
+  function orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName, isAlternate) {
     const all = [...new Set([...Object.keys(counterSummaryByGroup), ...Object.keys(lineTypeSummaryByGroup)])];
+    const alt = (gid) => !isUntaggedGroupId(gid) && typeof isAlternate === 'function' && !!isAlternate(gid);
     return all.sort((a, b) => {
+      if (alt(a) !== alt(b)) return alt(a) ? 1 : -1;
       if (isUntaggedGroupId(a)) return 1;
       if (isUntaggedGroupId(b)) return -1;
       return (getGroupName(a) || 'Untagged').localeCompare(getGroupName(b) || 'Untagged');
     });
+  }
+
+  // ALT-GROUPS: the base bid and what each alternate adds, over one set of
+  // summaries — counts, feet and px kept apart (T1-05). null when no alternate
+  // group holds anything, so surfaces that show it draw nothing otherwise.
+  function alternateTotals(orderedGroupIds, summaries, isAlternate) {
+    const tally = (gid) => {
+      const counts = Object.values(summaries.counterSummaryByGroup[gid] || {}).reduce((s, r) => s + r.total, 0);
+      const lts = Object.values(summaries.lineTypeSummaryByGroup[gid] || {});
+      return { counts, ft: lts.reduce((s, r) => s + r.lengthFt, 0), px: lts.reduce((s, r) => s + r.lengthPx, 0) };
+    };
+    const isAlt = (gid) => !isUntaggedGroupId(gid) && !!isAlternate(gid);
+    const alternates = orderedGroupIds.filter(isAlt).map(gid => ({ gid, ...tally(gid) })).filter(t => t.counts > 0 || t.ft > 0 || t.px > 0);
+    if (!alternates.length) return null;
+    const base = orderedGroupIds.filter(gid => !isAlt(gid)).map(tally)
+      .reduce((a, t) => ({ counts: a.counts + t.counts, ft: a.ft + t.ft, px: a.px + t.px }), { counts: 0, ft: 0, px: 0 });
+    return { base, alternates };
+  }
+
+  // "Base: 8 counts · 264.00 ft. Alternate Break room adds 2 counts · 48.50 ft."
+  function alternateTotalsSentence(totals, getGroupName) {
+    if (!totals) return '';
+    const len = (t) => (t.ft > 0 ? t.ft.toFixed(2) + ' ft' : '') + (t.px > 0 ? (t.ft > 0 ? ' + ' : '') + Math.round(t.px) + ' px' : '');
+    const phrase = (t) => t.counts + (t.counts === 1 ? ' count' : ' counts') + (len(t) ? ' · ' + len(t) : '');
+    return 'Base: ' + phrase(totals.base) + '. '
+      + totals.alternates.map(t => 'Alternate ' + (getGroupName(t.gid) || 'Untagged') + ' adds ' + phrase(t) + '.').join(' ');
   }
 
   // T1-05: the report headline / group-totals length phrase. Feet and px stay
@@ -163,9 +194,27 @@
   // same schedule the report table reads (per-size LF · lb, straight total,
   // fittings total / factor, Bid weight; tab-separated). [] without duct.
   const DUCT_COPY_HEADING = '--- Duct ---';
+  // ALT-GROUPS: the framed heading that opens an alternate group's block in the /Tooling text.
+  const ALTERNATE_COPY_HEADING_PREFIX = '--- Alternate: ';
   // WATER-PLAN rung 5: the Water Sizing rows (features/water-schedule.js) under
   // a "--- Water sizing ---" heading, the duct block's twin. [] without water runs.
   const WATER_COPY_HEADING = '--- Water sizing ---';
+  // ALT-GROUPS rung 2: an alternate's own water sizing rides under
+  // "--- Alternate: <name> · Water sizing ---" — its runs serving its fixtures — after the
+  // whole-plan block (the bid WITH the alternate). Duct has no per-alternate block: a duct
+  // run belongs to no group (a group is its SYSTEM, D4), so the duct block stays whole-plan.
+  const ALTERNATE_WATER_SUFFIX = ' · Water sizing';
+  // The annotations narrowed to one group's items: markers by their group; a line outside
+  // the group keeps its INDEX (the water runs point at lines by index) but loses its type,
+  // so it is no run and serves nothing. Zones and the rest ride along untouched.
+  function annotationsInGroup(ann, gid) {
+    if (!ann) return ann;
+    const keep = (item) => ((item && item.group) || null) === (gid || null);
+    const counterMarkers = {};
+    Object.entries(ann.counterMarkers || {}).forEach(([cid, arr]) => { counterMarkers[cid] = (arr || []).filter(keep); });
+    const strip = (line) => (keep(line) ? line : Object.assign({}, line, { lineTypeId: null }));
+    return Object.assign({}, ann, { counterMarkers, quickLines: (ann.quickLines || []).map(strip), polylines: (ann.polylines || []).map(strip) });
+  }
   // A schedule's rows or its report table, built by the feature that owns the
   // schedule (App[name](schedule, …)); no schedule or no builder, nothing.
   function appBuild(name, schedule, fallback, ...args) {
@@ -173,6 +222,11 @@
   }
   const getWaterCopyRows = (pageIndices, getAnn) => appBuild('buildWaterCopyRows', getWaterSchedule(pageIndices, getAnn), []);
   const getDuctCopyRows = (pageIndices, getAnn) => appBuild('buildDuctCopyRows', getDuctSchedule(pageIndices, getAnn), []);
+  // One alternate's water rows, or [] when none of its lines is a water run.
+  const getAlternateWaterCopyRows = (pageIndices, getAnn, gid) => {
+    const sched = getWaterSchedule(pageIndices, (page, pi) => annotationsInGroup(getAnn(page, pi), gid));
+    return sched && Array.isArray(sched.rows) && sched.rows.length ? appBuild('buildWaterCopyRows', sched, []) : [];
+  };
 
   // The prologue every summary builder shares (R19): the scope and annotation
   // source from the options, the group names, the aggregation walk, and the
@@ -185,8 +239,9 @@
     const getAnn = opts.getAnnotations ?? defaultGetAnnotations;
     const groups = state.groups || [];
     const getGroupName = (gid) => (gid && groups.find(g => g.id === gid))?.name || untaggedName;
+    const isAlternate = (gid) => !!(gid && groups.find(g => g.id === gid))?.alternate;   // ALT-GROUPS
     const summaries = collectSummaries(pageIndices, getAnn);
-    return { pageIndices, getAnn, getGroupName, summaries, childTotals: getChildTotals(pageIndices, getAnn), conductorTotals: getConductorTotals(pageIndices, getAnn) };
+    return { pageIndices, getAnn, getGroupName, isAlternate, summaries, childTotals: getChildTotals(pageIndices, getAnn), conductorTotals: getConductorTotals(pageIndices, getAnn) };
   }
 
   function childRuleLabel(r) {
@@ -197,7 +252,7 @@
   function buildReportHtml(options = {}) {
     if (!window.state || !state.pages || !state.pages.length) return '';
 
-    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, 'Untagged');
+    const { pageIndices, getAnn, getGroupName, isAlternate, summaries, childTotals, conductorTotals } = rollup(options, 'Untagged');
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
 
     const styles = `
@@ -225,7 +280,7 @@
     html += '<h1 class="report-title">' + title + '</h1>';
     html += '<p class="report-date">' + escapeHtml(new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })) + '</p>';
 
-    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
+    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName, isAlternate);
 
     let totalCounters = 0;
     let totalLineRuns = 0;
@@ -248,6 +303,9 @@
       if (totalLineRuns > 0) parts.push(lengthTotalsLabel(totalLengthFt, totalLengthPx));
       html += '<p class="report-totals">' + escapeHtml(parts.join(' · ')) + '</p>';
     }
+    // ALT-GROUPS: the base and what each alternate adds, right under the headline.
+    const altSentence = alternateTotalsSentence(alternateTotals(orderedGroupIds, summaries, isAlternate), getGroupName);
+    if (altSentence) html += '<p class="report-totals">' + escapeHtml(altSentence) + '</p>';
 
     pageIndices.forEach((idx) => {
       const page = state.pages[idx];
@@ -327,7 +385,7 @@
         const lines = lineTypeSummaryByGroup[gid] || {};
         const hasItems = Object.keys(counters).length > 0 || Object.keys(lines).length > 0;
         if (!hasItems) return;
-        html += '<h3 class="section-header">' + escapeHtml(groupName) + '</h3>';
+        html += '<h3 class="section-header">' + escapeHtml((isAlternate(gid) ? 'Alternate: ' : '') + groupName) + '</h3>';
         const groupTotalCounters = Object.values(counters).reduce((s, r) => s + r.total, 0);
         const groupTotalRuns = Object.values(lines).reduce((s, r) => s + r.runsFt + r.runsPx, 0);
         const groupTotalFt = Object.values(lines).reduce((s, r) => s + r.lengthFt, 0);
@@ -464,14 +522,18 @@
   function getPipeToolingSummary(options) {
     if (!window.state || !state.pages || !state.pages.length) return '';
     const scopeLine = scopeHeaderText(options);
-    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, null);
+    const { pageIndices, getAnn, getGroupName, isAlternate, summaries, childTotals, conductorTotals } = rollup(options, null);
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
     const lines = [];
     // Same Untagged-last, alphabetical order as the HTML report and the email
     // summary (previously unsorted object-key order — the one surface that
     // disagreed). Untagged rows still carry no [Group] prefix.
-    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
-    orderedGroupIds.forEach(gid => {
+    // ALT-GROUPS: the alternates come last, each under a framed
+    // "--- Alternate: <name> ---" heading (emitted below the base rows). Their
+    // rows keep the [Group] prefix, so an importer that reads no headings
+    // (every framed line is structure to both importers) sees the old text.
+    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName, isAlternate);
+    const emitGroupRows = (gid) => {
       const prefix = getGroupName(gid) ? '[' + getGroupName(gid) + '] ' : '';
       const counters = counterSummaryByGroup[gid] || {};
       const lineTypes = lineTypeSummaryByGroup[gid] || {};
@@ -526,6 +588,12 @@
         derived.cable.filter(r => r.feet > 0).forEach(r => lines.push([prefix + 'ft of ' + r.name, r.feet.toFixed(2), ''].join('\t')));
         derived.wire.filter(r => r.feet > 0).forEach(r => lines.push([prefix + 'ft of ' + r.name, r.feet.toFixed(2), ''].join('\t')));
       }
+    };
+    orderedGroupIds.filter(gid => !isAlternate(gid)).forEach(emitGroupRows);
+    orderedGroupIds.filter(gid => isAlternate(gid)).forEach(gid => {
+      const before = lines.length;
+      emitGroupRows(gid);
+      if (lines.length > before) lines.splice(before, 0, ...(before ? [''] : []), ALTERNATE_COPY_HEADING_PREFIX + getGroupName(gid) + ' ---');
     });
     // D17: the duct pounds ride the handoff (DUCT-PLAN's promise) — the
     // Copy Schedule rows under one heading, only when the scope has duct.
@@ -542,6 +610,14 @@
       lines.push(WATER_COPY_HEADING);
       lines.push(...waterRows);
     }
+    // ALT-GROUPS rung 2: each alternate's own water sizing, last.
+    orderedGroupIds.filter(gid => isAlternate(gid)).forEach(gid => {
+      const rows = getAlternateWaterCopyRows(pageIndices, getAnn, gid);
+      if (!rows.length) return;
+      if (lines.length) lines.push('');
+      lines.push(ALTERNATE_COPY_HEADING_PREFIX + getGroupName(gid) + ALTERNATE_WATER_SUFFIX + ' ---');
+      lines.push(...rows);
+    });
     if (scopeLine) lines.unshift('--- ' + scopeLine + ' ---');   // D25: framed like '--- Duct ---', which the paste parser treats as a heading
     return lines.join('\n');
   }
@@ -562,12 +638,15 @@
   // async and cloud-gated. Pure over state; no DOM.
   function getTakeoffToolingPayload(options) {
     if (!window.state || !state.pages || !state.pages.length) return null;
-    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, null);
+    const { pageIndices, getAnn, getGroupName, isAlternate, summaries, childTotals, conductorTotals } = rollup(options, null);
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
     const round2 = (n) => Math.round(n * 100) / 100;
     const items = [];
-    orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName).forEach(gid => {
+    orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName, isAlternate).forEach(gid => {
       const group = getGroupName(gid) || null;
+      // ALT-GROUPS: `alternate: true` on every row of an alternate group — a fact
+      // on the row, present only when true so every other row keeps its shape.
+      const altF = isAlternate(gid) ? { alternate: true } : {};
       const counters = counterSummaryByGroup[gid] || {};
       const lineTypes = lineTypeSummaryByGroup[gid] || {};
       const groupChildren = childTotals.byGroup?.[gid] || {};
@@ -577,23 +656,23 @@
       (state.counters || []).forEach(c => {
         const r = counters[c.id];
         if (!r) return;
-        items.push({ description: c.name, quantity: round2(r.total), unit: 'ea', pages: r.pages.join(', '), group, children: childrenOf('counter', c.id) });
+        items.push({ description: c.name, quantity: round2(r.total), unit: 'ea', pages: r.pages.join(', '), group, ...altF, children: childrenOf('counter', c.id) });
       });
       (state.lineTypes || []).forEach(lt => {
         const r = lineTypes[lt.id];
         if (!r) return;
         const children = childrenOf('lineType', lt.id);
-        if (r.lengthFt > 0) items.push({ description: lt.name, quantity: round2(r.lengthFt), unit: 'ft', pages: r.pagesFt.join(', '), group, children });
+        if (r.lengthFt > 0) items.push({ description: lt.name, quantity: round2(r.lengthFt), unit: 'ft', pages: r.pagesFt.join(', '), group, ...altF, children });
         // per-ft children are computed on scaled runs only (T1-05), so they ride the ft row
-        if (r.lengthPx > 0) items.push({ description: lt.name, quantity: Math.round(r.lengthPx), unit: 'px', pages: r.pagesPx.join(', '), group, children: r.lengthFt > 0 ? [] : children });
+        if (r.lengthPx > 0) items.push({ description: lt.name, quantity: Math.round(r.lengthPx), unit: 'px', pages: r.pagesPx.join(', '), group, ...altF, children: r.lengthFt > 0 ? [] : children });
       });
       // S3 derived rows: wire by gauge and cable, stated as facts —
       // `derived: 'wire' | 'cable'` so the importer knows not to explode
       // conductors for them, `type: 'wire'` for TakeoffTooling's book.
       const derived = conductorTotals.byGroup?.[gid];
       if (derived) {
-        derived.cable.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, children: [], type: 'wire', derived: 'cable' }));
-        derived.wire.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, children: [], type: 'wire', derived: 'wire' }));
+        derived.cable.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, ...altF, children: [], type: 'wire', derived: 'cable' }));
+        derived.wire.filter(r => r.feet > 0).forEach(r => items.push({ description: r.name, quantity: round2(r.feet), unit: 'ft', pages: '', group, ...altF, children: [], type: 'wire', derived: 'wire' }));
       }
     });
     // S4: the circuits as facts beside the rows — TakeoffTooling shows them
@@ -610,6 +689,11 @@
   function summarizeToolingExport(text) {
     const out = { ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } };
     if (!text) return out;
+    // ALT-GROUPS: a "--- Alternate: <name> ---" heading opens an alternate block;
+    // its rows count in ea/ft/px as every row does (the two ends still reconcile
+    // on the same totals) AND in `out.alternates[]` = [{ name, ea, ft, px }],
+    // present only when the text carries an alternate.
+    let inAlt = null;
     // D17: the "--- Duct ---" block (features/duct-schedule.js rows) is its
     // own unit — never ea/ft/px; `out.duct` = { rows, bidWeightLb } only when
     // the text carries one, so duct-free summaries keep their exact shape.
@@ -618,14 +702,28 @@
     // `out.water` = { rows, warnings } only when the text carries one.
     let inWater = false;
     String(text).split(/\r?\n/).forEach((line) => {
-      if (!line.trim()) { inDuct = false; inWater = false; return; }
+      if (!line.trim()) { inDuct = false; inWater = false; inAlt = null; return; }
+      if (line.trim().startsWith(ALTERNATE_COPY_HEADING_PREFIX) && /\s---$/.test(line.trim())) {
+        // "--- Alternate: <name> ---" opens its rows; "--- Alternate: <name> · Water sizing ---"
+        // (rung 2) its own water block — `alternates[i].water`, never `out.water`.
+        const raw = line.trim().slice(ALTERNATE_COPY_HEADING_PREFIX.length, -4).trim();
+        const suffix = ALTERNATE_WATER_SUFFIX.trim();
+        const isWater = raw.toLowerCase().endsWith(suffix.toLowerCase());
+        const name = (isWater ? raw.slice(0, raw.length - suffix.length) : raw).trim();
+        out.alternates = out.alternates || [];
+        inAlt = out.alternates.find(a => a.name.toLowerCase() === name.toLowerCase()) || null;
+        if (!inAlt) { inAlt = { name, ea: { items: 0, total: 0 }, ft: { items: 0, total: 0 }, px: { items: 0, total: 0 } }; out.alternates.push(inAlt); }
+        inDuct = false;
+        if (isWater) { inAlt.water = { rows: 0, warnings: 0 }; inWater = inAlt.water; } else inWater = false;
+        return;
+      }
       if (line.trim() === DUCT_COPY_HEADING) { inDuct = true; inWater = false; out.duct = { rows: 0, bidWeightLb: 0 }; return; }
-      if (line.trim() === WATER_COPY_HEADING) { inWater = true; inDuct = false; out.water = { rows: 0, warnings: 0 }; return; }
+      if (line.trim() === WATER_COPY_HEADING) { inDuct = false; out.water = { rows: 0, warnings: 0 }; inWater = out.water; return; }
       if (inWater) {
         const total = /^(Cold|Hot) water total\t.*\t(\d+) ⚠$/.exec(line);
-        if (total) { out.water.warnings += parseInt(total[2], 10); return; }
+        if (total) { inWater.warnings += parseInt(total[2], 10); return; }
         if (/^(Cold|Hot) water total\t|^Sized at /.test(line)) return;
-        out.water.rows += 1;
+        inWater.rows += 1;
         return;
       }
       // D25: the scope header ("--- Counts — <project> · every sheet · layers: … ---")
@@ -641,9 +739,10 @@
       const cells = line.split('\t');
       const name = (cells[0] || '').trim().replace(/^\[[^\]]*\]\s*/, '');
       const value = parseFloat(cells[1]);
-      const bucket = /^px\s+of\s/i.test(name) ? out.px : /^ft\s+of\s/i.test(name) ? out.ft : out.ea;
-      bucket.items += 1;
-      bucket.total += Number.isFinite(value) ? value : 0;
+      const key = /^px\s+of\s/i.test(name) ? 'px' : /^ft\s+of\s/i.test(name) ? 'ft' : 'ea';
+      out[key].items += 1;
+      out[key].total += Number.isFinite(value) ? value : 0;
+      if (inAlt) { inAlt[key].items += 1; inAlt[key].total += Number.isFinite(value) ? value : 0; }
     });
     return out;
   }
@@ -658,6 +757,18 @@
     if (s.px.items) parts.push(s.px.items + (s.px.items === 1 ? ' unscaled run (' : ' unscaled runs (') + fmt(s.px.total) + ' px)');
     if (s.duct && s.duct.rows) parts.push('duct (' + fmt(s.duct.bidWeightLb) + ' lb bid weight)');
     if (s.water && s.water.rows) parts.push('water sizing (' + s.water.rows + (s.water.rows === 1 ? ' run' : ' runs') + (s.water.warnings ? ', ' + s.water.warnings + ' ⚠' : '') + ')');
+    // ALT-GROUPS: "1 alternate: Break room (2 ea · 48.50 ft)" — what each alternate holds.
+    if (s.alternates && s.alternates.length) {
+      const one = (a) => {
+        const p = [];
+        if (a.ea.items) p.push(fmt(a.ea.total) + ' ea');
+        if (a.ft.items) p.push(fmt(a.ft.total) + ' ft');
+        if (a.px.items) p.push(fmt(a.px.total) + ' px');
+        if (a.water && a.water.rows) p.push(a.water.rows + (a.water.rows === 1 ? ' water run' : ' water runs') + (a.water.warnings ? ', ' + a.water.warnings + ' ⚠' : ''));
+        return a.name + ' (' + (p.join(' · ') || 'nothing') + ')';
+      };
+      parts.push(s.alternates.length + (s.alternates.length === 1 ? ' alternate: ' : ' alternates: ') + s.alternates.map(one).join(', '));
+    }
     return parts.join(' · ');
   }
 
@@ -712,9 +823,9 @@
   function getEmailTextSummary(options) {
     const scopeLine = scopeHeaderText(options);
     if (!window.state || !state.pages || !state.pages.length) return '';
-    const { pageIndices, getAnn, getGroupName, summaries, childTotals, conductorTotals } = rollup(options, 'Untagged');
+    const { pageIndices, getAnn, getGroupName, isAlternate, summaries, childTotals, conductorTotals } = rollup(options, 'Untagged');
     const { counterSummaryByGroup, lineTypeSummaryByGroup } = summaries;
-    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName);
+    const orderedGroupIds = orderGroupIds(counterSummaryByGroup, lineTypeSummaryByGroup, getGroupName, isAlternate);
     const lines = [];
     // The text opens with the Takeoff Summary banner whichever block comes first (R19).
     const banner = () => { if (!lines.length) lines.push('Takeoff Summary', '---------------', ''); };
@@ -723,13 +834,16 @@
     const pushSection = (heading, rows) => { banner(); lines.push(heading, ...rows, ''); };
     if (orderedGroupIds.length > 0) {
       banner();
+      // ALT-GROUPS: the base and what each alternate adds, first thing under the banner.
+      const altSentence = alternateTotalsSentence(alternateTotals(orderedGroupIds, summaries, isAlternate), getGroupName);
+      if (altSentence) lines.push(altSentence, '');
       orderedGroupIds.forEach(gid => {
         const groupName = getGroupName(gid);
         const counters = counterSummaryByGroup[gid] || {};
         const lineTypes = lineTypeSummaryByGroup[gid] || {};
         const hasItems = Object.keys(counters).length > 0 || Object.keys(lineTypes).length > 0;
         if (!hasItems) return;
-        lines.push('--- ' + groupName + ' ---');
+        lines.push('--- ' + (isAlternate(gid) ? 'Alternate: ' : '') + groupName + ' ---');
         // Child counts: indented bullets under each parent (separate per
         // parent, like the Summary — the merge is PipeTooling-only).
         const groupChildren = childTotals.byGroup?.[gid] || {};
@@ -808,6 +922,11 @@
     // WATER-PLAN rung 5: the water sizing block.
     const waterRowsE = getWaterCopyRows(pageIndices, getAnn);
     if (waterRowsE.length) pushSection(WATER_COPY_HEADING, waterRowsE);
+    // ALT-GROUPS rung 2: each alternate's own water sizing — the same rows the /Tooling text carries.
+    orderedGroupIds.filter(gid => isAlternate(gid)).forEach(gid => {
+      const rows = getAlternateWaterCopyRows(pageIndices, getAnn, gid);
+      if (rows.length) pushSection(ALTERNATE_COPY_HEADING_PREFIX + getGroupName(gid) + ALTERNATE_WATER_SUFFIX + ' ---', rows);
+    });
     const roomTotals = getRoomTotals(pageIndices, getAnn);
     if (roomTotals.length > 0) {
       pushSection('--- Rooms ---', roomTotals.map(t => {
@@ -867,6 +986,6 @@
 
   // Node test harness only: inert in the browser (where `module` is undefined).
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { escapeHtml, pickScaleForLineType, reportTitleFor, pageHeadingFor, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary };
+    module.exports = { escapeHtml, pickScaleForLineType, reportTitleFor, pageHeadingFor, orderGroupIds, isUntaggedGroupId, collectSummaries, summarizeToolingExport, formatToolingExportSummary, alternateTotals, alternateTotalsSentence, ALTERNATE_COPY_HEADING_PREFIX, ALTERNATE_WATER_SUFFIX, annotationsInGroup };
   }
 })();

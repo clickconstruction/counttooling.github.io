@@ -489,6 +489,20 @@
     .sidebar-snap-icon-btn:hover { color: var(--text); }
     .sidebar-snap-icon-btn.active { color: var(--yellow); background: transparent; box-shadow: 0 0 0 0; }
     .sidebar-snap-icon-btn.active:hover { color: var(--yellow); }
+    /* AUTO-PICK (features/tag-reader.js): the header pill beside the armed Counter button, shown
+       only while the Counter tool is armed. Outlined, never filled, so it does not read as a
+       second armed tool; narrow headers keep the icon. Its Counter Settings note, and the flash
+       on the sidebar row of a counter a click was moved to. */
+    .header .header-autopick-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; min-height: 34px; min-width: 0; padding: 0 12px 0 10px; margin: 0 2px; border-radius: 16px; border: 1.5px solid var(--border2); background: transparent; color: var(--text2); font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1; cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: color 0.12s ease, border-color 0.12s ease, background-color 0.12s ease; }
+    .header .header-autopick-btn:hover { color: var(--text); border-color: var(--text3); background: transparent; }
+    .header .header-autopick-btn.active, .header .header-autopick-btn.active:hover { color: var(--accent); border-color: var(--accent); background: rgba(232, 197, 71, 0.10); }
+    .header .header-autopick-btn svg { flex-shrink: 0; }
+    @media (pointer: coarse) { .header .header-autopick-btn { height: 44px; min-height: 44px; min-width: 44px; justify-content: center; border-radius: 22px; } }
+    @media (max-width: 1100px) { .header-autopick-label { display: none; } .header .header-autopick-btn { padding: 0 8px; } }
+    .setting-hint { margin: -4px 0 12px; font-size: 12px; line-height: 1.45; color: var(--text2); }
+    @keyframes tag-pick-flash { from { box-shadow: inset 0 0 0 2px var(--accent); background-color: rgba(232, 197, 71, 0.18); } to { box-shadow: inset 0 0 0 2px transparent; background-color: transparent; } }
+    #countersList .tag-pick-flash { animation: tag-pick-flash 1.1s ease-out; }
+    @media (prefers-reduced-motion: reduce) { #countersList .tag-pick-flash { animation-duration: 0.01s; } }
     .canvas-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; -webkit-tap-highlight-color: transparent; }
     .canvas-wrapper { flex: 1; overflow: hidden; position: relative; touch-action: none; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
     .canvas-container { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
@@ -499,6 +513,7 @@
     .canvas-container .crop-canvas { z-index: 0; pointer-events: none; }
     .canvas-container .ann-canvas { z-index: 1; pointer-events: none; }
     .canvas-container .ann-canvas.interactive { pointer-events: auto; }
+    .canvas-container .ann-window-canvas { z-index: 2; pointer-events: none; }   /* DEEP-ZOOM: the overlay window, app.js renderAnnotationWindow */
     .canvas-wrapper .aim-loupe { position: absolute; left: 0; top: 0; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 2px 10px rgba(0,0,0,.4); pointer-events: none; display: none; z-index: 240; background: #fff; will-change: transform; }
     /* B16 / J1: quiet cold-start hint in the empty canvas (updateUI toggles it).
        Anchored to .canvas-area, NOT .canvas-wrapper — the wrapper collapses to
@@ -1518,6 +1533,10 @@
     .user-list-modal .settings-user-overseer:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
     .user-list-modal .settings-user-overseer.active { color: var(--accent); }
     .user-list-modal .settings-user-overseer svg { width: 18px; height: 18px; display: block; }
+    .user-list-modal .settings-user-lead { flex: none; width: 36px; height: 36px; padding: 0; display: inline-flex; align-items: center; justify-content: center; border: none; background: transparent; border-radius: 6px; cursor: pointer; color: var(--text3); }
+    .user-list-modal .settings-user-lead:hover { background: rgba(232, 197, 71, 0.14); color: var(--accent2); }
+    .user-list-modal .settings-user-lead.active { color: var(--accent); }
+    .user-list-modal .settings-user-lead svg { width: 18px; height: 18px; display: block; }
     .user-list-modal .settings-user-dates { width: 86px; flex: none; display: flex; flex-direction: column; gap: 2px; line-height: 1.2; }
     #manageUserModal .settings-user-dates-btn { border: none; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; border-radius: 4px; }
     #manageUserModal .settings-user-dates-btn:hover { background: rgba(232, 197, 71, 0.14); }
@@ -1532,6 +1551,7 @@
     .user-list-modal .settings-user-header .settings-user-set-password-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-transfer-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-overseer-head { width: 36px; flex: none; }
+    .user-list-modal .settings-user-header .settings-user-lead-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-activity-head { width: 36px; flex: none; }
     .user-list-modal .settings-user-header .settings-user-delete-head { width: 68px; flex: none; }
     /* Manage Users: tighten the action icons (magic-link / set-password / transfer / overseer /
@@ -1540,10 +1560,12 @@
     #manageUserModal .settings-user-set-password,
     #manageUserModal .settings-user-transfer,
     #manageUserModal .settings-user-overseer,
+    #manageUserModal .settings-user-lead,
     #manageUserModal .settings-user-activity,
     #manageUserModal .settings-user-header .settings-user-set-password-head,
     #manageUserModal .settings-user-header .settings-user-transfer-head,
     #manageUserModal .settings-user-header .settings-user-overseer-head,
+    #manageUserModal .settings-user-header .settings-user-lead-head,
     #manageUserModal .settings-user-header .settings-user-activity-head { margin-left: -8px; }
     /* Per-user activity overview modal */
     .ua-overview-header { padding-bottom: 10px; margin-bottom: 12px; border-bottom: 1px solid var(--border); }
@@ -1792,6 +1814,13 @@ label.schedule-palette-row { display: grid; grid-template-columns: 18px 44px 1fr
 .tour-ui-live { cursor: pointer; }
 .tour-ui-live:hover, .tour-ui-live:focus-visible { border-color: var(--accent); outline: none; }
 .tour-flash { position: fixed; border-radius: 8px; pointer-events: none; }
+/* DEMO-TRACK (features/demo-track.js): the quiet UI while a demo runs. A sidebar section the card does
+   not name shows its heading alone, and a header tool it does not name recedes; both still work, and
+   the stop removes the classes, never the app's own fold state. */
+body.demo-quiet .sidebar-section.demo-quiet-fold > :not(.sidebar-section-header-row):not(h3) { display: none !important; }
+body.demo-quiet .demo-quiet-dim { opacity: 0.3; transition: opacity 0.2s; }   /* the header's tools, and the drawer's tool grid on a narrow layout */
+body.demo-quiet .demo-quiet-dim:hover, body.demo-quiet .demo-quiet-dim:focus-visible { opacity: 0.85; }
+body.demo-opening #preparePdfModal { visibility: hidden; }   /* Trim your set, while a demo's own set comes in: pressed, never shown */
 .tour-flash::after { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; background: rgba(232, 197, 71, 0.34); box-shadow: 0 0 0 3px rgba(232, 197, 71, 1), 0 0 22px 6px rgba(232, 197, 71, 0.75), 0 0 64px 18px rgba(232, 197, 71, 0.45); }
 .tour-flash::before { content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0; border: 3px solid rgba(232, 197, 71, 0.9); }
 .tour-flash.is-arriving::after { animation: tourSpotArrive 2.3s ease-out 1 both; }
@@ -2188,6 +2217,12 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 .group-system-tag { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); margin-top: 1px; }
 .group-plenum-note { display: block; font-size: 0.68rem; color: var(--text3); font-style: italic; margin-top: 1px; }
 .group-modal-hint { color: var(--text3); font-weight: 400; text-transform: none; font-size: 0.72rem; }
+/* Alternate groups (ALT-GROUPS, 2026-09-29): the ALT mark after a group's name in the
+   sidebar, its one-line note, and the Summary's base / + alternate totals at the foot. */
+.group-alt-chip { display: inline-block; font-family: 'DM Mono', monospace; font-size: 0.62rem; letter-spacing: 0.08em; padding: 0 5px; border-radius: 3px; border: 1px solid var(--accent2); color: var(--accent); margin-left: 6px; vertical-align: 1px; line-height: 1.4; }
+.group-alt-note { display: block; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text2); margin-top: 1px; }
+.summary-alt-totals { display: grid; gap: 3px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 0.75rem; color: var(--text2); }
+.summary-alt-totals b { color: var(--text); font-weight: 500; }
 
 /* Air balance (DUCT unit D7, DUCT-PLAN §3): the system capacity line under a
    group header ("600 designed / 600 capacity ✓"), the room needs/served badge
@@ -2458,16 +2493,28 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 #bidBoardModal .bid-board-search { flex: 1 1 160px; min-width: 0; max-width: 320px; padding: 7px 10px; font-size: 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); box-sizing: border-box; font-family: inherit; }
 #bidBoardModal .bid-board-owner-filter { padding: 7px 10px; font-size: 0.9rem; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text); max-width: 100%; font-family: inherit; }
 #bidBoardModal .bid-board-intro { color: var(--text2); }
+/* PEOPLE-TWINS: the People · Twins · All segment and the "N twin bids are off" line under the list. */
+#bidBoardModal .bid-board-kind label { padding: 6px 10px; font-size: 0.85rem; }
+#bidBoardModal .bid-board-hidden-note { grid-column: 1 / -1; margin: 6px 0 0; font-size: 0.8rem; color: var(--text3); }
+#bidBoardModal .bid-board-show-twins { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; }
+#bidBoardModal .bid-board-show-twins:hover { text-decoration: underline; }
 #bidBoardModal .bid-board-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
 #bidBoardModal .bid-board-empty { color: var(--text2); margin: 0; grid-column: 1 / -1; }
 #bidBoardModal .bid-card { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
 #bidBoardModal .bid-card:hover, #bidBoardModal .bid-card:focus-visible { background: var(--surface2); border-color: var(--accent); outline: none; }
 #bidBoardModal .bid-card-name { font-size: 1.05rem; font-weight: 600; color: var(--text); overflow-wrap: anywhere; }
-#bidBoardModal .bid-card-owner { font-size: 0.85rem; color: var(--accent); }
+#bidBoardModal .bid-card-owner { font-size: 0.85rem; color: var(--accent); text-align: right; }
+/* CLOUD-OFF-ICON (2026-10-13): a bid without its PDF in the cloud wears a crossed-out cloud in the
+   card's top-right corner; the note rides a CSS tooltip under it on hover. Fully cloud says nothing. */
+#bidBoardModal .bid-card { position: relative; }
+#bidBoardModal .bid-card-cloud-off { position: absolute; top: 9px; right: 10px; width: 26px; height: 26px; padding: 3px; box-sizing: border-box; border-radius: 50%; background: inherit; color: var(--yellow); opacity: 0.9; }
+#bidBoardModal .bid-card-cloud-off svg { display: block; width: 20px; height: 20px; }
+#bidBoardModal .bid-card-no-pdf .bid-card-name { padding-right: 28px; }   /* the title wraps short of the corner rather than running under the cloud */
+#bidBoardModal .bid-card-cloud-off::after { content: attr(data-tip); position: absolute; top: 30px; right: -2px; width: 232px; padding: 8px 10px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); color: var(--text); font-size: 0.78rem; line-height: 1.4; text-align: left; opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 5; }
+#bidBoardModal .bid-card-cloud-off:hover::after, #bidBoardModal .bid-card:focus-visible .bid-card-cloud-off::after { opacity: 1; }
 #bidBoardModal .bid-card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 #bidBoardModal .bid-card-badge { font-size: 11px; padding: 2px 7px; border-radius: 999px; background: var(--surface2); color: var(--text2); }
 #bidBoardModal .bid-card-badge-warn { background: var(--yellow); color: var(--bg); }
-#bidBoardModal .bid-card-badge-cloud { background: var(--green); color: var(--bg); }
 #bidBoardModal .bid-card-date { font-size: 0.78rem; color: var(--text3); margin-left: auto; }
 #bidBoardModal .bid-card-status { display: none; font-size: 0.8rem; color: var(--text2); }
 #bidBoardModal .bid-card.loading { pointer-events: none; opacity: 0.75; cursor: wait; }
@@ -2480,18 +2527,29 @@ body:has(.modal-overlay.visible) .chain-panel { display: none !important; }
 #bidBoardModal .bid-board-lane-title:first-child { padding-top: 0; }
 #bidBoardModal .bid-card-badge-ready { background: var(--accent); color: var(--bg); font-weight: 600; }
 #bidBoardModal .bid-card-badge-reviewed { background: var(--surface2); color: var(--green); border: 1px solid var(--border); }
-#bidBoardModal .bid-card-review-btn { align-self: flex-start; margin-top: 2px; padding: 6px 12px; font-size: 0.8rem; font-family: inherit; border-radius: 6px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; }
-#bidBoardModal .bid-card-review-btn:hover { background: rgba(232, 197, 71, 0.14); }
-#bidBoardModal .bid-card-review-btn:disabled { opacity: 0.6; cursor: wait; }
-#bidBoardModal .bid-card-changes-btn { align-self: flex-start; margin-top: 2px; margin-left: 6px; padding: 6px 12px; font-size: 0.8rem; font-family: inherit; border-radius: 6px; border: 1px solid var(--yellow); background: transparent; color: var(--yellow); cursor: pointer; }
-#bidBoardModal .bid-card-changes-btn:hover { background: rgba(232, 197, 71, 0.14); }
-#bidBoardModal .bid-card-changes-btn:disabled { opacity: 0.6; cursor: wait; }
 .settings-review-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 0 2px; font-size: 0.85rem; }
 .settings-review-row .settings-review-label { color: var(--text2); }
 .settings-review-row .settings-review-label::after { content: ' ·'; }
 .settings-review-row .settings-review-status { flex: 1; min-width: 0; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #settingsModal .settings-review-row .settings-review-btn { padding: 6px 2px; white-space: nowrap; }
 .settings-review-row .settings-review-btn:disabled { opacity: 0.6; cursor: wait; text-decoration: none; }
+#bidBoardModal .bid-board-lane-hint { color: var(--border2); }
+/* REVIEW-BAR (features/review-flow.js): under the header while a ready bid is open by a reviewer.
+   In the .app flex column like the header, so the sheet below gives up its height. */
+.review-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; min-height: 40px; padding: 4px 14px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+.review-bar-kicker { font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.review-bar-text { color: var(--text2); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.review-bar.done .review-bar-text { color: var(--green); }
+.review-bar-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.review-bar button { font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+.review-bar-changes { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.review-bar-changes:hover { color: var(--text); border-color: var(--accent2); }
+.review-bar-reviewed { background: var(--accent); border: 1px solid var(--accent); color: var(--bg); font-weight: 600; }
+.review-bar-reviewed:hover { background: var(--accent2); border-color: var(--accent2); }
+.review-bar-next { background: none; border: none; color: var(--accent); padding: 6px 4px; }
+.review-bar-next:hover { text-decoration: underline; }
+.review-bar button:disabled { opacity: 0.6; cursor: wait; }
+@media (max-width: 768px) { .review-bar { padding: 4px 10px; gap: 8px; } .review-bar-text { white-space: normal; } .review-bar-actions { margin-left: 0; } }
 
     /* Notes ledger (features/notes-ledger.js) — header badge, right drawer,
        and the note hover chip. Pins themselves are canvas-drawn. */

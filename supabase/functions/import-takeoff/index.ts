@@ -53,7 +53,7 @@ type TakeoffJson = {
   ceilingHeightFt?: number   // v2 (S2): the project's ceiling — with a counter mountHeightIn, the app's Chain tool writes the vertical
   makeUpFt?: number          // v2 (S2): make-up added to every default vertical (the app defaults to 1)
   bidCheck?: { manual?: Record<string, boolean>; loadAmps?: number; volts?: number }   // v2 (S5): manual ticks + the voltage-drop defaults
-  groups?: Array<{ id: string; name: string; color?: string; panel?: string; circuit?: string; loadAmps?: number }>   // S4: panel + circuit make the group a circuit
+  groups?: Array<{ id: string; name: string; color?: string; panel?: string; circuit?: string; loadAmps?: number; alternate?: boolean }>   // S4: panel + circuit make the group a circuit
   counters: Array<{ id: string; name: string; icon?: string; color?: string; canvas?: string; childCounts?: ChildRule[]; mountHeightIn?: number; cablePerCount?: { ft: number; name?: string }; panelName?: string; poles?: number; tag?: string }>
   lineTypes: Array<{ id: string; name: string; color?: string; canvas?: string; childCounts?: ChildRule[]; raceway?: Raceway; conductors?: Conductor[]; tickMarks?: boolean; homerun?: boolean }>
   pages: TakeoffPage[]
@@ -204,7 +204,7 @@ Deno.serve(async (req) => {
     }
     // v2: groups (circuits / panels / areas) and child-count rules on palette items.
     const groupIds = new Set<string>()
-    const groupsOut: Array<{ id: string; name: string; color: string; panel?: string; circuit?: string; loadAmps?: number }> = []
+    const groupsOut: Array<{ id: string; name: string; color: string; panel?: string; circuit?: string; loadAmps?: number; alternate?: boolean }> = []
     if (v2 && t.groups != null) {
       if (!Array.isArray(t.groups) || t.groups.length > 200) return bad('groups', 'must be an array (max 200)')
       for (const g of t.groups) {
@@ -213,12 +213,13 @@ Deno.serve(async (req) => {
         if (!id || !gname) return bad('groups', 'each needs id + name')
         if (groupIds.has(id)) return bad('groups', `duplicate id ${id}`)
         groupIds.add(id)
-        const out: { id: string; name: string; color: string; panel?: string; circuit?: string; loadAmps?: number } = { id, name: gname, color: typeof g.color === 'string' && g.color ? g.color : PALETTE_COLORS[groupsOut.length % PALETTE_COLORS.length] }
+        const out: { id: string; name: string; color: string; panel?: string; circuit?: string; loadAmps?: number; alternate?: boolean } = { id, name: gname, color: typeof g.color === 'string' && g.color ? g.color : PALETTE_COLORS[groupsOut.length % PALETTE_COLORS.length] }
         // S4: panel + circuit make the group a circuit; loadAmps feeds the voltage-drop check
         const panel = String(g.panel ?? '').trim().slice(0, 24)
         const circuit = String(g.circuit ?? '').trim().slice(0, 24)
         if (panel) out.panel = panel
         if (circuit) out.circuit = circuit
+        if (g.alternate === true) out.alternate = true   // ALT-GROUPS: the section priced with and without
         if (g.loadAmps != null) {
           const amps = Number(g.loadAmps)
           if (!num(amps) || amps <= 0 || amps > 6000) return bad(`groups[${id}].loadAmps`, 'must be amps between 0 and 6000')

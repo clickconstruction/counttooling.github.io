@@ -120,6 +120,14 @@ reflects all ten automatically. Every counter total surface shows the multiplied
 number — sidebar badges, Choose tab, Summary, footer, legend, report all agree — and hovering a
 sidebar/Summary badge shows the placed count.
 
+**Ghost / Stamp — a typical that rides the cursor**
+*Problem:* A restroom group or a unit layout repeats across a floor at different spots, where a
+multiply zone (one spot, many copies) does not fit, and counting each copy by hand is the same
+twenty clicks again.
+*Useful because:* Rubber-band the placed marks into a translucent copy, drop it where the next one
+goes, and Stamp it down as real counted marks; the ghost itself never reaches a total, and after a
+stamp it is back in hand for the next spot, so a four-restroom floor is one capture and four stamps.
+
 ---
 
 ## 3. Counting
@@ -153,7 +161,8 @@ of a plan is legible without a single icon hunt.
 *Problem:* A dense sheet with hundreds of marks becomes an undifferentiated cloud; restroom groups
 and risers need their own numbers.
 *Useful because:* Assign marks to groups and get subtotals per area — the plan stays organized and
-the numbers stay auditable.
+the numbers stay auditable. Flip a group to **alternate** and the bid prices with and without it:
+the Summary, the report and both exports carry the base and what the alternate adds.
 
 **Counter settings — size, opacity, rings, count numbers, outline**
 *Problem:* Marks that are readable at fit-zoom vanish at print scale, and vice versa.
@@ -193,6 +202,13 @@ its true length.
 floors — which is real material and labor (a 12–18% under-measurement class).
 *Useful because:* Add a drop value at either end of a run and the vertical footage joins the total,
 visible on the plan as an explicit marker.
+
+**Length labels that slide**
+*Problem:* A run traced over the plan's own dimension line, or beside another run, puts its length
+label on the plan's text or a neighbour's label, and neither reads.
+*Useful because:* Right-click the run, **Move label**, and the label slides along its line to where
+it reads; it never leaves the line, so it still reads as that run's dimension, and **Reset label**
+sends it home.
 
 **Measure tool (D)**
 *Problem:* Checking one dimension shouldn't require creating takeoff data you then have to delete.
@@ -454,6 +470,23 @@ visible "Unknown" row), and undo brings the old palette and counts back.
 what they were.
 *Useful because:* One view shows which counters and line types you actually use across all your
 projects, with one-click adds of the proven ones to your Artboard.
+
+**All Bids board + bid review handoff**
+*Problem:* The owner or the senior estimator who needs to see a bid has to ask for it to be shared,
+and "it's done, go look" is a chat message nobody tracks.
+*Useful because:* An overseer, lead or admin opens every bid in the company from one board (search,
+an estimator filter, and a People · Twins · All switch where digital twins run, so the fleet's
+backtests stay out of the way). The estimator marks a bid Ready for review from Project Settings;
+it joins a pinned lane, oldest waiting first, and opening it shows a Reviewing bar with Request
+changes…, Mark reviewed and Next ready, so a morning of reviews is one loop. Both sides see the
+state on the bid.
+
+**Lead role — takes over bids without the admin's keys**
+*Problem:* The lead estimator who must free a stuck lock, reassign a bid or fix who has access
+either waits for an admin or is made one, with the account and delete powers that brings.
+*Useful because:* A lead sees every bid, checks out any, forces a live lock, manages a bid's
+editors and viewers, marks it reviewed, and hands it to another estimator with one click; users,
+passwords, deletes and the global reload stay with admins.
 
 **Admin toolkit — users, projects, activity, force turn-in, global reload**
 *Problem:* Team tools usually externalize administration to a separate console (or a support

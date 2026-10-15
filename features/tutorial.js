@@ -11,6 +11,8 @@
  * (alt: a second button beside a hands-off step's own, { label, run }: the blank-sheet tour's
  * welcome offers "Pick up at step 20" and "Start over" when the reader left mid-way; each
  * course's chapter 8 takeoff card offers "Finish the takeoff for me", PP-WHOLE-SKIP)
+ * (jump: the sheet JUMPS onto the step's targets instead of gliding there, so they hold still from the
+ * moment they are drawn: the demo track's cards, whose guest taps at once; DEMO-TRACK)
  * (hold: a done step waits for Next instead of advancing by itself: the proof step, whose
  * whole point is a dialog the reader should get to read)
  * (body may be a FUNCTION: called at every render, for a step whose text reads the takeoff
@@ -1980,6 +1982,8 @@
     endGlide(false);
     let still = false;
     try { still = !!navigator.webdriver || window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (_) { still = false; }
+    // `jump`: a step whose reader taps the moment its circles appear (the demo track) never glides under them
+    if (active && STEPS[stepIdx] && STEPS[stepIdx].jump) still = true;
     if (still || !App.updateContainerTransform || !s.pan || !s.zoom) {
       s.zoom = z; s.pan = pan;
       nudgedFor = -1; panelNudged = new Set();

@@ -15,7 +15,7 @@
 //
 // Fields: key (e.key, lowercase) + one of btnId (the element the handler
 // clicks) or runner (name of an app.js closure action: moveReset / toggleSnap
-// / rotatePage). viewerAllowed marks keys usable in view-link sessions.
+// / rotatePage / toggleAutoPick). viewerAllowed marks keys usable in view-link sessions.
 // bespoke: true = documentation-only row; its handling (arrows, undo, Escape,
 // modal-context keys) stays hand-written in app.js. Presentation fields:
 // section, action, kbd (custom <kbd> cell HTML; null = derive from key), icon
@@ -33,6 +33,7 @@ const HOTKEYS = [
   { bespoke: true, section: 'Tools', action: 'Quick tab (when Counter or Line Type modal open)', kbd: '<kbd>Shift</kbd>+<kbd>Q</kbd>', icon: null },
   { key: 'l', btnId: 'quickLine', section: 'Tools', action: 'Quick Line mode', kbd: null, icon: { btn: 'quickLine' } },
   { key: 'j', runner: 'toggleSnap', viewerAllowed: true, section: 'Tools', action: 'Toggle snap to 45° angles', kbd: null, icon: { btn: 'lineTypeSnapToHVHeaderBtn' } },
+  { key: 'a', runner: 'toggleAutoPick', section: 'Tools', action: 'Toggle auto-pick (the plan\'s tag picks the counter)', kbd: null, icon: { btn: 'counterAutoPickBtn' } },
   { key: 'p', btnId: 'polylineBtn', section: 'Tools', action: 'Polyline mode', kbd: null, icon: { btn: 'polylineBtn' } },
   // D18 (B19 ratchet, 2026-09-13): Duct was the one drawing tool with no key.
   // D (the natural letter) is Measure's, so the first free letter of "Duct"

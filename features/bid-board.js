@@ -10,7 +10,7 @@
   // into the same load path as the Load Project modal
   // (App.loadCloudProjectRow, extracted from features/load-project.js), so a
   // bid always opens in the existing read-only viewer mode -- the overseer has
-  // no checkout arm server-side. Admins can open the board too (same button);
+  // no checkout arm server-side. Admins and leads (LEAD-ROLE) open the board too (same button);
   // it auto-opens only for pure overseers signing in with nothing else to
   // restore. Cross-file deps read from App at call time: getSupabase,
   // showModal, hideModal, escapeHtml, loadCloudProjectRow, showToast.
@@ -24,6 +24,42 @@
   // day). Mirrors the TEST_ACCOUNTS list in
   // supabase/functions/cleanup-test-accounts/index.ts.
   const HIDDEN_TEST_OWNERS = ['dev-agent@clickplumbing.com', 'test@clickplumbing.com'];
+
+  // PEOPLE-TWINS (2026-10-13, Wendi's board): twin-owned bids are the fleet's
+  // backtests and smoke runs, not an estimator's work, and they outnumber the
+  // human bids many to one, so a lead's board opened on 41 machine bids. The
+  // board carries a People · Twins · All switch (#bidBoardKind) and opens on
+  // People for everyone but an admin, who opens on All (the view they had).
+  // A twin is told by the owner's email, the same pattern twin-login enforces
+  // (TWIN_EMAIL_RE in supabase/functions/twin-login/index.ts): the RPC carries
+  // no twin flag, and a twin account outside the pattern cannot sign in, so
+  // the pattern is the fleet. The switch hides itself when the company has
+  // no twin bids; the estimator filter lists only the owners the segment shows.
+  const TWIN_OWNER_RE = /^twin-estimator-\d+@twins\.counttooling\.local$/i;
+  function isTwinOwner(email) { return TWIN_OWNER_RE.test(email || ''); }
+  function boardKind() {
+    const checked = document.querySelector('#bidBoardKind input:checked');
+    return checked ? checked.value : 'people';
+  }
+  function setBoardKind(kind) {
+    const input = document.querySelector('#bidBoardKind input[value="' + kind + '"]');
+    if (input) input.checked = true;
+  }
+  function kindRows() {
+    const kind = boardKind();
+    if (kind === 'all') return boardRows.slice();
+    return boardRows.filter(function (p) { return isTwinOwner(p.owner_email) === (kind === 'twins'); });
+  }
+  function hiddenTwinsNoteHtml() {
+    if (boardKind() !== 'people') return '';
+    const n = boardRows.filter(function (p) { return isTwinOwner(p.owner_email); }).length;
+    if (!n) return '';
+    return '<p class="bid-board-hidden-note">' + n + (n === 1 ? ' twin bid is' : ' twin bids are') + ' off · <button type="button" class="bid-board-show-twins">show twins</button></p>';
+  }
+  function onKindChange() {
+    fillOwnerFilter();
+    renderBidBoardList();
+  }
 
   function esc(s) { return App.escapeHtml(s); }
 
@@ -72,14 +108,23 @@
       proj.counter_count > 0 ? (proj.counter_count + (proj.counter_count === 1 ? ' count' : ' counts')) : null,
       proj.line_count > 0 ? (proj.line_count + (proj.line_count === 1 ? ' line' : ' lines')) : null,
     ].filter(Boolean).join(' · ');
-    // Cloud completeness: a bid with its PDF in storage is fully in the cloud
-    // (canvas markups always ride in the project row); without it, only the
-    // canvas is backed up and the plan itself lives on the estimator's device.
+    // Cloud completeness (CLOUD-OFF-ICON, 2026-10-13, Will): a bid with its PDF in storage
+    // is fully in the cloud (canvas markups always ride in the project row) and the card says
+    // nothing about it. Without the PDF, only the canvas is backed up and the plan itself
+    // lives on the estimator's device: a crossed-out cloud sits in the card's top-right
+    // corner (over the title if it must), with the note on hover and in its label.
+    const cloudOffNote = 'Canvas only. The markups are in the cloud, but the plan PDF was never uploaded and still lives on the estimator\'s device.';
     const cloudBadge = proj.pdf_path
-      ? '<span class="bid-card-badge bid-card-badge-cloud" title="Canvas and PDF are both in the cloud">✓ Fully cloud</span>'
-      : '<span class="bid-card-badge bid-card-badge-warn" title="Only the canvas markups are in the cloud. The PDF was never uploaded">Canvas only</span>';
-    const canMarkReviewed = proj.review_status === 'ready' && (App.state.isOverseer || App.state.isAdmin);
-    return '<div class="bid-card" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
+      ? ''
+      : '<span class="bid-card-cloud-off" role="img" aria-label="' + esc(cloudOffNote) + '" data-tip="' + esc(cloudOffNote) + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M22.6 17A5 5 0 0 0 18 10h-1.3a8 8 0 0 0-7-6M5 5a8 8 0 0 0 4 15h9a5 5 0 0 0 1.7-.3"/><line x1="1" y1="1" x2="23" y2="23"/>' +
+          '</svg></span>';
+    // DROP-CARD-BUTTONS (2026-10-13): a card carries no decision. Mark reviewed and
+    // Request changes… live on the review bar in the opened bid (features/review-flow.js),
+    // which the card click reaches, so a bid is reviewed where it is read.
+    return '<div class="bid-card' + (cloudBadge ? ' bid-card-no-pdf' : '') + '" role="button" tabindex="0" data-project-id="' + esc(proj.id) + '">' +
+      cloudBadge +
       '<div class="bid-card-name">' + esc(proj.name || 'Untitled') +
         (proj.external_ref ? ' <span class="bid-stamp" title="Upstream bid ' + esc(proj.external_ref) + '">' + esc(proj.external_ref) + '</span>' : '') +
       '</div>' +
@@ -87,13 +132,8 @@
       '<div class="bid-card-meta">' +
         reviewBadgeHtml(proj) +
         (counts ? '<span class="bid-card-badge">' + esc(counts) + '</span>' : '') +
-        cloudBadge +
         (date ? '<span class="bid-card-date">' + esc(date) + '</span>' : '') +
       '</div>' +
-      (canMarkReviewed
-        ? '<button type="button" class="bid-card-review-btn">Mark reviewed</button>' +
-          '<button type="button" class="bid-card-changes-btn">Request changes…</button>'
-        : '') +
       '<div class="bid-card-status">Loading…</div>' +
       '</div>';
   }
@@ -101,30 +141,48 @@
   function getFilteredBidRows() {
     const searchEl = document.getElementById('bidBoardSearch');
     const ownerEl = document.getElementById('bidBoardOwnerFilter');
-    let rows = boardRows.slice();
+    let rows = kindRows();
     const q = searchEl && searchEl.value ? searchEl.value.trim().toLowerCase() : '';
     if (q) rows = rows.filter(function (p) { return (p.name || 'Untitled').toLowerCase().indexOf(q) !== -1 || (p.external_ref || '').toLowerCase().indexOf(q) !== -1; });
     if (ownerEl && ownerEl.value) rows = rows.filter(function (p) { return (p.owner_email || '') === ownerEl.value; });
     return rows;
   }
 
+  // Oldest waiting first (Will, 2026-10-13): the Ready lane runs oldest request first, so the
+  // bid that has waited longest is the first card and the review bar's first Next ready. A
+  // row with no stamp sorts last.
+  function byOldestWaiting(a, b) {
+    const ta = a.review_requested_at ? new Date(a.review_requested_at).getTime() : Infinity;
+    const tb = b.review_requested_at ? new Date(b.review_requested_at).getTime() : Infinity;
+    return ta - tb;
+  }
+
   function renderBidBoardList() {
     const listEl = document.getElementById('bidBoardList');
     if (!listEl) return;
     const rows = getFilteredBidRows();
+    const wireShowTwins = function () {
+      const showTwins = listEl.querySelector('.bid-board-show-twins');
+      if (showTwins) showTwins.onclick = function () { setBoardKind('twins'); onKindChange(); };
+    };
     if (!rows.length) {
-      listEl.innerHTML = '<p class="bid-board-empty empty-state">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>';
+      listEl.innerHTML = '<p class="bid-board-empty empty-state">' + (boardRows.length ? 'No bids match.' : 'No bids yet.') + '</p>' + hiddenTwinsNoteHtml();
+      wireShowTwins();
       return;
     }
     // "Ready for review" bids get their own lane pinned above the rest — the
     // estimator's handoff signal is the first thing an overseer sees.
-    const ready = rows.filter(function (p) { return p.review_status === 'ready'; });
+    const ready = rows.filter(function (p) { return p.review_status === 'ready'; }).sort(byOldestWaiting);
     const rest = rows.filter(function (p) { return p.review_status !== 'ready'; });
+    // REVIEW-BAR: the lane as shown is the bar's Next ready queue (features/review-flow.js).
+    App.setReviewQueue && App.setReviewQueue(ready);
     listEl.innerHTML = ready.length
-      ? '<div class="bid-board-lane-title">Ready for review (' + ready.length + ')</div>' +
+      ? '<div class="bid-board-lane-title">Ready for review (' + ready.length + ')<span class="bid-board-lane-hint"> · oldest waiting first</span></div>' +
         ready.map(bidCardHtml).join('') +
         (rest.length ? '<div class="bid-board-lane-title">All bids</div>' + rest.map(bidCardHtml).join('') : '')
       : rows.map(bidCardHtml).join('');
+    listEl.innerHTML += hiddenTwinsNoteHtml();
+    wireShowTwins();
     listEl.querySelectorAll('.bid-card').forEach(function (card) {
       const proj = boardRows.find(function (p) { return p.id === card.dataset.projectId; });
       if (!proj) return;
@@ -151,45 +209,6 @@
       };
       card.onclick = open;
       card.onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void open(); } };
-      const reviewBtn = card.querySelector('.bid-card-review-btn');
-      if (reviewBtn) {
-        reviewBtn.onclick = async function (e) {
-          e.stopPropagation();
-          reviewBtn.disabled = true;
-          const res = await App.setProjectReviewStatus(proj.id, 'reviewed');
-          if (res && res.ok) {
-            proj.review_status = 'reviewed';
-            proj.reviewed_at = new Date().toISOString();
-            App.showToast('Marked "' + (proj.name || 'Untitled') + '" reviewed.', 3000);
-            renderBidBoardList();
-          } else {
-            App.showToast((res && res.error) || 'Could not mark reviewed.', 4000);
-            reviewBtn.disabled = false;
-          }
-        };
-      }
-      const changesBtn = card.querySelector('.bid-card-changes-btn');
-      if (changesBtn) {
-        changesBtn.onclick = async function (e) {
-          e.stopPropagation();
-          // The server refuses a blank note ('changes' without guidance is noise);
-          // cancel aborts cleanly.
-          const note = await App.confirmDialog({ title: 'What should change before this bid comes back?', input: { placeholder: 'One line the estimator will read' }, confirmLabel: 'Send back' });
-          if (note == null || !note.trim()) return;
-          changesBtn.disabled = true;
-          const res = await App.setProjectReviewStatus(proj.id, 'changes', note.trim());
-          if (res && res.ok) {
-            proj.review_status = 'changes';
-            proj.review_note = note.trim();
-            proj.reviewed_at = new Date().toISOString();
-            App.showToast('Changes requested on "' + (proj.name || 'Untitled') + '".', 3000);
-            renderBidBoardList();
-          } else {
-            App.showToast((res && res.error) || 'Could not request changes.', 4000);
-            changesBtn.disabled = false;
-          }
-        };
-      }
     });
   }
 
@@ -198,13 +217,16 @@
     if (!ownerEl) return;
     const seen = Object.create(null);
     const owners = [];
-    for (let i = 0; i < boardRows.length; i++) {
-      const em = boardRows[i].owner_email;
+    const rows = kindRows();   // PEOPLE-TWINS: only the owners the segment shows
+    for (let i = 0; i < rows.length; i++) {
+      const em = rows[i].owner_email;
       if (em && !seen[em]) { seen[em] = true; owners.push(em); }
     }
     owners.sort();
+    const keep = ownerEl.value && owners.indexOf(ownerEl.value) !== -1 ? ownerEl.value : '';
     ownerEl.innerHTML = '<option value="">All estimators</option>' +
       owners.map(function (em) { return '<option value="' + esc(em) + '">' + esc(ownerLabel(em)) + '</option>'; }).join('');
+    ownerEl.value = keep;
     ownerEl.parentElement.style.display = owners.length > 1 ? '' : 'none';
   }
 
@@ -220,6 +242,12 @@
     if (searchEl) { searchEl.value = ''; searchEl.oninput = renderBidBoardList; }
     const ownerEl = document.getElementById('bidBoardOwnerFilter');
     if (ownerEl) { ownerEl.value = ''; ownerEl.onchange = renderBidBoardList; }
+    const kindEl = document.getElementById('bidBoardKind');
+    if (kindEl) {
+      setBoardKind(state.isAdmin ? 'all' : 'people');   // PEOPLE-TWINS: an admin keeps the whole board
+      kindEl.querySelectorAll('input').forEach(function (r) { r.onchange = onKindChange; });
+      kindEl.style.display = 'none';
+    }
     listEl.innerHTML = '<p class="bid-board-empty">Loading bids…</p>';
     App.showModal('bidBoardModal');
     try {
@@ -229,6 +257,7 @@
         return;
       }
       boardRows = (projects || []).filter(function (p) { return HIDDEN_TEST_OWNERS.indexOf(p.owner_email || '') === -1; });
+      if (kindEl) kindEl.style.display = boardRows.some(function (p) { return isTwinOwner(p.owner_email); }) ? '' : 'none';
       fillOwnerFilter();
       renderBidBoardList();
     } catch (e) {

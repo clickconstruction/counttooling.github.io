@@ -8,8 +8,12 @@
   // .pdf) and calls App.showContextMenu(x, y); duct fittings and runs, and the
   // ghost batch, open their own menus before it gets here.
   //
-  // This file owns row visibility (showContextMenu), the nine row handlers
-  // (#ctxEdit, #ctxLineProperties, #ctxRepeatDrop, #ctxShowLength,
+  // This file owns row visibility (showContextMenu), the eleven row handlers
+  // (#ctxEdit, #ctxLineProperties, #ctxRepeatDrop, #ctxShowLength, #ctxMoveLabel and
+  // #ctxResetLabel (LABEL-SLIDE, 2026-10-12: a shown length label slides along its line
+  // under the pointer and the next click or lift drops it; the seat is line.labelT, a
+  // fraction of the line's length; App.slideMovingLabel / dropMovingLabel /
+  // cancelLabelMove are the hooks app.js's pointer handlers and the Esc ladder call),
   // #ctxAssignGroup, #ctxEditRoomBox, #ctxEditMultiplyZone, #ctxEditScaleZone,
   // #ctxDelete), the capture-phase Escape that closes only the menu, and the
   // menu's click-away. Four rows are bound by the feature that owns their
@@ -106,6 +110,87 @@
     App.renderAnnotations();
     App.updateUI();
   };
+  // LABEL-SLIDE (2026-10-12, Wendi: "need ability to move length labels so they can be
+  // legible when they overlap"). "Move label" puts a line's length label in hand: it slides
+  // along the line under the pointer, projected onto the nearest point (so a polyline's
+  // label can cross onto another leg), the next click or lift drops it, Esc or a
+  // right-click puts it back. The seat is line.labelT, a fraction of the line's length,
+  // absent until a label is moved and deleted again by "Reset label", so an unmoved line
+  // keeps its shape and rides every payload as before. One undo snapshot per move, pushed
+  // at the first slide (a cancelled slide leaves that snapshot as a no-op undo step).
+  const ctxMoveLabelEl = document.getElementById('ctxMoveLabel');
+  if (ctxMoveLabelEl) ctxMoveLabelEl.onclick = () => {
+    const state = App.state;
+    const t = state.ctxTarget;
+    hideMenu();
+    state.ctxTarget = null;
+    if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
+    const ann = activeAnnotations();
+    const line = t.type === 'quickLine' ? ann?.quickLines?.[t.index] : ann?.polylines?.[t.index];
+    if (!line || !line.showLength) return;
+    state.movingLabel = { type: t.type, index: t.index, pageIdx: state.currentPage, lineId: line.id, before: line.labelT, moved: false };
+    App.showToast('Slide the label along its line and click to drop it · Esc puts it back', 4000);
+  };
+  const ctxResetLabelEl = document.getElementById('ctxResetLabel');
+  if (ctxResetLabelEl) ctxResetLabelEl.onclick = () => {
+    const state = App.state;
+    const t = state.ctxTarget;
+    hideMenu();
+    state.ctxTarget = null;
+    if (!t || (t.type !== 'quickLine' && t.type !== 'polyline')) return;
+    const ann = activeAnnotations();
+    const line = t.type === 'quickLine' ? ann?.quickLines?.[t.index] : ann?.polylines?.[t.index];
+    if (!line || typeof line.labelT !== 'number') return;
+    App.pushUndoSnapshotCurrentPage();
+    delete line.labelT;
+    App.markProjectDirty();
+    App.renderAnnotations();
+    App.updateUI();
+  };
+  // The line whose label is in hand, or null once it is gone (deleted, undone, another page).
+  function movingLine() {
+    const state = App.state, m = state.movingLabel;
+    if (!m || m.pageIdx !== state.currentPage) return null;
+    const ann = activeAnnotations();
+    const line = m.type === 'quickLine' ? ann?.quickLines?.[m.index] : ann?.polylines?.[m.index];
+    return line && (!m.lineId || line.id === m.lineId) ? line : null;
+  }
+  function labelSeatNearest(line, type, pdf) {
+    const state = App.state;
+    if (type === 'quickLine') {
+      const a = { x: line.x1, y: line.y1 }, b = { x: line.x2, y: line.y2 };
+      const lt = (state.lineTypes || []).find(l => l.id === line.lineTypeId);
+      if (lt?.curveStyle === 'arc') return App.quadraticBezierParamNearest(pdf, a, App.getQuadraticBezierControlPoint(a, b, 1), b);
+      return App.polylineFractionNearest([a, b], false, pdf);
+    }
+    return App.polylineFractionNearest(line.points || [], !!line.closed, pdf);
+  }
+  function slideMovingLabel(pdf) {
+    const state = App.state, m = state.movingLabel;
+    if (!m || !pdf) return false;
+    const line = movingLine();
+    if (!line) { cancelLabelMove(); return false; }
+    if (!m.moved) { App.pushUndoSnapshotCurrentPage(); m.moved = true; }
+    line.labelT = labelSeatNearest(line, m.type, pdf);
+    App.renderAnnotations();
+    return true;
+  }
+  function dropMovingLabel(pdf) {
+    const state = App.state, m = state.movingLabel;
+    if (!m) return;
+    if (pdf) slideMovingLabel(pdf);
+    state.movingLabel = null;
+    if (m.moved) { App.markProjectDirty(); App.updateUI(); }
+    App.renderAnnotations();
+  }
+  function cancelLabelMove() {
+    const state = App.state, m = state.movingLabel;
+    if (!m) return;
+    const line = movingLine();
+    state.movingLabel = null;
+    if (line && m.moved) { if (m.before === undefined) delete line.labelT; else line.labelT = m.before; }
+    App.renderAnnotations();
+  }
   document.getElementById('ctxAssignGroup').onclick = () => {
     const state = App.state;
     const t = state.ctxTarget;
@@ -225,6 +310,15 @@
       const line = state.ctxTarget?.type === 'quickLine' ? ann?.quickLines?.[state.ctxTarget.index] : ann?.polylines?.[state.ctxTarget.index];
       showLengthBtn.textContent = line?.showLength ? 'Hide Length' : 'Show Length';
     }
+    // LABEL-SLIDE: a shown label can be slid along its line; one that was slid can go home.
+    const moveLabelBtn = document.getElementById('ctxMoveLabel');
+    const resetLabelBtn = document.getElementById('ctxResetLabel');
+    if (moveLabelBtn && resetLabelBtn) {
+      const ann = canShowLength ? activeAnnotations() : null;
+      const line = ann ? (state.ctxTarget.type === 'quickLine' ? ann.quickLines?.[state.ctxTarget.index] : ann.polylines?.[state.ctxTarget.index]) : null;
+      moveLabelBtn.style.display = line?.showLength ? 'block' : 'none';
+      resetLabelBtn.style.display = line?.showLength && typeof line.labelT === 'number' ? 'block' : 'none';
+    }
     const canAssignGroup = !state.isViewer && App.groupsUiVisible() && (state.ctxTarget?.type === 'marker' || state.ctxTarget?.type === 'quickLine' || state.ctxTarget?.type === 'polyline');
     assignGroupBtn.style.display = canAssignGroup ? 'block' : 'none';
     const ctxEditMzBtn = document.getElementById('ctxEditMultiplyZone');
@@ -329,4 +423,7 @@
   });
 
   App.showContextMenu = showContextMenu;   // app.js's handleContextMenu; spec seam (drop-mode, duct-b19b, tutorial)
+  App.slideMovingLabel = slideMovingLabel;   // LABEL-SLIDE: app.js's mousemove / touchmove
+  App.dropMovingLabel = dropMovingLabel;     // the click / lift
+  App.cancelLabelMove = cancelLabelMove;     // Esc (features/esc-ladder.js), a right-click
 })();

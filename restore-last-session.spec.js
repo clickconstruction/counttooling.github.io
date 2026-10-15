@@ -135,7 +135,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
         pageScales: [null],
         pageRotations: [0],
       };
-      await window.__takeoffBackupPutForTest('local', data, blob, null, Date.now(), 'sample-plan', null);
+      await window.__takeoffBackupPutForTest('local', data, blob, null, Date.now(), 'my-takeoff', null);   // not a teaching set's name: those are dropped over an open plan (FIELD-TAKEOFF)
     });
   }
 
@@ -161,7 +161,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
 
     // 1. The prompt appears signed-out, with the project name.
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
-    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
+    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('my-takeoff');
     // Key-aside: the candidate now lives under the held key.
     expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
 
@@ -229,7 +229,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
     await page.reload();
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/, { timeout: 15000 });
-    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
+    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('my-takeoff');
     expect(await page.evaluate(countHeldMarkers, HELD_ID)).toBe(3);
 
     // Discard deletes the held record AND 'local'; next boot shows no prompt.
@@ -423,7 +423,7 @@ test.describe('Last-session restore (features/restore-last-session.js)', () => {
 
     await page.evaluate(() => window.App.stopTutorial(false));
     await expect(page.locator('#lastSessionRestoreModal')).toHaveClass(/visible/);
-    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('sample-plan');
+    await expect(page.locator('#lastSessionRestoreMessage')).toContainText('my-takeoff');
     expect(await page.evaluate(promptState)).toEqual({ visible: true, pending: true, deferred: false });
     // Discard: the tour's takeoff is untouched.
     await page.evaluate(() => document.getElementById('lastSessionRestoreDiscard').click());

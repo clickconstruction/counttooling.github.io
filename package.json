@@ -27,6 +27,7 @@
     "lint": "eslint . --max-warnings 0",
     "check": "node scripts/check.js",
     "check:courses": "node scripts/score-courses.js --check",
+    "smoke:demo": "node scripts/smoke-demo.js",
     "test": "playwright test",
     "test:unit": "node --test ./*.test.js",
     "precloudtest": "node scripts/generate-config.js",

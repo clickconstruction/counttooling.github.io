@@ -1,7 +1,7 @@
 ---
 title: Working faster with the keyboard
 description: Tool hotkeys, the visual Keyboard Map, Quick Keys for your counters and line types, and 45° snap: how experienced estimators keep both hands moving.
-updated: 2026-09-21
+updated: 2026-10-01
 order: 6.5
 icon: keys
 category: Working faster
@@ -84,6 +84,17 @@ Toggle `J` (or the snap button in Line Type Settings) while drawing
 [lines or polylines](/guides/measuring-runs-lines-and-polylines/) and every
 segment locks to horizontal, vertical, or a 45° diagonal, the angles real
 plumbing and conduit runs actually take. Toggle it off for freehand tracing.
+
+## Let the plan pick the counter
+
+Toggle `A` (or the **Auto-pick** pill beside the Counter button) and a click
+beside a tag the plan prints, a `B` beside a light or an `FS-1` beside a floor
+sink, lands on the counter that carries that tag, with one counter armed for all
+of them. A ring and the counter's own icon mark the tag before you click, only
+when the click is about to land somewhere other than the counter you armed. A
+counter whose name says the tag keeps it, so `3IN FD` stays `3IN FD` beside an
+`FD`. It's off until you turn it on, and stays the way you leave it on this
+device.
 
 ## One workflow, both hands
 

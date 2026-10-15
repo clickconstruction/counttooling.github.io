@@ -92,6 +92,17 @@
       try { App.pushSaveEvent('restore_prompt_dropped', 'Last-session offer dropped: a plan is already open', JSON.stringify({ projectId: promptProjectId(pending) })); } catch (_) { /* noop */ }
       return false;
     }
+    // FIELD-TAKEOFF (2026-10-02): nor a LOCAL offer of a teaching set over an open plan. The sample
+    // sheets are reset whenever a lesson, course or tour opens them, so there is nothing of the
+    // reader's to get back, and the test drive's field door (/app/?field=<trade>) had "your last
+    // session: sample-lessons" land on the finished electrical takeoff it had just laid.
+    const teachingSet = !pending.cloudLast && App.tourKit && App.tourKit.isTeachingSet && App.tourKit.isTeachingSet(pending.proj && pending.proj.name);
+    if (teachingSet && App.state && App.state.pages && App.state.pages.length > 0) {
+      deferredRestore = null;
+      stopDeferredPoll();
+      try { App.pushSaveEvent('restore_prompt_dropped', 'Last-session offer dropped: a teaching set, and a plan is already open', JSON.stringify({ name: pending.proj.name })); } catch (_) { /* noop */ }
+      return false;
+    }
     const blocker = restorePromptBlocker();
     if (blocker) {
       deferredRestore = pending;
@@ -243,7 +254,8 @@
     const hasValidCheckout = proj.checked_out_by === userId && !lockExpired;
     state.loadedViaViewLink = false;
     state.isViewer = !hasValidCheckout;
-    state.canCheckOut = (isOwner && (!proj.checked_out_by || lockExpired)) || false;
+    // LEAD-ROLE: a lead or admin may check out any project, as the server's can_check_out says.
+    state.canCheckOut = ((isOwner || App.canTakeOver()) && (!proj.checked_out_by || lockExpired)) || false;
     if (proj.id === 'local') {
       // Local sessions have no checkout: the derivation above computes
       // hasValidCheckout = false (checked_out_by is always null), which left

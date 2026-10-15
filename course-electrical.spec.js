@@ -296,11 +296,18 @@ test.describe('The electrical course: a question is answered with a click', () =
     // the card is off the Type A row the step says to click
     const apart = await page.evaluate(() => { const row = Array.from(document.querySelectorAll('#countersList .sidebar-item')).find((el) => /Type A/.test(el.textContent)); const c = document.getElementById('tourCard').getBoundingClientRect(), a = row.getBoundingClientRect(); return { apart: c.right <= a.left || c.left >= a.right || c.bottom <= a.top || c.top >= a.bottom, under: (document.elementFromPoint(a.left + 30, a.top + a.height / 2) || {}).id || (document.elementFromPoint(a.left + 30, a.top + a.height / 2) || {}).className }; });
     expect(apart.apart).toBe(true);
-    // A armed, a click on the center of a B troffer: the plan's letter, 20 pt away, wins
+    // A armed, a click on the center of a B troffer: the plan's letter, 20 pt away, wins. Only with
+    // Auto-pick on (AUTO-PICK, 2026-10-01): line 3 of the card, the header pill, clear of the card.
     await page.evaluate(() => { const s = window.state; s.activeCounterType = s.counters.find((c) => c.name === 'Type A').id; s.tool = window.App.TOOL.COUNTER; window.App.updateUI(); });
+    expect(await page.evaluate(() => !!window.state.counterSettings.autoPick)).toBe(false);
+    await page.click('#counterAutoPickBtn');
+    expect(await page.evaluate(() => !!window.state.counterSettings.autoPick)).toBe(true);
     await page.evaluate(() => window.App.handleCanvasClick(null, window.App.lessonKit.P(640, 380)));
     await page.evaluate(() => window.App.handleCanvasClick(null, window.App.lessonKit.P(665, 272)));
     expect(await page.evaluate(() => { const s = window.state; const m = window.App.getActiveAnnotations(s.pages[1]).counterMarkers; const n = (re) => { const c = s.counters.find((x) => re.test(x.name)); return c ? (m[c.id] || []).length : -1; }; return { a: n(/^Type A$/), b: n(/^B · /), c: n(/^C · /) }; })).toEqual({ a: 0, b: 1, c: 1 });
+    // the chapter turned Auto-pick on; leaving it gives the reader's own setting back
+    await page.evaluate(() => window.App.stopTutorial(false));
+    expect(await page.evaluate(() => !!window.state.counterSettings.autoPick)).toBe(false);
     expect(errors).toEqual([]);
   });
 

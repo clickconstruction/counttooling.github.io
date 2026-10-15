@@ -1,0 +1,55 @@
+{
+  "v": 4,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-09-30T05:20:00Z"
+  },
+  "lists": "css",
+  "title": "ClickTooling Pitch",
+  "order": [
+    "cover",
+    "bottleneck",
+    "answer",
+    "robot",
+    "plans-mistakes",
+    "every-trade",
+    "for-hvac",
+    "see-it",
+    "traction",
+    "ask",
+    "appendix",
+    "revenue-paths",
+    "libraries",
+    "robot-alongside",
+    "cheap-audit"
+  ],
+  "sections": {
+    "s1": {
+      "description": "The problem, the answer, and the robot.",
+      "start": "cover"
+    },
+    "s2": {
+      "description": "What changes for a shop, and for you.",
+      "start": "plans-mistakes"
+    },
+    "s3": {
+      "description": "See it, the numbers, and the ask.",
+      "start": "see-it"
+    },
+    "s4": {
+      "description": "Backup for the questions after.",
+      "start": "appendix"
+    }
+  },
+  "faces": {
+    "oswald": {
+      "family": "Oswald",
+      "href": "https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&display=swap"
+    },
+    "public-sans": {
+      "family": "Public Sans",
+      "href": "https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;600;700&display=swap"
+    }
+  },
+  "designSystems": []
+}

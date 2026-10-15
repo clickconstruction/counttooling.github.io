@@ -190,8 +190,8 @@ test.describe('Ghost tool (features/ghost.js)', () => {
     expect(now.counters).toBe(4);
     expect(now.lines).toBe(1);
 
-    // Re-enable runs and stamp again — the ghost survives its own stamp, so a
-    // typical can be walked across the sheet and dropped repeatedly.
+    // Re-enable runs and stamp again: the pure stamp leaves the ghost in its list (it is the
+    // menu's Stamp that hands it to the cursor, STAMP-PICKUP below), so it stamps repeatedly.
     const res2 = await page.evaluate(() => {
       const ann = window.App.getActiveAnnotations(window.state.pages[0]);
       ann.ghosts[0].showLines = true;
@@ -208,6 +208,74 @@ test.describe('Ghost tool (features/ghost.js)', () => {
       return new Set(ids).size === ids.length;
     });
     expect(idsUnique).toBe(true);
+  });
+
+  // STAMP-PICKUP (2026-10-13): Stamp from the menu hands the ghost back to the cursor, so
+  // nothing stays over the marks just stamped; the next drop places it again, Esc lets it go,
+  // and an undo of the stamp puts the ghost back on the sheet and drops the one in hand.
+  test('Stamp hands the ghost back to the cursor; Esc lets it go; undo puts it back', async ({ page }) => {
+    await seedPlan(page);
+    await page.evaluate(() => {
+      document.getElementById('ghostBtn').click();
+      window.App.handleGhostCanvasClick({ x: 0, y: 0 });
+      window.App.handleGhostCanvasClick({ x: 100, y: 100 });
+      window.App.handleGhostCanvasClick({ x: 300, y: 100 });
+      window.App.hideModal('airboardToastModal');
+    });
+    expect(await totals(page)).toMatchObject({ counters: 2, lines: 1, ghosts: 1 });
+
+    // Right-click the ghost's centre and Stamp: the marks are real, the ghost is in hand.
+    const stamp = () => page.evaluate(() => {
+      const st = window.state;
+      const b = window.App.ghostBounds(window.App.getActiveAnnotations(st.pages[0]).ghosts[0]);
+      const at = { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 };
+      if (!window.App.tryOpenGhostMenuAt(at, 200, 200)) throw new Error('ghost menu did not open');
+      document.querySelector('#ghostMenu [data-ghost-action="stamp"]').click();
+      return { at, toast: document.getElementById('airboardToastText')?.textContent || '' };
+    });
+    const first = await stamp();
+    expect(first.toast).toContain('in hand for the next spot');
+    expect(await totals(page)).toMatchObject({ counters: 4, lines: 2, ghosts: 0 });
+    expect(await page.evaluate(() => ({
+      inHand: !!window.state.placingGhost,
+      fromStamp: window.state.placingGhostFromStamp,
+      tool: window.state.tool,
+      grab: window.state.placingGhostLast,
+      menuOpen: document.getElementById('ghostMenu').classList.contains('visible'),
+    }))).toEqual({ inHand: true, fromStamp: true, tool: 14, grab: first.at, menuOpen: false });
+
+    // The next click carries it by (click - grab) and drops it: on the sheet again, as one ghost.
+    await page.evaluate((at) => { window.App.handleGhostCanvasClick({ x: at.x, y: at.y + 200 }); }, first.at);
+    expect(await totals(page)).toMatchObject({ counters: 4, lines: 2, ghosts: 1 });
+    expect(await page.evaluate(() => ({ inHand: !!window.state.placingGhost, fromStamp: window.state.placingGhostFromStamp }))).toEqual({ inHand: false, fromStamp: false });
+    const moved = await page.evaluate(() => window.App.getActiveAnnotations(window.state.pages[0]).ghosts[0].src.counterMarkers.wc[0]);
+    expect(moved.x).toBe(260);   // the first drop put it at (260, 60); the carry adds (0, +200)
+    expect(moved.y).toBe(260);
+
+    // Stamp again, then Esc: nothing left on the sheet, the tool still armed, the marks kept.
+    await stamp();
+    expect(await totals(page)).toMatchObject({ counters: 6, lines: 3, ghosts: 0 });
+    await page.locator('body').press('Escape');
+    expect(await page.evaluate(() => ({ inHand: !!window.state.placingGhost, tool: window.state.tool }))).toEqual({ inHand: false, tool: 14 });
+    expect(await totals(page)).toMatchObject({ counters: 6, lines: 3, ghosts: 0 });
+
+    // Undo of a stamp: the marks come back off, the ghost is back on the sheet, and the copy
+    // in hand is dropped so it is not doubled. Redo re-stamps and leaves nothing in hand.
+    await page.evaluate(() => { window.App.handleGhostCanvasClick({ x: 0, y: 0 }); window.App.handleGhostCanvasClick({ x: 100, y: 100 }); window.App.handleGhostCanvasClick({ x: 300, y: 400 }); });
+    await stamp();
+    expect(await totals(page)).toMatchObject({ counters: 8, lines: 4, ghosts: 0 });
+    await page.locator('body').press('Control+z');
+    expect(await totals(page)).toMatchObject({ counters: 6, lines: 3, ghosts: 1 });
+    expect(await page.evaluate(() => ({ inHand: !!window.state.placingGhost, fromStamp: window.state.placingGhostFromStamp }))).toEqual({ inHand: false, fromStamp: false });
+    await page.locator('body').press('Control+Shift+z');
+    expect(await totals(page)).toMatchObject({ counters: 8, lines: 4, ghosts: 0 });
+    expect(await page.evaluate(() => !!window.state.placingGhost)).toBe(false);
+
+    // A ghost in hand from a CAPTURE survives an unrelated undo: no step holds it.
+    await page.evaluate(() => { window.App.pushUndoSnapshot(); window.App.handleGhostCanvasClick({ x: 0, y: 0 }); window.App.handleGhostCanvasClick({ x: 100, y: 100 }); });
+    expect(await page.evaluate(() => !!window.state.placingGhost)).toBe(true);
+    await page.locator('body').press('Control+z');
+    expect(await page.evaluate(() => ({ inHand: !!window.state.placingGhost, fromStamp: window.state.placingGhostFromStamp }))).toEqual({ inHand: true, fromStamp: false });
   });
 
   test('dragging a ghost with the mouse never arms a capture corner', async ({ page }) => {

@@ -13,6 +13,824 @@ expired recovery UX" work occupies that slot).
 
 ---
 
+## feat(zoom): zoom past 1200% with a sharp overlay window (DEEP-ZOOM, 2026-10-14)
+
+Wendi wanted to zoom in past 1200%, and at depth her marks blurred while the sheet stayed crisp.
+The plan (journeys/plans/DEEP-ZOOM.md, measured on main the same day) in three parts:
+
+- **The overlay window** (part 1). Past the canvas budget `#annCanvas` is sized to the clamped
+  `#pdfCanvas` buffer, so at 3000% the marks drew at a fifth of the screen's density. A third
+  canvas, `#annWindowCanvas`, is now the visible area at full density: `renderAnnotationsInner`
+  is split into the sizing and `paintOverlay(ctx, width, height, page)`, and
+  `renderAnnotationWindow` runs that same body with `currentRenderZoom`, `currentEffDpr` and a
+  new `overlayOffset` rebound around the call (restored in a finally), boxed by the crop tile's
+  math in container units with the k factor, so a mid-gesture paint and a tile-first commit are
+  screen-sharp too. Painted with every overlay paint (the window first, so the page pass leaves
+  the overlays' DOM anchors in page units), re-cut at the four pan-end sites beside
+  `scheduleCropTile` and at a cold zoom commit before its tile rasters; hidden while the page
+  overlay is not meaningfully soft (the crop tile's 1.15 deficit) and when one screen of pixels
+  would exceed the render budget. The page pass is byte-identical (render-pixels holds).
+  Found on the first 3000% screenshot: the window is transparent, and under it the page overlay
+  drew every mark fat and soft (raw buffer widths at a fifth of the density), haloing the crisp
+  marks; so the page pass ends by clearing the window's box out of itself, under the window only
+  the window shows, the soft overlay stands only in the strips a pan reveals, and a pan end or a
+  cold commit repaints the whole overlay (`recutOverlayWindow`). The aim loupe samples the crop
+  canvas and the window where they stand, so a tablet keeps sharp marks under the loupe at depth.
+- **The ceiling** (part 2). `getMaxZoom()` is the project's own ceiling under
+  `deviceZoomCeiling()`: 1200% where the canvas probe found under 32 Mpx (iOS Safari) or Chromium
+  reports under 4 GB, else 5000%, then Firefox's layout wall as 16e6 over the sheet's longest
+  side. The save blob and the project payload carry `getProjectMaxZoom()`, never the device's.
+  Zoom Settings' slider runs to the device's ceiling, shows the project's own held to it with a
+  hint where the device holds it, and writes only when moved. The rail gains 2000, 3000 and 5000.
+- **The backdrop budget** (part 3). Past 4× `effectiveDpr` holds the full-page buffer to 24 Mpx,
+  about half the peak memory at depth, since the tiles and the window carry the screen.
+- app.js (`// SECTION: Deep-zoom overlay window`), app/index.html, styles.css, features/zoom.js,
+  features/zoom-rail.js, deep-zoom.spec.js (new), zoom.spec.js (the slider's max is the device's
+  ceiling), the ARCHITECTURE rows and catalog bullet, AGENTS.md's `maxZoom` field, the plan file's
+  Built section, the PUNCHLIST row closed, sw.js, the TOC and the file map restamped.
+- **Live check** (2026-10-14, after the Pages build of e7f80508): on counttooling.com, the
+  restaurant sheet with two counters and two runs seeded, zoom set to 3000% on a 2× display: the
+  device ceiling read 50, the overlay window cut at 804 × 641 CSS px with a 1608 × 1283 buffer
+  (k = 1), the page overlay at 0.166 density with its box cleared under the window, the full-page
+  buffer at 23,994,600 px, the tiles live, the ratchet at 0.5, a probe on the seeded run in the
+  window its colour and clear one CSS px above it. Before the merge the same sheet at the old
+  1200% ceiling drew the icons soft and the runs three pixels fat beside crisp plan text.
+## docs: the hand-kept lists caught up to main at 655a023 (2026-10-13)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md,
+FEATURE-CATALOG.md, the Overseer guide and the BOARD-QUIET plan against the code after the seven
+PRs since the pass at 5362f42 earlier today (#327 the measuring guide, #328 the BOARD-QUIET row,
+#329 PEOPLE-TWINS, #330 REVIEW-BAR, #331 DROP-CARD-BUTTONS, #332 CLOUD-OFF-ICON, #333
+STAMP-PICKUP). Each kept its CHANGELOG entry, its ARCHITECTURE rows and, for the board, the
+guide; what drifted was the lists beside them, the product copy, and the lines LEAD-ROLE
+(2026-10-02) had already left behind in the rows these PRs touched.
+
+- **AGENTS.md.** The in-memory state list gains the ghost in hand (`state.placingGhost`,
+  `placingGhostLast`, `placingGhostFromStamp`), since STAMP-PICKUP made it a cross-file contract
+  that app.js's undo reads.
+- **ARCHITECTURE.md.** The ghost.spec row said the ghost survives its own stamp for the next drop
+  and listed neither the STAMP-PICKUP test nor the drag test; the bid-board row named overseers
+  and admins where the sidebar button and the server have included leads since LEAD-ROLE, and
+  its spec list lacked this week's three board tests; the review-flow row gave
+  `setProjectReviewStatus` two arguments and a reviewer set without leads. The feature catalog
+  ("Features Beyond Spec") had no bullet for the Ghost / Stamp tool (2026-08-20) or for the All
+  Bids board and the review handoff (2026-08-28); both written.
+- **FEATURES.md and FEATURE-CATALOG.md.** A line and an entry for the All Bids board with the
+  review handoff (none of the four board PRs wrote one); a line and an entry for Ghost / Stamp,
+  which had none since it shipped; and the catalog's Lead role entry, which FEATURES.md had and
+  the catalog did not.
+- **SUPABASE_SETUP.md.** The handoff bullet still had the overseer clicking Mark reviewed on the
+  card.
+- **The Overseer guide.** "Only an overseer or admin can mark it reviewed" and the admins aside
+  under Granting the role, both from before leads; rebuilt. The board screenshot showed the old
+  badges (the CLOUD-OFF-ICON entry said so): the generator's callout box still pointed at the
+  removed `.bid-card-badge-warn`, now `.bid-card-cloud-off`, and `overseer-all-bids.png` is
+  rebuilt from it (the overlay now right-aligns a callout label whose box sits at the frame's
+  right edge, where "Cloud status" was clipped).
+- **BOARD-QUIET.** The plan's Shipped list lacked CLOUD-OFF-ICON and its closing line still named
+  the Fully cloud badge as a redundancy to remove; the PUNCHLIST row names the fourth step.
+- Code comments the rows copy: features/review-flow.js's and features/bid-board.js's headers
+  (leads), ghost.spec.js's old stamp test (the pure stamp leaves the ghost in its list). sw.js
+  restamped for the two shell files.
+- Not touched: RECONSTITUTE.md (no shape changed; a ghost in hand is state, not a payload),
+  JOURNEY-MAP.md, the deck, the courses.
+
+## feat(ghost): Stamp hands the ghost back to the cursor (STAMP-PICKUP, 2026-10-13)
+
+Wendi: "i want the text and box to go away after using a ghost stamp." The box and the word
+Typical are the ghost itself, which survived its own stamp by design so it could be dragged
+to the next location and stamped again; clearing it meant right-click, Delete ghost, after
+every stamp. The same next-stamp is served better by carrying the ghost than by leaving it.
+
+- **Stamp** now lands the marks and hands the ghost back to the cursor, grabbed where the menu
+  was opened, exactly as it rides between capture and the first drop. Nothing stays over the
+  marks just stamped. The next click drops it on the next spot; Esc lets it go ("Ghost
+  dropped. The stamped marks stay."); any other tool orphans it as before.
+- **Undo** of a stamp takes the marks back and puts the ghost back on the sheet, so the copy in
+  hand is dropped rather than doubled (`state.placingGhostFromStamp`, read by app.js's undo and
+  redo through `dropGhostPickedUpByStamp`); a ghost in hand from a capture is untouched by an
+  unrelated undo, since no step holds it. On touch nothing moves until the next tap, which is
+  how placement already works there.
+- features/ghost.js (the stamp branch, the grab point from the menu, Esc, the purge), app.js
+  (the state field, clearToolStarts, undo/redo), ghost.spec.js (the new test: stamp, in hand
+  with the grab point, the next drop, stamp again, Esc, undo and redo, a captured ghost's undo),
+  the ARCHITECTURE row, sw.js and the TOC restamped.
+
+## style(bid-board): the cloud says nothing unless it is missing (CLOUD-OFF-ICON, 2026-10-13)
+
+Will, on the quieter cards: "when something is fully cloud I would like to see nothing; when
+canvas only, a cloud with a line through it up in the corner, the note on hover; and the
+estimator aligned right."
+
+- The green ✓ Fully cloud badge is gone; the normal case is silent. A bid without its PDF in
+  the cloud wears a crossed-out cloud (an inline stroke SVG, the accent yellow at 90%) in the
+  card's top-right corner, over the title if the title runs that far, on a halo of the card's
+  own background. Hover it (or focus the card) and a small note drops under it: "Canvas only.
+  The markups are in the cloud, but the plan PDF was never uploaded and still lives on the
+  estimator's device." The same note is its `aria-label`.
+- The estimator's name sits right-aligned under the title.
+- features/bid-board.js, styles.css (the badge rule out, the icon and its tooltip in; the card
+  is `position: relative` for the corner), bid-board.spec.js (no cloud badges; one crossed-out
+  cloud on the card without a PDF, labelled; none on the first), the Overseer guide's card
+  bullet (rebuilt), the ARCHITECTURE row, sw.js restamped. The guide's board screenshot still
+  shows the old badges until `npm run build:screenshots` is run.
+
+## feat(bid-board): the cards carry no decision (DROP-CARD-BUTTONS, 2026-10-13)
+
+Will's call on the before/after boards of the "All Bids, quieter" canvas: now that the review
+bar in the opened bid carries Mark reviewed and Request changes…, the per-card copies go. A
+reviewer who has not opened a bid cannot say what should change in it, and a Mark reviewed on
+the card invited ticking off what was never looked at. A ready card drops from about 236px to
+about 150px, so a lane of forty fits two screens instead of six, and a card is one control
+again (no buttons inside a button, no stop-propagation).
+
+- features/bid-board.js: the two rows and their handlers go from `bidCardHtml` and the render;
+  the card click is the way to the decision. styles.css loses their rules. The board no longer
+  calls `App.setProjectReviewStatus`; features/review-flow.js's header says so.
+- bid-board.spec.js: the review-handoff test now pins that no card carries a button; the
+  review-bar test already covers both decisions and Next ready. The Overseer guide's handoff
+  section (rebuilt), the ARCHITECTURE rows for bid-board and review-flow, the plan file and the
+  BOARD-QUIET row, sw.js restamped.
+
+## feat(review): the review bar in the bid, and the Ready lane oldest waiting first (REVIEW-BAR, 2026-10-13)
+
+BOARD-QUIET step 1, Will's two calls of 2026-10-13: the Ready lane sorts oldest waiting first,
+and the decision moves to where the evidence is. A reviewer judged a bid from a card she had
+not opened; now the board is for triage and the bid carries its own decision.
+
+- **The bar.** While a bid that is ready for review is open by someone who can oversee it
+  (admin, overseer, lead), a slim bar sits under the header in the app's flex column, so the
+  sheet gives up its height rather than being covered: "Reviewing · waiting 11 days ·
+  twin-estimator-1 · 70 counts", then Request changes… (the confirm dialog's one-line note, the
+  server still refusing a blank one), one filled Mark reviewed, and Next ready, which opens the
+  next bid in the board's lane. After a decision the bar says what happened and how many are
+  left ("Reviewed ✓ · 40 more ready"), and Next ready walks on, so a morning of reviews is one
+  loop instead of forty trips to the board. It hides when the open project is no longer the one
+  it was shown for.
+- **How it knows.** features/load-project.js ends a cloud load by calling
+  `App.onCloudProjectRowLoaded(proj)` with the RPC row, which carries `review_status`; the
+  board hands its Ready lane as rendered to `App.setReviewQueue` on every render, so Next
+  ready walks the lane the reviewer sees, filters included. A decision writes the status onto
+  the row the board holds, so its lane agrees without a refetch.
+- **Oldest waiting first.** The lane sorts on `review_requested_at`, a row without a stamp
+  last; the lane title says so in a dim hint.
+- The board's per-card Mark reviewed and Request changes… stay beside the bar for a bid the
+  reviewer does not need to open; whether they go is still Will's call (BOARD-QUIET).
+- features/review-flow.js (the bar), features/bid-board.js (the sort, the queue),
+  features/load-project.js (the hook), app.js (`updateUI` calls `App.refreshReviewBar`),
+  app/index.html, styles.css, the Overseer guide's handoff section (rebuilt), sw.js restamped.
+  bid-board.spec.js gains the review-bar test (the bar on the oldest ready card, Mark reviewed,
+  Next ready walking to the twin's bid, Request changes through the dialog, the board agreeing,
+  the bar gone with the project, no bar for a reviewed bid or a non-reviewer) and pins the
+  lane's order.
+
+## feat(bid-board): People · Twins · All, and an intro that says what the board does (PEOPLE-TWINS, 2026-10-13)
+
+Wendi, a lead, opened All Bids on 41 cards, every one a digital twin's backtest, each wearing a
+gold Ready badge and two gold buttons. The twins' bids are the fleet's work, not an estimator's,
+and they outnumber the human bids many to one, so no restyling of the cards could quiet her
+board. This is the first step of the "All Bids, quieter" mockups (the canvas of 2026-10-13); the
+quiet list and the review bar in the bid are the follow-up, BOARD-QUIET in the punch list.
+
+- **The switch.** A People · Twins · All `.radio-seg` beside the search (`#bidBoardKind`). The
+  board opens on People for everyone but an admin, who opens on All, the view they had. A twin
+  is told by the owner's email against the pattern twin-login enforces
+  (`twin-estimator-N@twins.counttooling.local`, `TWIN_OWNER_RE`): the RPC carries no twin flag,
+  and a twin account outside the pattern cannot sign in, so the pattern is the fleet. Under
+  People a line under the list says how many twin bids are off, with a "show twins" link; the
+  estimator filter lists only the owners the segment shows and keeps its pick when it survives
+  the flip; the switch hides itself for a company with no twin bids. The choice is per open,
+  not stored: the default is the role's.
+- **The copy.** The intro said "Read-only, nothing can be changed by accident" above two buttons
+  that change a bid's review status (written for the overseer's board before the handoff
+  landed). Now: "Every bid in the company, newest first. Click one to open it read-only."
+- features/bid-board.js, app/index.html, styles.css, the Overseer guide's board section (rebuilt),
+  sw.js restamped. bid-board.spec.js gains the fifth test: People and the note for a non-admin,
+  show twins, All with both ready bids in the lane and every owner listed, the admin's All, and
+  the switch hidden when no bid is twin-owned; the existing four pass unchanged under the
+  People default.
+
+## docs(guides): the measuring article teaches Show Length and Move label (2026-10-13)
+
+The measuring guide (content/guides/measuring-runs-lines-and-polylines.md) never taught the
+on-sheet length label, so LABEL-SLIDE had nowhere to land in Help. A "Length labels on the
+sheet" section, between Reading drops back and Keep lines clean: Show Length and Hide Length
+from the line's right-click menu (long-press on touch), what the chip is (feet and inches at the
+midpoint, turned along the line, a tick across each end), that it is markup and prints and
+exports, unlike the drop chips, and where its size and orientation live (Line Type Settings:
+Label size, Orient length with line direction); then Move label (the slide, the drop by click
+or lift, a polyline's label crossing legs), Esc or a right-click to put it back, Reset label,
+and the short-run limit. Text only, no screenshot; `updated` 2026-10-13; guides rebuilt.
+Verified by guides.test.js and a read of the rendered page in the browser; guides.spec.js
+could not launch on the dev machine (Playwright 1.58.2's headless Chromium build is missing
+from the browser cache; `npx playwright install chromium` restores it), so CI's e2e job is the
+browser check.
+
+## docs: the hand-kept lists caught up to main at 5362f42 (2026-10-13)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md, SUPABASE_SETUP.md, FEATURES.md and
+FEATURE-CATALOG.md against the code after the two PRs since the 2026-10-12 pass (#324
+RUBBER-BAND-CAPS, #325 LABEL-SLIDE). Both kept their CHANGELOG entries, their spec rows, the
+catalog, RECONSTITUTE's line shapes and the fields rule; what drifted was the lists a row keeps
+inside itself, and the two product-copy files neither PR touched.
+
+- **AGENTS.md.** The in-memory state list gains `state.movingLabel` (the label in hand, one
+  slide long); the Esc rule names the rung a label in hand takes, under the overlays and the
+  popovers and before the tool's.
+- **ARCHITECTURE.md.** The mark-context-menu row still counted nine row handlers and named
+  neither `#ctxMoveLabel` nor `#ctxResetLabel`, said nothing new was published (app.js now
+  publishes the three projection helpers for it, and it registers the three slide hooks), and
+  listed no label-slide spec; the esc-ladder row's rung order skipped the label rung; the
+  canvas-draw row's bare-name reads lacked `polylinePointAtFraction`, the seat walk.
+- **FEATURES.md and FEATURE-CATALOG.md.** A line and an entry for the sliding length label:
+  AUTO-PICK, ALT-GROUPS and LEAD-ROLE each wrote theirs, LABEL-SLIDE did not. The rubber-band
+  caps are a polish of the preview, not a line a buyer reads, so no entry.
+- Not touched: RECONSTITUTE.md (the `labelT` shape landed with the PR), SUPABASE_SETUP.md
+  (nothing under supabase/ changed), PUNCHLIST.md (neither PR closed a row; both came from
+  direct asks), the guides (the measuring article does not teach the length label at all, so
+  there is nothing to bring up to date; a paragraph teaching Move label is a guide change for
+  the guides' own pass, not drift).
+
+## feat(line): a length label slides along its line (LABEL-SLIDE, 2026-10-12)
+
+Wendi: "need ability to move length labels in CountTooling so they can be legible when they
+overlap". Her screenshot: lines traced over the plan's own dimension lines, so each label sat
+on the plan's dimension text. The label stays on its line, where a plan reader expects a
+dimension, and it slides.
+
+- **The gesture.** Right-click a line whose length shows: **Move label** puts the label in hand;
+  it slides along the line under the pointer, projected onto the nearest point, so a polyline's
+  label can cross onto another leg and turns with it; the next click (or the finger's lift) drops
+  it; Esc or a right-click puts it back. **Reset label** sends a moved label home. Works from
+  any tool and leaves the tool armed.
+- **The field.** `line.labelT`, a fraction of the line's length, absent until a label is moved
+  and deleted again by Reset, so an unmoved line keeps its shape; lines ride every payload
+  wholesale, so save/load, export/import, the cloud and PDF export carry it with no new
+  plumbing. canvas-draw.js walks the seat for the live overlay and every export (an arc's seat is
+  the bezier parameter, its heading the tangent). One undo snapshot per move, at the first slide.
+- **Where it lives.** features/mark-context-menu.js (the two rows, the slide, `App.slideMovingLabel`
+  / `dropMovingLabel` / `cancelLabelMove`), app.js's mouse and touch handlers (`state.movingLabel`
+  takes the pointer: mousedown starts no other drag, mousemove and touchmove slide, the click or
+  lift drops, a right-click cancels), features/esc-ladder.js (the rung before any tool rung),
+  geometry.js (`polylineFractionNearest`, `polylinePointAtFraction`, `quadraticBezierParamNearest`,
+  node-tested).
+- **A latent bug the walk fixed.** The old halfway walk for a CLOSED polyline let the closing-leg
+  branch override the leg it had already found, so a closed run's label sat on its closing leg
+  near the first vertex instead of halfway round (the pixel fixture's closed polyline showed it:
+  seat (342, 81) where halfway is (439, 174)). The three pixel baselines are re-recorded on both
+  platforms (darwin locally, linux in the official Playwright image, the config's recipe); the
+  diffs are confined to that one label's two positions.
+- **The limit.** A label never leaves its line, so a line shorter than its label stays covered
+  wherever it slides; Hide Length is that case's answer.
+- Pinned by label-slide.spec.js (the rows, the projected seat at three quarters, the white box at
+  the new seat and gone from the midpoint, the drop, undo and redo, Reset label, Esc, a polyline's
+  label crossing legs) and geometry.test.js.
+
+## feat(line): the rubber band ends on a solid mark at both ends (RUBBER-BAND-CAPS, 2026-10-12)
+
+Wendy, dragging a line: a dashed band with two bare ends says "somewhere around here". The
+dash pattern was already anchored at the entry point (canvas starts it at the path's first
+point), so the band grows out of its entry; what was missing was anything solid at either end.
+The far end can stop a gap short of the cursor, and the entry point has nothing marking it once
+the mouse has left it. Fitting the dashes to the length so the band always ends on a full dash
+would make every dash crawl as the line grows, so that is not what this does.
+
+- **app.js** (the live overlay's previews): the Quick Line, Chain and Polyline rubber bands end
+  in a short solid tick across the line at both ends, in the band's colour and opacity, 8 CSS px
+  long (three line widths when the line is thicker), round-capped; an arc line type's ticks
+  follow the curve's tangents, and a polyline's sit at its first point and at the cursor. One
+  helper, `drawBandCap`, beside the three blocks. The band's dash, which was 4 device pixels on
+  and off, is `bandDash`, scaled by the device pixel ratio so it reads the same on every screen.
+  Measure and Set Scale keep their own crosshair glyphs; committed lines are untouched
+  (canvas-draw.js and the pixel baselines).
+- Pinned by rubber-band-caps.spec.js: after one Quick Line click and a mouse move, the pixels
+  3 CSS px either side of the line at the entry point and at the cursor carry the line's
+  colour while the middle of the band does not (on the old app.js the end samples are blank:
+  the band is two pixels wide and nothing crosses it); the same for a polyline's first point
+  and cursor end; the second click still commits the line.
+
+## docs: the hand-kept lists caught up to main at 576239a (2026-10-12)
+
+A read of AGENTS.md, ARCHITECTURE.md, RECONSTITUTE.md and SUPABASE_SETUP.md against the code
+after the 38 PRs since #284 (the demo track and the test drive, the pitch deck, the Lead role,
+the stale lock, alternates, auto-pick, the flake fixes). The feature PRs kept their own entries,
+their Files-table rows and most of AGENTS.md; what drifted was the lists nothing generates, plus
+the thirteen deck PRs and the hero autoplay fix that never wrote an entry (added below, dated).
+
+- **AGENTS.md.** The site layout named `/`, `/app/`, `/guides/` and `/rules/` but not the two
+  static pages added since (`/test/`, the test drive, and `/deck/`, the generated pitch deck, both
+  `noindex`, outside the sitemap and the service worker), nor the app doors they open
+  (`?demo=<trade>:<moment>`, `?field=<trade>`). The teaching bullet gains the demo track (the
+  engine, the three scripts, the sessionStorage keys, `npm run smoke:demo`) and the
+  no-do-it-for-me rule names its one exemption. check-lesson-rules and check-courses read the
+  demo files too. A group's `alternate` joins the fields-ride-existing-objects rule. Persisted
+  settings gain `ct:notesDisplay` (written since 2026-08-30, never listed),
+  `clickcount-pending-global-reload` and the two sessionStorage keys; the sign-out key list
+  lives in features/project-settings.js, not app.js. Cloud state gains `state.isDigitalTwin`.
+  The doc map names DEMO-TRACK.md, LEAD-ROLE.md and deck/README.md.
+- **ARCHITECTURE.md.** Files rows for test/index.html, `deck/` with its two scripts, and
+  scripts/smoke-demo.js. In the catalog: the Hotkeys line listed eleven keys of seventeen; the
+  sitemap "lists just `/`" (it has held every guide and rule page since build:guides took it
+  over); Groups gains the alternate, Counter Settings the Auto-pick switch, Sharing the lead
+  role and the stale-lock reading, Admin the lead toggle.
+- **SUPABASE_SETUP.md.** `invite-to-project` "still needs" its lead-role redeploy: it was
+  redeployed the same evening (version 7; the deployed source read from prod on 2026-10-12
+  carries the lead guard). An entry for `log_user_event_water`, the newest allowlist
+  re-creation and the one the allowlist test reads, the stamps on both 2026-09-27 entries, and
+  a note under migration naming on the two files renamed to prod's stamps.
+- Not touched: RECONSTITUTE.md (the annotation shape, the tool enum and the payload fields
+  all match the code), DECOMPOSITION_MAP.md (read at 65f712f; T01, T02, Q05, Q07 and Q08
+  carry their landed notes), PUNCHLIST.md (read; every row still open, DEMO-TRACK's added by
+  its PR), JOURNEY-MAP.md (the test drive and the demo track have no journey yet; a product
+  call, not a docs one).
+
+## chore(demo): a smoke walker for the demo track on the real site (2026-10-02)
+
+`npm run smoke:demo` (scripts/smoke-demo.js): every demo moment of all three trades, each in a
+fresh browser context against https://counttooling.com (or an origin given), walked by the
+demo's own "Do it for me" seam to its last card. It prints each payoff sentence, the seconds to
+the first payoff and to the end, and exits 1 on a moment that does not finish, a page or console
+error, the quiet UI left on, or a first payoff over 60 s. Manual like build:screenshots, not in
+`npm run check`. First run after phase 2: fifteen of fifteen, first payoff 4.3 to 6.3 s cold.
+
+## fix(demo): the opening card never offers its button mid-open (DEMO-TRACK, 2026-10-02)
+
+On a slow first load of a sample set the demo's opening card showed "Opening the sample plan…" and
+the "Open the sample plan" button side by side for many seconds (by hand, on demo:electrical:gfci
+and demo:plumbing:schedule, the four-sheet sets). The cause was openRun's patience, not the open:
+its loop gave up 3 s after the lessons' door came back unless the set's name or Trim your set was up,
+`opening` went null, and the card's `show: () => !opening` offered the button while the set was still
+on its way. A press was guarded from a double open, but "Opening" beside "Open" read as stuck.
+
+- **features/demo-track.js** tracks the open's true state. The set has ARRIVED once the door hands
+  its file to `#pdfInput` (tutorial.js openPlanFile's change, heard on the input for the length of
+  the call) or a Trim your set was already up for it to press. Arrived, the open holds until the run
+  is seeded, under a 45 s ceiling (`OPEN_CEILING_MS`); a door that comes back without it kept the
+  guest's own plan at Close project's question or its fetch failed, and the button is back at once
+  (it was about 3 s). An open that ends without the set says so on the card's line: "The sample plan
+  did not open." The button also stays away once the run is seeded and the sheet is still painting.
+  A second press returns the same open, as before.
+- **demo-hvac.spec.js**: the set's response held 5 s (read every 200 ms: the opening words, the
+  progress line, never the button, then ✓ and the orientation); the app's read of the file held
+  20 s, past the door's own 15 s wait for Trim your set, the window the old loop gave up in (this one
+  fails on the old engine); and a guest's own plan kept at Close project, the button back within 4 s
+  with the line saying it did not open.
+
+## feat(demo): the electrical demo (DEMO-TRACK phase 2, 2026-10-02)
+
+The electrical half of [the demo track](journeys/plans/DEMO-TRACK.md), built in the HVAC demo's shape
+on its engine, which this change does not touch. Five moments on the electrical set, the test page's
+five (`TRADES.electrical.moments`), two or three cards each, one action and one sentence of what it was
+worth, every number read live.
+
+- **features/demo-electrical.js**. `gfci`: E-101's ten drawn GFCIs counted, the guest clicks the
+  kitchen outlet drawn plain ("That makes 11 GFCI outlets, not 10. This sample plan leaves one plain on
+  purpose, and the code wants every kitchen outlet protected."), then clicks it again with Note armed
+  and the demo writes the RFI and presses Done ("Caught before you bid, the people who drew it pay for
+  it."). **That miss is the sample set's, staged**: scripts/sample-electrical.js draws it plain for the
+  course's chapter 2, the app has no GFCI detector, and the card says so. `wire`: Chain opened with
+  Duplex and the course's 0.75in EMT already picked, then four circles down the dining west wall
+  ("That is 60.5 feet of conduit, the drops down to each box included. It holds 182 feet of #12 wire,
+  and nobody typed a foot."). `circuit`: the homerun to LP-1 in four circles, then Bid Check's
+  voltage-drop row warning at the app's 12 A ("loses 5.7% of its voltage, over the 3% the code advises.
+  The app names the fix, #8 wire."), and a handsOff Use 6 amps, the panel schedule's load, turning it ✓.
+  `fill`: the feeder in two circles, then its fill ("Those wires fill 33.4% of the conduit, and the
+  code allows 40%."). `handoff`: the course's finished takeoff, Bid Check, a signed row, Show Report,
+  and [[Learn]] once. Orientation: "A restaurant's wiring, in a few clicks".
+- **What phase 1's hand walk taught, kept**: `jump` on every card (the engine's default), 30-point
+  circles, a visibly right trace counting (feet within 10%, both ends in their circles) with Finish
+  pressed for the guest, the Chain panel closed off the circles while the tool stays armed, the ☰
+  wording on a narrow layout, and the app's toasts muted while it runs.
+- **features/course-electrical.js** publishes `App.courseElectricalKit` at its foot (the set, the
+  geometry `G`, the readers, `pick`, `scaleE101`, `chainWestWall`, `circuitOne`, `makeHomerun`,
+  `makeFeeder`, `layEverything` and the rest); the course is otherwise unchanged.
+- **Tooling**: teaching-labels.test.js, check-lesson-rules.js and score-courses.js read the file
+  (entry `demo-electrical`, an empty first-use table; grade 2.4, no sentence over 25 words).
+- **demo-electrical.spec.js**: every moment walked by `App.tutorialDoStep()` on real state; both
+  doors and the orientation once a session; as a browser (`navigator.webdriver` false) the GFCI
+  circle held still for 1.5 s and the guest's own clicks counting and flagging it, four clicks chaining
+  the wall, a homerun whose corner missed its circle still counting, two clicks tracing the feeder and
+  no toast after it; at 390 px the ☰ wording and Trim your set never painted; and the clock, goto to
+  the first payoff card under 60 s (about 3.5 s headless).
+## feat(demo): the plumbing demo (DEMO-TRACK phase 2, 2026-10-02)
+
+The test drive's plumbing "Try it" buttons already pointed at `/app/?demo=plumbing:<moment>`; until
+now those opened the plain app. This is the plumbing half of [the demo track](journeys/plans/DEMO-TRACK.md),
+the HVAC demo's shape copied card for card: one orientation card ("A restaurant's plumbing, in a few
+clicks"), then five moments of two or three cards, every card one action and one sentence of what it
+was worth, every number read live, every on-sheet card a 30-point circle the sheet jumps to.
+
+- **features/demo-plumbing.js**, on the lesson set. `schedule`: P-501 turned upright and the schedule
+  box armed for the guest; a drag around the table opens the proposal, which stands 0.9 s and is then
+  created for them ("That made 8 counters, WC-1, U-1, L-1, HS-1, 3CS-1, MS-1, FD-1, FS-1. Each is
+  named the way the plan tags it, and nobody typed a name."; Create arms the last counter it made, which the demo puts down so a stray tap on the schedule places nothing), then the two toilets on P-101. `pipe`: the
+  cold trunk in four circles with its hanger rule and Fittings from bends already on ("That is 95 feet
+  of 1.5 inch copper. The app counted 10 hangers and 2 elbows by itself."), then the hot water return
+  ("Most bids miss this line, because it looks like the hot supply."). `riser`: P-601's stack in two
+  circles ("17 feet of 4 inch pipe, standing up. The floor plan shows it as one small circle.") and its
+  cleanout. `scale`: P-101's scale cleared for the moment, Set Scale at 1/8", then the 31'-8" string
+  measured ("You measured 31'-8", the same as the drawing."). `bid`: the course's whole takeoff,
+  on which Bid Check catches the chained lavatory branch, 0.75in Copper CW, counting no hangers and no
+  elbows. **That miss is the course's own, not staged**: "Finish the takeoff for me" chains the branch
+  without a hanger rule. A handsOff Fix it turns both rows ✓, the fixture-units row is signed, and the
+  last card points at [[Learn]] once. The demo presses Finish for the guest once a trace's last circle
+  is in, and a visibly right trace counts with a corner outside its circle (length within 10%, both ends
+  within a circle). The Measure proof allows 6 ft, two finger-wide clicks at 1/8", which still refuses
+  a wrong scale (1/4" reads the string near 16 ft).
+- **features/course-plumbing.js** publishes `App.coursePlumbingKit` at its foot (geometry, seeds,
+  readers, `readSchedule`, `layEverything`, and `SET`, the lesson set the chapters run on, named
+  because the demo engine reads a set's name). Publish only: no chapter changed.
+- **No engine change.** demo-track.js, demo-hvac.js, tutorial.js and lessons.js are untouched (the
+  electrical demo is built beside this one on the same base).
+- **Tooling**: the file is on teaching-labels.test.js's floor, in check-lesson-rules.js's sources, and
+  scored by score-courses.js as `demo-plumbing` (grade 1.9, no sentence over 25 words).
+- **demo-plumbing.spec.js**: every moment walked by `App.tutorialDoStep()` on real state, the
+  orientation first, the quiet UI on and off, the guest's search word put back; a moment door alone and
+  the orientation once a session; as a browser (`navigator.webdriver` false), the trunk's circles held
+  still 1.5 s, four taps tracing it with no toast after, a missed corner still counting, and a guest's
+  own drag over the schedule; at 390 px the ☰ wording and Trim your set never painted; the clock, goto
+  to the first payoff card, printed and under 60 s (about 3.9 s headless; 5.0 to 5.5 s with a real
+  drag in a browser that glides, at 1280 and 390 px).
+
+## feat(demo): the demo track, its engine and the HVAC demo (DEMO-TRACK phase 1, 2026-10-02)
+
+Todd, after playing the test drive: its "Try it" opened course chapters, twelve minutes written for
+a reader who will sit through nine of them, and it "took me a good amount of time to gain the
+context, which made me not want to use the app". The demo track is the replacement, a separate
+script per trade on the tour engine, every card one action and one sentence of what it was worth
+(plan: [DEMO-TRACK](journeys/plans/DEMO-TRACK.md), the five decisions).
+
+- **features/demo-track.js**, the shared engine. `App.registerDemo({ trade, set, orientation,
+  moments })` registers `demo:<trade>:<moment>` per moment and `demo:<trade>` for all of them in
+  order. ONE orientation card per trade per session (what the plan is, what the lists on the left
+  are, how many clicks are coming; sessionStorage `clickcount-demo-oriented`), then every card is one
+  action. "Do it for me" on every doing card (the engine's `alt` button; the demo is exempt from the
+  lessons' no-do-it-for-me rule). The quiet UI: a sidebar section the card does not name shows its
+  heading alone, a header tool it does not name is dimmed and still works, all of it classes the stop
+  removes. The sheets open through the lessons' own doors, now on `App.lessonKit` (`openSheetsFor`,
+  `seedIfReady`, `isSeeded`), and the guest's device is the lessons' snapshot, put back on stop.
+  Doors: `/app/?demo=hvac` and `/app/?demo=hvac:<moment>`.
+- **features/demo-hvac.js**, five moments on the mechanical set, 2 or 3 cards each: the Duct dialog
+  reading 24x12 off M-101 and a three-circle trace whose elbow counts itself; the Duct Schedule's
+  Bid weight ("1,499 pounds of sheet metal. Shops price duct by the pound.") and Copy Schedule;
+  DINING 100 boxed (the demo fills the dialog from the plan) and filled with its eight diffusers until
+  it reads served; Bid Check's Systems within capacity turning from ✓ to ⚠ when Addendum 3 raises the
+  kitchen diffusers to 300 CFM ("more than its 3,000"). **That mistake is STAGED by the demo**: the
+  sample set carries no native defect (RTU-1's 2,650 designed CFM fits its 3,000), so the card's
+  handsOff "Apply addendum 3" button sets SD-3 to 300 CFM on the open sheets, and Bid Check catches
+  the change; and Bid Check, a signed row and Show Report,
+  whose card points at [[Learn]] once. Every number on a card is read live. Every seed and reader is
+  the HVAC course's, published as `App.courseHvacKit` (its `layEverything` is synchronous now, so a
+  seed lays it whole; the course is otherwise unchanged).
+- **From the coordinator's hand walk at tablet and phone widths** (same PR): the sheet JUMPS onto a demo
+  card's circles instead of gliding for 2.6 s under the guest's first tap (a step's new `jump` flag,
+  one line in features/tutorial.js `glideView`, set on every demo card; no tour sets it); demo circles
+  are 30 sheet points, twice the trade tours' 12 to 16; a trace that is visibly right counts and is
+  finished for the guest even when a corner missed its circle (feet within 10% of the leg's, both ends
+  within a circle); a card that sends the guest to the sidebar says "Tap ☰, then…" on a narrow layout
+  (the stylesheet's 768 px), and the drawer's two button grids recede with the header's tools; Trim
+  your set is never painted while a demo's set comes in (`body.demo-opening`) and its Open is pressed
+  once it has stood a second, never per tick (a press per tick ran the async commit over itself); the
+  orientation card waits until the sheet is PAINTED (pixels on #pdfCanvas, not just pages built) before
+  it says "This is a plan", and says "the ☰ menu keeps its totals" where the sidebar is a drawer; and
+  the app's own toasts are muted while a demo runs (`App.toastMuted`, one guard line at the top of
+  app.js `showToast`), so the Duct tool's first-run "Groups are on. Assign this run to a system in
+  Groups." no longer lands over the guest's finished trace.
+- **Tooling**: teaching-labels.test.js finds `demo-*` files; check-lesson-rules.js reads both demo
+  files; score-courses.js scores `demo-hvac` card by card with an empty first-use table (a demo card
+  needs no glossed word; grade 1.8, no sentence over 25 words).
+- **demo-hvac.spec.js**: every moment walked through `App.tutorialDoStep()` on real state, the
+  orientation first and once a session (and only over a painted sheet), the quiet UI on and off, a
+  dimmed tool still arming, the trace card's circles held still for 1.5 s with `navigator.webdriver`
+  read as false (as a browser, so a glide would show), a guest's own three clicks tracing the leg, a
+  missed corner still counting, the ☰ wording and Trim your set never painted at 390 px, both doors,
+  and the clock: goto to the first payoff card, printed, under 60 s (about 4 s headless).
+## feat(test-drive): the desk door opens the demo, the field door says where to tap (DEMO-TRACK phase 3, 2026-10-02)
+
+Todd played the test drive and it took him too long to get the point. The desk door's "Try it"
+opened twelve-minute course chapters; the field door opened a finished takeoff with nothing on
+the screen saying what to do with it. This is the page half of [the demo track](journeys/plans/DEMO-TRACK.md):
+the engine and the trade scripts (`features/demo-track.js`, `features/demo-<trade>.js`) land
+on their own branch, so until they merge the new links open the plain app.
+
+- **The desk door** (`test/index.html`): every moment carries a fixed `id` and its "Try it"
+  opens `/app/?demo=<trade>:<id>`, the ids the plan names (HVAC `size` `pounds` `rooms`
+  `mistake` `handoff`; plumbing `schedule` `pipe` `riser` `scale` `bid`; electrical `gfci`
+  `wire` `circuit` `fill` `handoff`). The `ch` / `lesson` keys and the per-moment minutes are
+  gone: each says "about a minute", the door says "Five one-minute demos", and the lede
+  promises what a demo gives, one click at a time and the app does the rest.
+- **The field door's first-tap prompt** (decision 3, second half; features/lessons.js beside
+  `openFinished`): once `/app/?field=<trade>` has laid its takeoff, ONE line sits on the sheet,
+  "Tap any mark to read it" (HVAC "Tap any diffuser"). It wears the Duct tool's hint card
+  (`.duct-hint-card`: centred, takes no click), sits just under the sheet when a phone's
+  fitted sheet leaves room below it (re-placed by a ResizeObserver as the raster lands), and
+  goes on the first pointerdown anywhere, a tap that still reads the mark. A tab-session key,
+  `sessionStorage` `clickcount-field-prompt-<trade>`, keeps it from coming back on the next
+  visit. Not a `.modal-overlay`, so the restore offer and the Esc ladder never see it. It
+  replaces the corner toast that said the same thing for five seconds.
+- **The field questions, checked against the app at 375 px.** "Press D for Measure, or pick
+  it from the ⋯ menu" named a key a phone does not have and a menu a phone does not show: now
+  the ☰ menu's Measure, and the length reads in the status bar. HVAC's room answer promised a
+  CFM tag and a ✓ on the sheet that only a plan-named room draws (the course's rooms carry
+  their size there): it now sends the reader to the menu's ROOMS ("needs 1,200 · served
+  1,200"). "Systems within capacity" sets the diffusers' designed air against the unit
+  ("RTU-1 · 2,650 designed / 3,000 capacity"), not the rooms' need. Electrical's SUMMARY
+  answer drops "the verticals counted in" for what the list shows, the wire pulled through
+  each conduit; plumbing's adds the hangers and elbows it lists.
+- **field-takeoff.spec.js**: each trade's prompt is up with its words when the takeoff lands,
+  is not inside or a `.modal-overlay`, takes no click, reads whole, survives the restore-offer
+  wait, goes on one tap, and is not back on the second visit; a 375 px case puts it just under
+  the sheet, inside the screen.
+
+## feat(roles): Lead, a role under admin and over user (LEAD-ROLE, 2026-10-02)
+
+Will: Wendi (an estimator) should be able to take over projects, "a role less than admin
+but more than user, allowing her a few more clean-up tools". Overseer (2026-08-28) is
+read-only by design, a reviewer who must never touch a bid, so this is a fourth flag,
+`profiles.is_lead`. A lead sees every project (Load Project, Bid Board) and its PDF, checks
+out any project whose lock is free or expired, forces a live lock, adds and removes a
+project's shares, hands ONE bid to another estimator, and requests or gives a review. Never
+users, passwords, deletes, the global reload or others' activity; those stay admin.
+
+- **Migration** `20261002210000_lead_role.sql` (applied to prod 2026-10-02): the lead arm
+  beside the admin arm in every take-over right (`user_can_access_project`,
+  `check_out_project`, `force_check_in_project`, `can_check_out` / `my_access_role`
+  `'lead'` / WHERE in both `list_accessible_projects` and `get_project_permissions`, the
+  three share RPCs, `set_project_review_status`), the two see-everything policies, and two
+  new RPCs: `admin_set_lead` (the Manage Users toggle) and `reassign_project(project, to)`,
+  the per-project hand-off (the bulk `admin-reassign-projects` stays for retiring an
+  account): it moves the owner, renames the PDF under the new owner's storage folder,
+  re-owns the view links, keeps the old owner as an editor share, releases the old owner's
+  checkout and logs `project_reassigned`. `list_users_for_admin` gains `is_lead` and the
+  label `Admin > Lead > Overseer > User`; `admin-list-users` redeployed; `invite-to-project` (its
+  guard admits a lead; only Load Project's "Who has access" Add calls it) awaits its redeploy.
+- **Two predicates, not a third flag read.** `App.canOversee()` (admin, overseer, lead:
+  the every-project list, the owner filter, the Bid Board) and `App.canTakeOver()` (admin,
+  lead: the force button, Check Out on any project, "Who has access", Hand to…, review).
+  The `state.isAdmin` reads that meant "take over" switched to them; the ones that mean
+  "manage accounts" did not. `state.isLead` loads beside `isOverseer` at the five profile
+  reads and rides the save-logs envelope.
+- **Hand to…** (features/hand-off.js): a Project Settings button for a lead or admin, a
+  picker over `list_users_for_project_invite`, `reassign_project`, then the permissions
+  re-read and a toast naming both estimators.
+- **Manage Users** gets a lead toggle (a flag icon) beside the overseer eye. The force
+  notice reads "An admin or lead turned this project in"; Manage Projects' button is
+  "Force turn-in" (the "(admin)" went). Copy in the share and review RPC refusals names
+  the lead.
+- Pinned by lead-role.spec.js (the predicates and buttons follow the flag; Manage Users,
+  Manage Projects and the global reload stay admin-only; the Hand to… dialog's list, call,
+  refresh and toast; a refusal stays open and says why) and manage-projects.spec.js.
+
+## fix(checkout): an expired lock reads as Available, never as "is editing" (STALE-LOCK, 2026-10-02)
+
+Wendi's Save Status export: the Lone Star Market bid read "grace@clickplumbing.com is
+editing" in the header, the status bar and Project Settings, with no Check Out and no force
+button, while `checkedOutAt` was `2026-09-30T16:46Z`, 50.8 hours before the read. Grace had
+done nothing wrong. The lock expires LAZILY: `check_out_project` takes a lock older than 30
+minutes, the UPDATE policy stops honouring its holder, `can_edit` / `can_check_out` read it as
+free, but nothing ever nulls `checked_out_by`, so the row keeps its last holder's name. Five
+surfaces rendered `checked_out_email` without asking `checked_out_at`; Load Project tested
+"Locked by" before "Available", so even the owner's own expired lock read as locked. A role
+with no checkout arm (an overseer, a viewer share) never reaches the `canCheckOut` rung, so
+for Wendi "Available" was unreachable on any project anyone had ever touched.
+
+- **One predicate.** save-utils.js `checkoutLockIsLive(checkedOutAt, nowMs, windowMs)`, the
+  SQL window in JavaScript (a missing or unreadable stamp is live, as the server treats it);
+  features/turn-in.js wraps it with the server clock as `App.isCheckoutLockLive(at)` and
+  writes the words once, `App.checkoutHolderText(email, at)`: live "grace is editing",
+  expired "Available · last edited by grace, 2d ago".
+- **Five surfaces ask it.** The header banner (grey "available" class when expired), the
+  status bar, Project Settings (grey dot; the admin force still clears the row), Load
+  Project (`can_edit` → `can_check_out` "Available" → live "Locked by" → expired
+  "Available · last edited by…") and Manage Projects ("Lock expired · last held by…"; the
+  force button stays).
+- **The backstop.** `supabase/migrations/20261002200000_sweep_expired_checkouts.sql`:
+  `sweep_expired_checkouts()` and the pg_cron job `sweep-expired-checkouts` every 15
+  minutes, nulling locks older than the same 30 minutes, so the row itself says free and
+  the realtime UPDATE repaints open tabs. The holder's own tab classifies that UPDATE as
+  expiry (its last-known stamp is past the window), never as a force. 30 minutes stays.
+- **Two migration files renamed to prod's stamps.** `log_user_event_water` and
+  `get_project_permissions` were applied to prod on 2026-09-27 through the MCP, which
+  recorded them as `20260927194932` and `20260927194936`; the repo's `20260923190000` /
+  `20260927030000` names made every `db push` refuse. Renamed (AGENTS.md's rule: the repo
+  takes prod's stamp, prod's history is never repaired), every mention updated.
+- Pinned by save-utils.test.js (29 / 31 minutes, Wendi's stamp, the null and unreadable
+  stamps) and stale-lock.spec.js (the three surfaces on a seeded state, Load Project and
+  Manage Projects on stubbed lists, live and two days old side by side).
+## fix(learn): the field door's counts are big enough to read on a phone (FIELD-TAKEOFF, 2026-10-02)
+
+A counter's marker is a fixed size on screen (Counter Settings' Icon size, 22 by default), so on
+a phone the field door's counts were specks beside the plan's own symbols (the owner, from the
+test drive's phone frame). The door now draws them at 48 with their coloured rings on, in
+memory only: `saveDisplaySettings` is never called, so the device's own Counter Settings are
+as they were on its next load. field-takeoff.spec.js pins both halves.
+
+## feat(learn): a finished takeoff behind the test drive's field door (FIELD-TAKEOFF, 2026-10-02)
+
+The test drive's field door (`/test/#<trade>/field`) opened a course chapter, so a guest met a
+teaching card before any answer. Now it opens `/app/?field=<trade>`: the course's sheets with
+its finished takeoff on them, the same answer key chapter 8 lays with "Finish the takeoff for
+me", and no card. It lives in features/lessons.js `registerCourse`, so each course gets it from
+its own `whole` chapter with no change to the course files. Plumbing lands on 36 counts and
+496 ft on P-101, electrical on 69 counts and 160.5 ft, HVAC on 11 SD-1 and the rest of the
+diffusers, 7 duct runs, 10 fittings, 3 rooms and RTU-1 within capacity.
+
+- **A second visit doubled the HVAC diffusers** (21 SD-1 for 11): the set reopened with the last
+  visit's marks, and the lay places only what it cannot find at the plan's spots, while the
+  diffusers it had slid onto their runs were no longer there. The door clears the sheets' marks
+  and the room list before it lays. The course's own button was right (11): its sheets start clean.
+- **"Your last session: sample-lessons"** came up over the electrical takeoff just laid.
+  restore-last-session.js now drops a LOCAL offer whose project is a teaching set once a plan is
+  open: those sheets are reset whenever they open. restore-last-session.spec.js's seeded backup
+  was named `sample-plan` with no bearing on the case it tests, and is `my-takeoff` now.
+- **The test page** loads the takeoff once per trade under a "Laying out a finished takeoff…"
+  cover (lifted on `App.finishedTakeoffReady`), and its four questions say how to ask the phone,
+  each answer checked against the takeoff (the find-this-counter ring and its "N on this page"
+  chip, Measure, the room tag, the Bid Check and Summary rows).
+
+field-takeoff.spec.js: each trade lands on its answer key with no tour and no dialog, and a
+second visit lands on the same one.
+
+## feat(site): the test drive at /test/, a prototype for the pitch (TEST-DRIVE, 2026-10-02)
+
+A static page (`test/index.html`, `noindex`, not in the sitemap, outside the service worker's
+`/app/` scope) for handing the app to someone after a pitch. Pick a trade (HVAC, plumbing,
+electrical; the landing's trade marks), then a door: "I'm at my computer and I want to
+generate estimates" or "I'm in the field on my phone and I need an answer". The desk door
+lists five moments per trade, each with the trade's badge on its left and a Try it that opens
+the real app on that course's chapter (`/app/?chapter=<trade>:<id>`, or `?lesson=scale`). The
+field door runs the app inside a phone frame (an iframe at 390 px, so the app's own phone
+layout renders); on a real phone it opens the app full screen. The hash is the state
+(`#<trade>`, `#<trade>/desk`, `#<trade>/field`). Still a prototype: the field questions open
+course chapters rather than a finished takeoff, and a tap on a duct run does not read out its
+size yet.
+
+## feat(counter): auto-pick from plan tags is a switch, off by default (AUTO-PICK, 2026-10-01)
+
+wendi, an estimator, reported it: *"it is choosing what counter I can use instead of letting me
+assign a counter, the suggestions get in the way of me seeing things on the plans."* Both halves
+were the tag reader (S6, features/tag-reader.js). A click within 24 pt of a word on the plan that
+looks like a tag landed on whatever counter carried that tag, silently, on every electrical
+project and on any project with one tagged counter. A counter's NAME counted as its tag, so on
+her plumbing bid, with 3IN FS1 / 4IN FS-1 armed, clicks beside the plan's FS-1 went to the bare
+FS-1 counter. That is why her palette held seven floor-sink counters, most at 0. Since the
+plumbing course (2026-09-21) the tag pattern also matches IN, TO, MEN and BAR. And its
+"Plan says" label was drawn at 11 px times the zoom: at 400% it was a 44 px bar across the
+sheet beside the cursor. Reproduced on the plumbing sample (3IN FD armed, two clicks, FD 2 and
+3IN FD 0). Plan and real-app mockup, both passes of "is this the best we can do":
+artifact `MHnbTcec1HgDrm4SxZPWJ2`. The owner's three picks: off for everyone, per device, the A key.
+
+- **The switch.** `counterSettings.autoPick` (constants.js `COUNTER_SETTINGS_DEFAULTS`, per
+  device through `App.saveDisplaySettings`, never the project), off by default. Three doors,
+  Snap's pattern: the **Auto-pick** pill `#counterAutoPickBtn` beside the Counter button, shown
+  only while the Counter tool is armed and never to a viewer (outlined when on, not filled,
+  so it does not read as a second armed tool; icon only under 1100 px); the **A** key
+  (hotkeys.js `toggleAutoPick` runner, Macros row regenerated); and a Counter Settings row
+  (`#counterAutoPickBtnSetting`). One writer, `App.setAutoPick(on, { toast })`, with a toast
+  that says which way it went.
+- **Off,** the plan's text never moves a click. The status bar offers the switch, and only
+  when another counter's tag is under the cursor ("Plan says CO · A turns on auto-pick").
+  Nothing is drawn on the sheet.
+- **On,** the tag's counter takes the click, except that a counter whose NAME says the tag
+  keeps it: 3IN FD keeps FD, 4IN FS-1 keeps FS-1, hyphens ignored (tag-model.js
+  `nameMentionsTag`, `tagPickAt`, node-tested). Among the other counters an explicit tag beats
+  one read from a name. The sheet shows a cue only when the click will land somewhere other
+  than the armed counter: a ring in that counter's colour and its own icon as a badge, a fixed
+  size on screen at any zoom (`env.dpr`, never the zoom). A tag no counter carries gets a
+  dashed ring and a plus, and Enter makes the counter ("Type X" on electrical, the bare tag
+  elsewhere). The receiving counter's sidebar row flashes after a moved click, the cue a
+  tablet gets with no hover. app.js's mousemove repaints only when the cue changes
+  (`App.tagOverlayStale`), so a cue never lingers.
+- **The duct tool's cursor chip** had the same zoom-times label; it keeps one screen size now
+  (12 px at any zoom). The segment chips along the trace still label the plan at its scale.
+- **Teaching.** The electrical course's chapter 3 "The plan says which" card turns it on
+  (`[[Auto-pick]]`, or A) and its hint says so when it is off; the lesson kit snapshots the
+  reader's setting with Snap's and gives it back when the lesson stops. The keyboard and
+  electrical guides say how it works.
+- **Telemetry.** `tag_suggestion_accepted` with route `auto-pick` fires only while the switch
+  is on, so it counts accepted picks, not silent overrides.
+- Not moved: marks already placed on the wrong counter. The app has no move-to-another-counter
+  tool, so those are redone by hand.
+- Tests: tag-model.test.js (the name rule, the pick); tag-reader.spec.js rewritten (off by
+  default the click is the armed counter's; A, the pill and Counter Settings are one switch
+  that survives a reload; on, the tag picks and the row flashes; the name rule; Enter; a
+  viewer never sees the pill); course-electrical.spec.js (the by-hand E-201 test clicks the pill,
+  and stopping the chapter gives the reader's setting back).
+
+## feat(site): the pitch deck at /deck/ (2026-09-29 to 2026-10-02)
+
+PRs #292, #294 to #304 and #307, none of which wrote an entry; recorded here from their
+commits. A pitch deck at counttooling.com/deck/, `noindex` and outside the sitemap, reached by
+its link. `deck/index.html` is built by `node scripts/build-deck.js` from `deck/deck.json` and
+`deck/slides/<id>.html`, the Slides-artifact format the deck is edited in at claude.ai, so a
+slide edited there pastes back whole; `/_blob` images map to `deck/assets/` and `/img/`, the
+arrows become inline SVG, the viewer scales the 1920×1080 stage (arrows, click, swipe, `#n`;
+N notes, F full screen), a video plays only on its slide, and the CountTooling slide plays the
+plumbing hero film. Oswald and Public Sans are vendored as variable woff2. The arc settled at
+ten beats and a backup section (cover, the problem, the answer, the robot, every plan set has
+mistakes, every trade, what it means for an HVAC company, traction, revenue paths, the ask),
+the cover was re-laid five times in a day to match the artifact, a revenue-paths slide got a
+BLS-based model (`deck/model/revenue_paths.py`), and on 2026-10-02 the hand-off:
+`node scripts/sync-deck.js <folder>` makes `deck/` match a saved copy of the artifact. The
+rules for the next editor are in [deck/README.md](deck/README.md).
+
+## fix(landing): the hero film plays on a phone that refuses autoplay (2026-09-30)
+
+PR #293, no entry of its own. iOS Low Power Mode (and a data saver or a strict autoplay
+policy) rejects the in-view start with NotAllowedError, so the still stayed and the clock sat
+at 0:00. A refused start now shows a "Play the takeoff" pill over the frame; a tap on it or
+on the frame is the user gesture those browsers honour, and `playing` takes the pill away. Any
+other failure (a codec the browser lacks) keeps the still with no pill. hero-tap-to-play.spec.js
+(+3); AGENTS.md's hero bullet was amended in the PR.
+
+## feat(groups): the alternate's own water sizing block (ALT-GROUPS rung 2, 2026-09-30)
+
+Copy to /Tooling and the email summary end with one `--- Alternate: <name> · Water sizing ---`
+block per alternate that holds a water run — the alternate's runs serving the alternate's
+fixtures — after the whole-plan `--- Water sizing ---` block (the bid WITH it). report.js
+`annotationsInGroup(ann, gid)` narrows a page's annotations to one group: markers by their
+group; a line outside the group keeps its INDEX (the water runs point at lines by index) but
+loses its type, so it is no run and serves nothing. `summarizeToolingExport` reads the block
+as `alternates[i].water = { rows, warnings }` (never `out.water`) and the Copied detail says
+*1 water run, 1 ⚠*. **No per-alternate duct block**: a duct run belongs to no group (a group
+is its SYSTEM, D4), so the duct schedule stays whole-plan until duct runs can join a group.
+PipeTooling's paste parser reads the suffixed heading as the same alternate and skips the
+schedule rows (v2.4208). Tests: report.test.js (the narrowing, the summarizer), a second case
+in alternate-groups.spec.js.
+
+## feat(groups): a group can be an alternate — bid it with and without (ALT-GROUPS, 2026-09-29)
+
+The owner's ask: a customer's plan set sometimes carries a section they call an *alternate*
+and want priced with and without. The estimator already counts such a section as a group;
+now the group says so, and every export carries the fact, so PipeTooling and TakeoffTooling
+can price the bid both ways. Mock-up (before / after, the owner's three picks):
+artifact `KCEHH7Z6CoS67JzCrM9HtH`.
+
+- **The flag.** `group.alternate === true`, set from one **Alternate** switch in the group
+  dialog (`#groupModalAlternateBtn`, under Color, before the trade fields — a bidding fact,
+  not a trade one). `applyAlternateTo` in features/groups.js sets it only when on and DELETES
+  it when off (the D4 rule), so every existing group object keeps its shape. Groups ride the
+  save payload, the canvas JSON, the cloud row and share links wholesale, so nothing else
+  had to learn the field.
+- **Order.** An alternate sorts after Untagged, alphabetical among alternates —
+  `orderGroupIds(…, isAlternate)` in report.js (the fourth argument is optional; callers that
+  pass none see the old order) and the same rule in features/summary-list.js — so the base
+  bid reads as one block on every surface.
+- **Sidebar.** The Groups row carries an `ALT` mark and the note *alternate · bid with and
+  without*; the assign buttons read `Break room · ALT`. The Summary heads the block
+  *Alternate: Break room* and ends with the two numbers the customer asked for: *Base · 5
+  counts · 264.00 ft* and *+ Break room · 2 counts · 48.50 ft* (`.summary-alt-totals`; feet and
+  px apart through `App.formatFeetPx`).
+- **Copy to /Tooling.** Every row is exactly what it was, `[Group]` prefix and all. Alternate
+  groups come after the base rows, each under `--- Alternate: <name> ---`
+  (`ALTERNATE_COPY_HEADING_PREFIX`), a blank line before the heading. Both importers already
+  treat a framed line as structure and never as a row, so an old PipeTooling or
+  TakeoffTooling reads the new text as it read the old; a new importer reads the heading.
+  `summarizeToolingExport` counts the alternate's rows in ea / ft / px as before (the two ends
+  still reconcile) and adds `alternates[] = [{ name, ea, ft, px }]` only when the text carries
+  one; `formatToolingExportSummary` appends *1 alternate: Break room (1 ea · 48.5 ft)*.
+- **Open in TakeoffTooling.** `alternate: true` on every row of an alternate group, present
+  only when true. The agent door (`import-takeoff`, takeoff.json v2 `groups[].alternate`)
+  passes the flag through — **deploy `import-takeoff` after this merges.**
+- **Show Report and Copy Summary.** The group heading reads *Alternate: <name>*; one sentence
+  under the headline — *Base: 8 counts · 264.00 ft. Alternate Break room adds 2 counts ·
+  48.50 ft.* (`alternateTotals` / `alternateTotalsSentence`, both exported for node).
+- **Left out on purpose** (the owner's call): the canvas. Marks in an alternate draw as
+  they did; Show group colors is unchanged.
+- Tests: report.test.js (the order, the totals and sentence, the summary's alternate block),
+  [alternate-groups.spec.js](alternate-groups.spec.js) (the dialog round trip, the marks, the
+  Summary, both exports, the email, switching it back off deletes the key).
+
+## fix(chooser): the Line Type chooser's search box no longer takes the caret from a name being typed (FLAKE-WATER-FIELD, 2026-09-28)
+
+Punch row FLAKE-WATER-FIELD: water-runs.spec.js "the Water field on the four line-type surfaces"
+failed now and then with the Cold radio unchecked, once on main's CI and once locally, never
+alone. Reading found nothing deferred on the path from the name to the radio. The error context
+CI keeps from a failed run (main run 36331260907, 2026-09-27) explained it: the page snapshot
+showed the name the spec typed for the Create tab, "Domestic cold water 1in", sitting in the
+dialog's search box, which was the active element. The name field never fired its input event,
+so the radio it prefills stayed on "—".
+
+- **Cause.** `showChooseLineTypeModal` hands the caret to the search box a beat after it opens
+  (a frame, then a tick, so the dialog is painted first). The spec opened the chooser and
+  switched to Create in one call, then typed; under CI load the beat fired between Playwright's
+  focus of the name field and its text, and the search box took the text. A reader who opens
+  the chooser, goes straight to Create or Quick and starts typing on a slow tablet meets the
+  same beat.
+- **The twin.** The Counter dialog never had it: B17 (2026-09-14) hides its search row off the
+  Choose tab, since the search filters only that list, and a hidden box cannot take the caret.
+  That fix reached one dialog of two, the map's commonest pattern.
+- **Fix** (features/choose-create-line-type.js): the chooser's search row shows on Choose only,
+  as the Counter dialog's does (the inert box on Create and Quick goes with it); and the deferred
+  focus yields when another field of the dialog already holds the caret or Choose is no longer
+  the tab showing, the rule counter.js's `focusCreateName` has had since 2026-09-12.
+- **Pinned** by chooser-focus.spec.js: open, switch tab and focus a field in one evaluate so the
+  beat fires after; on the old code the Create and Quick cases failed every time. A third case
+  keeps the intended behaviour (alone, the search box does get the caret) and a fourth records
+  the Counter dialog's row hiding and the chooser's parity. The water-field test itself passed
+  40 of 40 at 4 workers before the fix, which is why the row waited for a trace: the ordering
+  the flake needs comes from load, not from repeats.
+
 ## test(lessons): the undo card's click waits for the sheet to stand still (FLAKE-START-UNDO, 2026-09-28)
 
 Punch row FLAKE-START-UNDO, explained by the 2026-09-28 map (T01) and closed here. The tour
@@ -1004,8 +1822,8 @@ it; or move the badges and the footer to the showing layer as well.
 ## chore(water, save): the water events on for everyone, the lean permissions read live (WATER-TELEM, MAP-PERMS, 2026-09-27)
 
 On 2026-09-27 the owner had two migrations applied to the production database, and both were
-verified there: `supabase/migrations/20260923190000_log_user_event_water.sql` (`log_user_event`
-accepts `water_run` and `wsfu_prefill`) and `supabase/migrations/20260927030000_get_project_permissions.sql`
+verified there: `supabase/migrations/20260927194932_log_user_event_water.sql` (`log_user_event`
+accepts `water_run` and `wsfu_prefill`) and `supabase/migrations/20260927194936_get_project_permissions.sql`
 (`public.get_project_permissions(uuid)` exists). This change is code and docs only; it touches no
 database. Nothing on screen changes.
 
@@ -1713,7 +2531,7 @@ tab return, turn-in and recovery, and it read `list_accessible_projects` to keep
 with its whole takeoff (`data`). For an admin or overseer that is the whole projects table per
 refresh, on the connection the autosave shares (DECOMPOSITION_MAP.md D28).
 
-- **The RPC, drafted, NOT applied**: `supabase/migrations/20260927030000_get_project_permissions.sql`
+- **The RPC, drafted, NOT applied**: `supabase/migrations/20260927194936_get_project_permissions.sql`
   creates `get_project_permissions(p_project_id uuid)`, one row: the list's columns in the list's
   order minus `data`, `pdf_path` and `pdf_hash`, every expression copied from the list's latest
   definition (20260831100000), the list's access rule (owner, any share, admin, overseer) plus
@@ -3912,7 +4730,7 @@ water only) is built; the row closes.
 - **Telemetry** (§8): `water_run` (side, size, material, segments, the load and flow at the
   run's head, whether the S moment sized it) on every committed water-sided polyline and
   `wsfu_prefill` (accepted or overwritten) on counter create, behind the `water-telemetry`
-  feature flag until migration `20260923190000_log_user_event_water.sql` is on prod (punch
+  feature flag until migration `20260927194932_log_user_event_water.sql` is on prod (punch
   row WATER-TELEM applies it and flips the flag).
 
 [water-bidcheck.spec.js](water-bidcheck.spec.js) walks the rows, the ticks, the badge, the

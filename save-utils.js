@@ -11,6 +11,24 @@
  * No build step.
  */
 
+  // STALE-LOCK (2026-10-02): the server never CLEARS a checkout; it stops
+  // honouring one whose stamp is older than the inactivity window
+  // (check_out_project takes it, the UPDATE policy refuses its holder,
+  // can_edit / can_check_out read false / true). The row keeps the last
+  // holder's name and stamp, so a surface that names the holder asks this
+  // first; a stale lock is "Available", never "<x> is editing" (Wendi's
+  // export, 2026-10-02: a lock 50.8 hours dead read as live on five surfaces).
+  // Mirrors the SQL: a holder with NO stamp is live (the server does not let
+  // anyone claim it), and so is an unreadable stamp. `nowMs` is the server
+  // clock (serverNowMs), `windowMs` CHECKOUT_INACTIVITY_MS, passed in because
+  // this module loads before constants.js.
+  function checkoutLockIsLive(checkedOutAt, nowMs, windowMs) {
+    if (!checkedOutAt) return true;
+    const t = new Date(checkedOutAt).getTime();
+    if (!Number.isFinite(t)) return true;
+    return (nowMs - t) < windowMs;
+  }
+
   // True when a save/turn-in error is worth one automatic retry (timeouts,
   // aborts, network blips, 408/429/5xx). Definite failures (auth, checkout
   // ownership, 4xx other than 408/429) return false.
@@ -243,7 +261,7 @@
   // so this is a no-op there and the declarations above stay plain globals.
   if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
-      isTransientSaveError, getProjectCounts,
+      checkoutLockIsLive, isTransientSaveError, getProjectCounts,
       serializeSaveError, formatSaveStatusErrDetail, backoffDelayMs,
       computeClockOffsetMs, percentile, pdfUploadTimeoutMs,
       extractResponseDiagnostics, secondsToExpiry, pickBootRestoreCandidate,

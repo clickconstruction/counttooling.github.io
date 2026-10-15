@@ -864,4 +864,13 @@
   App.startChapter = course.start;
   App.courseChapterIds = () => CHAPTERS.map((c) => c.id);
   App.courseReference = () => ({ feet: referenceFeet(), counts: COUNTS().map(([tag, spots, label]) => [label, spots.length]) });
+  // The plumbing demo (features/demo-plumbing.js, DEMO-TRACK) reuses the course's geometry, seeds and
+  // readers rather than copying them. Publish only: nothing here changes how a chapter runs. SET is the
+  // lesson set the chapters run on (lessons.js's own, named here because the demo engine reads a set).
+  App.coursePlumbingKit = {
+    SET: { url: '/samples/sample-lessons.pdf', name: 'sample-lessons', pages: 4, trade: 'plumbing', word: 'four' },
+    G, R, RE, TAGS, RUNS, SPOTS, SCHEDULE_BOX, pts, raw, planFeet,
+    counter, lineType, polylinesOn, pick, markMissing, tracePlan, traceSheet, enableBends, addHangerRule, manual,
+    scaleP101, uprightSchedule, readSchedule, layEverything,
+  };
 })();

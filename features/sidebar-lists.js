@@ -265,7 +265,9 @@
           sysHtml += '<span class="group-capacity-line' + (over ? ' over' : '') + '">' + parts.join(' · ') + '</span>';
         }
       }
-      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + esc(g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';   // XSS-COLOR: a group's color rides a project, so it is attribute text
+      // ALT-GROUPS: an alternate group wears the ALT mark and says what it is for.
+      const altHtml = g.alternate ? '<span class="group-alt-chip">ALT</span><span class="group-alt-note">alternate · bid with and without</span>' : '';
+      div.innerHTML = '<span class="name line-type-name">' + esc(g.name || 'Group') + altHtml + sysHtml + '</span><div class="line-type-row">' + (showEdit ? '<span class="swatch" style="background:' + esc(g.color || App.COLORS[0]) + '"></span>' : '') + '<span class="badge">' + count + '</span>' + (showEdit ? '<span class="edit-btn" title="Edit">✎</span>' : '') + '</div>';   // XSS-COLOR: a group's color rides a project, so it is attribute text
       if (showEdit) {
         div.onclick = (e) => {
           if (!e.target.closest('.swatch') && !e.target.closest('.edit-btn')) {

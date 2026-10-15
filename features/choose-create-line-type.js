@@ -33,6 +33,11 @@
     document.getElementById('createLineTypePanel').style.display = tab === 'create' ? '' : 'none';
     const quickPanel = document.getElementById('chooseLineTypeQuickPanel');
     if (quickPanel) quickPanel.style.display = tab === 'quick' ? '' : 'none';
+    // B17 parity (FLAKE-WATER-FIELD, 2026-09-28): the search filters ONLY the Choose list, so on
+    // Create and Quick the row goes, as the Counter dialog's has since B17; a hidden box cannot
+    // take the caret from the name field a reader is typing in.
+    const searchRow = document.querySelector('#chooseLineTypeModal .counter-modal-search-row');
+    if (searchRow) searchRow.style.display = tab === 'choose' ? '' : 'none';
     if (tab === 'choose') populateChooseLineTypeList(document.getElementById('lineTypeModalSearchInput')?.value);
     else if (tab === 'create') {
       document.getElementById('createLineTypeName').value = '';
@@ -73,12 +78,29 @@
       list.appendChild(div);
     });
   }
+  // The search box takes the caret a beat after the chooser opens (a frame, then a tick, so
+  // the dialog is painted first), and it YIELDS when the caret has moved on: a reader who
+  // opened the chooser, went straight to Create or Quick and started typing keeps the field
+  // they are in, and a tab that is no longer Choose keeps its own. FLAKE-WATER-FIELD
+  // (2026-09-28): under CI load that beat landed between a spec's focus of the Create name
+  // and its typing, the name went into the search box, and the Water radio never saw it.
+  // counter.js's focusCreateName has had the same rule since 2026-09-12.
+  function focusSearchSoon(searchInput) {
+    requestAnimationFrame(() => setTimeout(() => {
+      if (!searchInput) return;
+      const modal = document.getElementById('chooseLineTypeModal');
+      const active = document.activeElement;
+      if (active && active !== searchInput && active !== document.body && modal && modal.contains(active)) return;   // the caret moved on
+      if (document.getElementById('chooseLineTypePanel')?.style.display === 'none') return;   // the tab moved on
+      searchInput.focus();
+    }, 0));
+  }
   function showChooseLineTypeModal() {
     const searchInput = document.getElementById('lineTypeModalSearchInput');
     if (searchInput) searchInput.value = '';
     showLineTypeTab('choose');
     App.showModal('chooseLineTypeModal');
-    requestAnimationFrame(() => { setTimeout(() => searchInput?.focus(), 0); });
+    focusSearchSoon(searchInput);
   }
 
   document.querySelectorAll('.line-type-tab').forEach(t => t.onclick = () => showLineTypeTab(t.dataset.tab));

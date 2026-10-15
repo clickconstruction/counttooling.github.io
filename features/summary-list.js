@@ -111,7 +111,11 @@
     });
     const allGroupIds = [...new Set([...Object.keys(counterByGroup), ...Object.keys(lineTypeByGroup)])];
     const isUntagged = (x) => x == null || x === '' || String(x) === 'null' || String(x) === 'undefined';
+    // ALT-GROUPS: an alternate group sorts after Untagged (report.js orderGroupIds
+    // has the same rule), so the base bid reads as one block above the alternates.
+    const isAlternate = (gid) => !isUntagged(gid) && !!groups.find(g => g.id === gid)?.alternate;
     const orderedGroupIds = hasAnyGroups ? allGroupIds.sort((a, b) => {
+      if (isAlternate(a) !== isAlternate(b)) return isAlternate(a) ? 1 : -1;
       if (isUntagged(a)) return 1;
       if (isUntagged(b)) return -1;
       return getGroupName(a).localeCompare(getGroupName(b));
@@ -156,10 +160,30 @@
         if (!hasItems) return;
         const h = document.createElement('h3');
         h.style.cssText = 'font-size:0.7rem;color:var(--text3);margin:8px 0 4px 0;';
-        h.textContent = 'Group: ' + groupName;
+        h.textContent = (isAlternate(gid) ? 'Alternate: ' : 'Group: ') + groupName;
+        if (isAlternate(gid)) { h.style.color = 'var(--accent2)'; h.className = 'summary-alt-heading'; }
         el.appendChild(h);
         renderItems(gid);
       });
+      // ALT-GROUPS: the two numbers the customer asked for, the base and what each
+      // alternate adds, one line each at the foot. Only when an alternate holds
+      // something; feet and px stay apart (T1-05) through App.formatFeetPx.
+      const tally = (gid) => {
+        const counts = Object.values(counterByGroup[gid] || {}).reduce((s, r) => s + r.total, 0);
+        const lts = Object.values(lineTypeByGroup[gid] || {});
+        return { counts, ft: lts.reduce((s, r) => s + r.lenFt, 0), px: lts.reduce((s, r) => s + r.lenPx, 0) };
+      };
+      const altRows = orderedGroupIds.filter(isAlternate).map(gid => ({ gid, t: tally(gid) })).filter(x => x.t.counts > 0 || x.t.ft > 0 || x.t.px > 0);
+      if (altRows.length) {
+        const base = orderedGroupIds.filter(gid => !isAlternate(gid)).map(tally)
+          .reduce((a, t) => ({ counts: a.counts + t.counts, ft: a.ft + t.ft, px: a.px + t.px }), { counts: 0, ft: 0, px: 0 });
+        const phrase = (t) => t.counts + (t.counts === 1 ? ' count' : ' counts') + ((t.ft > 0 || t.px > 0) ? ' · ' + App.formatFeetPx(t.ft, t.px) : '');
+        const foot = document.createElement('div');
+        foot.className = 'summary-alt-totals';
+        foot.innerHTML = '<span><b>Base</b> · ' + esc(phrase(base)) + '</span>'
+          + altRows.map(x => '<span><b>+ ' + esc(getGroupName(x.gid)) + '</b> · ' + esc(phrase(x.t)) + '</span>').join('');
+        el.appendChild(foot);
+      }
     } else {
       App.state.counters.forEach(c => {
         // T2-11: one shared arithmetic — the row shows withRepeats, the hover

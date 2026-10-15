@@ -28,7 +28,7 @@
 
   const HOLD_MS = 1500;
   // Runner-based HOTKEYS entries carry no btnId; these are their buttons.
-  const RUNNER_BADGE_TARGETS = { moveReset: 'moveBtn', toggleSnap: 'lineTypeSnapToHVHeaderBtn', rotatePage: 'rotatePage' };
+  const RUNNER_BADGE_TARGETS = { moveReset: 'moveBtn', toggleSnap: 'lineTypeSnapToHVHeaderBtn', rotatePage: 'rotatePage', toggleAutoPick: 'counterAutoPickBtn' };
 
   let holdTimer = null;
   let peeking = false;

@@ -30,8 +30,8 @@
   "headline": "Reviewing every bid: the Overseer role",
   "description": "The Overseer role gives one person a read-only window into every bid in the company: an All Bids board, one click to open any takeoff, and no way to change anything.",
   "image": "https://counttooling.com/og-image.png",
-  "datePublished": "2026-08-28",
-  "dateModified": "2026-08-28",
+  "datePublished": "2026-10-13",
+  "dateModified": "2026-10-13",
   "author": {
     "@type": "Organization",
     "name": "CountTooling",
@@ -90,7 +90,7 @@
     <nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Home</a> <span class="sep">›</span> <a href="/guides/">Guides</a> <span class="sep">›</span> <span>Reviewing every bid: the Overseer role</span></nav>
     <article class="article">
       <h1>Reviewing every bid: the Overseer role</h1>
-      <p class="article-meta">Last updated Aug 28, 2026</p>
+      <p class="article-meta">Last updated Oct 13, 2026</p>
       <div class="prose">
 <p>Some people never do a takeoff, they just need to <strong>see</strong> them. An owner, a general manager,
 a senior reviewer: when the estimator says <em>&quot;it&#39;s in there, go look at it,&quot;</em> they should be able
@@ -107,6 +107,10 @@ newest first, one card per bid:</p>
 <li><strong>Filter by estimator</strong>: pick a name to see just that person&#39;s bids.</li>
 <li><strong>Click any card</strong> to open the bid.</li>
 </ol>
+<p>A company that runs digital twins also gets a <strong>People · Twins · All</strong> switch beside the
+search: the twins&#39; backtests outnumber the estimators&#39; bids many to one, so the board opens on
+<strong>People</strong> (an admin opens on <strong>All</strong>), and a line under the list says how many twin bids are
+off, with a link to show them.</p>
 <p>Each card tells you the story at a glance:</p>
 <ul>
 <li><strong>The bid&#39;s name</strong>, as the estimator saved it.</li>
@@ -115,11 +119,11 @@ newest first, one card per bid:</p>
 has no markups yet.</li>
 <li><strong>When it was last touched</strong>: the date plus a plain-English age: <em>today</em>, <em>yesterday</em>,
 <em>12 days ago</em>.</li>
-<li><strong>Cloud status</strong>: <span style="white-space:nowrap;"><strong>✓ Fully cloud</strong></span> (green) means
-the markups <em>and</em> the plan PDF are both saved to the cloud, so the bid opens complete
-anywhere. <strong>Canvas only</strong> (yellow) means only the markups made it to the cloud, the PDF
-still lives on the estimator&#39;s device, so the drawing itself can&#39;t be displayed until they
-save it with the PDF included.</li>
+<li><strong>Cloud status</strong>: a card that says nothing about it is complete, the markups <em>and</em> the plan
+PDF both saved to the cloud, so the bid opens anywhere. A crossed-out cloud in the card&#39;s top
+corner means <strong>canvas only</strong>: the markups made it to the cloud but the PDF still lives on the
+estimator&#39;s device, so the drawing can&#39;t be displayed until they save it with the PDF
+included. Hover the cloud for the note.</li>
 </ul>
 <p>If you close the board, it&#39;s one click away: <strong>All Bids</strong> in the sidebar.</p>
 <h2>Inside a bid</h2>
@@ -176,16 +180,19 @@ sign in, CountTooling brings you back to the bid you last had open; the board is
 <ul>
 <li>On the overseer&#39;s board, that bid jumps into a pinned <strong>Ready for review</strong> lane at the top,
 wearing a gold badge, no searching, no asking who finished what.</li>
-<li>After looking it over, the overseer clicks <strong>Mark reviewed</strong> right on the card. The bid
-drops out of the lane and keeps a quiet <strong>Reviewed ✓</strong> badge, so both sides can see it&#39;s
-been seen.</li>
+<li>The lane runs oldest waiting first, so the bid that has waited longest is the first card.</li>
+<li>Open a ready bid and a <strong>Reviewing</strong> bar sits under the header: how long it has waited, who
+made it, its counts, then <strong>Request changes…</strong>, <strong>Mark reviewed</strong> and <strong>Next ready</strong>, which
+opens the next bid in the lane, so a morning of reviews is one loop. The card itself carries
+no decision: a bid is reviewed where it is read. Once marked, it drops out of the lane and
+keeps a quiet <strong>Reviewed ✓</strong> badge, so both sides can see it&#39;s been seen.</li>
 <li>If the estimator changes the bid afterward, they can <strong>Mark ready again</strong> from the same
 Project Settings row (or <strong>Withdraw</strong> a request that went up too early).</li>
 </ul>
 <p>Who can do what is enforced by the server, not the buttons: only the bid&#39;s owner, an editor
-on it, or an admin can mark it ready or withdraw; only an overseer or admin can mark it
-reviewed. The same badges show up in <strong>Load Project</strong> rows, so estimators see the state of
-their own bids wherever they look.</p>
+on it, a lead or an admin can mark it ready or withdraw; only an overseer, a lead or an admin
+can mark it reviewed. The same badges show up in <strong>Load Project</strong> rows, so estimators see the
+state of their own bids wherever they look.</p>
 <h2>Granting the role (admins)</h2>
 <p>Overseer is a per-account flag that only an admin can set, from <strong>User Settings → Manage
 Users</strong>, each row has an <strong>eye toggle</strong>:</p>
@@ -195,8 +202,8 @@ Users</strong>, each row has an <strong>eye toggle</strong>:</p>
 <strong>Role</strong> column reads <em>Overseer</em>. Click it again to take the role away; the change applies
 the next time they load the app.</li>
 <li>Overseer is <strong>read-everything, write-nothing</strong>. It doesn&#39;t grant any admin powers, no user
-management, no deleting, no editing other people&#39;s projects. (Admins already see every
-project and don&#39;t need the flag; they also get the All Bids board.)</li>
+management, no deleting, no editing other people&#39;s projects. (Admins and leads already see
+every project and don&#39;t need the flag; they get the All Bids board too.)</li>
 <li>The role is a good fit for exactly the person who should <em>look but never touch</em>: reviews
 stay safe because the server refuses an overseer every write, even if a bug or a
 mis-click asked for one.</li>

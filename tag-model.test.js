@@ -73,3 +73,40 @@ test('rowsInBox + parseScheduleRows: a fixture schedule becomes tag + descriptio
   // a repeated tag keeps its first description
   assert.strictEqual(tm.parseScheduleRows([{ tokens: ['A', 'first', 'thing'] }, { tokens: ['A', 'second', 'thing'] }]).length, 1);
 });
+
+test('nameMentionsTag: a word of the name is the tag, hyphens and case ignored (AUTO-PICK, 2026-10-01)', () => {
+  assert.strictEqual(tm.nameMentionsTag('3IN FD', 'FD'), true);
+  assert.strictEqual(tm.nameMentionsTag('4IN FS-1', 'FS-1'), true);
+  assert.strictEqual(tm.nameMentionsTag('3" FS1', 'FS-1'), true);
+  assert.strictEqual(tm.nameMentionsTag('3in fs1', 'FS1'), true);
+  assert.strictEqual(tm.nameMentionsTag('HS-1 · HAND SINK', 'HS-1'), true);
+  assert.strictEqual(tm.nameMentionsTag('4IN FS-1', 'FS'), false);   // FS-1 is not FS
+  assert.strictEqual(tm.nameMentionsTag('FDX', 'FD'), false);
+  assert.strictEqual(tm.nameMentionsTag('3IN FD', ''), false);
+  assert.strictEqual(tm.nameMentionsTag('', 'FD'), false);
+});
+
+test('tagPickAt: the armed counter keeps a tag it carries or its name says; else an explicit tag, then a name (wendi, 2026-10-01)', () => {
+  const items = [{ str: 'FD', x: 100, y: 100, w: 12, h: 8 }, { str: 'CO', x: 300, y: 100, w: 12, h: 8 }, { str: 'WH', x: 500, y: 100, w: 12, h: 8 }];
+  const counters = [
+    { id: 'fd', name: 'FD' },
+    { id: 'fd3', name: '3IN FD' },
+    { id: 'co-name', name: 'CO' },
+    { id: 'co-tag', name: 'Cleanout', tag: 'co' },
+  ];
+  // wendi's case: 3IN FD armed over the plan's FD stays on 3IN FD
+  assert.deepStrictEqual(pick(items, { x: 104, y: 104 }, counters, 'fd3'), { kind: 'armed', counterId: 'fd3', tag: 'FD' });
+  // the bare FD armed keeps it too (tagOfCounter)
+  assert.deepStrictEqual(pick(items, { x: 104, y: 104 }, counters, 'fd'), { kind: 'armed', counterId: 'fd', tag: 'FD' });
+  // another counter's tag: the explicit tag outranks one read from a name, though later in the palette
+  assert.deepStrictEqual(pick(items, { x: 304, y: 104 }, counters, 'fd3'), { kind: 'other', counterId: 'co-tag', tag: 'CO' });
+  // a tag no counter carries
+  assert.deepStrictEqual(pick(items, { x: 504, y: 104 }, counters, 'fd3'), { kind: 'none', counterId: null, tag: 'WH' });
+  // nothing in reach, or no point
+  assert.strictEqual(tm.tagPickAt(items, { x: 200, y: 300 }, counters, 'fd3', 24), null);
+  assert.strictEqual(tm.tagPickAt(items, null, counters, 'fd3', 24), null);
+  // the box rides along for the ring
+  const full = tm.tagPickAt(items, { x: 304, y: 104 }, counters, 'fd3', 24);
+  assert.deepStrictEqual([full.x, full.y, full.w, full.h], [300, 100, 12, 8]);
+  function pick(it, pt, cs, armed) { const r = tm.tagPickAt(it, pt, cs, armed, 24); return r && { kind: r.kind, counterId: r.counterId, tag: r.tag }; }
+});

@@ -288,3 +288,23 @@ test('buildTakeoffBackupData: the project fields, the device preferences and the
   const d = s.buildProjectData(st, { customIconPaths: [{ value: 'x' }], maxZoom: 4, bakeFrame: frame });
   assert.deepStrictEqual(Object.keys(d).sort(), Object.keys(shared).concat(['version', 'maxZoom', 'pages']).sort());
 });
+
+// STALE-LOCK: the one predicate every surface asks before naming a lock's
+// holder. Mirrors the SQL window: live inside CHECKOUT_INACTIVITY_MS, a
+// missing or unreadable stamp is live (the server lets nobody claim it).
+test('checkoutLockIsLive: inside the window is live, past it is not', () => {
+  const W = 30 * 60 * 1000;
+  const now = Date.parse('2026-10-02T19:35:39.769Z');
+  assert.equal(s.checkoutLockIsLive(new Date(now - 29 * 60 * 1000).toISOString(), now, W), true);
+  assert.equal(s.checkoutLockIsLive(new Date(now - 31 * 60 * 1000).toISOString(), now, W), false);
+  // Wendi's export: stamped 2026-09-30T16:46Z, 50.8 hours before the read.
+  assert.equal(s.checkoutLockIsLive('2026-09-30T16:46:16.986758+00:00', now, W), false);
+  assert.equal(s.checkoutLockIsLive(new Date(now).toISOString(), now, W), true);
+});
+
+test('checkoutLockIsLive: no stamp or an unreadable one is live, as the server treats it', () => {
+  const W = 30 * 60 * 1000;
+  assert.equal(s.checkoutLockIsLive(null, 1e12, W), true);
+  assert.equal(s.checkoutLockIsLive(undefined, 1e12, W), true);
+  assert.equal(s.checkoutLockIsLive('not a date', 1e12, W), true);
+});

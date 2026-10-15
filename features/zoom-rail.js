@@ -39,9 +39,9 @@
   // The hard-coded zoom floor used across app.js (wheel, pinch, -, fit).
   const MIN_ZOOM = 0.2;
   // Round-percent tick candidates; filtered to [MIN_ZOOM*100, maxZoom*100].
-  const TICK_PCTS = [25, 50, 75, 100, 150, 200, 300, 400, 600, 800, 1200];
+  const TICK_PCTS = [25, 50, 75, 100, 150, 200, 300, 400, 600, 800, 1200, 2000, 3000, 5000];   // DEEP-ZOOM: three past 1200
   // Majors get a wider mark + a text label (the 64px rail stays uncluttered).
-  const MAJOR_PCTS = [25, 50, 100, 200, 400, 800];
+  const MAJOR_PCTS = [25, 50, 100, 200, 400, 800, 2000];
 
   const rail = document.getElementById('zoomRail');
   const track = document.getElementById('zoomRailTrack');

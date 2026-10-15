@@ -126,7 +126,7 @@ payload carrying any v2 field is rejected by name — send `version: 2`.
 | Field | Meaning | Lands as |
 |---|---|---|
 | `trade` | `plumbing` \| `electrical` \| `hvac` | `data.trade` → `state.trade`; rides Open in TakeoffTooling as `project.trade` |
-| `groups[]` | circuits, panels, areas — `{ id, name, color? }` (max 200; palette color assigned when omitted) | `data.groups`, `groupsEnabled: true` when any |
+| `groups[]` | circuits, panels, areas — `{ id, name, color?, alternate? }` (`alternate: true` = the section the customer wants priced with and without, ALT-GROUPS 2026-09-29) (max 200; palette color assigned when omitted) | `data.groups`, `groupsEnabled: true` when any |
 | mark / line `group` | one of `groups[].id` | `group` on the mark or line (the app's own field — Summary, report, Copy to /Tooling, the payload all group by it) |
 | line `startDrop` / `endDrop` | feet of vertical at that end (a receptacle at 18" under a 10' ceiling: 9.5 with make-up) | `startDrop`/`endDrop` + `…Unit: 'ft'` — exactly what the Drop tool writes; counted in the totals |
 | palette `childCounts[]` | `{ name, qty, per: 'count'\|'run'\|'ft', ftInterval?, intervalIn?, ruleId? }` — `intervalIn` (inches) wins over the whole-foot `ftInterval`; `ruleId` is the rulebook id the row came from (below) | `childCounts` on the counter / line type (features/child-counts.js: per count × marks, per run × runs, per ft × ceil(feet/interval) per scaled run); a `ruleId` row wears the § chip in the Summary and rides the hand-off payload's `children[]` |

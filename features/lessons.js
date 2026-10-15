@@ -1070,12 +1070,13 @@
   // The blank tour (features/tour-blank.js) takes the same snapshot through lessonKit with
   // { searches: false }: a tour's search words already ride the engine's own key
   // (features/tutorial.js), so its snapshot leaves them out and restoreDevice leaves them be
-  // (MAP-SETTINGS, 2026-09-26: Snap persists per device now, so it has to come back too).
+  // (MAP-SETTINGS, 2026-09-26: Snap persists per device now, so it has to come back too; so does
+  // Auto-pick, 2026-10-01, which the electrical course's chapter 3 turns on).
   const BEFORE_KEY = 'clickcount-lesson-device-before';
   let deviceBefore = (() => { try { return JSON.parse(localStorage.getItem(BEFORE_KEY) || 'null'); } catch (_) { return null; } })();
   function rememberDevice(opts) {
     if (deviceBefore) return;
-    deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) };
+    deviceBefore = { scope: App.getCounterListFilterScope ? App.getCounterListFilterScope() : 'off', snap: !!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical), autoPick: !!(S().counterSettings && S().counterSettings.autoPick) };
     if (!opts || opts.searches !== false) deviceBefore.searches = getSearches();
     try { localStorage.setItem(BEFORE_KEY, JSON.stringify(deviceBefore)); } catch (_) { /* private mode: this session's stop still restores */ }
   }
@@ -1084,6 +1085,8 @@
     if (!deviceBefore) return;
     if (App.getCounterListFilterScope && App.getCounterListFilterScope() !== deviceBefore.scope) App.setCounterListFilterScope(deviceBefore.scope);
     if (!!(S().lineTypeSettings && S().lineTypeSettings.snapToHorizontalVertical) !== deviceBefore.snap && el('lineTypeSnapToHVHeaderBtn')) el('lineTypeSnapToHVHeaderBtn').click();
+    // AUTO-PICK (2026-10-01): the electrical course turns it on; the reader's own setting comes back.
+    if (typeof deviceBefore.autoPick === 'boolean' && !!(S().counterSettings && S().counterSettings.autoPick) !== deviceBefore.autoPick && App.setAutoPick) App.setAutoPick(deviceBefore.autoPick, { toast: false });
     if (deviceBefore.searches) setSearches(deviceBefore.searches);
     deviceBefore = null;
     App.updateUI();
@@ -1182,6 +1185,83 @@
       renderRows({ list: el('learnCourseList-' + id), prog: el('learnCourseProgress-' + id), items: chapters, isDone: (c) => !!done[key(c.id)], lit: nextId === undefined ? suggested() : nextId, title: (c) => c.title.replace(/^Chapter \d+: /, ''), number: (c) => { const m = /^Chapter (\d+):/.exec(c.title); return m ? Number(m[1]) : null; }, attr: 'chapter', noun: 'chapters', start, scroll: false });
     }
     const openAtCourse = () => openLearnMenu(undefined, { course: id, chapter: suggested() });
+    // FIELD-TAKEOFF (2026-10-02): /app/?field=<course> opens the course's sheets with its finished
+    // takeoff on them and no card: the test drive's field door (/test/), a plan set someone can ask
+    // questions of. The finished takeoff is chapter 8's: its seed, then the lay step's "Finish the
+    // takeoff for me". No tour runs, so nothing is snapshotted or restored; the palette it makes is
+    // tracked like any teaching set's and leaves with the sheets.
+    const whole = chapters.find((c) => c.id === 'whole');
+    const layStep = whole && whole.steps.find((s) => s.id === 'lay');
+    const layAll = layStep && layStep.action && layStep.action.run;
+    async function openFinished() {
+      if (!layAll) return false;
+      await openSheetsFor(whole);
+      for (let i = 0; i < 300 && seededFor !== whole.id; i++) {
+        // Trim your set can come up after openSheetsFor's own Open (its pages still building), and
+        // the course's reader would press Open again; nobody is here to, so press it once a second
+        if (i % 10 === 9 && modalUp('preparePdfModal')) el('preparePdfDone').click();
+        seedIfReady(whole);
+        await wait(100);
+      }
+      if (seededFor !== whole.id) return false;
+      // A second visit reopens the set with the last visit's marks on it, and the lay places only what
+      // it cannot find at the plan's own spots: diffusers it slid onto their runs last time are not
+      // there, so they were laid again (21 SD-1 for 11, by hand). The answer key starts on clean sheets.
+      S().pages.forEach((p) => (p.canvases || []).forEach((cv) => { cv.annotations = App.makeAnnotations(); }));
+      S().rooms = [];   // the HVAC lay boxes a room only when no room of that name stands (seedRooms)
+      await layAll();
+      S().tool = App.TOOL.NONE;
+      S().currentPage = whole.page || 0;
+      // Counts big enough to read on a phone, ringed in their colour (the marker is a fixed size on
+      // screen: 22 is a speck beside the plan's own symbols). In memory only, never saveDisplaySettings:
+      // this device's own Counter Settings are as they were on the next load.
+      const cs = S().counterSettings || {};
+      S().counterSettings = Object.assign({}, cs, { size: Math.max(cs.size || 0, 48), showRings: true });
+      App.clearUndoStacks();
+      dirty();
+      App.fitZoom();
+      showFieldPrompt();
+      App.finishedTakeoffReady = id;   // the test drive's phone frame lifts its cover on this
+      return true;
+    }
+    // DEMO-TRACK decision 3, the field door's half: ONE line on the sheet saying what to do first,
+    // gone on the first pointerdown anywhere (that tap still reads the mark) and not back this tab
+    // session. The Duct tool's hint card (.duct-hint-card: centred at the sheet's foot, never takes a
+    // click), so no .modal-overlay: the restore offer and the Esc ladder never see it.
+    function showFieldPrompt() {
+      const seenKey = 'clickcount-field-prompt-' + id;
+      try { if (sessionStorage.getItem(seenKey)) return; } catch (_) { /* no storage: show it */ }
+      const host = el('canvasWrapper');
+      if (!host || el('fieldPrompt')) return;
+      const card = document.createElement('div');
+      card.id = 'fieldPrompt';
+      card.className = 'duct-hint-card field-prompt';
+      card.setAttribute('role', 'status');
+      card.textContent = id === 'hvac' ? 'Tap any diffuser' : 'Tap any mark to read it';
+      host.appendChild(card);
+      // A phone fits the sheet to its width, a band at the top with the screen empty under it: there
+      // the line sits just under the sheet's edge, where the eye is, not at the far foot of the screen.
+      const place = () => {
+        const w = host.getBoundingClientRect();
+        const sheet = el('pdfCanvas') && el('pdfCanvas').getBoundingClientRect();
+        const under = sheet && sheet.height > 0 ? sheet.bottom - w.top + 12 : null;
+        const room = under != null && under + card.offsetHeight + 12 < w.height;
+        card.style.top = room ? under + 'px' : '';
+        card.style.bottom = room ? 'auto' : '';
+      };
+      place();
+      // the fitted raster lands some beats after the takeoff (seconds, on a slow phone): place it again
+      // whenever the sheet or the screen changes size, until the card goes
+      const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(() => card.isConnected && place()) : null;
+      if (watch) { watch.observe(host); if (el('pdfCanvas')) watch.observe(el('pdfCanvas')); }
+      document.addEventListener('pointerdown', () => {
+        card.remove();
+        if (watch) watch.disconnect();
+        try { sessionStorage.setItem(seenKey, '1'); } catch (_) { /* the card is gone either way */ }
+      }, { capture: true, once: true });
+    }
+    App.openFinishedTakeoff = App.openFinishedTakeoff || {};
+    App.openFinishedTakeoff[id] = openFinished;
     const d = doors || {};
     el(d.hint) && (el(d.hint).onclick = (e) => { e.preventDefault(); openAtCourse(); });
     el(d.settings) && (el(d.settings).onclick = () => { App.hideModal('settingsModal'); openAtCourse(); });
@@ -1192,6 +1272,9 @@
       if (want && chapters.some((c) => c.id === want)) {
         App.setTutorialPending(true);   // the boot's restore offer waits, as it does for ?tour= and ?lesson=
         setTimeout(() => { App.setTutorialPending(false); start(want); }, 600);
+      } else if (params.get('field') === id && layAll) {
+        App.setTutorialPending(true);
+        setTimeout(() => { openFinished().finally(() => App.setTutorialPending(false)); }, 600);   // held until laid: the restore offer waits for a plan
       } else if (params.get('course') === id) {
         App.setTutorialPending(true);
         setTimeout(() => { App.setTutorialPending(false); openAtCourse(); }, 600);
@@ -1279,5 +1362,10 @@
     onTouch, undoKey,   // a card that differs for a reader with no keys, or by machine (the card review)
     rememberDevice,   // the blank tour's door: rememberDevice({ searches: false })
     restoreDevice,
+    // The demo track (features/demo-track.js, DEMO-TRACK): a moment opens its set and lays its seed
+    // through the same doors a lesson does, so the palette watch, Trim your set and the settle test
+    // are the lessons' own. `isSeeded` is the open card's check: the set open and THIS run's seed laid.
+    openSheetsFor, seedIfReady,
+    isSeeded: (lesson) => isSetOpen(lesson) && seededFor === lesson.id,
   };
 })();

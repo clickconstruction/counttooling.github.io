@@ -17,10 +17,20 @@
 // Summary, legend, report, Copy to /Tooling, Copy Summary, the PDF legend)
 // reads ann.ghosts, so a ghost cannot leak into a number. The single door from
 // ghost to counted mark is Stamp.
+//
+// STAMP-PICKUP (2026-10-13, Wendi: "I want the text and box to go away after
+// using a ghost stamp"): Stamp hands the ghost back to the cursor. The marks
+// land as real marks, the ghost leaves the sheet and rides the pointer again,
+// as it did between capture and the first drop, so the next spot is one click
+// away and nothing stays over the marks just stamped, no box, no label. Esc
+// drops it; another tool orphans it (app.js clearToolStarts); an undo of the
+// stamp puts the ghost back on the sheet and drops the one in hand
+// (state.placingGhostFromStamp, read by app.js undo/redo).
 (function () {
   const App = (window.App = window.App || {});
 
   let menuGhostId = null;
+  let menuGhostPdf = null;   // where the menu was opened, in PDF space: the grab point when Stamp picks the ghost up
 
   // --- The capture → place gesture ------------------------------------------
   // Three clicks: corner, corner, drop. The two-corner rectangle is the same
@@ -56,6 +66,7 @@
       }
       state.placingGhost = null;
       state.placingGhostLast = null;
+      state.placingGhostFromStamp = false;
       return;
     }
 
@@ -96,9 +107,11 @@
   function handleGhostEscape() {
     const state = App.state;
     if (state.placingGhost) {
+      const fromStamp = !!state.placingGhostFromStamp;
       state.placingGhost = null;
       state.placingGhostLast = null;
-      App.showToast('Ghost discarded.', 1600);
+      state.placingGhostFromStamp = false;
+      App.showToast(fromStamp ? 'Ghost dropped. The stamped marks stay.' : 'Ghost discarded.', 1600);
       return true;
     }
     if (state.ghostRectStart) {
@@ -147,6 +160,7 @@
     const menu = document.getElementById('ghostMenu');
     if (menu) { menu.classList.remove('visible'); menu.innerHTML = ''; }
     menuGhostId = null;
+    menuGhostPdf = null;
     document.removeEventListener('pointerdown', onGhostMenuDocPointerDown, true);
     document.removeEventListener('keydown', onGhostMenuDocKeyDown, true);
     window.removeEventListener('resize', hideGhostMenu);
@@ -182,10 +196,19 @@
         hideGhostMenu();
         return;
       }
+      // STAMP-PICKUP: the stamped marks are real now, so the ghost leaves the sheet
+      // and rides the pointer again for the next spot, grabbed where the menu was
+      // opened. Nothing stays over the marks just stamped. The undo snapshot above
+      // holds the ghost in place, so Ctrl+Z puts it back and drops this one (app.js).
+      const gi = (ann.ghosts || []).indexOf(g);
+      if (gi >= 0) ann.ghosts.splice(gi, 1);
+      if (state.activeGhostId === g.id) state.activeGhostId = null;
+      const b = App.ghostBounds(g);
+      state.placingGhost = g;
+      state.placingGhostLast = menuGhostPdf ? { x: menuGhostPdf.x, y: menuGhostPdf.y } : { x: (b.x1 + b.x2) / 2, y: (b.y1 + b.y2) / 2 };
+      state.placingGhostFromStamp = true;
       App.markProjectDirty();
-      // The ghost SURVIVES the stamp: the whole point is to move it to the
-      // next location and stamp again. Undo takes the marks back off.
-      App.showToast('Stamped ' + describeCounts(res) + '. The ghost stays put for the next one. Stamped in error? Ctrl+Z undoes it.', 4000);
+      App.showToast('Stamped ' + describeCounts(res) + '. The ghost is in hand for the next spot: click to drop it, Esc to let it go. Ctrl+Z undoes the stamp.', 4000);
       App.logUserEvent && App.logUserEvent('ghost_stamped', { counters: res.counters, lines: res.lines });
     } else if (action === 'toggleCounters') {
       g.showCounters = g.showCounters === false;
@@ -228,7 +251,7 @@
     if (state.placingGhost) {
       const res = App.purgeFromGhosts({ ghosts: [state.placingGhost] }, kind, id);
       changed += res.changed;
-      if (res.removedGhostIds.length) { state.placingGhost = null; state.placingGhostLast = null; }
+      if (res.removedGhostIds.length) { state.placingGhost = null; state.placingGhostLast = null; state.placingGhostFromStamp = false; }
     }
     if (state.activeGhostId && removed.includes(state.activeGhostId)) state.activeGhostId = null;
     if (menuGhostId && removed.includes(menuGhostId)) hideGhostMenu();
@@ -249,6 +272,7 @@
     state.activeGhostId = ann.ghosts[i].id;
     App.renderAnnotations();
     openGhostMenu(clientX, clientY, ann.ghosts[i].id);
+    menuGhostPdf = { x: pdfPos.x, y: pdfPos.y };
     return true;
   }
 

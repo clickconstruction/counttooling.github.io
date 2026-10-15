@@ -1,7 +1,7 @@
 ---
 title: Keeping a dense takeoff organized
 description: Groups with subtotals, page filters, search, and mark-appearance settings: how a sheet with hundreds of marks stays readable and auditable.
-updated: 2026-09-21
+updated: 2026-09-29
 order: 3.7
 icon: legend
 category: Counting
@@ -18,6 +18,8 @@ A serious sheet ends up with hundreds of marks. These are the tools that keep it
 Assign related marks to a **group** (all the fixtures in one restroom, everything on one riser) and the Groups section shows a subtotal per group. Assign from a mark's right-click menu ("Assign to Group") or when editing it; create and recolor groups from the sidebar's **+ Add** in the Groups section.
 
 Don't see a Groups section? It's per-project and stays out of the way until used: turn on **Use groups in this project** in Project Settings and the section (and the Assign-to-Group menus) appear. Any project that already has groups shows it automatically.
+
+**Alternates.** When the customer's plan set carries a section they want priced with and without, count it as a group and turn on **Alternate** in the group's dialog (under Color). The group then wears an `ALT` mark in the sidebar, the Summary lists it after everything else with a *Base* line and a *+ group* line at the foot, and every export sets it apart the same way: Show Report and Copy Summary open with *Base: … Alternate … adds …*, Copy to /Tooling puts its rows last under a `--- Alternate: <name> ---` heading, and Open in TakeoffTooling marks each of its rows. The marks on the sheet draw as before. On a plumbing plan, the alternate's own **water sizing** follows the whole-plan block in Copy to /Tooling and the email summary, under `--- Alternate: <name> · Water sizing ---` — its runs serving its fixtures, so the estimator sees what the section adds to the pipe.
 
 ![Assigning a mark to a group: pick from the project's groups (or None), each shown in its color.](/guides/img/group-assign.png)
 

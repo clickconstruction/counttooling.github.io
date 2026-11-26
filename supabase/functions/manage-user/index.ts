@@ -22,6 +22,8 @@ import { corsHeaders } from '../_shared/cors.ts'
 //   * `create` is idempotent: an existing email returns the existing uuid, so PT can
 //     retry freely (fail-soft on the PT side).
 //   * `roster` exists for PT's weekly drift audit — drift is caught, not prevented.
+//   * `set_flags` (2026-11-26) sets a seat's admin, overseer and lead flags from PT's person
+//     desk, and `roster` sends the three, so PT's People screens say who holds which.
 
 const bridgeCors = {
   ...corsHeaders,
@@ -129,6 +131,39 @@ Deno.serve(async (req) => {
         if (error) return jsonRes(500, { error: `set_twin_flag failed: ${error.message}` })
         return jsonRes(200, { ct_user_id: id, is_digital_twin: flag })
       }
+      case 'set_flags': {
+        // 2026-11-26: PipeTooling's person desk sets a seat's roles here. Only the flags
+        // the caller names change. The overseer and lead flags are the ones Manage users
+        // toggles (admin_set_overseer / admin_set_lead); the admin flag had no door at all.
+        // The last admin is never switched off: the app would be left with nobody who can
+        // manage its users.
+        const id = String(body.ct_user_id ?? '')
+        if (!id) return jsonRes(400, { error: 'ct_user_id required' })
+        const patch: Record<string, boolean> = {}
+        for (const key of ['is_admin', 'is_overseer', 'is_lead'] as const) {
+          if (typeof body[key] === 'boolean') patch[key] = body[key] as boolean
+        }
+        if (Object.keys(patch).length === 0) return jsonRes(400, { error: 'name at least one of is_admin, is_overseer, is_lead (true or false)' })
+        if (patch.is_admin === false) {
+          const { data: admins, error: adminsErr } = await admin.from('profiles').select('user_id').eq('is_admin', true)
+          if (adminsErr) return jsonRes(500, { error: `admins read failed: ${adminsErr.message}` })
+          const others = (admins ?? []).filter((a) => a.user_id !== id)
+          if (others.length === 0) return jsonRes(409, { error: 'They are the only admin on CountTooling. Make someone else an admin first.' })
+        }
+        const { data: saved, error } = await admin
+          .from('profiles')
+          .upsert({ user_id: id, ...patch }, { onConflict: 'user_id' })
+          .select('user_id, is_admin, is_overseer, is_lead')
+          .maybeSingle()
+        if (error) return jsonRes(500, { error: `set_flags failed: ${error.message}` })
+        console.log(`manage-user set_flags: ${id} ${JSON.stringify(patch)}`)
+        return jsonRes(200, {
+          ct_user_id: id,
+          is_admin: saved?.is_admin === true,
+          is_overseer: saved?.is_overseer === true,
+          is_lead: saved?.is_lead === true,
+        })
+      }
       case 'update_email': {
         const id = String(body.ct_user_id ?? '')
         const email = String(body.email ?? '').trim().toLowerCase()
@@ -147,7 +182,7 @@ Deno.serve(async (req) => {
       }
       case 'roster': {
         const users = await listAllUsers(admin)
-        const { data: profiles, error } = await admin.from('profiles').select('user_id, is_admin, is_digital_twin')
+        const { data: profiles, error } = await admin.from('profiles').select('user_id, is_admin, is_overseer, is_lead, is_digital_twin')
         if (error) return jsonRes(500, { error: `profiles read failed: ${error.message}` })
         const profById = new Map((profiles ?? []).map((p) => [p.user_id as string, p]))
         const roster = users.map((u) => ({
@@ -155,6 +190,9 @@ Deno.serve(async (req) => {
           email: u.email ?? null,
           is_digital_twin: profById.get(u.id)?.is_digital_twin === true,
           is_admin: profById.get(u.id)?.is_admin === true,
+          // 2026-11-26: PipeTooling's People screens show the two roles a seat can hold here
+          is_overseer: profById.get(u.id)?.is_overseer === true,
+          is_lead: profById.get(u.id)?.is_lead === true,
           active: isActive(u),
         }))
         return jsonRes(200, { roster, count: roster.length })
